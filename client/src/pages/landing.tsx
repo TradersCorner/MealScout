@@ -1,7 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useFacebook } from '@/hooks/useFacebook';
 
 export default function Landing() {
+  const { isLoaded } = useFacebook();
+  
+  const handleFacebookLogin = () => {
+    window.location.href = '/api/auth/facebook';
+  };
+  
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen">
       {/* Hero Section */}
@@ -86,10 +93,11 @@ export default function Landing() {
         <div className="bg-white rounded-3xl p-8 shadow-food border border-border/50">
           <Button 
             className="w-full py-4 text-lg font-bold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 food-gradient-primary border-0 button-hover-effect"
-            onClick={() => window.location.href = "/api/login"}
+            onClick={handleFacebookLogin}
             data-testid="button-get-started"
           >
-            Get Started
+            <i className="fab fa-facebook-f mr-3"></i>
+            Continue with Facebook
           </Button>
           
           <div className="text-center mt-8">
@@ -98,7 +106,7 @@ export default function Landing() {
             </p>
             <button 
               className="text-primary font-bold text-base hover:text-primary/80 transition-colors duration-200"
-              onClick={() => window.location.href = "/api/login"}
+              onClick={handleFacebookLogin}
               data-testid="link-restaurant-signup"
             >
               Sign up to promote your deals →

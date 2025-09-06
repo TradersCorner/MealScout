@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -6,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import DealClaimModal from "@/components/deal-claim-modal";
 
 interface Deal {
   id: string;
@@ -37,6 +39,7 @@ export default function DealDetail() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [showClaimModal, setShowClaimModal] = useState(false);
 
   const { data: deal, isLoading: dealLoading } = useQuery({
     queryKey: ["/api/deals", dealId],
@@ -303,13 +306,13 @@ export default function DealDetail() {
       <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-white border-t border-border px-4 py-4">
         <div className="flex items-center space-x-3">
           <Button 
-            className="flex-1 py-3 font-semibold text-sm"
-            onClick={() => claimDealMutation.mutate()}
-            disabled={claimDealMutation.isPending || !isAuthenticated}
+            className="flex-1 py-3 font-semibold text-sm food-gradient-primary border-0"
+            onClick={() => setShowClaimModal(true)}
+            disabled={!isAuthenticated}
             data-testid="button-claim-deal"
           >
-            <i className="fas fa-ticket-alt mr-2"></i>
-            {claimDealMutation.isPending ? "Claiming..." : "Claim Deal"}
+            <i className="fab fa-facebook-f mr-2"></i>
+            Claim & Post to Facebook
           </Button>
           <Button 
             variant="outline" 
@@ -324,6 +327,13 @@ export default function DealDetail() {
           Deal expires in {Math.ceil((new Date((deal as Deal)?.endDate || Date.now()).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days
         </p>
       </div>
+
+      {/* Deal Claim Modal */}
+      <DealClaimModal
+        dealId={dealId || ''}
+        isOpen={showClaimModal}
+        onClose={() => setShowClaimModal(false)}
+      />
     </div>
   );
 }

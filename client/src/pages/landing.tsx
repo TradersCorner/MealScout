@@ -35,7 +35,7 @@ export default function Landing() {
                 Find deals.<br />Save money.<br />Eat better.
               </h1>
               <p className="text-xl mb-8 opacity-90 leading-relaxed" data-testid="text-app-subtitle">
-                Discover exclusive meal deals from restaurants within walking distance of your location
+                Discover exclusive meal deals from local restaurants in your area
               </p>
               
               <Button 
@@ -76,7 +76,7 @@ export default function Landing() {
         <div className="max-w-md mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Today's Featured Deals</h2>
-            <p className="text-gray-600">Real deals from restaurants near downtown</p>
+            <p className="text-gray-600">Real deals from restaurants in your area</p>
           </div>
           
           <div className="space-y-4">
@@ -84,7 +84,7 @@ export default function Landing() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="font-semibold text-lg text-gray-900">Tony's Pizza</h3>
-                  <p className="text-gray-500 text-sm">Italian • 2 min walk</p>
+                  <p className="text-gray-500 text-sm">Italian • 0.5 miles away</p>
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-green-600">25% OFF</div>
@@ -106,7 +106,7 @@ export default function Landing() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="font-semibold text-lg text-gray-900">Burger Junction</h3>
-                  <p className="text-gray-500 text-sm">American • 1 min walk</p>
+                  <p className="text-gray-500 text-sm">American • 0.3 miles away</p>
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-green-600">$5 OFF</div>
@@ -128,7 +128,7 @@ export default function Landing() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="font-semibold text-lg text-gray-900">Sushi Express</h3>
-                  <p className="text-gray-500 text-sm">Japanese • 3 min walk</p>
+                  <p className="text-gray-500 text-sm">Japanese • 0.8 miles away</p>
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-green-600">Buy 1 Get 1</div>
@@ -196,7 +196,7 @@ export default function Landing() {
                 </div>
               </div>
               <p className="text-gray-700 leading-relaxed">
-                "Perfect for lunch breaks at work. Everything is within walking distance and the deals are real."
+                "Perfect for lunch breaks at work. Great variety of nearby restaurants with real deals."
               </p>
             </div>
           </div>

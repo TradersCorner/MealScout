@@ -1,10 +1,11 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   /* DoorDash-inspired Color Palette */
-  --background: hsl(0 0% 99%);
+  --background: hsl(0 0% 98%);
   --foreground: hsl(0 0% 9%);
   
   --card: hsl(0 0% 100%);
@@ -25,9 +26,9 @@
   --muted: hsl(0 0% 96%);
   --muted-foreground: hsl(0 0% 45%);
   
-  /* Orange accent for highlights */
-  --accent: hsl(25 95% 53%);
-  --accent-foreground: hsl(0 0% 100%);
+  /* Clean accent */
+  --accent: hsl(0 0% 96%);
+  --accent-foreground: hsl(0 0% 9%);
   
   --destructive: hsl(0 84% 60%);
   --destructive-foreground: hsl(0 0% 100%);
@@ -36,64 +37,37 @@
   --input: hsl(0 0% 96%);
   --ring: hsl(0 72% 51%);
   
-  /* Updated chart colors for modern theme */
-  --chart-1: hsl(217 91% 60%);
-  --chart-2: hsl(262 83% 58%);
-  --chart-3: hsl(215 25% 27%);
-  --chart-4: hsl(142 71% 45%);
-  --chart-5: hsl(346 77% 49%);
-  
-  /* Typography */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-serif: 'Georgia', serif;
-  --font-mono: 'SF Mono', 'Monaco', 'Consolas', monospace;
-  
-  --radius: 16px;
-  
-  /* Beautiful realistic shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px 1px rgba(0, 0, 0, 0.05);
-  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --radius: 12px;
 }
 
 .dark {
-  --background: hsl(20 14% 4%);
-  --foreground: hsl(48 100% 96%);
+  --background: hsl(0 0% 4%);
+  --foreground: hsl(0 0% 96%);
   
-  --card: hsl(20 14% 8%);
-  --card-foreground: hsl(48 100% 95%);
+  --card: hsl(0 0% 8%);
+  --card-foreground: hsl(0 0% 95%);
   
-  --popover: hsl(20 14% 6%);
-  --popover-foreground: hsl(48 100% 96%);
+  --popover: hsl(0 0% 6%);
+  --popover-foreground: hsl(0 0% 96%);
   
-  --primary: hsl(217 91% 60%);
+  --primary: hsl(0 72% 51%);
   --primary-foreground: hsl(0 0% 100%);
   
-  --secondary: hsl(215 25% 27%);
+  --secondary: hsl(0 0% 14%);
   --secondary-foreground: hsl(0 0% 100%);
   
-  --muted: hsl(220 14% 11%);
-  --muted-foreground: hsl(220 9% 54%);
+  --muted: hsl(0 0% 11%);
+  --muted-foreground: hsl(0 0% 54%);
   
-  --accent: hsl(262 83% 58%);
+  --accent: hsl(0 0% 14%);
   --accent-foreground: hsl(0 0% 100%);
   
   --destructive: hsl(0 72% 51%);
   --destructive-foreground: hsl(0 0% 100%);
   
-  --border: hsl(20 14% 18%);
-  --input: hsl(20 14% 18%);
-  --ring: hsl(217 91% 60%);
-  
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
-  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
-  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  --border: hsl(0 0% 18%);
+  --input: hsl(0 0% 18%);
+  --ring: hsl(0 72% 51%);
 }
 
 @layer base {
@@ -102,99 +76,62 @@
   }
 
   body {
-    @apply font-sans antialiased text-foreground;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   }
   
-  /* Improved button hover effects */
-  .button-hover-effect {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Clean typography */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.2;
   }
   
-  .button-hover-effect:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-lg);
+  /* Clean button styles */
+  button {
+    font-weight: 500;
   }
   
-  /* Beautiful gradient backgrounds for cards */
-  .gradient-card {
-    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%);
+  /* Clean input styles */
+  input, textarea {
+    font-size: 16px;
   }
   
-  /* Modern gradients */
-  .modern-gradient-primary {
-    background: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(220 89% 65%) 100%);
-  }
-  
-  .modern-gradient-secondary {
-    background: linear-gradient(135deg, hsl(215 25% 27%) 0%, hsl(218 27% 32%) 100%);
-  }
-  
-  .modern-gradient-accent {
-    background: linear-gradient(135deg, hsl(262 83% 58%) 0%, hsl(267 85% 63%) 100%);
-  }
-  
-  /* Enhanced glassmorphism effect */
-  .glass-effect {
-    backdrop-filter: blur(10px) saturate(180%);
-    background-color: rgba(255, 255, 255, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.125);
-  }
-  
-  /* Improved text shadows for better readability on gradients */
-  .text-shadow {
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-  
-  /* Custom scrollbar styling */
+  /* Custom scrollbar */
   ::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
+    height: 6px;
   }
   
   ::-webkit-scrollbar-track {
-    background: hsl(var(--muted));
+    background: transparent;
   }
   
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--primary));
-    border-radius: 4px;
+    background: hsl(0 0% 80%);
+    border-radius: 3px;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--primary) / 0.8);
+    background: hsl(0 0% 70%);
   }
 }
 
-/* Additional utility classes for the food app */
 @layer utilities {
-  .shadow-food {
-    box-shadow: var(--shadow-lg);
+  /* Clean shadows */
+  .shadow-clean {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   }
   
-  .shadow-food-hover {
-    transition: box-shadow 0.2s ease;
+  .shadow-clean-lg {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   }
   
-  .shadow-food-hover:hover {
-    box-shadow: var(--shadow-xl);
+  /* DoorDash-style card hover */
+  .card-hover {
+    transition: box-shadow 0.2s ease-in-out;
   }
   
-  .gradient-text {
-    background: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(262 83% 58%) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  
-  .doordash-shadow {
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  }
-  
-  .doordash-shadow-hover {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-  }
-  
-  .deal-gradient {
-    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+  .card-hover:hover {
+    box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
   }
 }

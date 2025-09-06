@@ -15,83 +15,124 @@ export default function Landing() {
     window.location.href = '/api/auth/facebook';
   };
 
-  // Get user location on component mount
+  // Get user location with improved accuracy
   useEffect(() => {
-    const getLocation = () => {
+    const getLocationByIP = async () => {
+      try {
+        console.log('Attempting IP-based location...');
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
+        console.log('IP location data:', data);
+        
+        if (data.latitude && data.longitude && data.city) {
+          setLocation({ lat: data.latitude, lng: data.longitude });
+          setLocationName(data.city);
+          setLocationError(null);
+          console.log('Using IP-based location:', { city: data.city, coords: [data.latitude, data.longitude] });
+          return true;
+        }
+      } catch (error) {
+        console.error('IP location failed:', error);
+      }
+      return false;
+    };
+
+    const getLocationByGPS = () => {
       if (!navigator.geolocation) {
-        setLocationError('Geolocation is not supported by this browser.');
-        setLocationName("All Areas");
+        console.log('Geolocation not supported, falling back to IP');
+        getLocationByIP();
         return;
       }
 
-      // Set timeout for location request with better accuracy settings
       const options = {
         enableHighAccuracy: true,
-        timeout: 15000, // 15 seconds for better accuracy
-        maximumAge: 0 // Don't use cached location, get fresh coordinates
+        timeout: 10000,
+        maximumAge: 60000 // 1 minute cache
       };
 
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           const { latitude, longitude } = position.coords;
-          console.log('Location acquired:', { latitude, longitude });
+          console.log('GPS coordinates acquired:', { latitude, longitude });
+          
+          // Verify GPS location makes sense by checking if it's too far from IP location
+          try {
+            const ipResponse = await fetch('https://ipapi.co/json/');
+            const ipData = await ipResponse.json();
+            
+            if (ipData.latitude && ipData.longitude) {
+              const distance = Math.sqrt(
+                Math.pow(latitude - ipData.latitude, 2) + 
+                Math.pow(longitude - ipData.longitude, 2)
+              );
+              
+              // If GPS and IP differ by more than ~1 degree (~110km), use IP instead
+              if (distance > 1) {
+                console.log('GPS location seems inaccurate, using IP location instead');
+                setLocation({ lat: ipData.latitude, lng: ipData.longitude });
+                setLocationName(ipData.city || 'Your Area');
+                setLocationError(null);
+                return;
+              }
+            }
+          } catch (error) {
+            console.log('Could not verify GPS location, proceeding with GPS');
+          }
+
+          // GPS location seems reasonable, use it
           setLocation({ lat: latitude, lng: longitude });
           setLocationError(null);
 
-          // Reverse geocoding for display name with improved location selection
-          fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
-            .then(res => {
-              if (!res.ok) throw new Error('Geocoding failed');
-              return res.json();
-            })
-            .then(data => {
-              // Prioritize city over locality for better recognition
-              const displayName = data.city || data.locality || data.principalSubdivision || "Your Area";
-              console.log('Location data:', { city: data.city, locality: data.locality, display: displayName });
-              console.log('Location name resolved:', displayName);
-              setLocationName(displayName);
-            })
-            .catch((error) => {
-              console.error('Geocoding error:', error);
-              // Fallback to IP-based location
-              fetch('https://ipapi.co/json/')
-                .then(res => res.json())
-                .then(ipData => {
-                  console.log('Using IP-based location:', ipData.city);
-                  setLocationName(ipData.city || "Your Area");
-                })
-                .catch(() => {
-                  setLocationName("Your Area");
-                });
-            });
-        },
-        (error) => {
-          console.error('Geolocation error:', error);
-          let errorMessage = 'Location access denied. ';
-          
-          switch(error.code) {
-            case error.PERMISSION_DENIED:
-              errorMessage += 'Please allow location access to see nearby deals.';
-              break;
-            case error.POSITION_UNAVAILABLE:
-              errorMessage += 'Location information unavailable.';
-              break;
-            case error.TIMEOUT:
-              errorMessage += 'Location request timed out.';
-              break;
-            default:
-              errorMessage += 'An unknown error occurred.';
-              break;
+          // Get location name
+          try {
+            const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+            const data = await response.json();
+            const displayName = data.city || data.locality || data.principalSubdivision || "Your Area";
+            console.log('GPS location name resolved:', displayName);
+            setLocationName(displayName);
+          } catch (error) {
+            console.error('Geocoding failed, using IP fallback');
+            await getLocationByIP();
           }
+        },
+        async (error) => {
+          console.error('GPS location failed:', error);
+          console.log('Falling back to IP-based location');
           
-          setLocationError(errorMessage);
-          setLocationName("All Areas");
+          const success = await getLocationByIP();
+          if (!success) {
+            setLocationError('Unable to determine your location. Showing all deals.');
+            setLocationName("All Areas");
+          }
         },
         options
       );
     };
 
-    getLocation();
+    // Try IP-based location first (often more accurate), then GPS as verification
+    getLocationByIP().then(success => {
+      if (!success) {
+        console.log('IP location failed, trying GPS...');
+        getLocationByGPS();
+      } else {
+        // Still try GPS to see if it's more accurate
+        setTimeout(() => {
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                console.log('GPS verification:', { 
+                  gps: [position.coords.latitude, position.coords.longitude],
+                  current: [location?.lat, location?.lng]
+                });
+                // Could add logic here to use GPS if it's significantly more accurate
+              },
+              () => console.log('GPS verification failed'),
+              { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+            );
+          }
+        }, 2000);
+      }
+    });
   }, []);
 
   // Fetch nearby deals based on location

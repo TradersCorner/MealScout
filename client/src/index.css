@@ -3,99 +3,97 @@
 @tailwind utilities;
 
 :root {
-  --background: hsl(0 0% 100%);
-  --foreground: hsl(222 84% 4.9%);
+  /* Modern Food App Color Palette */
+  --background: hsl(48 100% 99%);
+  --foreground: hsl(20 14% 11%);
+  
   --card: hsl(0 0% 100%);
-  --card-foreground: hsl(222 84% 4.9%);
+  --card-foreground: hsl(20 14% 11%);
+  
   --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(222 84% 4.9%);
-  --primary: hsl(357 91% 59%);
-  --primary-foreground: hsl(0 0% 98%);
-  --secondary: hsl(24 100% 60%);
-  --secondary-foreground: hsl(0 0% 98%);
-  --muted: hsl(210 40% 96%);
-  --muted-foreground: hsl(215 16% 46%);
-  --accent: hsl(142 71% 45%);
-  --accent-foreground: hsl(0 0% 98%);
-  --destructive: hsl(0 84% 60%);
-  --destructive-foreground: hsl(0 0% 98%);
-  --border: hsl(214 32% 91%);
-  --input: hsl(214 32% 91%);
-  --ring: hsl(357 91% 59%);
-  --chart-1: hsl(203.8863 88.2845% 53.1373%);
-  --chart-2: hsl(159.7826 100% 36.0784%);
-  --chart-3: hsl(42.0290 92.8251% 56.2745%);
-  --chart-4: hsl(147.1429 78.5047% 41.9608%);
-  --chart-5: hsl(341.4894 75.2000% 50.9804%);
-  --sidebar: hsl(180 6.6667% 97.0588%);
-  --sidebar-foreground: hsl(210 25% 7.8431%);
-  --sidebar-primary: hsl(203.8863 88.2845% 53.1373%);
-  --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(211.5789 51.3514% 92.7451%);
-  --sidebar-accent-foreground: hsl(203.8863 88.2845% 53.1373%);
-  --sidebar-border: hsl(205.0000 25.0000% 90.5882%);
-  --sidebar-ring: hsl(202.8169 89.1213% 53.1373%);
-  --font-sans: Inter, system-ui, sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: Menlo, monospace;
-  --radius: 12px;
-  --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 2px 4px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 4px 6px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 8px 10px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --tracking-normal: 0em;
-  --spacing: 0.25rem;
+  --popover-foreground: hsl(20 14% 11%);
+  
+  /* Rich orange-red gradient for primary */
+  --primary: hsl(18 88% 55%);
+  --primary-foreground: hsl(0 0% 100%);
+  
+  /* Warm amber for secondary */
+  --secondary: hsl(43 96% 58%);
+  --secondary-foreground: hsl(20 14% 11%);
+  
+  /* Soft neutral backgrounds */
+  --muted: hsl(47 66% 97%);
+  --muted-foreground: hsl(25 18% 42%);
+  
+  /* Fresh green for success/accent */
+  --accent: hsl(123 41% 45%);
+  --accent-foreground: hsl(0 0% 100%);
+  
+  --destructive: hsl(0 72% 51%);
+  --destructive-foreground: hsl(0 0% 100%);
+  
+  --border: hsl(43 23% 91%);
+  --input: hsl(43 23% 91%);
+  --ring: hsl(18 88% 55%);
+  
+  /* Updated chart colors for food theme */
+  --chart-1: hsl(18 88% 55%);
+  --chart-2: hsl(123 41% 45%);
+  --chart-3: hsl(43 96% 58%);
+  --chart-4: hsl(280 87% 47%);
+  --chart-5: hsl(340 82% 52%);
+  
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Georgia', serif;
+  --font-mono: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  
+  --radius: 16px;
+  
+  /* Beautiful realistic shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px 1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
 
 .dark {
-  --background: hsl(0 0% 0%);
-  --foreground: hsl(200 6.6667% 91.1765%);
-  --card: hsl(228 9.8039% 10%);
-  --card-foreground: hsl(0 0% 85.0980%);
-  --popover: hsl(0 0% 0%);
-  --popover-foreground: hsl(200 6.6667% 91.1765%);
-  --primary: hsl(357 91% 59%);
-  --primary-foreground: hsl(0 0% 98%);
-  --secondary: hsl(24 100% 60%);
-  --secondary-foreground: hsl(0 0% 98%);
-  --muted: hsl(0 0% 9.4118%);
-  --muted-foreground: hsl(210 3.3898% 46.2745%);
-  --accent: hsl(142 71% 45%);
-  --accent-foreground: hsl(0 0% 98%);
-  --destructive: hsl(0 84% 60%);
-  --destructive-foreground: hsl(0 0% 98%);
-  --border: hsl(210 5.2632% 14.9020%);
-  --input: hsl(207.6923 27.6596% 18.4314%);
-  --ring: hsl(357 91% 59%);
-  --chart-1: hsl(203.8863 88.2845% 53.1373%);
-  --chart-2: hsl(159.7826 100% 36.0784%);
-  --chart-3: hsl(42.0290 92.8251% 56.2745%);
-  --chart-4: hsl(147.1429 78.5047% 41.9608%);
-  --chart-5: hsl(341.4894 75.2000% 50.9804%);
-  --sidebar: hsl(228 9.8039% 10%);
-  --sidebar-foreground: hsl(0 0% 85.0980%);
-  --sidebar-primary: hsl(202.8169 89.1213% 53.1373%);
-  --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(205.7143 70% 7.8431%);
-  --sidebar-accent-foreground: hsl(203.7736 87.6033% 52.5490%);
-  --sidebar-border: hsl(205.7143 15.7895% 26.0784%);
-  --sidebar-ring: hsl(202.8169 89.1213% 53.1373%);
-  --font-sans: Inter, system-ui, sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: Menlo, monospace;
-  --radius: 12px;
-  --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 2px 4px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 4px 6px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 8px 10px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
+  --background: hsl(20 14% 4%);
+  --foreground: hsl(48 100% 96%);
+  
+  --card: hsl(20 14% 8%);
+  --card-foreground: hsl(48 100% 95%);
+  
+  --popover: hsl(20 14% 6%);
+  --popover-foreground: hsl(48 100% 96%);
+  
+  --primary: hsl(18 88% 55%);
+  --primary-foreground: hsl(0 0% 100%);
+  
+  --secondary: hsl(43 96% 58%);
+  --secondary-foreground: hsl(20 14% 11%);
+  
+  --muted: hsl(20 14% 10%);
+  --muted-foreground: hsl(25 18% 58%);
+  
+  --accent: hsl(123 41% 45%);
+  --accent-foreground: hsl(0 0% 100%);
+  
+  --destructive: hsl(0 72% 51%);
+  --destructive-foreground: hsl(0 0% 100%);
+  
+  --border: hsl(20 14% 18%);
+  --input: hsl(20 14% 18%);
+  --ring: hsl(18 88% 55%);
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
 @layer base {
@@ -105,5 +103,88 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    background-image: 
+      radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.4) 1px, transparent 0);
+    background-size: 20px 20px;
+  }
+  
+  /* Improved button hover effects */
+  .button-hover-effect {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .button-hover-effect:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+  }
+  
+  /* Beautiful gradient backgrounds for cards */
+  .gradient-card {
+    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%);
+  }
+  
+  /* Food-themed gradients */
+  .food-gradient-primary {
+    background: linear-gradient(135deg, hsl(18 88% 55%) 0%, hsl(25 85% 60%) 100%);
+  }
+  
+  .food-gradient-secondary {
+    background: linear-gradient(135deg, hsl(43 96% 58%) 0%, hsl(50 100% 65%) 100%);
+  }
+  
+  .food-gradient-accent {
+    background: linear-gradient(135deg, hsl(123 41% 45%) 0%, hsl(130 45% 50%) 100%);
+  }
+  
+  /* Enhanced glassmorphism effect */
+  .glass-effect {
+    backdrop-filter: blur(10px) saturate(180%);
+    background-color: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.125);
+  }
+  
+  /* Improved text shadows for better readability on gradients */
+  .text-shadow {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Custom scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary));
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.8);
+  }
+}
+
+/* Additional utility classes for the food app */
+@layer utilities {
+  .shadow-food {
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .shadow-food-hover {
+    transition: box-shadow 0.2s ease;
+  }
+  
+  .shadow-food-hover:hover {
+    box-shadow: var(--shadow-xl);
+  }
+  
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(18 88% 55%) 0%, hsl(43 96% 58%) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 }

@@ -7,8 +7,8 @@ import DealCard from "@/components/deal-card";
 
 export default function Landing() {
   const { isLoaded } = useFacebook();
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [locationName, setLocationName] = useState<string>("Your Area");
+  const [location, setLocation] = useState<{ lat: number; lng: number }>({ lat: 30.5044, lng: -90.4612 });
+  const [locationName, setLocationName] = useState<string>("Hammond");
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const handleFacebookLogin = () => {

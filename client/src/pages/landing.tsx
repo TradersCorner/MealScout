@@ -7,7 +7,7 @@ export default function Landing() {
       {/* Hero Section */}
       <div className="relative bg-gradient-to-br from-primary to-secondary text-white px-6 py-12 text-center">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-2" data-testid="text-app-title">LocalEats</h1>
+          <h1 className="text-3xl font-bold mb-2" data-testid="text-app-title">MealScout</h1>
           <p className="text-lg opacity-90" data-testid="text-app-subtitle">Hyper-Local Meal Deals</p>
         </div>
         

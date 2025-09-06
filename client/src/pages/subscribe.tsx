@@ -48,7 +48,7 @@ const SubscribeForm = () => {
       } else {
         toast({
           title: "Payment Successful",
-          description: "Welcome to LocalEats! You can now create deals.",
+          description: "Welcome to MealScout! You can now create deals.",
         });
         setLocation("/deal-creation");
       }
@@ -256,7 +256,7 @@ export default function Subscribe() {
               <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-3">
                 <i className="fas fa-crown text-white text-xl"></i>
               </div>
-              <h2 className="text-xl font-bold text-foreground mb-2" data-testid="text-plan-title">LocalEats Restaurant Plan</h2>
+              <h2 className="text-xl font-bold text-foreground mb-2" data-testid="text-plan-title">MealScout Restaurant Plan</h2>
               <p className="text-muted-foreground text-sm" data-testid="text-plan-subtitle">Everything you need to promote your deals</p>
             </div>
             

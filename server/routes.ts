@@ -273,7 +273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: 'LocalEats Restaurant Plan',
+              name: 'MealScout Restaurant Plan',
               description: 'Monthly subscription for restaurant deal promotions',
             },
             unit_amount: 4900, // $49.00 in cents

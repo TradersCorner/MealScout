@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import Stripe from "stripe";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./facebookAuth";
 import { insertRestaurantSchema, insertDealSchema, insertReviewSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -20,8 +20,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = req.user;
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -32,7 +31,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Restaurant routes
   app.post('/api/restaurants', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const restaurantData = insertRestaurantSchema.parse({
         ...req.body,
         ownerId: userId,
@@ -48,7 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/restaurants/my', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const restaurants = await storage.getRestaurantsByOwner(userId);
       res.json(restaurants);
     } catch (error) {
@@ -87,7 +86,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Deal routes
   app.post('/api/deals', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const dealData = insertDealSchema.parse(req.body);
       
       // Verify restaurant ownership
@@ -153,7 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/deals/:id/claim', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const dealId = req.params.id;
       
       const deal = await storage.getDeal(dealId);
@@ -195,7 +194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Review routes
   app.post('/api/reviews', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const reviewData = insertReviewSchema.parse({
         ...req.body,
         userId,
@@ -286,7 +285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expand: ['latest_invoice.payment_intent'],
       });
 
-      await storage.updateUserStripeInfo(user.claims.sub, customerId, subscription.id);
+      await storage.updateUserStripeInfo(user.id, customerId, subscription.id);
   
       const paymentIntent = subscription.latest_invoice?.payment_intent;
       res.send({
@@ -296,6 +295,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating subscription:", error);
       return res.status(400).send({ error: { message: error.message } });
+    }
+  });
+
+  // Deal claiming route with Facebook integration
+  app.post('/api/deals/:dealId/claim', isAuthenticated, async (req: any, res) => {
+    try {
+      const dealId = req.params.dealId;
+      const userId = req.user.id;
+      
+      // Get deal and restaurant info
+      const deal = await storage.getDeal(dealId);
+      if (!deal) {
+        return res.status(404).json({ message: "Deal not found" });
+      }
+      
+      const restaurant = await storage.getRestaurant(deal.restaurantId);
+      if (!restaurant) {
+        return res.status(404).json({ message: "Restaurant not found" });
+      }
+      
+      // Check if user has already claimed this deal
+      const existingClaims = await storage.getDealClaimsCount(dealId, userId);
+      if (existingClaims >= (deal.perCustomerLimit || 1)) {
+        return res.status(400).json({ message: "Deal already claimed by user" });
+      }
+      
+      // Check if deal is still available
+      if (deal.totalUsesLimit && deal.currentUses >= deal.totalUsesLimit) {
+        return res.status(400).json({ message: "Deal is no longer available" });
+      }
+      
+      // Create the deal claim
+      await storage.claimDeal({
+        dealId,
+        userId,
+        claimedAt: new Date(),
+      });
+      
+      // Increment deal uses
+      await storage.incrementDealUses(dealId);
+      
+      // Return Facebook post data
+      res.json({
+        success: true,
+        dealTitle: deal.title,
+        restaurantName: restaurant.name,
+        restaurantAddress: restaurant.address,
+        facebookPostData: {
+          message: `Just claimed this amazing deal at ${restaurant.name}! 🍽️\n\n${deal.title}\n\nFound this through TradeScout - check it out! #TradeScout #FoodDeals`,
+          place: restaurant.name,
+          link: `${req.protocol}://${req.get('host')}/deal/${dealId}`,
+          name: deal.title,
+          description: `${deal.description} - Available at ${restaurant.name}`,
+        }
+      });
+    } catch (error: any) {
+      console.error("Error claiming deal:", error);
+      res.status(500).json({ message: "Failed to claim deal" });
+    }
+  });
+
+  // Get claimed deals for user
+  app.get('/api/deals/claimed', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const claimedDeals = await storage.getUserDealClaims(userId);
+      res.json(claimedDeals);
+    } catch (error) {
+      console.error("Error fetching claimed deals:", error);
+      res.status(500).json({ message: "Failed to fetch claimed deals" });
     }
   });
 

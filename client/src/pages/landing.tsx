@@ -30,10 +30,10 @@ export default function Landing() {
             {/* Hero Content */}
             <div className="text-center mb-12">
               <h1 className="text-4xl font-bold text-gray-900 mb-4 leading-tight" data-testid="text-app-title">
-                Join the food<br />community near you
+                Discover what locals<br />are raving about
               </h1>
               <p className="text-lg text-gray-600 mb-8 leading-relaxed" data-testid="text-app-subtitle">
-                Connect with fellow food lovers and discover the best deals your neighbors are sharing
+                Uncover exclusive restaurant deals through authentic recommendations from people in your area
               </p>
               
               {/* Food Category Icons */}
@@ -70,11 +70,11 @@ export default function Landing() {
                 data-testid="button-get-started"
               >
                 <i className="fab fa-facebook-f mr-3"></i>
-                Join Our Community
+                Start Discovering
               </Button>
               
               <p className="text-sm text-gray-500 mt-4">
-                🤝 Connect with locals • 📍 Share your location • 🔒 Safe community
+                📍 Location-based • 🔒 Secure login • ✨ Curated by locals
               </p>
             </div>
             
@@ -83,15 +83,15 @@ export default function Landing() {
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">2.5K+</div>
-                  <div className="text-xs text-gray-600">Community Members</div>
+                  <div className="text-xs text-gray-600">Local Contributors</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">150+</div>
-                  <div className="text-xs text-gray-600">Neighborhood Spots</div>
+                  <div className="text-xs text-gray-600">Partner Restaurants</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">$45</div>
-                  <div className="text-xs text-gray-600">Shared Savings</div>
+                  <div className="text-xs text-gray-600">Average Monthly Savings</div>
                 </div>
               </div>
             </div>
@@ -103,8 +103,8 @@ export default function Landing() {
       <div className="px-6 py-16">
         <div className="max-w-md mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">🔥 What Your Neighbors Are Sharing</h2>
-            <p className="text-gray-600">Real deals discovered by your local food community</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">🔥 Featured Local Recommendations</h2>
+            <p className="text-gray-600">Handpicked deals from trusted local sources</p>
           </div>
           
           <div className="space-y-4">
@@ -195,7 +195,7 @@ export default function Landing() {
               className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-semibold"
               onClick={handleFacebookLogin}
             >
-              🤝 Join the Community
+              🍽️ View All Recommendations
             </Button>
           </div>
         </div>
@@ -205,8 +205,8 @@ export default function Landing() {
       <div className="px-6 py-16 bg-gray-50">
         <div className="max-w-md mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">💬 Community Stories</h2>
-            <p className="text-gray-600">Real stories from your local food-loving neighbors</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">💬 Local Reviews</h2>
+            <p className="text-gray-600">Authentic experiences from verified local diners</p>
           </div>
           
           <div className="space-y-5">
@@ -223,7 +223,7 @@ export default function Landing() {
                 </div>
               </div>
               <p className="text-gray-700 leading-relaxed">
-                "💰 Our community helped me save $120 last month! Love sharing my finds and seeing what others discover."
+                "💰 Found some incredible deals through local recommendations. Saved over $120 last month on places I actually wanted to try."
               </p>
             </div>
             
@@ -240,7 +240,7 @@ export default function Landing() {
                 </div>
               </div>
               <p className="text-gray-700 leading-relaxed">
-                "🚀 This community introduced me to so many hidden gems in my neighborhood. We're like a local food crew now!"
+                "🚀 Finally discovered those hidden gems everyone talks about but never shares. The local insights here are genuinely valuable."
               </p>
             </div>
           </div>

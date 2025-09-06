@@ -78,72 +78,13 @@ export default function Landing() {
             </div>
             
             {/* Hero Content */}
-            <div className="text-center mb-12">
-              <h1 className="text-4xl font-bold text-gray-900 mb-4 leading-tight" data-testid="text-app-title">
-                Discover what neighbors<br />are raving about
+            <div className="text-center mb-8">
+              <h1 className="text-5xl font-bold text-gray-900 mb-6 leading-tight" data-testid="text-app-title">
+                Great deals.<br />Right now.
               </h1>
-              <p className="text-lg text-gray-600 mb-8 leading-relaxed" data-testid="text-app-subtitle">
-                Uncover exclusive restaurant deals through authentic recommendations from people in your area
+              <p className="text-xl text-gray-600 mb-8 leading-relaxed" data-testid="text-app-subtitle">
+                Real restaurant deals in {locationName}
               </p>
-              
-              {/* Food Category Icons */}
-              <div className="flex justify-center space-x-6 mb-10">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-yellow-100 rounded-2xl flex items-center justify-center mb-2">
-                    <i className="fas fa-pizza-slice text-yellow-600 text-xl"></i>
-                  </div>
-                  <span className="text-sm text-gray-600 font-medium">Pizza</span>
-                </div>
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mb-2">
-                    <i className="fas fa-hamburger text-red-600 text-xl"></i>
-                  </div>
-                  <span className="text-sm text-gray-600 font-medium">Burgers</span>
-                </div>
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mb-2">
-                    <i className="fas fa-leaf text-blue-600 text-xl"></i>
-                  </div>
-                  <span className="text-sm text-gray-600 font-medium">Healthy</span>
-                </div>
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center mb-2">
-                    <i className="fas fa-fish text-purple-600 text-xl"></i>
-                  </div>
-                  <span className="text-sm text-gray-600 font-medium">Sushi</span>
-                </div>
-              </div>
-              
-              <Button 
-                className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base rounded-xl shadow-lg transition-colors duration-200"
-                onClick={handleFacebookLogin}
-                data-testid="button-get-started"
-              >
-                <i className="fab fa-facebook-f mr-3"></i>
-                Start Discovering
-              </Button>
-              
-              <p className="text-sm text-gray-500 mt-4">
-                📍 Location-based • 🔒 Secure login • ✨ Curated by neighbors
-              </p>
-            </div>
-            
-            {/* Quick Stats */}
-            <div className="bg-gray-50 rounded-2xl p-6">
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-2xl font-bold text-gray-900 mb-1">2.5K+</div>
-                  <div className="text-xs text-gray-600">Local Contributors</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-gray-900 mb-1">150+</div>
-                  <div className="text-xs text-gray-600">Partner Restaurants</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-gray-900 mb-1">$45</div>
-                  <div className="text-xs text-gray-600">Average Monthly Savings</div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -167,56 +108,89 @@ export default function Landing() {
             </div>
           )}
 
-          {/* Dynamic Deals */}
+          {/* Business-Focused Deal Cards */}
           {!isLoading && dealsToShow.length > 0 && (
-            <div className="space-y-4">
-              {dealsToShow.slice(0, 3).map((deal: any) => (
-                <Link key={deal.id} href={`/deal/${deal.id}`} className="block">
-                  <div className="bg-white rounded-2xl p-5 shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                          {deal.cuisine === 'pizza' ? '🍕' : 
-                           deal.cuisine === 'burger' ? '🍔' : 
-                           deal.cuisine === 'healthy' ? '🥗' : 
-                           deal.cuisine === 'sushi' ? '🍣' : '🍽️'}
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-gray-900">{deal.restaurant?.name || 'Restaurant'}</h3>
-                          <p className="text-gray-500 text-sm">
-                            {deal.cuisine || 'Food'} • {deal.distance ? `${deal.distance.toFixed(1)} miles away` : 'Nearby'}
-                          </p>
-                        </div>
+            <div className="space-y-6">
+              {dealsToShow.slice(0, 4).map((deal: any) => (
+                <div key={deal.id} className="bg-white rounded-3xl p-6 shadow-xl border border-gray-50 hover:shadow-2xl transition-all duration-300">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start space-x-4">
+                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-2xl shadow-lg">
+                        {deal.restaurant?.cuisineType === 'pizza' ? '🍕' : 
+                         deal.restaurant?.cuisineType === 'burger' ? '🍔' : 
+                         deal.restaurant?.cuisineType === 'healthy' ? '🥗' : 
+                         deal.restaurant?.cuisineType === 'sushi' ? '🍣' : '🍽️'}
                       </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-blue-600">
-                          {deal.discount_type === 'percentage' ? `${deal.discount_value}% OFF` : 
-                           deal.discount_type === 'fixed' ? `$${deal.discount_value} OFF` : 
-                           deal.discount_type === 'bogo' ? 'BOGO' : `${deal.discount_value}% OFF`}
+                      <div className="flex-1">
+                        <h2 className="text-xl font-bold text-gray-900 mb-1">{deal.restaurant?.name || 'Restaurant'}</h2>
+                        <p className="text-gray-600 mb-2">{deal.description}</p>
+                        <div className="flex items-center space-x-4 text-sm text-gray-500">
+                          <span className="flex items-center">
+                            <i className="fas fa-map-marker-alt mr-1 text-red-500"></i>
+                            {deal.distance ? `${deal.distance.toFixed(1)} miles` : 'Nearby'}
+                          </span>
+                          <span className="flex items-center">
+                            <i className="fas fa-clock mr-1 text-blue-500"></i>
+                            {deal.startTime && deal.endTime ? `${deal.startTime} - ${deal.endTime}` : 'Limited time'}
+                          </span>
                         </div>
-                        <div className="text-xs text-gray-500 font-medium">{deal.title || 'Special Deal'}</div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2 text-gray-600">
-                        <i className="fas fa-clock text-sm"></i>
-                        <span className="text-sm">
-                          {deal.valid_until ? `Until ${new Date(deal.valid_until).toLocaleDateString()}` : 'Limited time'}
-                        </span>
+                    <div className="text-right">
+                      <div className="text-3xl font-black text-green-600 mb-1">
+                        {deal.dealType === 'percentage' ? `${deal.discountValue}% OFF` : 
+                         deal.dealType === 'fixed' ? `$${deal.discountValue} OFF` : 
+                         deal.dealType === 'bogo' ? 'BOGO' : `${deal.discountValue}% OFF`}
                       </div>
-                      {deal.is_featured && (
-                        <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
-                          🔥 Popular
-                        </div>
-                      )}
-                      {deal.usage_limit && (
-                        <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold">
-                          ✅ {deal.usage_limit - (deal.usage_count || 0)} left
-                        </div>
-                      )}
+                      <div className="text-xs text-gray-500 font-medium">{deal.title}</div>
                     </div>
                   </div>
-                </Link>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex space-x-3 mt-6">
+                    <Link 
+                      href={`/deal/${deal.id}`} 
+                      className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-4 px-6 rounded-2xl font-bold text-center transition-all duration-200 shadow-lg hover:shadow-xl"
+                    >
+                      🎯 Claim Deal
+                    </Link>
+                    {deal.restaurant?.phone && (
+                      <a 
+                        href={`tel:${deal.restaurant.phone}`}
+                        className="bg-green-500 hover:bg-green-600 text-white py-4 px-6 rounded-2xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center"
+                      >
+                        <i className="fas fa-phone text-lg"></i>
+                      </a>
+                    )}
+                    <a 
+                      href={`https://maps.google.com/?q=${deal.restaurant?.latitude},${deal.restaurant?.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-blue-500 hover:bg-blue-600 text-white py-4 px-6 rounded-2xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center"
+                    >
+                      <i className="fas fa-directions text-lg"></i>
+                    </a>
+                  </div>
+                  
+                  {/* Social Proof & Urgency */}
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                    <div className="flex items-center space-x-4">
+                      {deal.isFeatured && (
+                        <div className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-bold">
+                          🔥 Popular Choice
+                        </div>
+                      )}
+                      {deal.totalUsesLimit && deal.currentUses && (
+                        <div className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-bold">
+                          ⚡ {deal.totalUsesLimit - deal.currentUses} left
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right text-sm text-gray-500">
+                      <span className="font-semibold">{deal.currentUses || 0}</span> people saved today
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           )}
@@ -237,26 +211,18 @@ export default function Landing() {
           )}
           
           {dealsToShow.length > 0 && (
-            <div className="text-center mt-8">
-              <p className="text-gray-600 mb-4 text-sm">
-                Want updates when new deals appear in {locationName}?
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-8 mt-8 text-center">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Never miss a deal</h3>
+              <p className="text-gray-600 mb-6">
+                Get notified instantly when restaurants in {locationName} post new deals
               </p>
-              <div className="flex flex-col space-y-3">
-                <Button 
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold"
-                  onClick={handleFacebookLogin}
-                >
-                  <i className="fab fa-facebook-f mr-2"></i>
-                  Get Deal Notifications
-                </Button>
-                <Button 
-                  variant="outline"
-                  className="border-gray-300 text-gray-700 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold"
-                  onClick={() => window.location.reload()}
-                >
-                  🔄 Refresh Deals
-                </Button>
-              </div>
+              <Button 
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-200"
+                onClick={handleFacebookLogin}
+              >
+                <i className="fab fa-facebook-f mr-3"></i>
+                Get Deal Alerts
+              </Button>
             </div>
           )}
         </div>

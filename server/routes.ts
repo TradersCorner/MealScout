@@ -9,7 +9,7 @@ import { z } from "zod";
 // Optional Stripe integration
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2024-12-18.acacia",
+      apiVersion: "2025-08-27.basil",
     })
   : null;
 
@@ -167,7 +167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check total uses limit
-      if (deal.totalUsesLimit && deal.currentUses >= deal.totalUsesLimit) {
+      if (deal.totalUsesLimit && (deal.currentUses || 0) >= deal.totalUsesLimit) {
         return res.status(400).json({ message: "Deal limit reached" });
       }
       
@@ -238,12 +238,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     if (user.stripeSubscriptionId) {
       try {
-        const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
-        const paymentIntent = subscription.latest_invoice?.payment_intent;
+        const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId, {
+          expand: ['latest_invoice.payment_intent']
+        });
+        const latestInvoice = subscription.latest_invoice;
+        const paymentIntent = typeof latestInvoice === 'object' && latestInvoice ? (latestInvoice as any).payment_intent : null;
         
         res.send({
           subscriptionId: subscription.id,
-          clientSecret: typeof paymentIntent === 'object' ? paymentIntent?.client_secret : null,
+          clientSecret: typeof paymentIntent === 'object' && paymentIntent ? paymentIntent.client_secret : null,
         });
         return;
       } catch (error) {
@@ -271,10 +274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         items: [{
           price_data: {
             currency: 'usd',
-            product_data: {
-              name: 'MealScout Restaurant Plan',
-              description: 'Monthly subscription for restaurant deal promotions',
-            },
+            product: 'MealScout Restaurant Plan',
             unit_amount: 4900, // $49.00 in cents
             recurring: {
               interval: 'month',
@@ -287,10 +287,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.updateUserStripeInfo(user.id, customerId, subscription.id);
   
-      const paymentIntent = subscription.latest_invoice?.payment_intent;
+      const latestInvoice = subscription.latest_invoice;
+      const paymentIntent = typeof latestInvoice === 'object' && latestInvoice ? (latestInvoice as any).payment_intent : null;
       res.send({
         subscriptionId: subscription.id,
-        clientSecret: typeof paymentIntent === 'object' ? paymentIntent?.client_secret : null,
+        clientSecret: typeof paymentIntent === 'object' && paymentIntent ? paymentIntent.client_secret : null,
       });
     } catch (error: any) {
       console.error("Error creating subscription:", error);
@@ -322,7 +323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if deal is still available
-      if (deal.totalUsesLimit && deal.currentUses >= deal.totalUsesLimit) {
+      if (deal.totalUsesLimit && (deal.currentUses || 0) >= deal.totalUsesLimit) {
         return res.status(400).json({ message: "Deal is no longer available" });
       }
       
@@ -330,7 +331,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.claimDeal({
         dealId,
         userId,
-        claimedAt: new Date(),
       });
       
       // Increment deal uses

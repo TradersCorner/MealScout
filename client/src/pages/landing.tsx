@@ -130,8 +130,8 @@ export default function Landing() {
         <div className="max-w-md mx-auto">
           <div className="text-center mb-16">
             <div className="text-7xl mb-6">🔥</div>
-            <h2 className="text-4xl font-black text-gray-900 mb-6">Hot deals in {locationName}</h2>
-            <p className="text-xl text-gray-700 leading-relaxed">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Hot deals in {locationName}</h2>
+            <p className="text-lg text-gray-600 leading-relaxed">
               {locationError ? locationError : `Real-time deals from restaurants near you right now`}
             </p>
           </div>

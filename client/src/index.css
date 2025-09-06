@@ -102,10 +102,8 @@
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
-    background-image: 
-      radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.4) 1px, transparent 0);
-    background-size: 20px 20px;
+    @apply font-sans antialiased text-foreground;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   }
   
   /* Improved button hover effects */
@@ -186,5 +184,17 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+  
+  .doordash-shadow {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  }
+  
+  .doordash-shadow-hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  }
+  
+  .deal-gradient {
+    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
   }
 }

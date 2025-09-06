@@ -10,13 +10,27 @@ export default function Landing() {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationName, setLocationName] = useState<string>("Your Area");
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [manualLocation, setManualLocation] = useState<string | null>(null);
 
   const handleFacebookLogin = () => {
     window.location.href = '/api/auth/facebook';
   };
 
+  // Set manual location to Hammond
+  const setHammondLocation = () => {
+    setLocation({ lat: 30.5044, lng: -90.4612 });
+    setLocationName("Hammond");
+    setManualLocation("Hammond");
+    setLocationError(null);
+  };
+
   // Get user location on component mount
   useEffect(() => {
+    // If manual location is set, use that
+    if (manualLocation) {
+      return;
+    }
+
     const getLocation = () => {
       if (!navigator.geolocation) {
         setLocationError('Geolocation is not supported by this browser.');
@@ -81,7 +95,7 @@ export default function Landing() {
     };
 
     getLocation();
-  }, []);
+  }, [manualLocation]);
 
   // Fetch nearby deals based on location
   const { data: nearbyDeals, isLoading: nearbyLoading } = useQuery({
@@ -192,6 +206,19 @@ export default function Landing() {
             </div>
             <p className="text-gray-600 text-base font-medium" data-testid="text-location-name">{locationName}</p>
           </button>
+          
+          {/* Manual Location Override */}
+          {locationName !== "Hammond" && (
+            <div className="mt-3">
+              <button 
+                onClick={setHammondLocation}
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+              >
+                📍 Set to Hammond
+              </button>
+            </div>
+          )}
+          
           {locationError && (
             <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded-lg">
               <p className="text-orange-700 text-xs">{locationError}</p>

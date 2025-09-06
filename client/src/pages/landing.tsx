@@ -17,42 +17,84 @@ export default function Landing() {
 
   // Get user location on component mount
   useEffect(() => {
-    if (navigator.geolocation) {
+    const getLocation = () => {
+      if (!navigator.geolocation) {
+        setLocationError('Geolocation is not supported by this browser.');
+        setLocationName("All Areas");
+        return;
+      }
+
+      // Set timeout for location request
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 10000, // 10 seconds
+        maximumAge: 300000 // 5 minutes
+      };
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
+          console.log('Location acquired:', { latitude, longitude });
           setLocation({ lat: latitude, lng: longitude });
+          setLocationError(null);
 
           // Reverse geocoding for display name
           fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
-            .then(res => res.json())
-            .then(data => {
-              setLocationName(data.locality || data.city || "Your Area");
+            .then(res => {
+              if (!res.ok) throw new Error('Geocoding failed');
+              return res.json();
             })
-            .catch(() => {
+            .then(data => {
+              const displayName = data.locality || data.city || data.principalSubdivision || "Your Area";
+              console.log('Location name resolved:', displayName);
+              setLocationName(displayName);
+            })
+            .catch((error) => {
+              console.error('Geocoding error:', error);
               setLocationName("Your Area");
             });
         },
         (error) => {
-          console.error('Error getting location:', error);
-          setLocationError('Location access denied. Showing deals from all areas.');
-        }
+          console.error('Geolocation error:', error);
+          let errorMessage = 'Location access denied. ';
+          
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage += 'Please allow location access to see nearby deals.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage += 'Location information unavailable.';
+              break;
+            case error.TIMEOUT:
+              errorMessage += 'Location request timed out.';
+              break;
+            default:
+              errorMessage += 'An unknown error occurred.';
+              break;
+          }
+          
+          setLocationError(errorMessage);
+          setLocationName("All Areas");
+        },
+        options
       );
-    } else {
-      setLocationError('Geolocation is not supported by this browser.');
-    }
+    };
+
+    getLocation();
   }, []);
 
   // Fetch nearby deals based on location
   const { data: nearbyDeals, isLoading: nearbyLoading } = useQuery({
     queryKey: ["/api/deals/nearby", location?.lat, location?.lng],
-    enabled: !!location,
+    enabled: !!location && !locationError,
+    retry: 2,
   });
 
-  // Fetch featured deals as fallback when no location
+  // Fetch featured deals as fallback when no location or location error
   const { data: featuredDeals, isLoading: featuredLoading } = useQuery({
     queryKey: ["/api/deals/featured"],
-    enabled: !location, // Only fetch when we don't have location
+    enabled: !location || !!locationError,
+    retry: 2,
   });
 
   // Use nearby deals if available, otherwise featured deals
@@ -85,12 +127,23 @@ export default function Landing() {
       <div className="bg-white px-4 py-4 border-b border-gray-100">
         <div className="max-w-md mx-auto">
           <div className="flex items-center space-x-2 mb-2">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-gray-600">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className={locationError ? "text-orange-500" : "text-gray-600"}>
               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
             </svg>
             <span className="text-lg font-semibold text-gray-900">Deals near</span>
           </div>
           <p className="text-gray-600 text-sm" data-testid="text-location-name">{locationName}</p>
+          {locationError && (
+            <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded-lg">
+              <p className="text-orange-700 text-xs">{locationError}</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="text-orange-600 text-xs underline mt-1 hover:text-orange-800"
+              >
+                Try again
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

@@ -38,18 +38,42 @@ const getDefaultImage = (cuisineType?: string, title?: string) => {
     italian: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop&auto=format',
     chinese: 'https://images.unsplash.com/photo-1526318896980-cf78c088247c?w=400&h=300&fit=crop&auto=format',
     indian: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=400&h=300&fit=crop&auto=format',
+    cafe: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=300&fit=crop&auto=format',
+    creole: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=300&fit=crop&auto=format',
+    seafood: 'https://images.unsplash.com/photo-1565299585323-38174c97c24d?w=400&h=300&fit=crop&auto=format',
+    sushi: 'https://images.unsplash.com/photo-1563379091339-03246963d51a?w=400&h=300&fit=crop&auto=format',
+    deli: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=300&fit=crop&auto=format',
+    healthy: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=300&fit=crop&auto=format',
     default: 'https://images.unsplash.com/photo-1493770348161-369560ae357d?w=400&h=300&fit=crop&auto=format'
   };
 
   const lowerCuisine = cuisineType?.toLowerCase() || '';
   const lowerTitle = title?.toLowerCase() || '';
 
+  // Title-based matching
   if (lowerTitle.includes('burger') || lowerTitle.includes('sandwich')) return images.burger;
   if (lowerTitle.includes('pizza')) return images.pizza;
-  if (lowerTitle.includes('taco') || lowerTitle.includes('burrito') || lowerCuisine.includes('mexican')) return images.mexican;
+  if (lowerTitle.includes('taco') || lowerTitle.includes('burrito')) return images.mexican;
+  if (lowerTitle.includes('sushi') || lowerTitle.includes('roll')) return images.sushi;
+  if (lowerTitle.includes('beignet') || lowerTitle.includes('coffee') || lowerTitle.includes('pastry')) return images.cafe;
+  if (lowerTitle.includes('curry') || lowerTitle.includes('naan')) return images.indian;
+  if (lowerTitle.includes('pasta') || lowerTitle.includes('garlic bread')) return images.italian;
+  if (lowerTitle.includes('noodle') || lowerTitle.includes('bowl')) return images.asian;
+  if (lowerTitle.includes('jambalaya') || lowerTitle.includes('brunch') || lowerTitle.includes('mimosa')) return images.creole;
+  if (lowerTitle.includes('shrimp') || lowerTitle.includes('fish') || lowerTitle.includes('catch')) return images.seafood;
+  if (lowerTitle.includes('smoothie') || lowerTitle.includes('salad')) return images.healthy;
+
+  // Cuisine-based matching
+  if (lowerCuisine.includes('mexican')) return images.mexican;
   if (lowerCuisine.includes('chinese') || lowerCuisine.includes('asian')) return images.chinese;
   if (lowerCuisine.includes('italian')) return images.italian;
   if (lowerCuisine.includes('indian')) return images.indian;
+  if (lowerCuisine.includes('cafe')) return images.cafe;
+  if (lowerCuisine.includes('creole')) return images.creole;
+  if (lowerCuisine.includes('seafood')) return images.seafood;
+  if (lowerCuisine.includes('sushi')) return images.sushi;
+  if (lowerCuisine.includes('deli')) return images.deli;
+  if (lowerCuisine.includes('healthy')) return images.healthy;
   
   return images.default;
 };

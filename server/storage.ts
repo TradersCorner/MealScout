@@ -191,27 +191,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(deals.isFeatured), desc(deals.createdAt));
   }
 
-  async getFeaturedDeals(): Promise<Deal[]> {
-    const now = new Date();
-    const currentTime = now.toTimeString().slice(0, 5);
-    
-    return await db
-      .select()
-      .from(deals)
-      .where(
-        and(
-          eq(deals.isActive, true),
-          eq(deals.isFeatured, true),
-          lte(deals.startDate, now),
-          gte(deals.endDate, now),
-          lte(deals.startTime, currentTime),
-          gte(deals.endTime, currentTime)
-        )
-      )
-      .orderBy(desc(deals.createdAt));
-  }
-
-  async getNearbyDeals(lat: number, lng: number, radiusKm: number): Promise<Deal[]> {
+  async getFeaturedDeals(): Promise<any[]> {
     const now = new Date();
     const currentTime = now.toTimeString().slice(0, 5);
     
@@ -236,6 +216,71 @@ export class DatabaseStorage implements IStorage {
         isActive: deals.isActive,
         createdAt: deals.createdAt,
         updatedAt: deals.updatedAt,
+        restaurant: {
+          name: restaurants.name,
+          cuisineType: restaurants.cuisineType,
+          phone: restaurants.phone,
+          latitude: restaurants.latitude,
+          longitude: restaurants.longitude,
+        }
+      })
+      .from(deals)
+      .innerJoin(restaurants, eq(deals.restaurantId, restaurants.id))
+      .where(
+        and(
+          eq(deals.isActive, true),
+          eq(deals.isFeatured, true),
+          eq(restaurants.isActive, true),
+          lte(deals.startDate, now),
+          gte(deals.endDate, now),
+          lte(deals.startTime, currentTime),
+          gte(deals.endTime, currentTime)
+        )
+      )
+      .orderBy(desc(deals.createdAt));
+  }
+
+  async getNearbyDeals(lat: number, lng: number, radiusKm: number): Promise<any[]> {
+    const now = new Date();
+    const currentTime = now.toTimeString().slice(0, 5);
+    
+    return await db
+      .select({
+        id: deals.id,
+        restaurantId: deals.restaurantId,
+        title: deals.title,
+        description: deals.description,
+        dealType: deals.dealType,
+        discountValue: deals.discountValue,
+        minOrderAmount: deals.minOrderAmount,
+        imageUrl: deals.imageUrl,
+        startDate: deals.startDate,
+        endDate: deals.endDate,
+        startTime: deals.startTime,
+        endTime: deals.endTime,
+        totalUsesLimit: deals.totalUsesLimit,
+        perCustomerLimit: deals.perCustomerLimit,
+        currentUses: deals.currentUses,
+        isFeatured: deals.isFeatured,
+        isActive: deals.isActive,
+        createdAt: deals.createdAt,
+        updatedAt: deals.updatedAt,
+        restaurant: {
+          name: restaurants.name,
+          cuisineType: restaurants.cuisineType,
+          phone: restaurants.phone,
+          latitude: restaurants.latitude,
+          longitude: restaurants.longitude,
+        },
+        distance: sql<number>`
+          (6371 * acos(
+            cos(radians(${lat})) * 
+            cos(radians(${restaurants.latitude})) * 
+            cos(radians(${restaurants.longitude}) - radians(${lng})) + 
+            sin(radians(${lat})) * 
+            sin(radians(${restaurants.latitude}))
+          ))
+        `.as('distance')
       })
       .from(deals)
       .innerJoin(restaurants, eq(deals.restaurantId, restaurants.id))

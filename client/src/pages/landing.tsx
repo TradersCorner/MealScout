@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { useFacebook } from '@/hooks/useFacebook';
 
 export default function Landing() {
@@ -10,108 +9,97 @@ export default function Landing() {
   };
   
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen">
-      {/* Hero Section */}
-      <div className="relative food-gradient-primary text-white px-6 py-16 text-center overflow-hidden">
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="relative z-10">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-3 text-shadow" data-testid="text-app-title">MealScout</h1>
-            <p className="text-xl opacity-95 font-medium text-shadow" data-testid="text-app-subtitle">Hyper-Local Meal Deals</p>
+    <div className="min-h-screen bg-white">
+      {/* Clean Hero Section */}
+      <div className="px-6 pt-20 pb-16 text-center">
+        <div className="max-w-sm mx-auto">
+          {/* App Icon */}
+          <div className="w-20 h-20 mx-auto mb-8 bg-gradient-to-br from-orange-500 to-red-600 rounded-3xl flex items-center justify-center shadow-lg">
+            <i className="fas fa-utensils text-white text-2xl"></i>
           </div>
           
-          <div className="mb-10">
-            <div className="w-28 h-28 mx-auto bg-white/15 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6 shadow-2xl">
-              <i className="fas fa-utensils text-4xl text-white drop-shadow-md"></i>
-            </div>
-            <p className="text-lg opacity-95 leading-relaxed text-shadow" data-testid="text-hero-description">
-              Discover amazing meal deals from restaurants near you
-            </p>
-          </div>
-        </div>
-        
-        {/* Decorative elements */}
-        <div className="absolute -top-4 -left-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
-        <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
-      </div>
-
-      {/* Features */}
-      <div className="px-6 py-10 bg-gradient-to-b from-background to-muted/30">
-        <div className="space-y-6">
-          <Card className="shadow-food hover:shadow-food-hover transition-all duration-300 border-0 gradient-card">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-5">
-                <div className="w-14 h-14 food-gradient-accent rounded-2xl flex items-center justify-center shadow-md flex-shrink-0">
-                  <i className="fas fa-map-marker-alt text-white text-lg"></i>
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-foreground mb-1" data-testid="text-feature-local-title">Hyper-Local</h3>
-                  <p className="text-muted-foreground leading-relaxed" data-testid="text-feature-local-desc">
-                    Find deals within walking distance of your location
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-food hover:shadow-food-hover transition-all duration-300 border-0 gradient-card">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-5">
-                <div className="w-14 h-14 food-gradient-primary rounded-2xl flex items-center justify-center shadow-md flex-shrink-0">
-                  <i className="fas fa-clock text-white text-lg"></i>
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-foreground mb-1" data-testid="text-feature-meals-title">All-Day Dining</h3>
-                  <p className="text-muted-foreground leading-relaxed" data-testid="text-feature-meals-desc">
-                    Great deals for breakfast, lunch, and dinner
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-food hover:shadow-food-hover transition-all duration-300 border-0 gradient-card">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-5">
-                <div className="w-14 h-14 food-gradient-secondary rounded-2xl flex items-center justify-center shadow-md flex-shrink-0">
-                  <i className="fas fa-percentage text-white text-lg"></i>
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-foreground mb-1" data-testid="text-feature-deals-title">Great Deals</h3>
-                  <p className="text-muted-foreground leading-relaxed" data-testid="text-feature-deals-desc">
-                    Save money on delicious meals from local restaurants
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* CTA Section */}
-      <div className="px-6 pb-12 bg-gradient-to-b from-muted/30 to-background">
-        <div className="bg-white rounded-3xl p-8 shadow-food border border-border/50">
+          {/* Title */}
+          <h1 className="text-5xl font-black text-gray-900 mb-4 tracking-tight" data-testid="text-app-title">
+            MealScout
+          </h1>
+          
+          {/* Subtitle */}
+          <p className="text-xl text-gray-600 mb-12 font-medium" data-testid="text-app-subtitle">
+            Discover amazing meal deals within walking distance
+          </p>
+          
+          {/* Main CTA */}
           <Button 
-            className="w-full py-4 text-lg font-bold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 food-gradient-primary border-0 button-hover-effect"
+            className="w-full h-14 bg-[#1877f2] hover:bg-[#166fe5] text-white font-semibold text-lg rounded-xl shadow-lg"
             onClick={handleFacebookLogin}
             data-testid="button-get-started"
           >
-            <i className="fab fa-facebook-f mr-3"></i>
+            <i className="fab fa-facebook-f mr-3 text-lg"></i>
             Continue with Facebook
           </Button>
           
-          <div className="text-center mt-8">
-            <p className="text-muted-foreground font-medium mb-3" data-testid="text-restaurant-owner">
-              Restaurant owner?
-            </p>
-            <button 
-              className="text-primary font-bold text-base hover:text-primary/80 transition-colors duration-200"
-              onClick={handleFacebookLogin}
-              data-testid="link-restaurant-signup"
-            >
-              Sign up to promote your deals →
-            </button>
+          <p className="text-sm text-gray-500 mt-4">
+            We use Facebook to verify your identity and enable deal sharing
+          </p>
+        </div>
+      </div>
+
+      {/* Simple Features */}
+      <div className="px-6 py-16 bg-gray-50">
+        <div className="max-w-sm mx-auto space-y-8">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">How it works</h2>
+            <p className="text-gray-600">Three simple steps to start saving</p>
           </div>
+          
+          <div className="space-y-6">
+            <div className="flex items-start space-x-4">
+              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <span className="text-orange-600 font-bold">1</span>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-1">Find nearby deals</h3>
+                <p className="text-gray-600 text-sm">Browse deals from restaurants within walking distance</p>
+              </div>
+            </div>
+            
+            <div className="flex items-start space-x-4">
+              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <span className="text-orange-600 font-bold">2</span>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-1">Check in & claim</h3>
+                <p className="text-gray-600 text-sm">Check in at the restaurant on Facebook to claim your deal</p>
+              </div>
+            </div>
+            
+            <div className="flex items-start space-x-4">
+              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <span className="text-orange-600 font-bold">3</span>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-1">Enjoy & save</h3>
+                <p className="text-gray-600 text-sm">Show your claimed deal and enjoy your discounted meal</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Restaurant Owner CTA */}
+      <div className="px-6 py-12 text-center">
+        <div className="max-w-sm mx-auto">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Own a restaurant?</h3>
+          <p className="text-gray-600 text-sm mb-6">
+            Promote your deals to hungry customers nearby
+          </p>
+          <button 
+            className="text-orange-600 font-semibold hover:text-orange-700 transition-colors"
+            onClick={handleFacebookLogin}
+            data-testid="link-restaurant-signup"
+          >
+            Start promoting your deals →
+          </button>
         </div>
       </div>
     </div>

@@ -102,7 +102,7 @@ export default function Landing() {
   const isLoading = nearbyLoading || featuredLoading;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-100 px-4 py-4 sticky top-0 z-20">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -258,7 +258,7 @@ export default function Landing() {
       </div>
 
       {/* Deals Section */}
-      <div className="px-4 py-12 bg-gray-50">
+      <div className="px-4 py-12 bg-gradient-to-b from-transparent to-red-100/30">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">Deals near you</h2>

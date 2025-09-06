@@ -17,7 +17,7 @@ export default function Landing() {
             {/* Navigation */}
             <div className="flex items-center justify-between mb-12">
               <div className="flex items-center space-x-2">
-                <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
                   <i className="fas fa-utensils text-white"></i>
                 </div>
                 <div className="text-2xl font-bold text-gray-900">MealScout</div>
@@ -51,8 +51,8 @@ export default function Landing() {
                   <span className="text-sm text-gray-600 font-medium">Burgers</span>
                 </div>
                 <div className="text-center">
-                  <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mb-2">
-                    <i className="fas fa-leaf text-green-600 text-xl"></i>
+                  <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mb-2">
+                    <i className="fas fa-leaf text-blue-600 text-xl"></i>
                   </div>
                   <span className="text-sm text-gray-600 font-medium">Healthy</span>
                 </div>
@@ -65,7 +65,7 @@ export default function Landing() {
               </div>
               
               <Button 
-                className="w-full h-14 bg-green-600 hover:bg-green-700 text-white font-semibold text-base rounded-xl shadow-lg transition-colors duration-200"
+                className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base rounded-xl shadow-lg transition-colors duration-200"
                 onClick={handleFacebookLogin}
                 data-testid="button-get-started"
               >
@@ -120,7 +120,7 @@ export default function Landing() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-green-600">25% OFF</div>
+                  <div className="text-2xl font-bold text-blue-600">25% OFF</div>
                   <div className="text-xs text-gray-500 font-medium">Lunch Special</div>
                 </div>
               </div>
@@ -147,7 +147,7 @@ export default function Landing() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-green-600">$5 OFF</div>
+                  <div className="text-2xl font-bold text-blue-600">$5 OFF</div>
                   <div className="text-xs text-gray-500 font-medium">Any Combo</div>
                 </div>
               </div>
@@ -156,7 +156,7 @@ export default function Landing() {
                   <i className="fas fa-clock text-sm"></i>
                   <span className="text-sm">All Day</span>
                 </div>
-                <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold">
+                <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
                   ✅ 12 available
                 </div>
               </div>
@@ -174,7 +174,7 @@ export default function Landing() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-green-600">BOGO</div>
+                  <div className="text-2xl font-bold text-blue-600">BOGO</div>
                   <div className="text-xs text-gray-500 font-medium">Sushi Rolls</div>
                 </div>
               </div>
@@ -192,7 +192,7 @@ export default function Landing() {
           
           <div className="text-center mt-8">
             <Button 
-              className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-semibold"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold"
               onClick={handleFacebookLogin}
             >
               🍽️ View All Recommendations
@@ -212,8 +212,8 @@ export default function Landing() {
           <div className="space-y-5">
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
-                  <span className="text-green-600 font-bold text-lg">S</span>
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
+                  <span className="text-blue-600 font-bold text-lg">S</span>
                 </div>
                 <div>
                   <div className="font-bold text-gray-900">Sarah M.</div>

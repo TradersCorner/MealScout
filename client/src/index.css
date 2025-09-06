@@ -13,20 +13,20 @@
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(20 14% 11%);
   
-  /* Rich orange-red gradient for primary */
-  --primary: hsl(18 88% 55%);
+  /* Deep blue primary */
+  --primary: hsl(217 91% 60%);
   --primary-foreground: hsl(0 0% 100%);
   
-  /* Warm amber for secondary */
-  --secondary: hsl(43 96% 58%);
-  --secondary-foreground: hsl(20 14% 11%);
+  /* Sophisticated slate secondary */
+  --secondary: hsl(215 25% 27%);
+  --secondary-foreground: hsl(0 0% 100%);
   
-  /* Soft neutral backgrounds */
-  --muted: hsl(47 66% 97%);
-  --muted-foreground: hsl(25 18% 42%);
+  /* Clean neutral backgrounds */
+  --muted: hsl(220 14% 96%);
+  --muted-foreground: hsl(220 9% 46%);
   
-  /* Fresh green for success/accent */
-  --accent: hsl(123 41% 45%);
+  /* Elegant purple accent */
+  --accent: hsl(262 83% 58%);
   --accent-foreground: hsl(0 0% 100%);
   
   --destructive: hsl(0 72% 51%);
@@ -34,14 +34,14 @@
   
   --border: hsl(43 23% 91%);
   --input: hsl(43 23% 91%);
-  --ring: hsl(18 88% 55%);
+  --ring: hsl(217 91% 60%);
   
-  /* Updated chart colors for food theme */
-  --chart-1: hsl(18 88% 55%);
-  --chart-2: hsl(123 41% 45%);
-  --chart-3: hsl(43 96% 58%);
-  --chart-4: hsl(280 87% 47%);
-  --chart-5: hsl(340 82% 52%);
+  /* Updated chart colors for modern theme */
+  --chart-1: hsl(217 91% 60%);
+  --chart-2: hsl(262 83% 58%);
+  --chart-3: hsl(215 25% 27%);
+  --chart-4: hsl(142 71% 45%);
+  --chart-5: hsl(346 77% 49%);
   
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -69,16 +69,16 @@
   --popover: hsl(20 14% 6%);
   --popover-foreground: hsl(48 100% 96%);
   
-  --primary: hsl(18 88% 55%);
+  --primary: hsl(217 91% 60%);
   --primary-foreground: hsl(0 0% 100%);
   
-  --secondary: hsl(43 96% 58%);
-  --secondary-foreground: hsl(20 14% 11%);
+  --secondary: hsl(215 25% 27%);
+  --secondary-foreground: hsl(0 0% 100%);
   
-  --muted: hsl(20 14% 10%);
-  --muted-foreground: hsl(25 18% 58%);
+  --muted: hsl(220 14% 11%);
+  --muted-foreground: hsl(220 9% 54%);
   
-  --accent: hsl(123 41% 45%);
+  --accent: hsl(262 83% 58%);
   --accent-foreground: hsl(0 0% 100%);
   
   --destructive: hsl(0 72% 51%);
@@ -86,7 +86,7 @@
   
   --border: hsl(20 14% 18%);
   --input: hsl(20 14% 18%);
-  --ring: hsl(18 88% 55%);
+  --ring: hsl(217 91% 60%);
   
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
   --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
@@ -123,17 +123,17 @@
     background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%);
   }
   
-  /* Food-themed gradients */
-  .food-gradient-primary {
-    background: linear-gradient(135deg, hsl(18 88% 55%) 0%, hsl(25 85% 60%) 100%);
+  /* Modern gradients */
+  .modern-gradient-primary {
+    background: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(220 89% 65%) 100%);
   }
   
-  .food-gradient-secondary {
-    background: linear-gradient(135deg, hsl(43 96% 58%) 0%, hsl(50 100% 65%) 100%);
+  .modern-gradient-secondary {
+    background: linear-gradient(135deg, hsl(215 25% 27%) 0%, hsl(218 27% 32%) 100%);
   }
   
-  .food-gradient-accent {
-    background: linear-gradient(135deg, hsl(123 41% 45%) 0%, hsl(130 45% 50%) 100%);
+  .modern-gradient-accent {
+    background: linear-gradient(135deg, hsl(262 83% 58%) 0%, hsl(267 85% 63%) 100%);
   }
   
   /* Enhanced glassmorphism effect */
@@ -182,7 +182,7 @@
   }
   
   .gradient-text {
-    background: linear-gradient(135deg, hsl(18 88% 55%) 0%, hsl(43 96% 58%) 100%);
+    background: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(262 83% 58%) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

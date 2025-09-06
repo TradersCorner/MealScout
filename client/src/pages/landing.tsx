@@ -30,7 +30,7 @@ export default function Landing() {
             {/* Hero Content */}
             <div className="text-center mb-12">
               <h1 className="text-4xl font-bold text-gray-900 mb-4 leading-tight" data-testid="text-app-title">
-                Join the foodie<br />community near you
+                Join the food<br />community near you
               </h1>
               <p className="text-lg text-gray-600 mb-8 leading-relaxed" data-testid="text-app-subtitle">
                 Connect with fellow food lovers and discover the best deals your neighbors are sharing
@@ -104,7 +104,7 @@ export default function Landing() {
         <div className="max-w-md mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">🔥 What Your Neighbors Are Sharing</h2>
-            <p className="text-gray-600">Real deals discovered by your local foodie community</p>
+            <p className="text-gray-600">Real deals discovered by your local food community</p>
           </div>
           
           <div className="space-y-4">
@@ -206,7 +206,7 @@ export default function Landing() {
         <div className="max-w-md mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">💬 Community Stories</h2>
-            <p className="text-gray-600">Real stories from your local foodie neighbors</p>
+            <p className="text-gray-600">Real stories from your local food-loving neighbors</p>
           </div>
           
           <div className="space-y-5">

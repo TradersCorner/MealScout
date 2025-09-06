@@ -1,0 +1,329 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useParams } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+
+interface Deal {
+  id: string;
+  restaurantId: string;
+  title: string;
+  description: string;
+  dealType: string;
+  discountValue: string;
+  minOrderAmount?: string;
+  imageUrl?: string;
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  perCustomerLimit: number;
+  currentUses: number;
+}
+
+interface Restaurant {
+  id: string;
+  name: string;
+  address: string;
+  phone?: string;
+  cuisineType?: string;
+}
+
+export default function DealDetail() {
+  const { id: dealId } = useParams();
+  const { user, isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: deal, isLoading: dealLoading } = useQuery({
+    queryKey: ["/api/deals", dealId],
+    enabled: !!dealId,
+  });
+
+  const { data: restaurant, isLoading: restaurantLoading } = useQuery({
+    queryKey: ["/api/restaurants", deal?.restaurantId],
+    enabled: !!deal?.restaurantId,
+  });
+
+  const { data: reviews } = useQuery({
+    queryKey: ["/api/reviews/restaurant", deal?.restaurantId],
+    enabled: !!deal?.restaurantId,
+  });
+
+  const { data: rating } = useQuery({
+    queryKey: ["/api/reviews/restaurant", deal?.restaurantId, "rating"],
+    enabled: !!deal?.restaurantId,
+  });
+
+  const claimDealMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", `/api/deals/${dealId}/claim`, {});
+    },
+    onSuccess: () => {
+      toast({
+        title: "Deal Claimed!",
+        description: "You have successfully claimed this deal. Show this to the restaurant.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/deals", dealId] });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to claim deal",
+        variant: "destructive",
+      });
+    },
+  });
+
+  if (dealLoading || restaurantLoading) {
+    return (
+      <div className="max-w-md mx-auto bg-white min-h-screen">
+        <div className="animate-pulse">
+          <div className="w-full h-64 bg-muted"></div>
+          <div className="p-4 space-y-4">
+            <div className="h-6 bg-muted rounded w-3/4"></div>
+            <div className="h-4 bg-muted rounded w-1/2"></div>
+            <div className="h-20 bg-muted rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!deal) {
+    return (
+      <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <i className="fas fa-exclamation-triangle text-muted-foreground text-3xl mb-4"></i>
+            <p className="text-muted-foreground mb-4">Deal not found</p>
+            <Link href="/">
+              <Button>Back to Home</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const formatDiscount = (deal: Deal) => {
+    if (deal.dealType === "percentage") {
+      return `${deal.discountValue}% OFF`;
+    } else {
+      return `$${deal.discountValue} OFF`;
+    }
+  };
+
+  const formatTime = (timeString: string) => {
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  return (
+    <div className="max-w-md mx-auto bg-white min-h-screen">
+      {/* Header */}
+      <header className="bg-white px-4 py-4 sticky top-0 z-10">
+        <div className="flex items-center justify-between">
+          <Link href="/">
+            <button className="p-2 -ml-2 rounded-full hover:bg-muted" data-testid="button-back">
+              <i className="fas fa-arrow-left text-foreground"></i>
+            </button>
+          </Link>
+          <div className="flex space-x-2">
+            <button className="p-2 rounded-full hover:bg-muted" data-testid="button-share">
+              <i className="fas fa-share text-foreground"></i>
+            </button>
+            <button className="p-2 rounded-full hover:bg-muted" data-testid="button-favorite">
+              <i className="fas fa-heart text-muted-foreground hover:text-primary"></i>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Deal Image */}
+      <div className="relative">
+        <div className="w-full h-64 bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center">
+          {deal.imageUrl ? (
+            <img 
+              src={deal.imageUrl} 
+              alt={deal.title} 
+              className="w-full h-full object-cover"
+              data-testid="img-deal"
+            />
+          ) : (
+            <i className="fas fa-utensils text-primary text-4xl"></i>
+          )}
+        </div>
+        <div className="absolute top-4 left-4 bg-accent text-accent-foreground px-3 py-1 rounded-full font-bold text-sm" data-testid="text-discount-badge">
+          {formatDiscount(deal)}
+        </div>
+      </div>
+
+      {/* Deal Content */}
+      <div className="px-4 py-6 pb-32">
+        {/* Restaurant Info */}
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h1 className="text-xl font-bold text-foreground mb-1" data-testid="text-restaurant-name">
+              {restaurant?.name || "Restaurant"}
+            </h1>
+            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+              <div className="flex items-center space-x-1">
+                <i className="fas fa-map-marker-alt"></i>
+                <span data-testid="text-restaurant-distance">0.2 mi away</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <i className="fas fa-star text-yellow-400"></i>
+                <span data-testid="text-restaurant-rating">
+                  {rating?.rating ? rating.rating.toFixed(1) : "New"} 
+                  {reviews && ` (${reviews.length} reviews)`}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
+            <i className="fas fa-utensils text-white text-xl"></i>
+          </div>
+        </div>
+
+        {/* Deal Description */}
+        <Card className="bg-muted/50 mb-6">
+          <CardContent className="p-4">
+            <h2 className="font-semibold text-foreground mb-2" data-testid="text-deal-title">{deal.title}</h2>
+            <p className="text-muted-foreground text-sm mb-3" data-testid="text-deal-description">{deal.description}</p>
+            
+            <div className="flex items-center space-x-4 text-xs">
+              <div className="flex items-center space-x-1">
+                <i className="fas fa-clock text-muted-foreground"></i>
+                <span data-testid="text-deal-time">
+                  Valid {formatTime(deal.startTime)} - {formatTime(deal.endTime)}
+                </span>
+              </div>
+              {deal.minOrderAmount && (
+                <div className="flex items-center space-x-1">
+                  <i className="fas fa-dollar-sign text-muted-foreground"></i>
+                  <span data-testid="text-min-order">Min. order ${deal.minOrderAmount}</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <Card>
+            <CardContent className="text-center p-3">
+              <i className="fas fa-clock text-secondary text-lg mb-1"></i>
+              <p className="text-xs font-medium text-foreground" data-testid="text-pickup-time">15-25 min</p>
+              <p className="text-xs text-muted-foreground">Pickup time</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="text-center p-3">
+              <i className="fas fa-phone text-primary text-lg mb-1"></i>
+              <p className="text-xs font-medium text-foreground">Call Now</p>
+              <p className="text-xs text-muted-foreground" data-testid="text-restaurant-phone">
+                {restaurant?.phone || "(555) 123-4567"}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="text-center p-3">
+              <i className="fas fa-directions text-accent text-lg mb-1"></i>
+              <p className="text-xs font-medium text-foreground">Directions</p>
+              <p className="text-xs text-muted-foreground" data-testid="text-directions">2 blocks away</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Reviews */}
+        {reviews && reviews.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-foreground" data-testid="text-reviews-title">Recent Reviews</h3>
+              <button className="text-primary text-sm font-medium" data-testid="button-see-all-reviews">See all</button>
+            </div>
+            
+            <div className="space-y-4">
+              {reviews.slice(0, 2).map((review: any, index: number) => (
+                <Card key={review.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                        <i className="fas fa-user text-muted-foreground text-xs"></i>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <p className="font-medium text-sm text-foreground" data-testid={`text-reviewer-name-${index}`}>
+                            {review.user?.firstName || "Anonymous"}
+                          </p>
+                          <div className="flex text-yellow-400">
+                            {[...Array(5)].map((_, i) => (
+                              <i 
+                                key={i} 
+                                className={`fas fa-star text-xs ${i < review.rating ? 'text-yellow-400' : 'text-muted-foreground'}`}
+                              ></i>
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground" data-testid={`text-review-date-${index}`}>
+                          {new Date(review.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-foreground" data-testid={`text-review-comment-${index}`}>
+                      {review.comment || "Great deal!"}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom Action Bar */}
+      <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-white border-t border-border px-4 py-4">
+        <div className="flex items-center space-x-3">
+          <Button 
+            className="flex-1 py-3 font-semibold text-sm"
+            onClick={() => claimDealMutation.mutate()}
+            disabled={claimDealMutation.isPending || !isAuthenticated}
+            data-testid="button-claim-deal"
+          >
+            <i className="fas fa-ticket-alt mr-2"></i>
+            {claimDealMutation.isPending ? "Claiming..." : "Claim Deal"}
+          </Button>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="px-4 py-3"
+            data-testid="button-save-deal"
+          >
+            <i className="fas fa-heart text-muted-foreground"></i>
+          </Button>
+        </div>
+        <p className="text-center text-xs text-muted-foreground mt-2" data-testid="text-deal-expires">
+          Deal expires in {Math.ceil((new Date(deal.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days
+        </p>
+      </div>
+    </div>
+  );
+}

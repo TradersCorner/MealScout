@@ -7,8 +7,8 @@ import DealCard from "@/components/deal-card";
 
 export default function Landing() {
   const { isLoaded } = useFacebook();
-  const [location, setLocation] = useState<{ lat: number; lng: number }>({ lat: 30.5044, lng: -90.4612 });
-  const [locationName, setLocationName] = useState<string>("Hammond");
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationName, setLocationName] = useState<string>("Your Area");
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const handleFacebookLogin = () => {
@@ -24,11 +24,11 @@ export default function Landing() {
         return;
       }
 
-      // Set timeout for location request
+      // Set timeout for location request with better accuracy settings
       const options = {
         enableHighAccuracy: true,
-        timeout: 10000, // 10 seconds
-        maximumAge: 300000 // 5 minutes
+        timeout: 15000, // 15 seconds for better accuracy
+        maximumAge: 0 // Don't use cached location, get fresh coordinates
       };
 
       navigator.geolocation.getCurrentPosition(
@@ -38,20 +38,31 @@ export default function Landing() {
           setLocation({ lat: latitude, lng: longitude });
           setLocationError(null);
 
-          // Reverse geocoding for display name
+          // Reverse geocoding for display name with improved location selection
           fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
             .then(res => {
               if (!res.ok) throw new Error('Geocoding failed');
               return res.json();
             })
             .then(data => {
-              const displayName = data.locality || data.city || data.principalSubdivision || "Your Area";
+              // Prioritize city over locality for better recognition
+              const displayName = data.city || data.locality || data.principalSubdivision || "Your Area";
+              console.log('Location data:', { city: data.city, locality: data.locality, display: displayName });
               console.log('Location name resolved:', displayName);
               setLocationName(displayName);
             })
             .catch((error) => {
               console.error('Geocoding error:', error);
-              setLocationName("Your Area");
+              // Fallback to IP-based location
+              fetch('https://ipapi.co/json/')
+                .then(res => res.json())
+                .then(ipData => {
+                  console.log('Using IP-based location:', ipData.city);
+                  setLocationName(ipData.city || "Your Area");
+                })
+                .catch(() => {
+                  setLocationName("Your Area");
+                });
             });
         },
         (error) => {

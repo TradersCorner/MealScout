@@ -169,14 +169,7 @@ export default function DealCard({ deal }: DealCardProps) {
 
             {/* Usage stats */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <div className="flex -space-x-1">
-                  <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-white"></div>
-                  <div className="w-6 h-6 bg-blue-500 rounded-full border-2 border-white"></div>
-                  <div className="w-6 h-6 bg-green-500 rounded-full border-2 border-white"></div>
-                </div>
-                <span className="text-sm text-gray-600 font-medium">{deal.currentUses || 188} people saved today</span>
-              </div>
+              <span className="text-sm text-gray-600 font-medium">{deal.currentUses || 188} people saved today</span>
               <div className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold">
                 2h 15m left
               </div>

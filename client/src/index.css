@@ -3,38 +3,38 @@
 @tailwind utilities;
 
 :root {
-  /* Modern Food App Color Palette */
-  --background: hsl(48 100% 99%);
-  --foreground: hsl(20 14% 11%);
+  /* DoorDash-inspired Color Palette */
+  --background: hsl(0 0% 99%);
+  --foreground: hsl(0 0% 9%);
   
   --card: hsl(0 0% 100%);
-  --card-foreground: hsl(20 14% 11%);
+  --card-foreground: hsl(0 0% 9%);
   
   --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(20 14% 11%);
+  --popover-foreground: hsl(0 0% 9%);
   
-  /* Deep blue primary */
-  --primary: hsl(217 91% 60%);
+  /* DoorDash red primary */
+  --primary: hsl(0 72% 51%);
   --primary-foreground: hsl(0 0% 100%);
   
-  /* Sophisticated slate secondary */
-  --secondary: hsl(215 25% 27%);
-  --secondary-foreground: hsl(0 0% 100%);
+  /* Clean gray secondary */
+  --secondary: hsl(0 0% 96%);
+  --secondary-foreground: hsl(0 0% 9%);
   
-  /* Clean neutral backgrounds */
-  --muted: hsl(220 14% 96%);
-  --muted-foreground: hsl(220 9% 46%);
+  /* Light gray backgrounds */
+  --muted: hsl(0 0% 96%);
+  --muted-foreground: hsl(0 0% 45%);
   
-  /* Elegant purple accent */
-  --accent: hsl(262 83% 58%);
+  /* Orange accent for highlights */
+  --accent: hsl(25 95% 53%);
   --accent-foreground: hsl(0 0% 100%);
   
-  --destructive: hsl(0 72% 51%);
+  --destructive: hsl(0 84% 60%);
   --destructive-foreground: hsl(0 0% 100%);
   
-  --border: hsl(43 23% 91%);
-  --input: hsl(43 23% 91%);
-  --ring: hsl(217 91% 60%);
+  --border: hsl(0 0% 90%);
+  --input: hsl(0 0% 96%);
+  --ring: hsl(0 72% 51%);
   
   /* Updated chart colors for modern theme */
   --chart-1: hsl(217 91% 60%);

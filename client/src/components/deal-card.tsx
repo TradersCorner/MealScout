@@ -29,6 +29,31 @@ interface DealCardProps {
   deal: Deal;
 }
 
+const getDefaultImage = (cuisineType?: string, title?: string) => {
+  const images = {
+    pizza: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop&auto=format',
+    burger: 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=400&h=300&fit=crop&auto=format',
+    mexican: 'https://images.unsplash.com/photo-1565299507177-b0ac66763828?w=400&h=300&fit=crop&auto=format',
+    asian: 'https://images.unsplash.com/photo-1563379091339-03246963d51a?w=400&h=300&fit=crop&auto=format',
+    italian: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop&auto=format',
+    chinese: 'https://images.unsplash.com/photo-1526318896980-cf78c088247c?w=400&h=300&fit=crop&auto=format',
+    indian: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=400&h=300&fit=crop&auto=format',
+    default: 'https://images.unsplash.com/photo-1493770348161-369560ae357d?w=400&h=300&fit=crop&auto=format'
+  };
+
+  const lowerCuisine = cuisineType?.toLowerCase() || '';
+  const lowerTitle = title?.toLowerCase() || '';
+
+  if (lowerTitle.includes('burger') || lowerTitle.includes('sandwich')) return images.burger;
+  if (lowerTitle.includes('pizza')) return images.pizza;
+  if (lowerTitle.includes('taco') || lowerTitle.includes('burrito') || lowerCuisine.includes('mexican')) return images.mexican;
+  if (lowerCuisine.includes('chinese') || lowerCuisine.includes('asian')) return images.chinese;
+  if (lowerCuisine.includes('italian')) return images.italian;
+  if (lowerCuisine.includes('indian')) return images.indian;
+  
+  return images.default;
+};
+
 export default function DealCard({ deal }: DealCardProps) {
   const formatDiscount = () => {
     if (deal.dealType === "percentage") {
@@ -43,23 +68,16 @@ export default function DealCard({ deal }: DealCardProps) {
       <Card className="bg-white rounded-xl overflow-hidden hover:shadow-lg transition-shadow duration-200 cursor-pointer border border-gray-200" data-testid={`card-deal-${deal.id}`}>
         <CardContent className="p-0">
           {/* Restaurant Image */}
-          <div className="relative h-48 bg-gray-100">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="text-gray-400">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor"/>
-                </svg>
-              </div>
-            </div>
-            
-            {/* Delivery time badge */}
-            <div className="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-sm font-medium text-gray-700 shadow-sm">
-              25-35 min
-            </div>
+          <div className="relative h-48 bg-gray-100 overflow-hidden">
+            <img 
+              src={deal.imageUrl || getDefaultImage(deal.restaurant?.cuisineType, deal.title)}
+              alt={deal.title}
+              className="w-full h-full object-cover"
+            />
             
             {/* Deal badge */}
             {deal.isFeatured && (
-              <div className="absolute top-3 right-3 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+              <div className="absolute top-3 right-3 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
                 {formatDiscount()} off
               </div>
             )}
@@ -80,19 +98,18 @@ export default function DealCard({ deal }: DealCardProps) {
               </div>
             </div>
 
-            {/* Categories and delivery info */}
+            {/* Categories and location info */}
             <div className="flex items-center space-x-2 text-sm text-gray-600 mb-3">
               <span>{deal.restaurant?.cuisineType || 'American'}</span>
               <span>•</span>
               <span className="flex items-center space-x-1">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-gray-500">
-                  <circle cx="12" cy="12" r="10"/>
-                  <polyline points="12,6 12,12 16,14"/>
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                 </svg>
                 <span>{deal.distance ? `${deal.distance.toFixed(1)} mi` : '0.5 mi'}</span>
               </span>
               <span>•</span>
-              <span>$1.99 delivery fee</span>
+              <span>Pickup available</span>
             </div>
 
             {/* Deal description */}

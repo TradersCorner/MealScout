@@ -8,7 +8,7 @@ export default function Landing() {
       <div className="relative bg-gradient-to-br from-primary to-secondary text-white px-6 py-12 text-center">
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2" data-testid="text-app-title">LocalEats</h1>
-          <p className="text-lg opacity-90" data-testid="text-app-subtitle">Hyper-Local Lunch Deals</p>
+          <p className="text-lg opacity-90" data-testid="text-app-subtitle">Hyper-Local Meal Deals</p>
         </div>
         
         <div className="mb-8">
@@ -16,7 +16,7 @@ export default function Landing() {
             <i className="fas fa-utensils text-3xl"></i>
           </div>
           <p className="text-sm opacity-90" data-testid="text-hero-description">
-            Discover amazing lunch deals from restaurants near you
+            Discover amazing meal deals from restaurants near you
           </p>
         </div>
       </div>
@@ -47,9 +47,9 @@ export default function Landing() {
                   <i className="fas fa-clock text-white"></i>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-foreground" data-testid="text-feature-lunch-title">Lunch Focused</h3>
-                  <p className="text-sm text-muted-foreground" data-testid="text-feature-lunch-desc">
-                    Perfect timing for busy workers and lunch breaks
+                  <h3 className="font-semibold text-foreground" data-testid="text-feature-meals-title">All-Day Dining</h3>
+                  <p className="text-sm text-muted-foreground" data-testid="text-feature-meals-desc">
+                    Great deals for breakfast, lunch, and dinner
                   </p>
                 </div>
               </div>

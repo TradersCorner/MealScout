@@ -123,7 +123,7 @@ export default function RestaurantSignup() {
           </div>
           <h2 className="text-xl font-bold text-foreground mb-2" data-testid="text-hero-title">Grow Your Business</h2>
           <p className="text-muted-foreground text-sm" data-testid="text-hero-subtitle">
-            Reach more customers and boost lunch sales with targeted local deals
+            Reach more customers and boost sales with targeted local deals
           </p>
         </div>
 
@@ -145,9 +145,9 @@ export default function RestaurantSignup() {
               <i className="fas fa-clock text-white text-xs"></i>
             </div>
             <div>
-              <h3 className="font-semibold text-foreground text-sm" data-testid="text-benefit-lunch-title">Lunch Rush Focus</h3>
-              <p className="text-muted-foreground text-xs" data-testid="text-benefit-lunch-desc">
-                Perfect timing for busy workers looking for quick meal deals
+              <h3 className="font-semibold text-foreground text-sm" data-testid="text-benefit-meals-title">All-Day Service</h3>
+              <p className="text-muted-foreground text-xs" data-testid="text-benefit-meals-desc">
+                Great deals throughout the day for busy customers
               </p>
             </div>
           </div>

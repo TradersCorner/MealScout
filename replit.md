@@ -1,6 +1,6 @@
 # Overview
 
-LocalEats is a hyper-local lunch deals discovery platform built as a full-stack React application. The application connects restaurants with nearby customers by enabling restaurant owners to create and manage special lunch deals, while allowing users to discover and claim deals within walking distance of their location. The platform focuses specifically on lunch-time offers with location-based services to create a targeted dining experience.
+LocalEats is a hyper-local meal deals discovery platform built as a full-stack React application. The application connects restaurants with nearby customers by enabling restaurant owners to create and manage special meal deals for breakfast, lunch, and dinner, while allowing users to discover and claim deals within walking distance of their location. The platform focuses on time-based dining offers with location-based services to create a targeted dining experience.
 
 # User Preferences
 

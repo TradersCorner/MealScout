@@ -193,7 +193,7 @@ export default function DealCreation() {
                   <FormLabel data-testid="label-deal-title">Deal Title</FormLabel>
                   <FormControl>
                     <Input 
-                      placeholder="e.g., Buy One Get One Free Lunch Special" 
+                      placeholder="e.g., Buy One Get One Free Meal Special" 
                       {...field} 
                       data-testid="input-deal-title"
                     />

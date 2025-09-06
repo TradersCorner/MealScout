@@ -126,13 +126,67 @@ export default function Landing() {
       {/* Location Header */}
       <div className="bg-white px-4 py-4 border-b border-gray-100">
         <div className="max-w-md mx-auto">
-          <div className="flex items-center space-x-2 mb-2">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className={locationError ? "text-orange-500" : "text-gray-600"}>
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-            </svg>
-            <span className="text-lg font-semibold text-gray-900">Deals near</span>
-          </div>
-          <p className="text-gray-600 text-sm" data-testid="text-location-name">{locationName}</p>
+          <button 
+            onClick={() => {
+              setLocationName("Getting location...");
+              setLocationError(null);
+              setLocation(null);
+              // Re-trigger location fetch
+              if (navigator.geolocation) {
+                const options = {
+                  enableHighAccuracy: true,
+                  timeout: 10000,
+                  maximumAge: 0 // Force fresh location
+                };
+
+                navigator.geolocation.getCurrentPosition(
+                  (position) => {
+                    const { latitude, longitude } = position.coords;
+                    console.log('Location refreshed:', { latitude, longitude });
+                    setLocation({ lat: latitude, lng: longitude });
+                    setLocationError(null);
+
+                    // Reverse geocoding for display name
+                    fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
+                      .then(res => {
+                        if (!res.ok) throw new Error('Geocoding failed');
+                        return res.json();
+                      })
+                      .then(data => {
+                        const displayName = data.locality || data.city || data.principalSubdivision || "Your Area";
+                        console.log('Location name refreshed:', displayName);
+                        setLocationName(displayName);
+                      })
+                      .catch((error) => {
+                        console.error('Geocoding error:', error);
+                        setLocationName("Your Area");
+                      });
+                  },
+                  (error) => {
+                    console.error('Geolocation refresh error:', error);
+                    setLocationError('Unable to refresh location. Please check permissions.');
+                    setLocationName("All Areas");
+                  },
+                  options
+                );
+              }
+            }}
+            className="w-full text-left hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 mb-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className={locationError ? "text-orange-500" : "text-gray-600"}>
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                </svg>
+                <span className="text-lg font-semibold text-gray-900">Deals near</span>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
+                <path d="M1 4v6h6"/>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+              </svg>
+            </div>
+            <p className="text-gray-600 text-sm" data-testid="text-location-name">{locationName}</p>
+          </button>
           {locationError && (
             <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded-lg">
               <p className="text-orange-700 text-xs">{locationError}</p>

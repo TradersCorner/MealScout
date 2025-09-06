@@ -231,6 +231,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Stripe subscription route for restaurant fees
   app.post('/api/get-or-create-subscription', isAuthenticated, async (req: any, res) => {
+    if (!stripe) {
+      return res.status(503).json({ error: { message: 'Payment processing is not configured' } });
+    }
+
     const user = req.user;
 
     if (user.stripeSubscriptionId) {

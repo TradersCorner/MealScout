@@ -11,10 +11,9 @@ import { Card, CardContent } from "@/components/ui/card";
 
 // Make sure to call `loadStripe` outside of a component's render to avoid
 // recreating the `Stripe` object on every render.
-if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
-  throw new Error('Missing required Stripe key: VITE_STRIPE_PUBLIC_KEY');
-}
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+const stripePromise = import.meta.env.VITE_STRIPE_PUBLIC_KEY 
+  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
+  : null;
 
 const SubscribeForm = () => {
   const stripe = useStripe();
@@ -169,6 +168,39 @@ export default function Subscribe() {
               <Button onClick={() => window.location.reload()} className="w-full">
                 Try Again
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Show message if Stripe is not configured
+  if (!stripePromise) {
+    return (
+      <div className="max-w-md mx-auto bg-white min-h-screen">
+        <header className="bg-white border-b border-border px-4 py-4 sticky top-0 z-10">
+          <div className="flex items-center">
+            <Link href="/">
+              <button className="p-2 -ml-2 rounded-full hover:bg-muted mr-3" data-testid="button-back">
+                <i className="fas fa-arrow-left text-foreground"></i>
+              </button>
+            </Link>
+            <h1 className="text-lg font-semibold text-foreground" data-testid="text-page-title">Subscription</h1>
+          </div>
+        </header>
+        <div className="px-4 py-6 flex items-center justify-center min-h-[50vh]">
+          <Card>
+            <CardContent className="p-6 text-center">
+              <i className="fas fa-cog text-muted-foreground text-3xl mb-4"></i>
+              <h2 className="text-lg font-semibold text-foreground mb-2">Payment Setup Required</h2>
+              <p className="text-muted-foreground mb-4">Stripe payment processing is not yet configured.</p>
+              <Link href="/deal-creation">
+                <Button className="w-full mb-2">Create Deals (Demo Mode)</Button>
+              </Link>
+              <Link href="/">
+                <Button variant="outline" className="w-full">Back to Home</Button>
+              </Link>
             </CardContent>
           </Card>
         </div>

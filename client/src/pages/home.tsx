@@ -151,7 +151,7 @@ export default function Home() {
           </div>
         ) : (
           <div className="space-y-4">
-            {featuredDeals?.length > 0 ? (
+            {Array.isArray(featuredDeals) && featuredDeals.length > 0 ? (
               featuredDeals.map((deal: Deal) => (
                 <DealCard key={deal.id} deal={deal} />
               ))

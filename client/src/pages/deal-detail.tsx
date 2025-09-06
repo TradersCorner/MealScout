@@ -44,18 +44,18 @@ export default function DealDetail() {
   });
 
   const { data: restaurant, isLoading: restaurantLoading } = useQuery({
-    queryKey: ["/api/restaurants", deal?.restaurantId],
-    enabled: !!deal?.restaurantId,
+    queryKey: ["/api/restaurants", (deal as Deal)?.restaurantId],
+    enabled: !!(deal as Deal)?.restaurantId,
   });
 
   const { data: reviews } = useQuery({
-    queryKey: ["/api/reviews/restaurant", deal?.restaurantId],
-    enabled: !!deal?.restaurantId,
+    queryKey: ["/api/reviews/restaurant", (deal as Deal)?.restaurantId],
+    enabled: !!(deal as Deal)?.restaurantId,
   });
 
   const { data: rating } = useQuery({
-    queryKey: ["/api/reviews/restaurant", deal?.restaurantId, "rating"],
-    enabled: !!deal?.restaurantId,
+    queryKey: ["/api/reviews/restaurant", (deal as Deal)?.restaurantId, "rating"],
+    enabled: !!(deal as Deal)?.restaurantId,
   });
 
   const claimDealMutation = useMutation({
@@ -160,10 +160,10 @@ export default function DealDetail() {
       {/* Deal Image */}
       <div className="relative">
         <div className="w-full h-64 bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center">
-          {deal.imageUrl ? (
+          {(deal as Deal)?.imageUrl ? (
             <img 
-              src={deal.imageUrl} 
-              alt={deal.title} 
+              src={(deal as Deal).imageUrl} 
+              alt={(deal as Deal).title} 
               className="w-full h-full object-cover"
               data-testid="img-deal"
             />
@@ -172,7 +172,7 @@ export default function DealDetail() {
           )}
         </div>
         <div className="absolute top-4 left-4 bg-accent text-accent-foreground px-3 py-1 rounded-full font-bold text-sm" data-testid="text-discount-badge">
-          {formatDiscount(deal)}
+          {formatDiscount(deal as Deal)}
         </div>
       </div>
 
@@ -182,7 +182,7 @@ export default function DealDetail() {
         <div className="flex items-start justify-between mb-4">
           <div>
             <h1 className="text-xl font-bold text-foreground mb-1" data-testid="text-restaurant-name">
-              {restaurant?.name || "Restaurant"}
+              {(restaurant as Restaurant)?.name || "Restaurant"}
             </h1>
             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
               <div className="flex items-center space-x-1">
@@ -192,8 +192,8 @@ export default function DealDetail() {
               <div className="flex items-center space-x-1">
                 <i className="fas fa-star text-yellow-400"></i>
                 <span data-testid="text-restaurant-rating">
-                  {rating?.rating ? rating.rating.toFixed(1) : "New"} 
-                  {reviews && ` (${reviews.length} reviews)`}
+                  {(rating as any)?.rating ? (rating as any).rating.toFixed(1) : "New"} 
+                  {Array.isArray(reviews) && ` (${reviews.length} reviews)`}
                 </span>
               </div>
             </div>
@@ -206,20 +206,20 @@ export default function DealDetail() {
         {/* Deal Description */}
         <Card className="bg-muted/50 mb-6">
           <CardContent className="p-4">
-            <h2 className="font-semibold text-foreground mb-2" data-testid="text-deal-title">{deal.title}</h2>
-            <p className="text-muted-foreground text-sm mb-3" data-testid="text-deal-description">{deal.description}</p>
+            <h2 className="font-semibold text-foreground mb-2" data-testid="text-deal-title">{(deal as Deal)?.title}</h2>
+            <p className="text-muted-foreground text-sm mb-3" data-testid="text-deal-description">{(deal as Deal)?.description}</p>
             
             <div className="flex items-center space-x-4 text-xs">
               <div className="flex items-center space-x-1">
                 <i className="fas fa-clock text-muted-foreground"></i>
                 <span data-testid="text-deal-time">
-                  Valid {formatTime(deal.startTime)} - {formatTime(deal.endTime)}
+                  Valid {formatTime((deal as Deal)?.startTime || "11:00")} - {formatTime((deal as Deal)?.endTime || "15:00")}
                 </span>
               </div>
-              {deal.minOrderAmount && (
+              {(deal as Deal)?.minOrderAmount && (
                 <div className="flex items-center space-x-1">
                   <i className="fas fa-dollar-sign text-muted-foreground"></i>
-                  <span data-testid="text-min-order">Min. order ${deal.minOrderAmount}</span>
+                  <span data-testid="text-min-order">Min. order ${(deal as Deal).minOrderAmount}</span>
                 </div>
               )}
             </div>
@@ -240,7 +240,7 @@ export default function DealDetail() {
               <i className="fas fa-phone text-primary text-lg mb-1"></i>
               <p className="text-xs font-medium text-foreground">Call Now</p>
               <p className="text-xs text-muted-foreground" data-testid="text-restaurant-phone">
-                {restaurant?.phone || "(555) 123-4567"}
+                {(restaurant as Restaurant)?.phone || "(555) 123-4567"}
               </p>
             </CardContent>
           </Card>
@@ -254,7 +254,7 @@ export default function DealDetail() {
         </div>
 
         {/* Reviews */}
-        {reviews && reviews.length > 0 && (
+        {Array.isArray(reviews) && reviews.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-foreground" data-testid="text-reviews-title">Recent Reviews</h3>
@@ -262,7 +262,7 @@ export default function DealDetail() {
             </div>
             
             <div className="space-y-4">
-              {reviews.slice(0, 2).map((review: any, index: number) => (
+              {(reviews as any[]).slice(0, 2).map((review: any, index: number) => (
                 <Card key={review.id}>
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-3 mb-2">
@@ -321,7 +321,7 @@ export default function DealDetail() {
           </Button>
         </div>
         <p className="text-center text-xs text-muted-foreground mt-2" data-testid="text-deal-expires">
-          Deal expires in {Math.ceil((new Date(deal.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days
+          Deal expires in {Math.ceil((new Date((deal as Deal)?.endDate || Date.now()).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days
         </p>
       </div>
     </div>

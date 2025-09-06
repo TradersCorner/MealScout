@@ -64,7 +64,7 @@ export default function DealCreation() {
 
   const createDealMutation = useMutation({
     mutationFn: async (data: DealFormData) => {
-      if (!restaurants || restaurants.length === 0) {
+      if (!Array.isArray(restaurants) || restaurants.length === 0) {
         throw new Error("No restaurant found. Please register a restaurant first.");
       }
 
@@ -136,7 +136,7 @@ export default function DealCreation() {
     );
   }
 
-  if (!restaurants || restaurants.length === 0) {
+  if (!Array.isArray(restaurants) || restaurants.length === 0) {
     return (
       <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
         <Card>

@@ -89,76 +89,97 @@ export default function DealCard({ deal }: DealCardProps) {
 
   return (
     <Link href={`/deal/${deal.id}`}>
-      <Card className="bg-white rounded-xl overflow-hidden hover:shadow-lg transition-shadow duration-200 cursor-pointer border border-gray-200" data-testid={`card-deal-${deal.id}`}>
+      <Card className="bg-white rounded-3xl overflow-hidden hover:shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer border-0 shadow-lg group" data-testid={`card-deal-${deal.id}`}>
         <CardContent className="p-0">
           {/* Restaurant Image */}
-          <div className="relative h-48 bg-gray-100 overflow-hidden">
+          <div className="relative h-56 bg-gray-100 overflow-hidden">
             <img 
               src={deal.imageUrl || getDefaultImage(deal.restaurant?.cuisineType, deal.title)}
               alt={deal.title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
             />
             
             {/* Deal badge */}
             {deal.isFeatured && (
-              <div className="absolute top-3 right-3 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+              <div className="absolute top-4 right-4 bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-2xl text-sm font-bold shadow-xl">
                 {formatDiscount()} off
               </div>
             )}
+            
+            {/* Favorite button */}
+            <div className="absolute top-4 left-4 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+            </div>
           </div>
 
           {/* Content */}
-          <div className="p-4">
+          <div className="p-6">
             {/* Restaurant name and rating */}
-            <div className="flex items-start justify-between mb-2">
-              <h3 className="font-semibold text-gray-900 text-lg leading-tight" data-testid={`text-restaurant-name-${deal.id}`}>
+            <div className="flex items-start justify-between mb-3">
+              <h3 className="font-bold text-gray-900 text-xl leading-tight" data-testid={`text-restaurant-name-${deal.id}`}>
                 {deal.restaurant?.name || 'Restaurant Name'}
               </h3>
-              <div className="flex items-center space-x-1 ml-2">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-green-500">
+              <div className="flex items-center space-x-1 ml-2 bg-green-100 px-3 py-1 rounded-full">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-green-600">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                 </svg>
-                <span className="text-sm font-medium text-gray-700">4.5</span>
+                <span className="text-sm font-bold text-green-700">4.5</span>
               </div>
             </div>
 
             {/* Categories and location info */}
-            <div className="flex items-center space-x-2 text-sm text-gray-600 mb-3">
-              <span>{deal.restaurant?.cuisineType || 'American'}</span>
-              <span>•</span>
-              <span className="flex items-center space-x-1">
+            <div className="flex items-center flex-wrap gap-2 mb-4">
+              <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-medium">{deal.restaurant?.cuisineType || 'American'}</span>
+              <span className="flex items-center space-x-1 bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-medium">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-gray-500">
                   <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                 </svg>
                 <span>{deal.distance ? `${deal.distance.toFixed(1)} mi` : '0.5 mi'}</span>
               </span>
-              <span>•</span>
-              <span>Pickup available</span>
+              <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">Pickup</span>
             </div>
 
             {/* Deal description */}
-            <p className="text-gray-700 text-sm mb-4 leading-relaxed" data-testid={`text-restaurant-info-${deal.id}`}>
+            <p className="text-gray-600 text-base mb-5 leading-relaxed" data-testid={`text-restaurant-info-${deal.id}`}>
               {deal.description}
             </p>
 
             {/* Promo highlight */}
-            <div className="bg-red-50 border border-red-100 rounded-lg p-3 mb-4">
+            <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-2xl p-4 mb-5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-red-500">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                  </svg>
-                  <span className="text-red-600 font-medium text-sm">
-                    {formatDiscount()} off orders ${deal.minOrderAmount || '15'}+
-                  </span>
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-red-700 font-bold text-lg">
+                      {formatDiscount()} off
+                    </span>
+                    <p className="text-red-600 text-sm">
+                      orders ${deal.minOrderAmount || '15'}+
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Usage stats */}
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>{deal.currentUses || 188} people used today</span>
-              <span>Expires in 2h 15m</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="flex -space-x-1">
+                  <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-white"></div>
+                  <div className="w-6 h-6 bg-blue-500 rounded-full border-2 border-white"></div>
+                  <div className="w-6 h-6 bg-green-500 rounded-full border-2 border-white"></div>
+                </div>
+                <span className="text-sm text-gray-600 font-medium">{deal.currentUses || 188} people saved today</span>
+              </div>
+              <div className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold">
+                2h 15m left
+              </div>
             </div>
           </div>
         </CardContent>

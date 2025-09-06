@@ -267,15 +267,15 @@ export default function Landing() {
 
           {/* Loading State */}
           {isLoading && (
-            <div className="text-center py-12">
-              <div className="animate-spin w-12 h-12 border-4 border-white/30 border-t-white rounded-full mx-auto mb-6"></div>
-              <p className="text-white/80 text-lg">Finding deals near you...</p>
+            <div className="text-center py-16">
+              <div className="animate-spin w-16 h-16 border-4 border-gray-200 border-t-red-500 rounded-full mx-auto mb-6"></div>
+              <p className="text-gray-600 text-xl font-medium">Finding amazing deals near you...</p>
             </div>
           )}
 
           {/* Deal Cards */}
           {!isLoading && dealsToShow.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-md mx-auto md:max-w-none">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-md mx-auto md:max-w-none">
               {dealsToShow.slice(0, 8).map((deal: any) => (
                 <DealCard key={deal.id} deal={deal} />
               ))}
@@ -284,11 +284,11 @@ export default function Landing() {
 
           {/* No Deals State */}
           {!isLoading && dealsToShow.length === 0 && (
-            <div className="text-center py-16 bg-white/95 backdrop-blur-sm rounded-2xl border border-white/20 shadow-2xl max-w-2xl mx-auto">
-              <div className="text-6xl mb-6">🍽️</div>
-              <h3 className="text-2xl font-semibold text-gray-900 mb-4">No deals found nearby</h3>
-              <p className="text-gray-600 mb-8 text-lg">Be the first to discover great deals in {locationName}!</p>
-              <Link href="/restaurant-signup" className="text-red-500 hover:text-red-600 font-medium text-lg">
+            <div className="text-center py-20 bg-white rounded-3xl shadow-xl max-w-2xl mx-auto">
+              <div className="text-8xl mb-8">🍽️</div>
+              <h3 className="text-3xl font-bold text-gray-900 mb-4">No deals found nearby</h3>
+              <p className="text-gray-600 mb-10 text-xl">Be the first to discover great deals in {locationName}!</p>
+              <Link href="/restaurant-signup" className="inline-block bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-colors">
                 Add your restaurant
               </Link>
             </div>
@@ -296,13 +296,14 @@ export default function Landing() {
 
           {/* Get Notifications */}
           {dealsToShow.length > 0 && (
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 mt-12 text-center border border-white/20 shadow-2xl max-w-2xl mx-auto">
-              <h3 className="text-2xl font-semibold text-white mb-4">Never miss a deal</h3>
-              <p className="text-white/80 mb-6 text-lg">
+            <div className="bg-white rounded-3xl p-10 mt-16 text-center shadow-xl max-w-2xl mx-auto">
+              <div className="text-6xl mb-6">🔔</div>
+              <h3 className="text-3xl font-bold text-gray-900 mb-4">Never miss a deal</h3>
+              <p className="text-gray-600 mb-8 text-lg">
                 Get notified when new deals are available in {locationName}
               </p>
               <Button 
-                className="bg-white/20 hover:bg-white/30 text-white px-8 py-3 rounded-xl font-medium border border-white/30 backdrop-blur-sm text-lg"
+                className="bg-red-500 hover:bg-red-600 text-white px-10 py-4 rounded-2xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
                 onClick={handleFacebookLogin}
               >
                 Get notifications

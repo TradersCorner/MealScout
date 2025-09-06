@@ -200,6 +200,7 @@ export default function Landing() {
             </div>
           )}
         </div>
+        </div>
       </div>
 
       {/* Search Bar */}
@@ -216,6 +217,7 @@ export default function Landing() {
               placeholder="Search for restaurant or cuisine" 
               className="w-full pl-10 pr-4 py-3 bg-gray-100 rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900"
             />
+          </div>
           </div>
         </div>
       </div>
@@ -239,6 +241,7 @@ export default function Landing() {
               Burgers
             </button>
           </div>
+            </div>
         </div>
       </div>
 
@@ -293,6 +296,7 @@ export default function Landing() {
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }

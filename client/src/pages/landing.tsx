@@ -30,7 +30,7 @@ export default function Landing() {
             {/* Hero Content */}
             <div className="text-center mb-12">
               <h1 className="text-4xl font-bold text-gray-900 mb-4 leading-tight" data-testid="text-app-title">
-                Discover what locals<br />are raving about
+                Discover what neighbors<br />are raving about
               </h1>
               <p className="text-lg text-gray-600 mb-8 leading-relaxed" data-testid="text-app-subtitle">
                 Uncover exclusive restaurant deals through authentic recommendations from people in your area
@@ -74,7 +74,7 @@ export default function Landing() {
               </Button>
               
               <p className="text-sm text-gray-500 mt-4">
-                📍 Location-based • 🔒 Secure login • ✨ Curated by locals
+                📍 Location-based • 🔒 Secure login • ✨ Curated by neighbors
               </p>
             </div>
             

@@ -88,6 +88,49 @@
     background: linear-gradient(135deg, hsl(0 0% 99%) 0%, hsl(0 0% 97%) 50%, hsl(0 0% 95%) 100%);
     min-height: 100vh;
   }
+
+  /* Animated gradient background */
+  .animated-gradient-bg {
+    background: linear-gradient(-45deg, 
+      hsl(0 72% 51%), 
+      hsl(14 88% 55%), 
+      hsl(28 76% 47%), 
+      hsl(45 93% 58%),
+      hsl(0 72% 51%)
+    );
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  .animated-gradient-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      135deg,
+      rgba(255,255,255,0.1) 0%,
+      rgba(255,255,255,0.05) 50%,
+      rgba(0,0,0,0.05) 100%
+    );
+    pointer-events: none;
+  }
+
+  @keyframes gradientShift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
   
   /* Clean typography */
   h1, h2, h3, h4, h5, h6 {
@@ -142,5 +185,45 @@
   
   .card-hover:hover {
     box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
+  }
+
+  /* Glass morphism effects */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  /* Floating animation for background elements */
+  .floating-element {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0% {
+      transform: translateY(0px) rotate(0deg);
+    }
+    33% {
+      transform: translateY(-20px) rotate(1deg);
+    }
+    66% {
+      transform: translateY(-10px) rotate(-1deg);
+    }
+    100% {
+      transform: translateY(0px) rotate(0deg);
+    }
+  }
+
+  /* Responsive improvements */
+  @media (min-width: 768px) {
+    .mobile-only {
+      display: none;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .desktop-only {
+      display: none;
+    }
   }
 }

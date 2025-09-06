@@ -102,20 +102,20 @@ export default function Landing() {
   const isLoading = nearbyLoading || featuredLoading;
 
   return (
-    <div className="min-h-screen app-background">
+    <div className="min-h-screen animated-gradient-bg">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3">
-        <div className="max-w-md mx-auto flex items-center justify-between">
+      <div className="bg-white/95 backdrop-blur-md border-b border-gray-200/50 px-4 py-3 sticky top-0 z-20">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+            <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-white">
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
               </svg>
             </div>
-            <span className="text-xl font-bold text-gray-900">MealScout</span>
+            <span className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">MealScout</span>
           </div>
-          <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600">
+          <button className="w-12 h-12 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-700">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
               <circle cx="12" cy="7" r="4"/>
             </svg>
@@ -124,8 +124,9 @@ export default function Landing() {
       </div>
 
       {/* Location Header */}
-      <div className="bg-white px-4 py-4 border-b border-gray-100">
-        <div className="max-w-md mx-auto">
+      <div className="bg-white/90 backdrop-blur-sm px-4 py-4 border-b border-gray-100/50">
+        <div className="max-w-6xl mx-auto">
+          <div className="max-w-md mx-auto lg:max-w-none lg:flex lg:justify-center">
           <button 
             onClick={() => {
               setLocationName("Getting location...");
@@ -202,8 +203,9 @@ export default function Landing() {
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white px-4 py-4 border-b border-gray-100">
-        <div className="max-w-md mx-auto">
+      <div className="bg-white/90 backdrop-blur-sm px-4 py-4 border-b border-gray-100/50">
+        <div className="max-w-6xl mx-auto">
+          <div className="max-w-lg mx-auto">
           <div className="relative">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
               <circle cx="11" cy="11" r="8"/>
@@ -219,8 +221,10 @@ export default function Landing() {
       </div>
 
       {/* Filter Chips */}
-      <div className="bg-white/95 backdrop-blur-sm px-4 py-3 border-b border-gray-100">
-        <div className="max-w-md mx-auto">
+      <div className="bg-white/90 backdrop-blur-sm px-4 py-3 border-b border-gray-100/50">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex justify-center">
+            <div className="max-w-2xl w-full">
           <div className="flex space-x-3 overflow-x-auto">
             <button className="flex-shrink-0 bg-red-500 text-white px-4 py-2 rounded-full text-sm font-medium">
               Deals
@@ -239,22 +243,22 @@ export default function Landing() {
       </div>
 
       {/* Deals Section */}
-      <div className="px-4 py-6 bg-transparent">
-        <div className="max-w-md mx-auto">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Deals near you</h2>
+      <div className="px-4 py-8 bg-transparent">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl font-bold text-white text-center mb-8 drop-shadow-lg">Deals near you</h2>
 
           {/* Loading State */}
           {isLoading && (
-            <div className="text-center py-8">
-              <div className="animate-spin w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-              <p className="text-gray-600">Finding deals near you...</p>
+            <div className="text-center py-12">
+              <div className="animate-spin w-12 h-12 border-4 border-white/30 border-t-white rounded-full mx-auto mb-6"></div>
+              <p className="text-white/80 text-lg">Finding deals near you...</p>
             </div>
           )}
 
           {/* Deal Cards */}
           {!isLoading && dealsToShow.length > 0 && (
-            <div className="space-y-4">
-              {dealsToShow.slice(0, 4).map((deal: any) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-md mx-auto md:max-w-none">
+              {dealsToShow.slice(0, 8).map((deal: any) => (
                 <DealCard key={deal.id} deal={deal} />
               ))}
             </div>
@@ -262,11 +266,11 @@ export default function Landing() {
 
           {/* No Deals State */}
           {!isLoading && dealsToShow.length === 0 && (
-            <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-              <div className="text-4xl mb-4">🍽️</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No deals found nearby</h3>
-              <p className="text-gray-600 mb-6">Be the first to discover great deals in {locationName}!</p>
-              <Link href="/restaurant-signup" className="text-red-500 hover:text-red-600 font-medium">
+            <div className="text-center py-16 bg-white/95 backdrop-blur-sm rounded-2xl border border-white/20 shadow-2xl max-w-2xl mx-auto">
+              <div className="text-6xl mb-6">🍽️</div>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-4">No deals found nearby</h3>
+              <p className="text-gray-600 mb-8 text-lg">Be the first to discover great deals in {locationName}!</p>
+              <Link href="/restaurant-signup" className="text-red-500 hover:text-red-600 font-medium text-lg">
                 Add your restaurant
               </Link>
             </div>
@@ -274,13 +278,13 @@ export default function Landing() {
 
           {/* Get Notifications */}
           {dealsToShow.length > 0 && (
-            <div className="bg-red-50 rounded-xl p-6 mt-8 text-center border border-red-100">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Never miss a deal</h3>
-              <p className="text-gray-600 mb-4">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 mt-12 text-center border border-white/20 shadow-2xl max-w-2xl mx-auto">
+              <h3 className="text-2xl font-semibold text-white mb-4">Never miss a deal</h3>
+              <p className="text-white/80 mb-6 text-lg">
                 Get notified when new deals are available in {locationName}
               </p>
               <Button 
-                className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-medium"
+                className="bg-white/20 hover:bg-white/30 text-white px-8 py-3 rounded-xl font-medium border border-white/30 backdrop-blur-sm text-lg"
                 onClick={handleFacebookLogin}
               >
                 Get notifications

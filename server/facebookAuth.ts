@@ -35,7 +35,7 @@ export async function setupAuth(app: Express) {
 
   // Check for required Facebook environment variables
   if (!process.env.FACEBOOK_APP_ID || !process.env.FACEBOOK_APP_SECRET) {
-    console.warn("Facebook authentication not configured. Set FACEBOOK_APP_ID and FACEBOOK_APP_SECRET environment variables.");
+    // Facebook auth is optional - app functions without it
     return;
   }
 

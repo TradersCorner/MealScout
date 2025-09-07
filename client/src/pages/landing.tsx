@@ -47,23 +47,11 @@ export default function Landing() {
   const [authMode, setAuthMode] = useState<'signup' | 'login'>('signup');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [currentFoodIcon, setCurrentFoodIcon] = useState(0);
-
-  // Array of food icons for revolving animation - clean, appealing meal icons
-  const foodIcons = [Pizza, Coffee, Apple, Cookie, IceCream, ChefHat, Soup, Utensils];
 
   const handleFacebookLogin = () => {
     window.location.href = '/api/auth/facebook';
   };
 
-  // Revolving food icon animation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentFoodIcon((prev) => (prev + 1) % foodIcons.length);
-    }, 2500); // Change icon every 2.5 seconds
-
-    return () => clearInterval(interval);
-  }, [foodIcons.length]);
 
   const signupForm = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
@@ -332,11 +320,8 @@ export default function Landing() {
       <div className="bg-white shadow-sm border-b border-gray-100 px-4 py-4 sticky top-0 z-20">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-500 ease-in-out">
-              {(() => {
-                const CurrentIcon = foodIcons[currentFoodIcon];
-                return <CurrentIcon className="w-6 h-6 text-white animate-in fade-in duration-500" />;
-              })()}
+            <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <Utensils className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-bold text-gray-900">MealScout</span>
           </div>

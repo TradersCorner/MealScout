@@ -10,130 +10,167 @@ export default function Landing() {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationName, setLocationName] = useState<string>("Your Area");
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [showLocationInput, setShowLocationInput] = useState(false);
+  const [manualLocation, setManualLocation] = useState('');
 
   const handleFacebookLogin = () => {
     window.location.href = '/api/auth/facebook';
   };
 
-  // Get user location with improved accuracy
+  // Force accurate location detection with manual fallback
   useEffect(() => {
-    const getLocationByIP = async () => {
-      try {
-        console.log('Attempting IP-based location...');
-        const response = await fetch('https://ipapi.co/json/');
-        const data = await response.json();
-        console.log('IP location data:', data);
-        
-        if (data.latitude && data.longitude && data.city) {
-          setLocation({ lat: data.latitude, lng: data.longitude });
-          setLocationName(data.city);
-          setLocationError(null);
-          console.log('Using IP-based location:', { city: data.city, coords: [data.latitude, data.longitude] });
-          return true;
-        }
-      } catch (error) {
-        console.error('IP location failed:', error);
-      }
-      return false;
-    };
-
-    const getLocationByGPS = () => {
+    const forceAccurateLocation = () => {
       if (!navigator.geolocation) {
-        console.log('Geolocation not supported, falling back to IP');
-        getLocationByIP();
+        setLocationError('Location services not available. Please enter your city manually.');
+        setShowLocationInput(true);
         return;
       }
 
+      console.log('🎯 Starting high-accuracy location detection...');
+      setLocationName('Getting your precise location...');
+      
       const options = {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000 // 1 minute cache
+        timeout: 20000, // 20 seconds for most accurate reading
+        maximumAge: 0 // Force fresh location, ignore all cache
       };
 
       navigator.geolocation.getCurrentPosition(
         async (position) => {
-          const { latitude, longitude } = position.coords;
-          console.log('GPS coordinates acquired:', { latitude, longitude });
+          const { latitude, longitude, accuracy } = position.coords;
+          console.log('📍 HIGH-ACCURACY GPS:', { 
+            latitude, 
+            longitude, 
+            accuracy: `${Math.round(accuracy)}m`,
+            timestamp: new Date().toLocaleTimeString()
+          });
           
-          // Verify GPS location makes sense by checking if it's too far from IP location
-          try {
-            const ipResponse = await fetch('https://ipapi.co/json/');
-            const ipData = await ipResponse.json();
-            
-            if (ipData.latitude && ipData.longitude) {
-              const distance = Math.sqrt(
-                Math.pow(latitude - ipData.latitude, 2) + 
-                Math.pow(longitude - ipData.longitude, 2)
-              );
-              
-              // If GPS and IP differ by more than ~1 degree (~110km), use IP instead
-              if (distance > 1) {
-                console.log('GPS location seems inaccurate, using IP location instead');
-                setLocation({ lat: ipData.latitude, lng: ipData.longitude });
-                setLocationName(ipData.city || 'Your Area');
-                setLocationError(null);
-                return;
-              }
-            }
-          } catch (error) {
-            console.log('Could not verify GPS location, proceeding with GPS');
-          }
-
-          // GPS location seems reasonable, use it
           setLocation({ lat: latitude, lng: longitude });
           setLocationError(null);
 
-          // Get location name
+          // Get city name from coordinates
           try {
             const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
             const data = await response.json();
-            const displayName = data.city || data.locality || data.principalSubdivision || "Your Area";
-            console.log('GPS location name resolved:', displayName);
-            setLocationName(displayName);
+            
+            // Try multiple location name sources
+            const cityName = data.city || data.locality || data.principalSubdivision || data.countryName || "Your Area";
+            
+            console.log('🏙️ Location resolved:', {
+              city: data.city,
+              locality: data.locality,
+              state: data.principalSubdivision,
+              final: cityName
+            });
+            
+            setLocationName(cityName);
           } catch (error) {
-            console.error('Geocoding failed, using IP fallback');
-            await getLocationByIP();
+            console.error('❌ Geocoding failed:', error);
+            setLocationName(`Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
           }
         },
-        async (error) => {
-          console.error('GPS location failed:', error);
-          console.log('Falling back to IP-based location');
+        (error) => {
+          console.error('❌ GPS location failed:', error.message);
           
-          const success = await getLocationByIP();
-          if (!success) {
-            setLocationError('Unable to determine your location. Showing all deals.');
-            setLocationName("All Areas");
+          let errorMessage = '';
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = 'Location access denied. Please click "Use My Location" to try again or enter your city manually.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'Location unavailable. Please enter your city manually below.';
+              break;
+            case error.TIMEOUT:
+              errorMessage = 'Location request timed out. Please enter your city manually below.';
+              break;
+            default:
+              errorMessage = 'Unable to get your location. Please enter your city manually below.';
+              break;
           }
+          
+          setLocationError(errorMessage);
+          setLocationName("Location Not Found");
+          setShowLocationInput(true);
         },
         options
       );
     };
 
-    // Try IP-based location first (often more accurate), then GPS as verification
-    getLocationByIP().then(success => {
-      if (!success) {
-        console.log('IP location failed, trying GPS...');
-        getLocationByGPS();
-      } else {
-        // Still try GPS to see if it's more accurate
-        setTimeout(() => {
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-              (position) => {
-                console.log('GPS verification:', { 
-                  gps: [position.coords.latitude, position.coords.longitude],
-                  current: [location?.lat, location?.lng]
-                });
-                // Could add logic here to use GPS if it's significantly more accurate
-              },
-              () => console.log('GPS verification failed'),
-              { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
-            );
-          }
-        }, 2000);
-      }
-    });
+    forceAccurateLocation();
   }, []);
+
+  // Handle manual location input
+  const handleManualLocation = async () => {
+    if (!manualLocation.trim()) return;
+    
+    try {
+      console.log('🔍 Searching for:', manualLocation);
+      setLocationName('Finding location...');
+      
+      // Use Nominatim API for better city search
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(manualLocation)}&limit=1&addressdetails=1`);
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        const result = data[0];
+        setLocation({ lat: parseFloat(result.lat), lng: parseFloat(result.lon) });
+        
+        // Use city name from address details
+        const address = result.address;
+        const cityName = address.city || address.town || address.village || address.county || result.display_name.split(',')[0];
+        
+        setLocationName(cityName);
+        setLocationError(null);
+        setShowLocationInput(false);
+        console.log('✅ Manual location set:', { city: cityName, coords: [result.lat, result.lon] });
+      } else {
+        throw new Error('Location not found');
+      }
+    } catch (error) {
+      console.error('Manual location failed:', error);
+      setLocationError('Could not find that location. Please try a different city name (e.g., "Hammond, LA").');
+    }
+  };
+
+  // Retry location detection
+  const retryLocation = () => {
+    setLocationError(null);
+    setShowLocationInput(false);
+    setLocationName('Getting your location...');
+    setLocation(null);
+    
+    // Force fresh location detection
+    if (navigator.geolocation) {
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 20000,
+        maximumAge: 0
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          console.log('🔄 Location retry successful:', { latitude, longitude });
+          setLocation({ lat: latitude, lng: longitude });
+          
+          try {
+            const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+            const data = await response.json();
+            const cityName = data.city || data.locality || data.principalSubdivision || "Your Area";
+            setLocationName(cityName);
+          } catch (error) {
+            setLocationName(`Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
+          }
+        },
+        (error) => {
+          console.error('Location retry failed:', error);
+          setLocationError('Still unable to get your location. Please enter your city manually.');
+          setShowLocationInput(true);
+        },
+        options
+      );
+    }
+  };
 
   // Fetch nearby deals based on location
   const { data: nearbyDeals, isLoading: nearbyLoading } = useQuery({
@@ -180,50 +217,7 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto">
           <div className="max-w-md mx-auto lg:max-w-none lg:flex lg:justify-center">
           <button 
-            onClick={() => {
-              setLocationName("Getting location...");
-              setLocationError(null);
-              setLocation(null);
-              // Re-trigger location fetch
-              if (navigator.geolocation) {
-                const options = {
-                  enableHighAccuracy: true,
-                  timeout: 10000,
-                  maximumAge: 0 // Force fresh location
-                };
-
-                navigator.geolocation.getCurrentPosition(
-                  (position) => {
-                    const { latitude, longitude } = position.coords;
-                    console.log('Location refreshed:', { latitude, longitude });
-                    setLocation({ lat: latitude, lng: longitude });
-                    setLocationError(null);
-
-                    // Reverse geocoding for display name
-                    fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
-                      .then(res => {
-                        if (!res.ok) throw new Error('Geocoding failed');
-                        return res.json();
-                      })
-                      .then(data => {
-                        const displayName = data.locality || data.city || data.principalSubdivision || "Your Area";
-                        console.log('Location name refreshed:', displayName);
-                        setLocationName(displayName);
-                      })
-                      .catch((error) => {
-                        console.error('Geocoding error:', error);
-                        setLocationName("Your Area");
-                      });
-                  },
-                  (error) => {
-                    console.error('Geolocation refresh error:', error);
-                    setLocationError('Unable to refresh location. Please check permissions.');
-                    setLocationName("All Areas");
-                  },
-                  options
-                );
-              }
-            }}
+            onClick={retryLocation}
             className="w-full text-left hover:bg-gray-50 rounded-xl p-4 -m-2 transition-colors"
           >
             <div className="flex items-center justify-between">
@@ -244,15 +238,47 @@ export default function Landing() {
             </div>
             <p className="text-gray-600 text-base font-medium" data-testid="text-location-name">{locationName}</p>
           </button>
+          
+          {/* Location error and manual input */}
           {locationError && (
-            <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded-lg">
-              <p className="text-orange-700 text-xs">{locationError}</p>
-              <button 
-                onClick={() => window.location.reload()} 
-                className="text-orange-600 text-xs underline mt-1 hover:text-orange-800"
-              >
-                Try again
-              </button>
+            <div className="mt-4 max-w-md mx-auto">
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-red-700 text-sm mb-3">{locationError}</p>
+                
+                <div className="flex gap-2 mb-3">
+                  <button
+                    onClick={retryLocation}
+                    className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-medium"
+                  >
+                    🎯 Retry Location
+                  </button>
+                  <button
+                    onClick={() => setShowLocationInput(!showLocationInput)}
+                    className="flex-1 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm font-medium"
+                  >
+                    📍 Enter City
+                  </button>
+                </div>
+                
+                {showLocationInput && (
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={manualLocation}
+                      onChange={(e) => setManualLocation(e.target.value)}
+                      placeholder="Enter your city (e.g., Hammond, LA)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
+                      onKeyPress={(e) => e.key === 'Enter' && handleManualLocation()}
+                    />
+                    <button
+                      onClick={handleManualLocation}
+                      className="w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors font-medium"
+                    >
+                      Find Location
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

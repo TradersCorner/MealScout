@@ -63,69 +63,63 @@ export default function Home() {
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative overflow-hidden">
       {/* Header with Location */}
-      <header className="bg-gradient-to-r from-red-500 via-red-600 to-orange-500 px-6 py-8 sticky top-0 z-10 shadow-xl">
-        <div className="flex items-center space-x-4">
-          <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-lg border border-white/30">
-            <MapPin className="w-7 h-7 text-white drop-shadow-md" />
+      <header className="bg-white border-b border-gray-100 px-6 py-6 sticky top-0 z-10 shadow-sm">
+        <div className="flex items-center space-x-3">
+          <div className="w-12 h-12 bg-red-500 rounded-xl flex items-center justify-center shadow-sm">
+            <MapPin className="w-6 h-6 text-white" />
           </div>
           <div>
-            <p className="text-white/90 text-sm font-medium mb-1" data-testid="text-location-label">📍 Your Location</p>
-            <p className="text-white font-bold text-xl drop-shadow-sm" data-testid="text-location-name">{locationName}</p>
+            <p className="text-gray-600 text-sm font-medium" data-testid="text-location-label">Your Location</p>
+            <p className="text-gray-900 font-semibold text-lg" data-testid="text-location-name">{locationName}</p>
           </div>
         </div>
       </header>
 
       {/* Search Bar */}
-      <div className="px-6 py-8 bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 relative overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-red-200/30 to-orange-200/30 rounded-full transform translate-x-8 -translate-y-8"></div>
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-br from-pink-200/30 to-red-200/30 rounded-full transform -translate-x-4 translate-y-4"></div>
+      <div className="px-6 py-6 bg-gray-50">
+        <div className="relative mb-4">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Input 
+            type="text" 
+            placeholder="Search deals, restaurants..." 
+            className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg bg-white focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
+            data-testid="input-search"
+          />
+        </div>
         
-        <div className="relative">
-          <div className="relative mb-6">
-            <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-400 w-6 h-6 z-10" />
-            <Input 
-              type="text" 
-              placeholder="🔍 Search deals, restaurants..." 
-              className="w-full pl-16 pr-6 py-5 text-lg border-0 rounded-2xl bg-white shadow-xl focus:shadow-2xl focus:ring-4 focus:ring-red-500/20 transition-all duration-300 placeholder:text-gray-400"
-              data-testid="input-search"
-            />
-          </div>
-          
-          {/* Filter Chips */}
-          <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
-            <Button 
-              className="flex-shrink-0 rounded-2xl px-6 py-3 font-bold text-white bg-gradient-to-r from-red-500 to-orange-500 border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
-              size="sm" 
-              data-testid="button-filter-hot"
-            >
-              <Sparkles className="w-5 h-5 mr-2" /> 🔥 Hot Deals
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex-shrink-0 rounded-2xl px-6 py-3 bg-white border-2 border-gray-200 hover:border-red-300 hover:bg-red-50 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold"
-              data-testid="button-filter-quick"
-            >
-              <Rocket className="w-5 h-5 mr-2 text-blue-500" /> ⚡ Quick Bites
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex-shrink-0 rounded-2xl px-6 py-3 bg-white border-2 border-gray-200 hover:border-green-300 hover:bg-green-50 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold"
-              data-testid="button-filter-italian"
-            >
-              <Crown className="w-5 h-5 mr-2 text-yellow-500" /> 🍝 Italian
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex-shrink-0 rounded-2xl px-6 py-3 bg-white border-2 border-gray-200 hover:border-purple-300 hover:bg-purple-50 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold"
-              data-testid="button-filter-budget"
-            >
-              <Target className="w-5 h-5 mr-2 text-green-500" /> 💰 Under $10
-            </Button>
-          </div>
+        {/* Filter Chips */}
+        <div className="flex space-x-2 overflow-x-auto pb-2">
+          <Button 
+            className="flex-shrink-0 rounded-lg px-4 py-2 font-medium text-white bg-red-500 hover:bg-red-600 border-0 shadow-sm"
+            size="sm" 
+            data-testid="button-filter-hot"
+          >
+            <Sparkles className="w-4 h-4 mr-1" /> Hot Deals
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-shrink-0 rounded-lg px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 font-medium"
+            data-testid="button-filter-quick"
+          >
+            <Rocket className="w-4 h-4 mr-1" /> Quick Bites
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-shrink-0 rounded-lg px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 font-medium"
+            data-testid="button-filter-italian"
+          >
+            <Crown className="w-4 h-4 mr-1" /> Italian
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-shrink-0 rounded-lg px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 font-medium"
+            data-testid="button-filter-budget"
+          >
+            <Target className="w-4 h-4 mr-1" /> Under $10
+          </Button>
         </div>
       </div>
 

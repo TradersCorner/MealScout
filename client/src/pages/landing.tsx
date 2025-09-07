@@ -203,12 +203,22 @@ export default function Landing() {
             </div>
             <span className="text-2xl font-bold text-gray-900">MealScout</span>
           </div>
-          <button className="w-11 h-11 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors duration-200">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
-            </svg>
-          </button>
+          <div className="flex items-center space-x-3">
+            <Link href="/restaurant-signup">
+              <button className="hidden sm:flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-semibold text-sm shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                <span>For Restaurants</span>
+              </button>
+            </Link>
+            <button className="w-11 h-11 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors duration-200">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -379,20 +389,37 @@ export default function Landing() {
             </div>
           )}
 
-          {/* Get Notifications */}
+          {/* Restaurant CTA */}
           {dealsToShow.length > 0 && (
-            <div className="bg-white rounded-3xl p-10 mt-16 text-center shadow-xl max-w-2xl mx-auto">
-              <div className="text-6xl mb-6">🔔</div>
-              <h3 className="text-3xl font-bold text-gray-900 mb-4">Never miss a deal</h3>
-              <p className="text-gray-600 mb-8 text-lg">
-                Get notified when new deals are available in {locationName}
-              </p>
-              <Button 
-                className="bg-red-500 hover:bg-red-600 text-white px-10 py-4 rounded-2xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
-                onClick={handleFacebookLogin}
-              >
-                Get notifications
-              </Button>
+            <div className="grid md:grid-cols-2 gap-8 mt-16">
+              <div className="bg-white rounded-3xl p-10 text-center shadow-xl">
+                <div className="text-6xl mb-6">🔔</div>
+                <h3 className="text-3xl font-bold text-gray-900 mb-4">Never miss a deal</h3>
+                <p className="text-gray-600 mb-8 text-lg">
+                  Get notified when new deals are available in {locationName}
+                </p>
+                <Button 
+                  className="bg-red-500 hover:bg-red-600 text-white px-10 py-4 rounded-2xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                  onClick={handleFacebookLogin}
+                >
+                  Get notifications
+                </Button>
+              </div>
+              
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-3xl p-10 text-center shadow-xl border border-blue-200/50">
+                <div className="text-6xl mb-6">🏪</div>
+                <h3 className="text-3xl font-bold text-gray-900 mb-4">Own a restaurant?</h3>
+                <p className="text-gray-600 mb-8 text-lg">
+                  Attract more customers with targeted deals in {locationName}
+                </p>
+                <Link href="/restaurant-signup">
+                  <Button 
+                    className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-10 py-4 rounded-2xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                  >
+                    Start Free Trial
+                  </Button>
+                </Link>
+              </div>
             </div>
           )}
         </div>

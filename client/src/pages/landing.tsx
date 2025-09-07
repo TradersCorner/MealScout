@@ -457,10 +457,10 @@ export default function Landing() {
     retry: 2,
   });
 
-  // Fetch featured deals as fallback when no location or location error
+  // Fetch featured deals - always available as fallback
   const { data: featuredDeals, isLoading: featuredLoading } = useQuery({
     queryKey: ["/api/deals/featured"],
-    enabled: !location || !!locationError,
+    enabled: true,
     retry: 2,
   });
 

@@ -88,19 +88,153 @@ export default function RestaurantSignup() {
 
   if (!isAuthenticated) {
     return (
-      <div className="max-w-md mx-auto bg-background min-h-screen flex items-center justify-center p-6">
-        <Card className="w-full shadow-food border-0 gradient-card">
-          <CardContent className="p-8 text-center">
-            <div className="w-16 h-16 food-gradient-primary rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <i className="fas fa-lock text-white text-xl"></i>
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
+        {/* Header */}
+        <header className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 px-6 py-5 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center max-w-4xl mx-auto">
+            <Link href="/">
+              <button className="p-3 -ml-3 rounded-xl hover:bg-gray-100 mr-4 transition-colors duration-200">
+                <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            </Link>
+            <h1 className="text-xl font-bold text-gray-900">MealScout for Restaurants</h1>
+          </div>
+        </header>
+
+        <div className="px-6 py-12 max-w-4xl mx-auto">
+          {/* Hero Section */}
+          <div className="text-center mb-16">
+            <div className="w-32 h-32 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 rounded-3xl mb-8 flex items-center justify-center mx-auto relative overflow-hidden shadow-2xl">
+              <div className="absolute inset-0 bg-black/10"></div>
+              <svg className="w-16 h-16 text-white relative z-10 drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0l-5-5m5 5l-5-5"/>
+              </svg>
+              <div className="absolute -top-2 -left-2 w-16 h-16 bg-white/20 rounded-full blur-xl"></div>
+              <div className="absolute -bottom-3 -right-3 w-20 h-20 bg-white/20 rounded-full blur-xl"></div>
             </div>
-            <h3 className="text-xl font-bold text-foreground mb-3">Authentication Required</h3>
-            <p className="text-muted-foreground mb-6">Please log in to register your restaurant</p>
-            <Button onClick={() => window.location.href = "/api/login"} className="w-full py-3 font-bold food-gradient-primary border-0 button-hover-effect">
-              Log In
-            </Button>
-          </CardContent>
-        </Card>
+            <h2 className="text-5xl font-bold text-gray-900 mb-6">Boost Your Restaurant's Revenue</h2>
+            <p className="text-gray-600 text-xl leading-relaxed max-w-3xl mx-auto mb-8">
+              Join MealScout's advertising platform and connect with hungry customers actively looking for deals in your neighborhood. Increase foot traffic, fill slow periods, and grow your business.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <button 
+                onClick={() => window.location.href = "/api/auth/facebook"}
+                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
+              >
+                Start Advertising Today
+              </button>
+              <div className="text-gray-500 text-sm">Already have an account?</div>
+              <button 
+                onClick={() => window.location.href = "/api/auth/facebook"}
+                className="border-2 border-red-300 hover:bg-red-50 text-red-600 hover:text-red-700 px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-200"
+              >
+                Login to Dashboard
+              </button>
+            </div>
+          </div>
+
+          {/* Key Benefits */}
+          <div className="grid md:grid-cols-3 gap-8 mb-16">
+            <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-gray-200/50 hover:shadow-2xl transition-all duration-300">
+              <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mb-6 shadow-lg">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+              </div>
+              <h3 className="font-bold text-gray-900 text-2xl mb-4">Reach More Customers</h3>
+              <p className="text-gray-600 text-lg leading-relaxed mb-4">
+                Target hungry customers within walking distance of your restaurant when they're actively looking for deals.
+              </p>
+              <ul className="text-gray-600 space-y-2">
+                <li className="flex items-center"><svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>Hyper-local targeting</li>
+                <li className="flex items-center"><svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>Peak hunger times</li>
+                <li className="flex items-center"><svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>Mobile-first audience</li>
+              </ul>
+            </div>
+            
+            <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-gray-200/50 hover:shadow-2xl transition-all duration-300">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-6 shadow-lg">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+              </div>
+              <h3 className="font-bold text-gray-900 text-2xl mb-4">Fill Slow Periods</h3>
+              <p className="text-gray-600 text-lg leading-relaxed mb-4">
+                Boost revenue during off-peak hours with targeted lunch and dinner deals that bring customers when you need them most.
+              </p>
+              <ul className="text-gray-600 space-y-2">
+                <li className="flex items-center"><svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>Time-based targeting</li>
+                <li className="flex items-center"><svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>Flexible deal scheduling</li>
+                <li className="flex items-center"><svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>Revenue optimization</li>
+              </ul>
+            </div>
+            
+            <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-gray-200/50 hover:shadow-2xl transition-all duration-300">
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mb-6 shadow-lg">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                </svg>
+              </div>
+              <h3 className="font-bold text-gray-900 text-2xl mb-4">Track Performance</h3>
+              <p className="text-gray-600 text-lg leading-relaxed mb-4">
+                Get detailed analytics on your deal performance and optimize your campaigns for maximum ROI and customer acquisition.
+              </p>
+              <ul className="text-gray-600 space-y-2">
+                <li className="flex items-center"><svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>Real-time analytics</li>
+                <li className="flex items-center"><svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>Customer insights</li>
+                <li className="flex items-center"><svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>ROI tracking</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Pricing Card */}
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/50 rounded-3xl p-12 shadow-2xl text-center mb-16">
+            <h3 className="font-bold text-gray-900 text-3xl mb-6">Simple, Transparent Pricing</h3>
+            <div className="flex items-center justify-center mb-6">
+              <span className="text-6xl font-bold text-blue-600">$49</span>
+              <span className="text-gray-600 text-2xl ml-2">/month</span>
+            </div>
+            <p className="text-gray-600 text-xl mb-8 max-w-2xl mx-auto">
+              Everything you need to promote your restaurant. No setup fees, no long-term contracts, cancel anytime.
+            </p>
+            <div className="grid md:grid-cols-2 gap-6 text-left max-w-2xl mx-auto">
+              <div className="space-y-3">
+                <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Unlimited deal postings</span></div>
+                <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Performance analytics</span></div>
+                <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Customer targeting</span></div>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Featured deal options</span></div>
+                <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Priority support</span></div>
+                <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Cancel anytime</span></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Final CTA */}
+          <div className="text-center">
+            <h3 className="text-3xl font-bold text-gray-900 mb-4">Ready to Get Started?</h3>
+            <p className="text-gray-600 text-lg mb-8 max-w-2xl mx-auto">
+              Join hundreds of restaurants already using MealScout to grow their business. Set up your first deal in minutes.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <button 
+                onClick={() => window.location.href = "/api/auth/facebook"}
+                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-10 py-4 rounded-2xl font-bold text-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
+              >
+                Create Restaurant Account
+              </button>
+              <button 
+                onClick={() => window.location.href = "/api/auth/facebook"}
+                className="border-2 border-gray-300 hover:bg-gray-50 text-gray-700 hover:text-gray-800 px-10 py-4 rounded-2xl font-bold text-xl transition-all duration-200"
+              >
+                Login to Existing Account
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

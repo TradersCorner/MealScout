@@ -62,15 +62,26 @@ export default function Home() {
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative overflow-hidden">
-      {/* Header with Location */}
-      <header className="bg-white border-b border-gray-100 px-6 py-6 sticky top-0 z-10 shadow-sm">
-        <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 bg-red-500 rounded-xl flex items-center justify-center shadow-sm">
-            <MapPin className="w-6 h-6 text-white" />
+      {/* Header with Logo and Location */}
+      <header className="bg-white border-b border-gray-100 px-6 py-4 sticky top-0 z-10 shadow-sm">
+        <div className="flex items-center justify-between">
+          {/* MealScout Logo */}
+          <div className="flex items-center space-x-2">
+            <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center shadow-sm">
+              <span className="text-white font-bold text-lg">M</span>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">MealScout</h1>
+            </div>
           </div>
-          <div>
-            <p className="text-gray-600 text-sm font-medium" data-testid="text-location-label">Your Location</p>
-            <p className="text-gray-900 font-semibold text-lg" data-testid="text-location-name">{locationName}</p>
+
+          {/* Location */}
+          <div className="flex items-center space-x-2">
+            <MapPin className="w-4 h-4 text-gray-500" />
+            <div className="text-right">
+              <p className="text-gray-500 text-xs" data-testid="text-location-label">Location</p>
+              <p className="text-gray-900 font-medium text-sm" data-testid="text-location-name">{locationName}</p>
+            </div>
           </div>
         </div>
       </header>

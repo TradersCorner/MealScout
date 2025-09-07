@@ -15,7 +15,7 @@ const stripePromise = import.meta.env.VITE_STRIPE_PUBLIC_KEY
   ? loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
   : null;
 
-const SubscribeForm = () => {
+const SubscribeForm = ({ billingInterval }: { billingInterval: 'month' | 'year' }) => {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
@@ -79,7 +79,7 @@ const SubscribeForm = () => {
         disabled={!stripe || !elements || isProcessing}
         data-testid="button-subscribe"
       >
-        {isProcessing ? "Processing..." : "Subscribe Now - $49/month"}
+{isProcessing ? "Processing..." : `Subscribe Now - $${billingInterval === 'year' ? '441' : '49'}/${billingInterval === 'year' ? 'year' : 'month'}`}
       </Button>
     </form>
   );
@@ -90,36 +90,46 @@ export default function Subscribe() {
   const { toast } = useToast();
   const [clientSecret, setClientSecret] = useState("");
   const [subscriptionError, setSubscriptionError] = useState("");
+  const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('month');
+  const [isCreatingSubscription, setIsCreatingSubscription] = useState(false);
+
+  const createSubscription = async (interval: 'month' | 'year') => {
+    setIsCreatingSubscription(true);
+    setClientSecret("");
+    setSubscriptionError("");
+    
+    try {
+      const res = await apiRequest("POST", "/api/get-or-create-subscription", { billingInterval: interval });
+      const data = await res.json();
+      
+      if (data.clientSecret) {
+        setClientSecret(data.clientSecret);
+      } else {
+        setSubscriptionError("Unable to initialize payment. Please try again.");
+      }
+    } catch (error: any) {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      console.error("Error creating subscription:", error);
+      setSubscriptionError("Failed to initialize subscription. Please try again.");
+    } finally {
+      setIsCreatingSubscription(false);
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated || isLoading) return;
-
-    // Create subscription as soon as the page loads
-    apiRequest("POST", "/api/get-or-create-subscription")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.clientSecret) {
-          setClientSecret(data.clientSecret);
-        } else {
-          setSubscriptionError("Unable to initialize payment. Please try again.");
-        }
-      })
-      .catch((error) => {
-        if (isUnauthorizedError(error)) {
-          toast({
-            title: "Unauthorized",
-            description: "You are logged out. Logging in again...",
-            variant: "destructive",
-          });
-          setTimeout(() => {
-            window.location.href = "/api/login";
-          }, 500);
-          return;
-        }
-        console.error("Error creating subscription:", error);
-        setSubscriptionError("Failed to initialize subscription. Please try again.");
-      });
-  }, [isAuthenticated, isLoading, toast]);
+    createSubscription(billingInterval);
+  }, [isAuthenticated, isLoading]);
 
   if (isLoading) {
     return (
@@ -249,6 +259,60 @@ export default function Subscribe() {
       </header>
 
       <div className="px-4 py-6">
+        {/* Billing Interval Selection */}
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4 text-center" data-testid="text-billing-title">Choose Your Plan</h3>
+            
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {/* Monthly Plan */}
+              <div 
+                className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${
+                  billingInterval === 'month' 
+                    ? 'border-primary bg-primary/10 shadow-md' 
+                    : 'border-border bg-white hover:border-primary/50'
+                }`}
+                onClick={() => {
+                  setBillingInterval('month');
+                  createSubscription('month');
+                }}
+                data-testid="card-monthly-plan"
+              >
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-primary mb-1">$49</div>
+                  <div className="text-sm text-muted-foreground mb-2">/month</div>
+                  <div className="text-xs text-muted-foreground">Billed monthly</div>
+                </div>
+              </div>
+              
+              {/* Yearly Plan */}
+              <div 
+                className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 relative ${
+                  billingInterval === 'year' 
+                    ? 'border-primary bg-primary/10 shadow-md' 
+                    : 'border-border bg-white hover:border-primary/50'
+                }`}
+                onClick={() => {
+                  setBillingInterval('year');
+                  createSubscription('year');
+                }}
+                data-testid="card-yearly-plan"
+              >
+                <div className="absolute -top-2 -right-2 bg-accent text-white text-xs px-2 py-1 rounded-full font-medium">
+                  Save 25%
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-primary mb-1">$441</div>
+                  <div className="text-sm text-muted-foreground mb-2">/year</div>
+                  <div className="text-xs text-muted-foreground">
+                    <span className="line-through text-muted-foreground/70">$588</span> Billed annually
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Plan Summary */}
         <Card className="mb-6 bg-gradient-to-r from-primary/10 to-secondary/10">
           <CardContent className="p-6">
@@ -256,7 +320,9 @@ export default function Subscribe() {
               <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-3">
                 <i className="fas fa-crown text-white text-xl"></i>
               </div>
-              <h2 className="text-xl font-bold text-foreground mb-2" data-testid="text-plan-title">MealScout Restaurant Plan</h2>
+              <h2 className="text-xl font-bold text-foreground mb-2" data-testid="text-plan-title">
+                MealScout Restaurant Plan{billingInterval === 'year' ? ' (Annual - Save 25%)' : ' (Monthly)'}
+              </h2>
               <p className="text-muted-foreground text-sm" data-testid="text-plan-subtitle">Everything you need to promote your deals</p>
             </div>
             
@@ -281,9 +347,18 @@ export default function Subscribe() {
 
             <div className="text-center border-t border-border pt-4">
               <div className="flex items-center justify-center space-x-2">
-                <span className="text-2xl font-bold text-primary" data-testid="text-price">$49</span>
-                <span className="text-muted-foreground" data-testid="text-price-period">/month</span>
+                <span className="text-2xl font-bold text-primary" data-testid="text-price">
+                  ${billingInterval === 'year' ? '441' : '49'}
+                </span>
+                <span className="text-muted-foreground" data-testid="text-price-period">
+                  /{billingInterval === 'year' ? 'year' : 'month'}
+                </span>
               </div>
+              {billingInterval === 'year' && (
+                <p className="text-xs text-accent font-medium mt-1" data-testid="text-savings-info">
+                  Save $147 compared to monthly billing
+                </p>
+              )}
               <p className="text-xs text-accent font-medium mt-1" data-testid="text-trial-info">Cancel anytime</p>
             </div>
           </CardContent>
@@ -294,7 +369,7 @@ export default function Subscribe() {
           <h3 className="font-semibold text-foreground mb-4" data-testid="text-payment-title">Payment Information</h3>
           
           <Elements stripe={stripePromise} options={{ clientSecret }}>
-            <SubscribeForm />
+            <SubscribeForm billingInterval={billingInterval} />
           </Elements>
         </div>
 

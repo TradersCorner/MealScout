@@ -25,6 +25,8 @@ function Router() {
         <>
           <Route path="/" component={Landing} />
           <Route path="/restaurant-signup" component={RestaurantSignup} />
+          <Route path="/deal-creation" component={DealCreation} />
+          <Route path="/deal/:id" component={DealDetail} />
         </>
       ) : (
         <>

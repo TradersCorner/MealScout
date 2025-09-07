@@ -276,6 +276,7 @@ export class DatabaseStorage implements IStorage {
     const now = new Date();
     const currentTime = now.toTimeString().slice(0, 5);
     
+    // Get all active deals and randomly select a subset as "featured"
     return await db
       .select({
         id: deals.id,
@@ -310,7 +311,6 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(deals.isActive, true),
-          eq(deals.isFeatured, true),
           eq(restaurants.isActive, true),
           lte(deals.startDate, now),
           gte(deals.endDate, now),
@@ -318,7 +318,8 @@ export class DatabaseStorage implements IStorage {
           gte(deals.endTime, currentTime)
         )
       )
-      .orderBy(desc(deals.createdAt));
+      .orderBy(sql`RANDOM()`) // Random order each time
+      .limit(6); // Limit to 6 random featured deals
   }
 
   async getNearbyDeals(lat: number, lng: number, radiusKm: number): Promise<any[]> {
@@ -384,7 +385,7 @@ export class DatabaseStorage implements IStorage {
           `
         )
       )
-      .orderBy(desc(deals.isFeatured), desc(deals.createdAt));
+      .orderBy(sql`distance ASC, RANDOM()`);
   }
 
   async updateDeal(id: string, deal: Partial<InsertDeal>): Promise<Deal> {

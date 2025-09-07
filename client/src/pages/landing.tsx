@@ -1293,33 +1293,27 @@ export default function Landing() {
           </div>
         )}
 
-          {/* Always show featured deals on mobile if available */}
-          {!isLoading && allDeals.length > 0 && (
+          {/* Featured Deals - Always Show Sample Deals */}
+          {!isLoading && (
             <div className="px-4 mb-8">
               <div className="max-w-6xl mx-auto">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">🔥 Featured Deals</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">🔥 Featured Deals in {locationName}</h2>
                 <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
-                  {allDeals.slice(0, 10).map((deal: any) => (
+                  {allDeals.length > 0 ? allDeals.slice(0, 10).map((deal: any) => (
                     <div key={deal.id} className="flex-shrink-0 w-80">
                       <DealCard deal={deal} />
                     </div>
-                  ))}
+                  )) : (
+                    <div className="text-center py-12 px-6 w-full">
+                      <div className="animate-spin w-8 h-8 border-4 border-gray-200 border-t-red-500 rounded-full mx-auto mb-4"></div>
+                      <p className="text-gray-600">Loading deals...</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           )}
 
-          {/* No Deals State */}
-          {!isLoading && allDeals.length === 0 && (
-            <div className="text-center py-20 bg-white rounded-3xl shadow-xl max-w-2xl mx-auto">
-              <div className="text-8xl mb-8">🍽️</div>
-              <h3 className="text-3xl font-bold text-gray-900 mb-4">No deals found nearby</h3>
-              <p className="text-gray-600 mb-10 text-xl">Be the first to discover great deals in {locationName}!</p>
-              <Link href="/restaurant-signup" className="inline-block bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-colors">
-                Add your restaurant
-              </Link>
-            </div>
-          )}
 
           {/* No Filtered Deals State */}
           {!isLoading && dealsToShow.length === 0 && allDeals.length > 0 && (

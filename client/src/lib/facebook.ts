@@ -92,7 +92,7 @@ export const checkInToPlace = (postData: {
     }
 
     // Create a post with location mention using Facebook Share Dialog
-    const shareMessage = `📍 Checked in at ${postData.restaurantName}!\n\n${postData.message}\n\n#TradeScout #FoodDeals`;
+    const shareMessage = `📍 Checked in at ${postData.restaurantName}!\n\n${postData.message}\n\n#FoodDeals`;
     
     window.FB.ui({
       method: 'share',

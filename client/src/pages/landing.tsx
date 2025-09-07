@@ -533,36 +533,192 @@ export default function Landing() {
       </div>
 
       {/* Deals Section */}
-      <div className="px-4 py-12 bg-gradient-to-b from-transparent to-red-100/30">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              {selectedCategory === 'all' ? 'Deals near you' : `${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} deals near you`}
-            </h2>
-            <p className="text-gray-600 text-lg">
-              {selectedCategory === 'all' 
-                ? `Discover amazing food deals in ${locationName}`
-                : `Find the best ${selectedCategory} deals in ${locationName}`
-              }
-            </p>
+      <div className="py-8 bg-gradient-to-b from-transparent to-red-100/30">
+        {/* Loading State */}
+        {isLoading && (
+          <div className="text-center py-16 px-4">
+            <div className="animate-spin w-16 h-16 border-4 border-gray-200 border-t-red-500 rounded-full mx-auto mb-6"></div>
+            <p className="text-gray-600 text-xl font-medium">Finding amazing deals near you...</p>
           </div>
+        )}
 
-          {/* Loading State */}
-          {isLoading && (
-            <div className="text-center py-16">
-              <div className="animate-spin w-16 h-16 border-4 border-gray-200 border-t-red-500 rounded-full mx-auto mb-6"></div>
-              <p className="text-gray-600 text-xl font-medium">Finding amazing deals near you...</p>
+        {!isLoading && selectedCategory !== 'all' && dealsToShow.length > 0 && (
+          <div className="px-4 mb-8">
+            <div className="max-w-6xl mx-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} deals in {locationName}
+                </h2>
+                <button 
+                  onClick={() => setSelectedCategory('all')}
+                  className="text-red-600 hover:text-red-700 font-medium text-sm"
+                >
+                  View all →
+                </button>
+              </div>
+              <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+                {dealsToShow.slice(0, 10).map((deal: any) => (
+                  <div key={deal.id} className="flex-shrink-0 w-80">
+                    <DealCard deal={deal} />
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Deal Cards */}
-          {!isLoading && dealsToShow.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-md mx-auto md:max-w-none">
-              {dealsToShow.slice(0, 8).map((deal: any) => (
-                <DealCard key={deal.id} deal={deal} />
-              ))}
+        {!isLoading && selectedCategory === 'all' && allDeals.length > 0 && (
+          <div className="space-y-8">
+            {/* Featured Deals Section */}
+            <div className="px-4">
+              <div className="max-w-6xl mx-auto">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">🔥 Featured Deals</h2>
+                <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+                  {allDeals.filter((deal: any) => deal.isFeatured).slice(0, 8).map((deal: any) => (
+                    <div key={deal.id} className="flex-shrink-0 w-80">
+                      <DealCard deal={deal} />
+                    </div>
+                  ))}
+                  {allDeals.filter((deal: any) => deal.isFeatured).length === 0 && 
+                    allDeals.slice(0, 6).map((deal: any) => (
+                      <div key={deal.id} className="flex-shrink-0 w-80">
+                        <DealCard deal={deal} />
+                      </div>
+                    ))
+                  }
+                </div>
+              </div>
             </div>
-          )}
+
+            {/* Fast Food Section */}
+            {allDeals.filter((deal: any) => 
+              deal.restaurant?.cuisineType?.toLowerCase().includes('american') || 
+              deal.title?.toLowerCase().includes('burger') ||
+              deal.title?.toLowerCase().includes('fast')
+            ).length > 0 && (
+              <div className="px-4">
+                <div className="max-w-6xl mx-auto">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">🍔 Fast Food</h2>
+                    <button 
+                      onClick={() => handleCategoryFilter('american')}
+                      className="text-red-600 hover:text-red-700 font-medium text-sm"
+                    >
+                      View all →
+                    </button>
+                  </div>
+                  <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+                    {allDeals.filter((deal: any) => 
+                      deal.restaurant?.cuisineType?.toLowerCase().includes('american') || 
+                      deal.title?.toLowerCase().includes('burger') ||
+                      deal.title?.toLowerCase().includes('fast')
+                    ).slice(0, 8).map((deal: any) => (
+                      <div key={deal.id} className="flex-shrink-0 w-80">
+                        <DealCard deal={deal} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Pizza Section */}
+            {allDeals.filter((deal: any) => 
+              deal.restaurant?.cuisineType?.toLowerCase().includes('pizza') || 
+              deal.title?.toLowerCase().includes('pizza')
+            ).length > 0 && (
+              <div className="px-4">
+                <div className="max-w-6xl mx-auto">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">🍕 Pizza</h2>
+                    <button 
+                      onClick={() => handleCategoryFilter('pizza')}
+                      className="text-red-600 hover:text-red-700 font-medium text-sm"
+                    >
+                      View all →
+                    </button>
+                  </div>
+                  <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+                    {allDeals.filter((deal: any) => 
+                      deal.restaurant?.cuisineType?.toLowerCase().includes('pizza') || 
+                      deal.title?.toLowerCase().includes('pizza')
+                    ).slice(0, 8).map((deal: any) => (
+                      <div key={deal.id} className="flex-shrink-0 w-80">
+                        <DealCard deal={deal} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Mexican Section */}
+            {allDeals.filter((deal: any) => 
+              deal.restaurant?.cuisineType?.toLowerCase().includes('mexican') || 
+              deal.title?.toLowerCase().includes('mexican') ||
+              deal.title?.toLowerCase().includes('taco')
+            ).length > 0 && (
+              <div className="px-4">
+                <div className="max-w-6xl mx-auto">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">🌮 Mexican</h2>
+                    <button 
+                      onClick={() => handleCategoryFilter('mexican')}
+                      className="text-red-600 hover:text-red-700 font-medium text-sm"
+                    >
+                      View all →
+                    </button>
+                  </div>
+                  <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+                    {allDeals.filter((deal: any) => 
+                      deal.restaurant?.cuisineType?.toLowerCase().includes('mexican') || 
+                      deal.title?.toLowerCase().includes('mexican') ||
+                      deal.title?.toLowerCase().includes('taco')
+                    ).slice(0, 8).map((deal: any) => (
+                      <div key={deal.id} className="flex-shrink-0 w-80">
+                        <DealCard deal={deal} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Asian Section */}
+            {allDeals.filter((deal: any) => 
+              deal.restaurant?.cuisineType?.toLowerCase().includes('asian') || 
+              deal.restaurant?.cuisineType?.toLowerCase().includes('chinese') ||
+              deal.restaurant?.cuisineType?.toLowerCase().includes('thai') ||
+              deal.title?.toLowerCase().includes('sushi')
+            ).length > 0 && (
+              <div className="px-4">
+                <div className="max-w-6xl mx-auto">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">🍜 Asian</h2>
+                    <button 
+                      onClick={() => handleCategoryFilter('asian')}
+                      className="text-red-600 hover:text-red-700 font-medium text-sm"
+                    >
+                      View all →
+                    </button>
+                  </div>
+                  <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+                    {allDeals.filter((deal: any) => 
+                      deal.restaurant?.cuisineType?.toLowerCase().includes('asian') || 
+                      deal.restaurant?.cuisineType?.toLowerCase().includes('chinese') ||
+                      deal.restaurant?.cuisineType?.toLowerCase().includes('thai') ||
+                      deal.title?.toLowerCase().includes('sushi')
+                    ).slice(0, 8).map((deal: any) => (
+                      <div key={deal.id} className="flex-shrink-0 w-80">
+                        <DealCard deal={deal} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
           {/* No Deals State */}
           {!isLoading && dealsToShow.length === 0 && allDeals.length === 0 && (
@@ -691,7 +847,6 @@ export default function Landing() {
           )}
         </div>
       </div>
-    </div>
     </div>
   );
 }

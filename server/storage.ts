@@ -14,6 +14,8 @@ import {
   type InsertDealClaim,
   type Review,
   type InsertReview,
+  type GoogleUserData,
+  type EmailUserData,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc, asc } from "drizzle-orm";
@@ -23,7 +25,9 @@ export interface IStorage {
   // User operations
   // (IMPORTANT) these user operations are mandatory for Replit Auth.
   getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  upsertRestaurantOwner(authType: 'google' | 'email', userData: GoogleUserData | EmailUserData): Promise<User>;
   updateUserStripeInfo(id: string, stripeCustomerId: string, stripeSubscriptionId: string): Promise<User>;
   
   // Restaurant operations
@@ -75,6 +79,55 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async upsertRestaurantOwner(authType: 'google' | 'email', userData: GoogleUserData | EmailUserData): Promise<User> {
+    if (authType === 'google') {
+      const googleData = userData as GoogleUserData;
+      const [user] = await db
+        .insert(users)
+        .values({
+          userType: 'restaurant_owner',
+          googleId: googleData.googleId,
+          email: googleData.email,
+          firstName: googleData.firstName,
+          lastName: googleData.lastName,
+          profileImageUrl: googleData.profileImageUrl,
+          googleAccessToken: googleData.googleAccessToken,
+        })
+        .onConflictDoUpdate({
+          target: users.googleId,
+          set: {
+            email: googleData.email,
+            firstName: googleData.firstName,
+            lastName: googleData.lastName,
+            profileImageUrl: googleData.profileImageUrl,
+            googleAccessToken: googleData.googleAccessToken,
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
+      return user;
+    } else {
+      const emailData = userData as EmailUserData;
+      const [user] = await db
+        .insert(users)
+        .values({
+          userType: 'restaurant_owner',
+          email: emailData.email,
+          firstName: emailData.firstName,
+          lastName: emailData.lastName,
+          passwordHash: emailData.passwordHash,
+          emailVerified: true,
+        })
+        .returning();
+      return user;
+    }
   }
 
   async updateUserStripeInfo(id: string, stripeCustomerId: string, stripeSubscriptionId: string): Promise<User> {

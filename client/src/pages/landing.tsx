@@ -13,6 +13,7 @@ import { Mail, Eye, EyeOff, Pizza, Utensils, Coffee, Cookie, Apple, Fish, ChefHa
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import DealCard from "@/components/deal-card";
+import mealScoutLogo from "@assets/image_1757213417158.png";
 
 const signupSchema = z.object({
   email: z.string().email("Valid email is required"),
@@ -320,11 +321,12 @@ export default function Landing() {
       <div className="bg-white shadow-sm border-b border-gray-100 px-4 py-4 sticky top-0 z-20">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl flex items-center justify-center shadow-lg relative">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-white">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="currentColor"/>
-                <path d="M9 9h1v4H9V9zm2-2h1v6h-1V7zm2 2h1v4h-1V9z" fill="#fff" opacity="0.9"/>
-              </svg>
+            <div className="w-12 h-12 flex items-center justify-center">
+              <img 
+                src={mealScoutLogo} 
+                alt="MealScout Logo" 
+                className="w-12 h-12 object-contain"
+              />
             </div>
             <span className="text-2xl font-bold text-gray-900">MealScout</span>
           </div>

@@ -64,26 +64,14 @@ export default function Home() {
     <div className="max-w-md mx-auto bg-background min-h-screen relative overflow-hidden">
       {/* Header with Location */}
       <header className="glass-effect border-b border-border/50 px-6 py-5 sticky top-0 z-10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 food-gradient-primary rounded-xl flex items-center justify-center shadow-md">
-              <MapPin className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="font-bold text-foreground" data-testid="text-location-label">Your Location</p>
-              <p className="text-sm text-muted-foreground" data-testid="text-location-name">{locationName}</p>
-            </div>
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 food-gradient-primary rounded-xl flex items-center justify-center shadow-md">
+            <MapPin className="w-5 h-5 text-white" />
           </div>
-          <button 
-            className="p-3 rounded-xl bg-muted/60 hover:bg-muted/80 transition-all duration-200 shadow-md hover:shadow-lg"
-            onClick={() => {
-              // TODO: Navigate to profile page or show profile menu
-              console.log('Profile button clicked');
-            }}
-            data-testid="button-profile"
-          >
-            <User className="w-5 h-5 text-foreground" />
-          </button>
+          <div>
+            <p className="font-bold text-foreground" data-testid="text-location-label">Your Location</p>
+            <p className="text-sm text-muted-foreground" data-testid="text-location-name">{locationName}</p>
+          </div>
         </div>
       </header>
 

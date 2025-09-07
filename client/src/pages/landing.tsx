@@ -9,7 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { z } from "zod";
-import { Mail, Eye, EyeOff } from "lucide-react";
+import { Mail, Eye, EyeOff, Pizza, Utensils, Coffee, Cookie, Apple, Fish, ChefHat, IceCream } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import DealCard from "@/components/deal-card";
@@ -47,10 +47,23 @@ export default function Landing() {
   const [authMode, setAuthMode] = useState<'signup' | 'login'>('signup');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [currentFoodIcon, setCurrentFoodIcon] = useState(0);
+
+  // Array of food icons for revolving animation
+  const foodIcons = [Pizza, Utensils, Coffee, Cookie, Apple, Fish, ChefHat, IceCream];
 
   const handleFacebookLogin = () => {
     window.location.href = '/api/auth/facebook';
   };
+
+  // Revolving food icon animation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentFoodIcon((prev) => (prev + 1) % foodIcons.length);
+    }, 2500); // Change icon every 2.5 seconds
+
+    return () => clearInterval(interval);
+  }, [foodIcons.length]);
 
   const signupForm = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
@@ -319,10 +332,11 @@ export default function Landing() {
       <div className="bg-white shadow-sm border-b border-gray-100 px-4 py-4 sticky top-0 z-20">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-white">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
+            <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-500 ease-in-out">
+              {(() => {
+                const CurrentIcon = foodIcons[currentFoodIcon];
+                return <CurrentIcon className="w-6 h-6 text-white animate-in fade-in duration-500" />;
+              })()}
             </div>
             <span className="text-2xl font-bold text-gray-900">MealScout</span>
           </div>

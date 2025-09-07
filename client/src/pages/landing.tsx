@@ -12,6 +12,8 @@ export default function Landing() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [showLocationInput, setShowLocationInput] = useState(false);
   const [manualLocation, setManualLocation] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleFacebookLogin = () => {
     window.location.href = '/api/auth/facebook';
@@ -187,8 +189,28 @@ export default function Landing() {
   });
 
   // Use nearby deals if available, otherwise featured deals
-  const dealsToShow = (nearbyDeals || featuredDeals || []) as any[];
+  const allDeals = (nearbyDeals || featuredDeals || []) as any[];
   const isLoading = nearbyLoading || featuredLoading;
+
+  // Filter deals based on selected category and search query
+  const dealsToShow = allDeals.filter((deal: any) => {
+    const matchesCategory = selectedCategory === 'all' || 
+      (deal.restaurant?.cuisineType && deal.restaurant.cuisineType.toLowerCase().includes(selectedCategory.toLowerCase())) ||
+      (deal.title && deal.title.toLowerCase().includes(selectedCategory.toLowerCase())) ||
+      (deal.description && deal.description.toLowerCase().includes(selectedCategory.toLowerCase()));
+    
+    const matchesSearch = searchQuery === '' ||
+      (deal.title && deal.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (deal.description && deal.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (deal.restaurant?.name && deal.restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    return matchesCategory && matchesSearch;
+  });
+
+  // Category filter functions
+  const handleCategoryFilter = (category: string) => {
+    setSelectedCategory(category);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
@@ -318,6 +340,8 @@ export default function Landing() {
             </div>
             <input 
               type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search restaurants, cuisines, or dishes" 
               className="w-full pl-12 pr-4 py-4 bg-gray-50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 text-lg shadow-sm hover:shadow-md transition-shadow"
             />
@@ -332,22 +356,64 @@ export default function Landing() {
           <div className="flex justify-center">
             <div className="max-w-4xl w-full">
           <div className="flex space-x-4 overflow-x-auto pb-2">
-            <button className="flex-shrink-0 bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-2xl text-sm font-semibold shadow-md hover:shadow-lg transition-all duration-200">
-              🔥 Deals
+            <button 
+              onClick={() => handleCategoryFilter('all')}
+              className={`flex-shrink-0 px-6 py-3 rounded-2xl text-sm font-semibold shadow-md hover:shadow-lg transition-all duration-200 ${
+                selectedCategory === 'all' 
+                  ? 'bg-red-500 hover:bg-red-600 text-white' 
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
+            >
+              🔥 All Deals
             </button>
-            <button className="flex-shrink-0 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-2xl text-sm font-semibold transition-colors duration-200">
+            <button 
+              onClick={() => handleCategoryFilter('american')}
+              className={`flex-shrink-0 px-6 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 ${
+                selectedCategory === 'american' 
+                  ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg' 
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
+            >
               🍔 Fast Food
             </button>
-            <button className="flex-shrink-0 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-2xl text-sm font-semibold transition-colors duration-200">
+            <button 
+              onClick={() => handleCategoryFilter('pizza')}
+              className={`flex-shrink-0 px-6 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 ${
+                selectedCategory === 'pizza' 
+                  ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg' 
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
+            >
               🍕 Pizza
             </button>
-            <button className="flex-shrink-0 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-2xl text-sm font-semibold transition-colors duration-200">
+            <button 
+              onClick={() => handleCategoryFilter('burger')}
+              className={`flex-shrink-0 px-6 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 ${
+                selectedCategory === 'burger' 
+                  ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg' 
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
+            >
               🍟 Burgers
             </button>
-            <button className="flex-shrink-0 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-2xl text-sm font-semibold transition-colors duration-200">
+            <button 
+              onClick={() => handleCategoryFilter('mexican')}
+              className={`flex-shrink-0 px-6 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 ${
+                selectedCategory === 'mexican' 
+                  ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg' 
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
+            >
               🌮 Mexican
             </button>
-            <button className="flex-shrink-0 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-2xl text-sm font-semibold transition-colors duration-200">
+            <button 
+              onClick={() => handleCategoryFilter('asian')}
+              className={`flex-shrink-0 px-6 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 ${
+                selectedCategory === 'asian' 
+                  ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg' 
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
+            >
               🍜 Asian
             </button>
           </div>
@@ -359,8 +425,15 @@ export default function Landing() {
       <div className="px-4 py-12 bg-gradient-to-b from-transparent to-red-100/30">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Deals near you</h2>
-            <p className="text-gray-600 text-lg">Discover amazing food deals in {locationName}</p>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              {selectedCategory === 'all' ? 'Deals near you' : `${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} deals near you`}
+            </h2>
+            <p className="text-gray-600 text-lg">
+              {selectedCategory === 'all' 
+                ? `Discover amazing food deals in ${locationName}`
+                : `Find the best ${selectedCategory} deals in ${locationName}`
+              }
+            </p>
           </div>
 
           {/* Loading State */}
@@ -381,7 +454,7 @@ export default function Landing() {
           )}
 
           {/* No Deals State */}
-          {!isLoading && dealsToShow.length === 0 && (
+          {!isLoading && dealsToShow.length === 0 && allDeals.length === 0 && (
             <div className="text-center py-20 bg-white rounded-3xl shadow-xl max-w-2xl mx-auto">
               <div className="text-8xl mb-8">🍽️</div>
               <h3 className="text-3xl font-bold text-gray-900 mb-4">No deals found nearby</h3>
@@ -389,6 +462,33 @@ export default function Landing() {
               <Link href="/restaurant-signup" className="inline-block bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-colors">
                 Add your restaurant
               </Link>
+            </div>
+          )}
+
+          {/* No Filtered Deals State */}
+          {!isLoading && dealsToShow.length === 0 && allDeals.length > 0 && (
+            <div className="text-center py-20 bg-white rounded-3xl shadow-xl max-w-2xl mx-auto">
+              <div className="text-8xl mb-8">🔍</div>
+              <h3 className="text-3xl font-bold text-gray-900 mb-4">
+                No {selectedCategory === 'all' ? '' : selectedCategory} deals match your search
+              </h3>
+              <p className="text-gray-600 mb-10 text-xl">
+                Try a different category or clear your search to see all available deals
+              </p>
+              <div className="flex gap-4 justify-center">
+                <button 
+                  onClick={() => { setSelectedCategory('all'); setSearchQuery(''); }}
+                  className="bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-colors"
+                >
+                  Show All Deals
+                </button>
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-8 py-4 rounded-2xl font-semibold text-lg transition-colors"
+                >
+                  Clear Search
+                </button>
+              </div>
             </div>
           )}
 

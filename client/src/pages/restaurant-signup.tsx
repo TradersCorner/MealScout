@@ -108,9 +108,41 @@ export default function RestaurantSignup() {
           <div className="text-center mb-16">
             <div className="w-32 h-32 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 rounded-3xl mb-8 flex items-center justify-center mx-auto relative overflow-hidden shadow-2xl">
               <div className="absolute inset-0 bg-black/10"></div>
-              <svg className="w-16 h-16 text-white relative z-10 drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0l-5-5m5 5l-5-5"/>
-              </svg>
+              
+              {/* Restaurant storefront with deal badge */}
+              <div className="relative z-10">
+                {/* Main restaurant building */}
+                <svg className="w-20 h-20 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 3L2 12h3v8h14v-8h3L12 3zm0 2.5L18.5 12H17v6H7v-6H5.5L12 5.5z"/>
+                  <path d="M9 13h2v4H9v-4zm4 0h2v4h-2v-4z"/>
+                  <circle cx="12" cy="8.5" r="1.5"/>
+                </svg>
+                
+                {/* Deal badge overlay */}
+                <div className="absolute -top-2 -right-1 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center border-2 border-white">
+                  <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zM14 6a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h8zM6 8a2 2 0 000 4h8a2 2 0 000-4H6z"/>
+                  </svg>
+                </div>
+                
+                {/* Customer icons around the building */}
+                <div className="absolute -bottom-1 -left-2 w-4 h-4 bg-green-400 rounded-full flex items-center justify-center">
+                  <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/>
+                  </svg>
+                </div>
+                <div className="absolute -bottom-1 -right-3 w-4 h-4 bg-blue-400 rounded-full flex items-center justify-center">
+                  <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/>
+                  </svg>
+                </div>
+                <div className="absolute -top-1 -left-3 w-4 h-4 bg-purple-400 rounded-full flex items-center justify-center">
+                  <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/>
+                  </svg>
+                </div>
+              </div>
+              
               <div className="absolute -top-2 -left-2 w-16 h-16 bg-white/20 rounded-full blur-xl"></div>
               <div className="absolute -bottom-3 -right-3 w-20 h-20 bg-white/20 rounded-full blur-xl"></div>
             </div>

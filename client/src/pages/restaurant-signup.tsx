@@ -274,7 +274,7 @@ export default function RestaurantSignup() {
                     <p className="text-gray-600 text-lg" data-testid="text-price-desc">Unlimited deal postings</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-green-600 font-bold text-lg" data-testid="text-trial">30-day free trial</p>
+                    <p className="text-gray-600 text-lg" data-testid="text-features">Unlimited postings</p>
                     <p className="text-gray-500 text-sm" data-testid="text-cancel">Cancel anytime</p>
                   </div>
                 </div>
@@ -310,7 +310,7 @@ export default function RestaurantSignup() {
                 disabled={createRestaurantMutation.isPending}
                 data-testid="button-start-trial"
               >
-                {createRestaurantMutation.isPending ? "Creating..." : "Start Free Trial"}
+                {createRestaurantMutation.isPending ? "Creating..." : "Get Started"}
               </Button>
             </form>
           </Form>

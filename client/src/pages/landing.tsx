@@ -99,11 +99,11 @@ export default function Landing() {
   };
 
 
-  // Close dropdown when clicking outside
+  // Close modal when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
-      if (!target.closest('.login-dropdown')) {
+      if (!target.closest('.modal-content')) {
         setShowAuth(false);
       }
     };
@@ -614,7 +614,7 @@ export default function Landing() {
       {/* Login Modal - Mobile and Desktop */}
       {showAuth && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm p-6">
+          <div className="modal-content bg-white rounded-2xl w-full max-w-sm p-6">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-semibold text-gray-900">Login to MealScout</h3>
               <button

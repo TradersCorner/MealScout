@@ -236,7 +236,17 @@ export default function Landing() {
             </Link>
             <button 
               onClick={handleFacebookLogin}
-              className="w-11 h-11 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors duration-200"
+              className="hidden sm:flex items-center space-x-2 px-4 py-2.5 bg-white hover:bg-gray-50 border border-gray-300 rounded-xl font-semibold text-sm text-gray-700 shadow-sm hover:shadow-md transition-all duration-200"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              <span>Login</span>
+            </button>
+            <button 
+              onClick={handleFacebookLogin}
+              className="w-11 h-11 sm:hidden bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors duration-200"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -492,9 +502,62 @@ export default function Landing() {
             </div>
           )}
 
+          {/* User Account CTA */}
+          <div className="mt-16 max-w-4xl mx-auto">
+            <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-3xl p-10 text-center shadow-xl border border-red-200/50 mb-12">
+              <div className="text-6xl mb-6">👤</div>
+              <h3 className="text-3xl font-bold text-gray-900 mb-4">Join MealScout Today</h3>
+              <p className="text-gray-600 mb-8 text-xl max-w-2xl mx-auto">
+                Create your free account to save favorite deals, get personalized recommendations, and never miss out on great food offers near you!
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <Button 
+                  className="bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 w-full sm:w-auto"
+                  onClick={handleFacebookLogin}
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                  </svg>
+                  Create Free Account
+                </Button>
+                <div className="text-gray-500 text-sm">or</div>
+                <Button 
+                  variant="outline"
+                  className="border-red-300 hover:bg-red-50 text-red-600 hover:text-red-700 px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-200 w-full sm:w-auto"
+                  onClick={handleFacebookLogin}
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                  </svg>
+                  Login to Account
+                </Button>
+              </div>
+              <div className="mt-6 flex items-center justify-center space-x-6 text-sm text-gray-500">
+                <div className="flex items-center space-x-1">
+                  <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>100% Free</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>Instant Access</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>No Spam</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Restaurant CTA */}
           {dealsToShow.length > 0 && (
-            <div className="grid md:grid-cols-2 gap-8 mt-16">
+            <div className="grid md:grid-cols-2 gap-8 mt-8">
               <div className="bg-white rounded-3xl p-10 text-center shadow-xl">
                 <div className="text-6xl mb-6">🔔</div>
                 <h3 className="text-3xl font-bold text-gray-900 mb-4">Never miss a deal</h3>

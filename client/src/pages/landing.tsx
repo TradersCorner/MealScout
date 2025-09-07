@@ -239,45 +239,46 @@ export default function Landing() {
             <p className="text-gray-600 text-base font-medium" data-testid="text-location-name">{locationName}</p>
           </button>
           
-          {/* Location error and manual input */}
-          {locationError && (
-            <div className="mt-4 max-w-md mx-auto">
-              <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-                <p className="text-red-700 text-sm mb-3">{locationError}</p>
-                
-                <div className="flex gap-2 mb-3">
+          {/* Manual location input - always visible if GPS is wrong */}
+          <div className="mt-4 max-w-md mx-auto">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+              <div className="text-center mb-3">
+                <p className="text-blue-700 text-sm font-medium">Wrong location detected?</p>
+                <p className="text-blue-600 text-xs">Enter your city manually for accurate deals</p>
+              </div>
+              
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={manualLocation}
+                  onChange={(e) => setManualLocation(e.target.value)}
+                  placeholder="Enter your city (e.g., Hammond, LA)"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 font-medium"
+                  onKeyPress={(e) => e.key === 'Enter' && handleManualLocation()}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleManualLocation}
+                    className="flex-1 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-colors font-medium"
+                  >
+                    🎯 Find My Deals
+                  </button>
                   <button
                     onClick={retryLocation}
-                    className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-medium"
+                    className="px-4 py-3 bg-gray-400 hover:bg-gray-500 text-white rounded-xl transition-colors text-sm"
                   >
-                    🎯 Retry Location
-                  </button>
-                  <button
-                    onClick={() => setShowLocationInput(!showLocationInput)}
-                    className="flex-1 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm font-medium"
-                  >
-                    📍 Enter City
+                    📍 GPS
                   </button>
                 </div>
-                
-                {showLocationInput && (
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      value={manualLocation}
-                      onChange={(e) => setManualLocation(e.target.value)}
-                      placeholder="Enter your city (e.g., Hammond, LA)"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
-                      onKeyPress={(e) => e.key === 'Enter' && handleManualLocation()}
-                    />
-                    <button
-                      onClick={handleManualLocation}
-                      className="w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors font-medium"
-                    >
-                      Find Location
-                    </button>
-                  </div>
-                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Location error message */}
+          {locationError && (
+            <div className="mt-2 max-w-md mx-auto">
+              <div className="p-2 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-700 text-xs text-center">{locationError}</p>
               </div>
             </div>
           )}

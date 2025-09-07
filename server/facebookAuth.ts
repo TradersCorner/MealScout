@@ -59,7 +59,7 @@ export async function setupAuth(app: Express) {
       };
 
       // Create or update user in database
-      const user = await storage.upsertUser(userData);
+      const user = await storage.upsertUserByAuth('facebook', userData, 'customer');
       return done(null, { ...user, accessToken });
     } catch (error) {
       return done(error, null);

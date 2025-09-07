@@ -33,10 +33,10 @@ export const users = pgTable("users", {
   // Facebook authentication (for regular users)
   facebookId: varchar("facebook_id").unique(),
   facebookAccessToken: text("facebook_access_token"),
-  // Google authentication (for restaurant owners)
+  // Google authentication (for all users)
   googleId: varchar("google_id").unique(),
   googleAccessToken: text("google_access_token"),
-  // Email/password authentication (for restaurant owners)
+  // Email/password authentication (for all users)
   passwordHash: text("password_hash"),
   emailVerified: boolean("email_verified").default(false),
   // Common fields

@@ -27,7 +27,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
-  upsertRestaurantOwner(authType: 'google' | 'email', userData: GoogleUserData | EmailUserData): Promise<User>;
+  upsertUserByAuth(authType: 'google' | 'email' | 'facebook', userData: GoogleUserData | EmailUserData | FacebookUserData, userType?: 'customer' | 'restaurant_owner'): Promise<User>;
   updateUserStripeInfo(id: string, stripeCustomerId: string, stripeSubscriptionId: string): Promise<User>;
   
   // Restaurant operations
@@ -86,13 +86,13 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async upsertRestaurantOwner(authType: 'google' | 'email', userData: GoogleUserData | EmailUserData): Promise<User> {
+  async upsertUserByAuth(authType: 'google' | 'email' | 'facebook', userData: GoogleUserData | EmailUserData | FacebookUserData, userType: 'customer' | 'restaurant_owner' = 'customer'): Promise<User> {
     if (authType === 'google') {
       const googleData = userData as GoogleUserData;
       const [user] = await db
         .insert(users)
         .values({
-          userType: 'restaurant_owner',
+          userType,
           googleId: googleData.googleId,
           email: googleData.email,
           firstName: googleData.firstName,
@@ -113,12 +113,38 @@ export class DatabaseStorage implements IStorage {
         })
         .returning();
       return user;
+    } else if (authType === 'facebook') {
+      const facebookData = userData as FacebookUserData;
+      const [user] = await db
+        .insert(users)
+        .values({
+          userType,
+          facebookId: facebookData.facebookId,
+          email: facebookData.email,
+          firstName: facebookData.firstName,
+          lastName: facebookData.lastName,
+          profileImageUrl: facebookData.profileImageUrl,
+          facebookAccessToken: facebookData.facebookAccessToken,
+        })
+        .onConflictDoUpdate({
+          target: users.facebookId,
+          set: {
+            email: facebookData.email,
+            firstName: facebookData.firstName,
+            lastName: facebookData.lastName,
+            profileImageUrl: facebookData.profileImageUrl,
+            facebookAccessToken: facebookData.facebookAccessToken,
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
+      return user;
     } else {
       const emailData = userData as EmailUserData;
       const [user] = await db
         .insert(users)
         .values({
-          userType: 'restaurant_owner',
+          userType,
           email: emailData.email,
           firstName: emailData.firstName,
           lastName: emailData.lastName,

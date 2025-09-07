@@ -49,8 +49,8 @@ export default function Landing() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [currentFoodIcon, setCurrentFoodIcon] = useState(0);
 
-  // Array of food icons for revolving animation
-  const foodIcons = [Pizza, Utensils, Coffee, Cookie, Apple, Fish, ChefHat, IceCream];
+  // Array of food icons for revolving animation - focused on actual food dishes
+  const foodIcons = [Pizza, Sandwich, Coffee, Cookie, Apple, Fish, Croissant, IceCream];
 
   const handleFacebookLogin = () => {
     window.location.href = '/api/auth/facebook';

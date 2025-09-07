@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import DealCard from "@/components/deal-card";
 import mealScoutLogo from "@assets/image_1757213417158.png";
+import "../facebook-browser.css";
 
 const signupSchema = z.object({
   email: z.string().email("Valid email is required"),
@@ -48,9 +49,37 @@ export default function Landing() {
   const [authMode, setAuthMode] = useState<'signup' | 'login'>('signup');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Facebook Browser Detection
+  const [isFacebookBrowser, setIsFacebookBrowser] = useState(false);
+  
+  useEffect(() => {
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    const isFBBrowser = /FBAN|FBAV|MessengerForiOS|FB_IAB|FBIOS/.test(userAgent);
+    setIsFacebookBrowser(isFBBrowser);
+    
+    if (isFBBrowser) {
+      console.log('🔵 Facebook Browser detected - optimizing experience');
+      // Optimize for Facebook browser
+      document.body.style.overscrollBehavior = 'none';
+      document.body.style.touchAction = 'pan-x pan-y';
+      
+      // Add Facebook browser class for specific styling
+      document.documentElement.classList.add('facebook-browser');
+    }
+  }, []);
 
   const handleFacebookLogin = () => {
-    window.location.href = '/api/auth/facebook';
+    // In Facebook browser, use different approach for better compatibility
+    if (isFacebookBrowser) {
+      console.log('🔵 Facebook Browser login - using optimized flow');
+      // Add small delay to ensure proper handling in Facebook browser
+      setTimeout(() => {
+        window.location.href = '/api/auth/facebook';
+      }, 100);
+    } else {
+      window.location.href = '/api/auth/facebook';
+    }
   };
 
   const handleGoogleLogin = () => {
@@ -149,7 +178,7 @@ export default function Landing() {
     loginMutation.mutate(data);
   };
 
-  // Enhanced location detection with multiple accuracy attempts
+  // Enhanced location detection with Facebook browser optimization
   useEffect(() => {
     const detectLocationWithFallbacks = async () => {
       if (!navigator.geolocation) {
@@ -158,23 +187,24 @@ export default function Landing() {
         return;
       }
 
-      console.log('🎯 Starting enhanced location detection...');
+      const browserType = isFacebookBrowser ? '🔵 Facebook Browser' : '🌐 Standard Browser';
+      console.log(`🎯 Starting enhanced location detection for ${browserType}...`);
       setLocationName('Getting your precise location...');
       
-      // Try multiple location detection methods
+      // Try multiple location detection methods with Facebook browser optimization
       const tryLocationMethod = (attempt = 1) => {
         return new Promise<GeolocationPosition>((resolve, reject) => {
           const options = {
-            enableHighAccuracy: attempt <= 2, // High accuracy for first 2 attempts
-            timeout: attempt === 1 ? 30000 : 15000, // Longer timeout for first attempt
-            maximumAge: 0 // Always get fresh location
+            enableHighAccuracy: isFacebookBrowser ? (attempt === 1) : (attempt <= 2), // Facebook browser: only high accuracy on first attempt
+            timeout: isFacebookBrowser ? 20000 : (attempt === 1 ? 30000 : 15000), // Facebook browser: shorter timeout
+            maximumAge: isFacebookBrowser ? 10000 : 0 // Facebook browser: allow cached location up to 10s
           };
 
-          console.log(`📡 Location attempt ${attempt}:`, options);
+          console.log(`📡 ${browserType} location attempt ${attempt}:`, options);
 
           navigator.geolocation.getCurrentPosition(
             (position) => {
-              console.log(`✅ Attempt ${attempt} success:`, {
+              console.log(`✅ ${browserType} attempt ${attempt} success:`, {
                 latitude: position.coords.latitude,
                 longitude: position.coords.longitude,
                 accuracy: `${Math.round(position.coords.accuracy)}m`,
@@ -183,7 +213,7 @@ export default function Landing() {
               resolve(position);
             },
             (error) => {
-              console.log(`❌ Attempt ${attempt} failed:`, error.message);
+              console.log(`❌ ${browserType} attempt ${attempt} failed:`, error.message);
               reject(error);
             },
             options
@@ -191,19 +221,21 @@ export default function Landing() {
         });
       };
 
-      // Try up to 3 different location detection methods
-      for (let attempt = 1; attempt <= 3; attempt++) {
+      // Facebook browser: try only 2 attempts, regular browsers: 3 attempts
+      const maxAttempts = isFacebookBrowser ? 2 : 3;
+      
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
           const position = await tryLocationMethod(attempt);
           const { latitude, longitude, accuracy } = position.coords;
           
           // Validate coordinates are reasonable (within expected ranges)
           if (latitude < 24 || latitude > 50 || longitude < -130 || longitude > -65) {
-            console.warn('⚠️ GPS coordinates seem invalid for US location, trying next method...');
+            console.warn(`⚠️ ${browserType} GPS coordinates seem invalid for US location, trying next method...`);
             continue;
           }
           
-          console.log('📍 FINAL LOCATION:', { 
+          console.log(`📍 ${browserType} FINAL LOCATION:`, { 
             latitude, 
             longitude, 
             accuracy: `${Math.round(accuracy)}m`,
@@ -213,11 +245,15 @@ export default function Landing() {
           setLocation({ lat: latitude, lng: longitude });
           setLocationError(null);
 
-          // Enhanced reverse geocoding with multiple services
+          // Enhanced reverse geocoding with Facebook browser optimization
           try {
-            // Try BigDataCloud first (more accurate for cities)
+            // For Facebook browser, use faster BigDataCloud only initially
             let response = await fetch(
-              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
+              { 
+                method: 'GET',
+                headers: isFacebookBrowser ? { 'Cache-Control': 'max-age=300' } : {},
+              }
             );
             
             if (!response.ok) throw new Error('BigDataCloud API failed');
@@ -225,9 +261,9 @@ export default function Landing() {
             const data = await response.json();
             let cityName = data.city || data.locality || data.principalSubdivision;
             
-            // If BigDataCloud doesn't give a good city name, try Nominatim as backup
-            if (!cityName || cityName.length < 3) {
-              console.log('🔄 Trying backup geocoding service...');
+            // If BigDataCloud doesn't give a good city name and NOT Facebook browser, try Nominatim
+            if (!cityName && !isFacebookBrowser) {
+              console.log(`🔄 ${browserType} trying backup geocoding service...`);
               response = await fetch(
                 `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
               );
@@ -244,7 +280,7 @@ export default function Landing() {
               cityName = data.locality || data.principalSubdivision || data.countryName || "Your Area";
             }
             
-            console.log('🏙️ Location resolved:', {
+            console.log(`🏙️ ${browserType} location resolved:`, {
               primary: { city: data.city, locality: data.locality, state: data.principalSubdivision },
               final: cityName,
               coordinates: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
@@ -252,7 +288,7 @@ export default function Landing() {
             
             setLocationName(cityName);
           } catch (error) {
-            console.error('❌ Geocoding failed:', error);
+            console.error(`❌ ${browserType} geocoding failed:`, error);
             setLocationName(`Location Found (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
           }
           
@@ -260,13 +296,15 @@ export default function Landing() {
           
         } catch (error) {
           const geoError = error as GeolocationPositionError;
-          console.log(`❌ Location attempt ${attempt} failed:`, geoError.message);
+          console.log(`❌ ${browserType} location attempt ${attempt} failed:`, geoError.message);
           
-          if (attempt === 3) {
+          if (attempt === maxAttempts) {
             // All attempts failed
             let errorMessage = 'Unable to detect your location automatically. ';
             if (geoError.code === 1) {
-              errorMessage += 'Please enable location access in your browser settings or enter your city manually.';
+              errorMessage += isFacebookBrowser 
+                ? 'Please allow location access and try again, or enter your city manually.'
+                : 'Please enable location access in your browser settings or enter your city manually.';
             } else if (geoError.code === 2) {
               errorMessage += 'GPS unavailable. Please enter your city manually.';
             } else {
@@ -282,8 +320,13 @@ export default function Landing() {
       }
     };
 
-    detectLocationWithFallbacks();
-  }, []);
+    // Delay location detection slightly in Facebook browser to ensure proper initialization
+    if (isFacebookBrowser) {
+      setTimeout(detectLocationWithFallbacks, 500);
+    } else {
+      detectLocationWithFallbacks();
+    }
+  }, [isFacebookBrowser]);
 
   // Handle manual location input
   const handleManualLocation = async () => {
@@ -447,6 +490,18 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
+      
+      {/* Facebook Browser Notification */}
+      {isFacebookBrowser && (
+        <div className="bg-blue-600 text-white px-4 py-2 text-center text-sm">
+          <div className="flex items-center justify-center space-x-2">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            </svg>
+            <span>Optimized for Facebook • Tap outside links to open in your browser</span>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-100 px-3 sm:px-4 py-3 sm:py-4 sticky top-0 z-20">
         <div className="max-w-6xl mx-auto flex items-center justify-between">

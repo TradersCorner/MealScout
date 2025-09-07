@@ -1,0 +1,121 @@
+/* Facebook Browser Optimizations */
+
+/* Prevent bounce scrolling and improve touch handling */
+.facebook-browser {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: none;
+}
+
+.facebook-browser body {
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
+  -webkit-transform: translate3d(0,0,0); /* Hardware acceleration */
+}
+
+/* Fix viewport issues in Facebook browser */
+.facebook-browser .min-h-screen {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+}
+
+/* Improve touch targets for Facebook browser */
+.facebook-browser button {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Optimize scrolling containers for Facebook browser */
+.facebook-browser .overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.facebook-browser .overflow-x-auto::-webkit-scrollbar {
+  display: none;
+}
+
+/* Fix modal positioning in Facebook browser */
+.facebook-browser .fixed {
+  position: -webkit-sticky;
+  position: sticky;
+}
+
+/* Improve performance for Facebook browser */
+.facebook-browser .transform {
+  -webkit-transform: translate3d(0,0,0);
+  transform: translate3d(0,0,0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Fix input focus issues in Facebook browser */
+.facebook-browser input {
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 0;
+}
+
+.facebook-browser input:focus {
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Optimize gradients for Facebook browser performance */
+.facebook-browser .bg-gradient-to-r,
+.facebook-browser .bg-gradient-to-br,
+.facebook-browser .bg-gradient-to-b {
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
+}
+
+/* Fix sticky header behavior */
+.facebook-browser .sticky {
+  position: -webkit-sticky;
+  position: sticky;
+  -webkit-transform: translate3d(0,0,0);
+  transform: translate3d(0,0,0);
+}
+
+/* Improve hover states for touch in Facebook browser */
+@media (hover: none) and (pointer: coarse) {
+  .facebook-browser .hover\:bg-gray-50:hover {
+    background-color: rgb(249 250 251 / var(--tw-bg-opacity));
+  }
+  
+  .facebook-browser .hover\:bg-red-600:hover {
+    background-color: rgb(220 38 38 / var(--tw-bg-opacity));
+  }
+  
+  .facebook-browser .hover\:shadow-lg:hover {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+}
+
+/* Fix safe area handling for Facebook browser */
+.facebook-browser {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Optimize animations for Facebook browser */
+.facebook-browser .transition-all {
+  -webkit-transition: all 0.2s ease;
+  transition: all 0.2s ease;
+}
+
+.facebook-browser .duration-200 {
+  transition-duration: 0.15s; /* Slightly faster for Facebook browser */
+}
+
+/* Fix z-index stacking issues */
+.facebook-browser .z-50 {
+  z-index: 9999; /* Higher z-index for Facebook browser compatibility */
+}
+
+.facebook-browser .z-20 {
+  z-index: 999;
+}

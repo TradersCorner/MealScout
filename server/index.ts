@@ -5,26 +5,12 @@ import { storage } from "./storage";
 
 const app = express();
 
-// Set proper Content Security Policy headers
+// Minimal CSP for development
 app.use((req, res, next) => {
-  // Only set CSP for HTML responses to avoid interfering with API responses
   if (req.path.startsWith('/api/')) {
     return next();
   }
-  
-  const cspDirectives = [
-    "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://replit.com https://*.replit.com https://js.stripe.com https://*.stripe.com",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: https: http:",
-    "connect-src 'self' https: wss:",
-    "frame-src 'self' https://js.stripe.com https://*.stripe.com",
-    "object-src 'none'",
-    "base-uri 'self'"
-  ];
-  
-  res.setHeader('Content-Security-Policy', cspDirectives.join('; '));
+  res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:");
   next();
 });
 

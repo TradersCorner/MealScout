@@ -20,6 +20,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc, asc } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 
 // Interface for storage operations
 export interface IStorage {
@@ -57,6 +58,9 @@ export interface IStorage {
   createReview(review: InsertReview): Promise<Review>;
   getRestaurantReviews(restaurantId: string): Promise<Review[]>;
   getRestaurantAverageRating(restaurantId: string): Promise<number>;
+  
+  // Admin operations
+  ensureAdminExists(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -87,7 +91,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async upsertUserByAuth(authType: 'google' | 'email' | 'facebook', userData: GoogleUserData | EmailUserData | FacebookUserData, userType: 'customer' | 'restaurant_owner' = 'customer'): Promise<User> {
+  async upsertUserByAuth(authType: 'google' | 'email' | 'facebook', userData: GoogleUserData | EmailUserData | FacebookUserData, userType: 'customer' | 'restaurant_owner' | 'admin' = 'customer'): Promise<User> {
     if (authType === 'google') {
       const googleData = userData as GoogleUserData;
       const [user] = await db
@@ -465,6 +469,42 @@ export class DatabaseStorage implements IStorage {
       .where(eq(reviews.restaurantId, restaurantId));
     
     return result.avg || 0;
+  }
+
+  // Admin operations
+  async ensureAdminExists(): Promise<void> {
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    
+    if (!adminEmail || !adminPassword) {
+      console.log('⚠️  Admin credentials not configured - skipping admin creation');
+      return;
+    }
+
+    try {
+      // Check if admin already exists
+      const existingAdmin = await this.getUserByEmail(adminEmail);
+      
+      if (existingAdmin) {
+        console.log('✅ Admin account already exists');
+        return;
+      }
+
+      // Hash the password
+      const passwordHash = await bcrypt.hash(adminPassword, 12);
+
+      // Create admin user
+      await this.upsertUserByAuth('email', {
+        email: adminEmail,
+        firstName: 'Admin',
+        lastName: 'User',
+        passwordHash
+      }, 'admin');
+
+      console.log('✅ Admin account created successfully');
+    } catch (error) {
+      console.error('❌ Failed to create admin account:', error);
+    }
   }
 }
 

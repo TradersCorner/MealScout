@@ -29,7 +29,7 @@ export const sessions = pgTable(
 // User storage table supporting multiple authentication methods
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userType: varchar("user_type").notNull().default("customer"), // 'customer' | 'restaurant_owner'
+  userType: varchar("user_type").notNull().default("customer"), // 'customer' | 'restaurant_owner' | 'admin'
   // Facebook authentication (for regular users)
   facebookId: varchar("facebook_id").unique(),
   facebookAccessToken: text("facebook_access_token"),

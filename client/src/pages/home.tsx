@@ -76,13 +76,9 @@ export default function Home() {
           </div>
           <button 
             className="p-3 rounded-xl bg-muted/60 hover:bg-muted/80 transition-all duration-200 shadow-md hover:shadow-lg"
-            onClick={async () => {
-              try {
-                await fetch('/api/logout', { method: 'POST' });
-                window.location.href = '/';
-              } catch (error) {
-                window.location.href = '/';
-              }
+            onClick={() => {
+              // TODO: Navigate to profile page or show profile menu
+              console.log('Profile button clicked');
             }}
             data-testid="button-profile"
           >

@@ -2,11 +2,27 @@ import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as FacebookStrategy } from "passport-facebook";
 import bcrypt from "bcryptjs";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
 import type { Express } from "express";
 import { storage } from "./storage";
 import type { GoogleUserData, EmailUserData, FacebookUserData } from "@shared/schema";
 
 export async function setupUnifiedAuth(app: Express) {
+  // Set up passport serialization for email/password auth
+  passport.serializeUser((user: any, done) => {
+    done(null, user.id);
+  });
+
+  passport.deserializeUser(async (id: string, done) => {
+    try {
+      const user = await storage.getUser(id);
+      done(null, user);
+    } catch (error) {
+      done(error, null);
+    }
+  });
+
   // Google Strategy for all users
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     passport.use('google-customer', new GoogleStrategy({
@@ -180,12 +196,9 @@ export async function setupUnifiedAuth(app: Express) {
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
-      req.login(user, (err) => {
-        if (err) {
-          return res.status(500).json({ error: "Failed to log in" });
-        }
-        res.json({ user, message: "Login successful" });
-      });
+      // Manually set the session instead of using req.login
+      (req.session as any).passport = { user: user.id };
+      res.json({ user, message: "Login successful" });
     } catch (error) {
       console.error("Login error:", error);
       res.status(500).json({ error: "Internal server error" });

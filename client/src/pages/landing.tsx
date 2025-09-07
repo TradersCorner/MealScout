@@ -465,7 +465,7 @@ export default function Landing() {
   });
 
   // Use nearby deals if available, otherwise featured deals
-  const allDeals = (nearbyDeals && nearbyDeals.length > 0) ? nearbyDeals : (featuredDeals || []) as any[];
+  const allDeals = (Array.isArray(nearbyDeals) && nearbyDeals.length > 0) ? nearbyDeals : (Array.isArray(featuredDeals) ? featuredDeals : []) as any[];
   const isLoading = featuredLoading; // Only wait for featured deals
   
   

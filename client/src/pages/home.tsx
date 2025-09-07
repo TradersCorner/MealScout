@@ -6,7 +6,7 @@ import DealCard from "@/components/deal-card";
 import Navigation from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat } from "lucide-react";
+import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat, Beef, ChefHat, Soup } from "lucide-react";
 
 interface Deal {
   id: string;
@@ -219,7 +219,7 @@ export default function Home() {
         <div className="flex items-center justify-between mb-6 px-6">
           <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-burger-title">
             <span className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center mr-3 shadow-md">
-              <div className="w-4 h-4 text-white flex items-center justify-center rounded border border-current"><div className="w-1.5 h-1.5 bg-current rounded"></div></div>
+              <Beef className="w-4 h-4 text-white" />
             </span>
             Burger Deals
           </h2>
@@ -244,7 +244,7 @@ export default function Home() {
           ) : (
             <div className="flex-shrink-0 w-72 text-center py-8">
               <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <div className="w-8 h-8 text-red-500 flex items-center justify-center rounded border-2 border-current"><div className="w-3 h-3 bg-current rounded"></div></div>
+                <Beef className="w-8 h-8 text-red-500" />
               </div>
               <p className="text-muted-foreground">No burger deals available</p>
             </div>
@@ -257,7 +257,7 @@ export default function Home() {
         <div className="flex items-center justify-between mb-6 px-6">
           <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-asian-title">
             <span className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center mr-3 shadow-md">
-              <Fish className="w-4 h-4 text-white" />
+              <ChefHat className="w-4 h-4 text-white" />
             </span>
             Asian Cuisine
           </h2>
@@ -290,7 +290,7 @@ export default function Home() {
           ) : (
             <div className="flex-shrink-0 w-72 text-center py-8">
               <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Fish className="w-8 h-8 text-green-500" />
+                <ChefHat className="w-8 h-8 text-green-500" />
               </div>
               <p className="text-muted-foreground">No Asian deals available</p>
             </div>
@@ -303,7 +303,7 @@ export default function Home() {
         <div className="flex items-center justify-between mb-6 px-6">
           <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-mexican-title">
             <span className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center mr-3 shadow-md">
-              <span className="text-white text-lg">🌶️</span>
+              <Soup className="w-4 h-4 text-white" />
             </span>
             Mexican Food
           </h2>
@@ -330,7 +330,7 @@ export default function Home() {
           ) : (
             <div className="flex-shrink-0 w-72 text-center py-8">
               <div className="w-16 h-16 bg-yellow-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">🌮</span>
+                <Soup className="w-8 h-8 text-yellow-500" />
               </div>
               <p className="text-muted-foreground">No Mexican deals available</p>
             </div>

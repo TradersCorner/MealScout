@@ -318,46 +318,66 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-100 px-4 py-4 sticky top-0 z-20">
+      <div className="bg-white shadow-sm border-b border-gray-100 px-3 sm:px-4 py-3 sm:py-4 sticky top-0 z-20">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 flex items-center justify-center">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center flex-shrink-0">
               <img 
                 src={mealScoutLogo} 
                 alt="MealScout Logo" 
-                className="w-12 h-12 object-contain"
+                className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
               />
             </div>
-            <span className="text-2xl font-bold text-gray-900">MealScout</span>
+            <span className="text-xl sm:text-2xl font-bold text-gray-900 truncate">MealScout</span>
           </div>
-          <div className="flex items-center space-x-3">
-            <Link href="/restaurant-signup">
-              <button className="hidden sm:flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-semibold text-sm shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            {/* Desktop Buttons */}
+            <Link href="/restaurant-signup" className="hidden md:block">
+              <button className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg font-semibold text-sm shadow-md hover:shadow-lg transition-all duration-200">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                 </svg>
                 <span>For Restaurants</span>
               </button>
             </Link>
+            
+            {/* Tablet Buttons */}
+            <Link href="/restaurant-signup" className="hidden sm:block md:hidden">
+              <button className="px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg font-semibold text-xs shadow-md transition-all duration-200">
+                Restaurant
+              </button>
+            </Link>
+            
             <button 
               onClick={handleFacebookLogin}
-              className="hidden sm:flex items-center space-x-2 px-4 py-2.5 bg-white hover:bg-gray-50 border border-gray-300 rounded-xl font-semibold text-sm text-gray-700 shadow-sm hover:shadow-md transition-all duration-200"
+              className="hidden sm:flex items-center space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm text-gray-700 shadow-sm hover:shadow-md transition-all duration-200"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600 sm:w-4 sm:h-4">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                 <circle cx="12" cy="7" r="4"/>
               </svg>
-              <span>Login</span>
+              <span className="hidden md:inline">Login</span>
             </button>
-            <button 
-              onClick={handleFacebookLogin}
-              className="w-11 h-11 sm:hidden bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors duration-200"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
-            </button>
+            
+            {/* Mobile Menu Button */}
+            <div className="sm:hidden flex items-center space-x-1">
+              <Link href="/restaurant-signup">
+                <button className="w-9 h-9 bg-red-500 hover:bg-red-600 rounded-lg flex items-center justify-center transition-colors duration-200 shadow-sm">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                  </svg>
+                </button>
+              </Link>
+              <button 
+                onClick={handleFacebookLogin}
+                className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>

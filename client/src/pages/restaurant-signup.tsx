@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Mail, Eye, EyeOff } from "lucide-react";
 
 const restaurantSchema = z.object({
   name: z.string().min(1, "Restaurant name is required"),
@@ -23,13 +24,34 @@ const restaurantSchema = z.object({
   acceptTerms: z.boolean().refine(val => val === true, "You must accept the terms"),
 });
 
+const signupSchema = z.object({
+  email: z.string().email("Valid email is required"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+const loginSchema = z.object({
+  email: z.string().email("Valid email is required"),
+  password: z.string().min(1, "Password is required"),
+});
+
 type RestaurantFormData = z.infer<typeof restaurantSchema>;
+type SignupFormData = z.infer<typeof signupSchema>;
+type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function RestaurantSignup() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
+  const [authMode, setAuthMode] = useState<'signup' | 'login'>('signup');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const form = useForm<RestaurantFormData>({
     resolver: zodResolver(restaurantSchema),
@@ -39,6 +61,68 @@ export default function RestaurantSignup() {
       phone: "",
       cuisineType: "",
       acceptTerms: false,
+    },
+  });
+
+  const signupForm = useForm<SignupFormData>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      email: "",
+      firstName: "",
+      lastName: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  const loginForm = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const signupMutation = useMutation({
+    mutationFn: async (data: SignupFormData) => {
+      const { confirmPassword, ...signupData } = data;
+      return await apiRequest("POST", "/api/auth/restaurant/register", signupData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success!",
+        description: "Account created successfully!",
+      });
+      // Reload to update auth state
+      window.location.reload();
+    },
+    onError: (error) => {
+      toast({
+        title: "Signup Failed",
+        description: error.message || "Failed to create account",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const loginMutation = useMutation({
+    mutationFn: async (data: LoginFormData) => {
+      return await apiRequest("POST", "/api/auth/restaurant/login", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success!",
+        description: "Logged in successfully!",
+      });
+      // Reload to update auth state
+      window.location.reload();
+    },
+    onError: (error) => {
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid email or password",
+        variant: "destructive",
+      });
     },
   });
 
@@ -61,7 +145,7 @@ export default function RestaurantSignup() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/api/auth/google";
         }, 500);
         return;
       }
@@ -76,6 +160,14 @@ export default function RestaurantSignup() {
   const onSubmit = (data: RestaurantFormData) => {
     const { acceptTerms, ...restaurantData } = data;
     createRestaurantMutation.mutate(restaurantData);
+  };
+
+  const onSignup = (data: SignupFormData) => {
+    signupMutation.mutate(data);
+  };
+
+  const onLogin = (data: LoginFormData) => {
+    loginMutation.mutate(data);
   };
 
   if (isLoading) {
@@ -117,20 +209,254 @@ export default function RestaurantSignup() {
             <p className="text-gray-600 text-xl leading-relaxed max-w-3xl mx-auto mb-8">
               Join MealScout's advertising platform and connect with hungry customers actively looking for deals in your neighborhood. Increase foot traffic, fill slow periods, and grow your business.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <button 
-                onClick={() => window.location.href = "/api/auth/facebook"}
-                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
-              >
-                Start Advertising Today
-              </button>
-              <div className="text-gray-500 text-sm">Already have an account?</div>
-              <button 
-                onClick={() => window.location.href = "/api/auth/facebook"}
-                className="border-2 border-red-300 hover:bg-red-50 text-red-600 hover:text-red-700 px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-200"
-              >
-                Login to Dashboard
-              </button>
+            {/* Authentication Section */}
+            <div className="max-w-md mx-auto">
+              <Card className="bg-white/80 backdrop-blur-sm shadow-xl">
+                <CardContent className="p-8">
+                  <div className="flex items-center justify-center space-x-4 mb-6">
+                    <button
+                      data-testid="button-signup-toggle"
+                      onClick={() => setAuthMode('signup')}
+                      className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                        authMode === 'signup' 
+                          ? 'bg-red-500 text-white' 
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      Create Account
+                    </button>
+                    <button
+                      data-testid="button-login-toggle"
+                      onClick={() => setAuthMode('login')}
+                      className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                        authMode === 'login' 
+                          ? 'bg-red-500 text-white' 
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      Sign In
+                    </button>
+                  </div>
+
+                  {/* Google OAuth Button */}
+                  <button 
+                    data-testid="button-google-signin"
+                    onClick={() => window.location.href = "/api/auth/google"}
+                    className="w-full bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center space-x-3 mb-4 shadow-sm"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    <span>Continue with Google</span>
+                  </button>
+
+                  <div className="relative mb-4">
+                    <hr className="border-gray-200" />
+                    <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-gray-500 text-sm">
+                      or
+                    </span>
+                  </div>
+
+                  {/* Email/Password Forms */}
+                  {authMode === 'signup' ? (
+                    <Form {...signupForm}>
+                      <form onSubmit={signupForm.handleSubmit(onSignup)} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={signupForm.control}
+                            name="firstName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>First Name</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    data-testid="input-first-name"
+                                    placeholder="John" 
+                                    {...field} 
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={signupForm.control}
+                            name="lastName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Last Name</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    data-testid="input-last-name"
+                                    placeholder="Doe" 
+                                    {...field} 
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <FormField
+                          control={signupForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                  <Input 
+                                    data-testid="input-email"
+                                    type="email" 
+                                    placeholder="john@restaurant.com" 
+                                    className="pl-10" 
+                                    {...field} 
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={signupForm.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Password</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Input 
+                                    data-testid="input-password"
+                                    type={showPassword ? "text" : "password"} 
+                                    placeholder="At least 6 characters" 
+                                    className="pr-10" 
+                                    {...field} 
+                                  />
+                                  <button
+                                    type="button"
+                                    data-testid="button-toggle-password"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                  >
+                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                  </button>
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={signupForm.control}
+                          name="confirmPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Confirm Password</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Input 
+                                    data-testid="input-confirm-password"
+                                    type={showConfirmPassword ? "text" : "password"} 
+                                    placeholder="Confirm your password" 
+                                    className="pr-10" 
+                                    {...field} 
+                                  />
+                                  <button
+                                    type="button"
+                                    data-testid="button-toggle-confirm-password"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                  >
+                                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                  </button>
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button 
+                          data-testid="button-create-account"
+                          type="submit" 
+                          className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                          disabled={signupMutation.isPending}
+                        >
+                          {signupMutation.isPending ? 'Creating Account...' : 'Create Restaurant Account'}
+                        </Button>
+                      </form>
+                    </Form>
+                  ) : (
+                    <Form {...loginForm}>
+                      <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
+                        <FormField
+                          control={loginForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                  <Input 
+                                    data-testid="input-login-email"
+                                    type="email" 
+                                    placeholder="john@restaurant.com" 
+                                    className="pl-10" 
+                                    {...field} 
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={loginForm.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Password</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Input 
+                                    data-testid="input-login-password"
+                                    type={showPassword ? "text" : "password"} 
+                                    placeholder="Your password" 
+                                    className="pr-10" 
+                                    {...field} 
+                                  />
+                                  <button
+                                    type="button"
+                                    data-testid="button-toggle-login-password"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                  >
+                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                  </button>
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button 
+                          data-testid="button-signin"
+                          type="submit" 
+                          className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                          disabled={loginMutation.isPending}
+                        >
+                          {loginMutation.isPending ? 'Signing In...' : 'Sign In to Restaurant Account'}
+                        </Button>
+                      </form>
+                    </Form>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </div>
 

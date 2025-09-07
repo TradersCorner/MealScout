@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import Stripe from "stripe";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./facebookAuth";
+import { setupRestaurantAuth, isRestaurantOwner } from "./restaurantAuth";
 import { insertRestaurantSchema, insertDealSchema, insertReviewSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -16,6 +17,7 @@ const stripe = process.env.STRIPE_SECRET_KEY
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+  await setupRestaurantAuth(app);
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {

@@ -1,14 +1,15 @@
 import { Link, useLocation } from "wouter";
+import { Home, Search, Heart, Receipt, User } from "lucide-react";
 
 export default function Navigation() {
   const [location] = useLocation();
 
   const navItems = [
-    { path: "/", icon: "fas fa-home", label: "Home" },
-    { path: "/search", icon: "fas fa-search", label: "Search" },
-    { path: "/favorites", icon: "fas fa-heart", label: "Favorites" },
-    { path: "/orders", icon: "fas fa-receipt", label: "Orders" },
-    { path: "/profile", icon: "fas fa-user", label: "Profile" },
+    { path: "/", icon: Home, label: "Home" },
+    { path: "/search", icon: Search, label: "Search" },
+    { path: "/favorites", icon: Heart, label: "Favorites" },
+    { path: "/orders", icon: Receipt, label: "Orders" },
+    { path: "/profile", icon: User, label: "Profile" },
   ];
 
   return (
@@ -24,7 +25,7 @@ export default function Navigation() {
               }`}
               data-testid={`nav-${item.label.toLowerCase()}`}
             >
-              <i className={`${item.icon} text-lg`}></i>
+              <item.icon className="w-5 h-5" />
               <span className="text-xs font-medium">{item.label}</span>
             </button>
           </Link>

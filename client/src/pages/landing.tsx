@@ -9,7 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { z } from "zod";
-import { Mail, Eye, EyeOff, Pizza, Utensils, Coffee, Cookie, Apple, Fish, ChefHat, IceCream } from "lucide-react";
+import { Mail, Eye, EyeOff, Pizza, Utensils, Coffee, Cookie, Apple, Fish, ChefHat, IceCream, Sandwich, Beef, Cherry, Soup, Wheat, Grape, Croissant } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import DealCard from "@/components/deal-card";
@@ -49,8 +49,8 @@ export default function Landing() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [currentFoodIcon, setCurrentFoodIcon] = useState(0);
 
-  // Array of food icons for revolving animation - focused on actual food dishes
-  const foodIcons = [Pizza, Sandwich, Coffee, Cookie, Apple, Fish, Croissant, IceCream];
+  // Array of food icons for revolving animation - diverse meal types and cuisines
+  const foodIcons = [Pizza, Beef, Soup, Cherry, Coffee, Fish, Grape, IceCream];
 
   const handleFacebookLogin = () => {
     window.location.href = '/api/auth/facebook';

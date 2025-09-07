@@ -145,7 +145,7 @@ export default function RestaurantSignup() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/auth/google";
+          window.location.href = "/api/auth/google/restaurant";
         }, 500);
         return;
       }

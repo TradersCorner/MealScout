@@ -26,15 +26,24 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table for Facebook authentication
+// User storage table supporting multiple authentication methods
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  facebookId: varchar("facebook_id").unique().notNull(),
+  userType: varchar("user_type").notNull().default("customer"), // 'customer' | 'restaurant_owner'
+  // Facebook authentication (for regular users)
+  facebookId: varchar("facebook_id").unique(),
+  facebookAccessToken: text("facebook_access_token"),
+  // Google authentication (for restaurant owners)
+  googleId: varchar("google_id").unique(),
+  googleAccessToken: text("google_access_token"),
+  // Email/password authentication (for restaurant owners)
+  passwordHash: text("password_hash"),
+  emailVerified: boolean("email_verified").default(false),
+  // Common fields
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  facebookAccessToken: text("facebook_access_token"),
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -171,7 +180,7 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
-// Facebook-specific user data
+// User-specific data types
 export type FacebookUserData = {
   facebookId: string;
   email?: string | null;
@@ -179,6 +188,22 @@ export type FacebookUserData = {
   lastName?: string | null;
   profileImageUrl?: string | null;
   facebookAccessToken?: string | null;
+};
+
+export type GoogleUserData = {
+  googleId: string;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  profileImageUrl?: string | null;
+  googleAccessToken?: string | null;
+};
+
+export type EmailUserData = {
+  email: string;
+  firstName: string;
+  lastName: string;
+  passwordHash: string;
 };
 export type InsertRestaurant = z.infer<typeof insertRestaurantSchema>;
 export type Restaurant = typeof restaurants.$inferSelect;

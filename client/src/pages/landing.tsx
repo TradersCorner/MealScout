@@ -469,10 +469,10 @@ export default function Landing() {
   const isLoading = nearbyLoading || featuredLoading;
   
 
-  // Filter deals based on selected category and search query
+  // Filter deals based on selected category and search query  
   const dealsToShow = allDeals.filter((deal: any) => {
     const matchesCategory = selectedCategory === 'all' || 
-      (deal.restaurant?.cuisine_type && deal.restaurant.cuisine_type.toLowerCase().includes(selectedCategory.toLowerCase())) ||
+      (deal.restaurant?.cuisineType && deal.restaurant.cuisineType.toLowerCase().includes(selectedCategory.toLowerCase())) ||
       (deal.title && deal.title.toLowerCase().includes(selectedCategory.toLowerCase())) ||
       (deal.description && deal.description.toLowerCase().includes(selectedCategory.toLowerCase()));
     

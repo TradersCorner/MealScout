@@ -467,6 +467,7 @@ export default function Landing() {
   // Use nearby deals if available, otherwise featured deals
   const allDeals = (nearbyDeals || featuredDeals || []) as any[];
   const isLoading = nearbyLoading || featuredLoading;
+  
 
   // Filter deals based on selected category and search query
   const dealsToShow = allDeals.filter((deal: any) => {
@@ -1292,8 +1293,24 @@ export default function Landing() {
           </div>
         )}
 
+          {/* Always show featured deals on mobile if available */}
+          {!isLoading && allDeals.length > 0 && (
+            <div className="px-4 mb-8">
+              <div className="max-w-6xl mx-auto">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">🔥 Featured Deals</h2>
+                <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+                  {allDeals.slice(0, 10).map((deal: any) => (
+                    <div key={deal.id} className="flex-shrink-0 w-80">
+                      <DealCard deal={deal} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* No Deals State */}
-          {!isLoading && dealsToShow.length === 0 && allDeals.length === 0 && (
+          {!isLoading && allDeals.length === 0 && (
             <div className="text-center py-20 bg-white rounded-3xl shadow-xl max-w-2xl mx-auto">
               <div className="text-8xl mb-8">🍽️</div>
               <h3 className="text-3xl font-bold text-gray-900 mb-4">No deals found nearby</h3>

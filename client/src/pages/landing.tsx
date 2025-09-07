@@ -239,42 +239,41 @@ export default function Landing() {
             <p className="text-gray-600 text-base font-medium" data-testid="text-location-name">{locationName}</p>
           </button>
           
-          {/* Manual location input */}
-          <div className="mt-4 max-w-md mx-auto">
-            <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
-              <div className="space-y-3">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={manualLocation}
-                    onChange={(e) => setManualLocation(e.target.value)}
-                    placeholder="Enter your city for accurate results"
-                    className="w-full pl-4 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-800 placeholder-gray-500"
-                    onKeyPress={(e) => e.key === 'Enter' && handleManualLocation()}
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {/* Modern location input */}
+          <div className="mt-6 max-w-lg mx-auto">
+            <div className="bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-xl p-6">
+              <div className="space-y-4">
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400 group-focus-within:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                     </svg>
                   </div>
+                  <input
+                    type="text"
+                    value={manualLocation}
+                    onChange={(e) => setManualLocation(e.target.value)}
+                    placeholder="Search your city..."
+                    className="w-full pl-12 pr-4 py-4 bg-gray-50/80 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:bg-white text-gray-900 placeholder-gray-500 font-medium text-lg transition-all duration-200 shadow-sm focus:shadow-md"
+                    onKeyPress={(e) => e.key === 'Enter' && handleManualLocation()}
+                  />
                 </div>
                 <div className="flex gap-3">
                   <button
                     onClick={handleManualLocation}
-                    className="flex-1 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors font-medium text-sm"
+                    className="flex-1 px-6 py-3.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-semibold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
                   >
-                    Search Location
+                    Find Deals
                   </button>
                   <button
                     onClick={retryLocation}
-                    className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium border border-gray-300"
+                    className="px-5 py-3.5 bg-gray-100/80 hover:bg-gray-200/80 text-gray-700 rounded-xl font-medium text-sm transition-all duration-200 border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md flex items-center space-x-2"
                   >
-                    <svg className="h-4 w-4 inline mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                     </svg>
-                    Use GPS
+                    <span>GPS</span>
                   </button>
                 </div>
               </div>

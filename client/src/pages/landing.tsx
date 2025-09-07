@@ -239,35 +239,42 @@ export default function Landing() {
             <p className="text-gray-600 text-base font-medium" data-testid="text-location-name">{locationName}</p>
           </button>
           
-          {/* Manual location input - always visible if GPS is wrong */}
+          {/* Manual location input */}
           <div className="mt-4 max-w-md mx-auto">
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-              <div className="text-center mb-3">
-                <p className="text-blue-700 text-sm font-medium">Wrong location detected?</p>
-                <p className="text-blue-600 text-xs">Enter your city manually for accurate deals</p>
-              </div>
-              
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
               <div className="space-y-3">
-                <input
-                  type="text"
-                  value={manualLocation}
-                  onChange={(e) => setManualLocation(e.target.value)}
-                  placeholder="Enter your city (e.g., Hammond, LA)"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 font-medium"
-                  onKeyPress={(e) => e.key === 'Enter' && handleManualLocation()}
-                />
-                <div className="flex gap-2">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={manualLocation}
+                    onChange={(e) => setManualLocation(e.target.value)}
+                    placeholder="Enter your city for accurate results"
+                    className="w-full pl-4 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-800 placeholder-gray-500"
+                    onKeyPress={(e) => e.key === 'Enter' && handleManualLocation()}
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                  </div>
+                </div>
+                <div className="flex gap-3">
                   <button
                     onClick={handleManualLocation}
-                    className="flex-1 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-colors font-medium"
+                    className="flex-1 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors font-medium text-sm"
                   >
-                    🎯 Find My Deals
+                    Search Location
                   </button>
                   <button
                     onClick={retryLocation}
-                    className="px-4 py-3 bg-gray-400 hover:bg-gray-500 text-white rounded-xl transition-colors text-sm"
+                    className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium border border-gray-300"
                   >
-                    📍 GPS
+                    <svg className="h-4 w-4 inline mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    Use GPS
                   </button>
                 </div>
               </div>

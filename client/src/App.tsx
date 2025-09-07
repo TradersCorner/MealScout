@@ -15,6 +15,7 @@ import Search from "@/pages/search";
 import Favorites from "@/pages/favorites";
 import Orders from "@/pages/orders";
 import Profile from "@/pages/profile";
+import AdminLogin from "@/pages/admin-login";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -27,6 +28,7 @@ function Router() {
           <Route path="/restaurant-signup" component={RestaurantSignup} />
           <Route path="/deal-creation" component={DealCreation} />
           <Route path="/deal/:id" component={DealDetail} />
+          <Route path="/admin" component={AdminLogin} />
         </>
       ) : (
         <>
@@ -39,6 +41,7 @@ function Router() {
           <Route path="/favorites" component={Favorites} />
           <Route path="/orders" component={Orders} />
           <Route path="/profile" component={Profile} />
+          <Route path="/admin" component={AdminLogin} />
         </>
       )}
       <Route component={NotFound} />

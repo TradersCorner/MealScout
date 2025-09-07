@@ -6,7 +6,7 @@ import DealCard from "@/components/deal-card";
 import Navigation from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat, Beef, ChefHat, Soup } from "lucide-react";
+import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat, Beef, ChefHat, Soup, Star, Sparkles, Timer, ShoppingBag, Target, Trophy, Rocket, Crown } from "lucide-react";
 
 interface Deal {
   id: string;
@@ -103,7 +103,7 @@ export default function Home() {
             size="sm" 
             data-testid="button-filter-hot"
           >
-            <Flame className="w-4 h-4 mr-2" /> Hot Deals
+            <Sparkles className="w-4 h-4 mr-2" /> Hot Deals
           </Button>
           <Button 
             variant="outline" 
@@ -111,7 +111,7 @@ export default function Home() {
             className="flex-shrink-0 rounded-full px-4 py-2 bg-white/80 backdrop-blur-sm border-2 hover:bg-white shadow-md hover:shadow-lg transition-all duration-200"
             data-testid="button-filter-quick"
           >
-            <Clock className="w-4 h-4 mr-2" /> Quick Bites
+            <Rocket className="w-4 h-4 mr-2" /> Quick Bites
           </Button>
           <Button 
             variant="outline" 
@@ -119,7 +119,7 @@ export default function Home() {
             className="flex-shrink-0 rounded-full px-4 py-2 bg-white/80 backdrop-blur-sm border-2 hover:bg-white shadow-md hover:shadow-lg transition-all duration-200"
             data-testid="button-filter-italian"
           >
-            <Pizza className="w-4 h-4 mr-2" /> Italian
+            <Crown className="w-4 h-4 mr-2" /> Italian
           </Button>
           <Button 
             variant="outline" 
@@ -127,7 +127,7 @@ export default function Home() {
             className="flex-shrink-0 rounded-full px-4 py-2 bg-white/80 backdrop-blur-sm border-2 hover:bg-white shadow-md hover:shadow-lg transition-all duration-200"
             data-testid="button-filter-budget"
           >
-            <DollarSign className="w-4 h-4 mr-2" /> Under $10
+            <Target className="w-4 h-4 mr-2" /> Under $10
           </Button>
         </div>
       </div>
@@ -137,7 +137,7 @@ export default function Home() {
         <div className="flex items-center justify-between mb-6 px-6">
           <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-featured-title">
             <span className="w-8 h-8 food-gradient-primary rounded-lg flex items-center justify-center mr-3 shadow-md">
-              <Flame className="w-4 h-4 text-white" />
+              <Star className="w-4 h-4 text-white" />
             </span>
             Hot Deals Nearby
           </h2>
@@ -344,7 +344,7 @@ export default function Home() {
           <div>
             <h2 className="text-xl font-bold text-foreground flex items-center mb-2" data-testid="text-workers-title">
               <span className="w-8 h-8 food-gradient-accent rounded-lg flex items-center justify-center mr-3 shadow-md">
-                <HardHat className="w-4 h-4 text-white" />
+                <Trophy className="w-4 h-4 text-white" />
               </span>
               Perfect for Workers
             </h2>
@@ -352,7 +352,7 @@ export default function Home() {
           </div>
           <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white shadow-lg">
             <div className="w-full h-full food-gradient-accent flex items-center justify-center">
-              <HardHat className="w-8 h-8 text-white" />
+              <Trophy className="w-8 h-8 text-white" />
             </div>
           </div>
         </div>
@@ -361,7 +361,7 @@ export default function Home() {
           <div className="bg-white rounded-2xl p-6 shadow-food hover:shadow-food-hover transition-all duration-300 cursor-pointer">
             <div className="flex items-center space-x-3 mb-3">
               <div className="w-10 h-10 food-gradient-secondary rounded-xl flex items-center justify-center shadow-md">
-                <Zap className="w-5 h-5 text-white" />
+                <Timer className="w-5 h-5 text-white" />
               </div>
               <span className="font-bold text-foreground" data-testid="text-fast-pickup">Fast Pickup</span>
             </div>
@@ -370,7 +370,7 @@ export default function Home() {
           <div className="bg-white rounded-2xl p-6 shadow-food hover:shadow-food-hover transition-all duration-300 cursor-pointer">
             <div className="flex items-center space-x-3 mb-3">
               <div className="w-10 h-10 food-gradient-primary rounded-xl flex items-center justify-center shadow-md">
-                <Utensils className="w-5 h-5 text-white" />
+                <ShoppingBag className="w-5 h-5 text-white" />
               </div>
               <span className="font-bold text-foreground" data-testid="text-hearty-meals">Hearty Meals</span>
             </div>

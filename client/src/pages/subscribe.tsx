@@ -284,7 +284,7 @@ export default function Subscribe() {
                 <span className="text-2xl font-bold text-primary" data-testid="text-price">$49</span>
                 <span className="text-muted-foreground" data-testid="text-price-period">/month</span>
               </div>
-              <p className="text-xs text-accent font-medium mt-1" data-testid="text-trial-info">30-day free trial • Cancel anytime</p>
+              <p className="text-xs text-accent font-medium mt-1" data-testid="text-trial-info">Cancel anytime</p>
             </div>
           </CardContent>
         </Card>

@@ -466,7 +466,7 @@ export default function Landing() {
 
   // Use nearby deals if available, otherwise featured deals
   const allDeals = (nearbyDeals || featuredDeals || []) as any[];
-  const isLoading = nearbyLoading || featuredLoading;
+  const isLoading = featuredLoading; // Only wait for featured deals
   
 
   // Filter deals based on selected category and search query  

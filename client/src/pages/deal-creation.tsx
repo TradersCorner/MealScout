@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +15,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Badge } from "@/components/ui/badge";
+import { Upload, X, Eye, Sparkles, Clock, Users, DollarSign } from "lucide-react";
 
 const dealSchema = z.object({
   title: z.string().min(1, "Deal title is required"),
@@ -38,6 +40,9 @@ export default function DealCreation() {
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: restaurants } = useQuery({
     queryKey: ["/api/restaurants/my"],
@@ -113,6 +118,54 @@ export default function DealCreation() {
     createDealMutation.mutate(data);
   };
 
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please choose an image smaller than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please choose an image file",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setSelectedImage(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const dealPreviewData = {
+    title: form.watch("title") || "Your Deal Title",
+    description: form.watch("description") || "Your deal description will appear here...",
+    dealType: form.watch("dealType"),
+    discountValue: form.watch("discountValue") || "0",
+    minOrderAmount: form.watch("minOrderAmount"),
+    isFeatured: form.watch("isFeatured"),
+    image: selectedImage,
+  };
+
   if (isLoading) {
     return (
       <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
@@ -165,21 +218,212 @@ export default function DealCreation() {
             </Link>
             <h1 className="text-lg font-semibold text-foreground" data-testid="text-page-title">Create New Deal</h1>
           </div>
-          <button className="text-primary font-semibold text-sm" data-testid="button-preview">Preview</button>
+          <button 
+            onClick={() => setShowPreview(!showPreview)}
+            className="flex items-center space-x-1 text-primary font-semibold text-sm" 
+            data-testid="button-preview"
+          >
+            <Eye className="w-4 h-4" />
+            <span>{showPreview ? 'Hide' : 'Preview'}</span>
+          </button>
         </div>
       </header>
 
       <div className="px-4 py-6 pb-24">
+        {/* Live Preview */}
+        {showPreview && (
+          <div className="mb-6">
+            <div className="flex items-center space-x-2 mb-3">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Live Preview</h3>
+              <Badge variant="secondary" className="text-xs">How customers see it</Badge>
+            </div>
+            
+            <Card className="overflow-hidden border-2 border-primary/20">
+              <div className="relative">
+                {dealPreviewData.image ? (
+                  <img 
+                    src={dealPreviewData.image} 
+                    alt="Deal preview" 
+                    className="w-full h-36 object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-36 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                    <div className="text-center">
+                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-1" />
+                      <p className="text-xs text-gray-500">No photo yet</p>
+                    </div>
+                  </div>
+                )}
+                
+                {dealPreviewData.isFeatured && (
+                  <div className="absolute top-2 left-2">
+                    <Badge className="bg-yellow-500 text-yellow-900 text-xs font-semibold">
+                      <Sparkles className="w-3 h-3 mr-1" />
+                      Featured
+                    </Badge>
+                  </div>
+                )}
+                
+                <div className="absolute bottom-2 right-2 bg-red-500 text-white px-2 py-1 rounded-md text-sm font-bold">
+                  {dealPreviewData.dealType === "percentage" 
+                    ? `${dealPreviewData.discountValue}% OFF`
+                    : `$${dealPreviewData.discountValue} OFF`
+                  }
+                </div>
+              </div>
+              
+              <CardContent className="p-3">
+                <h4 className="font-semibold text-sm text-foreground mb-1 line-clamp-1">
+                  {dealPreviewData.title}
+                </h4>
+                <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                  {dealPreviewData.description}
+                </p>
+                
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center space-x-3 text-muted-foreground">
+                    <div className="flex items-center space-x-1">
+                      <Clock className="w-3 h-3" />
+                      <span>Limited time</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Users className="w-3 h-3" />
+                      <span>Limited uses</span>
+                    </div>
+                  </div>
+                  
+                  {dealPreviewData.minOrderAmount && (
+                    <div className="flex items-center space-x-1 text-muted-foreground">
+                      <DollarSign className="w-3 h-3" />
+                      <span>Min ${dealPreviewData.minOrderAmount}</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Deal Image */}
             <div>
               <Label className="block text-sm font-medium text-foreground mb-2" data-testid="label-deal-photo">Deal Photo</Label>
-              <div className="border-2 border-dashed border-input rounded-lg p-8 text-center bg-muted/50">
-                <i className="fas fa-camera text-muted-foreground text-2xl mb-2"></i>
-                <p className="text-sm text-muted-foreground mb-2" data-testid="text-photo-prompt">Add a mouth-watering photo of your deal</p>
-                <Button type="button" variant="default" size="sm" data-testid="button-upload-photo">
-                  Upload Photo
+              
+              {selectedImage ? (
+                <div className="relative rounded-lg overflow-hidden">
+                  <img 
+                    src={selectedImage} 
+                    alt="Deal preview" 
+                    className="w-full h-48 object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                    <div className="flex space-x-2">
+                      <Button 
+                        type="button" 
+                        size="sm" 
+                        variant="secondary"
+                        onClick={() => fileInputRef.current?.click()}
+                        data-testid="button-change-photo"
+                      >
+                        <Upload className="w-4 h-4 mr-1" />
+                        Change
+                      </Button>
+                      <Button 
+                        type="button" 
+                        size="sm" 
+                        variant="destructive"
+                        onClick={removeImage}
+                        data-testid="button-remove-photo"
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-input rounded-lg p-8 text-center bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors"
+                >
+                  <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground mb-2" data-testid="text-photo-prompt">Add a mouth-watering photo of your deal</p>
+                  <p className="text-xs text-muted-foreground mb-3">JPG, PNG up to 5MB</p>
+                  <Button type="button" variant="default" size="sm" data-testid="button-upload-photo">
+                    Upload Photo
+                  </Button>
+                </div>
+              )}
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+                data-testid="input-file-upload"
+              />
+            </div>
+
+            {/* Quick Templates */}
+            <div>
+              <Label className="block text-sm font-medium text-foreground mb-2">Quick Start Templates</Label>
+              <div className="grid grid-cols-1 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="justify-start text-xs h-auto py-2"
+                  onClick={() => {
+                    form.setValue("title", "Happy Hour Special");
+                    form.setValue("description", "Enjoy discounted drinks and appetizers during our happy hour! Perfect for after-work relaxation.");
+                    form.setValue("dealType", "percentage");
+                    form.setValue("discountValue", "25");
+                    form.setValue("startTime", "16:00");
+                    form.setValue("endTime", "18:00");
+                  }}
+                  data-testid="template-happy-hour"
+                >
+                  <Clock className="w-3 h-3 mr-2" />
+                  Happy Hour Special (25% off drinks)
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="justify-start text-xs h-auto py-2"
+                  onClick={() => {
+                    form.setValue("title", "Lunch Combo Deal");
+                    form.setValue("description", "Get a main dish, side, and drink for one great price during lunch hours!");
+                    form.setValue("dealType", "fixed");
+                    form.setValue("discountValue", "5");
+                    form.setValue("minOrderAmount", "15");
+                    form.setValue("startTime", "11:00");
+                    form.setValue("endTime", "15:00");
+                  }}
+                  data-testid="template-lunch-combo"
+                >
+                  <DollarSign className="w-3 h-3 mr-2" />
+                  Lunch Combo ($5 off)
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="justify-start text-xs h-auto py-2"
+                  onClick={() => {
+                    form.setValue("title", "Family Night Special");
+                    form.setValue("description", "Perfect for families! Kids eat free with adult entree purchase on weekends.");
+                    form.setValue("dealType", "percentage");
+                    form.setValue("discountValue", "30");
+                    form.setValue("perCustomerLimit", "2");
+                  }}
+                  data-testid="template-family-night"
+                >
+                  <Users className="w-3 h-3 mr-2" />
+                  Family Night (30% off)
                 </Button>
               </div>
             </div>
@@ -198,6 +442,7 @@ export default function DealCreation() {
                       data-testid="input-deal-title"
                     />
                   </FormControl>
+                  <p className="text-xs text-muted-foreground mt-1">Keep it short and exciting! Max 50 characters.</p>
                   <FormMessage />
                 </FormItem>
               )}
@@ -217,6 +462,10 @@ export default function DealCreation() {
                       data-testid="textarea-description"
                     />
                   </FormControl>
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-xs text-muted-foreground">Be specific about what customers get!</p>
+                    <span className="text-xs text-muted-foreground">{field.value?.length || 0}/200</span>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}

@@ -106,214 +106,215 @@ export default function RestaurantSignup() {
   }
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
       {/* Header */}
-      <header className="glass-effect border-b border-border/50 px-6 py-5 sticky top-0 z-10">
-        <div className="flex items-center">
+      <header className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 px-6 py-5 sticky top-0 z-10 shadow-sm">
+        <div className="flex items-center max-w-4xl mx-auto">
           <Link href="/">
-            <button className="p-3 -ml-3 rounded-xl hover:bg-muted/60 mr-4 transition-colors duration-200" data-testid="button-back">
-              <i className="fas fa-arrow-left text-foreground text-lg"></i>
+            <button className="p-3 -ml-3 rounded-xl hover:bg-gray-100 mr-4 transition-colors duration-200" data-testid="button-back">
+              <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+              </svg>
             </button>
           </Link>
-          <h1 className="text-xl font-bold text-foreground" data-testid="text-page-title">Restaurant Registration</h1>
+          <h1 className="text-xl font-bold text-gray-900" data-testid="text-page-title">Restaurant Registration</h1>
         </div>
       </header>
 
-      <div className="px-6 py-8">
+      <div className="px-6 py-12 max-w-4xl mx-auto">
         {/* Hero Section */}
-        <div className="text-center mb-10">
-          <div className="w-full h-40 food-gradient-primary rounded-3xl mb-6 flex items-center justify-center relative overflow-hidden shadow-food">
+        <div className="text-center mb-16">
+          <div className="w-32 h-32 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 rounded-3xl mb-8 flex items-center justify-center mx-auto relative overflow-hidden shadow-2xl">
             <div className="absolute inset-0 bg-black/10"></div>
-            <i className="fas fa-store text-white text-6xl relative z-10 drop-shadow-lg"></i>
-            <div className="absolute -top-2 -left-2 w-16 h-16 bg-white/15 rounded-full blur-xl"></div>
-            <div className="absolute -bottom-3 -right-3 w-20 h-20 bg-white/15 rounded-full blur-xl"></div>
+            <svg className="w-16 h-16 text-white relative z-10 drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 104 0 2 2 0 00-4 0zm6 0a2 2 0 104 0 2 2 0 00-4 0z" clipRule="evenodd" />
+            </svg>
+            <div className="absolute -top-2 -left-2 w-16 h-16 bg-white/20 rounded-full blur-xl"></div>
+            <div className="absolute -bottom-3 -right-3 w-20 h-20 bg-white/20 rounded-full blur-xl"></div>
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-3" data-testid="text-hero-title">Grow Your Business</h2>
-          <p className="text-muted-foreground text-lg leading-relaxed" data-testid="text-hero-subtitle">
+          <h2 className="text-4xl font-bold text-gray-900 mb-4" data-testid="text-hero-title">Grow Your Business</h2>
+          <p className="text-gray-600 text-xl leading-relaxed max-w-2xl mx-auto" data-testid="text-hero-subtitle">
             Reach more customers and boost sales with targeted local deals
           </p>
         </div>
 
         {/* Benefits */}
-        <div className="space-y-5 mb-10">
-          <div className="flex items-start space-x-4 p-4 rounded-2xl bg-gradient-to-r from-muted/50 to-muted/30 border border-border/30">
-            <div className="w-12 h-12 food-gradient-accent rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-              <i className="fas fa-map-marker-alt text-white"></i>
+        <div className="grid md:grid-cols-3 gap-6 mb-16">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-200/50 hover:shadow-2xl transition-all duration-300">
+            <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-4 shadow-lg">
+              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
             </div>
-            <div>
-              <h3 className="font-bold text-foreground mb-1" data-testid="text-benefit-local-title">Hyper-Local Targeting</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed" data-testid="text-benefit-local-desc">
-                Reach workers and customers within a few blocks of your restaurant
-              </p>
-            </div>
+            <h3 className="font-bold text-gray-900 text-lg mb-2" data-testid="text-benefit-local-title">Hyper-Local Targeting</h3>
+            <p className="text-gray-600 leading-relaxed" data-testid="text-benefit-local-desc">
+              Reach workers and customers within a few blocks of your restaurant
+            </p>
           </div>
           
-          <div className="flex items-start space-x-4 p-4 rounded-2xl bg-gradient-to-r from-muted/50 to-muted/30 border border-border/30">
-            <div className="w-12 h-12 food-gradient-primary rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-              <i className="fas fa-clock text-white"></i>
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-200/50 hover:shadow-2xl transition-all duration-300">
+            <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mb-4 shadow-lg">
+              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
             </div>
-            <div>
-              <h3 className="font-bold text-foreground mb-1" data-testid="text-benefit-meals-title">All-Day Service</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed" data-testid="text-benefit-meals-desc">
-                Great deals throughout the day for busy customers
-              </p>
-            </div>
+            <h3 className="font-bold text-gray-900 text-lg mb-2" data-testid="text-benefit-meals-title">All-Day Service</h3>
+            <p className="text-gray-600 leading-relaxed" data-testid="text-benefit-meals-desc">
+              Great deals throughout the day for busy customers
+            </p>
           </div>
           
-          <div className="flex items-start space-x-4 p-4 rounded-2xl bg-gradient-to-r from-muted/50 to-muted/30 border border-border/30">
-            <div className="w-12 h-12 food-gradient-secondary rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-              <i className="fas fa-chart-line text-white"></i>
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-200/50 hover:shadow-2xl transition-all duration-300">
+            <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mb-4 shadow-lg">
+              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+              </svg>
             </div>
-            <div>
-              <h3 className="font-bold text-foreground mb-1" data-testid="text-benefit-track-title">Track Performance</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed" data-testid="text-benefit-track-desc">
-                See how your deals perform and optimize for better results
-              </p>
-            </div>
+            <h3 className="font-bold text-gray-900 text-lg mb-2" data-testid="text-benefit-track-title">Track Performance</h3>
+            <p className="text-gray-600 leading-relaxed" data-testid="text-benefit-track-desc">
+              See how your deals perform and optimize for better results
+            </p>
           </div>
         </div>
 
         {/* Sign-up Form */}
-        <Card className="shadow-food border-0 gradient-card">
-          <CardContent className="p-8">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <div className="bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-xl p-8">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-restaurant-name">Restaurant Name</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter your restaurant name" 
+                        {...field} 
+                        className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
+                        data-testid="input-restaurant-name"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-address">Business Address</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="123 Main Street, Chicago, IL" 
+                        {...field} 
+                        className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
+                        data-testid="input-address"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
-                  name="name"
+                  name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-base font-semibold text-foreground" data-testid="label-restaurant-name">Restaurant Name</FormLabel>
+                      <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-phone">Phone</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="Enter your restaurant name" 
+                          type="tel" 
+                          placeholder="(555) 123-4567" 
                           {...field} 
-                          className="py-3 px-4 text-base border-2 focus:border-primary rounded-xl bg-background"
-                          data-testid="input-restaurant-name"
+                          className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
+                          data-testid="input-phone"
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                
                 <FormField
                   control={form.control}
-                  name="address"
+                  name="cuisineType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-base font-semibold text-foreground" data-testid="label-address">Business Address</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="123 Main Street, Chicago, IL" 
-                          {...field} 
-                          className="py-3 px-4 text-base border-2 focus:border-primary rounded-xl bg-background"
-                          data-testid="input-address"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-base font-semibold text-foreground" data-testid="label-phone">Phone</FormLabel>
+                      <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-cuisine">Cuisine Type</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <Input 
-                            type="tel" 
-                            placeholder="(555) 123-4567" 
-                            {...field} 
-                            className="py-3 px-4 text-base border-2 focus:border-primary rounded-xl bg-background"
-                            data-testid="input-phone"
-                          />
+                          <SelectTrigger className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md" data-testid="select-cuisine">
+                            <SelectValue placeholder="Select cuisine type..." />
+                          </SelectTrigger>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="cuisineType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-base font-semibold text-foreground" data-testid="label-cuisine">Cuisine Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="py-3 px-4 text-base border-2 focus:border-primary rounded-xl bg-background" data-testid="select-cuisine">
-                              <SelectValue placeholder="Select..." />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="american">American</SelectItem>
-                            <SelectItem value="italian">Italian</SelectItem>
-                            <SelectItem value="mexican">Mexican</SelectItem>
-                            <SelectItem value="asian">Asian</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <Card className="food-gradient-secondary/10 border border-secondary/20">
-                  <CardContent className="p-6">
-                    <h3 className="font-bold text-foreground text-lg mb-4" data-testid="text-pricing-title">Promotion Fee</h3>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-primary font-bold text-2xl" data-testid="text-price">$49/month</p>
-                        <p className="text-muted-foreground" data-testid="text-price-desc">Unlimited deal postings</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-accent font-bold" data-testid="text-trial">30-day free trial</p>
-                        <p className="text-muted-foreground text-sm" data-testid="text-cancel">Cancel anytime</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <FormField
-                  control={form.control}
-                  name="acceptTerms"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-4 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          className="mt-1"
-                          data-testid="checkbox-terms"
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel className="text-muted-foreground leading-relaxed" data-testid="label-terms">
-                          I agree to the <span className="text-primary font-medium underline">Terms of Service</span> and{" "}
-                          <span className="text-primary font-medium underline">Privacy Policy</span>
-                        </FormLabel>
-                        <FormMessage />
-                      </div>
+                        <SelectContent>
+                          <SelectItem value="american">American</SelectItem>
+                          <SelectItem value="italian">Italian</SelectItem>
+                          <SelectItem value="mexican">Mexican</SelectItem>
+                          <SelectItem value="asian">Asian</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
+              </div>
 
-                <Button 
-                  type="submit" 
-                  className="w-full py-4 font-bold text-lg rounded-xl food-gradient-primary border-0 button-hover-effect"
-                  disabled={createRestaurantMutation.isPending}
-                  data-testid="button-start-trial"
-                >
-                  {createRestaurantMutation.isPending ? "Creating..." : "Start Free Trial"}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/50 rounded-2xl p-8 shadow-lg">
+                <h3 className="font-bold text-gray-900 text-xl mb-6" data-testid="text-pricing-title">Pricing</h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-red-600 font-bold text-3xl" data-testid="text-price">$49/month</p>
+                    <p className="text-gray-600 text-lg" data-testid="text-price-desc">Unlimited deal postings</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-green-600 font-bold text-lg" data-testid="text-trial">30-day free trial</p>
+                    <p className="text-gray-500 text-sm" data-testid="text-cancel">Cancel anytime</p>
+                  </div>
+                </div>
+              </div>
+
+              <FormField
+                control={form.control}
+                name="acceptTerms"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-4 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        className="mt-1.5"
+                        data-testid="checkbox-terms"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="text-gray-600 leading-relaxed text-base" data-testid="label-terms">
+                        I agree to the <span className="text-red-600 font-medium underline">Terms of Service</span> and{" "}
+                        <span className="text-red-600 font-medium underline">Privacy Policy</span>
+                      </FormLabel>
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              <Button 
+                type="submit" 
+                className="w-full py-4 font-bold text-xl rounded-2xl bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white border-0 shadow-xl hover:shadow-2xl transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                disabled={createRestaurantMutation.isPending}
+                data-testid="button-start-trial"
+              >
+                {createRestaurantMutation.isPending ? "Creating..." : "Start Free Trial"}
+              </Button>
+            </form>
+          </Form>
+        </div>
       </div>
     </div>
   );

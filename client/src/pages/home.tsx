@@ -7,6 +7,7 @@ import Navigation from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat, Beef, ChefHat, Soup, Star, Sparkles, Timer, ShoppingBag, Target, Trophy, Rocket, Crown, Coffee, Cookie, Wheat, Leaf, Grape, Cherry, Sandwich, Salad, IceCream, Croissant } from "lucide-react";
+import mealScoutLogo from "@assets/image_1757213417158.png";
 
 interface Deal {
   id: string;
@@ -66,9 +67,13 @@ export default function Home() {
       <header className="bg-white border-b border-gray-100 px-6 py-4 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between">
           {/* MealScout Logo */}
-          <div className="flex items-center space-x-2">
-            <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center shadow-sm">
-              <span className="text-white font-bold text-lg">M</span>
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 flex items-center justify-center">
+              <img 
+                src={mealScoutLogo} 
+                alt="MealScout Logo" 
+                className="w-10 h-10 object-contain"
+              />
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">MealScout</h1>
@@ -77,7 +82,9 @@ export default function Home() {
 
           {/* Location */}
           <div className="flex items-center space-x-2">
-            <MapPin className="w-4 h-4 text-gray-500" />
+            <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
+              <MapPin className="w-4 h-4 text-white" />
+            </div>
             <div className="text-right">
               <p className="text-gray-500 text-xs" data-testid="text-location-label">Location</p>
               <p className="text-gray-900 font-medium text-sm" data-testid="text-location-name">{locationName}</p>

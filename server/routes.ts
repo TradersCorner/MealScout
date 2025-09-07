@@ -30,8 +30,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Restaurant routes
-  app.post('/api/restaurants', isAuthenticated, async (req: any, res) => {
+  // Restaurant routes (require restaurant owner authentication)
+  app.post('/api/restaurants', isRestaurantOwner, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const restaurantData = insertRestaurantSchema.parse({
@@ -47,7 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/restaurants/my', isAuthenticated, async (req: any, res) => {
+  app.get('/api/restaurants/my', isRestaurantOwner, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const restaurants = await storage.getRestaurantsByOwner(userId);
@@ -55,6 +55,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching restaurants:", error);
       res.status(500).json({ message: "Failed to fetch restaurants" });
+    }
+  });
+
+  // Restaurant owner authentication check endpoint
+  app.get('/api/auth/restaurant/user', isRestaurantOwner, async (req: any, res) => {
+    try {
+      const user = req.user;
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching restaurant owner:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
     }
   });
 

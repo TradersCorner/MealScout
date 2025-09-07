@@ -223,24 +223,68 @@ export default function RestaurantSignup() {
 
           {/* Pricing Card */}
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/50 rounded-3xl p-12 shadow-2xl text-center mb-16">
-            <h3 className="font-bold text-gray-900 text-3xl mb-6">Simple, Transparent Pricing</h3>
-            <div className="flex items-center justify-center mb-6">
-              <span className="text-6xl font-bold text-blue-600">$49</span>
-              <span className="text-gray-600 text-2xl ml-2">/month</span>
+            <h3 className="font-bold text-gray-900 text-3xl mb-6">Flexible Deal Pricing</h3>
+            
+            {/* Base pricing */}
+            <div className="mb-8">
+              <div className="flex items-center justify-center mb-4">
+                <span className="text-6xl font-bold text-blue-600">$49</span>
+                <span className="text-gray-600 text-2xl ml-2">/month</span>
+              </div>
+              <p className="text-gray-600 text-xl mb-4">
+                <strong>Base subscription includes 1 active deal</strong>
+              </p>
+              <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+                Edit and update your deal anytime to promote different offers - breakfast specials, lunch combos, dinner deals, or seasonal items.
+              </p>
             </div>
-            <p className="text-gray-600 text-xl mb-8 max-w-2xl mx-auto">
-              Everything you need to promote your restaurant. No setup fees, no long-term contracts, cancel anytime.
-            </p>
+
+            {/* Additional deals pricing */}
+            <div className="bg-white/70 rounded-2xl p-8 mb-8 border border-blue-200/30">
+              <h4 className="font-bold text-gray-900 text-2xl mb-4">Need Multiple Deals?</h4>
+              <div className="flex items-center justify-center mb-4">
+                <span className="text-4xl font-bold text-orange-600">+$25</span>
+                <span className="text-gray-600 text-lg ml-2">per additional deal</span>
+              </div>
+              <p className="text-gray-600 text-lg max-w-xl mx-auto">
+                Run breakfast, lunch, and dinner deals simultaneously to maximize your reach and fill every time slot.
+              </p>
+            </div>
+
             <div className="grid md:grid-cols-2 gap-6 text-left max-w-2xl mx-auto">
               <div className="space-y-3">
-                <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Unlimited deal postings</span></div>
+                <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">1 active deal included</span></div>
+                <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Edit deal anytime</span></div>
                 <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Performance analytics</span></div>
                 <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Customer targeting</span></div>
               </div>
               <div className="space-y-3">
                 <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Featured deal options</span></div>
+                <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Multiple deals (+$25 each)</span></div>
                 <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Priority support</span></div>
                 <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Cancel anytime</span></div>
+              </div>
+            </div>
+
+            {/* Pricing examples */}
+            <div className="mt-8 pt-6 border-t border-blue-200/30">
+              <h5 className="font-semibold text-gray-900 text-lg mb-4">Pricing Examples:</h5>
+              <div className="grid md:grid-cols-3 gap-4 text-sm">
+                <div className="bg-white/50 rounded-xl p-4">
+                  <div className="font-bold text-blue-600 mb-2">Single Deal</div>
+                  <div className="text-gray-700">$49/month</div>
+                  <div className="text-gray-500 text-xs mt-1">1 breakfast special</div>
+                </div>
+                <div className="bg-white/50 rounded-xl p-4">
+                  <div className="font-bold text-orange-600 mb-2">Two Deals</div>
+                  <div className="text-gray-700">$74/month</div>
+                  <div className="text-gray-500 text-xs mt-1">Lunch + dinner deals</div>
+                </div>
+                <div className="bg-white/50 rounded-xl p-4">
+                  <div className="font-bold text-purple-600 mb-2">All Day</div>
+                  <div className="text-gray-700">$99/month</div>
+                  <div className="text-gray-500 text-xs mt-1">Breakfast, lunch & dinner</div>
+                </div>
               </div>
             </div>
           </div>

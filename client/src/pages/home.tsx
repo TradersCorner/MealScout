@@ -6,7 +6,7 @@ import DealCard from "@/components/deal-card";
 import Navigation from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat, Beef, ChefHat, Soup, Star, Sparkles, Timer, ShoppingBag, Target, Trophy, Rocket, Crown } from "lucide-react";
+import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat, Beef, ChefHat, Soup, Star, Sparkles, Timer, ShoppingBag, Target, Trophy, Rocket, Crown, Coffee, Cookie, Wheat, Leaf, Grape, Cherry, Sandwich, Salad, IceCream, Croissant } from "lucide-react";
 
 interface Deal {
   id: string;
@@ -177,27 +177,32 @@ export default function Home() {
         )}
       </div>
 
-      {/* Category Sections with Horizontal Scrolling */}
-      {/* Pizza Deals */}
+      {/* Extended Food Categories with Horizontal Scrolling */}
+      
+      {/* Pizza & Italian */}
       <div className="py-6">
         <div className="flex items-center justify-between mb-6 px-6">
           <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-pizza-title">
-            <span className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center mr-3 shadow-md">
+            <span className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center mr-3 shadow-lg">
               <Pizza className="w-4 h-4 text-white" />
             </span>
-            Pizza Deals
+            Pizza & Italian
           </h2>
           <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-pizza">View All</button>
         </div>
 
-        <div className="flex space-x-4 overflow-x-auto pb-4 px-6">
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
           {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
             deal.restaurant?.cuisineType?.toLowerCase().includes('pizza') || 
-            deal.title?.toLowerCase().includes('pizza')
+            deal.restaurant?.cuisineType?.toLowerCase().includes('italian') ||
+            deal.title?.toLowerCase().includes('pizza') ||
+            deal.title?.toLowerCase().includes('pasta')
           ).length > 0 ? (
             featuredDeals.filter((deal: any) => 
               deal.restaurant?.cuisineType?.toLowerCase().includes('pizza') || 
-              deal.title?.toLowerCase().includes('pizza')
+              deal.restaurant?.cuisineType?.toLowerCase().includes('italian') ||
+              deal.title?.toLowerCase().includes('pizza') ||
+              deal.title?.toLowerCase().includes('pasta')
             ).map((deal: Deal) => (
               <div key={deal.id} className="flex-shrink-0 w-72">
                 <DealCard deal={deal} />
@@ -205,8 +210,8 @@ export default function Home() {
             ))
           ) : (
             <div className="flex-shrink-0 w-72 text-center py-8">
-              <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Pizza className="w-8 h-8 text-orange-500" />
+              <div className="w-16 h-16 bg-gradient-to-r from-orange-100 to-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Pizza className="w-8 h-8 text-orange-600" />
               </div>
               <p className="text-muted-foreground">No pizza deals available</p>
             </div>
@@ -214,26 +219,28 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Burger Deals */}
-      <div className="py-6 bg-gradient-to-r from-muted/10 to-muted/20">
+      {/* Burgers & Sandwiches */}
+      <div className="py-6 bg-gradient-to-r from-slate-50 to-stone-50">
         <div className="flex items-center justify-between mb-6 px-6">
           <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-burger-title">
-            <span className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center mr-3 shadow-md">
-              <Beef className="w-4 h-4 text-white" />
+            <span className="w-8 h-8 bg-gradient-to-r from-red-600 to-orange-600 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+              <Sandwich className="w-4 h-4 text-white" />
             </span>
-            Burger Deals
+            Burgers & Sandwiches
           </h2>
           <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-burger">View All</button>
         </div>
 
-        <div className="flex space-x-4 overflow-x-auto pb-4 px-6">
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
           {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
             deal.restaurant?.cuisineType?.toLowerCase().includes('burger') || 
+            deal.restaurant?.cuisineType?.toLowerCase().includes('deli') ||
             deal.title?.toLowerCase().includes('burger') ||
             deal.title?.toLowerCase().includes('sandwich')
           ).length > 0 ? (
             featuredDeals.filter((deal: any) => 
               deal.restaurant?.cuisineType?.toLowerCase().includes('burger') || 
+              deal.restaurant?.cuisineType?.toLowerCase().includes('deli') ||
               deal.title?.toLowerCase().includes('burger') ||
               deal.title?.toLowerCase().includes('sandwich')
             ).map((deal: Deal) => (
@@ -243,8 +250,8 @@ export default function Home() {
             ))
           ) : (
             <div className="flex-shrink-0 w-72 text-center py-8">
-              <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Beef className="w-8 h-8 text-red-500" />
+              <div className="w-16 h-16 bg-gradient-to-r from-red-100 to-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Sandwich className="w-8 h-8 text-red-600" />
               </div>
               <p className="text-muted-foreground">No burger deals available</p>
             </div>
@@ -252,11 +259,11 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Asian Deals */}
+      {/* Asian Cuisine */}
       <div className="py-6">
         <div className="flex items-center justify-between mb-6 px-6">
           <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-asian-title">
-            <span className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center mr-3 shadow-md">
+            <span className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center mr-3 shadow-lg">
               <ChefHat className="w-4 h-4 text-white" />
             </span>
             Asian Cuisine
@@ -264,7 +271,7 @@ export default function Home() {
           <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-asian">View All</button>
         </div>
 
-        <div className="flex space-x-4 overflow-x-auto pb-4 px-6">
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
           {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
             deal.restaurant?.cuisineType?.toLowerCase().includes('asian') || 
             deal.restaurant?.cuisineType?.toLowerCase().includes('chinese') ||
@@ -289,8 +296,8 @@ export default function Home() {
             ))
           ) : (
             <div className="flex-shrink-0 w-72 text-center py-8">
-              <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <ChefHat className="w-8 h-8 text-green-500" />
+              <div className="w-16 h-16 bg-gradient-to-r from-emerald-100 to-teal-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <ChefHat className="w-8 h-8 text-emerald-600" />
               </div>
               <p className="text-muted-foreground">No Asian deals available</p>
             </div>
@@ -298,19 +305,19 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Mexican Deals */}
-      <div className="py-6 bg-gradient-to-r from-muted/10 to-muted/20">
+      {/* Mexican & Latin */}
+      <div className="py-6 bg-gradient-to-r from-amber-50 to-yellow-50">
         <div className="flex items-center justify-between mb-6 px-6">
           <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-mexican-title">
-            <span className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center mr-3 shadow-md">
+            <span className="w-8 h-8 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center mr-3 shadow-lg">
               <Soup className="w-4 h-4 text-white" />
             </span>
-            Mexican Food
+            Mexican & Latin
           </h2>
           <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-mexican">View All</button>
         </div>
 
-        <div className="flex space-x-4 overflow-x-auto pb-4 px-6">
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
           {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
             deal.restaurant?.cuisineType?.toLowerCase().includes('mexican') || 
             deal.title?.toLowerCase().includes('taco') ||
@@ -329,10 +336,228 @@ export default function Home() {
             ))
           ) : (
             <div className="flex-shrink-0 w-72 text-center py-8">
-              <div className="w-16 h-16 bg-yellow-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Soup className="w-8 h-8 text-yellow-500" />
+              <div className="w-16 h-16 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Soup className="w-8 h-8 text-yellow-600" />
               </div>
               <p className="text-muted-foreground">No Mexican deals available</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Breakfast & Brunch */}
+      <div className="py-6">
+        <div className="flex items-center justify-between mb-6 px-6">
+          <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-breakfast-title">
+            <span className="w-8 h-8 bg-gradient-to-r from-amber-600 to-orange-600 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+              <Croissant className="w-4 h-4 text-white" />
+            </span>
+            Breakfast & Brunch
+          </h2>
+          <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-breakfast">View All</button>
+        </div>
+
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
+          {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
+            deal.restaurant?.cuisineType?.toLowerCase().includes('cafe') || 
+            deal.restaurant?.cuisineType?.toLowerCase().includes('breakfast') ||
+            deal.title?.toLowerCase().includes('breakfast') ||
+            deal.title?.toLowerCase().includes('brunch') ||
+            deal.title?.toLowerCase().includes('coffee') ||
+            deal.title?.toLowerCase().includes('morning')
+          ).length > 0 ? (
+            featuredDeals.filter((deal: any) => 
+              deal.restaurant?.cuisineType?.toLowerCase().includes('cafe') || 
+              deal.restaurant?.cuisineType?.toLowerCase().includes('breakfast') ||
+              deal.title?.toLowerCase().includes('breakfast') ||
+              deal.title?.toLowerCase().includes('brunch') ||
+              deal.title?.toLowerCase().includes('coffee') ||
+              deal.title?.toLowerCase().includes('morning')
+            ).map((deal: Deal) => (
+              <div key={deal.id} className="flex-shrink-0 w-72">
+                <DealCard deal={deal} />
+              </div>
+            ))
+          ) : (
+            <div className="flex-shrink-0 w-72 text-center py-8">
+              <div className="w-16 h-16 bg-gradient-to-r from-amber-100 to-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Croissant className="w-8 h-8 text-amber-600" />
+              </div>
+              <p className="text-muted-foreground">No breakfast deals available</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Healthy & Salads */}
+      <div className="py-6 bg-gradient-to-r from-green-50 to-lime-50">
+        <div className="flex items-center justify-between mb-6 px-6">
+          <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-healthy-title">
+            <span className="w-8 h-8 bg-gradient-to-r from-green-500 to-lime-500 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+              <Salad className="w-4 h-4 text-white" />
+            </span>
+            Healthy & Salads
+          </h2>
+          <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-healthy">View All</button>
+        </div>
+
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
+          {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
+            deal.restaurant?.cuisineType?.toLowerCase().includes('healthy') || 
+            deal.restaurant?.cuisineType?.toLowerCase().includes('salad') ||
+            deal.title?.toLowerCase().includes('salad') ||
+            deal.title?.toLowerCase().includes('smoothie') ||
+            deal.title?.toLowerCase().includes('bowl') ||
+            deal.title?.toLowerCase().includes('healthy')
+          ).length > 0 ? (
+            featuredDeals.filter((deal: any) => 
+              deal.restaurant?.cuisineType?.toLowerCase().includes('healthy') || 
+              deal.restaurant?.cuisineType?.toLowerCase().includes('salad') ||
+              deal.title?.toLowerCase().includes('salad') ||
+              deal.title?.toLowerCase().includes('smoothie') ||
+              deal.title?.toLowerCase().includes('bowl') ||
+              deal.title?.toLowerCase().includes('healthy')
+            ).map((deal: Deal) => (
+              <div key={deal.id} className="flex-shrink-0 w-72">
+                <DealCard deal={deal} />
+              </div>
+            ))
+          ) : (
+            <div className="flex-shrink-0 w-72 text-center py-8">
+              <div className="w-16 h-16 bg-gradient-to-r from-green-100 to-lime-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Salad className="w-8 h-8 text-green-600" />
+              </div>
+              <p className="text-muted-foreground">No healthy deals available</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Seafood */}
+      <div className="py-6">
+        <div className="flex items-center justify-between mb-6 px-6">
+          <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-seafood-title">
+            <span className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+              <Fish className="w-4 h-4 text-white" />
+            </span>
+            Fresh Seafood
+          </h2>
+          <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-seafood">View All</button>
+        </div>
+
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
+          {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
+            deal.restaurant?.cuisineType?.toLowerCase().includes('seafood') || 
+            deal.title?.toLowerCase().includes('fish') ||
+            deal.title?.toLowerCase().includes('seafood') ||
+            deal.title?.toLowerCase().includes('shrimp') ||
+            deal.title?.toLowerCase().includes('catch')
+          ).length > 0 ? (
+            featuredDeals.filter((deal: any) => 
+              deal.restaurant?.cuisineType?.toLowerCase().includes('seafood') || 
+              deal.title?.toLowerCase().includes('fish') ||
+              deal.title?.toLowerCase().includes('seafood') ||
+              deal.title?.toLowerCase().includes('shrimp') ||
+              deal.title?.toLowerCase().includes('catch')
+            ).map((deal: Deal) => (
+              <div key={deal.id} className="flex-shrink-0 w-72">
+                <DealCard deal={deal} />
+              </div>
+            ))
+          ) : (
+            <div className="flex-shrink-0 w-72 text-center py-8">
+              <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-cyan-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Fish className="w-8 h-8 text-blue-600" />
+              </div>
+              <p className="text-muted-foreground">No seafood deals available</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Coffee & Bakery */}
+      <div className="py-6 bg-gradient-to-r from-amber-50 to-orange-50">
+        <div className="flex items-center justify-between mb-6 px-6">
+          <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-coffee-title">
+            <span className="w-8 h-8 bg-gradient-to-r from-amber-700 to-orange-700 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+              <Coffee className="w-4 h-4 text-white" />
+            </span>
+            Coffee & Bakery
+          </h2>
+          <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-coffee">View All</button>
+        </div>
+
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
+          {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
+            deal.restaurant?.cuisineType?.toLowerCase().includes('coffee') || 
+            deal.restaurant?.cuisineType?.toLowerCase().includes('bakery') ||
+            deal.title?.toLowerCase().includes('coffee') ||
+            deal.title?.toLowerCase().includes('pastry') ||
+            deal.title?.toLowerCase().includes('beignet') ||
+            deal.title?.toLowerCase().includes('croissant')
+          ).length > 0 ? (
+            featuredDeals.filter((deal: any) => 
+              deal.restaurant?.cuisineType?.toLowerCase().includes('coffee') || 
+              deal.restaurant?.cuisineType?.toLowerCase().includes('bakery') ||
+              deal.title?.toLowerCase().includes('coffee') ||
+              deal.title?.toLowerCase().includes('pastry') ||
+              deal.title?.toLowerCase().includes('beignet') ||
+              deal.title?.toLowerCase().includes('croissant')
+            ).map((deal: Deal) => (
+              <div key={deal.id} className="flex-shrink-0 w-72">
+                <DealCard deal={deal} />
+              </div>
+            ))
+          ) : (
+            <div className="flex-shrink-0 w-72 text-center py-8">
+              <div className="w-16 h-16 bg-gradient-to-r from-amber-100 to-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Coffee className="w-8 h-8 text-amber-700" />
+              </div>
+              <p className="text-muted-foreground">No coffee deals available</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Desserts & Ice Cream */}
+      <div className="py-6">
+        <div className="flex items-center justify-between mb-6 px-6">
+          <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-dessert-title">
+            <span className="w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-500 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+              <IceCream className="w-4 h-4 text-white" />
+            </span>
+            Desserts & Ice Cream
+          </h2>
+          <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-dessert">View All</button>
+        </div>
+
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
+          {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
+            deal.restaurant?.cuisineType?.toLowerCase().includes('dessert') || 
+            deal.restaurant?.cuisineType?.toLowerCase().includes('ice') ||
+            deal.title?.toLowerCase().includes('ice') ||
+            deal.title?.toLowerCase().includes('dessert') ||
+            deal.title?.toLowerCase().includes('sweet') ||
+            deal.title?.toLowerCase().includes('cake')
+          ).length > 0 ? (
+            featuredDeals.filter((deal: any) => 
+              deal.restaurant?.cuisineType?.toLowerCase().includes('dessert') || 
+              deal.restaurant?.cuisineType?.toLowerCase().includes('ice') ||
+              deal.title?.toLowerCase().includes('ice') ||
+              deal.title?.toLowerCase().includes('dessert') ||
+              deal.title?.toLowerCase().includes('sweet') ||
+              deal.title?.toLowerCase().includes('cake')
+            ).map((deal: Deal) => (
+              <div key={deal.id} className="flex-shrink-0 w-72">
+                <DealCard deal={deal} />
+              </div>
+            ))
+          ) : (
+            <div className="flex-shrink-0 w-72 text-center py-8">
+              <div className="w-16 h-16 bg-gradient-to-r from-pink-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <IceCream className="w-8 h-8 text-pink-600" />
+              </div>
+              <p className="text-muted-foreground">No dessert deals available</p>
             </div>
           )}
         </div>

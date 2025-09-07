@@ -109,36 +109,48 @@ export default function RestaurantSignup() {
             <div className="w-32 h-32 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 rounded-3xl mb-8 flex items-center justify-center mx-auto relative overflow-hidden shadow-2xl">
               <div className="absolute inset-0 bg-black/10"></div>
               
-              {/* Restaurant storefront with deal badge */}
-              <div className="relative z-10">
-                {/* Main restaurant building */}
-                <svg className="w-20 h-20 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 3L2 12h3v8h14v-8h3L12 3zm0 2.5L18.5 12H17v6H7v-6H5.5L12 5.5z"/>
-                  <path d="M9 13h2v4H9v-4zm4 0h2v4h-2v-4z"/>
-                  <circle cx="12" cy="8.5" r="1.5"/>
-                </svg>
-                
-                {/* Deal badge overlay */}
-                <div className="absolute -top-2 -right-1 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center border-2 border-white">
-                  <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zM14 6a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h8zM6 8a2 2 0 000 4h8a2 2 0 000-4H6z"/>
-                  </svg>
+              {/* Professional restaurant marketing logo */}
+              <div className="relative z-10 flex items-center justify-center">
+                {/* Main plate with utensils */}
+                <div className="relative">
+                  {/* Plate base */}
+                  <div className="w-20 h-20 bg-white rounded-full shadow-lg flex items-center justify-center relative">
+                    {/* Inner plate design */}
+                    <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-50 rounded-full border-2 border-gray-200 flex items-center justify-center">
+                      {/* Food icon in center */}
+                      <svg className="w-8 h-8 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+                      </svg>
+                    </div>
+                    
+                    {/* Fork */}
+                    <div className="absolute -left-6 top-1/2 transform -translate-y-1/2 -rotate-45">
+                      <svg className="w-8 h-8 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M7 3V1.5a.5.5 0 01.5-.5h1a.5.5 0 01.5.5V3h4V1.5a.5.5 0 01.5-.5h1a.5.5 0 01.5.5V3a1 1 0 011 1v8a1 1 0 01-1 1v4a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5v-4H9v4a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5v-4a1 1 0 01-1-1V4a1 1 0 011-1z"/>
+                      </svg>
+                    </div>
+                    
+                    {/* Knife */}
+                    <div className="absolute -right-6 top-1/2 transform -translate-y-1/2 rotate-45">
+                      <svg className="w-8 h-8 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h1a2 2 0 002-2V4a2 2 0 00-2-2H6z"/>
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  {/* Dollar sign overlay - representing deals/revenue */}
+                  <div className="absolute -top-2 -right-2 w-10 h-10 bg-green-500 rounded-full flex items-center justify-center border-3 border-white shadow-lg">
+                    <svg className="w-5 h-5 text-white font-bold" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13v1.469c.96.29 1.56.929 1.56 1.531 0 .502-.334.956-.875 1.198L11 9.85v1.698c.536-.066 1.014-.243 1.43-.516a.75.75 0 11.14 1.336c-.494.26-1.05.404-1.57.454V14a.75.75 0 11-1.5 0v-1.178c-.96-.29-1.56-.929-1.56-1.531 0-.502.334-.956.875-1.198L9 9.15V7.452c-.536.066-1.014.243-1.43.516a.75.75 0 11-.14-1.336c.494-.26 1.05-.404 1.57-.454V5a.75.75 0 011.5 0z" clipRule="evenodd"/>
+                    </svg>
+                  </div>
                 </div>
                 
-                {/* Customer icons around the building */}
-                <div className="absolute -bottom-1 -left-2 w-4 h-4 bg-green-400 rounded-full flex items-center justify-center">
-                  <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/>
-                  </svg>
-                </div>
-                <div className="absolute -bottom-1 -right-3 w-4 h-4 bg-blue-400 rounded-full flex items-center justify-center">
-                  <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/>
-                  </svg>
-                </div>
-                <div className="absolute -top-1 -left-3 w-4 h-4 bg-purple-400 rounded-full flex items-center justify-center">
-                  <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/>
+                {/* Advertising megaphone in corner */}
+                <div className="absolute -top-3 -left-3 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white shadow-lg">
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"/>
                   </svg>
                 </div>
               </div>

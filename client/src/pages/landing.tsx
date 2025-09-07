@@ -465,8 +465,9 @@ export default function Landing() {
   });
 
   // Use nearby deals if available, otherwise featured deals
-  const allDeals = (nearbyDeals || featuredDeals || []) as any[];
+  const allDeals = (nearbyDeals && nearbyDeals.length > 0) ? nearbyDeals : (featuredDeals || []) as any[];
   const isLoading = featuredLoading; // Only wait for featured deals
+  
   
 
   // Filter deals based on selected category and search query  
@@ -1293,26 +1294,30 @@ export default function Landing() {
           </div>
         )}
 
-          {/* Featured Deals - Always Show Sample Deals */}
-          {!isLoading && (
-            <div className="px-4 mb-8">
-              <div className="max-w-6xl mx-auto">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">🔥 Featured Deals in {locationName}</h2>
-                <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
-                  {allDeals.length > 0 ? allDeals.slice(0, 10).map((deal: any) => (
+          {/* Featured Deals - Force Show Always */}
+          <div className="px-4 mb-8">
+            <div className="max-w-6xl mx-auto">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">🔥 Featured Deals in {locationName}</h2>
+              <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+                {isLoading ? (
+                  <div className="text-center py-12 px-6 w-full">
+                    <div className="animate-spin w-8 h-8 border-4 border-gray-200 border-t-red-500 rounded-full mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading deals...</p>
+                  </div>
+                ) : allDeals.length > 0 ? (
+                  allDeals.slice(0, 10).map((deal: any) => (
                     <div key={deal.id} className="flex-shrink-0 w-80">
                       <DealCard deal={deal} />
                     </div>
-                  )) : (
-                    <div className="text-center py-12 px-6 w-full">
-                      <div className="animate-spin w-8 h-8 border-4 border-gray-200 border-t-red-500 rounded-full mx-auto mb-4"></div>
-                      <p className="text-gray-600">Loading deals...</p>
-                    </div>
-                  )}
-                </div>
+                  ))
+                ) : (
+                  <div className="text-center py-12 px-6 w-full">
+                    <p className="text-gray-600">No deals available</p>
+                  </div>
+                )}
               </div>
             </div>
-          )}
+          </div>
 
 
           {/* No Filtered Deals State */}

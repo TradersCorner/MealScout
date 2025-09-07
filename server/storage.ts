@@ -16,6 +16,7 @@ import {
   type InsertReview,
   type GoogleUserData,
   type EmailUserData,
+  type FacebookUserData,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc, asc } from "drizzle-orm";
@@ -28,7 +29,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   upsertUserByAuth(authType: 'google' | 'email' | 'facebook', userData: GoogleUserData | EmailUserData | FacebookUserData, userType?: 'customer' | 'restaurant_owner'): Promise<User>;
-  updateUserStripeInfo(id: string, stripeCustomerId: string, stripeSubscriptionId: string): Promise<User>;
+  updateUserStripeInfo(id: string, stripeCustomerId: string, stripeSubscriptionId: string, subscriptionBillingInterval?: string): Promise<User>;
   
   // Restaurant operations
   createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant>;
@@ -156,12 +157,13 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateUserStripeInfo(id: string, stripeCustomerId: string, stripeSubscriptionId: string): Promise<User> {
+  async updateUserStripeInfo(id: string, stripeCustomerId: string, stripeSubscriptionId: string, subscriptionBillingInterval?: string): Promise<User> {
     const [user] = await db
       .update(users)
       .set({
         stripeCustomerId,
         stripeSubscriptionId,
+        subscriptionBillingInterval,
         updatedAt: new Date(),
       })
       .where(eq(users.id, id))

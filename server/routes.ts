@@ -248,6 +248,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const user = req.user;
+    const { billingInterval } = req.body; // 'month' or 'year'
+    const interval = billingInterval === 'year' ? 'year' : 'month';
 
     if (user.stripeSubscriptionId) {
       try {
@@ -282,15 +284,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerId = customer.id;
       }
 
+      // Calculate pricing based on billing interval
+      // Monthly: $49/month, Yearly: $441/year (25% discount = $588 - $147 = $441)
+      const unitAmount = interval === 'year' ? 44100 : 4900; // $441 yearly or $49 monthly
+      const productName = interval === 'year' 
+        ? 'MealScout Restaurant Plan (Annual - Save 25%)'
+        : 'MealScout Restaurant Plan (Monthly)';
+
       const subscription = await stripe.subscriptions.create({
         customer: customerId,
         items: [{
           price_data: {
             currency: 'usd',
-            product: 'MealScout Restaurant Plan',
-            unit_amount: 4900, // $49.00 in cents
+            product: productName,
+            unit_amount: unitAmount,
             recurring: {
-              interval: 'month',
+              interval: interval,
             },
           },
         }],
@@ -298,7 +307,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expand: ['latest_invoice.payment_intent'],
       });
 
-      await storage.updateUserStripeInfo(user.id, customerId, subscription.id);
+      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, interval);
   
       const latestInvoice = subscription.latest_invoice;
       const paymentIntent = typeof latestInvoice === 'object' && latestInvoice ? (latestInvoice as any).payment_intent : null;

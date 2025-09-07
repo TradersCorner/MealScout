@@ -122,86 +122,140 @@ export default function Landing() {
     loginMutation.mutate(data);
   };
 
-  // Force accurate location detection with manual fallback
+  // Enhanced location detection with multiple accuracy attempts
   useEffect(() => {
-    const forceAccurateLocation = () => {
+    const detectLocationWithFallbacks = async () => {
       if (!navigator.geolocation) {
         setLocationError('Location services not available. Please enter your city manually.');
         setShowLocationInput(true);
         return;
       }
 
-      console.log('🎯 Starting high-accuracy location detection...');
+      console.log('🎯 Starting enhanced location detection...');
       setLocationName('Getting your precise location...');
       
-      const options = {
-        enableHighAccuracy: true,
-        timeout: 20000, // 20 seconds for most accurate reading
-        maximumAge: 0 // Force fresh location, ignore all cache
+      // Try multiple location detection methods
+      const tryLocationMethod = (attempt = 1) => {
+        return new Promise<GeolocationPosition>((resolve, reject) => {
+          const options = {
+            enableHighAccuracy: attempt <= 2, // High accuracy for first 2 attempts
+            timeout: attempt === 1 ? 30000 : 15000, // Longer timeout for first attempt
+            maximumAge: 0 // Always get fresh location
+          };
+
+          console.log(`📡 Location attempt ${attempt}:`, options);
+
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              console.log(`✅ Attempt ${attempt} success:`, {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: `${Math.round(position.coords.accuracy)}m`,
+                timestamp: new Date().toLocaleTimeString()
+              });
+              resolve(position);
+            },
+            (error) => {
+              console.log(`❌ Attempt ${attempt} failed:`, error.message);
+              reject(error);
+            },
+            options
+          );
+        });
       };
 
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
+      // Try up to 3 different location detection methods
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const position = await tryLocationMethod(attempt);
           const { latitude, longitude, accuracy } = position.coords;
-          console.log('📍 HIGH-ACCURACY GPS:', { 
+          
+          // Validate coordinates are reasonable (within expected ranges)
+          if (latitude < 24 || latitude > 50 || longitude < -130 || longitude > -65) {
+            console.warn('⚠️ GPS coordinates seem invalid for US location, trying next method...');
+            continue;
+          }
+          
+          console.log('📍 FINAL LOCATION:', { 
             latitude, 
             longitude, 
             accuracy: `${Math.round(accuracy)}m`,
-            timestamp: new Date().toLocaleTimeString()
+            method: `attempt-${attempt}`
           });
           
           setLocation({ lat: latitude, lng: longitude });
           setLocationError(null);
 
-          // Get city name from coordinates
+          // Enhanced reverse geocoding with multiple services
           try {
-            const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
-            const data = await response.json();
+            // Try BigDataCloud first (more accurate for cities)
+            let response = await fetch(
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+            );
             
-            // Try multiple location name sources
-            const cityName = data.city || data.locality || data.principalSubdivision || data.countryName || "Your Area";
+            if (!response.ok) throw new Error('BigDataCloud API failed');
+            
+            const data = await response.json();
+            let cityName = data.city || data.locality || data.principalSubdivision;
+            
+            // If BigDataCloud doesn't give a good city name, try Nominatim as backup
+            if (!cityName || cityName.length < 3) {
+              console.log('🔄 Trying backup geocoding service...');
+              response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
+              );
+              
+              if (response.ok) {
+                const backupData = await response.json();
+                const address = backupData.address;
+                cityName = address?.city || address?.town || address?.village || address?.county;
+              }
+            }
+            
+            // Final fallback to any available location name
+            if (!cityName) {
+              cityName = data.locality || data.principalSubdivision || data.countryName || "Your Area";
+            }
             
             console.log('🏙️ Location resolved:', {
-              city: data.city,
-              locality: data.locality,
-              state: data.principalSubdivision,
-              final: cityName
+              primary: { city: data.city, locality: data.locality, state: data.principalSubdivision },
+              final: cityName,
+              coordinates: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
             });
             
             setLocationName(cityName);
           } catch (error) {
             console.error('❌ Geocoding failed:', error);
-            setLocationName(`Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
-          }
-        },
-        (error) => {
-          console.error('❌ GPS location failed:', error.message);
-          
-          let errorMessage = '';
-          switch(error.code) {
-            case error.PERMISSION_DENIED:
-              errorMessage = 'Location access denied. Please click "Use My Location" to try again or enter your city manually.';
-              break;
-            case error.POSITION_UNAVAILABLE:
-              errorMessage = 'Location unavailable. Please enter your city manually below.';
-              break;
-            case error.TIMEOUT:
-              errorMessage = 'Location request timed out. Please enter your city manually below.';
-              break;
-            default:
-              errorMessage = 'Unable to get your location. Please enter your city manually below.';
-              break;
+            setLocationName(`Location Found (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
           }
           
-          setLocationError(errorMessage);
-          setLocationName("Location Not Found");
-          setShowLocationInput(true);
-        },
-        options
-      );
+          return; // Success, exit the retry loop
+          
+        } catch (error) {
+          const geoError = error as GeolocationPositionError;
+          console.log(`❌ Location attempt ${attempt} failed:`, geoError.message);
+          
+          if (attempt === 3) {
+            // All attempts failed
+            let errorMessage = 'Unable to detect your location automatically. ';
+            if (geoError.code === 1) {
+              errorMessage += 'Please enable location access in your browser settings or enter your city manually.';
+            } else if (geoError.code === 2) {
+              errorMessage += 'GPS unavailable. Please enter your city manually.';
+            } else {
+              errorMessage += 'Please enter your city manually below.';
+            }
+            
+            setLocationError(errorMessage);
+            setLocationName("Location Not Available");
+            setShowLocationInput(true);
+          }
+          // Continue to next attempt
+        }
+      }
     };
 
-    forceAccurateLocation();
+    detectLocationWithFallbacks();
   }, []);
 
   // Handle manual location input
@@ -237,44 +291,93 @@ export default function Landing() {
     }
   };
 
-  // Retry location detection
-  const retryLocation = () => {
+  // Retry location detection using enhanced method
+  const retryLocation = async () => {
     setLocationError(null);
     setShowLocationInput(false);
-    setLocationName('Getting your location...');
+    setLocationName('Retrying location...');
     setLocation(null);
     
-    // Force fresh location detection
-    if (navigator.geolocation) {
-      const options = {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 0
-      };
-
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          console.log('🔄 Location retry successful:', { latitude, longitude });
-          setLocation({ lat: latitude, lng: longitude });
-          
-          try {
-            const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
-            const data = await response.json();
-            const cityName = data.city || data.locality || data.principalSubdivision || "Your Area";
-            setLocationName(cityName);
-          } catch (error) {
-            setLocationName(`Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
-          }
-        },
-        (error) => {
-          console.error('Location retry failed:', error);
-          setLocationError('Still unable to get your location. Please enter your city manually.');
-          setShowLocationInput(true);
-        },
-        options
-      );
+    // Use the same enhanced detection logic
+    if (!navigator.geolocation) {
+      setLocationError('Location services not available. Please enter your city manually.');
+      setShowLocationInput(true);
+      return;
     }
+
+    console.log('🔄 Retrying enhanced location detection...');
+    
+    // Single retry attempt with high accuracy
+    const options = {
+      enableHighAccuracy: true,
+      timeout: 25000,
+      maximumAge: 0
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        
+        console.log('✅ Location retry successful:', {
+          latitude, 
+          longitude, 
+          accuracy: `${Math.round(accuracy)}m`
+        });
+        
+        // Validate coordinates are reasonable
+        if (latitude < 24 || latitude > 50 || longitude < -130 || longitude > -65) {
+          console.warn('⚠️ Retry GPS coordinates seem invalid for US location');
+          setLocationError('Location seems inaccurate. Please enter your city manually.');
+          setShowLocationInput(true);
+          return;
+        }
+        
+        setLocation({ lat: latitude, lng: longitude });
+        
+        // Enhanced reverse geocoding
+        try {
+          let response = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+          );
+          
+          if (!response.ok) throw new Error('Primary geocoding failed');
+          
+          const data = await response.json();
+          let cityName = data.city || data.locality || data.principalSubdivision;
+          
+          // Backup geocoding if needed
+          if (!cityName || cityName.length < 3) {
+            response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
+            );
+            
+            if (response.ok) {
+              const backupData = await response.json();
+              const address = backupData.address;
+              cityName = address?.city || address?.town || address?.village || address?.county;
+            }
+          }
+          
+          if (!cityName) {
+            cityName = data.locality || data.principalSubdivision || 'Your Area';
+          }
+          
+          console.log('🏙️ Retry location resolved:', { final: cityName });
+          setLocationName(cityName);
+          
+        } catch (error) {
+          console.error('❌ Retry geocoding failed:', error);
+          setLocationName(`Location Found (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
+        }
+      },
+      (error) => {
+        console.error('❌ Location retry failed:', error.message);
+        setLocationError('Still unable to get your precise location. Please try entering your city manually.');
+        setLocationName('Location Not Available');
+        setShowLocationInput(true);
+      },
+      options
+    );
   };
 
   // Fetch nearby deals based on location

@@ -87,15 +87,15 @@ export default function Landing() {
   };
 
   const handleEmailLogin = () => {
+    console.log('🔑 Email login clicked');
     setAuthMode('login');
-    setShowAuth(false); // Close dropdown first
-    setTimeout(() => setShowAuth(true), 100); // Then show modal
+    setShowAuth(true); // Show modal directly
   };
 
   const handleEmailSignup = () => {
+    console.log('✏️ Email signup clicked');
     setAuthMode('signup');
-    setShowAuth(false); // Close dropdown first
-    setTimeout(() => setShowAuth(true), 100); // Then show modal
+    setShowAuth(true); // Show modal directly
   };
 
 

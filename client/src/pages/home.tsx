@@ -76,7 +76,14 @@ export default function Home() {
           </div>
           <button 
             className="p-3 rounded-xl bg-muted/60 hover:bg-muted/80 transition-all duration-200 shadow-md hover:shadow-lg"
-            onClick={() => window.location.href = "/api/logout"}
+            onClick={async () => {
+              try {
+                await fetch('/api/logout', { method: 'POST' });
+                window.location.href = '/';
+              } catch (error) {
+                window.location.href = '/';
+              }
+            }}
             data-testid="button-profile"
           >
             <User className="w-5 h-5 text-foreground" />

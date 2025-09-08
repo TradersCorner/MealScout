@@ -487,6 +487,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Health check endpoint for monitoring
+  app.get('/api/health', async (req, res) => {
+    try {
+      // Test database connectivity
+      await storage.getUser('health-check');
+      
+      res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV || 'development',
+        version: '1.0.0'
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: 'unhealthy',
+        error: 'Database connection failed',
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

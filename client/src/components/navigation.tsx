@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Search, Heart, Receipt, User } from "lucide-react";
+import { Home, Search, Heart, Receipt, User, MapPin } from "lucide-react";
 
 export default function Navigation() {
   const [location] = useLocation();
@@ -7,8 +7,8 @@ export default function Navigation() {
   const navItems = [
     { path: "/", icon: Home, label: "Home" },
     { path: "/search", icon: Search, label: "Search" },
+    { path: "/map", icon: MapPin, label: "Map" },
     { path: "/favorites", icon: Heart, label: "Favorites" },
-    { path: "/orders", icon: Receipt, label: "Orders" },
     { path: "/profile", icon: User, label: "Profile" },
   ];
 

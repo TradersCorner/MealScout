@@ -12,6 +12,7 @@ import DealCreation from "@/pages/deal-creation";
 import DealDetail from "@/pages/deal-detail";
 import Subscribe from "@/pages/subscribe";
 import Search from "@/pages/search";
+import MapPage from "@/pages/map";
 import Favorites from "@/pages/favorites";
 import Orders from "@/pages/orders";
 import Profile from "@/pages/profile";
@@ -46,6 +47,7 @@ function Router() {
           <Route path="/deal/:id" component={DealDetail} />
           <Route path="/subscribe" component={Subscribe} />
           <Route path="/search" component={Search} />
+          <Route path="/map" component={MapPage} />
           <Route path="/favorites" component={Favorites} />
           <Route path="/orders" component={Orders} />
           <Route path="/profile" component={Profile} />

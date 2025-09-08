@@ -212,5 +212,6 @@ export type InsertDeal = z.infer<typeof insertDealSchema>;
 export type Deal = typeof deals.$inferSelect;
 export type InsertDealClaim = z.infer<typeof insertDealClaimSchema>;
 export type DealClaim = typeof dealClaims.$inferSelect;
+
 export type InsertReview = z.infer<typeof insertReviewSchema>;
 export type Review = typeof reviews.$inferSelect;

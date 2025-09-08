@@ -13,6 +13,7 @@ import DealDetail from "@/pages/deal-detail";
 import Subscribe from "@/pages/subscribe";
 import Search from "@/pages/search";
 import MapPage from "@/pages/map";
+import ReviewsPage from "@/pages/reviews";
 import Favorites from "@/pages/favorites";
 import Orders from "@/pages/orders";
 import Profile from "@/pages/profile";
@@ -60,6 +61,7 @@ function Router() {
           <Route path="/profile/addresses" component={AddressesPage} />
           <Route path="/profile/payment" component={PaymentMethodsPage} />
           <Route path="/profile/help" component={HelpSupportPage} />
+          <Route path="/restaurant/:restaurantId/reviews" component={ReviewsPage} />
         </>
       )}
       <Route component={NotFound} />

@@ -479,10 +479,23 @@ export class DatabaseStorage implements IStorage {
     return newReview;
   }
 
-  async getRestaurantReviews(restaurantId: string): Promise<Review[]> {
+  async getRestaurantReviews(restaurantId: string): Promise<any[]> {
     return await db
-      .select()
+      .select({
+        id: reviews.id,
+        restaurantId: reviews.restaurantId,
+        userId: reviews.userId,
+        rating: reviews.rating,
+        reviewText: reviews.comment,
+        createdAt: reviews.createdAt,
+        user: {
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+        }
+      })
       .from(reviews)
+      .leftJoin(users, eq(reviews.userId, users.id))
       .where(eq(reviews.restaurantId, restaurantId))
       .orderBy(desc(reviews.createdAt));
   }

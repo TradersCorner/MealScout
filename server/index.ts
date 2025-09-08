@@ -14,13 +14,22 @@ if (process.env.NODE_ENV === "production") {
       directives: {
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Required for Vite in production
         imgSrc: ["'self'", "data:", "https:"],
         connectSrc: ["'self'", "https:"],
+        fontSrc: ["'self'", "https:", "data:"],
       },
     },
+    crossOriginEmbedderPolicy: false, // Required for some features
   }));
-  app.use(compression());
+  app.use(compression({
+    filter: (req, res) => {
+      if (req.headers['x-no-compression']) {
+        return false;
+      }
+      return compression.filter(req, res);
+    },
+  }));
 }
 
 // Minimal CSP for development
@@ -32,8 +41,9 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+// Body parsing with size limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 app.use((req, res, next) => {
   const start = Date.now();

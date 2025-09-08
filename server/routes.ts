@@ -14,7 +14,23 @@ const stripe = process.env.STRIPE_SECRET_KEY
     })
   : null;
 
+// Environment validation for production
+function validateEnvironment() {
+  const required = ['DATABASE_URL', 'SESSION_SECRET'];
+  const missing = required.filter(env => !process.env[env]);
+  
+  if (missing.length > 0) {
+    console.error(`Missing required environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Validate environment in production
+  if (process.env.NODE_ENV === 'production') {
+    validateEnvironment();
+  }
+
   // Auth middleware
   await setupAuth(app);
   await setupUnifiedAuth(app);

@@ -8,6 +8,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import DealClaimModal from "@/components/deal-claim-modal";
+import DealShareModal from "@/components/deal-share-modal";
 
 interface Deal {
   id: string;
@@ -40,6 +41,7 @@ export default function DealDetail() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showClaimModal, setShowClaimModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const { data: deal, isLoading: dealLoading } = useQuery({
     queryKey: ["/api/deals", dealId],
@@ -150,7 +152,11 @@ export default function DealDetail() {
             </button>
           </Link>
           <div className="flex space-x-2">
-            <button className="p-2 rounded-full hover:bg-muted" data-testid="button-share">
+            <button 
+              className="p-2 rounded-full hover:bg-muted" 
+              onClick={() => setShowShareModal(true)}
+              data-testid="button-share"
+            >
               <i className="fas fa-share text-foreground"></i>
             </button>
             <button className="p-2 rounded-full hover:bg-muted" data-testid="button-favorite">
@@ -333,6 +339,23 @@ export default function DealDetail() {
         dealId={dealId || ''}
         isOpen={showClaimModal}
         onClose={() => setShowClaimModal(false)}
+      />
+
+      {/* Deal Share Modal */}
+      <DealShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        deal={{
+          id: (deal as Deal)?.id || '',
+          title: (deal as Deal)?.title || '',
+          description: (deal as Deal)?.description || '',
+          discountValue: (deal as Deal)?.discountValue || '0',
+          minOrderAmount: (deal as Deal)?.minOrderAmount,
+          restaurant: {
+            name: (restaurant as Restaurant)?.name || 'Restaurant',
+            cuisineType: (restaurant as Restaurant)?.cuisineType,
+          }
+        }}
       />
     </div>
   );

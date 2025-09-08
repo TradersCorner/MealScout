@@ -1,7 +1,10 @@
 
+import { useState } from "react";
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Share2 } from "lucide-react";
+import DealShareModal from "./deal-share-modal";
 
 interface Deal {
   id: string;
@@ -79,12 +82,20 @@ const getDefaultImage = (cuisineType?: string, title?: string) => {
 };
 
 export default function DealCard({ deal }: DealCardProps) {
+  const [showShareModal, setShowShareModal] = useState(false);
+
   const formatDiscount = () => {
     if (deal.dealType === "percentage") {
       return `${deal.discountValue}%`;
     } else {
       return `$${deal.discountValue}`;
     }
+  };
+
+  const handleShare = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent navigation to deal detail
+    e.stopPropagation();
+    setShowShareModal(true);
   };
 
   return (
@@ -106,11 +117,23 @@ export default function DealCard({ deal }: DealCardProps) {
               </div>
             )}
             
-            {/* Save button */}
-            <div className="absolute top-4 left-4 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600">
-                <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
-              </svg>
+            {/* Action buttons */}
+            <div className="absolute top-4 left-4 flex space-x-2">
+              {/* Save button */}
+              <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600">
+                  <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+                </svg>
+              </div>
+              
+              {/* Share button */}
+              <button
+                onClick={handleShare}
+                className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
+                data-testid={`button-share-${deal.id}`}
+              >
+                <Share2 className="w-4 h-4 text-gray-600" />
+              </button>
             </div>
           </div>
 
@@ -177,6 +200,13 @@ export default function DealCard({ deal }: DealCardProps) {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Share Modal */}
+      <DealShareModal 
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        deal={deal}
+      />
     </Link>
   );
 }

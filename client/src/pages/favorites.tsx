@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import Navigation from "@/components/navigation";
 import DealCard from "@/components/deal-card";
 import { Button } from "@/components/ui/button";
@@ -66,10 +67,12 @@ export default function FavoritesPage() {
             <p className="text-muted-foreground mb-6">
               Start saving deals by tapping the heart icon on any deal card
             </p>
-            <Button data-testid="button-browse-deals">
-              <Search className="w-4 h-4 mr-2" />
-              Browse Deals
-            </Button>
+            <Link href="/search">
+              <Button data-testid="button-browse-deals">
+                <Search className="w-4 h-4 mr-2" />
+                Browse Deals
+              </Button>
+            </Link>
           </div>
         )}
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { Link } from "wouter";
 import Navigation from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -53,13 +54,13 @@ export default function ProfilePage() {
   }
 
   const menuItems = [
-    { icon: Receipt, label: "Order History", badge: userStats.dealsUsed.toString() },
-    { icon: Heart, label: "Favorites", badge: userStats.favoriteRestaurants.toString() },
-    { icon: Bell, label: "Notifications", badge: null },
-    { icon: CreditCard, label: "Payment Methods", badge: null },
-    { icon: MapPin, label: "Addresses", badge: null },
-    { icon: Settings, label: "Settings", badge: null },
-    { icon: HelpCircle, label: "Help & Support", badge: null },
+    { icon: Receipt, label: "Order History", badge: userStats.dealsUsed.toString(), href: "/orders" },
+    { icon: Heart, label: "Favorites", badge: userStats.favoriteRestaurants.toString(), href: "/favorites" },
+    { icon: Bell, label: "Notifications", badge: null, href: "/profile/notifications" },
+    { icon: CreditCard, label: "Payment Methods", badge: null, href: "/profile/payment" },
+    { icon: MapPin, label: "Addresses", badge: null, href: "/profile/addresses" },
+    { icon: Settings, label: "Settings", badge: null, href: "/profile/settings" },
+    { icon: HelpCircle, label: "Help & Support", badge: null, href: "/profile/help" },
   ];
 
   return (
@@ -135,24 +136,26 @@ export default function ProfilePage() {
       <div className="px-6 pb-6">
         <div className="space-y-2">
           {menuItems.map((item, index) => (
-            <Card key={index} className="bg-white hover:bg-gray-50 transition-colors cursor-pointer border-0 shadow-md">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between" data-testid={`menu-item-${item.label.toLowerCase().replace(/\s+/g, '-')}`}>
-                  <div className="flex items-center space-x-3">
-                    <item.icon className="w-5 h-5 text-muted-foreground" />
-                    <span className="font-medium text-foreground">{item.label}</span>
+            <Link key={index} href={item.href}>
+              <Card className="bg-white hover:bg-gray-50 transition-colors cursor-pointer border-0 shadow-md">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between" data-testid={`menu-item-${item.label.toLowerCase().replace(/\s+/g, '-')}`}>
+                    <div className="flex items-center space-x-3">
+                      <item.icon className="w-5 h-5 text-muted-foreground" />
+                      <span className="font-medium text-foreground">{item.label}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {item.badge && (
+                        <Badge variant="secondary" className="text-xs">
+                          {item.badge}
+                        </Badge>
+                      )}
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    {item.badge && (
-                      <Badge variant="secondary" className="text-xs">
-                        {item.badge}
-                      </Badge>
-                    )}
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
 

@@ -25,6 +25,7 @@ export default function Home() {
   const { user } = useAuth();
   const [location, setLocation] = useState<{lat: number; lng: number} | null>(null);
   const [locationName, setLocationName] = useState("Getting location...");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Get user location
   useEffect(() => {
@@ -100,6 +101,13 @@ export default function Home() {
           <Input 
             type="text" 
             placeholder="Search deals, restaurants..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                window.location.href = `/search?q=${encodeURIComponent(searchQuery)}`;
+              }
+            }}
             className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg bg-white focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
             data-testid="input-search"
           />
@@ -107,37 +115,45 @@ export default function Home() {
         
         {/* Filter Chips */}
         <div className="flex space-x-2 overflow-x-auto pb-2">
-          <Button 
-            className="flex-shrink-0 rounded-lg px-4 py-2 font-medium text-white bg-red-500 hover:bg-red-600 border-0 shadow-sm"
-            size="sm" 
-            data-testid="button-filter-hot"
-          >
-            <Sparkles className="w-4 h-4 mr-1" /> Hot Deals
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-shrink-0 rounded-lg px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 font-medium"
-            data-testid="button-filter-quick"
-          >
-            <Rocket className="w-4 h-4 mr-1" /> Quick Bites
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-shrink-0 rounded-lg px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 font-medium"
-            data-testid="button-filter-italian"
-          >
-            <Crown className="w-4 h-4 mr-1" /> Italian
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-shrink-0 rounded-lg px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 font-medium"
-            data-testid="button-filter-budget"
-          >
-            <Target className="w-4 h-4 mr-1" /> Under $10
-          </Button>
+          <Link href="/deals/featured">
+            <Button 
+              className="flex-shrink-0 rounded-lg px-4 py-2 font-medium text-white bg-red-500 hover:bg-red-600 border-0 shadow-sm"
+              size="sm" 
+              data-testid="button-filter-hot"
+            >
+              <Sparkles className="w-4 h-4 mr-1" /> Hot Deals
+            </Button>
+          </Link>
+          <Link href="/search?filter=quick">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-shrink-0 rounded-lg px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 font-medium"
+              data-testid="button-filter-quick"
+            >
+              <Rocket className="w-4 h-4 mr-1" /> Quick Bites
+            </Button>
+          </Link>
+          <Link href="/category/pizza">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-shrink-0 rounded-lg px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 font-medium"
+              data-testid="button-filter-italian"
+            >
+              <Crown className="w-4 h-4 mr-1" /> Italian
+            </Button>
+          </Link>
+          <Link href="/search?filter=budget">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-shrink-0 rounded-lg px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 font-medium"
+              data-testid="button-filter-budget"
+            >
+              <Target className="w-4 h-4 mr-1" /> Under $10
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -150,7 +166,9 @@ export default function Home() {
             </span>
             Hot Deals Nearby
           </h2>
-          <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all">View All</button>
+          <Link href="/deals/featured">
+            <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all">View All</button>
+          </Link>
         </div>
 
         {featuredLoading ? (
@@ -197,7 +215,9 @@ export default function Home() {
             </span>
             Pizza & Italian
           </h2>
-          <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-pizza">View All</button>
+          <Link href="/category/pizza">
+            <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-pizza">View All</button>
+          </Link>
         </div>
 
         <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
@@ -237,7 +257,9 @@ export default function Home() {
             </span>
             Burgers & Sandwiches
           </h2>
-          <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-burger">View All</button>
+          <Link href="/category/burgers">
+            <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-burger">View All</button>
+          </Link>
         </div>
 
         <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
@@ -277,7 +299,9 @@ export default function Home() {
             </span>
             Asian Cuisine
           </h2>
-          <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-asian">View All</button>
+          <Link href="/category/asian">
+            <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-asian">View All</button>
+          </Link>
         </div>
 
         <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
@@ -323,7 +347,9 @@ export default function Home() {
             </span>
             Mexican & Latin
           </h2>
-          <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-mexican">View All</button>
+          <Link href="/category/mexican">
+            <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-mexican">View All</button>
+          </Link>
         </div>
 
         <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
@@ -363,7 +389,9 @@ export default function Home() {
             </span>
             Breakfast & Brunch
           </h2>
-          <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-breakfast">View All</button>
+          <Link href="/category/breakfast">
+            <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-breakfast">View All</button>
+          </Link>
         </div>
 
         <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
@@ -407,7 +435,9 @@ export default function Home() {
             </span>
             Healthy & Salads
           </h2>
-          <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-healthy">View All</button>
+          <Link href="/category/healthy">
+            <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-healthy">View All</button>
+          </Link>
         </div>
 
         <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
@@ -451,7 +481,9 @@ export default function Home() {
             </span>
             Fresh Seafood
           </h2>
-          <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-seafood">View All</button>
+          <Link href="/category/seafood">
+            <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-seafood">View All</button>
+          </Link>
         </div>
 
         <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
@@ -493,7 +525,9 @@ export default function Home() {
             </span>
             Coffee & Bakery
           </h2>
-          <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-coffee">View All</button>
+          <Link href="/category/coffee">
+            <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-coffee">View All</button>
+          </Link>
         </div>
 
         <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
@@ -537,7 +571,9 @@ export default function Home() {
             </span>
             Desserts & Ice Cream
           </h2>
-          <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-dessert">View All</button>
+          <Link href="/category/dessert">
+            <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all-dessert">View All</button>
+          </Link>
         </div>
 
         <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">

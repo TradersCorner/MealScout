@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Link } from "wouter";
 import Navigation from "@/components/navigation";
 import DealCard from "@/components/deal-card";
@@ -8,8 +9,18 @@ import { Input } from "@/components/ui/input";
 import { Search, Filter, MapPin, Clock } from "lucide-react";
 
 export default function SearchPage() {
+  const [location] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+
+  // Parse URL query parameter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const query = urlParams.get('q');
+    if (query) {
+      setSearchQuery(decodeURIComponent(query));
+    }
+  }, [location]);
 
   const { data: featuredDeals, isLoading } = useQuery({
     queryKey: ["/api/deals/featured"],

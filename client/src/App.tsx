@@ -16,6 +16,14 @@ import Favorites from "@/pages/favorites";
 import Orders from "@/pages/orders";
 import Profile from "@/pages/profile";
 import AdminLogin from "@/pages/admin-login";
+import CategoryPage from "@/pages/category";
+import FeaturedDealsPage from "@/pages/deals-featured";
+import RestaurantDetail from "@/pages/restaurant-detail";
+import NotificationsPage from "@/pages/profile/notifications";
+import SettingsPage from "@/pages/profile/settings";
+import AddressesPage from "@/pages/profile/addresses";
+import PaymentMethodsPage from "@/pages/profile/payment";
+import HelpSupportPage from "@/pages/profile/help";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -42,6 +50,14 @@ function Router() {
           <Route path="/orders" component={Orders} />
           <Route path="/profile" component={Profile} />
           <Route path="/admin" component={AdminLogin} />
+          <Route path="/category/:category" component={CategoryPage} />
+          <Route path="/deals/featured" component={FeaturedDealsPage} />
+          <Route path="/restaurant/:id" component={RestaurantDetail} />
+          <Route path="/profile/notifications" component={NotificationsPage} />
+          <Route path="/profile/settings" component={SettingsPage} />
+          <Route path="/profile/addresses" component={AddressesPage} />
+          <Route path="/profile/payment" component={PaymentMethodsPage} />
+          <Route path="/profile/help" component={HelpSupportPage} />
         </>
       )}
       <Route component={NotFound} />

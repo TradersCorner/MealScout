@@ -163,36 +163,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/deals/:id/claim', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const dealId = req.params.id;
-      
-      const deal = await storage.getDeal(dealId);
-      if (!deal) {
-        return res.status(404).json({ message: "Deal not found" });
-      }
-      
-      // Check per-customer limit
-      const userClaims = await storage.getDealClaimsCount(dealId, userId);
-      if (deal.perCustomerLimit && userClaims >= deal.perCustomerLimit) {
-        return res.status(400).json({ message: "Deal limit reached for this customer" });
-      }
-      
-      // Check total uses limit
-      if (deal.totalUsesLimit && (deal.currentUses || 0) >= deal.totalUsesLimit) {
-        return res.status(400).json({ message: "Deal limit reached" });
-      }
-      
-      const claim = await storage.claimDeal({ dealId, userId });
-      await storage.incrementDealUses(dealId);
-      
-      res.json(claim);
-    } catch (error: any) {
-      console.error("Error claiming deal:", error);
-      res.status(400).json({ message: error.message });
-    }
-  });
 
   app.get('/api/deals/restaurant/:restaurantId', async (req, res) => {
     try {

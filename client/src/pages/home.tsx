@@ -174,11 +174,24 @@ export default function Home() {
         {featuredLoading ? (
           <div className="flex space-x-4 overflow-x-auto pb-4 px-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex-shrink-0 w-72 gradient-card border-0 rounded-2xl overflow-hidden animate-pulse shadow-md">
-                <div className="w-full h-36 bg-muted"></div>
-                <div className="p-6 space-y-3">
-                  <div className="h-5 bg-muted rounded-lg w-3/4"></div>
-                  <div className="h-4 bg-muted rounded-lg w-1/2"></div>
+              <div key={i} className="flex-shrink-0 w-72">
+                <div className="bg-white rounded-3xl overflow-hidden shadow-lg animate-pulse">
+                  <div className="relative h-56 bg-gradient-to-r from-gray-200 to-gray-300"></div>
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-32"></div>
+                      <div className="h-6 bg-gradient-to-r from-green-100 to-green-200 rounded-full w-12"></div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <div className="h-4 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full w-16"></div>
+                      <div className="h-4 bg-gradient-to-r from-blue-100 to-blue-200 rounded-full w-12"></div>
+                    </div>
+                    <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-full"></div>
+                    <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-4/5"></div>
+                    <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-100 rounded-2xl p-4">
+                      <div className="h-4 bg-gradient-to-r from-red-100 to-red-200 rounded-lg w-3/4"></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}

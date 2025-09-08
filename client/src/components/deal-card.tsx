@@ -118,11 +118,9 @@ export default function DealCard({ deal }: DealCardProps) {
           <div className="p-6">
             {/* Restaurant name and rating */}
             <div className="flex items-start justify-between mb-3">
-              <Link href={`/restaurant/${deal.restaurantId}`}>
-                <h3 className="font-bold text-gray-900 text-xl leading-tight hover:text-red-600 transition-colors cursor-pointer" data-testid={`text-restaurant-name-${deal.id}`}>
-                  {deal.restaurant?.name || 'Restaurant Name'}
-                </h3>
-              </Link>
+              <h3 className="font-bold text-gray-900 text-xl leading-tight" data-testid={`text-restaurant-name-${deal.id}`}>
+                {deal.restaurant?.name || 'Restaurant Name'}
+              </h3>
               <div className="flex items-center space-x-1 ml-2 bg-green-100 px-3 py-1 rounded-full">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-green-600">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>

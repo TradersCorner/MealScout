@@ -6,12 +6,18 @@ import Navigation from "@/components/navigation";
 import DealCard from "@/components/deal-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Filter, MapPin, Clock } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Card, CardContent } from "@/components/ui/card";
+import { Search, Filter, MapPin, Clock, X, SlidersHorizontal } from "lucide-react";
 
 export default function SearchPage() {
   const [location] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [showFilters, setShowFilters] = useState(false);
+  const [priceRange, setPriceRange] = useState([0, 50]);
+  const [sortBy, setSortBy] = useState("relevance");
 
   // Parse URL query parameter
   useEffect(() => {
@@ -22,6 +28,7 @@ export default function SearchPage() {
     }
   }, [location]);
 
+  // Use featured deals for now - we'll enhance search later
   const { data: featuredDeals, isLoading } = useQuery({
     queryKey: ["/api/deals/featured"],
     enabled: true,
@@ -46,7 +53,25 @@ export default function SearchPage() {
     const matchesCategory = selectedCategory === "all" || 
       deal.restaurant?.cuisineType?.toLowerCase().includes(selectedCategory);
     
-    return matchesSearch && matchesCategory;
+    // Apply price range filter
+    const dealPrice = parseFloat(deal.minOrderAmount) || 0;
+    const matchesPrice = dealPrice >= priceRange[0] && dealPrice <= priceRange[1];
+    
+    return matchesSearch && matchesCategory && matchesPrice;
+  }).sort((a: any, b: any) => {
+    // Apply sorting
+    switch (sortBy) {
+      case 'price_low':
+        return parseFloat(a.minOrderAmount || '0') - parseFloat(b.minOrderAmount || '0');
+      case 'price_high':
+        return parseFloat(b.minOrderAmount || '0') - parseFloat(a.minOrderAmount || '0');
+      case 'discount':
+        return parseFloat(b.discountValue || '0') - parseFloat(a.discountValue || '0');
+      case 'newest':
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      default:
+        return 0;
+    }
   });
 
   return (
@@ -58,8 +83,13 @@ export default function SearchPage() {
             <h1 className="text-2xl font-bold text-foreground">Search Deals</h1>
             <p className="text-sm text-muted-foreground">Find your perfect meal</p>
           </div>
-          <Button variant="outline" size="sm" data-testid="button-filter">
-            <Filter className="w-4 h-4" />
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setShowFilters(!showFilters)}
+            data-testid="button-filter"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
           </Button>
         </div>
 
@@ -92,6 +122,68 @@ export default function SearchPage() {
             </Button>
           ))}
         </div>
+
+        {/* Advanced Filters Panel */}
+        {showFilters && (
+          <Card className="mb-6">
+            <CardContent className="p-4 space-y-4">
+              {/* Sort By */}
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">Sort by</label>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="relevance">Most Relevant</SelectItem>
+                    <SelectItem value="price_low">Price: Low to High</SelectItem>
+                    <SelectItem value="price_high">Price: High to Low</SelectItem>
+                    <SelectItem value="discount">Best Discount</SelectItem>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Price Range */}
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Price Range: ${priceRange[0]} - ${priceRange[1]}
+                </label>
+                <Slider
+                  value={priceRange}
+                  onValueChange={setPriceRange}
+                  max={100}
+                  step={5}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>$0</span>
+                  <span>$100+</span>
+                </div>
+              </div>
+
+              {/* Clear Filters */}
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-sm text-muted-foreground">
+                  {filteredDeals.length} deals found
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSortBy("relevance");
+                    setPriceRange([0, 50]);
+                    setSelectedCategory("all");
+                    setSearchQuery("");
+                  }}
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  Clear All
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </header>
 
       {/* Results */}

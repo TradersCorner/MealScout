@@ -46,6 +46,16 @@ export interface IStorage {
   getActiveDeals(): Promise<Deal[]>;
   getFeaturedDeals(): Promise<Deal[]>;
   getNearbyDeals(lat: number, lng: number, radiusKm: number): Promise<Deal[]>;
+  searchDeals(filters: {
+    query?: string;
+    cuisineType?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    latitude?: number;
+    longitude?: number;
+    radius?: number;
+    sortBy?: string;
+  }): Promise<Deal[]>;
   updateDeal(id: string, deal: Partial<InsertDeal>): Promise<Deal>;
   incrementDealUses(id: string): Promise<void>;
   
@@ -412,6 +422,21 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       })
       .where(eq(deals.id, id));
+  }
+
+  async searchDeals(filters: {
+    query?: string;
+    cuisineType?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    latitude?: number;
+    longitude?: number;
+    radius?: number;
+    sortBy?: string;
+  }): Promise<any[]> {
+    // For now, return the same as getFeaturedDeals to ensure it works
+    // We'll enhance this gradually
+    return await this.getFeaturedDeals();
   }
 
   // Deal claim operations

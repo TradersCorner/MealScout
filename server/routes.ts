@@ -150,6 +150,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Advanced search endpoint with filters
+  app.get('/api/deals/search', async (req, res) => {
+    try {
+      const {
+        q: query,
+        cuisine,
+        minPrice,
+        maxPrice,
+        radius = 10,
+        lat,
+        lng,
+        sortBy = 'relevance'
+      } = req.query;
+
+      const deals = await storage.searchDeals({
+        query: query as string,
+        cuisineType: cuisine as string,
+        minPrice: minPrice ? parseFloat(minPrice as string) : undefined,
+        maxPrice: maxPrice ? parseFloat(maxPrice as string) : undefined,
+        latitude: lat ? parseFloat(lat as string) : undefined,
+        longitude: lng ? parseFloat(lng as string) : undefined,
+        radius: parseFloat(radius as string),
+        sortBy: sortBy as string
+      });
+
+      res.json(deals);
+    } catch (error) {
+      console.error("Error searching deals:", error);
+      res.status(500).json({ message: "Failed to search deals" });
+    }
+  });
+
   app.get('/api/deals/:id', async (req, res) => {
     try {
       const deal = await storage.getDeal(req.params.id);

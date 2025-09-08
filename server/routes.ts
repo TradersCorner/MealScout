@@ -128,7 +128,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/deals/featured', async (req, res) => {
     try {
-      const deals = await storage.getFeaturedDeals();
+      // Use cached version for better performance
+      const deals = await storage.getFeaturedDealsCached();
+      
+      // Add cache headers for client-side caching
+      res.set({
+        'Cache-Control': 'public, max-age=300', // 5 minutes
+        'ETag': `"deals-${Date.now()}"`,
+      });
+      
       res.json(deals);
     } catch (error) {
       console.error("Error fetching featured deals:", error);

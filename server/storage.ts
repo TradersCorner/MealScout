@@ -291,7 +291,8 @@ export class DatabaseStorage implements IStorage {
           gte(deals.endTime, currentTime)
         )
       )
-      .orderBy(desc(deals.isFeatured), desc(deals.createdAt));
+      .orderBy(desc(deals.isFeatured), desc(deals.createdAt))
+      .limit(50); // Limit results for better performance
   }
 
   async getFeaturedDeals(): Promise<any[]> {
@@ -342,6 +343,23 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(sql`RANDOM()`) // Random order each time
       .limit(6); // Limit to 6 random featured deals
+  }
+
+  // Cache frequently accessed data
+  private featuredDealsCache: { data: any[]; timestamp: number } | null = null;
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  async getFeaturedDealsCached(): Promise<any[]> {
+    const now = Date.now();
+    
+    if (this.featuredDealsCache && now - this.featuredDealsCache.timestamp < this.CACHE_TTL) {
+      return this.featuredDealsCache.data;
+    }
+    
+    const data = await this.getFeaturedDeals();
+    this.featuredDealsCache = { data, timestamp: now };
+    
+    return data;
   }
 
   async getNearbyDeals(lat: number, lng: number, radiusKm: number): Promise<any[]> {

@@ -392,6 +392,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Search suggestions endpoint
+  app.get("/api/search/suggestions/:query", async (req, res) => {
+    try {
+      const { query } = req.params;
+      
+      if (!query || query.length < 2) {
+        return res.json([]);
+      }
+
+      const searchTerm = query.toLowerCase();
+      
+      // Get all deals and restaurants for suggestions
+      const deals = await storage.getAllDeals();
+      const restaurants = await storage.getAllRestaurants();
+      
+      const suggestions: any[] = [];
+      
+      // Restaurant suggestions
+      restaurants.forEach((restaurant: any) => {
+        if (restaurant.name.toLowerCase().includes(searchTerm)) {
+          suggestions.push({
+            id: `restaurant-${restaurant.id}`,
+            text: restaurant.name,
+            type: "restaurant",
+            subtitle: `${restaurant.cuisineType} • ${restaurant.address || 'Restaurant'}`,
+          });
+        }
+        
+        // Cuisine type suggestions
+        if (restaurant.cuisineType && restaurant.cuisineType.toLowerCase().includes(searchTerm)) {
+          const existing = suggestions.find(s => s.text.toLowerCase() === restaurant.cuisineType.toLowerCase());
+          if (!existing) {
+            suggestions.push({
+              id: `cuisine-${restaurant.cuisineType}`,
+              text: restaurant.cuisineType,
+              type: "cuisine",
+              subtitle: "Food category",
+            });
+          }
+        }
+      });
+      
+      // Deal suggestions
+      deals.forEach((deal: any) => {
+        if (deal.title.toLowerCase().includes(searchTerm)) {
+          suggestions.push({
+            id: `deal-${deal.id}`,
+            text: deal.title,
+            type: "deal",
+            subtitle: `${deal.restaurant?.name || 'Restaurant'} • ${deal.discountValue}% off`,
+          });
+        }
+      });
+      
+      // Limit to 8 suggestions and sort by relevance
+      const limitedSuggestions = suggestions
+        .slice(0, 8)
+        .sort((a, b) => {
+          // Prioritize exact matches
+          const aExact = a.text.toLowerCase().startsWith(searchTerm) ? 1 : 0;
+          const bExact = b.text.toLowerCase().startsWith(searchTerm) ? 1 : 0;
+          return bExact - aExact;
+        });
+      
+      res.json(limitedSuggestions);
+    } catch (error) {
+      console.error("Search suggestions error:", error);
+      res.status(500).json({ message: "Failed to get search suggestions" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

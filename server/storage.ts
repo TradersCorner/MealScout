@@ -221,6 +221,10 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async getAllRestaurants(): Promise<Restaurant[]> {
+    return await db.select().from(restaurants);
+  }
+
   async getNearbyRestaurants(lat: number, lng: number, radiusKm: number): Promise<Restaurant[]> {
     // Using simple distance calculation - in production, consider PostGIS
     return await db
@@ -265,6 +269,10 @@ export class DatabaseStorage implements IStorage {
       .from(deals)
       .where(eq(deals.restaurantId, restaurantId))
       .orderBy(desc(deals.createdAt));
+  }
+
+  async getAllDeals(): Promise<Deal[]> {
+    return await db.select().from(deals);
   }
 
   async getActiveDeals(): Promise<Deal[]> {

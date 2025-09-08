@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import DealCard from "@/components/deal-card";
 import Navigation from "@/components/navigation";
+import SmartSearch from "@/components/smart-search";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat, Beef, ChefHat, Soup, Star, Sparkles, Timer, ShoppingBag, Target, Trophy, Rocket, Crown, Coffee, Cookie, Wheat, Leaf, Grape, Cherry, Sandwich, Salad, IceCream, Croissant } from "lucide-react";
@@ -26,6 +27,7 @@ export default function Home() {
   const [location, setLocation] = useState<{lat: number; lng: number} | null>(null);
   const [locationName, setLocationName] = useState("Getting location...");
   const [searchQuery, setSearchQuery] = useState("");
+  const [, setNavigateTo] = useLocation();
 
   // Get user location
   useEffect(() => {
@@ -96,22 +98,15 @@ export default function Home() {
 
       {/* Search Bar */}
       <div className="px-6 py-6 bg-gray-50">
-        <div className="relative mb-4">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <Input 
-            type="text" 
-            placeholder="Search deals, restaurants..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                window.location.href = `/search?q=${encodeURIComponent(searchQuery)}`;
-              }
-            }}
-            className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg bg-white focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
-            data-testid="input-search"
-          />
-        </div>
+        <SmartSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          onSearch={(query) => {
+            setNavigateTo(`/search?q=${encodeURIComponent(query)}`);
+          }}
+          className="mb-4"
+          placeholder="Search deals, restaurants..."
+        />
         
         {/* Filter Chips */}
         <div className="flex space-x-2 overflow-x-auto pb-2">

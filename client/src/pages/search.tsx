@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { Link } from "wouter";
 import Navigation from "@/components/navigation";
 import DealCard from "@/components/deal-card";
+import SmartSearch from "@/components/smart-search";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,7 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Search, Filter, MapPin, Clock, X, SlidersHorizontal } from "lucide-react";
 
 export default function SearchPage() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
@@ -94,17 +95,18 @@ export default function SearchPage() {
         </div>
 
         {/* Search Bar */}
-        <div className="relative mb-6">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
-          <Input
-            type="text"
-            placeholder="Search restaurants, cuisines, deals..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-4 text-base border-2 focus:border-primary rounded-xl"
-            data-testid="input-search-page"
-          />
-        </div>
+        <SmartSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          onSearch={(query) => {
+            setSearchQuery(query);
+            // Update URL with search query
+            const newUrl = `/search?q=${encodeURIComponent(query)}`;
+            setLocation(newUrl);
+          }}
+          placeholder="Search restaurants, cuisines, deals..."
+          className="mb-6"
+        />
 
         {/* Category Filters */}
         <div className="flex space-x-3 overflow-x-auto pb-2">

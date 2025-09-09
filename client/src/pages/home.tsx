@@ -65,7 +65,7 @@ export default function Home() {
   });
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen relative overflow-hidden">
+    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative overflow-hidden">
       {/* Header with Logo and Location */}
       <header className="bg-white border-b border-gray-100 px-6 py-4 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between">
@@ -192,15 +192,15 @@ export default function Home() {
             ))}
           </div>
         ) : (
-          <div className="flex space-x-4 overflow-x-auto pb-4 px-6">
+          <div className="flex space-x-4 overflow-x-auto pb-4 px-6 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:overflow-visible">
             {Array.isArray(featuredDeals) && featuredDeals.length > 0 ? (
               featuredDeals.map((deal: Deal) => (
-                <div key={deal.id} className="flex-shrink-0 w-72">
+                <div key={deal.id} className="flex-shrink-0 w-72 lg:w-auto">
                   <DealCard deal={deal} />
                 </div>
               ))
             ) : (
-              <div className="text-center py-12 px-6 w-full">
+              <div className="text-center py-12 px-6 w-full lg:col-span-full">
                 <div className="w-20 h-20 food-gradient-secondary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                   <Utensils className="w-8 h-8 text-white" />
                 </div>
@@ -228,7 +228,7 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:overflow-visible">
           {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
             deal.restaurant?.cuisineType?.toLowerCase().includes('pizza') || 
             deal.restaurant?.cuisineType?.toLowerCase().includes('italian') ||
@@ -241,12 +241,12 @@ export default function Home() {
               deal.title?.toLowerCase().includes('pizza') ||
               deal.title?.toLowerCase().includes('pasta')
             ).map((deal: Deal) => (
-              <div key={deal.id} className="flex-shrink-0 w-72">
+              <div key={deal.id} className="flex-shrink-0 w-72 lg:w-auto">
                 <DealCard deal={deal} />
               </div>
             ))
           ) : (
-            <div className="flex-shrink-0 w-72 text-center py-8">
+            <div className="flex-shrink-0 w-72 lg:w-auto text-center py-8">
               <div className="w-16 h-16 bg-gradient-to-r from-orange-100 to-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Pizza className="w-8 h-8 text-orange-600" />
               </div>
@@ -270,7 +270,7 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:overflow-visible">
           {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
             deal.restaurant?.cuisineType?.toLowerCase().includes('burger') || 
             deal.restaurant?.cuisineType?.toLowerCase().includes('deli') ||
@@ -283,12 +283,12 @@ export default function Home() {
               deal.title?.toLowerCase().includes('burger') ||
               deal.title?.toLowerCase().includes('sandwich')
             ).map((deal: Deal) => (
-              <div key={deal.id} className="flex-shrink-0 w-72">
+              <div key={deal.id} className="flex-shrink-0 w-72 lg:w-auto">
                 <DealCard deal={deal} />
               </div>
             ))
           ) : (
-            <div className="flex-shrink-0 w-72 text-center py-8">
+            <div className="flex-shrink-0 w-72 lg:w-auto text-center py-8">
               <div className="w-16 h-16 bg-gradient-to-r from-red-100 to-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Sandwich className="w-8 h-8 text-red-600" />
               </div>
@@ -312,7 +312,7 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:overflow-visible">
           {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
             deal.restaurant?.cuisineType?.toLowerCase().includes('asian') || 
             deal.restaurant?.cuisineType?.toLowerCase().includes('chinese') ||
@@ -331,12 +331,12 @@ export default function Home() {
               deal.title?.toLowerCase().includes('rice') ||
               deal.title?.toLowerCase().includes('curry')
             ).map((deal: Deal) => (
-              <div key={deal.id} className="flex-shrink-0 w-72">
+              <div key={deal.id} className="flex-shrink-0 w-72 lg:w-auto">
                 <DealCard deal={deal} />
               </div>
             ))
           ) : (
-            <div className="flex-shrink-0 w-72 text-center py-8">
+            <div className="flex-shrink-0 w-72 lg:w-auto text-center py-8">
               <div className="w-16 h-16 bg-gradient-to-r from-emerald-100 to-teal-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <ChefHat className="w-8 h-8 text-emerald-600" />
               </div>
@@ -360,7 +360,7 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:overflow-visible">
           {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
             deal.restaurant?.cuisineType?.toLowerCase().includes('mexican') || 
             deal.title?.toLowerCase().includes('taco') ||
@@ -373,12 +373,12 @@ export default function Home() {
               deal.title?.toLowerCase().includes('burrito') ||
               deal.title?.toLowerCase().includes('quesadilla')
             ).map((deal: Deal) => (
-              <div key={deal.id} className="flex-shrink-0 w-72">
+              <div key={deal.id} className="flex-shrink-0 w-72 lg:w-auto">
                 <DealCard deal={deal} />
               </div>
             ))
           ) : (
-            <div className="flex-shrink-0 w-72 text-center py-8">
+            <div className="flex-shrink-0 w-72 lg:w-auto text-center py-8">
               <div className="w-16 h-16 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Soup className="w-8 h-8 text-yellow-600" />
               </div>
@@ -402,7 +402,7 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:overflow-visible">
           {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
             deal.restaurant?.cuisineType?.toLowerCase().includes('cafe') || 
             deal.restaurant?.cuisineType?.toLowerCase().includes('breakfast') ||
@@ -419,12 +419,12 @@ export default function Home() {
               deal.title?.toLowerCase().includes('coffee') ||
               deal.title?.toLowerCase().includes('morning')
             ).map((deal: Deal) => (
-              <div key={deal.id} className="flex-shrink-0 w-72">
+              <div key={deal.id} className="flex-shrink-0 w-72 lg:w-auto">
                 <DealCard deal={deal} />
               </div>
             ))
           ) : (
-            <div className="flex-shrink-0 w-72 text-center py-8">
+            <div className="flex-shrink-0 w-72 lg:w-auto text-center py-8">
               <div className="w-16 h-16 bg-gradient-to-r from-amber-100 to-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Croissant className="w-8 h-8 text-amber-600" />
               </div>
@@ -448,7 +448,7 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:overflow-visible">
           {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
             deal.restaurant?.cuisineType?.toLowerCase().includes('healthy') || 
             deal.restaurant?.cuisineType?.toLowerCase().includes('salad') ||
@@ -465,12 +465,12 @@ export default function Home() {
               deal.title?.toLowerCase().includes('bowl') ||
               deal.title?.toLowerCase().includes('healthy')
             ).map((deal: Deal) => (
-              <div key={deal.id} className="flex-shrink-0 w-72">
+              <div key={deal.id} className="flex-shrink-0 w-72 lg:w-auto">
                 <DealCard deal={deal} />
               </div>
             ))
           ) : (
-            <div className="flex-shrink-0 w-72 text-center py-8">
+            <div className="flex-shrink-0 w-72 lg:w-auto text-center py-8">
               <div className="w-16 h-16 bg-gradient-to-r from-green-100 to-lime-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Salad className="w-8 h-8 text-green-600" />
               </div>
@@ -494,7 +494,7 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:overflow-visible">
           {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
             deal.restaurant?.cuisineType?.toLowerCase().includes('seafood') || 
             deal.title?.toLowerCase().includes('fish') ||
@@ -509,12 +509,12 @@ export default function Home() {
               deal.title?.toLowerCase().includes('shrimp') ||
               deal.title?.toLowerCase().includes('catch')
             ).map((deal: Deal) => (
-              <div key={deal.id} className="flex-shrink-0 w-72">
+              <div key={deal.id} className="flex-shrink-0 w-72 lg:w-auto">
                 <DealCard deal={deal} />
               </div>
             ))
           ) : (
-            <div className="flex-shrink-0 w-72 text-center py-8">
+            <div className="flex-shrink-0 w-72 lg:w-auto text-center py-8">
               <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-cyan-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Fish className="w-8 h-8 text-blue-600" />
               </div>
@@ -538,7 +538,7 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:overflow-visible">
           {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
             deal.restaurant?.cuisineType?.toLowerCase().includes('coffee') || 
             deal.restaurant?.cuisineType?.toLowerCase().includes('bakery') ||
@@ -555,12 +555,12 @@ export default function Home() {
               deal.title?.toLowerCase().includes('beignet') ||
               deal.title?.toLowerCase().includes('croissant')
             ).map((deal: Deal) => (
-              <div key={deal.id} className="flex-shrink-0 w-72">
+              <div key={deal.id} className="flex-shrink-0 w-72 lg:w-auto">
                 <DealCard deal={deal} />
               </div>
             ))
           ) : (
-            <div className="flex-shrink-0 w-72 text-center py-8">
+            <div className="flex-shrink-0 w-72 lg:w-auto text-center py-8">
               <div className="w-16 h-16 bg-gradient-to-r from-amber-100 to-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Coffee className="w-8 h-8 text-amber-700" />
               </div>
@@ -584,7 +584,7 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide">
+        <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:overflow-visible">
           {Array.isArray(featuredDeals) && featuredDeals.filter((deal: any) => 
             deal.restaurant?.cuisineType?.toLowerCase().includes('dessert') || 
             deal.restaurant?.cuisineType?.toLowerCase().includes('ice') ||
@@ -601,12 +601,12 @@ export default function Home() {
               deal.title?.toLowerCase().includes('sweet') ||
               deal.title?.toLowerCase().includes('cake')
             ).map((deal: Deal) => (
-              <div key={deal.id} className="flex-shrink-0 w-72">
+              <div key={deal.id} className="flex-shrink-0 w-72 lg:w-auto">
                 <DealCard deal={deal} />
               </div>
             ))
           ) : (
-            <div className="flex-shrink-0 w-72 text-center py-8">
+            <div className="flex-shrink-0 w-72 lg:w-auto text-center py-8">
               <div className="w-16 h-16 bg-gradient-to-r from-pink-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <IceCream className="w-8 h-8 text-pink-600" />
               </div>
@@ -635,7 +635,7 @@ export default function Home() {
           </div>
         </div>
         
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
           <div className="bg-white rounded-2xl p-6 shadow-food hover:shadow-food-hover transition-all duration-300 cursor-pointer">
             <div className="flex items-center space-x-3 mb-3">
               <div className="w-12 h-12 food-gradient-secondary rounded-2xl flex items-center justify-center shadow-lg relative">

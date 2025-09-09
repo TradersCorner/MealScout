@@ -648,7 +648,7 @@ export default function Home() {
               </span>
               Missing Your Favorite Spot?
             </h2>
-            <p className="text-muted-foreground" data-testid="text-recommend-subtitle">Didn't see your favorite spot? Recommend them below.</p>
+            <p className="text-muted-foreground" data-testid="text-recommend-subtitle">Help us add great local restaurants to MealScout!</p>
           </div>
           <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white shadow-lg">
             <div className="w-full h-full food-gradient-accent flex items-center justify-center">

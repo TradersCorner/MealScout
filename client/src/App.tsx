@@ -27,6 +27,7 @@ import SettingsPage from "@/pages/profile/settings";
 import AddressesPage from "@/pages/profile/addresses";
 import PaymentMethodsPage from "@/pages/profile/payment";
 import HelpSupportPage from "@/pages/profile/help";
+import SubscriptionManagement from "@/pages/subscription-management";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -48,6 +49,7 @@ function Router() {
           <Route path="/deal-creation" component={DealCreation} />
           <Route path="/deal/:id" component={DealDetail} />
           <Route path="/subscribe" component={Subscribe} />
+          <Route path="/subscription" component={SubscriptionManagement} />
           <Route path="/search" component={Search} />
           <Route path="/map" component={MapPage} />
           <Route path="/favorites" component={Favorites} />

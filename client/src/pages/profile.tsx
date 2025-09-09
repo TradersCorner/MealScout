@@ -57,7 +57,10 @@ export default function ProfilePage() {
     { icon: Receipt, label: "Order History", badge: userStats.dealsUsed.toString(), href: "/orders" },
     { icon: Heart, label: "Favorites", badge: userStats.favoriteRestaurants.toString(), href: "/favorites" },
     { icon: Bell, label: "Notifications", badge: null, href: "/profile/notifications" },
-    { icon: CreditCard, label: "Payment Methods", badge: null, href: "/profile/payment" },
+    // Only show Payment Methods for restaurant owners who need subscription billing
+    ...((user as any)?.userType === 'restaurant_owner' ? [
+      { icon: CreditCard, label: "Payment Methods", badge: null, href: "/profile/payment" }
+    ] : []),
     { icon: MapPin, label: "Addresses", badge: null, href: "/profile/addresses" },
     { icon: Settings, label: "Settings", badge: null, href: "/profile/settings" },
     { icon: HelpCircle, label: "Help & Support", badge: null, href: "/profile/help" },

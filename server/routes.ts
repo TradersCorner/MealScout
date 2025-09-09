@@ -435,8 +435,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Cancel subscription
-  app.post('/api/subscription/cancel', isAuthenticated, async (req: any, res) => {
+  // Pause subscription endpoint
+  app.post('/api/subscription/pause', isAuthenticated, async (req: any, res) => {
     if (!stripe) {
       return res.status(503).json({ message: "Payment service unavailable" });
     }
@@ -448,14 +448,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No active subscription" });
       }
 
+      // Pause subscription by setting pause collection
+      const subscription = await stripe.subscriptions.update(
+        user.stripeSubscriptionId,
+        { 
+          pause_collection: {
+            behavior: 'keep_as_draft'
+          }
+        }
+      );
+      
+      res.json({
+        message: "Subscription paused successfully",
+        status: subscription.status,
+      });
+    } catch (error: any) {
+      console.error('Pause subscription error:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Cancel subscription
+  app.post('/api/subscription/cancel', isAuthenticated, async (req: any, res) => {
+    if (!stripe) {
+      return res.status(503).json({ message: "Payment service unavailable" });
+    }
+
+    try {
+      const user = req.user;
+      const { keepAdsLive } = req.body;
+      
+      if (!user.stripeSubscriptionId) {
+        return res.status(400).json({ message: "No active subscription" });
+      }
+
       const subscription = await stripe.subscriptions.update(
         user.stripeSubscriptionId,
         { cancel_at_period_end: true }
       );
+
+      // If keepAdsLive is false, deactivate deals immediately
+      if (!keepAdsLive) {
+        await storage.deactivateUserDeals(user.id);
+      }
       
       res.json({
-        message: "Subscription will be cancelled at the end of the billing period",
+        message: keepAdsLive 
+          ? "Subscription will be cancelled at the end of the billing period. Your deals remain active until then."
+          : "Subscription will be cancelled at the end of the billing period. Your deals have been deactivated.",
         cancelAt: subscription.cancel_at,
+        keepAdsLive,
       });
     } catch (error: any) {
       console.error('Cancel subscription error:', error);

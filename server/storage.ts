@@ -19,7 +19,7 @@ import {
   type FacebookUserData,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, sql, desc, asc } from "drizzle-orm";
+import { eq, and, gte, lte, sql, desc, asc, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 // Interface for storage operations
@@ -58,6 +58,7 @@ export interface IStorage {
   }): Promise<Deal[]>;
   updateDeal(id: string, deal: Partial<InsertDeal>): Promise<Deal>;
   incrementDealUses(id: string): Promise<void>;
+  deactivateUserDeals(userId: string): Promise<void>;
   
   // Deal claim operations
   claimDeal(claim: InsertDealClaim): Promise<DealClaim>;
@@ -556,6 +557,26 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       })
       .where(eq(deals.id, id));
+  }
+
+  async deactivateUserDeals(userId: string): Promise<void> {
+    // First get all restaurants owned by the user
+    const userRestaurants = await db
+      .select({ id: restaurants.id })
+      .from(restaurants)
+      .where(eq(restaurants.ownerId, userId));
+    
+    // Deactivate all deals for those restaurants
+    if (userRestaurants.length > 0) {
+      const restaurantIds = userRestaurants.map(r => r.id);
+      await db
+        .update(deals)
+        .set({
+          isActive: false,
+          updatedAt: new Date(),
+        })
+        .where(inArray(deals.restaurantId, restaurantIds));
+    }
   }
 
   async searchDeals(filters: {

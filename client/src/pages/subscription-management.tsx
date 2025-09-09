@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -24,16 +26,42 @@ export default function SubscriptionManagement() {
     enabled: !!user,
   });
 
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [keepAdsLive, setKeepAdsLive] = useState(true);
+
+  const pauseMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/subscription/pause");
+    },
+    onSuccess: () => {
+      toast({
+        title: "Subscription Paused",
+        description: "Your subscription is paused. You can resume anytime.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/subscription/status'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Pause Failed",
+        description: error.message || "Failed to pause subscription",
+        variant: "destructive",
+      });
+    },
+  });
+
   const cancelMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("POST", "/api/subscription/cancel");
+      return await apiRequest("POST", "/api/subscription/cancel", { keepAdsLive });
     },
     onSuccess: () => {
       toast({
         title: "Subscription Cancelled",
-        description: "Your subscription will remain active until the end of the billing period.",
+        description: keepAdsLive 
+          ? "Your subscription will end at billing period end. Your deals remain live until then."
+          : "Your subscription will end at billing period end. Your deals will be removed immediately.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/subscription/status'] });
+      setShowCancelDialog(false);
     },
     onError: (error: any) => {
       toast({
@@ -167,17 +195,70 @@ export default function SubscriptionManagement() {
 
             {subscriptionStatus?.status === 'active' && !subscriptionStatus.cancelAtPeriodEnd && (
               <div className="pt-4 space-y-2">
-                <Button
-                  variant="destructive"
-                  className="w-full"
-                  onClick={() => cancelMutation.mutate()}
-                  disabled={cancelMutation.isPending}
-                  data-testid="button-cancel-subscription"
-                >
-                  {cancelMutation.isPending ? "Cancelling..." : "Cancel Subscription"}
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => pauseMutation.mutate()}
+                    disabled={pauseMutation.isPending}
+                    data-testid="button-pause-subscription"
+                  >
+                    {pauseMutation.isPending ? "Pausing..." : "Pause"}
+                  </Button>
+                  <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="destructive"
+                        className="w-full"
+                        data-testid="button-cancel-subscription"
+                      >
+                        Cancel
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Cancel Subscription</DialogTitle>
+                        <DialogDescription>
+                          Your subscription will end at the current billing period end ({subscriptionStatus?.currentPeriodEnd ? formatDate(subscriptionStatus.currentPeriodEnd) : 'N/A'}).
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="py-4">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="keep-ads-live" 
+                            checked={keepAdsLive}
+                            onCheckedChange={(checked) => setKeepAdsLive(checked as boolean)}
+                          />
+                          <label 
+                            htmlFor="keep-ads-live" 
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            Keep my deals visible until billing period ends
+                          </label>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {keepAdsLive 
+                            ? "Your deals will remain active and discoverable until your subscription officially ends." 
+                            : "Your deals will be removed immediately upon cancellation."}
+                        </p>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+                          Keep Subscription
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          onClick={() => cancelMutation.mutate()}
+                          disabled={cancelMutation.isPending}
+                        >
+                          {cancelMutation.isPending ? "Cancelling..." : "Cancel Subscription"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
                 <p className="text-xs text-center text-muted-foreground">
-                  You will retain access until the end of your billing period
+                  Pause: Temporarily stop billing. Cancel: End subscription at period end.
                 </p>
               </div>
             )}

@@ -113,7 +113,7 @@ export default function SubscriptionManagement() {
                     Current Period Ends
                   </span>
                   <span className="text-sm">
-                    {formatDate(subscriptionStatus.currentPeriodEnd)}
+                    {subscriptionStatus.currentPeriodEnd ? formatDate(subscriptionStatus.currentPeriodEnd) : 'N/A'}
                   </span>
                 </div>
 

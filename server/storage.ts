@@ -74,6 +74,24 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Stripe helpers
+  async updateUserStripeCustomerId(userId: string, customerId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ stripeCustomerId: customerId })
+      .where(eq(users.id, userId));
+  }
+
+
+  async updateUserStripeInfo(userId: string, customerId: string, subscriptionId: string, interval: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: subscriptionId 
+      })
+      .where(eq(users.id, userId));
+  }
   // User operations
   // (IMPORTANT) these user operations are mandatory for Replit Auth.
   async getUser(id: string): Promise<User | undefined> {

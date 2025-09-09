@@ -322,7 +322,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         items: [{
           price_data: {
             currency: 'usd',
-            product: productName,
+            product_data: {
+              name: productName,
+            },
             unit_amount: unitAmount,
             recurring: {
               interval: interval,

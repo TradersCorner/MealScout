@@ -99,7 +99,7 @@ export default function Subscribe() {
     setSubscriptionError("");
     
     try {
-      const res = await apiRequest("POST", "/api/get-or-create-subscription", { billingInterval: interval });
+      const res = await apiRequest("POST", "/api/create-subscription", { billingInterval: interval });
       const data = await res.json();
       
       if (data.clientSecret) {

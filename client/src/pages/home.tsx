@@ -616,21 +616,21 @@ export default function Home() {
         </div>
       </div>
 
-      {/* For Workers Section */}
+      {/* Discover Local Gems Section */}
       <div className="px-6 py-8 bg-gradient-to-br from-accent/10 via-accent/5 to-primary/10 border-t border-border/30">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-xl font-bold text-foreground flex items-center mb-2" data-testid="text-workers-title">
+            <h2 className="text-xl font-bold text-foreground flex items-center mb-2" data-testid="text-local-title">
               <span className="w-8 h-8 food-gradient-accent rounded-lg flex items-center justify-center mr-3 shadow-md">
-                <Trophy className="w-4 h-4 text-white" />
+                <Sparkles className="w-4 h-4 text-white" />
               </span>
-              Perfect for Workers
+              Discover Local Gems
             </h2>
-            <p className="text-muted-foreground" data-testid="text-workers-subtitle">Quick meals for busy professionals</p>
+            <p className="text-muted-foreground" data-testid="text-local-subtitle">Hidden treasures in your neighborhood</p>
           </div>
           <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white shadow-lg">
             <div className="w-full h-full food-gradient-accent flex items-center justify-center">
-              <Trophy className="w-8 h-8 text-white" />
+              <Sparkles className="w-8 h-8 text-white" />
             </div>
           </div>
         </div>
@@ -639,20 +639,20 @@ export default function Home() {
           <div className="bg-white rounded-2xl p-6 shadow-food hover:shadow-food-hover transition-all duration-300 cursor-pointer">
             <div className="flex items-center space-x-3 mb-3">
               <div className="w-10 h-10 food-gradient-secondary rounded-xl flex items-center justify-center shadow-md">
-                <Timer className="w-5 h-5 text-white" />
+                <DollarSign className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-foreground" data-testid="text-fast-pickup">Fast Pickup</span>
+              <span className="font-bold text-foreground" data-testid="text-best-value">Best Value</span>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-fast-pickup-desc">Ready in 10 min or less</p>
+            <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-best-value-desc">Amazing deals under $15</p>
           </div>
           <div className="bg-white rounded-2xl p-6 shadow-food hover:shadow-food-hover transition-all duration-300 cursor-pointer">
             <div className="flex items-center space-x-3 mb-3">
               <div className="w-10 h-10 food-gradient-primary rounded-xl flex items-center justify-center shadow-md">
-                <ShoppingBag className="w-5 h-5 text-white" />
+                <Crown className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-foreground" data-testid="text-hearty-meals">Hearty Meals</span>
+              <span className="font-bold text-foreground" data-testid="text-premium-taste">Premium Taste</span>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-hearty-meals-desc">Filling portions for workers</p>
+            <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-premium-taste-desc">Gourmet experiences nearby</p>
           </div>
         </div>
       </div>

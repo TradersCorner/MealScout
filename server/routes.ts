@@ -389,7 +389,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             recurring: {
               interval: interval as 'month' | 'year',
             },
-          },
+          } as any,
         }],
         payment_behavior: 'default_incomplete',
         expand: ['latest_invoice.payment_intent'],

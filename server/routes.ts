@@ -66,7 +66,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stats = {
         totalDeals: deals.length,
         activeDeals: deals.filter(d => d.isActive).length,
-        totalViews: deals.reduce((sum, d) => sum + (d.viewCount || 0), 0),
+        totalViews: deals.reduce((sum, d) => sum + ((d as any).viewCount || 0), 0),
         totalClaims: deals.reduce((sum, d) => sum + (d.currentUses || 0), 0),
         conversionRate: 0,
         averageRating: await storage.getRestaurantAverageRating(restaurantId) || 0

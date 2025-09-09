@@ -83,15 +83,6 @@ export class DatabaseStorage implements IStorage {
   }
 
 
-  async updateUserStripeInfo(userId: string, customerId: string, subscriptionId: string, interval: string): Promise<void> {
-    await db
-      .update(users)
-      .set({ 
-        stripeCustomerId: customerId,
-        stripeSubscriptionId: subscriptionId 
-      })
-      .where(eq(users.id, userId));
-  }
   // User operations
   // (IMPORTANT) these user operations are mandatory for Replit Auth.
   async getUser(id: string): Promise<User | undefined> {
@@ -542,17 +533,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(sql`distance ASC, RANDOM()`);
   }
 
-  async updateDeal(id: string, deal: Partial<InsertDeal>): Promise<Deal> {
-    const [updated] = await db
-      .update(deals)
-      .set({
-        ...deal,
-        updatedAt: new Date(),
-      })
-      .where(eq(deals.id, id))
-      .returning();
-    return updated;
-  }
 
   async incrementDealUses(id: string): Promise<void> {
     await db

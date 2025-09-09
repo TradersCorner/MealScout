@@ -7,7 +7,8 @@ import Navigation from "@/components/navigation";
 import SmartSearch from "@/components/smart-search";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat, Beef, ChefHat, Soup, Star, Sparkles, Timer, ShoppingBag, Target, Trophy, Rocket, Crown, Coffee, Cookie, Wheat, Leaf, Grape, Cherry, Sandwich, Salad, IceCream, Croissant } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat, Beef, ChefHat, Soup, Star, Sparkles, Timer, ShoppingBag, Target, Trophy, Rocket, Crown, Coffee, Cookie, Wheat, Leaf, Grape, Cherry, Sandwich, Salad, IceCream, Croissant, Plus, Send } from "lucide-react";
 import mealScoutLogo from "@assets/image_1757213417158.png";
 
 interface Deal {
@@ -28,6 +29,12 @@ export default function Home() {
   const [locationName, setLocationName] = useState("Getting location...");
   const [searchQuery, setSearchQuery] = useState("");
   const [, setNavigateTo] = useLocation();
+  const [restaurantForm, setRestaurantForm] = useState({
+    name: "",
+    location: "",
+    cuisineType: "",
+    description: ""
+  });
 
   // Get user location
   useEffect(() => {
@@ -63,6 +70,21 @@ export default function Home() {
     queryKey: ["/api/deals/nearby", location?.lat, location?.lng],
     enabled: !!location,
   });
+
+  const handleRestaurantSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Here you would typically send to your backend
+    console.log("Restaurant recommendation:", restaurantForm);
+    // Reset form
+    setRestaurantForm({
+      name: "",
+      location: "",
+      cuisineType: "",
+      description: ""
+    });
+    // Show success message
+    alert("Thank you! We'll reach out to this restaurant about joining MealScout.");
+  };
 
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative overflow-hidden">
@@ -616,52 +638,97 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Discover Local Gems Section */}
+      {/* Restaurant Recommendation Section */}
       <div className="px-6 py-8 bg-gradient-to-br from-accent/10 via-accent/5 to-primary/10 border-t border-border/30">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-xl font-bold text-foreground flex items-center mb-2" data-testid="text-local-title">
+            <h2 className="text-xl font-bold text-foreground flex items-center mb-2" data-testid="text-recommend-title">
               <span className="w-8 h-8 food-gradient-accent rounded-lg flex items-center justify-center mr-3 shadow-md">
-                <Sparkles className="w-4 h-4 text-white" />
+                <Plus className="w-4 h-4 text-white" />
               </span>
-              Discover Local Gems
+              Recommend a Restaurant
             </h2>
-            <p className="text-muted-foreground" data-testid="text-local-subtitle">Hidden treasures in your neighborhood</p>
+            <p className="text-muted-foreground" data-testid="text-recommend-subtitle">Know a great spot that should be on MealScout?</p>
           </div>
           <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white shadow-lg">
             <div className="w-full h-full food-gradient-accent flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-white" />
+              <Plus className="w-8 h-8 text-white" />
             </div>
           </div>
         </div>
         
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-          <div className="bg-white rounded-2xl p-6 shadow-food hover:shadow-food-hover transition-all duration-300 cursor-pointer">
-            <div className="flex items-center space-x-3 mb-3">
-              <div className="w-12 h-12 food-gradient-secondary rounded-2xl flex items-center justify-center shadow-lg relative">
-                <div className="absolute inset-0 bg-white/10 rounded-2xl"></div>
-                <div className="relative flex items-center justify-center">
-                  <Utensils className="w-4 h-4 text-white mr-1" />
-                  <DollarSign className="w-3 h-3 text-white" />
-                </div>
+        <div className="bg-white rounded-2xl p-6 shadow-food">
+          <form onSubmit={handleRestaurantSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="restaurant-name" className="block text-sm font-medium text-foreground mb-2">
+                  Restaurant Name *
+                </label>
+                <Input
+                  id="restaurant-name"
+                  placeholder="e.g. Tony's Italian Bistro"
+                  value={restaurantForm.name}
+                  onChange={(e) => setRestaurantForm({...restaurantForm, name: e.target.value})}
+                  required
+                  data-testid="input-restaurant-name"
+                  className="w-full"
+                />
               </div>
-              <span className="font-bold text-foreground" data-testid="text-best-value">Best Value</span>
-            </div>
-            <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-best-value-desc">Amazing deals under $15</p>
-          </div>
-          <div className="bg-white rounded-2xl p-6 shadow-food hover:shadow-food-hover transition-all duration-300 cursor-pointer">
-            <div className="flex items-center space-x-3 mb-3">
-              <div className="w-12 h-12 food-gradient-primary rounded-2xl flex items-center justify-center shadow-lg relative">
-                <div className="absolute inset-0 bg-white/10 rounded-2xl"></div>
-                <div className="relative flex items-center justify-center">
-                  <ChefHat className="w-4 h-4 text-white mr-1" />
-                  <Star className="w-3 h-3 text-white" />
-                </div>
+              <div>
+                <label htmlFor="restaurant-location" className="block text-sm font-medium text-foreground mb-2">
+                  Location *
+                </label>
+                <Input
+                  id="restaurant-location"
+                  placeholder="e.g. Downtown Main Street"
+                  value={restaurantForm.location}
+                  onChange={(e) => setRestaurantForm({...restaurantForm, location: e.target.value})}
+                  required
+                  data-testid="input-restaurant-location"
+                  className="w-full"
+                />
               </div>
-              <span className="font-bold text-foreground" data-testid="text-premium-taste">Premium Taste</span>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-premium-taste-desc">Gourmet experiences nearby</p>
-          </div>
+            
+            <div>
+              <label htmlFor="cuisine-type" className="block text-sm font-medium text-foreground mb-2">
+                Cuisine Type *
+              </label>
+              <Input
+                id="cuisine-type"
+                placeholder="e.g. Italian, Mexican, Asian Fusion"
+                value={restaurantForm.cuisineType}
+                onChange={(e) => setRestaurantForm({...restaurantForm, cuisineType: e.target.value})}
+                required
+                data-testid="input-cuisine-type"
+                className="w-full"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="description" className="block text-sm font-medium text-foreground mb-2">
+                Why should we feature them?
+              </label>
+              <Textarea
+                id="description"
+                placeholder="Tell us what makes this restaurant special - great food, amazing atmosphere, unique dishes, etc."
+                value={restaurantForm.description}
+                onChange={(e) => setRestaurantForm({...restaurantForm, description: e.target.value})}
+                data-testid="textarea-description"
+                className="w-full min-h-20"
+                rows={3}
+              />
+            </div>
+            
+            <Button 
+              type="submit" 
+              className="w-full food-gradient-primary text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+              data-testid="button-submit-recommendation"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              Send Recommendation
+            </Button>
+          </form>
         </div>
       </div>
 

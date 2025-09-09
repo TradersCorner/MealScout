@@ -19,7 +19,7 @@ export default function FavoritesPage() {
   const favoriteDeals = allDeals.slice(0, 2); // Show first 2 as favorites for demo
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">
       {/* Header */}
       <header className="px-6 py-6 bg-white border-b border-border">
         <div className="flex items-center justify-between mb-2">
@@ -52,7 +52,7 @@ export default function FavoritesPage() {
             <h2 className="text-lg font-semibold text-foreground mb-6">
               Saved Deals ({favoriteDeals.length})
             </h2>
-            <div className="space-y-4">
+            <div className="space-y-4 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:space-y-0">
               {favoriteDeals.map((deal: any) => (
                 <DealCard key={deal.id} deal={deal} />
               ))}

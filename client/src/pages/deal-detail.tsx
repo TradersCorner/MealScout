@@ -96,7 +96,7 @@ export default function DealDetail() {
 
   if (dealLoading || restaurantLoading) {
     return (
-      <div className="max-w-md mx-auto bg-white min-h-screen">
+      <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-white min-h-screen">
         <div className="animate-pulse">
           <div className="w-full h-64 bg-muted"></div>
           <div className="p-4 space-y-4">
@@ -111,7 +111,7 @@ export default function DealDetail() {
 
   if (!deal) {
     return (
-      <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
+      <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-white min-h-screen flex items-center justify-center">
         <Card>
           <CardContent className="p-6 text-center">
             <i className="fas fa-exclamation-triangle text-muted-foreground text-3xl mb-4"></i>
@@ -142,7 +142,7 @@ export default function DealDetail() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white min-h-screen">
+    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-white min-h-screen">
       {/* Header */}
       <header className="bg-white px-4 py-4 sticky top-0 z-10">
         <div className="flex items-center justify-between">

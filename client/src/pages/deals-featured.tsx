@@ -14,7 +14,7 @@ export default function FeaturedDealsPage() {
   const allDeals = Array.isArray(featuredDeals) ? featuredDeals : [];
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">
       {/* Header */}
       <header className="px-6 py-6 bg-white border-b border-border">
         <div className="flex items-center mb-6">
@@ -67,7 +67,7 @@ export default function FeaturedDealsPage() {
             ))}
           </div>
         ) : allDeals.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-4 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:space-y-0">
             {allDeals.map((deal: any) => (
               <DealCard key={deal.id} deal={deal} />
             ))}

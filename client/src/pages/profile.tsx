@@ -29,7 +29,7 @@ export default function ProfilePage() {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+      <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">
         <header className="px-6 py-6 bg-white border-b border-border">
           <h1 className="text-2xl font-bold text-foreground flex items-center">
             <User className="w-6 h-6 text-primary mr-3" />
@@ -64,7 +64,7 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">
       {/* Header */}
       <header className="px-6 py-6 bg-gradient-to-br from-primary/10 to-primary/5 border-b border-border">
         <h1 className="text-2xl font-bold text-foreground flex items-center mb-6">

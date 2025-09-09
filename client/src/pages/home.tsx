@@ -646,9 +646,9 @@ export default function Home() {
               <span className="w-8 h-8 food-gradient-accent rounded-lg flex items-center justify-center mr-3 shadow-md">
                 <Plus className="w-4 h-4 text-white" />
               </span>
-              Recommend a Restaurant
+              Missing Your Favorite Spot?
             </h2>
-            <p className="text-muted-foreground" data-testid="text-recommend-subtitle">Know a great spot that should be on MealScout?</p>
+            <p className="text-muted-foreground" data-testid="text-recommend-subtitle">Didn't see your favorite spot? Recommend them below.</p>
           </div>
           <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white shadow-lg">
             <div className="w-full h-full food-gradient-accent flex items-center justify-center">
@@ -661,72 +661,45 @@ export default function Home() {
           <form onSubmit={handleRestaurantSubmit} className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="restaurant-name" className="block text-sm font-medium text-foreground mb-2">
-                  Restaurant Name *
-                </label>
                 <Input
                   id="restaurant-name"
-                  placeholder="e.g. Tony's Italian Bistro"
+                  placeholder="Restaurant name (e.g. Tony's Italian Bistro)"
                   value={restaurantForm.name}
                   onChange={(e) => setRestaurantForm({...restaurantForm, name: e.target.value})}
                   required
                   data-testid="input-restaurant-name"
-                  className="w-full"
+                  className="w-full h-12 text-base"
                 />
               </div>
               <div>
-                <label htmlFor="restaurant-location" className="block text-sm font-medium text-foreground mb-2">
-                  Location *
-                </label>
                 <Input
                   id="restaurant-location"
-                  placeholder="e.g. Downtown Main Street"
+                  placeholder="Location (e.g. Downtown Main Street)"
                   value={restaurantForm.location}
                   onChange={(e) => setRestaurantForm({...restaurantForm, location: e.target.value})}
                   required
                   data-testid="input-restaurant-location"
-                  className="w-full"
+                  className="w-full h-12 text-base"
                 />
               </div>
             </div>
             
-            <div>
-              <label htmlFor="cuisine-type" className="block text-sm font-medium text-foreground mb-2">
-                Cuisine Type *
-              </label>
-              <Input
-                id="cuisine-type"
-                placeholder="e.g. Italian, Mexican, Asian Fusion"
-                value={restaurantForm.cuisineType}
-                onChange={(e) => setRestaurantForm({...restaurantForm, cuisineType: e.target.value})}
-                required
-                data-testid="input-cuisine-type"
-                className="w-full"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-foreground mb-2">
-                Why should we feature them?
-              </label>
-              <Textarea
-                id="description"
-                placeholder="Tell us what makes this restaurant special - great food, amazing atmosphere, unique dishes, etc."
-                value={restaurantForm.description}
-                onChange={(e) => setRestaurantForm({...restaurantForm, description: e.target.value})}
-                data-testid="textarea-description"
-                className="w-full min-h-20"
-                rows={3}
-              />
-            </div>
+            <Input
+              id="cuisine-type"
+              placeholder="Cuisine type (optional - e.g. Italian, Mexican, Asian)"
+              value={restaurantForm.cuisineType}
+              onChange={(e) => setRestaurantForm({...restaurantForm, cuisineType: e.target.value})}
+              data-testid="input-cuisine-type"
+              className="w-full h-12 text-base"
+            />
             
             <Button 
               type="submit" 
-              className="w-full food-gradient-primary text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+              className="w-full food-gradient-primary text-white font-bold py-4 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
               data-testid="button-submit-recommendation"
             >
-              <Send className="w-4 h-4 mr-2" />
-              Send Recommendation
+              <Send className="w-5 h-5 mr-2" />
+              Recommend This Spot
             </Button>
           </form>
         </div>

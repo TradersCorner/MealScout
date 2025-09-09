@@ -189,19 +189,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateUserStripeInfo(id: string, stripeCustomerId: string, stripeSubscriptionId: string, subscriptionBillingInterval?: string): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({
-        stripeCustomerId,
-        stripeSubscriptionId,
-        subscriptionBillingInterval,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, id))
-      .returning();
-    return user;
-  }
 
   // Restaurant operations
   async createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant> {

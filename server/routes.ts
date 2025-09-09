@@ -268,7 +268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Stripe subscription route for restaurant fees
-  app.post('/api/get-or-create-subscription', isAuthenticated, async (req: any, res) => {
+  app.post('/api/create-subscription', isAuthenticated, async (req: any, res) => {
     if (!stripe) {
       return res.status(503).json({ error: { message: 'Payment processing is not configured' } });
     }
@@ -327,9 +327,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             unit_amount: unitAmount,
             recurring: {
-              interval: interval,
+              interval: interval as Stripe.PriceCreateParams.Recurring.Interval,
             },
-          },
+          } as Stripe.SubscriptionCreateParams.Item.PriceData,
         }],
         payment_behavior: 'default_incomplete',
         expand: ['latest_invoice.payment_intent'],
@@ -346,6 +346,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating subscription:", error);
       return res.status(400).send({ error: { message: error.message } });
+    }
+  });
+
+  // Check subscription status  
+  app.get('/api/subscription/status', isAuthenticated, async (req: any, res) => {
+    if (!stripe) {
+      return res.status(503).json({ message: "Payment service unavailable" });
+    }
+
+    try {
+      const user = req.user;
+      
+      if (!user.stripeSubscriptionId) {
+        return res.json({ status: 'none' });
+      }
+
+      const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+      
+      res.json({
+        status: subscription.status,
+        currentPeriodEnd: subscription.current_period_end,
+        cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      });
+    } catch (error: any) {
+      console.error('Subscription status error:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Cancel subscription
+  app.post('/api/subscription/cancel', isAuthenticated, async (req: any, res) => {
+    if (!stripe) {
+      return res.status(503).json({ message: "Payment service unavailable" });
+    }
+
+    try {
+      const user = req.user;
+      
+      if (!user.stripeSubscriptionId) {
+        return res.status(400).json({ message: "No active subscription" });
+      }
+
+      const subscription = await stripe.subscriptions.update(
+        user.stripeSubscriptionId,
+        { cancel_at_period_end: true }
+      );
+      
+      res.json({
+        message: "Subscription will be cancelled at the end of the billing period",
+        cancelAt: subscription.cancel_at,
+      });
+    } catch (error: any) {
+      console.error('Cancel subscription error:', error);
+      res.status(500).json({ message: error.message });
     }
   });
 

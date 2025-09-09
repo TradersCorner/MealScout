@@ -252,8 +252,8 @@ export default function RestaurantOwnerDashboard() {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-lg font-semibold">{deal.title}</h3>
-                        <Badge className={getDealTypeColor(deal.mealType)}>
-                          {deal.mealType}
+                        <Badge className={getDealTypeColor(deal.dealType)}>
+                          {deal.dealType}
                         </Badge>
                         {deal.isFeatured && (
                           <Badge variant="secondary">
@@ -268,12 +268,11 @@ export default function RestaurantOwnerDashboard() {
                       <div className="flex flex-wrap gap-4 text-sm">
                         <div className="flex items-center gap-1">
                           <DollarSign className="h-4 w-4" />
-                          <span className="font-medium">${deal.discountedPrice}</span>
-                          <span className="text-muted-foreground line-through">${deal.originalPrice}</span>
+                          <span className="font-medium">{deal.discountValue}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Clock className="h-4 w-4" />
-                          <span>{formatTime(deal.validFrom)} - {formatTime(deal.validUntil)}</span>
+                          <span>{formatTime(deal.startTime)} - {formatTime(deal.endTime)}</span>
                         </div>
                         {deal.totalUsesLimit && (
                           <div className="flex items-center gap-1">
@@ -288,7 +287,7 @@ export default function RestaurantOwnerDashboard() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => toggleDealMutation.mutate({ dealId: deal.id, isActive: deal.isActive })}
+                        onClick={() => toggleDealMutation.mutate({ dealId: deal.id, isActive: Boolean(deal.isActive) })}
                         data-testid={`button-deactivate-${deal.id}`}
                       >
                         Deactivate
@@ -340,7 +339,7 @@ export default function RestaurantOwnerDashboard() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => toggleDealMutation.mutate({ dealId: deal.id, isActive: deal.isActive })}
+                      onClick={() => toggleDealMutation.mutate({ dealId: deal.id, isActive: Boolean(deal.isActive) })}
                       data-testid={`button-activate-${deal.id}`}
                     >
                       Activate
@@ -400,7 +399,7 @@ export default function RestaurantOwnerDashboard() {
                   <div key={deal.id} className="flex justify-between items-center py-2">
                     <span className="text-sm">{deal.title}</span>
                     <div className="flex gap-4 text-sm">
-                      <span className="text-muted-foreground">Views: {deal.viewCount || 0}</span>
+                      <span className="text-muted-foreground">Views: {(deal as any).viewCount || 0}</span>
                       <span className="text-muted-foreground">Claims: {deal.currentUses || 0}</span>
                     </div>
                   </div>

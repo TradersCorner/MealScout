@@ -387,9 +387,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             unit_amount: unitAmount,
             recurring: {
-              interval: interval as Stripe.PriceCreateParams.Recurring.Interval,
+              interval: interval as 'month' | 'year',
             },
-          } as Stripe.SubscriptionCreateParams.Item.PriceData,
+          },
         }],
         payment_behavior: 'default_incomplete',
         expand: ['latest_invoice.payment_intent'],
@@ -426,8 +426,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         status: subscription.status,
-        currentPeriodEnd: subscription.current_period_end,
-        cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        currentPeriodEnd: (subscription as any).current_period_end,
+        cancelAtPeriodEnd: (subscription as any).cancel_at_period_end,
       });
     } catch (error: any) {
       console.error('Subscription status error:', error);

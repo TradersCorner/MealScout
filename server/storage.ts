@@ -82,6 +82,20 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId));
   }
 
+  async updateUserStripeInfo(id: string, stripeCustomerId: string, stripeSubscriptionId: string, subscriptionBillingInterval?: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        stripeCustomerId,
+        stripeSubscriptionId,
+        subscriptionBillingInterval,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
 
   // User operations
   // (IMPORTANT) these user operations are mandatory for Replit Auth.

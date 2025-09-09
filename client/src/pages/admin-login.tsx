@@ -25,8 +25,8 @@ export default function AdminLogin() {
           title: "Admin Login Successful",
           description: `Welcome back, ${data.user.firstName || 'Admin'}!`,
         });
-        // Redirect to admin dashboard or home
-        window.location.href = "/";
+        // Redirect to admin dashboard
+        window.location.href = "/admin/dashboard";
       } else {
         toast({
           title: "Access Denied",

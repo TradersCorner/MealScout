@@ -487,6 +487,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin API endpoints
+  app.get('/api/auth/admin/verify', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.userType === 'admin') {
+        res.json(user);
+      } else {
+        res.status(403).json({ message: "Admin access required" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to verify admin" });
+    }
+  });
+
+  app.get('/api/admin/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.userType !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const stats = await storage.getAdminStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching admin stats:", error);
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  app.get('/api/admin/restaurants/pending', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.userType !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const restaurants = await storage.getPendingRestaurants();
+      res.json(restaurants);
+    } catch (error) {
+      console.error("Error fetching pending restaurants:", error);
+      res.status(500).json({ message: "Failed to fetch pending restaurants" });
+    }
+  });
+
+  app.post('/api/admin/restaurants/:id/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.userType !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      await storage.approveRestaurant(req.params.id);
+      res.json({ message: "Restaurant approved successfully" });
+    } catch (error) {
+      console.error("Error approving restaurant:", error);
+      res.status(500).json({ message: "Failed to approve restaurant" });
+    }
+  });
+
+  app.delete('/api/admin/restaurants/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.userType !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      await storage.deleteRestaurant(req.params.id);
+      res.json({ message: "Restaurant deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting restaurant:", error);
+      res.status(500).json({ message: "Failed to delete restaurant" });
+    }
+  });
+
+  app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.userType !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.patch('/api/admin/users/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.userType !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { isActive } = req.body;
+      await storage.updateUserStatus(req.params.id, isActive);
+      res.json({ message: "User status updated successfully" });
+    } catch (error) {
+      console.error("Error updating user status:", error);
+      res.status(500).json({ message: "Failed to update user status" });
+    }
+  });
+
+  app.get('/api/admin/deals', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.userType !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const deals = await storage.getAllDealsWithRestaurants();
+      res.json(deals);
+    } catch (error) {
+      console.error("Error fetching deals:", error);
+      res.status(500).json({ message: "Failed to fetch deals" });
+    }
+  });
+
+  app.patch('/api/admin/deals/:id/featured', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.userType !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { isFeatured } = req.body;
+      await storage.updateDealFeatured(req.params.id, isFeatured);
+      res.json({ message: "Deal featured status updated successfully" });
+    } catch (error) {
+      console.error("Error updating deal:", error);
+      res.status(500).json({ message: "Failed to update deal" });
+    }
+  });
+
   // Health check endpoint for monitoring
   app.get('/api/health', async (req, res) => {
     try {

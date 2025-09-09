@@ -362,6 +362,100 @@ export class DatabaseStorage implements IStorage {
     return data;
   }
 
+  // Admin specific methods
+  async getAdminStats(): Promise<any> {
+    const [
+      totalUsers,
+      totalRestaurants,
+      totalDeals,
+      activeDeals,
+      totalClaims,
+      todayClaims,
+      newUsersToday
+    ] = await Promise.all([
+      db.select({ count: sql<number>`cast(count(*) as integer)` }).from(users),
+      db.select({ count: sql<number>`cast(count(*) as integer)` }).from(restaurants),
+      db.select({ count: sql<number>`cast(count(*) as integer)` }).from(deals),
+      db.select({ count: sql<number>`cast(count(*) as integer)` }).from(deals).where(eq(deals.isActive, true)),
+      db.select({ count: sql<number>`cast(count(*) as integer)` }).from(dealClaims),
+      db.select({ count: sql<number>`cast(count(*) as integer)` }).from(dealClaims)
+        .where(gte(dealClaims.claimedAt, new Date(new Date().setHours(0, 0, 0, 0)))),
+      db.select({ count: sql<number>`cast(count(*) as integer)` }).from(users)
+        .where(gte(users.createdAt, new Date(new Date().setHours(0, 0, 0, 0))))
+    ]);
+
+    return {
+      totalUsers: totalUsers[0]?.count || 0,
+      totalRestaurants: totalRestaurants[0]?.count || 0,
+      totalDeals: totalDeals[0]?.count || 0,
+      activeDeals: activeDeals[0]?.count || 0,
+      totalClaims: totalClaims[0]?.count || 0,
+      todayClaims: todayClaims[0]?.count || 0,
+      newUsersToday: newUsersToday[0]?.count || 0,
+      revenue: 0 // Placeholder for revenue calculation
+    };
+  }
+
+  async getPendingRestaurants(): Promise<Restaurant[]> {
+    return await db
+      .select()
+      .from(restaurants)
+      .where(eq(restaurants.isActive, false))
+      .orderBy(desc(restaurants.createdAt));
+  }
+
+  async approveRestaurant(restaurantId: string): Promise<void> {
+    await db
+      .update(restaurants)
+      .set({ isActive: true })
+      .where(eq(restaurants.id, restaurantId));
+  }
+
+  async deleteRestaurant(restaurantId: string): Promise<void> {
+    await db
+      .delete(restaurants)
+      .where(eq(restaurants.id, restaurantId));
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .orderBy(desc(users.createdAt));
+  }
+
+  async updateUserStatus(userId: string, isActive: boolean): Promise<void> {
+    await db
+      .update(users)
+      .set({ isActive })
+      .where(eq(users.id, userId));
+  }
+
+  async getAllDealsWithRestaurants(): Promise<any[]> {
+    return await db
+      .select({
+        id: deals.id,
+        title: deals.title,
+        discountValue: deals.discountValue,
+        isActive: deals.isActive,
+        isFeatured: deals.isFeatured,
+        restaurant: {
+          id: restaurants.id,
+          name: restaurants.name,
+        }
+      })
+      .from(deals)
+      .leftJoin(restaurants, eq(deals.restaurantId, restaurants.id))
+      .orderBy(desc(deals.createdAt));
+  }
+
+  async updateDealFeatured(dealId: string, isFeatured: boolean): Promise<void> {
+    await db
+      .update(deals)
+      .set({ isFeatured })
+      .where(eq(deals.id, dealId));
+  }
+
   async getNearbyDeals(lat: number, lng: number, radiusKm: number): Promise<any[]> {
     const now = new Date();
     const currentTime = now.toTimeString().slice(0, 5);

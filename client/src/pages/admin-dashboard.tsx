@@ -47,25 +47,25 @@ export default function AdminDashboard() {
   });
 
   // Fetch dashboard stats
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/admin/stats"],
     enabled: !!adminUser,
   });
 
   // Fetch pending restaurants
-  const { data: pendingRestaurants = [] } = useQuery({
+  const { data: pendingRestaurants = [] } = useQuery<PendingRestaurant[]>({
     queryKey: ["/api/admin/restaurants/pending"],
     enabled: !!adminUser && selectedTab === "restaurants",
   });
 
   // Fetch all users
-  const { data: users = [] } = useQuery({
+  const { data: users = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/users"],
     enabled: !!adminUser && selectedTab === "users",
   });
 
   // Fetch all deals
-  const { data: deals = [] } = useQuery({
+  const { data: deals = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/deals"],
     enabled: !!adminUser && selectedTab === "deals",
   });

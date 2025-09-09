@@ -639,7 +639,7 @@ export default function Home() {
       </div>
 
       {/* Restaurant Recommendation Section */}
-      <div className="px-6 py-8 bg-gradient-to-br from-accent/10 via-accent/5 to-primary/10 border-t border-border/30">
+      <div className="px-6 py-8 pb-24 bg-gradient-to-br from-accent/10 via-accent/5 to-primary/10 border-t border-border/30">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-bold text-foreground flex items-center mb-2" data-testid="text-recommend-title">

@@ -11,7 +11,7 @@ import { Link } from "wouter";
 import { 
   Store, Plus, TrendingUp, Users, DollarSign, 
   Eye, ShoppingCart, Star, Calendar, Settings,
-  CreditCard, BarChart3, MapPin, Clock
+  CreditCard, BarChart3, MapPin, Clock, Edit
 } from "lucide-react";
 import type { Deal, Restaurant } from "@shared/schema";
 
@@ -84,6 +84,20 @@ export default function RestaurantOwnerDashboard() {
       toast({
         title: "Deal Deleted",
         description: "Deal has been deleted successfully.",
+      });
+    },
+  });
+
+  // Update deal
+  const updateDealMutation = useMutation({
+    mutationFn: async ({ dealId, updates }: { dealId: string, updates: any }) => {
+      return await apiRequest("PATCH", `/api/deals/${dealId}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/deals/restaurant/${selectedRestaurant}`] });
+      toast({
+        title: "Deal Updated",
+        description: "Deal has been updated successfully.",
       });
     },
   });
@@ -285,17 +299,39 @@ export default function RestaurantOwnerDashboard() {
                     
                     <div className="flex gap-2">
                       <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          // Quick edit toggle - we'll use a simple approach with prompts for now
+                          const newTitle = prompt("Edit deal title:", deal.title);
+                          if (newTitle && newTitle !== deal.title) {
+                            updateDealMutation.mutate({ 
+                              dealId: deal.id, 
+                              updates: { title: newTitle }
+                            });
+                          }
+                        }}
+                        data-testid={`button-quick-edit-${deal.id}`}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Quick Edit
+                      </Button>
+                      <Button
                         variant="outline"
                         size="sm"
                         onClick={() => toggleDealMutation.mutate({ dealId: deal.id, isActive: Boolean(deal.isActive) })}
                         data-testid={`button-deactivate-${deal.id}`}
                       >
-                        Deactivate
+                        {deal.isActive ? 'Pause' : 'Activate'}
                       </Button>
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => deleteDealMutation.mutate(deal.id)}
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to delete "${deal.title}"? This cannot be undone.`)) {
+                            deleteDealMutation.mutate(deal.id);
+                          }
+                        }}
                         data-testid={`button-delete-${deal.id}`}
                       >
                         Delete

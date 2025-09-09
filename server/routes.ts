@@ -46,6 +46,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Restaurant owner routes
+  app.get('/api/restaurants/my-restaurants', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const restaurants = await storage.getRestaurantsByOwner(userId);
+      res.json(restaurants);
+    } catch (error) {
+      console.error("Error fetching user restaurants:", error);
+      res.status(500).json({ message: "Failed to fetch restaurants" });
+    }
+  });
+
+  app.get('/api/restaurants/:restaurantId/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      const deals = await storage.getDealsByRestaurant(restaurantId);
+      
+      const stats = {
+        totalDeals: deals.length,
+        activeDeals: deals.filter(d => d.isActive).length,
+        totalViews: deals.reduce((sum, d) => sum + (d.viewCount || 0), 0),
+        totalClaims: deals.reduce((sum, d) => sum + (d.currentUses || 0), 0),
+        conversionRate: 0,
+        averageRating: await storage.getRestaurantAverageRating(restaurantId) || 0
+      };
+      
+      if (stats.totalViews > 0) {
+        stats.conversionRate = (stats.totalClaims / stats.totalViews) * 100;
+      }
+      
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching restaurant stats:", error);
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  app.patch('/api/deals/:dealId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { dealId } = req.params;
+      const updates = req.body;
+      const updatedDeal = await storage.updateDeal(dealId, updates);
+      res.json(updatedDeal);
+    } catch (error) {
+      console.error("Error updating deal:", error);
+      res.status(500).json({ message: "Failed to update deal" });
+    }
+  });
+
+  app.delete('/api/deals/:dealId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { dealId } = req.params;
+      await storage.deleteDeal(dealId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting deal:", error);
+      res.status(500).json({ message: "Failed to delete deal" });
+    }
+  });
+
   // Restaurant routes (require restaurant owner authentication)
   app.post('/api/restaurants', isRestaurantOwner, async (req: any, res) => {
     try {

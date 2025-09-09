@@ -28,6 +28,7 @@ import AddressesPage from "@/pages/profile/addresses";
 import PaymentMethodsPage from "@/pages/profile/payment";
 import HelpSupportPage from "@/pages/profile/help";
 import SubscriptionManagement from "@/pages/subscription-management";
+import RestaurantOwnerDashboard from "@/pages/restaurant-owner-dashboard";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -50,6 +51,7 @@ function Router() {
           <Route path="/deal/:id" component={DealDetail} />
           <Route path="/subscribe" component={Subscribe} />
           <Route path="/subscription" component={SubscriptionManagement} />
+          <Route path="/restaurant-owner-dashboard" component={RestaurantOwnerDashboard} />
           <Route path="/search" component={Search} />
           <Route path="/map" component={MapPage} />
           <Route path="/favorites" component={Favorites} />

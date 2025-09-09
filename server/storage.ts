@@ -276,6 +276,22 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(deals.createdAt));
   }
 
+  async updateDeal(id: string, updates: Partial<InsertDeal>): Promise<Deal> {
+    const [updated] = await db
+      .update(deals)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(deals.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteDeal(id: string): Promise<void> {
+    await db.delete(deals).where(eq(deals.id, id));
+  }
+
   async getAllDeals(): Promise<Deal[]> {
     return await db.select().from(deals);
   }

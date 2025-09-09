@@ -638,8 +638,12 @@ export default function Home() {
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white rounded-2xl p-6 shadow-food hover:shadow-food-hover transition-all duration-300 cursor-pointer">
             <div className="flex items-center space-x-3 mb-3">
-              <div className="w-10 h-10 food-gradient-secondary rounded-xl flex items-center justify-center shadow-md">
-                <DollarSign className="w-5 h-5 text-white" />
+              <div className="w-12 h-12 food-gradient-secondary rounded-2xl flex items-center justify-center shadow-lg relative">
+                <div className="absolute inset-0 bg-white/10 rounded-2xl"></div>
+                <div className="relative flex items-center justify-center">
+                  <Utensils className="w-4 h-4 text-white mr-1" />
+                  <DollarSign className="w-3 h-3 text-white" />
+                </div>
               </div>
               <span className="font-bold text-foreground" data-testid="text-best-value">Best Value</span>
             </div>
@@ -647,8 +651,12 @@ export default function Home() {
           </div>
           <div className="bg-white rounded-2xl p-6 shadow-food hover:shadow-food-hover transition-all duration-300 cursor-pointer">
             <div className="flex items-center space-x-3 mb-3">
-              <div className="w-10 h-10 food-gradient-primary rounded-xl flex items-center justify-center shadow-md">
-                <Crown className="w-5 h-5 text-white" />
+              <div className="w-12 h-12 food-gradient-primary rounded-2xl flex items-center justify-center shadow-lg relative">
+                <div className="absolute inset-0 bg-white/10 rounded-2xl"></div>
+                <div className="relative flex items-center justify-center">
+                  <ChefHat className="w-4 h-4 text-white mr-1" />
+                  <Star className="w-3 h-3 text-white" />
+                </div>
               </div>
               <span className="font-bold text-foreground" data-testid="text-premium-taste">Premium Taste</span>
             </div>

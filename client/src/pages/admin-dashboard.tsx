@@ -14,6 +14,7 @@ import {
   BarChart3, Activity, Package, Settings
 } from "lucide-react";
 import { Link } from "wouter";
+import { QuickDashboardAccess } from "@/components/dashboard-switcher";
 
 interface DashboardStats {
   totalUsers: number;
@@ -196,6 +197,11 @@ export default function AdminDashboard() {
           </Button>
         </div>
       </header>
+
+      {/* Dashboard Switcher */}
+      <div className="px-6 pt-6">
+        <QuickDashboardAccess />
+      </div>
 
       {/* Stats Overview */}
       <div className="px-6 py-6">

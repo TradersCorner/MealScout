@@ -29,6 +29,15 @@ import PaymentMethodsPage from "@/pages/profile/payment";
 import HelpSupportPage from "@/pages/profile/help";
 import SubscriptionManagement from "@/pages/subscription-management";
 import RestaurantOwnerDashboard from "@/pages/restaurant-owner-dashboard";
+import UserDashboard from "@/pages/user-dashboard";
+import DashboardSwitcher from "@/components/dashboard-switcher";
+
+// Wrapper component to handle route props
+function DashboardSwitcherPage() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const view = urlParams.get('view') as 'admin' | 'user' | 'restaurant' | null;
+  return <DashboardSwitcher defaultView={view || 'admin'} />;
+}
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -52,6 +61,7 @@ function Router() {
           <Route path="/subscribe" component={Subscribe} />
           <Route path="/subscription" component={SubscriptionManagement} />
           <Route path="/restaurant-owner-dashboard" component={RestaurantOwnerDashboard} />
+          <Route path="/user-dashboard" component={UserDashboard} />
           <Route path="/search" component={Search} />
           <Route path="/map" component={MapPage} />
           <Route path="/favorites" component={Favorites} />
@@ -59,6 +69,7 @@ function Router() {
           <Route path="/profile" component={Profile} />
           <Route path="/admin" component={AdminLogin} />
           <Route path="/admin/dashboard" component={AdminDashboard} />
+          <Route path="/admin/switcher" component={DashboardSwitcherPage} />
           <Route path="/category/:category" component={CategoryPage} />
           <Route path="/deals/featured" component={FeaturedDealsPage} />
           <Route path="/restaurant/:id" component={RestaurantDetail} />

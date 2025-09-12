@@ -12,9 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Mail, Eye, EyeOff } from "lucide-react";
+import { Mail, Eye, EyeOff, CheckCircle, Upload, ArrowLeft, ArrowRight } from "lucide-react";
+import DocumentUpload from "@/components/document-upload";
 
 const restaurantSchema = z.object({
   name: z.string().min(1, "Restaurant name is required"),
@@ -52,6 +53,9 @@ export default function RestaurantSignup() {
   const [authMode, setAuthMode] = useState<'signup' | 'login'>('signup');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [currentStep, setCurrentStep] = useState<'restaurant' | 'verification'>('restaurant');
+  const [createdRestaurant, setCreatedRestaurant] = useState<any>(null);
+  const [verificationDocuments, setVerificationDocuments] = useState<string[]>([]);
 
   const form = useForm<RestaurantFormData>({
     resolver: zodResolver(restaurantSchema),
@@ -130,12 +134,13 @@ export default function RestaurantSignup() {
     mutationFn: async (data: Omit<RestaurantFormData, 'acceptTerms'>) => {
       return await apiRequest("POST", "/api/restaurants", data);
     },
-    onSuccess: () => {
+    onSuccess: (restaurant) => {
+      setCreatedRestaurant(restaurant);
+      setCurrentStep('verification');
       toast({
-        title: "Success!",
-        description: "Restaurant registered successfully. Redirecting to subscription...",
+        title: "Restaurant Registered!",
+        description: "Now let's verify your business to build trust with customers.",
       });
-      setLocation("/subscribe");
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -157,9 +162,54 @@ export default function RestaurantSignup() {
     },
   });
 
+  const createVerificationRequestMutation = useMutation({
+    mutationFn: async () => {
+      if (!createdRestaurant || verificationDocuments.length === 0) {
+        throw new Error("Restaurant or documents missing");
+      }
+      return await apiRequest("POST", `/api/restaurants/${createdRestaurant.id}/verification/request`, {
+        documents: verificationDocuments,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Verification Submitted!",
+        description: "Your documents have been submitted for review. You'll be notified of the decision.",
+      });
+      setLocation("/subscribe");
+    },
+    onError: (error) => {
+      toast({
+        title: "Submission Failed",
+        description: error.message || "Failed to submit verification request",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: RestaurantFormData) => {
     const { acceptTerms, ...restaurantData } = data;
     createRestaurantMutation.mutate(restaurantData);
+  };
+
+  const handleVerificationSubmit = () => {
+    if (verificationDocuments.length === 0) {
+      toast({
+        title: "Documents Required",
+        description: "Please upload at least one business document for verification.",
+        variant: "destructive",
+      });
+      return;
+    }
+    createVerificationRequestMutation.mutate();
+  };
+
+  const handleSkipVerification = () => {
+    toast({
+      title: "Verification Skipped",
+      description: "You can submit verification documents later from your dashboard.",
+    });
+    setLocation("/subscribe");
   };
 
   const onSignup = (data: SignupFormData) => {
@@ -681,10 +731,30 @@ export default function RestaurantSignup() {
           </div>
         </div>
 
-        {/* Sign-up Form */}
-        <div className="bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-xl p-8">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        {/* Steps Progress Indicator */}
+        <div className="mb-8">
+          <div className="flex items-center justify-center space-x-4 mb-4">
+            <div className={`flex items-center space-x-2 ${currentStep === 'restaurant' ? 'text-red-600' : 'text-green-600'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'restaurant' ? 'bg-red-100 border-2 border-red-600' : 'bg-green-100'}`}>
+                {currentStep === 'verification' ? <CheckCircle className="w-5 h-5" /> : <span className="font-bold">1</span>}
+              </div>
+              <span className="font-medium">Restaurant Details</span>
+            </div>
+            <div className="w-16 h-0.5 bg-gray-300"></div>
+            <div className={`flex items-center space-x-2 ${currentStep === 'verification' ? 'text-red-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'verification' ? 'bg-red-100 border-2 border-red-600' : 'bg-gray-100'}`}>
+                <span className="font-bold">2</span>
+              </div>
+              <span className="font-medium">Business Verification</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Restaurant Form */}
+        {currentStep === 'restaurant' && (
+          <div className="bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-xl p-8">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               <FormField
                 control={form.control}
                 name="name"
@@ -815,9 +885,94 @@ export default function RestaurantSignup() {
               >
                 {createRestaurantMutation.isPending ? "Creating..." : "Get Started"}
               </Button>
-            </form>
-          </Form>
-        </div>
+              </form>
+            </Form>
+          </div>
+        )}
+
+        {/* Verification Step */}
+        {currentStep === 'verification' && createdRestaurant && (
+          <div className="space-y-8">
+            {/* Verification Introduction */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2 text-2xl">
+                  <Upload className="w-7 h-7 text-red-600" />
+                  <span>Verify Your Business</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <p className="text-lg text-gray-700">
+                    Build trust with customers by verifying your business. Upload documents like:
+                  </p>
+                  <ul className="list-disc list-inside space-y-2 text-gray-600 ml-4">
+                    <li>Business license or permit</li>
+                    <li>Restaurant operating license</li>
+                    <li>Tax registration documents</li>
+                    <li>Health department certificates</li>
+                    <li>Any other official business documents</li>
+                  </ul>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                    <p className="text-blue-800 text-sm">
+                      <strong>Why verify?</strong> Verified restaurants get a trust badge, appear higher in search results, 
+                      and customers are more likely to choose verified businesses.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Document Upload */}
+            <DocumentUpload
+              onDocumentsChange={setVerificationDocuments}
+              maxFiles={5}
+              maxFileSize={10 * 1024 * 1024} // 10MB
+              acceptedTypes={['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']}
+            />
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCurrentStep('restaurant')}
+                className="flex items-center space-x-2"
+                data-testid="button-back-to-restaurant"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to Restaurant Details</span>
+              </Button>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSkipVerification}
+                  className="text-gray-600 hover:text-gray-800"
+                  data-testid="button-skip-verification"
+                >
+                  Skip for Now
+                </Button>
+                <Button
+                  onClick={handleVerificationSubmit}
+                  disabled={createVerificationRequestMutation.isPending || verificationDocuments.length === 0}
+                  className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 flex items-center space-x-2"
+                  data-testid="button-submit-verification"
+                >
+                  {createVerificationRequestMutation.isPending ? (
+                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                  ) : (
+                    <ArrowRight className="w-4 h-4" />
+                  )}
+                  <span>
+                    {createVerificationRequestMutation.isPending ? 'Submitting...' : 'Submit for Review'}
+                  </span>
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

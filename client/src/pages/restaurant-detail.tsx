@@ -5,7 +5,7 @@ import DealCard from "@/components/deal-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, MapPin, Phone, Star, Clock, Navigation as DirectionsIcon, Heart } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Star, Clock, Navigation as DirectionsIcon, Heart, CheckCircle } from "lucide-react";
 
 export default function RestaurantDetailPage() {
   const { id: restaurantId } = useParams();
@@ -63,7 +63,7 @@ export default function RestaurantDetailPage() {
   const allDeals = Array.isArray(featuredDeals) ? featuredDeals : [];
   const restaurantDeals = allDeals.filter((deal: any) => deal.restaurantId === restaurantId);
 
-  const currentRating = rating?.rating || 0;
+  const currentRating = (rating as any)?.rating || 0;
   const reviewCount = Array.isArray(reviews) ? reviews.length : 0;
 
   return (
@@ -102,12 +102,15 @@ export default function RestaurantDetailPage() {
       <div className="px-6 py-6">
         <div className="mb-6">
           <div className="flex items-start justify-between mb-2">
-            <h1 className="text-2xl font-bold text-foreground" data-testid="text-restaurant-name">
-              {restaurant.name}
+            <h1 className="text-2xl font-bold text-foreground flex items-center space-x-2" data-testid="text-restaurant-name">
+              <span>{(restaurant as any)?.name}</span>
+              {(restaurant as any)?.isVerified && (
+                <CheckCircle className="w-5 h-5 text-green-500" data-testid="icon-verified-restaurant" />
+              )}
             </h1>
-            {restaurant.cuisineType && (
+            {(restaurant as any)?.cuisineType && (
               <Badge variant="secondary" data-testid="badge-cuisine-type">
-                {restaurant.cuisineType}
+                {(restaurant as any)?.cuisineType}
               </Badge>
             )}
           </div>
@@ -134,17 +137,17 @@ export default function RestaurantDetailPage() {
             <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
             <div>
               <p className="text-sm text-foreground" data-testid="text-restaurant-address">
-                {restaurant.address}
+                {(restaurant as any)?.address}
               </p>
             </div>
           </div>
 
           {/* Contact Info */}
-          {restaurant.phone && (
+          {(restaurant as any)?.phone && (
             <div className="flex items-center space-x-2 mb-6">
               <Phone className="w-4 h-4 text-muted-foreground" />
               <p className="text-sm text-foreground" data-testid="text-restaurant-phone">
-                {restaurant.phone}
+                {(restaurant as any)?.phone}
               </p>
             </div>
           )}

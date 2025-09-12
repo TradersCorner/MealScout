@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
+import { CheckCircle } from "lucide-react";
 
 interface Restaurant {
   id: string;
@@ -8,6 +9,7 @@ interface Restaurant {
   phone?: string;
   cuisineType?: string;
   isActive: boolean;
+  isVerified?: boolean;
 }
 
 interface RestaurantCardProps {
@@ -21,8 +23,11 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
         <CardContent className="p-4">
           <div className="flex items-start justify-between mb-2">
             <div className="flex-1">
-              <h3 className="font-semibold text-foreground mb-1" data-testid={`text-restaurant-name-${restaurant.id}`}>
-                {restaurant.name}
+              <h3 className="font-semibold text-foreground mb-1 flex items-center space-x-2" data-testid={`text-restaurant-name-${restaurant.id}`}>
+                <span>{restaurant.name}</span>
+                {restaurant.isVerified && (
+                  <CheckCircle className="w-4 h-4 text-green-500" data-testid={`icon-verified-${restaurant.id}`} />
+                )}
               </h3>
               <p className="text-xs text-muted-foreground mb-1" data-testid={`text-restaurant-cuisine-${restaurant.id}`}>
                 {restaurant.cuisineType || "Restaurant"}

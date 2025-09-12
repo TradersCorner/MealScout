@@ -4,8 +4,9 @@ import Stripe from "stripe";
 import { storage } from "./storage";
 import { setupAuth } from "./facebookAuth";
 import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner } from "./unifiedAuth";
-import { insertRestaurantSchema, insertDealSchema, insertReviewSchema } from "@shared/schema";
+import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema } from "@shared/schema";
 import { z } from "zod";
+import { validateDocuments, checkRateLimit } from "./documentValidation";
 
 // Optional Stripe integration
 const stripe = process.env.STRIPE_SECRET_KEY 
@@ -169,6 +170,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching nearby restaurants:", error);
       res.status(500).json({ message: "Failed to fetch nearby restaurants" });
+    }
+  });
+
+  // Verification routes for restaurant owners
+  app.post('/api/restaurants/:id/verification/request', isAuthenticated, async (req: any, res) => {
+    try {
+      const restaurantId = req.params.id;
+      const userId = req.user.id;
+      
+      // Verify restaurant ownership
+      const restaurant = await storage.getRestaurant(restaurantId);
+      if (!restaurant || restaurant.ownerId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      // Check rate limiting
+      const rateLimit = checkRateLimit(restaurantId);
+      if (!rateLimit.allowed) {
+        return res.status(429).json({
+          message: "Rate limit exceeded. Only one verification request per restaurant per hour is allowed.",
+          nextAllowedTime: rateLimit.nextAllowedTime
+        });
+      }
+      
+      // Check for existing pending requests (dedupe)
+      const hasPendingRequest = await storage.hasPendingVerificationRequest(restaurantId);
+      if (hasPendingRequest) {
+        return res.status(409).json({
+          message: "A verification request is already pending for this restaurant. Please wait for admin review."
+        });
+      }
+      
+      // Validate request body with schema first
+      const verificationData = insertVerificationRequestSchema.parse({
+        ...req.body,
+        restaurantId,
+      });
+      
+      // Additional server-side document validation for security
+      const documentValidation = validateDocuments(verificationData.documents);
+      if (!documentValidation.valid) {
+        return res.status(400).json({
+          message: "Document validation failed",
+          errors: documentValidation.errors
+        });
+      }
+      
+      const verificationRequest = await storage.createVerificationRequest(verificationData);
+      res.json(verificationRequest);
+    } catch (error: any) {
+      console.error("Error creating verification request:", error);
+      res.status(400).json({ message: error.message || "Failed to create verification request" });
+    }
+  });
+
+  app.get('/api/restaurants/my/verifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const verifications = await storage.getVerificationRequestsByOwner(userId);
+      res.json(verifications);
+    } catch (error) {
+      console.error("Error fetching verification requests:", error);
+      res.status(500).json({ message: "Failed to fetch verification requests" });
     }
   });
 
@@ -782,6 +846,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating deal:", error);
       res.status(500).json({ message: "Failed to update deal" });
+    }
+  });
+
+  // Admin verification routes
+  app.get('/api/admin/verifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.userType !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const { status } = req.query;
+      let verifications = await storage.getVerificationRequests();
+      
+      // Filter by status if provided
+      if (status && ['pending', 'approved', 'rejected'].includes(status as string)) {
+        verifications = verifications.filter(v => v.status === status);
+      }
+      
+      res.json(verifications);
+    } catch (error) {
+      console.error("Error fetching verification requests:", error);
+      res.status(500).json({ message: "Failed to fetch verification requests" });
+    }
+  });
+
+  app.post('/api/admin/verifications/:id/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.userType !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const { id } = req.params;
+      await storage.approveVerificationRequest(id, user.id);
+      res.json({ success: true, message: "Verification request approved" });
+    } catch (error) {
+      console.error("Error approving verification request:", error);
+      res.status(500).json({ message: "Failed to approve verification request" });
+    }
+  });
+
+  app.post('/api/admin/verifications/:id/reject', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.userType !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const { id } = req.params;
+      const { reason } = req.body;
+      
+      if (!reason || reason.trim().length === 0) {
+        return res.status(400).json({ message: "Rejection reason is required" });
+      }
+      
+      await storage.rejectVerificationRequest(id, user.id, reason);
+      res.json({ success: true, message: "Verification request rejected" });
+    } catch (error) {
+      console.error("Error rejecting verification request:", error);
+      res.status(500).json({ message: "Failed to reject verification request" });
     }
   });
 

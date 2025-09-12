@@ -61,6 +61,7 @@ export const restaurants = pgTable("restaurants", {
   latitude: decimal("latitude", { precision: 10, scale: 8 }),
   longitude: decimal("longitude", { precision: 11, scale: 8 }),
   isActive: boolean("is_active").default(true),
+  isVerified: boolean("is_verified").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -105,6 +106,19 @@ export const reviews = pgTable("reviews", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const verificationRequests = pgTable("verification_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
+  status: varchar("status").notNull().default("pending"), // 'pending' | 'approved' | 'rejected'
+  documents: text("documents").array(), // Array of base64 data URLs or file paths
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewerId: varchar("reviewer_id").references(() => users.id),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   restaurants: many(restaurants),
@@ -119,6 +133,7 @@ export const restaurantsRelations = relations(restaurants, ({ one, many }) => ({
   }),
   deals: many(deals),
   reviews: many(reviews),
+  verificationRequests: many(verificationRequests),
 }));
 
 export const dealsRelations = relations(deals, ({ one, many }) => ({
@@ -151,6 +166,17 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
   }),
 }));
 
+export const verificationRequestsRelations = relations(verificationRequests, ({ one }) => ({
+  restaurant: one(restaurants, {
+    fields: [verificationRequests.restaurantId],
+    references: [restaurants.id],
+  }),
+  reviewer: one(users, {
+    fields: [verificationRequests.reviewerId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertRestaurantSchema = createInsertSchema(restaurants).omit({
   id: true,
@@ -175,6 +201,23 @@ export const insertDealClaimSchema = createInsertSchema(dealClaims).omit({
 export const insertReviewSchema = createInsertSchema(reviews).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertVerificationRequestSchema = createInsertSchema(verificationRequests).omit({
+  id: true,
+  submittedAt: true,
+  reviewedAt: true,
+  reviewerId: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  documents: z.array(z.string().url())
+    .min(1, "At least one document is required")
+    .max(5, "Maximum 5 documents allowed")
+    .refine(
+      (docs) => docs.every(doc => doc.startsWith("data:")), 
+      "Documents must be valid base64 data URLs"
+    )
 });
 
 // Types
@@ -215,3 +258,6 @@ export type DealClaim = typeof dealClaims.$inferSelect;
 
 export type InsertReview = z.infer<typeof insertReviewSchema>;
 export type Review = typeof reviews.$inferSelect;
+
+export type InsertVerificationRequest = z.infer<typeof insertVerificationRequestSchema>;
+export type VerificationRequest = typeof verificationRequests.$inferSelect;

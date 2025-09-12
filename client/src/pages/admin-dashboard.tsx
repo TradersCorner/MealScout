@@ -71,6 +71,12 @@ export default function AdminDashboard() {
     enabled: !!adminUser && selectedTab === "deals",
   });
 
+  // Fetch verification requests
+  const { data: verificationRequests = [], isLoading: loadingVerifications } = useQuery<any[]>({
+    queryKey: ["/api/admin/verifications"],
+    enabled: !!adminUser && selectedTab === "verifications",
+  });
+
   // Approve restaurant mutation
   const approveRestaurant = useMutation({
     mutationFn: async (restaurantId: string) => {
@@ -132,6 +138,50 @@ export default function AdminDashboard() {
       toast({
         title: "User Updated",
         description: "User status has been updated.",
+      });
+    },
+  });
+
+  // Approve verification request
+  const approveVerification = useMutation({
+    mutationFn: async (requestId: string) => {
+      return await apiRequest("POST", `/api/admin/verifications/${requestId}/approve`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/verifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({
+        title: "Verification Approved",
+        description: "Restaurant verification has been approved successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to approve verification. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Reject verification request
+  const rejectVerification = useMutation({
+    mutationFn: async ({ requestId, reason }: { requestId: string; reason: string }) => {
+      return await apiRequest("POST", `/api/admin/verifications/${requestId}/reject`, { reason });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/verifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({
+        title: "Verification Rejected",
+        description: "Restaurant verification has been rejected.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to reject verification. Please try again.",
+        variant: "destructive",
       });
     },
   });
@@ -269,11 +319,12 @@ export default function AdminDashboard() {
 
         {/* Main Content Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
             <TabsTrigger value="restaurants" data-testid="tab-restaurants">Restaurants</TabsTrigger>
             <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
             <TabsTrigger value="deals" data-testid="tab-deals">Deals</TabsTrigger>
+            <TabsTrigger value="verifications" data-testid="tab-verifications">Verifications</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -426,6 +477,131 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Verifications Tab */}
+          <TabsContent value="verifications" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Shield className="w-5 h-5" />
+                  <span>Business Verification Requests</span>
+                </CardTitle>
+                <CardDescription>
+                  Review and approve restaurant verification documents
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingVerifications ? (
+                  <div className="flex items-center justify-center p-8">
+                    <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+                  </div>
+                ) : verificationRequests.length === 0 ? (
+                  <div className="text-center p-8 text-muted-foreground">
+                    <Shield className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No verification requests found</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {verificationRequests.map((request: any) => (
+                      <div key={request.id} className="border rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h3 className="font-semibold text-lg">{request.restaurant?.name}</h3>
+                            <p className="text-sm text-muted-foreground">{request.restaurant?.address}</p>
+                          </div>
+                          <Badge 
+                            variant={
+                              request.status === 'pending' ? 'secondary' :
+                              request.status === 'approved' ? 'default' : 'destructive'
+                            }
+                            className="flex items-center space-x-1"
+                          >
+                            {request.status === 'pending' && <Clock className="w-3 h-3" />}
+                            {request.status === 'approved' && <CheckCircle className="w-3 h-3" />}
+                            {request.status === 'rejected' && <XCircle className="w-3 h-3" />}
+                            <span className="capitalize">{request.status}</span>
+                          </Badge>
+                        </div>
+
+                        <div className="mb-4">
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Submitted: {new Date(request.submittedAt).toLocaleDateString()}
+                          </p>
+                          {request.documents && request.documents.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium mb-2">Documents ({request.documents.length}):</p>
+                              <div className="flex flex-wrap gap-2">
+                                {request.documents.map((doc: string, index: number) => (
+                                  <div key={index} className="relative">
+                                    {doc.startsWith('data:image') ? (
+                                      <img 
+                                        src={doc} 
+                                        alt={`Document ${index + 1}`}
+                                        className="w-20 h-20 object-cover rounded cursor-pointer border"
+                                        onClick={() => window.open(doc, '_blank')}
+                                        data-testid={`img-document-${request.id}-${index}`}
+                                      />
+                                    ) : (
+                                      <div 
+                                        className="w-20 h-20 bg-gray-100 rounded flex items-center justify-center cursor-pointer border"
+                                        onClick={() => window.open(doc, '_blank')}
+                                        data-testid={`doc-document-${request.id}-${index}`}
+                                      >
+                                        <i className="fas fa-file-pdf text-2xl text-red-500"></i>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {request.rejectionReason && (
+                          <div className="mb-4 p-3 bg-destructive/10 rounded-md">
+                            <p className="text-sm font-medium text-destructive mb-1">Rejection Reason:</p>
+                            <p className="text-sm text-destructive">{request.rejectionReason}</p>
+                          </div>
+                        )}
+
+                        {request.status === 'pending' && (
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => approveVerification.mutate(request.id)}
+                              disabled={approveVerification.isPending}
+                              data-testid={`button-approve-verification-${request.id}`}
+                              className="flex items-center space-x-1"
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                              <span>Approve</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                const reason = window.prompt('Please provide a reason for rejection:');
+                                if (reason && reason.trim()) {
+                                  rejectVerification.mutate({ requestId: request.id, reason: reason.trim() });
+                                }
+                              }}
+                              disabled={rejectVerification.isPending}
+                              data-testid={`button-reject-verification-${request.id}`}
+                              className="flex items-center space-x-1"
+                            >
+                              <XCircle className="w-4 h-4" />
+                              <span>Reject</span>
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -4,6 +4,7 @@ import {
   deals,
   dealClaims,
   reviews,
+  verificationRequests,
   type User,
   type UpsertUser,
   type Restaurant,
@@ -14,6 +15,8 @@ import {
   type InsertDealClaim,
   type Review,
   type InsertReview,
+  type VerificationRequest,
+  type InsertVerificationRequest,
   type GoogleUserData,
   type EmailUserData,
   type FacebookUserData,
@@ -72,6 +75,15 @@ export interface IStorage {
   
   // Admin operations
   ensureAdminExists(): Promise<void>;
+  
+  // Verification operations
+  createVerificationRequest(verificationRequest: InsertVerificationRequest): Promise<VerificationRequest>;
+  getVerificationRequestsByOwner(ownerId: string): Promise<VerificationRequest[]>;
+  getVerificationRequests(): Promise<(VerificationRequest & { restaurant: { id: string; name: string; address: string; ownerId: string } })[]>;
+  approveVerificationRequest(id: string, reviewerId: string): Promise<void>;
+  rejectVerificationRequest(id: string, reviewerId: string, reason: string): Promise<void>;
+  setRestaurantVerified(restaurantId: string, isVerified: boolean): Promise<void>;
+  hasPendingVerificationRequest(restaurantId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -698,6 +710,145 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('❌ Failed to create admin account:', error);
     }
+  }
+
+  // Verification operations
+  async createVerificationRequest(verificationRequest: InsertVerificationRequest): Promise<VerificationRequest> {
+    const [newRequest] = await db
+      .insert(verificationRequests)
+      .values(verificationRequest)
+      .returning();
+    return newRequest;
+  }
+
+  async getVerificationRequestsByOwner(ownerId: string): Promise<VerificationRequest[]> {
+    return await db
+      .select({
+        id: verificationRequests.id,
+        restaurantId: verificationRequests.restaurantId,
+        status: verificationRequests.status,
+        documents: verificationRequests.documents,
+        submittedAt: verificationRequests.submittedAt,
+        reviewedAt: verificationRequests.reviewedAt,
+        reviewerId: verificationRequests.reviewerId,
+        rejectionReason: verificationRequests.rejectionReason,
+        createdAt: verificationRequests.createdAt,
+        updatedAt: verificationRequests.updatedAt,
+      })
+      .from(verificationRequests)
+      .innerJoin(restaurants, eq(verificationRequests.restaurantId, restaurants.id))
+      .where(eq(restaurants.ownerId, ownerId))
+      .orderBy(desc(verificationRequests.createdAt));
+  }
+
+  async getVerificationRequests(): Promise<(VerificationRequest & { restaurant: { id: string; name: string; address: string; ownerId: string } })[]> {
+    return await db
+      .select({
+        id: verificationRequests.id,
+        restaurantId: verificationRequests.restaurantId,
+        status: verificationRequests.status,
+        documents: verificationRequests.documents,
+        submittedAt: verificationRequests.submittedAt,
+        reviewedAt: verificationRequests.reviewedAt,
+        reviewerId: verificationRequests.reviewerId,
+        rejectionReason: verificationRequests.rejectionReason,
+        createdAt: verificationRequests.createdAt,
+        updatedAt: verificationRequests.updatedAt,
+        restaurant: {
+          id: restaurants.id,
+          name: restaurants.name,
+          address: restaurants.address,
+          ownerId: restaurants.ownerId,
+        }
+      })
+      .from(verificationRequests)
+      .innerJoin(restaurants, eq(verificationRequests.restaurantId, restaurants.id))
+      .orderBy(desc(verificationRequests.submittedAt));
+  }
+
+  async approveVerificationRequest(id: string, reviewerId: string): Promise<void> {
+    // Start transaction to update both tables
+    await db.transaction(async (tx) => {
+      // Update verification request status
+      const [request] = await tx
+        .update(verificationRequests)
+        .set({
+          status: 'approved',
+          reviewedAt: new Date(),
+          reviewerId,
+          updatedAt: new Date(),
+        })
+        .where(eq(verificationRequests.id, id))
+        .returning();
+
+      if (!request) {
+        throw new Error('Verification request not found');
+      }
+
+      // Set restaurant as verified
+      await tx
+        .update(restaurants)
+        .set({
+          isVerified: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(restaurants.id, request.restaurantId));
+    });
+  }
+
+  async rejectVerificationRequest(id: string, reviewerId: string, reason: string): Promise<void> {
+    // Start transaction to update both tables atomically
+    await db.transaction(async (tx) => {
+      // Update verification request status
+      const [request] = await tx
+        .update(verificationRequests)
+        .set({
+          status: 'rejected',
+          reviewedAt: new Date(),
+          reviewerId,
+          rejectionReason: reason,
+          updatedAt: new Date(),
+        })
+        .where(eq(verificationRequests.id, id))
+        .returning();
+
+      if (!request) {
+        throw new Error('Verification request not found');
+      }
+
+      // Ensure restaurant remains unverified on rejection
+      await tx
+        .update(restaurants)
+        .set({
+          isVerified: false,
+          updatedAt: new Date(),
+        })
+        .where(eq(restaurants.id, request.restaurantId));
+    });
+  }
+
+  async setRestaurantVerified(restaurantId: string, isVerified: boolean): Promise<void> {
+    await db
+      .update(restaurants)
+      .set({
+        isVerified,
+        updatedAt: new Date(),
+      })
+      .where(eq(restaurants.id, restaurantId));
+  }
+
+  async hasPendingVerificationRequest(restaurantId: string): Promise<boolean> {
+    const [request] = await db
+      .select()
+      .from(verificationRequests)
+      .where(
+        and(
+          eq(verificationRequests.restaurantId, restaurantId),
+          eq(verificationRequests.status, 'pending')
+        )
+      )
+      .limit(1);
+    return !!request;
   }
 }
 

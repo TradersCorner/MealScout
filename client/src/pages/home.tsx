@@ -8,8 +8,10 @@ import SmartSearch from "@/components/smart-search";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat, Beef, ChefHat, Soup, Star, Sparkles, Timer, ShoppingBag, Target, Trophy, Rocket, Crown, Coffee, Cookie, Wheat, Leaf, Grape, Cherry, Sandwich, Salad, IceCream, Croissant, Plus, Send } from "lucide-react";
+import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat, Beef, ChefHat, Soup, Star, Sparkles, Timer, ShoppingBag, Target, Trophy, Rocket, Crown, Coffee, Cookie, Wheat, Leaf, Grape, Cherry, Sandwich, Salad, IceCream, Croissant, Plus, Send, Truck, Radio, Activity, Wifi, Loader2 } from "lucide-react";
 import mealScoutLogo from "@assets/image_1757213417158.png";
+import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
+import { format } from "date-fns";
 
 interface Deal {
   id: string;
@@ -21,6 +23,20 @@ interface Deal {
   minOrderAmount?: string;
   imageUrl?: string;
   isFeatured: boolean;
+}
+
+interface FoodTruck {
+  id: string;
+  name: string;
+  cuisineType: string;
+  latitude: number;
+  longitude: number;
+  lastSeen: string;
+  isOnline: boolean;
+  distance?: number;
+  sessionId?: string;
+  currentDeals?: Deal[];
+  lastBroadcast?: string;
 }
 
 export default function Home() {
@@ -35,14 +51,52 @@ export default function Home() {
     cuisineType: "",
     description: ""
   });
+  const [foodTrucks, setFoodTrucks] = useState<FoodTruck[]>([]);
+  const [showFoodTrucks, setShowFoodTrucks] = useState(true);
+  const [loadingFoodTrucks, setLoadingFoodTrucks] = useState(false);
 
-  // Get user location
+  // WebSocket integration for real-time food truck updates
+  const {
+    isConnected: wsConnected,
+    subscribeToNearby,
+    connect: connectWS
+  } = useFoodTruckSocket({
+    onLocationUpdate: (locationUpdate) => {
+      setFoodTrucks(prev => prev.map(truck => 
+        truck.id === locationUpdate.restaurantId 
+          ? { 
+              ...truck, 
+              latitude: locationUpdate.latitude,
+              longitude: locationUpdate.longitude,
+              lastSeen: locationUpdate.timestamp,
+              lastBroadcast: locationUpdate.timestamp,
+              isOnline: true
+            }
+          : truck
+      ));
+    },
+    onStatusUpdate: (statusUpdate) => {
+      setFoodTrucks(prev => prev.map(truck => 
+        truck.id === statusUpdate.restaurantId 
+          ? { ...truck, isOnline: statusUpdate.isOnline, lastSeen: statusUpdate.lastSeen }
+          : truck
+      ));
+    },
+    autoConnect: true
+  });
+
+  // Get user location and subscribe to nearby food trucks
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           setLocation({ lat: latitude, lng: longitude });
+          
+          // Subscribe to nearby food trucks (5km radius)
+          if (wsConnected) {
+            subscribeToNearby(latitude, longitude, 5000);
+          }
           
           // Reverse geocoding for display name
           fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
@@ -59,7 +113,53 @@ export default function Home() {
         }
       );
     }
-  }, []);
+  }, [wsConnected, subscribeToNearby]);
+
+  // Fetch initial food truck data
+  useEffect(() => {
+    if (location) {
+      fetchNearbyFoodTrucks();
+    }
+  }, [location]);
+
+  const fetchNearbyFoodTrucks = async () => {
+    if (!location) return;
+    
+    setLoadingFoodTrucks(true);
+    try {
+      const response = await fetch(`/api/food-trucks/nearby?lat=${location.lat}&lng=${location.lng}&radius=5000`);
+      if (response.ok) {
+        const data = await response.json();
+        setFoodTrucks(data.foodTrucks || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch nearby food trucks:', error);
+    } finally {
+      setLoadingFoodTrucks(false);
+    }
+  };
+
+  // Calculate distance between two points
+  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // Distance in km
+  };
+
+  // Update food truck distances when location changes
+  useEffect(() => {
+    if (location && foodTrucks.length > 0) {
+      setFoodTrucks(prev => prev.map(truck => ({
+        ...truck,
+        distance: calculateDistance(location.lat, location.lng, truck.latitude, truck.longitude)
+      })));
+    }
+  }, [location, foodTrucks.length]);
 
   const { data: featuredDeals, isLoading: featuredLoading } = useQuery({
     queryKey: ["/api/deals/featured"],
@@ -233,6 +333,195 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Food Trucks Nearby Section */}
+      {showFoodTrucks && (
+        <div className="py-6 bg-gradient-to-r from-orange-50 to-red-50">
+          <div className="flex items-center justify-between mb-6 px-6">
+            <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-food-trucks-title">
+              <span className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-600 rounded-lg flex items-center justify-center mr-3 shadow-md">
+                <Truck className="w-4 h-4 text-white" />
+              </span>
+              Food Trucks Nearby
+              {wsConnected && (
+                <div className="flex items-center ml-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-green-600 ml-1">Live</span>
+                </div>
+              )}
+            </h2>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost" 
+                size="sm"
+                onClick={() => setShowFoodTrucks(!showFoodTrucks)}
+                data-testid="button-toggle-food-trucks"
+              >
+                {showFoodTrucks ? 'Hide' : 'Show'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchNearbyFoodTrucks}
+                disabled={loadingFoodTrucks}
+                data-testid="button-refresh-food-trucks"
+              >
+                {loadingFoodTrucks ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Activity className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {loadingFoodTrucks ? (
+            <div className="flex space-x-4 overflow-x-auto pb-4 px-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex-shrink-0 w-80">
+                  <div className="bg-white rounded-2xl overflow-hidden shadow-lg animate-pulse">
+                    <div className="relative h-32 bg-gradient-to-r from-orange-200 to-red-200"></div>
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-32"></div>
+                        <div className="h-4 bg-gradient-to-r from-green-100 to-green-200 rounded-full w-16"></div>
+                      </div>
+                      <div className="h-4 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg w-24"></div>
+                      <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-full"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex space-x-4 overflow-x-auto pb-4 px-6 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:overflow-visible">
+              {foodTrucks.length > 0 ? (
+                foodTrucks
+                  .filter(truck => truck.isOnline)
+                  .sort((a, b) => (a.distance || 0) - (b.distance || 0))
+                  .map((truck) => (
+                    <div key={truck.id} className="flex-shrink-0 w-80 lg:w-auto">
+                      <div className="bg-white rounded-2xl overflow-hidden shadow-lg border border-orange-100 hover:shadow-xl transition-shadow" data-testid={`card-food-truck-${truck.id}`}>
+                        {/* Food Truck Header */}
+                        <div className="relative h-32 bg-gradient-to-r from-orange-400 to-red-500 flex items-center justify-center">
+                          <div className="absolute top-3 right-3 flex items-center space-x-2">
+                            {truck.isOnline ? (
+                              <div className="flex items-center bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium" data-testid={`status-online-${truck.id}`}>
+                                <Radio className="w-3 h-3 mr-1 animate-pulse" />
+                                LIVE
+                              </div>
+                            ) : (
+                              <div className="flex items-center bg-gray-500 text-white px-2 py-1 rounded-full text-xs font-medium" data-testid={`status-offline-${truck.id}`}>
+                                Offline
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-center text-white">
+                            <Truck className="w-12 h-12 mx-auto mb-2" />
+                            <p className="text-sm font-medium">Mobile Restaurant</p>
+                          </div>
+                        </div>
+
+                        <div className="p-4 space-y-3">
+                          {/* Restaurant Info */}
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="font-bold text-lg text-foreground mb-1" data-testid={`text-truck-name-${truck.id}`}>
+                                {truck.name}
+                              </h3>
+                              <p className="text-sm text-muted-foreground" data-testid={`text-truck-cuisine-${truck.id}`}>
+                                {truck.cuisineType || 'Food Truck'}
+                              </p>
+                            </div>
+                            {truck.distance && (
+                              <div className="text-right">
+                                <p className="text-sm font-medium text-orange-600" data-testid={`text-truck-distance-${truck.id}`}>
+                                  {truck.distance < 1 ? 
+                                    `${Math.round(truck.distance * 1000)}m` : 
+                                    `${truck.distance.toFixed(1)}km`}
+                                </p>
+                                <p className="text-xs text-muted-foreground">away</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Location Status */}
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <div className="flex items-center">
+                              <MapPin className="w-3 h-3 mr-1" />
+                              <span data-testid={`text-truck-location-${truck.id}`}>
+                                {truck.latitude.toFixed(4)}, {truck.longitude.toFixed(4)}
+                              </span>
+                            </div>
+                            {truck.lastBroadcast && (
+                              <div className="flex items-center">
+                                <Clock className="w-3 h-3 mr-1" />
+                                <span data-testid={`text-truck-last-update-${truck.id}`}>
+                                  {format(new Date(truck.lastBroadcast), 'HH:mm')}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Active Deals */}
+                          {truck.currentDeals && truck.currentDeals.length > 0 && (
+                            <div className="border-t pt-3 space-y-2">
+                              <p className="text-xs font-medium text-muted-foreground">Active Deals:</p>
+                              {truck.currentDeals.slice(0, 2).map((deal) => (
+                                <div key={deal.id} className="bg-orange-50 border border-orange-200 rounded-lg p-2">
+                                  <p className="text-sm font-medium text-orange-800" data-testid={`text-deal-title-${deal.id}`}>
+                                    {deal.title}
+                                  </p>
+                                  <p className="text-xs text-orange-600" data-testid={`text-deal-discount-${deal.id}`}>
+                                    {deal.discountValue}
+                                  </p>
+                                </div>
+                              ))}
+                              {truck.currentDeals.length > 2 && (
+                                <p className="text-xs text-muted-foreground">
+                                  +{truck.currentDeals.length - 2} more deals
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Action Button */}
+                          <div className="pt-2">
+                            <Link href={`/restaurant/${truck.id}`}>
+                              <Button 
+                                className="w-full bg-orange-500 hover:bg-orange-600 text-white" 
+                                size="sm"
+                                data-testid={`button-view-truck-${truck.id}`}
+                              >
+                                View Menu & Deals
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+              ) : (
+                <div className="text-center py-12 px-6 w-full lg:col-span-full">
+                  <div className="w-20 h-20 bg-gradient-to-r from-orange-100 to-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <Truck className="w-10 h-10 text-orange-600" />
+                  </div>
+                  <h3 className="font-bold text-lg text-foreground mb-2">No Food Trucks Nearby</h3>
+                  <p className="text-muted-foreground mb-4" data-testid="text-no-food-trucks">
+                    No mobile restaurants are currently active in your area.
+                  </p>
+                  <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
+                    <div className="flex items-center">
+                      <Wifi className={`w-4 h-4 mr-1 ${wsConnected ? 'text-green-500' : 'text-red-500'}`} />
+                      <span>{wsConnected ? 'Real-time updates enabled' : 'Offline mode'}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Extended Food Categories with Horizontal Scrolling */}
       

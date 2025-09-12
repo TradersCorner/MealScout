@@ -12,9 +12,13 @@ import {
   Store, Plus, TrendingUp, Users, DollarSign, 
   Eye, ShoppingCart, Star, Calendar, Settings,
   CreditCard, BarChart3, MapPin, Clock, Edit,
-  Download, Calendar as CalendarIcon, RefreshCw
+  Download, Calendar as CalendarIcon, RefreshCw,
+  Truck, Navigation, Radio, Power, PowerOff,
+  Wifi, WifiOff, Activity, AlertCircle, CheckCircle,
+  Play, Square, Loader2, Zap, Smartphone, Satellite
 } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
+import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import type { Deal, Restaurant } from "@shared/schema";
 
@@ -36,6 +40,36 @@ export default function RestaurantOwnerDashboard() {
     end: format(new Date(), 'yyyy-MM-dd'),
   });
   const [comparisonPeriod, setComparisonPeriod] = useState<'week' | 'month' | 'quarter'>('month');
+
+  // Food truck state
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<{lat: number; lng: number; accuracy?: number; timestamp?: number} | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [gpsWatchId, setGpsWatchId] = useState<number | null>(null);
+  const [lastBroadcast, setLastBroadcast] = useState<Date | null>(null);
+  const [broadcastCount, setBroadcastCount] = useState(0);
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected');
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  // WebSocket integration for real-time updates
+  const { 
+    isConnected: wsConnected, 
+    connectionError: wsError,
+    subscribeToRestaurant,
+    connect: connectWS,
+    disconnect: disconnectWS
+  } = useFoodTruckSocket({
+    onLocationUpdate: (location) => {
+      console.log('Received location update:', location);
+      // Update UI with real-time location data from other sources if needed
+    },
+    onStatusUpdate: (status) => {
+      console.log('Received status update:', status);
+      // Handle status updates from server
+    },
+    autoConnect: false // We'll connect manually when needed
+  });
 
   // Fetch user's restaurants
   const { data: restaurants = [], isLoading: loadingRestaurants } = useQuery<Restaurant[]>({
@@ -91,12 +125,207 @@ export default function RestaurantOwnerDashboard() {
     enabled: !!selectedRestaurant,
   });
 
+  // Calculate distance between two GPS coordinates
+  const getDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+    const R = 6371e3; // Earth's radius in meters
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lng2 - lng1) * Math.PI / 180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c; // Distance in meters
+  };
+
+  // Food truck mutations - declared early to avoid hoisting issues
+  const updateLocationMutation = useMutation({
+    mutationFn: async (location: { lat: number; lng: number; accuracy?: number; heading?: number; speed?: number }) => {
+      return await apiRequest("POST", `/api/restaurants/${selectedRestaurant}/food-truck/location`, {
+        sessionId,
+        latitude: location.lat,
+        longitude: location.lng,
+        accuracy: location.accuracy,
+        heading: location.heading,
+        speed: location.speed,
+        source: 'gps'
+      });
+    },
+    onSuccess: () => {
+      setBroadcastCount(prev => prev + 1);
+      setLastBroadcast(new Date());
+    },
+    onError: (error: any) => {
+      console.error('Location update failed:', error);
+      setLocationError('Failed to update location');
+    }
+  });
+
+  const stopFoodTruckSessionMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", `/api/restaurants/${selectedRestaurant}/food-truck/stop`, {
+        sessionId
+      });
+    },
+    onSuccess: () => {
+      setIsBroadcasting(false);
+      setSessionId(null);
+      setConnectionStatus('disconnected');
+      
+      // Disconnect WebSocket
+      disconnectWS();
+      
+      if (gpsWatchId) {
+        navigator.geolocation.clearWatch(gpsWatchId);
+        setGpsWatchId(null);
+      }
+      toast({
+        title: "Broadcasting Stopped",
+        description: "Your food truck is no longer visible to customers.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error Stopping Broadcast",
+        description: error.message || "Failed to stop broadcasting.",
+        variant: "destructive"
+      });
+    }
+  });
+
   // Set default restaurant
   useEffect(() => {
     if (restaurants.length > 0 && !selectedRestaurant) {
       setSelectedRestaurant(restaurants[0].id);
     }
   }, [restaurants, selectedRestaurant]);
+
+  // GPS tracking effect
+  useEffect(() => {
+    if (isBroadcasting && sessionId) {
+      if (!navigator.geolocation) {
+        setLocationError('Geolocation not supported by this browser');
+        return;
+      }
+
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const newLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            timestamp: position.timestamp
+          };
+
+          // Update location state
+          setCurrentLocation(newLocation);
+          setGpsAccuracy(position.coords.accuracy);
+          setLocationError(null);
+
+          // Only send updates if location changed significantly (50m threshold)
+          if (!lastBroadcast || 
+              Date.now() - lastBroadcast.getTime() > 30000 || // 30 seconds minimum
+              (currentLocation && 
+                getDistance(currentLocation.lat, currentLocation.lng, newLocation.lat, newLocation.lng) > 50)
+          ) {
+            updateLocationMutation.mutate({
+              lat: newLocation.lat,
+              lng: newLocation.lng,
+              accuracy: position.coords.accuracy,
+              heading: position.coords.heading || undefined,
+              speed: position.coords.speed || undefined
+            });
+          }
+        },
+        (error) => {
+          console.error('GPS error:', error);
+          setLocationError(error.message);
+          setConnectionStatus('disconnected');
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 5000
+        }
+      );
+
+      setGpsWatchId(watchId);
+
+      return () => {
+        navigator.geolocation.clearWatch(watchId);
+      };
+    }
+  }, [isBroadcasting, sessionId, lastBroadcast, currentLocation, updateLocationMutation]);
+
+  // Auto-stop broadcasting after 2 minutes of inactivity
+  useEffect(() => {
+    if (isBroadcasting && lastBroadcast) {
+      const timeout = setTimeout(() => {
+        if (Date.now() - lastBroadcast.getTime() > 120000) { // 2 minutes
+          stopFoodTruckSessionMutation.mutate();
+          setLocationError('Session timed out due to inactivity');
+        }
+      }, 125000); // Check after 2 minutes 5 seconds
+
+      return () => clearTimeout(timeout);
+    }
+  }, [lastBroadcast, isBroadcasting, stopFoodTruckSessionMutation]);
+
+  // Get current restaurant data
+  const currentRestaurant = restaurants.find(r => r.id === selectedRestaurant);
+
+  // Start broadcasting handler
+  const handleStartBroadcasting = () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: "GPS Not Available",
+        description: "Your device doesn't support GPS location.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setConnectionStatus('connecting');
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        
+        setCurrentLocation({
+          ...location,
+          accuracy: position.coords.accuracy,
+          timestamp: position.timestamp
+        });
+        
+        startFoodTruckSessionMutation.mutate(location);
+      },
+      (error) => {
+        setLocationError(error.message);
+        setConnectionStatus('disconnected');
+        toast({
+          title: "Location Error",
+          description: "Unable to get your current location. Please check your GPS settings.",
+          variant: "destructive"
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
+    );
+  };
+
+  // Stop broadcasting handler
+  const handleStopBroadcasting = () => {
+    stopFoodTruckSessionMutation.mutate();
+  };
 
   // Toggle deal status
   const toggleDealMutation = useMutation({
@@ -138,6 +367,56 @@ export default function RestaurantOwnerDashboard() {
         description: "Deal has been updated successfully.",
       });
     },
+  });
+
+  // Food truck mutations
+  const startFoodTruckSessionMutation = useMutation({
+    mutationFn: async (location: { lat: number; lng: number }) => {
+      return await apiRequest("POST", `/api/restaurants/${selectedRestaurant}/food-truck/start`, {
+        latitude: location.lat,
+        longitude: location.lng,
+        deviceId: navigator.userAgent || 'web-browser'
+      });
+    },
+    onSuccess: (data: any) => {
+      setSessionId(data.sessionId);
+      setIsBroadcasting(true);
+      setConnectionStatus('connected');
+      
+      // Connect to WebSocket and subscribe to restaurant updates
+      connectWS();
+      setTimeout(() => {
+        subscribeToRestaurant(selectedRestaurant);
+      }, 1000);
+      
+      toast({
+        title: "Broadcasting Started",
+        description: "Your food truck is now visible to customers nearby.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Start Broadcasting",
+        description: error.message || "Unable to start food truck session.",
+        variant: "destructive"
+      });
+    }
+  });
+
+
+  const toggleFoodTruckMutation = useMutation({
+    mutationFn: async (isFoodTruck: boolean) => {
+      return await apiRequest("PATCH", `/api/restaurants/${selectedRestaurant}`, {
+        isFoodTruck
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurants/my-restaurants'] });
+      toast({
+        title: "Restaurant Updated",
+        description: "Food truck settings have been saved.",
+      });
+    }
   });
 
   const formatTime = (time: string) => {
@@ -288,6 +567,10 @@ export default function RestaurantOwnerDashboard() {
           <TabsTrigger value="inactive">Inactive Deals</TabsTrigger>
           <TabsTrigger value="claims">Claims</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="foodtruck" data-testid="tab-food-truck">
+            <Truck className="h-4 w-4 mr-1" />
+            Food Truck
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="active" className="space-y-4">
@@ -513,16 +796,16 @@ export default function RestaurantOwnerDashboard() {
                       <div>
                         <p className="text-sm text-muted-foreground">Total Views</p>
                         <p className="text-2xl font-bold" data-testid="text-total-views">
-                          {analyticsSummary?.totalViews?.toLocaleString() || 0}
+                          {(analyticsSummary as any)?.totalViews?.toLocaleString() || 0}
                         </p>
                       </div>
                       <Eye className="h-8 w-8 text-blue-500" />
                     </div>
                     {comparison && (
                       <div className="mt-2 flex items-center text-xs">
-                        <TrendingUp className={`h-3 w-3 mr-1 ${comparison.changes.viewsChange >= 0 ? 'text-green-500' : 'text-red-500'}`} />
-                        <span className={comparison.changes.viewsChange >= 0 ? 'text-green-500' : 'text-red-500'}>
-                          {comparison.changes.viewsChange >= 0 ? '+' : ''}{comparison.changes.viewsChange.toFixed(1)}%
+                        <TrendingUp className={`h-3 w-3 mr-1 ${(comparison as any).changes.viewsChange >= 0 ? 'text-green-500' : 'text-red-500'}`} />
+                        <span className={(comparison as any).changes.viewsChange >= 0 ? 'text-green-500' : 'text-red-500'}>
+                          {(comparison as any).changes.viewsChange >= 0 ? '+' : ''}{(comparison as any).changes.viewsChange.toFixed(1)}%
                         </span>
                         <span className="text-muted-foreground ml-1">vs previous period</span>
                       </div>
@@ -536,16 +819,16 @@ export default function RestaurantOwnerDashboard() {
                       <div>
                         <p className="text-sm text-muted-foreground">Total Claims</p>
                         <p className="text-2xl font-bold" data-testid="text-total-claims">
-                          {analyticsSummary?.totalClaims?.toLocaleString() || 0}
+                          {(analyticsSummary as any)?.totalClaims?.toLocaleString() || 0}
                         </p>
                       </div>
                       <ShoppingCart className="h-8 w-8 text-green-500" />
                     </div>
                     {comparison && (
                       <div className="mt-2 flex items-center text-xs">
-                        <TrendingUp className={`h-3 w-3 mr-1 ${comparison.changes.claimsChange >= 0 ? 'text-green-500' : 'text-red-500'}`} />
-                        <span className={comparison.changes.claimsChange >= 0 ? 'text-green-500' : 'text-red-500'}>
-                          {comparison.changes.claimsChange >= 0 ? '+' : ''}{comparison.changes.claimsChange.toFixed(1)}%
+                        <TrendingUp className={`h-3 w-3 mr-1 ${(comparison as any).changes.claimsChange >= 0 ? 'text-green-500' : 'text-red-500'}`} />
+                        <span className={(comparison as any).changes.claimsChange >= 0 ? 'text-green-500' : 'text-red-500'}>
+                          {(comparison as any).changes.claimsChange >= 0 ? '+' : ''}{(comparison as any).changes.claimsChange.toFixed(1)}%
                         </span>
                         <span className="text-muted-foreground ml-1">vs previous period</span>
                       </div>
@@ -559,16 +842,16 @@ export default function RestaurantOwnerDashboard() {
                       <div>
                         <p className="text-sm text-muted-foreground">Total Revenue</p>
                         <p className="text-2xl font-bold" data-testid="text-total-revenue">
-                          ${analyticsSummary?.totalRevenue?.toLocaleString() || 0}
+                          ${(analyticsSummary as any)?.totalRevenue?.toLocaleString() || 0}
                         </p>
                       </div>
                       <DollarSign className="h-8 w-8 text-yellow-500" />
                     </div>
                     {comparison && (
                       <div className="mt-2 flex items-center text-xs">
-                        <TrendingUp className={`h-3 w-3 mr-1 ${comparison.changes.revenueChange >= 0 ? 'text-green-500' : 'text-red-500'}`} />
-                        <span className={comparison.changes.revenueChange >= 0 ? 'text-green-500' : 'text-red-500'}>
-                          {comparison.changes.revenueChange >= 0 ? '+' : ''}{comparison.changes.revenueChange.toFixed(1)}%
+                        <TrendingUp className={`h-3 w-3 mr-1 ${(comparison as any).changes.revenueChange >= 0 ? 'text-green-500' : 'text-red-500'}`} />
+                        <span className={(comparison as any).changes.revenueChange >= 0 ? 'text-green-500' : 'text-red-500'}>
+                          {(comparison as any).changes.revenueChange >= 0 ? '+' : ''}{(comparison as any).changes.revenueChange.toFixed(1)}%
                         </span>
                         <span className="text-muted-foreground ml-1">vs previous period</span>
                       </div>
@@ -582,16 +865,16 @@ export default function RestaurantOwnerDashboard() {
                       <div>
                         <p className="text-sm text-muted-foreground">Conversion Rate</p>
                         <p className="text-2xl font-bold" data-testid="text-conversion-rate">
-                          {analyticsSummary?.conversionRate?.toFixed(1) || 0}%
+                          {(analyticsSummary as any)?.conversionRate?.toFixed(1) || 0}%
                         </p>
                       </div>
                       <TrendingUp className="h-8 w-8 text-purple-500" />
                     </div>
                     {comparison && (
                       <div className="mt-2 flex items-center text-xs">
-                        <TrendingUp className={`h-3 w-3 mr-1 ${comparison.changes.conversionRateChange >= 0 ? 'text-green-500' : 'text-red-500'}`} />
-                        <span className={comparison.changes.conversionRateChange >= 0 ? 'text-green-500' : 'text-red-500'}>
-                          {comparison.changes.conversionRateChange >= 0 ? '+' : ''}{comparison.changes.conversionRateChange.toFixed(1)}%
+                        <TrendingUp className={`h-3 w-3 mr-1 ${(comparison as any).changes.conversionRateChange >= 0 ? 'text-green-500' : 'text-red-500'}`} />
+                        <span className={(comparison as any).changes.conversionRateChange >= 0 ? 'text-green-500' : 'text-red-500'}>
+                          {(comparison as any).changes.conversionRateChange >= 0 ? '+' : ''}{(comparison as any).changes.conversionRateChange.toFixed(1)}%
                         </span>
                         <span className="text-muted-foreground ml-1">vs previous period</span>
                       </div>
@@ -610,9 +893,9 @@ export default function RestaurantOwnerDashboard() {
                   <CardDescription>Daily revenue and deal performance trends</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {analyticsTimeseries && analyticsTimeseries.length > 0 ? (
+                  {analyticsTimeseries && (analyticsTimeseries as any[]).length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={analyticsTimeseries}>
+                      <LineChart data={analyticsTimeseries as any[]}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="date" />
                         <YAxis />
@@ -636,9 +919,9 @@ export default function RestaurantOwnerDashboard() {
                   <CardDescription>Daily views and conversion tracking</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {analyticsTimeseries && analyticsTimeseries.length > 0 ? (
+                  {analyticsTimeseries && (analyticsTimeseries as any[]).length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={analyticsTimeseries}>
+                      <BarChart data={analyticsTimeseries as any[]}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="date" />
                         <YAxis />
@@ -663,9 +946,9 @@ export default function RestaurantOwnerDashboard() {
                 <CardDescription>Your most successful deals ranked by views and revenue</CardDescription>
               </CardHeader>
               <CardContent>
-                {analyticsSummary?.topDeals?.length > 0 ? (
+                {(analyticsSummary as any)?.topDeals?.length > 0 ? (
                   <div className="space-y-4">
-                    {analyticsSummary.topDeals.map((deal, index) => (
+                    {(analyticsSummary as any).topDeals.map((deal: any, index: number) => (
                       <div key={deal.dealId} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
@@ -712,19 +995,19 @@ export default function RestaurantOwnerDashboard() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Repeat Customers</p>
-                      <p className="text-2xl font-bold">{customerInsights?.repeatCustomers || 0}</p>
+                      <p className="text-2xl font-bold">{(customerInsights as any)?.repeatCustomers || 0}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Avg Order Value</p>
-                      <p className="text-2xl font-bold">${customerInsights?.averageOrderValue?.toFixed(2) || 0}</p>
+                      <p className="text-2xl font-bold">${(customerInsights as any)?.averageOrderValue?.toFixed(2) || 0}</p>
                     </div>
                   </div>
                   
-                  {customerInsights?.peakHours?.length > 0 && (
+                  {(customerInsights as any)?.peakHours?.length > 0 && (
                     <div>
                       <p className="text-sm text-muted-foreground mb-2">Peak Hours</p>
                       <div className="space-y-1">
-                        {customerInsights.peakHours.slice(0, 3).map((hour, index) => (
+                        {(customerInsights as any).peakHours.slice(0, 3).map((hour: any, index: number) => (
                           <div key={hour.hour} className="flex justify-between items-center">
                             <span className="text-sm">{hour.hour}:00 - {hour.hour + 1}:00</span>
                             <span className="text-sm font-medium">{hour.count} orders</span>
@@ -742,13 +1025,13 @@ export default function RestaurantOwnerDashboard() {
                   <CardDescription>Customer age and gender breakdown</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {customerInsights?.demographics ? (
+                  {(customerInsights as any)?.demographics ? (
                     <div className="space-y-4">
-                      {customerInsights.demographics.ageGroups.length > 0 && (
+                      {(customerInsights as any).demographics.ageGroups.length > 0 && (
                         <div>
                           <p className="text-sm text-muted-foreground mb-2">Age Groups</p>
                           <div className="space-y-1">
-                            {customerInsights.demographics.ageGroups.map((group) => (
+                            {(customerInsights as any).demographics.ageGroups.map((group: any) => (
                               <div key={group.range} className="flex justify-between items-center">
                                 <span className="text-sm">{group.range}</span>
                                 <span className="text-sm font-medium">{group.count}</span>
@@ -758,11 +1041,11 @@ export default function RestaurantOwnerDashboard() {
                         </div>
                       )}
                       
-                      {customerInsights.demographics.genderBreakdown.length > 0 && (
+                      {(customerInsights as any).demographics.genderBreakdown.length > 0 && (
                         <div>
                           <p className="text-sm text-muted-foreground mb-2">Gender Distribution</p>
                           <div className="space-y-1">
-                            {customerInsights.demographics.genderBreakdown.map((gender) => (
+                            {(customerInsights as any).demographics.genderBreakdown.map((gender: any) => (
                               <div key={gender.gender} className="flex justify-between items-center">
                                 <span className="text-sm capitalize">{gender.gender}</span>
                                 <span className="text-sm font-medium">{gender.count}</span>
@@ -782,6 +1065,221 @@ export default function RestaurantOwnerDashboard() {
             </div>
           </div>
         </TabsContent>
+        <TabsContent value="foodtruck" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Truck className="h-5 w-5" />
+                Food Truck Management
+              </CardTitle>
+              <CardDescription>
+                Manage your mobile restaurant and broadcast live location to customers
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Food Truck Toggle */}
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <Truck className="h-6 w-6" />
+                  <div>
+                    <h3 className="font-medium">This is a Food Truck</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Enable mobile location broadcasting for customers to find you
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant={currentRestaurant?.isFoodTruck ? "default" : "outline"}
+                  onClick={() => toggleFoodTruckMutation.mutate(!currentRestaurant?.isFoodTruck)}
+                  data-testid="button-toggle-food-truck"
+                >
+                  {currentRestaurant?.isFoodTruck ? "Enabled" : "Enable"}
+                </Button>
+              </div>
+
+              {/* Broadcasting Controls */}
+              {currentRestaurant?.isFoodTruck && (
+                <div className="space-y-4">
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className={`p-2 rounded-lg ${
+                          connectionStatus === 'connected' ? 'bg-green-100' :
+                          connectionStatus === 'connecting' ? 'bg-yellow-100' : 'bg-gray-100'
+                        }`}>
+                          {connectionStatus === 'connected' ? (
+                            <Radio className="h-5 w-5 text-green-600" />
+                          ) : connectionStatus === 'connecting' ? (
+                            <Loader2 className="h-5 w-5 text-yellow-600 animate-spin" />
+                          ) : (
+                            <WifiOff className="h-5 w-5 text-gray-600" />
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-medium">Live Location Broadcasting</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {connectionStatus === 'connected' ? 'Broadcasting your location to customers' :
+                             connectionStatus === 'connecting' ? 'Connecting to GPS...' :
+                             'Start broadcasting to appear on customer maps'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {!isBroadcasting ? (
+                          <Button
+                            onClick={handleStartBroadcasting}
+                            disabled={startFoodTruckSessionMutation.isPending}
+                            className="bg-green-600 hover:bg-green-700"
+                            data-testid="button-start-broadcasting"
+                          >
+                            {startFoodTruckSessionMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Play className="h-4 w-4 mr-2" />
+                            )}
+                            Start Broadcasting
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={handleStopBroadcasting}
+                            disabled={stopFoodTruckSessionMutation.isPending}
+                            variant="destructive"
+                            data-testid="button-stop-broadcasting"
+                          >
+                            {stopFoodTruckSessionMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Square className="h-4 w-4 mr-2" />
+                            )}
+                            Stop Broadcasting
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Status Indicators */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="text-center p-3 bg-muted/50 rounded-lg">
+                        <div className="flex items-center justify-center mb-1">
+                          {connectionStatus === 'connected' && wsConnected ? (
+                            <Wifi className="h-4 w-4 text-green-500" />
+                          ) : connectionStatus === 'connected' && !wsConnected ? (
+                            <Zap className="h-4 w-4 text-yellow-500" />
+                          ) : (
+                            <WifiOff className="h-4 w-4 text-red-500" />
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Connection</p>
+                        <p className="text-sm font-medium capitalize" data-testid="text-connection-status">
+                          {connectionStatus === 'connected' && wsConnected ? 'Real-time' :
+                           connectionStatus === 'connected' && !wsConnected ? 'GPS Only' :
+                           connectionStatus}
+                        </p>
+                        {wsError && (
+                          <p className="text-xs text-red-500 mt-1">WS: {wsError}</p>
+                        )}
+                      </div>
+
+                      <div className="text-center p-3 bg-muted/50 rounded-lg">
+                        <div className="flex items-center justify-center mb-1">
+                          <Activity className="h-4 w-4 text-blue-500" />
+                        </div>
+                        <p className="text-xs text-muted-foreground">Updates Sent</p>
+                        <p className="text-sm font-medium" data-testid="text-broadcast-count">
+                          {broadcastCount}
+                        </p>
+                      </div>
+
+                      <div className="text-center p-3 bg-muted/50 rounded-lg">
+                        <div className="flex items-center justify-center mb-1">
+                          <Satellite className="h-4 w-4 text-orange-500" />
+                        </div>
+                        <p className="text-xs text-muted-foreground">GPS Accuracy</p>
+                        <p className="text-sm font-medium" data-testid="text-gps-accuracy">
+                          {gpsAccuracy ? `${Math.round(gpsAccuracy)}m` : 'N/A'}
+                        </p>
+                      </div>
+
+                      <div className="text-center p-3 bg-muted/50 rounded-lg">
+                        <div className="flex items-center justify-center mb-1">
+                          <Clock className="h-4 w-4 text-purple-500" />
+                        </div>
+                        <p className="text-xs text-muted-foreground">Last Update</p>
+                        <p className="text-sm font-medium" data-testid="text-last-broadcast">
+                          {lastBroadcast ? format(lastBroadcast, 'HH:mm:ss') : 'Never'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Current Location Display */}
+                  {currentLocation && (
+                    <div className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-medium flex items-center gap-2">
+                          <MapPin className="h-4 w-4" />
+                          Current Location
+                        </h3>
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <Navigation className="h-3 w-3 mr-1" />
+                          Live GPS
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Latitude:</span>
+                          <p className="font-mono" data-testid="text-current-lat">
+                            {currentLocation.lat.toFixed(6)}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Longitude:</span>
+                          <p className="font-mono" data-testid="text-current-lng">
+                            {currentLocation.lng.toFixed(6)}
+                          </p>
+                        </div>
+                      </div>
+                      {currentLocation.timestamp && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Recorded: {format(new Date(currentLocation.timestamp), 'PPpp')}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Error Display */}
+                  {locationError && (
+                    <div className="p-4 border border-red-200 bg-red-50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-red-500" />
+                        <span className="text-sm font-medium text-red-800">Location Error</span>
+                      </div>
+                      <p className="text-sm text-red-700 mt-1" data-testid="text-location-error">
+                        {locationError}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Tips and Information */}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-medium text-blue-900 mb-2 flex items-center gap-2">
+                      <Smartphone className="h-4 w-4" />
+                      Broadcasting Tips
+                    </h4>
+                    <ul className="text-sm text-blue-800 space-y-1">
+                      <li>• Keep GPS enabled for accurate location tracking</li>
+                      <li>• Location updates every 30 seconds or when you move 50+ meters</li>
+                      <li>• Sessions auto-stop after 2 minutes of inactivity</li>
+                      <li>• Customers can see your live location and active deals</li>
+                      <li>• Works best with mobile internet connection</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
       </Tabs>
     </div>
   );

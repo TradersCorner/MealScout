@@ -4,6 +4,7 @@ import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
+import { setupWebSocketServer } from "./websocket";
 
 const app = express();
 
@@ -16,7 +17,7 @@ if (process.env.NODE_ENV === "production") {
         styleSrc: ["'self'", "'unsafe-inline'"],
         scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Required for Vite in production
         imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'", "https:"],
+        connectSrc: ["'self'", "https:", "ws:", "wss:"],
         fontSrc: ["'self'", "https:", "data:"],
       },
     },
@@ -80,6 +81,10 @@ app.use((req, res, next) => {
   await storage.ensureAdminExists();
   
   const server = await registerRoutes(app);
+
+  // Setup WebSocket server for food truck GPS tracking
+  setupWebSocketServer(server);
+  log("WebSocket server initialized for food truck tracking");
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

@@ -7,6 +7,7 @@ import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner } from "./unifiedA
 import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema } from "@shared/schema";
 import { z } from "zod";
 import { validateDocuments, checkRateLimit } from "./documentValidation";
+import { broadcastLocationUpdate, broadcastStatusUpdate } from "./websocket";
 
 // Optional Stripe integration
 const stripe = process.env.STRIPE_SECRET_KEY 
@@ -159,7 +160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, claim: updatedClaim });
     } catch (error) {
       console.error("Error marking claim as used:", error);
-      res.status(400).json({ message: error.message || "Failed to mark claim as used" });
+      res.status(400).json({ message: error instanceof Error ? error.message : "Failed to mark claim as used" });
     }
   });
 
@@ -178,10 +179,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const settings = updateRestaurantMobileSettingsSchema.parse(req.body);
       const updatedRestaurant = await storage.setRestaurantMobileSettings(restaurantId, settings);
       
+      // Broadcast status update via WebSocket if mobile status changed
+      if (settings.mobileOnline !== undefined) {
+        broadcastStatusUpdate(restaurantId, {
+          isOnline: updatedRestaurant.mobileOnline || false,
+          mobileOnline: updatedRestaurant.mobileOnline || false,
+        });
+      }
+      
       res.json({ success: true, restaurant: updatedRestaurant });
     } catch (error) {
       console.error("Error updating mobile settings:", error);
-      res.status(400).json({ message: error.message || "Failed to update mobile settings" });
+      res.status(400).json({ message: error instanceof Error ? error.message : "Failed to update mobile settings" });
     }
   });
 
@@ -240,10 +249,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Rate limiting: check if too many requests from this user/restaurant
-      const rateLimitKey = `location_update_${req.user.id}_${restaurantId}`;
-      const isRateLimited = await checkRateLimit(rateLimitKey, 10, 60); // 10 requests per minute
-      if (isRateLimited) {
-        return res.status(429).json({ message: "Too many location updates. Please wait before trying again." });
+      const rateLimitResult = checkRateLimit(`location_update_${req.user.id}_${restaurantId}`);
+      if (!rateLimitResult.allowed) {
+        return res.status(429).json({ 
+          message: "Too many location updates. Please wait before trying again.",
+          nextAllowedTime: rateLimitResult.nextAllowedTime
+        });
       }
       
       const locationData = insertFoodTruckLocationSchema.parse({
@@ -252,10 +263,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const location = await storage.upsertLiveLocation(locationData);
+      
+      // Broadcast location update via WebSocket
+      broadcastLocationUpdate(restaurantId, location);
+      
       res.json({ success: true, location });
     } catch (error) {
       console.error("Error updating location:", error);
-      res.status(400).json({ message: error.message || "Failed to update location" });
+      res.status(400).json({ message: error instanceof Error ? error.message : "Failed to update location" });
     }
   });
 

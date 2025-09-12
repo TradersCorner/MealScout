@@ -64,6 +64,12 @@ export const restaurants = pgTable("restaurants", {
   cuisineType: varchar("cuisine_type"),
   latitude: decimal("latitude", { precision: 10, scale: 8 }),
   longitude: decimal("longitude", { precision: 11, scale: 8 }),
+  // Food truck specific fields
+  isFoodTruck: boolean("is_food_truck").default(false),
+  mobileOnline: boolean("mobile_online").default(false),
+  currentLatitude: decimal("current_latitude", { precision: 10, scale: 8 }),
+  currentLongitude: decimal("current_longitude", { precision: 11, scale: 8 }),
+  lastBroadcastAt: timestamp("last_broadcast_at"),
   isActive: boolean("is_active").default(true),
   isVerified: boolean("is_verified").default(false),
   createdAt: timestamp("created_at").defaultNow(),
@@ -150,6 +156,49 @@ export const dealViews = pgTable(
   ],
 );
 
+// Food truck session management
+export const foodTruckSessions = pgTable(
+  "food_truck_sessions",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
+    startedAt: timestamp("started_at").defaultNow(),
+    endedAt: timestamp("ended_at"),
+    deviceId: varchar("device_id").notNull(),
+    startedByUserId: varchar("started_by_user_id").notNull().references(() => users.id),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_food_truck_sessions_restaurant").on(table.restaurantId),
+    index("IDX_food_truck_sessions_active").on(table.isActive, table.startedAt),
+  ],
+);
+
+// Food truck location history for tracking and analytics
+export const foodTruckLocations = pgTable(
+  "food_truck_locations",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
+    sessionId: varchar("session_id").references(() => foodTruckSessions.id),
+    latitude: decimal("latitude", { precision: 10, scale: 8 }).notNull(),
+    longitude: decimal("longitude", { precision: 11, scale: 8 }).notNull(),
+    heading: decimal("heading", { precision: 5, scale: 2 }), // 0-360 degrees
+    speed: decimal("speed", { precision: 5, scale: 2 }), // km/h
+    accuracy: decimal("accuracy", { precision: 8, scale: 2 }), // meters
+    source: varchar("source").default("gps"), // 'gps' | 'network' | 'manual'
+    recordedAt: timestamp("recorded_at").defaultNow(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_food_truck_locations_restaurant_time").on(table.restaurantId, table.recordedAt.desc()),
+    index("IDX_food_truck_locations_time").on(table.recordedAt.desc()),
+    index("IDX_food_truck_locations_geo").on(table.restaurantId, table.latitude, table.longitude),
+    index("IDX_food_truck_locations_session").on(table.sessionId),
+  ],
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   restaurants: many(restaurants),
@@ -166,6 +215,8 @@ export const restaurantsRelations = relations(restaurants, ({ one, many }) => ({
   deals: many(deals),
   reviews: many(reviews),
   verificationRequests: many(verificationRequests),
+  foodTruckSessions: many(foodTruckSessions),
+  foodTruckLocations: many(foodTruckLocations),
 }));
 
 export const dealsRelations = relations(deals, ({ one, many }) => ({
@@ -221,6 +272,29 @@ export const dealViewsRelations = relations(dealViews, ({ one }) => ({
   }),
 }));
 
+export const foodTruckSessionsRelations = relations(foodTruckSessions, ({ one, many }) => ({
+  restaurant: one(restaurants, {
+    fields: [foodTruckSessions.restaurantId],
+    references: [restaurants.id],
+  }),
+  startedByUser: one(users, {
+    fields: [foodTruckSessions.startedByUserId],
+    references: [users.id],
+  }),
+  locations: many(foodTruckLocations),
+}));
+
+export const foodTruckLocationsRelations = relations(foodTruckLocations, ({ one }) => ({
+  restaurant: one(restaurants, {
+    fields: [foodTruckLocations.restaurantId],
+    references: [restaurants.id],
+  }),
+  session: one(foodTruckSessions, {
+    fields: [foodTruckLocations.sessionId],
+    references: [foodTruckSessions.id],
+  }),
+}));
+
 // Insert schemas
 export const insertRestaurantSchema = createInsertSchema(restaurants).omit({
   id: true,
@@ -271,6 +345,31 @@ export const insertVerificationRequestSchema = createInsertSchema(verificationRe
     )
 });
 
+export const insertFoodTruckSessionSchema = createInsertSchema(foodTruckSessions).omit({
+  id: true,
+  startedAt: true,
+  endedAt: true,
+  isActive: true,
+  createdAt: true,
+});
+
+export const insertFoodTruckLocationSchema = createInsertSchema(foodTruckLocations).omit({
+  id: true,
+  recordedAt: true,
+  createdAt: true,
+}).extend({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  heading: z.number().min(0).max(360).optional(),
+  speed: z.number().min(0).max(200).optional(), // Max 200 km/h
+  accuracy: z.number().min(0).max(10000).optional(), // Max 10km accuracy
+});
+
+export const updateRestaurantMobileSettingsSchema = z.object({
+  isFoodTruck: z.boolean().optional(),
+  mobileOnline: z.boolean().optional(),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -315,3 +414,11 @@ export type VerificationRequest = typeof verificationRequests.$inferSelect;
 
 export type InsertDealView = z.infer<typeof insertDealViewSchema>;
 export type DealView = typeof dealViews.$inferSelect;
+
+export type InsertFoodTruckSession = z.infer<typeof insertFoodTruckSessionSchema>;
+export type FoodTruckSession = typeof foodTruckSessions.$inferSelect;
+
+export type InsertFoodTruckLocation = z.infer<typeof insertFoodTruckLocationSchema>;
+export type FoodTruckLocation = typeof foodTruckLocations.$inferSelect;
+
+export type UpdateRestaurantMobileSettings = z.infer<typeof updateRestaurantMobileSettingsSchema>;

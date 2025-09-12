@@ -6,6 +6,8 @@ import {
   reviews,
   verificationRequests,
   dealViews,
+  foodTruckSessions,
+  foodTruckLocations,
   type User,
   type UpsertUser,
   type Restaurant,
@@ -20,6 +22,11 @@ import {
   type InsertVerificationRequest,
   type DealView,
   type InsertDealView,
+  type FoodTruckSession,
+  type InsertFoodTruckSession,
+  type FoodTruckLocation,
+  type InsertFoodTruckLocation,
+  type UpdateRestaurantMobileSettings,
   type GoogleUserData,
   type EmailUserData,
   type FacebookUserData,
@@ -132,6 +139,16 @@ export interface IStorage {
     claims: number;
     revenue: number;
   }>>;
+  
+  // Food truck operations
+  setRestaurantMobileSettings(restaurantId: string, settings: UpdateRestaurantMobileSettings): Promise<Restaurant>;
+  startTruckSession(restaurantId: string, deviceId: string, userId: string): Promise<FoodTruckSession>;
+  endTruckSession(restaurantId: string, userId: string): Promise<void>;
+  getActiveTruckSession(restaurantId: string): Promise<FoodTruckSession | undefined>;
+  upsertLiveLocation(location: InsertFoodTruckLocation): Promise<FoodTruckLocation>;
+  getLiveTrucksNearby(lat: number, lng: number, radiusKm: number): Promise<Array<Restaurant & { distance: number; sessionId?: string }>>;
+  getTruckLocationHistory(restaurantId: string, dateRange?: { start: Date; end: Date }): Promise<FoodTruckLocation[]>;
+  hasRecentLocationUpdate(restaurantId: string, lat: number, lng: number, timeWindowMs?: number, distanceThreshold?: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1264,6 +1281,253 @@ export class DatabaseStorage implements IStorage {
       .orderBy(deals.title, sql`to_char(${dealViews.viewedAt}, 'YYYY-MM-DD')`);
 
     return exportData;
+  }
+
+  // Food truck operations
+  async setRestaurantMobileSettings(restaurantId: string, settings: UpdateRestaurantMobileSettings): Promise<Restaurant> {
+    const [restaurant] = await db
+      .update(restaurants)
+      .set({
+        ...settings,
+        updatedAt: new Date(),
+      })
+      .where(eq(restaurants.id, restaurantId))
+      .returning();
+    return restaurant;
+  }
+
+  async startTruckSession(restaurantId: string, deviceId: string, userId: string): Promise<FoodTruckSession> {
+    // End any existing active session first
+    await db
+      .update(foodTruckSessions)
+      .set({
+        isActive: false,
+        endedAt: new Date(),
+      })
+      .where(and(
+        eq(foodTruckSessions.restaurantId, restaurantId),
+        eq(foodTruckSessions.isActive, true)
+      ));
+
+    // Start new session
+    const [session] = await db
+      .insert(foodTruckSessions)
+      .values({
+        restaurantId,
+        deviceId,
+        startedByUserId: userId,
+      })
+      .returning();
+
+    // Update restaurant mobile status
+    await db
+      .update(restaurants)
+      .set({
+        mobileOnline: true,
+        lastBroadcastAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(restaurants.id, restaurantId));
+
+    return session;
+  }
+
+  async endTruckSession(restaurantId: string, userId: string): Promise<void> {
+    await db
+      .update(foodTruckSessions)
+      .set({
+        isActive: false,
+        endedAt: new Date(),
+      })
+      .where(and(
+        eq(foodTruckSessions.restaurantId, restaurantId),
+        eq(foodTruckSessions.startedByUserId, userId),
+        eq(foodTruckSessions.isActive, true)
+      ));
+
+    // Update restaurant mobile status
+    await db
+      .update(restaurants)
+      .set({
+        mobileOnline: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(restaurants.id, restaurantId));
+  }
+
+  async getActiveTruckSession(restaurantId: string): Promise<FoodTruckSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(foodTruckSessions)
+      .where(and(
+        eq(foodTruckSessions.restaurantId, restaurantId),
+        eq(foodTruckSessions.isActive, true)
+      ))
+      .orderBy(desc(foodTruckSessions.startedAt))
+      .limit(1);
+    return session;
+  }
+
+  async hasRecentLocationUpdate(
+    restaurantId: string, 
+    lat: number, 
+    lng: number, 
+    timeWindowMs: number = 10000, // 10 seconds
+    distanceThreshold: number = 10 // 10 meters
+  ): Promise<boolean> {
+    const cutoffTime = new Date(Date.now() - timeWindowMs);
+    
+    const [recentLocation] = await db
+      .select({
+        latitude: foodTruckLocations.latitude,
+        longitude: foodTruckLocations.longitude,
+      })
+      .from(foodTruckLocations)
+      .where(and(
+        eq(foodTruckLocations.restaurantId, restaurantId),
+        gte(foodTruckLocations.recordedAt, cutoffTime)
+      ))
+      .orderBy(desc(foodTruckLocations.recordedAt))
+      .limit(1);
+
+    if (!recentLocation) return false;
+
+    // Calculate distance using Haversine formula (simplified for short distances)
+    const latDiff = Math.abs(parseFloat(recentLocation.latitude) - lat);
+    const lngDiff = Math.abs(parseFloat(recentLocation.longitude) - lng);
+    const distanceM = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff) * 111320; // Rough conversion to meters
+
+    return distanceM < distanceThreshold;
+  }
+
+  async upsertLiveLocation(location: InsertFoodTruckLocation): Promise<FoodTruckLocation> {
+    // Check for recent duplicate location
+    const hasRecent = await this.hasRecentLocationUpdate(
+      location.restaurantId,
+      location.latitude,
+      location.longitude
+    );
+
+    if (hasRecent) {
+      // Return the most recent location instead of inserting duplicate
+      const [recent] = await db
+        .select()
+        .from(foodTruckLocations)
+        .where(eq(foodTruckLocations.restaurantId, location.restaurantId))
+        .orderBy(desc(foodTruckLocations.recordedAt))
+        .limit(1);
+      return recent;
+    }
+
+    // Get active session for the restaurant
+    const activeSession = await this.getActiveTruckSession(location.restaurantId);
+
+    // Insert new location record
+    const [newLocation] = await db
+      .insert(foodTruckLocations)
+      .values({
+        ...location,
+        sessionId: activeSession?.id,
+      })
+      .returning();
+
+    // Update restaurant's current location
+    await db
+      .update(restaurants)
+      .set({
+        currentLatitude: location.latitude.toString(),
+        currentLongitude: location.longitude.toString(),
+        lastBroadcastAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(restaurants.id, location.restaurantId));
+
+    return newLocation;
+  }
+
+  async getLiveTrucksNearby(lat: number, lng: number, radiusKm: number): Promise<Array<Restaurant & { distance: number; sessionId?: string }>> {
+    // Use Haversine formula for distance calculation
+    const results = await db
+      .select({
+        id: restaurants.id,
+        ownerId: restaurants.ownerId,
+        name: restaurants.name,
+        address: restaurants.address,
+        phone: restaurants.phone,
+        cuisineType: restaurants.cuisineType,
+        latitude: restaurants.latitude,
+        longitude: restaurants.longitude,
+        isFoodTruck: restaurants.isFoodTruck,
+        mobileOnline: restaurants.mobileOnline,
+        currentLatitude: restaurants.currentLatitude,
+        currentLongitude: restaurants.currentLongitude,
+        lastBroadcastAt: restaurants.lastBroadcastAt,
+        isActive: restaurants.isActive,
+        isVerified: restaurants.isVerified,
+        createdAt: restaurants.createdAt,
+        updatedAt: restaurants.updatedAt,
+        sessionId: foodTruckSessions.id,
+        distance: sql<number>`
+          6371 * acos(
+            cos(radians(${lat})) * 
+            cos(radians(cast(current_latitude as float))) * 
+            cos(radians(cast(current_longitude as float)) - radians(${lng})) + 
+            sin(radians(${lat})) * 
+            sin(radians(cast(current_latitude as float)))
+          )
+        `,
+      })
+      .from(restaurants)
+      .leftJoin(foodTruckSessions, and(
+        eq(restaurants.id, foodTruckSessions.restaurantId),
+        eq(foodTruckSessions.isActive, true)
+      ))
+      .where(and(
+        eq(restaurants.isFoodTruck, true),
+        eq(restaurants.mobileOnline, true),
+        eq(restaurants.isActive, true),
+        sql`current_latitude IS NOT NULL`,
+        sql`current_longitude IS NOT NULL`,
+        // Only include trucks that have broadcast location recently (within last 5 minutes)
+        gte(restaurants.lastBroadcastAt, new Date(Date.now() - 5 * 60 * 1000)),
+        // Distance filter using Haversine formula  
+        sql`
+          6371 * acos(
+            cos(radians(${lat})) * 
+            cos(radians(cast(current_latitude as float))) * 
+            cos(radians(cast(current_longitude as float)) - radians(${lng})) + 
+            sin(radians(${lat})) * 
+            sin(radians(cast(current_latitude as float)))
+          ) <= ${radiusKm}
+        `
+      ))
+      .orderBy(sql`distance`);
+
+    return results.map(result => ({
+      ...result,
+      sessionId: result.sessionId || undefined,
+    }));
+  }
+
+  async getTruckLocationHistory(restaurantId: string, dateRange?: { start: Date; end: Date }): Promise<FoodTruckLocation[]> {
+    let query = db
+      .select()
+      .from(foodTruckLocations)
+      .where(eq(foodTruckLocations.restaurantId, restaurantId));
+
+    if (dateRange) {
+      query = query.where(and(
+        eq(foodTruckLocations.restaurantId, restaurantId),
+        gte(foodTruckLocations.recordedAt, dateRange.start),
+        lte(foodTruckLocations.recordedAt, dateRange.end)
+      ));
+    }
+
+    const locations = await query
+      .orderBy(desc(foodTruckLocations.recordedAt))
+      .limit(1000); // Reasonable limit to prevent huge responses
+
+    return locations;
   }
 }
 

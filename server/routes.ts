@@ -4,7 +4,7 @@ import Stripe from "stripe";
 import { storage } from "./storage";
 import { setupAuth } from "./facebookAuth";
 import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner } from "./unifiedAuth";
-import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema } from "@shared/schema";
+import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema } from "@shared/schema";
 import { z } from "zod";
 import { validateDocuments, checkRateLimit } from "./documentValidation";
 
@@ -160,6 +160,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error marking claim as used:", error);
       res.status(400).json({ message: error.message || "Failed to mark claim as used" });
+    }
+  });
+
+  // Food truck endpoints
+  // Update restaurant mobile settings (owner only)
+  app.patch('/api/restaurants/:restaurantId/mobile-settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      
+      // Verify user owns this restaurant
+      const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "Unauthorized: You can only update settings for restaurants you own" });
+      }
+      
+      const settings = updateRestaurantMobileSettingsSchema.parse(req.body);
+      const updatedRestaurant = await storage.setRestaurantMobileSettings(restaurantId, settings);
+      
+      res.json({ success: true, restaurant: updatedRestaurant });
+    } catch (error) {
+      console.error("Error updating mobile settings:", error);
+      res.status(400).json({ message: error.message || "Failed to update mobile settings" });
+    }
+  });
+
+  // Start food truck session
+  app.post('/api/restaurants/:restaurantId/truck-session/start', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      const { deviceId } = req.body;
+      
+      // Verify user owns this restaurant
+      const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "Unauthorized: You can only start sessions for restaurants you own" });
+      }
+      
+      if (!deviceId) {
+        return res.status(400).json({ message: "deviceId is required" });
+      }
+      
+      const session = await storage.startTruckSession(restaurantId, deviceId, req.user.id);
+      res.json({ success: true, session });
+    } catch (error) {
+      console.error("Error starting truck session:", error);
+      res.status(500).json({ message: "Failed to start truck session" });
+    }
+  });
+
+  // End food truck session
+  app.post('/api/restaurants/:restaurantId/truck-session/end', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      
+      // Verify user owns this restaurant
+      const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "Unauthorized: You can only end sessions for restaurants you own" });
+      }
+      
+      await storage.endTruckSession(restaurantId, req.user.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error ending truck session:", error);
+      res.status(500).json({ message: "Failed to end truck session" });
+    }
+  });
+
+  // Update food truck location with rate limiting
+  app.post('/api/restaurants/:restaurantId/location', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      
+      // Verify user owns this restaurant
+      const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "Unauthorized: You can only update location for restaurants you own" });
+      }
+      
+      // Rate limiting: check if too many requests from this user/restaurant
+      const rateLimitKey = `location_update_${req.user.id}_${restaurantId}`;
+      const isRateLimited = await checkRateLimit(rateLimitKey, 10, 60); // 10 requests per minute
+      if (isRateLimited) {
+        return res.status(429).json({ message: "Too many location updates. Please wait before trying again." });
+      }
+      
+      const locationData = insertFoodTruckLocationSchema.parse({
+        ...req.body,
+        restaurantId,
+      });
+      
+      const location = await storage.upsertLiveLocation(locationData);
+      res.json({ success: true, location });
+    } catch (error) {
+      console.error("Error updating location:", error);
+      res.status(400).json({ message: error.message || "Failed to update location" });
+    }
+  });
+
+  // Get live food trucks nearby (public endpoint)
+  app.get('/api/trucks/live', async (req: any, res) => {
+    try {
+      const { lat, lng, radiusKm = 5 } = req.query;
+      
+      if (!lat || !lng) {
+        return res.status(400).json({ message: "lat and lng query parameters are required" });
+      }
+      
+      const latitude = parseFloat(lat as string);
+      const longitude = parseFloat(lng as string);
+      const radius = Math.min(parseFloat(radiusKm as string), 50); // Max 50km radius
+      
+      if (isNaN(latitude) || isNaN(longitude) || isNaN(radius)) {
+        return res.status(400).json({ message: "Invalid coordinates or radius" });
+      }
+      
+      if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+        return res.status(400).json({ message: "Invalid coordinates range" });
+      }
+      
+      const trucks = await storage.getLiveTrucksNearby(latitude, longitude, radius);
+      res.json({ trucks });
+    } catch (error) {
+      console.error("Error fetching live trucks:", error);
+      res.status(500).json({ message: "Failed to fetch live trucks" });
+    }
+  });
+
+  // Get food truck location history (owner only)
+  app.get('/api/restaurants/:restaurantId/locations', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      // Verify user owns this restaurant
+      const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "Unauthorized: You can only access location history for restaurants you own" });
+      }
+      
+      let dateRange: { start: Date; end: Date } | undefined;
+      if (startDate && endDate) {
+        dateRange = {
+          start: new Date(startDate as string),
+          end: new Date(endDate as string),
+        };
+      }
+      
+      const locations = await storage.getTruckLocationHistory(restaurantId, dateRange);
+      res.json({ locations });
+    } catch (error) {
+      console.error("Error fetching location history:", error);
+      res.status(500).json({ message: "Failed to fetch location history" });
     }
   });
 

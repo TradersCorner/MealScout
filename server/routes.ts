@@ -334,8 +334,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const user = req.user;
-    const { billingInterval } = req.body; // 'month' or 'year'
-    const interval = billingInterval === 'year' ? 'year' : 'month';
+    const { billingInterval } = req.body; // 'month' | '3-month' | 'year'
+    const interval = billingInterval === 'year' ? 'year' : billingInterval === '3-month' ? 'month' : 'month';
 
     if (user.stripeSubscriptionId) {
       try {
@@ -371,11 +371,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Calculate pricing based on billing interval
-      // Monthly: $49/month, Yearly: $441/year (25% discount = $588 - $147 = $441)
-      const unitAmount = interval === 'year' ? 44100 : 4900; // $441 yearly or $49 monthly
-      const productName = interval === 'year' 
-        ? 'DealScout Restaurant Plan (Annual - Save 25%)'
-        : 'DealScout Restaurant Plan (Monthly)';
+      // Monthly: $49/month, 3-Month: $100/3 months, Yearly: $441/year (25% discount)
+      let unitAmount: number;
+      let productName: string;
+      let intervalCount = 1;
+      
+      if (billingInterval === '3-month') {
+        unitAmount = 10000; // $100 for 3 months
+        intervalCount = 3; // Bill every 3 months
+        productName = 'DealScout Restaurant Plan (Quarterly - Save 32%)';
+      } else if (billingInterval === 'year') {
+        unitAmount = 44100; // $441 yearly
+        productName = 'DealScout Restaurant Plan (Annual - Save 25%)';
+      } else {
+        unitAmount = 4900; // $49 monthly
+        productName = 'DealScout Restaurant Plan (Monthly)';
+      }
 
       const subscription = await stripe.subscriptions.create({
         customer: customerId,
@@ -388,6 +399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             unit_amount: unitAmount,
             recurring: {
               interval: interval as 'month' | 'year',
+              interval_count: intervalCount,
             },
           } as any,
         }],
@@ -395,7 +407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expand: ['latest_invoice.payment_intent'],
       });
 
-      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, interval);
+      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, billingInterval);
   
       const latestInvoice = subscription.latest_invoice;
       const paymentIntent = typeof latestInvoice === 'object' && latestInvoice ? (latestInvoice as any).payment_intent : null;

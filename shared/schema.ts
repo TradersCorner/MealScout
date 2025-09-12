@@ -47,6 +47,10 @@ export const users = pgTable("users", {
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   subscriptionBillingInterval: varchar("subscription_billing_interval"), // 'month' | '3-month' | 'year'
+  // Optional demographics for aggregated analytics insights (privacy-conscious)
+  birthYear: integer("birth_year"),
+  gender: varchar("gender"), // 'male' | 'female' | 'other' | 'prefer_not_to_say'
+  postalCode: varchar("postal_code"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -88,14 +92,23 @@ export const deals = pgTable("deals", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const dealClaims = pgTable("deal_claims", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  dealId: varchar("deal_id").notNull().references(() => deals.id),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  claimedAt: timestamp("claimed_at").defaultNow(),
-  usedAt: timestamp("used_at"),
-  isUsed: boolean("is_used").default(false),
-});
+export const dealClaims = pgTable(
+  "deal_claims",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    dealId: varchar("deal_id").notNull().references(() => deals.id),
+    userId: varchar("user_id").notNull().references(() => users.id),
+    claimedAt: timestamp("claimed_at").defaultNow(),
+    usedAt: timestamp("used_at"),
+    isUsed: boolean("is_used").default(false),
+    orderAmount: decimal("order_amount", { precision: 10, scale: 2 }), // For revenue tracking
+  },
+  (table) => [
+    index("IDX_deal_claims_deal_used").on(table.dealId, table.usedAt),
+    index("IDX_deal_claims_deal_status").on(table.dealId, table.isUsed),
+    index("IDX_deal_claims_user_claimed").on(table.userId, table.claimedAt),
+  ],
+);
 
 export const reviews = pgTable("reviews", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -119,11 +132,30 @@ export const verificationRequests = pgTable("verification_requests", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Deal views table for tracking impressions and analytics
+export const dealViews = pgTable(
+  "deal_views",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    dealId: varchar("deal_id").notNull().references(() => deals.id),
+    userId: varchar("user_id").references(() => users.id), // Nullable for anonymous views
+    sessionId: varchar("session_id").notNull(), // Track anonymous sessions
+    viewedAt: timestamp("viewed_at").defaultNow(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_deal_views_deal_viewed").on(table.dealId, table.viewedAt),
+    index("IDX_deal_views_user_deal").on(table.userId, table.dealId),
+    index("IDX_deal_views_session").on(table.sessionId),
+  ],
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   restaurants: many(restaurants),
   dealClaims: many(dealClaims),
   reviews: many(reviews),
+  dealViews: many(dealViews),
 }));
 
 export const restaurantsRelations = relations(restaurants, ({ one, many }) => ({
@@ -142,6 +174,7 @@ export const dealsRelations = relations(deals, ({ one, many }) => ({
     references: [restaurants.id],
   }),
   claims: many(dealClaims),
+  views: many(dealViews),
 }));
 
 export const dealClaimsRelations = relations(dealClaims, ({ one }) => ({
@@ -177,6 +210,17 @@ export const verificationRequestsRelations = relations(verificationRequests, ({ 
   }),
 }));
 
+export const dealViewsRelations = relations(dealViews, ({ one }) => ({
+  deal: one(deals, {
+    fields: [dealViews.dealId],
+    references: [deals.id],
+  }),
+  user: one(users, {
+    fields: [dealViews.userId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertRestaurantSchema = createInsertSchema(restaurants).omit({
   id: true,
@@ -196,6 +240,13 @@ export const insertDealClaimSchema = createInsertSchema(dealClaims).omit({
   claimedAt: true,
   usedAt: true,
   isUsed: true,
+  orderAmount: true,
+});
+
+export const insertDealViewSchema = createInsertSchema(dealViews).omit({
+  id: true,
+  viewedAt: true,
+  createdAt: true,
 });
 
 export const insertReviewSchema = createInsertSchema(reviews).omit({
@@ -261,3 +312,6 @@ export type Review = typeof reviews.$inferSelect;
 
 export type InsertVerificationRequest = z.infer<typeof insertVerificationRequestSchema>;
 export type VerificationRequest = typeof verificationRequests.$inferSelect;
+
+export type InsertDealView = z.infer<typeof insertDealViewSchema>;
+export type DealView = typeof dealViews.$inferSelect;

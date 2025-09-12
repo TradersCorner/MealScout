@@ -11,8 +11,11 @@ import { Link } from "wouter";
 import { 
   Store, Plus, TrendingUp, Users, DollarSign, 
   Eye, ShoppingCart, Star, Calendar, Settings,
-  CreditCard, BarChart3, MapPin, Clock, Edit
+  CreditCard, BarChart3, MapPin, Clock, Edit,
+  Download, Calendar as CalendarIcon, RefreshCw
 } from "lucide-react";
+import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import type { Deal, Restaurant } from "@shared/schema";
 
 interface DashboardStats {
@@ -28,6 +31,11 @@ export default function RestaurantOwnerDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>("");
+  const [analyticsDateRange, setAnalyticsDateRange] = useState({
+    start: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
+    end: format(new Date(), 'yyyy-MM-dd'),
+  });
+  const [comparisonPeriod, setComparisonPeriod] = useState<'week' | 'month' | 'quarter'>('month');
 
   // Fetch user's restaurants
   const { data: restaurants = [], isLoading: loadingRestaurants } = useQuery<Restaurant[]>({
@@ -50,6 +58,36 @@ export default function RestaurantOwnerDashboard() {
   // Fetch dashboard stats
   const { data: stats } = useQuery<DashboardStats>({
     queryKey: [`/api/restaurants/${selectedRestaurant}/stats`],
+    enabled: !!selectedRestaurant,
+  });
+
+  // Fetch advanced analytics
+  const { data: analyticsSummary, isLoading: loadingAnalytics } = useQuery({
+    queryKey: ['/api/restaurants', selectedRestaurant, 'analytics/summary', analyticsDateRange],
+    enabled: !!selectedRestaurant,
+  });
+
+  const { data: analyticsTimeseries } = useQuery({
+    queryKey: ['/api/restaurants', selectedRestaurant, 'analytics/timeseries', analyticsDateRange],
+    enabled: !!selectedRestaurant,
+  });
+
+  const { data: customerInsights } = useQuery({
+    queryKey: ['/api/restaurants', selectedRestaurant, 'analytics/customers', analyticsDateRange],
+    enabled: !!selectedRestaurant,
+  });
+
+  const { data: comparison } = useQuery({
+    queryKey: ['/api/restaurants', selectedRestaurant, 'analytics/compare', comparisonPeriod],
+    queryFn: () => {
+      const currentEnd = new Date(analyticsDateRange.end);
+      const currentStart = new Date(analyticsDateRange.start);
+      const daysDiff = Math.ceil((currentEnd.getTime() - currentStart.getTime()) / (1000 * 60 * 60 * 24));
+      const previousStart = new Date(currentStart.getTime() - daysDiff * 24 * 60 * 60 * 1000);
+      const previousEnd = new Date(currentStart.getTime() - 24 * 60 * 60 * 1000);
+      
+      return apiRequest('GET', `/api/restaurants/${selectedRestaurant}/analytics/compare?currentStart=${currentStart.toISOString()}&currentEnd=${currentEnd.toISOString()}&previousStart=${previousStart.toISOString()}&previousEnd=${previousEnd.toISOString()}`);
+    },
     enabled: !!selectedRestaurant,
   });
 
@@ -248,6 +286,7 @@ export default function RestaurantOwnerDashboard() {
         <TabsList>
           <TabsTrigger value="active">Active Deals</TabsTrigger>
           <TabsTrigger value="inactive">Inactive Deals</TabsTrigger>
+          <TabsTrigger value="claims">Claims</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
@@ -404,45 +443,344 @@ export default function RestaurantOwnerDashboard() {
         </TabsContent>
 
         <TabsContent value="analytics">
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance Analytics</CardTitle>
-              <CardDescription>
-                Track your deals performance and customer engagement
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Average Rating</p>
-                  <div className="flex items-center gap-2">
-                    <Star className="h-5 w-5 text-yellow-500" />
-                    <span className="text-2xl font-bold">{stats?.averageRating?.toFixed(1) || 'N/A'}</span>
+          <div className="space-y-6">
+            {/* Analytics Header with Date Range */}
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      Performance Analytics
+                    </CardTitle>
+                    <CardDescription>
+                      Comprehensive insights into your deals performance and customer engagement
+                    </CardDescription>
                   </div>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Conversion Rate</p>
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-green-500" />
-                    <span className="text-2xl font-bold">{stats?.conversionRate?.toFixed(1) || 0}%</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="pt-4 border-t">
-                <p className="text-sm text-muted-foreground mb-2">Deal Performance</p>
-                {deals.map(deal => (
-                  <div key={deal.id} className="flex justify-between items-center py-2">
-                    <span className="text-sm">{deal.title}</span>
-                    <div className="flex gap-4 text-sm">
-                      <span className="text-muted-foreground">Views: {(deal as any).viewCount || 0}</span>
-                      <span className="text-muted-foreground">Claims: {deal.currentUses || 0}</span>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="date"
+                        value={analyticsDateRange.start}
+                        onChange={(e) => setAnalyticsDateRange(prev => ({ ...prev, start: e.target.value }))}
+                        className="px-3 py-2 border rounded-md text-sm"
+                        data-testid="input-analytics-start-date"
+                      />
+                      <input
+                        type="date"
+                        value={analyticsDateRange.end}
+                        onChange={(e) => setAnalyticsDateRange(prev => ({ ...prev, end: e.target.value }))}
+                        className="px-3 py-2 border rounded-md text-sm"
+                        data-testid="input-analytics-end-date"
+                      />
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const url = `/api/restaurants/${selectedRestaurant}/analytics/export?startDate=${analyticsDateRange.start}&endDate=${analyticsDateRange.end}&format=csv`;
+                        window.open(url, '_blank');
+                      }}
+                      data-testid="button-export-analytics"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Export CSV
+                    </Button>
                   </div>
+                </div>
+              </CardHeader>
+            </Card>
+
+            {/* Performance Overview Cards */}
+            {loadingAnalytics ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, i) => (
+                  <Card key={i}>
+                    <CardContent className="p-6">
+                      <div className="animate-pulse space-y-2">
+                        <div className="h-4 bg-muted rounded w-3/4"></div>
+                        <div className="h-8 bg-muted rounded w-1/2"></div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Views</p>
+                        <p className="text-2xl font-bold" data-testid="text-total-views">
+                          {analyticsSummary?.totalViews?.toLocaleString() || 0}
+                        </p>
+                      </div>
+                      <Eye className="h-8 w-8 text-blue-500" />
+                    </div>
+                    {comparison && (
+                      <div className="mt-2 flex items-center text-xs">
+                        <TrendingUp className={`h-3 w-3 mr-1 ${comparison.changes.viewsChange >= 0 ? 'text-green-500' : 'text-red-500'}`} />
+                        <span className={comparison.changes.viewsChange >= 0 ? 'text-green-500' : 'text-red-500'}>
+                          {comparison.changes.viewsChange >= 0 ? '+' : ''}{comparison.changes.viewsChange.toFixed(1)}%
+                        </span>
+                        <span className="text-muted-foreground ml-1">vs previous period</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Claims</p>
+                        <p className="text-2xl font-bold" data-testid="text-total-claims">
+                          {analyticsSummary?.totalClaims?.toLocaleString() || 0}
+                        </p>
+                      </div>
+                      <ShoppingCart className="h-8 w-8 text-green-500" />
+                    </div>
+                    {comparison && (
+                      <div className="mt-2 flex items-center text-xs">
+                        <TrendingUp className={`h-3 w-3 mr-1 ${comparison.changes.claimsChange >= 0 ? 'text-green-500' : 'text-red-500'}`} />
+                        <span className={comparison.changes.claimsChange >= 0 ? 'text-green-500' : 'text-red-500'}>
+                          {comparison.changes.claimsChange >= 0 ? '+' : ''}{comparison.changes.claimsChange.toFixed(1)}%
+                        </span>
+                        <span className="text-muted-foreground ml-1">vs previous period</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Revenue</p>
+                        <p className="text-2xl font-bold" data-testid="text-total-revenue">
+                          ${analyticsSummary?.totalRevenue?.toLocaleString() || 0}
+                        </p>
+                      </div>
+                      <DollarSign className="h-8 w-8 text-yellow-500" />
+                    </div>
+                    {comparison && (
+                      <div className="mt-2 flex items-center text-xs">
+                        <TrendingUp className={`h-3 w-3 mr-1 ${comparison.changes.revenueChange >= 0 ? 'text-green-500' : 'text-red-500'}`} />
+                        <span className={comparison.changes.revenueChange >= 0 ? 'text-green-500' : 'text-red-500'}>
+                          {comparison.changes.revenueChange >= 0 ? '+' : ''}{comparison.changes.revenueChange.toFixed(1)}%
+                        </span>
+                        <span className="text-muted-foreground ml-1">vs previous period</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Conversion Rate</p>
+                        <p className="text-2xl font-bold" data-testid="text-conversion-rate">
+                          {analyticsSummary?.conversionRate?.toFixed(1) || 0}%
+                        </p>
+                      </div>
+                      <TrendingUp className="h-8 w-8 text-purple-500" />
+                    </div>
+                    {comparison && (
+                      <div className="mt-2 flex items-center text-xs">
+                        <TrendingUp className={`h-3 w-3 mr-1 ${comparison.changes.conversionRateChange >= 0 ? 'text-green-500' : 'text-red-500'}`} />
+                        <span className={comparison.changes.conversionRateChange >= 0 ? 'text-green-500' : 'text-red-500'}>
+                          {comparison.changes.conversionRateChange >= 0 ? '+' : ''}{comparison.changes.conversionRateChange.toFixed(1)}%
+                        </span>
+                        <span className="text-muted-foreground ml-1">vs previous period</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Revenue Timeline Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Revenue Over Time</CardTitle>
+                  <CardDescription>Daily revenue and deal performance trends</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {analyticsTimeseries && analyticsTimeseries.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={analyticsTimeseries}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" />
+                        <YAxis />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="revenue" stroke="#8884d8" strokeWidth={2} />
+                        <Line type="monotone" dataKey="claims" stroke="#82ca9d" strokeWidth={2} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                      No data available for selected period
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Views vs Claims Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Views vs Claims</CardTitle>
+                  <CardDescription>Daily views and conversion tracking</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {analyticsTimeseries && analyticsTimeseries.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={analyticsTimeseries}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="views" fill="#8884d8" />
+                        <Bar dataKey="claims" fill="#82ca9d" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                      No data available for selected period
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Top Deals Performance */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Top Performing Deals</CardTitle>
+                <CardDescription>Your most successful deals ranked by views and revenue</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {analyticsSummary?.topDeals?.length > 0 ? (
+                  <div className="space-y-4">
+                    {analyticsSummary.topDeals.map((deal, index) => (
+                      <div key={deal.dealId} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                            {index + 1}
+                          </div>
+                          <div>
+                            <p className="font-medium">{deal.title}</p>
+                            <p className="text-sm text-muted-foreground">Deal ID: {deal.dealId}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-6 text-sm">
+                          <div className="text-center">
+                            <p className="font-medium">{deal.views}</p>
+                            <p className="text-muted-foreground">Views</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="font-medium">{deal.claims}</p>
+                            <p className="text-muted-foreground">Claims</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="font-medium">${deal.revenue}</p>
+                            <p className="text-muted-foreground">Revenue</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No deal performance data available
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Customer Insights */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Customer Insights</CardTitle>
+                  <CardDescription>Understanding your customer behavior</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Repeat Customers</p>
+                      <p className="text-2xl font-bold">{customerInsights?.repeatCustomers || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Avg Order Value</p>
+                      <p className="text-2xl font-bold">${customerInsights?.averageOrderValue?.toFixed(2) || 0}</p>
+                    </div>
+                  </div>
+                  
+                  {customerInsights?.peakHours?.length > 0 && (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Peak Hours</p>
+                      <div className="space-y-1">
+                        {customerInsights.peakHours.slice(0, 3).map((hour, index) => (
+                          <div key={hour.hour} className="flex justify-between items-center">
+                            <span className="text-sm">{hour.hour}:00 - {hour.hour + 1}:00</span>
+                            <span className="text-sm font-medium">{hour.count} orders</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Demographics</CardTitle>
+                  <CardDescription>Customer age and gender breakdown</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {customerInsights?.demographics ? (
+                    <div className="space-y-4">
+                      {customerInsights.demographics.ageGroups.length > 0 && (
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-2">Age Groups</p>
+                          <div className="space-y-1">
+                            {customerInsights.demographics.ageGroups.map((group) => (
+                              <div key={group.range} className="flex justify-between items-center">
+                                <span className="text-sm">{group.range}</span>
+                                <span className="text-sm font-medium">{group.count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {customerInsights.demographics.genderBreakdown.length > 0 && (
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-2">Gender Distribution</p>
+                          <div className="space-y-1">
+                            {customerInsights.demographics.genderBreakdown.map((gender) => (
+                              <div key={gender.gender} className="flex justify-between items-center">
+                                <span className="text-sm capitalize">{gender.gender}</span>
+                                <span className="text-sm font-medium">{gender.count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No demographic data available
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

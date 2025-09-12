@@ -1,9 +1,10 @@
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Share2 } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 import DealShareModal from "./deal-share-modal";
 
 interface Deal {
@@ -83,6 +84,46 @@ const getDefaultImage = (cuisineType?: string, title?: string) => {
 
 export default function DealCard({ deal }: DealCardProps) {
   const [showShareModal, setShowShareModal] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [hasTrackedView, setHasTrackedView] = useState(false);
+
+  // Track view when card becomes visible
+  useEffect(() => {
+    if (hasTrackedView) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+            // Track view when card is more than 50% visible
+            const trackView = async () => {
+              try {
+                await apiRequest('POST', `/api/deals/${deal.id}/view`, {});
+                setHasTrackedView(true);
+              } catch (error) {
+                // Silently fail - view tracking shouldn't interrupt user experience
+                console.debug('Card view tracking failed:', error);
+              }
+            };
+            
+            // Small delay to ensure it's not just scrolling past
+            setTimeout(trackView, 500);
+          }
+        });
+      },
+      { threshold: 0.5 } // Track when 50% of card is visible
+    );
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current);
+    }
+
+    return () => {
+      if (cardRef.current) {
+        observer.unobserve(cardRef.current);
+      }
+    };
+  }, [deal.id, hasTrackedView]);
 
   const formatDiscount = () => {
     if (deal.dealType === "percentage") {
@@ -100,7 +141,11 @@ export default function DealCard({ deal }: DealCardProps) {
 
   return (
     <Link href={`/deal/${deal.id}`}>
-      <Card className="bg-white rounded-3xl overflow-hidden hover:shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer border-0 shadow-lg group" data-testid={`card-deal-${deal.id}`}>
+      <Card 
+        ref={cardRef}
+        className="bg-white rounded-3xl overflow-hidden hover:shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer border-0 shadow-lg group" 
+        data-testid={`card-deal-${deal.id}`}
+      >
         <CardContent className="p-0">
           {/* Restaurant Image */}
           <div className="relative h-56 bg-gray-100 overflow-hidden">

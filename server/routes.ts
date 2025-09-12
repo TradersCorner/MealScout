@@ -4,7 +4,7 @@ import Stripe from "stripe";
 import { storage } from "./storage";
 import { setupAuth } from "./facebookAuth";
 import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner } from "./unifiedAuth";
-import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema } from "@shared/schema";
+import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema } from "@shared/schema";
 import { z } from "zod";
 import { validateDocuments, checkRateLimit } from "./documentValidation";
 
@@ -104,6 +104,272 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting deal:", error);
       res.status(500).json({ message: "Failed to delete deal" });
+    }
+  });
+
+  // Event ingestion endpoints
+  // Deal view tracking endpoint with proper per-identity rate limiting
+  app.post('/api/deals/:dealId/view', async (req: any, res) => {
+    try {
+      const { dealId } = req.params;
+      const userId = req.user?.id; // Optional for anonymous views
+      const sessionId = req.sessionID;
+      
+      // Proper per-identity rate limiting: check if this specific user/session has already viewed this deal recently
+      const hasRecentView = await storage.hasRecentDealView(dealId, userId, sessionId, 3600000); // 1 hour window
+      
+      if (hasRecentView) {
+        return res.json({ success: true, message: "View already recorded recently" });
+      }
+      
+      const viewData = insertDealViewSchema.parse({
+        dealId,
+        userId,
+        sessionId,
+      });
+      
+      const view = await storage.recordDealView(viewData);
+      res.json({ success: true, view });
+    } catch (error) {
+      console.error("Error recording deal view:", error);
+      res.status(500).json({ message: "Failed to record view" });
+    }
+  });
+
+  // Mark deal claim as used with order amount
+  app.patch('/api/deal-claims/:claimId/use', isAuthenticated, async (req: any, res) => {
+    try {
+      const { claimId } = req.params;
+      const { orderAmount } = req.body;
+      
+      // Validate order amount
+      const amountSchema = z.object({
+        orderAmount: z.number().positive().min(0.01).max(10000),
+      });
+      
+      const { orderAmount: validatedAmount } = amountSchema.parse({ orderAmount });
+      
+      // Verify that the user owns the restaurant associated with this claim
+      const isAuthorized = await storage.verifyRestaurantOwnershipByClaim(claimId, req.user.id);
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "Unauthorized: You can only mark claims as used for your own restaurants" });
+      }
+      
+      const updatedClaim = await storage.markClaimAsUsed(claimId, validatedAmount);
+      res.json({ success: true, claim: updatedClaim });
+    } catch (error) {
+      console.error("Error marking claim as used:", error);
+      res.status(400).json({ message: error.message || "Failed to mark claim as used" });
+    }
+  });
+
+  // Analytics API endpoints (require authentication to verify restaurant ownership)
+  app.get('/api/restaurants/:restaurantId/analytics/summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      // Verify user owns this restaurant
+      const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "Unauthorized: You can only access analytics for restaurants you own" });
+      }
+      
+      let dateRange: { start: Date; end: Date } | undefined;
+      if (startDate && endDate) {
+        dateRange = {
+          start: new Date(startDate as string),
+          end: new Date(endDate as string),
+        };
+      }
+      
+      const summary = await storage.getRestaurantAnalyticsSummary(restaurantId, dateRange);
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching analytics summary:", error);
+      res.status(500).json({ message: "Failed to fetch analytics summary" });
+    }
+  });
+
+  app.get('/api/restaurants/:restaurantId/analytics/timeseries', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      const { startDate, endDate, interval = 'day' } = req.query;
+      
+      // Verify user owns this restaurant
+      const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "Unauthorized: You can only access analytics for restaurants you own" });
+      }
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "startDate and endDate are required" });
+      }
+      
+      const dateRange = {
+        start: new Date(startDate as string),
+        end: new Date(endDate as string),
+      };
+      
+      const timeseries = await storage.getRestaurantAnalyticsTimeseries(
+        restaurantId, 
+        dateRange, 
+        interval as 'day' | 'week'
+      );
+      res.json(timeseries);
+    } catch (error) {
+      console.error("Error fetching analytics timeseries:", error);
+      res.status(500).json({ message: "Failed to fetch analytics timeseries" });
+    }
+  });
+
+  app.get('/api/restaurants/:restaurantId/analytics/customers', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      // Verify user owns this restaurant
+      const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "Unauthorized: You can only access analytics for restaurants you own" });
+      }
+      
+      let dateRange: { start: Date; end: Date } | undefined;
+      if (startDate && endDate) {
+        dateRange = {
+          start: new Date(startDate as string),
+          end: new Date(endDate as string),
+        };
+      }
+      
+      const insights = await storage.getRestaurantCustomerInsights(restaurantId, dateRange);
+      res.json(insights);
+    } catch (error) {
+      console.error("Error fetching customer insights:", error);
+      res.status(500).json({ message: "Failed to fetch customer insights" });
+    }
+  });
+
+  app.get('/api/restaurants/:restaurantId/analytics/compare', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      const { 
+        currentStart, 
+        currentEnd, 
+        previousStart, 
+        previousEnd 
+      } = req.query;
+      
+      // Verify user owns this restaurant
+      const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "Unauthorized: You can only access analytics for restaurants you own" });
+      }
+      
+      if (!currentStart || !currentEnd || !previousStart || !previousEnd) {
+        return res.status(400).json({ 
+          message: "currentStart, currentEnd, previousStart, and previousEnd are required" 
+        });
+      }
+      
+      const [currentPeriod, previousPeriod] = await Promise.all([
+        storage.getRestaurantAnalyticsSummary(restaurantId, {
+          start: new Date(currentStart as string),
+          end: new Date(currentEnd as string),
+        }),
+        storage.getRestaurantAnalyticsSummary(restaurantId, {
+          start: new Date(previousStart as string),
+          end: new Date(previousEnd as string),
+        }),
+      ]);
+      
+      // Calculate percentage changes
+      const comparison = {
+        current: currentPeriod,
+        previous: previousPeriod,
+        changes: {
+          viewsChange: previousPeriod.totalViews > 0 
+            ? ((currentPeriod.totalViews - previousPeriod.totalViews) / previousPeriod.totalViews) * 100 
+            : 0,
+          claimsChange: previousPeriod.totalClaims > 0
+            ? ((currentPeriod.totalClaims - previousPeriod.totalClaims) / previousPeriod.totalClaims) * 100
+            : 0,
+          revenueChange: previousPeriod.totalRevenue > 0
+            ? ((currentPeriod.totalRevenue - previousPeriod.totalRevenue) / previousPeriod.totalRevenue) * 100
+            : 0,
+          conversionRateChange: currentPeriod.conversionRate - previousPeriod.conversionRate,
+        },
+      };
+      
+      res.json(comparison);
+    } catch (error) {
+      console.error("Error fetching analytics comparison:", error);
+      res.status(500).json({ message: "Failed to fetch analytics comparison" });
+    }
+  });
+
+  app.get('/api/restaurants/:restaurantId/analytics/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      const { startDate, endDate, format = 'csv' } = req.query;
+      
+      // Verify user owns this restaurant
+      const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "Unauthorized: You can only access analytics for restaurants you own" });
+      }
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "startDate and endDate are required" });
+      }
+      
+      const dateRange = {
+        start: new Date(startDate as string),
+        end: new Date(endDate as string),
+      };
+      
+      const exportData = await storage.getRestaurantAnalyticsExport(restaurantId, dateRange);
+      
+      if (format === 'csv') {
+        // Generate CSV with proper security measures to prevent injection attacks
+        const csvHeader = 'Deal Title,Date,Views,Claims,Revenue\n';
+        const csvRows = exportData.map(row => {
+          // Secure CSV sanitization to prevent injection attacks
+          const sanitizeCSV = (value: any): string => {
+            if (value === null || value === undefined) return '';
+            const str = String(value);
+            
+            // If cell starts with dangerous characters, prefix with apostrophe to prevent formula execution
+            if (/^[=+@-]/.test(str)) {
+              return `"'${str.replace(/"/g, '""')}"`;
+            }
+            
+            // Always quote strings and escape internal quotes
+            return `"${str.replace(/"/g, '""')}"`;
+          };
+          
+          return [
+            sanitizeCSV(row.dealTitle),
+            sanitizeCSV(row.date),
+            sanitizeCSV(row.views),
+            sanitizeCSV(row.claims),
+            sanitizeCSV(row.revenue),
+          ].join(',');
+        }).join('\n');
+        
+        const csv = csvHeader + csvRows;
+        
+        // Secure headers with proper MIME type and safe filename
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="analytics-${encodeURIComponent(restaurantId)}-${encodeURIComponent(startDate as string)}-${encodeURIComponent(endDate as string)}.csv"`);
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.send(csv);
+      } else {
+        res.json(exportData);
+      }
+    } catch (error) {
+      console.error("Error exporting analytics:", error);
+      res.status(500).json({ message: "Failed to export analytics" });
     }
   });
 
@@ -647,6 +913,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching claimed deals:", error);
       res.status(500).json({ message: "Failed to fetch claimed deals" });
+    }
+  });
+
+  // Get claims for restaurant owner's deals
+  app.get('/api/restaurants/:restaurantId/claims', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      const { status } = req.query; // pending, used, all
+      
+      // Verify user owns this restaurant
+      const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "Unauthorized: You can only access analytics for restaurants you own" });
+      }
+      
+      const claims = await storage.getRestaurantDealClaims(restaurantId, status as string);
+      res.json(claims);
+    } catch (error) {
+      console.error("Error fetching restaurant claims:", error);
+      res.status(500).json({ message: "Failed to fetch restaurant claims" });
     }
   });
 

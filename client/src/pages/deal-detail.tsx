@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -62,6 +62,25 @@ export default function DealDetail() {
     queryKey: ["/api/reviews/restaurant", (deal as Deal)?.restaurantId, "rating"],
     enabled: !!(deal as Deal)?.restaurantId,
   });
+
+  // Track deal view when deal is loaded
+  useEffect(() => {
+    if (dealId && deal && !dealLoading) {
+      // Track the deal view
+      const trackView = async () => {
+        try {
+          await apiRequest('POST', `/api/deals/${dealId}/view`, {});
+        } catch (error) {
+          // Silently fail - view tracking shouldn't interrupt user experience
+          console.debug('View tracking failed:', error);
+        }
+      };
+      
+      // Delay to ensure the user actually viewed the page (not just a quick navigation)
+      const timer = setTimeout(trackView, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [dealId, deal, dealLoading]);
 
   const claimDealMutation = useMutation({
     mutationFn: async () => {

@@ -135,7 +135,7 @@ export default function NotificationsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">New Restaurants</p>
-                <p className="text-sm text-muted-foreground">When new places join MealScout</p>
+                <p className="text-sm text-muted-foreground">When new places join DealScout</p>
               </div>
               <Switch
                 checked={notifications.newRestaurants}

@@ -374,8 +374,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Monthly: $49/month, Yearly: $441/year (25% discount = $588 - $147 = $441)
       const unitAmount = interval === 'year' ? 44100 : 4900; // $441 yearly or $49 monthly
       const productName = interval === 'year' 
-        ? 'MealScout Restaurant Plan (Annual - Save 25%)'
-        : 'MealScout Restaurant Plan (Monthly)';
+        ? 'DealScout Restaurant Plan (Annual - Save 25%)'
+        : 'DealScout Restaurant Plan (Monthly)';
 
       const subscription = await stripe.subscriptions.create({
         customer: customerId,

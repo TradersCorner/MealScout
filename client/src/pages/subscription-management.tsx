@@ -114,7 +114,7 @@ export default function SubscriptionManagement() {
       <div className="max-w-2xl mx-auto space-y-6">
         <div>
           <h1 className="text-3xl font-bold mb-2">Subscription Management</h1>
-          <p className="text-muted-foreground">Manage your MealScout restaurant subscription</p>
+          <p className="text-muted-foreground">Manage your DealScout restaurant subscription</p>
         </div>
 
         <Card>

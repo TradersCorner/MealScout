@@ -134,7 +134,7 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
                   <span className="font-semibold text-foreground">Your Name</span>
                 </div>
                 <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">
-                  {postData.facebookPostData?.message || `Just claimed an amazing deal at ${postData.restaurantName}! 🍽️\n\n${postData.dealTitle}\n\nFound this through MealScout - check it out! #MealScout #FoodDeals`}
+                  {postData.facebookPostData?.message || `Just claimed an amazing deal at ${postData.restaurantName}! 🍽️\n\n${postData.dealTitle}\n\nFound this through DealScout - check it out! #DealScout #FoodDeals`}
                 </p>
                 <div className="mt-3 p-3 bg-background rounded-lg border border-border/50">
                   <div className="flex items-center space-x-2">

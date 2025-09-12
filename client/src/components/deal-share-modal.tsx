@@ -31,7 +31,7 @@ export default function DealShareModal({ isOpen, onClose, deal }: DealShareModal
   const shareUrl = `${window.location.origin}/deal/${deal.id}`;
   
   // Create share text
-  const shareText = `🍽️ Amazing deal at ${deal.restaurant?.name || 'this restaurant'}!\n\n${deal.title}\n${deal.discountValue}% OFF (Min order: $${deal.minOrderAmount || '15'})\n\nCheck it out on MealScout:`;
+  const shareText = `🍽️ Amazing deal at ${deal.restaurant?.name || 'this restaurant'}!\n\n${deal.title}\n${deal.discountValue}% OFF (Min order: $${deal.minOrderAmount || '15'})\n\nCheck it out on DealScout:`;
 
   const handleCopyLink = async () => {
     try {

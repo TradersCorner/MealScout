@@ -519,11 +519,11 @@ export default function Landing() {
             <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center flex-shrink-0">
               <img 
                 src={mealScoutLogo} 
-                alt="MealScout Logo" 
+                alt="DealScout Logo" 
                 className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
               />
             </div>
-            <span className="text-xl sm:text-2xl font-bold text-gray-900 truncate">MealScout</span>
+            <span className="text-xl sm:text-2xl font-bold text-gray-900 truncate">DealScout</span>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-3">
             {/* Desktop Buttons */}
@@ -616,7 +616,7 @@ export default function Landing() {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="modal-content bg-white rounded-2xl w-full max-w-sm p-6">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-semibold text-gray-900">Login to MealScout</h3>
+              <h3 className="text-xl font-semibold text-gray-900">Login to DealScout</h3>
               <button
                 onClick={() => setShowAuth(false)}
                 className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
@@ -1359,7 +1359,7 @@ export default function Landing() {
           <div className="mt-16 max-w-4xl mx-auto">
             <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-3xl p-10 text-center shadow-xl border border-red-200/50 mb-12">
               <div className="text-6xl mb-6">👤</div>
-              <h3 className="text-3xl font-bold text-gray-900 mb-4">Join MealScout Today</h3>
+              <h3 className="text-3xl font-bold text-gray-900 mb-4">Join DealScout Today</h3>
               <p className="text-gray-600 mb-8 text-xl max-w-2xl mx-auto">
                 Create your free account to save favorite deals, get personalized recommendations, and never miss out on great food offers near you!
               </p>

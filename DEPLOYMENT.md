@@ -1,4 +1,4 @@
-# MealScout Production Deployment Guide
+# DealScout Production Deployment Guide
 
 ## Pre-Deployment Checklist
 
@@ -122,4 +122,4 @@ For deployment issues:
 
 ---
 
-**MealScout v1.0** - Production Ready ✅
+**DealScout v1.0** - Production Ready ✅

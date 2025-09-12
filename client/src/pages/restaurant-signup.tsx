@@ -191,7 +191,7 @@ export default function RestaurantSignup() {
                 </svg>
               </button>
             </Link>
-            <h1 className="text-xl font-bold text-gray-900">MealScout for Restaurants</h1>
+            <h1 className="text-xl font-bold text-gray-900">DealScout for Restaurants</h1>
           </div>
         </header>
 
@@ -201,13 +201,13 @@ export default function RestaurantSignup() {
             <div className="w-48 h-48 mb-8 flex items-center justify-center mx-auto">
               <img 
                 src="/attached_assets/541254193_1828025567749501_7985847689970469117_n_1757207057307.jpg" 
-                alt="MealScout Logo" 
+                alt="DealScout Logo" 
                 className="w-full h-full object-contain drop-shadow-2xl"
               />
             </div>
             <h2 className="text-5xl font-bold text-gray-900 mb-6">Boost Your Restaurant's Revenue</h2>
             <p className="text-gray-600 text-xl leading-relaxed max-w-3xl mx-auto mb-8">
-              Join MealScout's advertising platform and connect with hungry customers actively looking for deals in your neighborhood. Increase foot traffic, fill slow periods, and grow your business.
+              Join DealScout's advertising platform and connect with hungry customers actively looking for deals in your neighborhood. Increase foot traffic, fill slow periods, and grow your business.
             </p>
             {/* Authentication Section */}
             <div className="max-w-md mx-auto">
@@ -586,7 +586,7 @@ export default function RestaurantSignup() {
           <div className="text-center">
             <h3 className="text-3xl font-bold text-gray-900 mb-4">Ready to Get Started?</h3>
             <p className="text-gray-600 text-lg mb-8 max-w-2xl mx-auto">
-              Join hundreds of restaurants already using MealScout to grow their business. Set up your first deal in minutes.
+              Join hundreds of restaurants already using DealScout to grow their business. Set up your first deal in minutes.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <button 

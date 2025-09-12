@@ -79,7 +79,7 @@ const SubscribeForm = ({ billingInterval }: { billingInterval: 'month' | '3-mont
         disabled={!stripe || !elements || isProcessing}
         data-testid="button-subscribe"
       >
-{isProcessing ? "Processing..." : `Subscribe Now - $${billingInterval === 'year' ? '350' : billingInterval === '3-month' ? '100' : '49'}/${billingInterval === 'year' ? 'year' : billingInterval === '3-month' ? '3 months' : 'month'}`}
+{isProcessing ? "Processing..." : `Subscribe Now - $${billingInterval === 'year' ? '450' : billingInterval === '3-month' ? '100' : '49'}/${billingInterval === 'year' ? 'year' : billingInterval === '3-month' ? '3 months' : 'month'}`}
       </Button>
     </form>
   );
@@ -93,6 +93,9 @@ export default function Subscribe() {
   const [billingInterval, setBillingInterval] = useState<'month' | '3-month' | 'year'>('month');
   const [isCreatingSubscription, setIsCreatingSubscription] = useState(false);
 
+  // Check if user is new (never had a subscription)
+  const isNewUser = !(user as any)?.stripeSubscriptionId;
+
   const createSubscription = async (interval: 'month' | '3-month' | 'year') => {
     setIsCreatingSubscription(true);
     setClientSecret("");
@@ -104,6 +107,8 @@ export default function Subscribe() {
       
       if (data.clientSecret) {
         setClientSecret(data.clientSecret);
+      } else if (data.error) {
+        setSubscriptionError(data.error.message);
       } else {
         setSubscriptionError("Unable to initialize payment. Please try again.");
       }
@@ -119,8 +124,15 @@ export default function Subscribe() {
         }, 500);
         return;
       }
-      console.error("Error creating subscription:", error);
-      setSubscriptionError("Failed to initialize subscription. Please try again.");
+      
+      // Handle specific quarterly plan restriction error
+      if (error.status === 400 && interval === '3-month') {
+        setSubscriptionError("Quarterly plan is only available for new users. Please choose monthly or yearly subscription.");
+        setBillingInterval('month'); // Reset to monthly
+      } else {
+        console.error("Error creating subscription:", error);
+        setSubscriptionError("Failed to initialize subscription. Please try again.");
+      }
     } finally {
       setIsCreatingSubscription(false);
     }
@@ -264,7 +276,7 @@ export default function Subscribe() {
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold text-foreground mb-4 text-center" data-testid="text-billing-title">Choose Your Plan</h3>
             
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <div className={`grid gap-3 mb-6 ${isNewUser ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
               {/* Monthly Plan */}
               <div 
                 className={`border rounded-lg p-3 cursor-pointer transition-all duration-200 ${
@@ -285,30 +297,35 @@ export default function Subscribe() {
                 </div>
               </div>
 
-              {/* 3-Month Plan */}
-              <div 
-                className={`border rounded-lg p-3 cursor-pointer transition-all duration-200 relative ${
-                  billingInterval === '3-month' 
-                    ? 'border-primary bg-primary/10 shadow-md' 
-                    : 'border-border bg-white hover:border-primary/50'
-                }`}
-                onClick={() => {
-                  setBillingInterval('3-month');
-                  createSubscription('3-month');
-                }}
-                data-testid="card-quarterly-plan"
-              >
-                <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                  Save 32%
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-bold text-primary mb-1">$100</div>
-                  <div className="text-xs text-muted-foreground mb-1">/3 months</div>
-                  <div className="text-xs text-muted-foreground">
-                    <span className="line-through text-muted-foreground/70">$147</span> Quarterly
+              {/* 3-Month Plan - Only for new users */}
+              {isNewUser && (
+                <div 
+                  className={`border rounded-lg p-3 cursor-pointer transition-all duration-200 relative ${
+                    billingInterval === '3-month' 
+                      ? 'border-primary bg-primary/10 shadow-md' 
+                      : 'border-border bg-white hover:border-primary/50'
+                  }`}
+                  onClick={() => {
+                    setBillingInterval('3-month');
+                    createSubscription('3-month');
+                  }}
+                  data-testid="card-quarterly-plan"
+                >
+                  <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                    Save 32%
+                  </div>
+                  <div className="absolute -bottom-2 -left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                    New Users Only
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-primary mb-1">$100</div>
+                    <div className="text-xs text-muted-foreground mb-1">/3 months</div>
+                    <div className="text-xs text-muted-foreground">
+                      <span className="line-through text-muted-foreground/70">$147</span> Quarterly
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
               
               {/* Yearly Plan */}
               <div 
@@ -327,7 +344,7 @@ export default function Subscribe() {
                   Best Deal
                 </div>
                 <div className="text-center">
-                  <div className="text-xl font-bold text-primary mb-1">$350</div>
+                  <div className="text-xl font-bold text-primary mb-1">$450</div>
                   <div className="text-xs text-muted-foreground mb-1">/year</div>
                   <div className="text-xs text-muted-foreground">
                     <span className="line-through text-muted-foreground/70">$588</span> Annually
@@ -346,7 +363,7 @@ export default function Subscribe() {
                 <i className="fas fa-crown text-white text-xl"></i>
               </div>
               <h2 className="text-xl font-bold text-foreground mb-2" data-testid="text-plan-title">
-                DealScout Restaurant Plan{billingInterval === 'year' ? ' (Annual - Save 40%)' : billingInterval === '3-month' ? ' (Quarterly - Save 32%)' : ' (Monthly)'}
+                DealScout Restaurant Plan{billingInterval === 'year' ? ' (Annual - Save 23%)' : billingInterval === '3-month' ? ' (Quarterly - Save 32%)' : ' (Monthly)'}
               </h2>
               <p className="text-muted-foreground text-sm" data-testid="text-plan-subtitle">Everything you need to promote your deals</p>
             </div>
@@ -373,7 +390,7 @@ export default function Subscribe() {
             <div className="text-center border-t border-border pt-4">
               <div className="flex items-center justify-center space-x-2">
                 <span className="text-2xl font-bold text-primary" data-testid="text-price">
-                  ${billingInterval === 'year' ? '350' : billingInterval === '3-month' ? '100' : '49'}
+                  ${billingInterval === 'year' ? '450' : billingInterval === '3-month' ? '100' : '49'}
                 </span>
                 <span className="text-muted-foreground" data-testid="text-price-period">
                   /{billingInterval === 'year' ? 'year' : billingInterval === '3-month' ? '3 months' : 'month'}
@@ -381,7 +398,7 @@ export default function Subscribe() {
               </div>
               {billingInterval === 'year' && (
                 <p className="text-xs text-accent font-medium mt-1" data-testid="text-savings-info">
-                  Save $238 compared to monthly billing
+                  Save $138 compared to monthly billing
                 </p>
               )}
               {billingInterval === '3-month' && (

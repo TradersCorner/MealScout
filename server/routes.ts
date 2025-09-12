@@ -835,6 +835,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { billingInterval } = req.body; // 'month' | '3-month' | 'year'
     const interval = billingInterval === 'year' ? 'year' : billingInterval === '3-month' ? 'month' : 'month';
 
+    // Check if user is eligible for quarterly plan (new users only)
+    if (billingInterval === '3-month' && user.stripeSubscriptionId) {
+      return res.status(400).json({ 
+        error: { 
+          message: 'Quarterly plan is only available for new users. Please choose monthly or yearly subscription.' 
+        } 
+      });
+    }
+
     if (user.stripeSubscriptionId) {
       try {
         const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId, {
@@ -869,7 +878,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Calculate pricing based on billing interval
-      // Monthly: $49/month, 3-Month: $100/3 months, Yearly: $350/year (40% discount)
+      // Monthly: $49/month, 3-Month: $100/3 months (new users only), Yearly: $450/year (23% discount)
       let unitAmount: number;
       let productName: string;
       let intervalCount = 1;
@@ -879,8 +888,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         intervalCount = 3; // Bill every 3 months
         productName = 'DealScout Restaurant Plan (Quarterly - Save 32%)';
       } else if (billingInterval === 'year') {
-        unitAmount = 35000; // $350 yearly
-        productName = 'DealScout Restaurant Plan (Annual - Save 40%)';
+        unitAmount = 45000; // $450 yearly
+        productName = 'DealScout Restaurant Plan (Annual - Save 23%)';
       } else {
         unitAmount = 4900; // $49 monthly
         productName = 'DealScout Restaurant Plan (Monthly)';

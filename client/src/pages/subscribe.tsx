@@ -79,7 +79,7 @@ const SubscribeForm = ({ billingInterval }: { billingInterval: 'month' | '3-mont
         disabled={!stripe || !elements || isProcessing}
         data-testid="button-subscribe"
       >
-{isProcessing ? "Processing..." : `Subscribe Now - $${billingInterval === 'year' ? '441' : billingInterval === '3-month' ? '100' : '49'}/${billingInterval === 'year' ? 'year' : billingInterval === '3-month' ? '3 months' : 'month'}`}
+{isProcessing ? "Processing..." : `Subscribe Now - $${billingInterval === 'year' ? '350' : billingInterval === '3-month' ? '100' : '49'}/${billingInterval === 'year' ? 'year' : billingInterval === '3-month' ? '3 months' : 'month'}`}
       </Button>
     </form>
   );
@@ -327,7 +327,7 @@ export default function Subscribe() {
                   Best Deal
                 </div>
                 <div className="text-center">
-                  <div className="text-xl font-bold text-primary mb-1">$441</div>
+                  <div className="text-xl font-bold text-primary mb-1">$350</div>
                   <div className="text-xs text-muted-foreground mb-1">/year</div>
                   <div className="text-xs text-muted-foreground">
                     <span className="line-through text-muted-foreground/70">$588</span> Annually
@@ -346,7 +346,7 @@ export default function Subscribe() {
                 <i className="fas fa-crown text-white text-xl"></i>
               </div>
               <h2 className="text-xl font-bold text-foreground mb-2" data-testid="text-plan-title">
-                DealScout Restaurant Plan{billingInterval === 'year' ? ' (Annual - Save 25%)' : billingInterval === '3-month' ? ' (Quarterly - Save 32%)' : ' (Monthly)'}
+                DealScout Restaurant Plan{billingInterval === 'year' ? ' (Annual - Save 40%)' : billingInterval === '3-month' ? ' (Quarterly - Save 32%)' : ' (Monthly)'}
               </h2>
               <p className="text-muted-foreground text-sm" data-testid="text-plan-subtitle">Everything you need to promote your deals</p>
             </div>
@@ -373,7 +373,7 @@ export default function Subscribe() {
             <div className="text-center border-t border-border pt-4">
               <div className="flex items-center justify-center space-x-2">
                 <span className="text-2xl font-bold text-primary" data-testid="text-price">
-                  ${billingInterval === 'year' ? '441' : billingInterval === '3-month' ? '100' : '49'}
+                  ${billingInterval === 'year' ? '350' : billingInterval === '3-month' ? '100' : '49'}
                 </span>
                 <span className="text-muted-foreground" data-testid="text-price-period">
                   /{billingInterval === 'year' ? 'year' : billingInterval === '3-month' ? '3 months' : 'month'}
@@ -381,7 +381,7 @@ export default function Subscribe() {
               </div>
               {billingInterval === 'year' && (
                 <p className="text-xs text-accent font-medium mt-1" data-testid="text-savings-info">
-                  Save $147 compared to monthly billing
+                  Save $238 compared to monthly billing
                 </p>
               )}
               {billingInterval === '3-month' && (

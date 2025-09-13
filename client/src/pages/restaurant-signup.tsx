@@ -16,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Mail, Eye, EyeOff, CheckCircle, Upload, ArrowLeft, ArrowRight } from "lucide-react";
 import DocumentUpload from "@/components/document-upload";
+import { BackHeader } from "@/components/back-header";
+import { Store } from "lucide-react";
 
 const restaurantSchema = z.object({
   name: z.string().min(1, "Business name is required"),
@@ -269,19 +271,12 @@ export default function RestaurantSignup() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
-        {/* Header */}
-        <header className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 px-6 py-5 sticky top-0 z-10 shadow-sm">
-          <div className="flex items-center max-w-4xl mx-auto">
-            <Link href="/">
-              <button className="p-3 -ml-3 rounded-xl hover:bg-gray-100 mr-4 transition-colors duration-200">
-                <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-            </Link>
-            <h1 className="text-xl font-bold text-gray-900">MealScout for Businesses</h1>
-          </div>
-        </header>
+        <BackHeader
+          title="MealScout for Businesses"
+          fallbackHref="/"
+          icon={Store}
+          className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+        />
 
         <div className="px-6 py-12 max-w-4xl mx-auto">
           {/* Hero Section */}
@@ -705,19 +700,12 @@ export default function RestaurantSignup() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
-      {/* Header */}
-      <header className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 px-6 py-5 sticky top-0 z-10 shadow-sm">
-        <div className="flex items-center max-w-4xl mx-auto">
-          <Link href="/">
-            <button className="p-3 -ml-3 rounded-xl hover:bg-gray-100 mr-4 transition-colors duration-200" data-testid="button-back">
-              <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-          </Link>
-          <h1 className="text-xl font-bold text-gray-900" data-testid="text-page-title">Restaurant Registration</h1>
-        </div>
-      </header>
+      <BackHeader
+        title="Restaurant Registration"
+        fallbackHref="/"
+        icon={Store}
+        className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+      />
 
       <div className="px-6 py-12 max-w-4xl mx-auto">
         {/* Hero Section */}

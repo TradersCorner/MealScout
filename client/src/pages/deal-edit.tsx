@@ -22,6 +22,7 @@ import {
   ArrowLeft, Upload, X, Eye, Sparkles, Clock, Users, DollarSign, 
   Edit3, Save, Trash2, Copy, Calendar, Timer, Settings, AlertTriangle
 } from "lucide-react";
+import { BackHeader } from "@/components/back-header";
 import type { Deal } from "@shared/schema";
 
 const dealEditSchema = z.object({
@@ -331,24 +332,11 @@ export default function DealEdit() {
 
   return (
     <div className="max-w-4xl mx-auto bg-background min-h-screen">
-      {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-10">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center space-x-4">
-            <Link href="/restaurant-owner-dashboard">
-              <Button variant="ghost" size="sm" data-testid="button-back">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold">Edit Deal</h1>
-              <p className="text-muted-foreground">
-                Modify your deal details and settings
-              </p>
-            </div>
-          </div>
-          
+      <BackHeader
+        title="Edit Deal"
+        fallbackHref="/restaurant-owner-dashboard"
+        icon={Edit3}
+        rightActions={
           <div className="flex items-center space-x-2">
             {deal.isActive ? (
               <Badge className="bg-green-500">Active</Badge>
@@ -395,8 +383,8 @@ export default function DealEdit() {
               </AlertDialogContent>
             </AlertDialog>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="flex flex-col lg:flex-row gap-8 p-6">
         {/* Edit Form */}

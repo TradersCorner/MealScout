@@ -1,28 +1,22 @@
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, FileText, Calendar, Shield } from "lucide-react";
-import { Link } from "wouter";
+import { FileText, Calendar, Shield } from "lucide-react";
+import { BackHeader } from "@/components/back-header";
 
 export default function TermsOfService() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/">
-              <Button variant="ghost" className="flex items-center space-x-2">
-                <ArrowLeft className="w-4 h-4" />
-                <span>Back to Home</span>
-              </Button>
-            </Link>
-            <div className="flex items-center space-x-2 text-sm text-gray-500">
-              <Calendar className="w-4 h-4" />
-              <span>Last updated: January 13, 2025</span>
-            </div>
+      <BackHeader
+        title="Terms of Service"
+        fallbackHref="/"
+        icon={FileText}
+        rightActions={
+          <div className="flex items-center space-x-2 text-sm text-gray-500">
+            <Calendar className="w-4 h-4" />
+            <span>Last updated: January 13, 2025</span>
           </div>
-        </div>
-      </div>
+        }
+        className="bg-white shadow-sm"
+      />
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-6 py-8">

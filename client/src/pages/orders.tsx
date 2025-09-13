@@ -5,6 +5,7 @@ import Navigation from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Receipt, Clock, CheckCircle, XCircle, MapPin } from "lucide-react";
+import { BackHeader } from "@/components/back-header";
 
 export default function OrdersPage() {
   const { isAuthenticated } = useAuth();
@@ -61,12 +62,12 @@ export default function OrdersPage() {
   if (!isAuthenticated) {
     return (
       <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
-        <header className="px-6 py-6 bg-white border-b border-border">
-          <h1 className="text-2xl font-bold text-foreground flex items-center">
-            <Receipt className="w-6 h-6 text-primary mr-3" />
-            Orders
-          </h1>
-        </header>
+        <BackHeader
+          title="Deal History"
+          fallbackHref="/"
+          icon={Receipt}
+          className="bg-white border-b border-border"
+        />
         
         <div className="px-6 py-12 text-center">
           <Receipt className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
@@ -86,14 +87,15 @@ export default function OrdersPage() {
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
-      {/* Header */}
-      <header className="px-6 py-6 bg-white border-b border-border">
-        <h1 className="text-2xl font-bold text-foreground flex items-center mb-4">
-          <Receipt className="w-6 h-6 text-primary mr-3" />
-          Orders
-        </h1>
-        
-        {/* Tabs */}
+      <BackHeader
+        title="Deal History"
+        fallbackHref="/"
+        icon={Receipt}
+        className="bg-white border-b border-border"
+      />
+
+      {/* Tabs */}
+      <div className="px-6 py-4 bg-white border-b border-border">
         <div className="flex bg-muted rounded-xl p-1">
           <Button
             variant={activeTab === 'active' ? 'default' : 'ghost'}
@@ -114,7 +116,7 @@ export default function OrdersPage() {
             Completed ({completedOrders.length})
           </Button>
         </div>
-      </header>
+      </div>
 
       {/* Orders List */}
       <div className="px-6 py-6">

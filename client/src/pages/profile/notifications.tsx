@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Navigation from "@/components/navigation";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Bell, Smartphone, Mail, MapPin } from "lucide-react";
-import { Link } from "wouter";
+import { Bell, Smartphone, Mail, MapPin } from "lucide-react";
+import { BackHeader } from "@/components/back-header";
 
 export default function NotificationsPage() {
   const { user, isAuthenticated } = useAuth();
@@ -38,21 +37,13 @@ export default function NotificationsPage() {
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
-      {/* Header */}
-      <header className="px-6 py-6 bg-white border-b border-border">
-        <div className="flex items-center mb-2">
-          <Link href="/profile">
-            <Button variant="ghost" size="sm" className="mr-3 -ml-2" data-testid="button-back-notifications">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          </Link>
-          <div className="flex items-center">
-            <Bell className="w-6 h-6 text-primary mr-3" />
-            <h1 className="text-xl font-bold text-foreground">Notifications</h1>
-          </div>
-        </div>
-        <p className="text-sm text-muted-foreground">Manage how you receive updates</p>
-      </header>
+      <BackHeader
+        title="Notifications"
+        subtitle="Manage how you receive updates"
+        fallbackHref="/profile"
+        icon={Bell}
+        className="bg-white border-b border-border"
+      />
 
       {/* Content */}
       <div className="px-6 py-6 space-y-6">

@@ -3,6 +3,8 @@ import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { BackHeader } from "@/components/back-header";
+import { UserCheck } from "lucide-react";
 
 export default function Login() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -28,19 +30,12 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
-      {/* Header */}
-      <div className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 px-6 py-5 sticky top-0 z-10 shadow-sm">
-        <div className="flex items-center max-w-4xl mx-auto">
-          <Link href="/">
-            <button className="p-3 -ml-3 rounded-xl hover:bg-gray-100 mr-4 transition-colors duration-200">
-              <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-          </Link>
-          <h1 className="text-xl font-bold text-gray-900">Join MealScout</h1>
-        </div>
-      </div>
+      <BackHeader
+        title="Join MealScout"
+        fallbackHref="/"
+        icon={UserCheck}
+        className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+      />
 
       <div className="px-6 py-12 max-w-md mx-auto">
         {/* Welcome Section */}

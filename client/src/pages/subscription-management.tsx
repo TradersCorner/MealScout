@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
 import { CreditCard, Calendar, AlertCircle, CheckCircle } from "lucide-react";
+import { BackHeader } from "@/components/back-header";
 
 interface SubscriptionStatus {
   status: string;
@@ -112,10 +113,11 @@ export default function SubscriptionManagement() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-2xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Subscription Management</h1>
-          <p className="text-muted-foreground">Manage your MealScout restaurant subscription</p>
-        </div>
+        <BackHeader
+          title="Subscription Management"
+          fallbackHref="/restaurant-owner-dashboard"
+          icon={CreditCard}
+        />
 
         <Card>
           <CardHeader>

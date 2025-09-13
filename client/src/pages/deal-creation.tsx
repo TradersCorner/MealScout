@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { Upload, X, Eye, Sparkles, Clock, Users, DollarSign } from "lucide-react";
+import { BackHeader } from "@/components/back-header";
 
 const dealSchema = z.object({
   title: z.string().min(1, "Deal title is required"),
@@ -220,27 +221,22 @@ export default function DealCreation() {
 
   return (
     <div className="max-w-md mx-auto bg-white min-h-screen">
-      {/* Header */}
-      <header className="bg-white border-b border-border px-4 py-4 sticky top-0 z-10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <Link href="/">
-              <button className="p-2 -ml-2 rounded-full hover:bg-muted mr-3" data-testid="button-back">
-                <i className="fas fa-arrow-left text-foreground"></i>
-              </button>
-            </Link>
-            <h1 className="text-lg font-semibold text-foreground" data-testid="text-page-title">Create New Deal</h1>
-          </div>
-          <button 
+      <BackHeader
+        title="Create New Deal"
+        fallbackHref="/restaurant-owner-dashboard"
+        icon={Sparkles}
+        rightActions={
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setShowPreview(!showPreview)}
-            className="flex items-center space-x-1 text-primary font-semibold text-sm" 
             data-testid="button-preview"
           >
-            <Eye className="w-4 h-4" />
-            <span>{showPreview ? 'Hide' : 'Preview'}</span>
-          </button>
-        </div>
-      </header>
+            <Eye className="w-4 h-4 mr-2" />
+            {showPreview ? 'Hide' : 'Preview'}
+          </Button>
+        }
+      />
 
       <div className="px-4 py-6 pb-24">
         {/* Live Preview */}

@@ -3,8 +3,8 @@ import Navigation from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, HelpCircle, Search, MessageCircle, Mail, Phone, ExternalLink, ChevronRight } from "lucide-react";
-import { Link } from "wouter";
+import { HelpCircle, Search, MessageCircle, Mail, Phone, ExternalLink, ChevronRight } from "lucide-react";
+import { BackHeader } from "@/components/back-header";
 
 export default function HelpSupportPage() {
   const { user, isAuthenticated } = useAuth();
@@ -58,21 +58,13 @@ export default function HelpSupportPage() {
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
-      {/* Header */}
-      <header className="px-6 py-6 bg-white border-b border-border">
-        <div className="flex items-center mb-2">
-          <Link href="/profile">
-            <Button variant="ghost" size="sm" className="mr-3 -ml-2" data-testid="button-back-help">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          </Link>
-          <div className="flex items-center">
-            <HelpCircle className="w-6 h-6 text-primary mr-3" />
-            <h1 className="text-xl font-bold text-foreground">Help & Support</h1>
-          </div>
-        </div>
-        <p className="text-sm text-muted-foreground">Get help when you need it</p>
-      </header>
+      <BackHeader
+        title="Help & Support"
+        subtitle="Get help when you need it"
+        fallbackHref="/profile"
+        icon={HelpCircle}
+        className="bg-white border-b border-border"
+      />
 
       {/* Content */}
       <div className="px-6 py-6 space-y-6">

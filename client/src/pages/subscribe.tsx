@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { BackHeader } from "@/components/back-header";
+import { CreditCard } from "lucide-react";
 
 // Make sure to call `loadStripe` outside of a component's render to avoid
 // recreating the `Stripe` object on every render.
@@ -169,17 +171,11 @@ export default function Subscribe() {
   if (subscriptionError) {
     return (
       <div className="max-w-md mx-auto bg-white min-h-screen">
-        {/* Header */}
-        <header className="bg-white border-b border-border px-4 py-4 sticky top-0 z-10">
-          <div className="flex items-center">
-            <Link href="/">
-              <button className="p-2 -ml-2 rounded-full hover:bg-muted mr-3" data-testid="button-back">
-                <i className="fas fa-arrow-left text-foreground"></i>
-              </button>
-            </Link>
-            <h1 className="text-lg font-semibold text-foreground" data-testid="text-page-title">Subscription</h1>
-          </div>
-        </header>
+        <BackHeader
+          title="Subscription"
+          fallbackHref="/restaurant-owner-dashboard"
+          icon={CreditCard}
+        />
 
         <div className="px-4 py-6 flex items-center justify-center min-h-[50vh]">
           <Card>
@@ -201,16 +197,11 @@ export default function Subscribe() {
   if (!stripePromise) {
     return (
       <div className="max-w-md mx-auto bg-white min-h-screen">
-        <header className="bg-white border-b border-border px-4 py-4 sticky top-0 z-10">
-          <div className="flex items-center">
-            <Link href="/">
-              <button className="p-2 -ml-2 rounded-full hover:bg-muted mr-3" data-testid="button-back">
-                <i className="fas fa-arrow-left text-foreground"></i>
-              </button>
-            </Link>
-            <h1 className="text-lg font-semibold text-foreground" data-testid="text-page-title">Subscription</h1>
-          </div>
-        </header>
+        <BackHeader
+          title="Subscription"
+          fallbackHref="/restaurant-owner-dashboard"
+          icon={CreditCard}
+        />
         <div className="px-4 py-6 flex items-center justify-center min-h-[50vh]">
           <Card>
             <CardContent className="p-6 text-center">
@@ -233,17 +224,11 @@ export default function Subscribe() {
   if (!clientSecret) {
     return (
       <div className="max-w-md mx-auto bg-white min-h-screen">
-        {/* Header */}
-        <header className="bg-white border-b border-border px-4 py-4 sticky top-0 z-10">
-          <div className="flex items-center">
-            <Link href="/">
-              <button className="p-2 -ml-2 rounded-full hover:bg-muted mr-3" data-testid="button-back">
-                <i className="fas fa-arrow-left text-foreground"></i>
-              </button>
-            </Link>
-            <h1 className="text-lg font-semibold text-foreground" data-testid="text-page-title">Subscription</h1>
-          </div>
-        </header>
+        <BackHeader
+          title="Subscription"
+          fallbackHref="/restaurant-owner-dashboard"
+          icon={CreditCard}
+        />
 
         <div className="px-4 py-6 flex items-center justify-center min-h-[50vh]">
           <div className="text-center">
@@ -258,17 +243,11 @@ export default function Subscribe() {
   // Make SURE to wrap the form in <Elements> which provides the stripe context.
   return (
     <div className="max-w-md mx-auto bg-white min-h-screen">
-      {/* Header */}
-      <header className="bg-white border-b border-border px-4 py-4 sticky top-0 z-10">
-        <div className="flex items-center">
-          <Link href="/">
-            <button className="p-2 -ml-2 rounded-full hover:bg-muted mr-3" data-testid="button-back">
-              <i className="fas fa-arrow-left text-foreground"></i>
-            </button>
-          </Link>
-          <h1 className="text-lg font-semibold text-foreground" data-testid="text-page-title">Complete Subscription</h1>
-        </div>
-      </header>
+      <BackHeader
+        title="Complete Subscription"
+        fallbackHref="/restaurant-owner-dashboard"
+        icon={CreditCard}
+      />
 
       <div className="px-4 py-6">
         {/* Billing Interval Selection */}

@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import DealClaimModal from "@/components/deal-claim-modal";
 import DealShareModal from "@/components/deal-share-modal";
+import { BackHeader } from "@/components/back-header";
+import { Tag, ArrowLeft } from "lucide-react";
 
 interface Deal {
   id: string;
@@ -162,28 +164,28 @@ export default function DealDetail() {
 
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-white min-h-screen">
-      {/* Header */}
-      <header className="bg-white px-4 py-4 sticky top-0 z-10">
-        <div className="flex items-center justify-between">
-          <Link href="/">
-            <button className="p-2 -ml-2 rounded-full hover:bg-muted" data-testid="button-back">
-              <i className="fas fa-arrow-left text-foreground"></i>
-            </button>
-          </Link>
-          <div className="flex space-x-2">
-            <button 
-              className="p-2 rounded-full hover:bg-muted" 
-              onClick={() => setShowShareModal(true)}
-              data-testid="button-share"
-            >
-              <i className="fas fa-share text-foreground"></i>
-            </button>
-            <button className="p-2 rounded-full hover:bg-muted" data-testid="button-favorite">
-              <i className="fas fa-heart text-muted-foreground hover:text-primary"></i>
-            </button>
-          </div>
+      <BackHeader
+        title="Deal Details"
+        fallbackHref="/"
+        icon={Tag}
+        className="bg-white sticky top-0 z-10"
+      />
+      
+      {/* Action Buttons */}
+      <div className="bg-white px-4 py-2 border-b border-border sticky top-16 z-10">
+        <div className="flex justify-end space-x-2">
+          <button 
+            className="p-2 rounded-full hover:bg-muted" 
+            onClick={() => setShowShareModal(true)}
+            data-testid="button-share"
+          >
+            <i className="fas fa-share text-foreground"></i>
+          </button>
+          <button className="p-2 rounded-full hover:bg-muted" data-testid="button-favorite">
+            <i className="fas fa-heart text-muted-foreground hover:text-primary"></i>
+          </button>
         </div>
-      </header>
+      </div>
 
       {/* Deal Image */}
       <div className="relative">

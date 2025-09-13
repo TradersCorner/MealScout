@@ -4,8 +4,8 @@ import Navigation from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CreditCard, Plus, MoreHorizontal, Shield } from "lucide-react";
-import { Link } from "wouter";
+import { CreditCard, Plus, MoreHorizontal, Shield } from "lucide-react";
+import { BackHeader } from "@/components/back-header";
 
 export default function PaymentMethodsPage() {
   const { user, isAuthenticated } = useAuth();
@@ -57,27 +57,19 @@ export default function PaymentMethodsPage() {
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
-      {/* Header */}
-      <header className="px-6 py-6 bg-white border-b border-border">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center">
-            <Link href="/profile">
-              <Button variant="ghost" size="sm" className="mr-3 -ml-2" data-testid="button-back-payment">
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-            </Link>
-            <div className="flex items-center">
-              <CreditCard className="w-6 h-6 text-primary mr-3" />
-              <h1 className="text-xl font-bold text-foreground">Payment Methods</h1>
-            </div>
-          </div>
+      <BackHeader
+        title="Payment Methods"
+        subtitle="Manage your cards and payment options"
+        fallbackHref="/profile"
+        icon={CreditCard}
+        rightActions={
           <Button size="sm" data-testid="button-add-payment">
             <Plus className="w-4 h-4 mr-2" />
             Add
           </Button>
-        </div>
-        <p className="text-sm text-muted-foreground">Manage your cards and payment options</p>
-      </header>
+        }
+        className="bg-white border-b border-border"
+      />
 
       {/* Content */}
       <div className="px-6 py-6 space-y-4">

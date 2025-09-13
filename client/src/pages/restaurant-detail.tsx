@@ -5,7 +5,8 @@ import DealCard from "@/components/deal-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, MapPin, Phone, Star, Clock, Navigation as DirectionsIcon, Heart, CheckCircle } from "lucide-react";
+import { BackHeader } from "@/components/back-header";
+import { MapPin, Phone, Star, Clock, Navigation as DirectionsIcon, Heart, CheckCircle, Store } from "lucide-react";
 
 export default function RestaurantDetailPage() {
   const { id: restaurantId } = useParams();
@@ -66,28 +67,25 @@ export default function RestaurantDetailPage() {
   const currentRating = (rating as any)?.rating || 0;
   const reviewCount = Array.isArray(reviews) ? reviews.length : 0;
 
+  const rightActions = (
+    <Button variant="ghost" size="sm" className="bg-white/90 backdrop-blur-sm" data-testid="button-save-restaurant">
+      <Heart className="w-4 h-4" />
+    </Button>
+  );
+
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+      <BackHeader
+        title={(restaurant as any)?.name || "Restaurant"}
+        fallbackHref="/"
+        icon={Store}
+        rightActions={rightActions}
+      />
+      
       {/* Header Image */}
-      <div className="relative h-64 bg-gradient-to-br from-red-100 to-orange-100 overflow-hidden">
+      <div className="relative h-48 bg-gradient-to-br from-red-100 to-orange-100 overflow-hidden">
         <div className="absolute inset-0 bg-black/20"></div>
         
-        {/* Back Button */}
-        <div className="absolute top-6 left-6 z-10">
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="bg-white/90 backdrop-blur-sm" data-testid="button-back-restaurant">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          </Link>
-        </div>
-
-        {/* Save Button */}
-        <div className="absolute top-6 right-6 z-10">
-          <Button variant="ghost" size="sm" className="bg-white/90 backdrop-blur-sm" data-testid="button-save-restaurant">
-            <Heart className="w-4 h-4" />
-          </Button>
-        </div>
-
         {/* Restaurant Image Placeholder */}
         <div className="w-full h-full flex items-center justify-center">
           <div className="text-center text-white/80">

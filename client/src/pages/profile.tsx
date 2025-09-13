@@ -41,7 +41,7 @@ export default function ProfilePage() {
           <User className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-foreground mb-2">Sign in to view profile</h2>
           <p className="text-muted-foreground mb-6">
-            Log in to access your profile, settings, and order history
+            Log in to access your profile, settings, and deal history
           </p>
           <Button onClick={() => window.location.href = "/api/auth/facebook"}>
             Sign In with Facebook
@@ -54,7 +54,7 @@ export default function ProfilePage() {
   }
 
   const menuItems = [
-    { icon: Receipt, label: "Order History", badge: userStats.dealsUsed.toString(), href: "/orders" },
+    { icon: Receipt, label: "Deal History", badge: userStats.dealsUsed.toString(), href: "/orders" },
     { icon: Heart, label: "Favorites", badge: userStats.favoriteRestaurants.toString(), href: "/favorites" },
     { icon: Bell, label: "Notifications", badge: null, href: "/profile/notifications" },
     // Only show Payment Methods for restaurant owners who need subscription billing

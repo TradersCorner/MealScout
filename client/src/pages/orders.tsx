@@ -72,7 +72,7 @@ export default function OrdersPage() {
           <Receipt className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-foreground mb-2">Sign in to view orders</h2>
           <p className="text-muted-foreground mb-6">
-            Log in to see your claimed deals and order history
+            Log in to see your claimed deals and deal history
           </p>
           <Button onClick={() => window.location.href = "/api/auth/facebook"}>
             Sign In
@@ -176,7 +176,7 @@ export default function OrdersPage() {
             <p className="text-muted-foreground mb-6">
               {activeTab === 'active' 
                 ? 'Claim some deals to see your active orders here'
-                : 'Your order history will appear here'
+                : 'Your deal history will appear here'
               }
             </p>
             <Button data-testid="button-browse-deals-orders">

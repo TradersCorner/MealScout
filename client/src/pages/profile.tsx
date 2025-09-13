@@ -166,7 +166,21 @@ export default function ProfilePage() {
         <Card className="bg-white hover:bg-red-50 transition-colors cursor-pointer border-0 shadow-md mt-6">
           <CardContent className="p-4">
             <button
-              onClick={() => window.location.href = "/api/logout"}
+              onClick={async () => {
+                try {
+                  const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                  });
+                  if (response.ok) {
+                    window.location.href = '/';
+                  } else {
+                    console.error('Logout failed');
+                  }
+                } catch (error) {
+                  console.error('Logout error:', error);
+                }
+              }}
               className="w-full flex items-center justify-between"
               data-testid="button-logout"
             >

@@ -37,7 +37,7 @@ export default function TermsOfService() {
               Terms of Service
             </CardTitle>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Please read these Terms of Service carefully before using DealScout
+              Please read these Terms of Service carefully before using MealScout
             </p>
           </CardHeader>
 
@@ -48,14 +48,14 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-2xl font-semibold text-gray-900 mb-4">1. Acceptance of Terms</h2>
                 <p className="text-gray-700 leading-relaxed mb-4">
-                  [REPLACE WITH GENERATED CONTENT: By accessing and using DealScout, you accept and agree to be bound by the terms and provision of this agreement.]
+                  [REPLACE WITH GENERATED CONTENT: By accessing and using MealScout, you accept and agree to be bound by the terms and provision of this agreement.]
                 </p>
               </section>
 
               <section>
                 <h2 className="text-2xl font-semibold text-gray-900 mb-4">2. Description of Service</h2>
                 <p className="text-gray-700 leading-relaxed mb-4">
-                  [REPLACE WITH GENERATED CONTENT: DealScout is a hyper-local meal deals discovery platform that connects restaurants, bars, and food trucks with nearby customers through location-based services and real-time deal notifications.]
+                  [REPLACE WITH GENERATED CONTENT: MealScout is a hyper-local meal deals discovery platform that connects restaurants, bars, and food trucks with nearby customers through location-based services and real-time deal notifications.]
                 </p>
                 <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
                   <li>Deal creation and management for businesses</li>

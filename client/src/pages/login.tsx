@@ -38,7 +38,7 @@ export default function Login() {
               </svg>
             </button>
           </Link>
-          <h1 className="text-xl font-bold text-gray-900">Join DealScout</h1>
+          <h1 className="text-xl font-bold text-gray-900">Join MealScout</h1>
         </div>
       </div>
 
@@ -50,7 +50,7 @@ export default function Login() {
               <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Welcome to DealScout!</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Welcome to MealScout!</h2>
           <p className="text-gray-600 text-lg leading-relaxed">
             Join thousands of food lovers discovering amazing deals near them every day.
           </p>

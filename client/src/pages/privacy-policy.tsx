@@ -37,7 +37,7 @@ export default function PrivacyPolicy() {
               Privacy Policy
             </CardTitle>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              How DealScout collects, uses, and protects your personal information
+              How MealScout collects, uses, and protects your personal information
             </p>
           </CardHeader>
 

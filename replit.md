@@ -1,6 +1,6 @@
 # Overview
 
-DealScout is a hyper-local meal deals discovery platform built as a full-stack React application. The application connects restaurants with nearby customers by enabling restaurant owners to create and manage special meal deals for breakfast, lunch, and dinner, while allowing users to discover and claim deals within walking distance of their location. The platform focuses on time-based dining offers with location-based services to create a targeted dining experience.
+MealScout is a hyper-local meal deals discovery platform built as a full-stack React application. The application connects restaurants with nearby customers by enabling restaurant owners to create and manage special meal deals for breakfast, lunch, and dinner, while allowing users to discover and claim deals within walking distance of their location. The platform focuses on time-based dining offers with location-based services to create a targeted dining experience.
 
 # User Preferences
 
@@ -8,7 +8,7 @@ Preferred communication style: Simple, everyday language.
 
 # Phase 4 Complete: Production Ready! 🚀
 
-**DealScout** is now production-ready with all phases completed:
+**MealScout** is now production-ready with all phases completed:
 - ✅ Phase 1: Core functionality and user authentication
 - ✅ Phase 2: Enhanced features with location services and ratings
 - ✅ Phase 3: Payment integration, social features, and smart search

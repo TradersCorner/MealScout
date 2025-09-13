@@ -906,13 +906,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (billingInterval === '3-month') {
         unitAmount = 10000; // $100 for 3 months
         intervalCount = 3; // Bill every 3 months
-        productName = 'DealScout Restaurant Plan (Quarterly - Save 32%)';
+        productName = 'MealScout Restaurant Plan (Quarterly - Save 32%)';
       } else if (billingInterval === 'year') {
         unitAmount = 45000; // $450 yearly
-        productName = 'DealScout Restaurant Plan (Annual - Save 23%)';
+        productName = 'MealScout Restaurant Plan (Annual - Save 23%)';
       } else {
         unitAmount = 4900; // $49 monthly
-        productName = 'DealScout Restaurant Plan (Monthly)';
+        productName = 'MealScout Restaurant Plan (Monthly)';
       }
 
       const subscription = await stripe.subscriptions.create({

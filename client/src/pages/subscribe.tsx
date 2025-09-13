@@ -48,7 +48,7 @@ const SubscribeForm = ({ billingInterval }: { billingInterval: 'month' | '3-mont
       } else {
         toast({
           title: "Payment Successful",
-          description: "Welcome to DealScout! You can now create deals.",
+          description: "Welcome to MealScout! You can now create deals.",
         });
         setLocation("/deal-creation");
       }
@@ -363,7 +363,7 @@ export default function Subscribe() {
                 <i className="fas fa-crown text-white text-xl"></i>
               </div>
               <h2 className="text-xl font-bold text-foreground mb-2" data-testid="text-plan-title">
-                DealScout Restaurant Plan{billingInterval === 'year' ? ' (Annual - Save 23%)' : billingInterval === '3-month' ? ' (Quarterly - Save 32%)' : ' (Monthly)'}
+                MealScout Restaurant Plan{billingInterval === 'year' ? ' (Annual - Save 23%)' : billingInterval === '3-month' ? ' (Quarterly - Save 32%)' : ' (Monthly)'}
               </h2>
               <p className="text-muted-foreground text-sm" data-testid="text-plan-subtitle">Everything you need to promote your deals</p>
             </div>

@@ -4,6 +4,7 @@ import Stripe from "stripe";
 import { storage } from "./storage";
 import { setupAuth } from "./facebookAuth";
 import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner } from "./unifiedAuth";
+import { emailService } from "./emailService";
 import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema } from "@shared/schema";
 import { z } from "zod";
 import { validateDocuments, checkRateLimit } from "./documentValidation";
@@ -935,6 +936,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       await storage.updateUserStripeInfo(user.id, customerId, subscription.id, billingInterval);
+  
+      // Send payment confirmation email asynchronously
+      const amount = billingInterval === '3-month' ? 1497 : // 3 months @ $5/month ($1 off)
+                    billingInterval === 'year' ? 4800 : // Yearly @ $4/month  
+                    500; // Monthly @ $5/month
+      emailService.sendPaymentConfirmation(user, amount, billingInterval, subscription.id).catch(err => 
+        console.error('Failed to send payment confirmation email:', err)
+      );
   
       const latestInvoice = subscription.latest_invoice;
       const paymentIntent = typeof latestInvoice === 'object' && latestInvoice ? (latestInvoice as any).payment_intent : null;

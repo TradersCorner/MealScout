@@ -6,6 +6,7 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import type { Express } from "express";
 import { storage } from "./storage";
+import { emailService } from "./emailService";
 import type { GoogleUserData, EmailUserData, FacebookUserData } from "@shared/schema";
 
 export async function setupUnifiedAuth(app: Express) {
@@ -44,6 +45,14 @@ export async function setupUnifiedAuth(app: Express) {
         };
 
         const user = await storage.upsertUserByAuth('google', userData, 'customer');
+        // Send welcome email asynchronously (don't block auth flow)
+        emailService.sendWelcomeEmail(user).catch(err => 
+          console.error('Failed to send customer welcome email:', err)
+        );
+        // Send admin notification asynchronously
+        emailService.sendAdminNotification(user).catch(err => 
+          console.error('Failed to send admin notification:', err)
+        );
         return done(null, user);
       } catch (error) {
         return done(error, null);
@@ -67,6 +76,14 @@ export async function setupUnifiedAuth(app: Express) {
         };
 
         const user = await storage.upsertUserByAuth('google', userData, 'restaurant_owner');
+        // Send welcome email asynchronously (don't block auth flow)
+        emailService.sendWelcomeEmail(user).catch(err => 
+          console.error('Failed to send restaurant owner welcome email:', err)
+        );
+        // Send admin notification asynchronously
+        emailService.sendAdminNotification(user).catch(err => 
+          console.error('Failed to send admin notification:', err)
+        );
         return done(null, user);
       } catch (error) {
         return done(error, null);
@@ -147,6 +164,14 @@ export async function setupUnifiedAuth(app: Express) {
         };
 
         const user = await storage.upsertUserByAuth('facebook', userData, 'customer');
+        // Send welcome email asynchronously (don't block auth flow)
+        emailService.sendWelcomeEmail(user).catch(err => 
+          console.error('Failed to send customer welcome email:', err)
+        );
+        // Send admin notification asynchronously
+        emailService.sendAdminNotification(user).catch(err => 
+          console.error('Failed to send admin notification:', err)
+        );
         return done(null, user);
       } catch (error) {
         return done(error, null);
@@ -199,6 +224,15 @@ export async function setupUnifiedAuth(app: Express) {
 
       const user = await storage.upsertUserByAuth('email', userData, 'customer');
 
+      // Send welcome email asynchronously (don't block registration flow)
+      emailService.sendWelcomeEmail(user).catch(err => 
+        console.error('Failed to send customer welcome email:', err)
+      );
+      // Send admin notification asynchronously
+      emailService.sendAdminNotification(user).catch(err => 
+        console.error('Failed to send admin notification:', err)
+      );
+
       req.login(user, (err) => {
         if (err) {
           return res.status(500).json({ error: "Failed to log in after registration" });
@@ -239,6 +273,15 @@ export async function setupUnifiedAuth(app: Express) {
       };
 
       const user = await storage.upsertUserByAuth('email', userData, 'restaurant_owner');
+
+      // Send welcome email asynchronously (don't block registration flow)
+      emailService.sendWelcomeEmail(user).catch(err => 
+        console.error('Failed to send restaurant owner welcome email:', err)
+      );
+      // Send admin notification asynchronously
+      emailService.sendAdminNotification(user).catch(err => 
+        console.error('Failed to send admin notification:', err)
+      );
 
       req.login(user, (err) => {
         if (err) {

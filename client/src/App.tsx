@@ -61,6 +61,12 @@ function Router() {
           <Route path="/restaurant-signup" component={RestaurantSignup} />
           <Route path="/deal-creation" component={DealCreation} />
           <Route path="/deal/:id" component={DealDetail} />
+          <Route path="/search" component={Search} />
+          <Route path="/map" component={MapPage} />
+          <Route path="/category/:category" component={CategoryPage} />
+          <Route path="/deals" component={FeaturedDealsPage} />
+          <Route path="/deals/featured" component={FeaturedDealsPage} />
+          <Route path="/restaurant/:id" component={RestaurantDetail} />
           <Route path="/admin" component={AdminLogin} />
         </>
       ) : (

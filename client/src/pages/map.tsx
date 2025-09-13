@@ -35,6 +35,8 @@ export default function MapPage() {
   const [showList, setShowList] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   // Get user location
   useEffect(() => {
@@ -52,6 +54,7 @@ export default function MapPage() {
         },
         (error) => {
           console.log("Location error:", error);
+          setLocationError("Unable to get your location");
           setIsLocating(false);
         },
         { enableHighAccuracy: true, timeout: 10000 }
@@ -59,10 +62,19 @@ export default function MapPage() {
     }
   }, []);
 
-  // Fetch nearby deals
+  // Fetch nearby deals based on user location
   const { data: dealsData = [], isLoading } = useQuery({
-    queryKey: ["/api/deals/featured"],
-    enabled: true,
+    queryKey: userLocation 
+      ? ["/api/deals/nearby", userLocation.lat, userLocation.lng]
+      : ["/api/deals/featured"],
+    queryFn: userLocation 
+      ? async () => {
+          const response = await fetch(`/api/deals/nearby/${userLocation.lat}/${userLocation.lng}`);
+          if (!response.ok) throw new Error('Failed to fetch nearby deals');
+          return response.json();
+        }
+      : undefined,
+    enabled: !!userLocation,
   });
 
   const deals: Deal[] = Array.isArray(dealsData) ? dealsData as Deal[] : [];
@@ -81,6 +93,37 @@ export default function MapPage() {
         lng: deal.restaurant.longitude
       });
     }
+  };
+
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 0.5, 3));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 0.5, 0.5));
+  };
+
+  // Convert GPS coordinates to map pixel position
+  const coordsToPixels = (lat: number, lng: number) => {
+    const mapWidth = 384; // Map container width (96 * 4 = 384px)
+    const mapHeight = 384; // Map container height
+    
+    // Calculate relative position from map center
+    const latDiff = lat - mapCenter.lat;
+    const lngDiff = lng - mapCenter.lng;
+    
+    // Convert to pixels (simplified projection for demo)
+    // In real maps, this would use proper map projection calculations
+    const scale = zoomLevel * 100000; // Zoom scaling factor
+    const x = (lngDiff * scale) + (mapWidth / 2);
+    const y = (-latDiff * scale) + (mapHeight / 2); // Negative because screen Y increases downward
+    
+    return { x, y };
+  };
+
+  // Check if coordinates are within visible map bounds
+  const isInBounds = (x: number, y: number) => {
+    return x >= 0 && x <= 384 && y >= 0 && y <= 384;
   };
 
   return (
@@ -116,9 +159,15 @@ export default function MapPage() {
         </div>
 
         {/* Location Status */}
+        {locationError && (
+          <div className="text-xs text-red-600 mb-4 bg-red-50 border border-red-200 rounded p-2">
+            ⚠️ {locationError}
+          </div>
+        )}
         {userLocation && (
           <div className="text-xs text-muted-foreground mb-4">
             📍 Located: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
+            {deals.length > 0 && ` • ${deals.length} deals nearby`}
           </div>
         )}
       </header>
@@ -156,20 +205,22 @@ export default function MapPage() {
           )}
 
           {/* Restaurant/Deal Markers */}
-          {deals.map((deal: Deal, index: number) => {
+          {deals.map((deal: Deal) => {
             if (!deal.restaurant) return null;
             
-            // Calculate relative position (mock positioning)
-            const offsetX = (index % 3 - 1) * 80;
-            const offsetY = (Math.floor(index / 3) % 3 - 1) * 60;
+            // Calculate pixel position from GPS coordinates
+            const { x, y } = coordsToPixels(deal.restaurant.latitude, deal.restaurant.longitude);
+            
+            // Only render markers that are within the visible map bounds
+            if (!isInBounds(x, y)) return null;
             
             return (
               <div
                 key={deal.id}
                 className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer z-10 group"
                 style={{
-                  left: `calc(50% + ${offsetX}px)`,
-                  top: `calc(50% + ${offsetY}px)`
+                  left: `${x}px`,
+                  top: `${y}px`
                 }}
                 onClick={() => handleDealClick(deal)}
                 data-testid={`marker-deal-${deal.id}`}
@@ -204,21 +255,28 @@ export default function MapPage() {
             <Button
               variant="secondary"
               size="sm"
-              className="w-8 h-8 p-0 bg-white border"
-              onClick={() => {/* Zoom in logic */}}
+              className="w-8 h-8 p-0 bg-white border shadow-sm"
+              onClick={handleZoomIn}
+              disabled={zoomLevel >= 3}
               data-testid="button-zoom-in"
+              title="Zoom in"
             >
               +
             </Button>
             <Button
               variant="secondary"
               size="sm"
-              className="w-8 h-8 p-0 bg-white border"
-              onClick={() => {/* Zoom out logic */}}
+              className="w-8 h-8 p-0 bg-white border shadow-sm"
+              onClick={handleZoomOut}
+              disabled={zoomLevel <= 0.5}
               data-testid="button-zoom-out"
+              title="Zoom out"
             >
               −
             </Button>
+            <div className="text-xs text-center text-muted-foreground bg-white border rounded px-1 py-0.5 shadow-sm">
+              {zoomLevel.toFixed(1)}x
+            </div>
           </div>
         </div>
 

@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { setupAuth } from "./facebookAuth";
 import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner } from "./unifiedAuth";
 import { emailService } from "./emailService";
-import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema } from "@shared/schema";
+import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema } from "@shared/schema";
 import { z } from "zod";
 import { validateDocuments, checkRateLimit } from "./documentValidation";
 import { broadcastLocationUpdate, broadcastStatusUpdate } from "./websocket";
@@ -25,6 +25,62 @@ function validateEnvironment() {
   if (missing.length > 0) {
     console.error(`Missing required environment variables: ${missing.join(', ')}`);
     process.exit(1);
+  }
+}
+
+// Subscription validation function for analytics access
+async function validateAnalyticsAccess(userId: string): Promise<{
+  hasAccess: boolean;
+  error?: string;
+  subscriptionTier?: string;
+}> {
+  try {
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return { hasAccess: false, error: "User not found" };
+    }
+
+    // Check if user has beta access (free analytics for beta users)
+    if (user.subscriptionBillingInterval && !user.stripeSubscriptionId) {
+      // Beta user - allow analytics access
+      return { hasAccess: true, subscriptionTier: "beta" };
+    }
+
+    // Check if user has active subscription
+    if (!stripe || !user.stripeSubscriptionId) {
+      return { 
+        hasAccess: false, 
+        error: "Premium subscription required to access analytics. Please upgrade your plan.",
+        subscriptionTier: "free"
+      };
+    }
+
+    // Verify subscription status with Stripe
+    const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+    if (!subscription || subscription.status !== 'active') {
+      return { 
+        hasAccess: false, 
+        error: "Your subscription is not active. Please check your payment method and try again.",
+        subscriptionTier: "inactive"
+      };
+    }
+
+    // Return subscription tier for different feature access
+    const tier = user.subscriptionBillingInterval === 'year' ? 'yearly' : 
+                 user.subscriptionBillingInterval === '3-month' ? 'quarterly' : 
+                 'monthly';
+
+    return { 
+      hasAccess: true, 
+      subscriptionTier: tier
+    };
+  } catch (error) {
+    console.error("Analytics access validation error:", error);
+    return { 
+      hasAccess: false, 
+      error: "Unable to verify subscription status. Please try again.",
+      subscriptionTier: "error"
+    };
   }
 }
 
@@ -713,6 +769,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Restaurant favorites endpoints
+  app.post('/api/restaurants/:restaurantId/favorite', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      const userId = req.user.id;
+      
+      // Check if restaurant exists
+      const restaurant = await storage.getRestaurant(restaurantId);
+      if (!restaurant) {
+        return res.status(404).json({ message: "Restaurant not found" });
+      }
+      
+      const favoriteData = insertRestaurantFavoriteSchema.parse({
+        restaurantId,
+        userId,
+      });
+      
+      const favorite = await storage.createRestaurantFavorite(favoriteData);
+      res.json(favorite);
+    } catch (error: any) {
+      console.error("Error adding restaurant favorite:", error);
+      if (error.code === '23505') { // Unique constraint violation
+        return res.status(400).json({ message: "Restaurant already favorited" });
+      }
+      res.status(400).json({ message: error.message || "Failed to add favorite" });
+    }
+  });
+
+  app.delete('/api/restaurants/:restaurantId/favorite', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      const userId = req.user.id;
+      
+      await storage.removeRestaurantFavorite(restaurantId, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing restaurant favorite:", error);
+      res.status(500).json({ message: "Failed to remove favorite" });
+    }
+  });
+
+  app.get('/api/favorites/restaurants', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const favorites = await storage.getUserRestaurantFavorites(userId);
+      res.json(favorites);
+    } catch (error) {
+      console.error("Error fetching user restaurant favorites:", error);
+      res.status(500).json({ message: "Failed to fetch favorites" });
+    }
+  });
+
+  // Analytics endpoint for restaurant owners to see favorites (paid feature)
+  app.get('/api/restaurants/:restaurantId/analytics/favorites', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      const userId = req.user.id;
+      
+      // Verify user owns this restaurant
+      const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, userId);
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "Unauthorized: You can only access analytics for restaurants you own" });
+      }
+      
+      // Validate analytics access (paid feature)
+      const analyticsAccess = await validateAnalyticsAccess(userId);
+      if (!analyticsAccess.hasAccess) {
+        return res.status(402).json({ 
+          message: analyticsAccess.error,
+          subscriptionTier: analyticsAccess.subscriptionTier
+        });
+      }
+      
+      const { startDate, endDate } = req.query;
+      let dateRange: { start: Date; end: Date } | undefined;
+      if (startDate && endDate) {
+        dateRange = {
+          start: new Date(startDate as string),
+          end: new Date(endDate as string),
+        };
+      }
+      
+      const favoritesAnalytics = await storage.getRestaurantFavoritesAnalytics(restaurantId, dateRange);
+      res.json(favoritesAnalytics);
+    } catch (error) {
+      console.error("Error fetching favorites analytics:", error);
+      res.status(500).json({ message: "Failed to fetch favorites analytics" });
+    }
+  });
+
+  // Analytics endpoint for restaurant owners to see recommendations (paid feature)
+  app.get('/api/restaurants/:restaurantId/analytics/recommendations', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      const userId = req.user.id;
+      
+      // Verify user owns this restaurant
+      const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, userId);
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "Unauthorized: You can only access analytics for restaurants you own" });
+      }
+      
+      // Validate analytics access (paid feature)
+      const analyticsAccess = await validateAnalyticsAccess(userId);
+      if (!analyticsAccess.hasAccess) {
+        return res.status(402).json({ 
+          message: analyticsAccess.error,
+          subscriptionTier: analyticsAccess.subscriptionTier
+        });
+      }
+      
+      const { startDate, endDate } = req.query;
+      let dateRange: { start: Date; end: Date } | undefined;
+      if (startDate && endDate) {
+        dateRange = {
+          start: new Date(startDate as string),
+          end: new Date(endDate as string),
+        };
+      }
+      
+      const recommendationsAnalytics = await storage.getRestaurantRecommendationsAnalytics(restaurantId, dateRange);
+      res.json(recommendationsAnalytics);
+    } catch (error) {
+      console.error("Error fetching recommendations analytics:", error);
+      res.status(500).json({ message: "Failed to fetch recommendations analytics" });
+    }
+  });
+
+  // Track recommendation click-through (public endpoint for tracking)
+  app.post('/api/restaurants/:restaurantId/recommendation/click', async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      const { recommendationId } = req.body;
+      
+      if (recommendationId) {
+        await storage.markRecommendationClicked(recommendationId);
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error tracking recommendation click:", error);
+      res.status(500).json({ message: "Failed to track recommendation click" });
+    }
+  });
+
   // Verification routes for restaurant owners
   app.post('/api/restaurants/:id/verification/request', isAuthenticated, async (req: any, res) => {
     try {
@@ -877,6 +1078,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error searching deals:", error);
       res.status(500).json({ message: "Failed to search deals" });
+    }
+  });
+
+  // Deals recommendations endpoint (missing implementation)
+  app.get('/api/deals/recommended', async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const sessionId = req.sessionID || 'anonymous';
+      
+      // For now, return featured deals (active deals)
+      // In a real implementation, this would use ML/AI recommendations
+      const recommendedDeals = await storage.getActiveDeals();
+      
+      // Track restaurant recommendations for analytics (background task)
+      if (recommendedDeals.length > 0) {
+        // Track recommendations for analytics (don't wait for completion)
+        Promise.all(
+          recommendedDeals.slice(0, 10).map(async (deal: any) => {
+            try {
+              await storage.trackRestaurantRecommendation({
+                restaurantId: deal.restaurantId,
+                userId,
+                sessionId,
+                recommendationType: 'personalized',
+                recommendationContext: 'deals_recommended_endpoint',
+              });
+            } catch (err) {
+              console.error('Error tracking recommendation:', err);
+            }
+          })
+        ).catch(err => console.error('Error tracking recommendations batch:', err));
+      }
+      
+      res.json(recommendedDeals);
+    } catch (error) {
+      console.error("Error fetching recommended deals:", error);
+      res.status(500).json({ message: "Failed to fetch recommended deals" });
     }
   });
 

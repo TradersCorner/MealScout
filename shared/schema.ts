@@ -158,6 +158,47 @@ export const dealViews = pgTable(
   ],
 );
 
+// Restaurant favorites tracking
+export const restaurantFavorites = pgTable(
+  "restaurant_favorites",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
+    userId: varchar("user_id").notNull().references(() => users.id),
+    favoritedAt: timestamp("favorited_at").defaultNow(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_restaurant_favorites_restaurant").on(table.restaurantId, table.favoritedAt.desc()),
+    index("IDX_restaurant_favorites_user").on(table.userId, table.favoritedAt.desc()),
+    index("IDX_restaurant_favorites_unique").on(table.restaurantId, table.userId),
+  ],
+);
+
+// Restaurant recommendations tracking - when a restaurant appears in recommendation feeds
+export const restaurantRecommendations = pgTable(
+  "restaurant_recommendations",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
+    userId: varchar("user_id").references(() => users.id), // Nullable for anonymous users
+    sessionId: varchar("session_id").notNull(), // Track anonymous sessions
+    recommendationType: varchar("recommendation_type").notNull(), // 'homepage' | 'search' | 'nearby' | 'personalized'
+    recommendationContext: text("recommendation_context"), // Additional context like search query, location, etc.
+    isClicked: boolean("is_clicked").default(false),
+    clickedAt: timestamp("clicked_at"),
+    showedAt: timestamp("showed_at").defaultNow(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_restaurant_recommendations_restaurant").on(table.restaurantId, table.showedAt.desc()),
+    index("IDX_restaurant_recommendations_user").on(table.userId, table.showedAt.desc()),
+    index("IDX_restaurant_recommendations_session").on(table.sessionId),
+    index("IDX_restaurant_recommendations_type").on(table.recommendationType, table.showedAt.desc()),
+    index("IDX_restaurant_recommendations_clicked").on(table.isClicked, table.clickedAt),
+  ],
+);
+
 // Food truck session management
 export const foodTruckSessions = pgTable(
   "food_truck_sessions",
@@ -207,6 +248,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   dealClaims: many(dealClaims),
   reviews: many(reviews),
   dealViews: many(dealViews),
+  restaurantFavorites: many(restaurantFavorites),
+  restaurantRecommendations: many(restaurantRecommendations),
 }));
 
 export const restaurantsRelations = relations(restaurants, ({ one, many }) => ({
@@ -219,6 +262,8 @@ export const restaurantsRelations = relations(restaurants, ({ one, many }) => ({
   verificationRequests: many(verificationRequests),
   foodTruckSessions: many(foodTruckSessions),
   foodTruckLocations: many(foodTruckLocations),
+  favorites: many(restaurantFavorites),
+  recommendations: many(restaurantRecommendations),
 }));
 
 export const dealsRelations = relations(deals, ({ one, many }) => ({
@@ -297,6 +342,28 @@ export const foodTruckLocationsRelations = relations(foodTruckLocations, ({ one 
   }),
 }));
 
+export const restaurantFavoritesRelations = relations(restaurantFavorites, ({ one }) => ({
+  restaurant: one(restaurants, {
+    fields: [restaurantFavorites.restaurantId],
+    references: [restaurants.id],
+  }),
+  user: one(users, {
+    fields: [restaurantFavorites.userId],
+    references: [users.id],
+  }),
+}));
+
+export const restaurantRecommendationsRelations = relations(restaurantRecommendations, ({ one }) => ({
+  restaurant: one(restaurants, {
+    fields: [restaurantRecommendations.restaurantId],
+    references: [restaurants.id],
+  }),
+  user: one(users, {
+    fields: [restaurantRecommendations.userId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertRestaurantSchema = createInsertSchema(restaurants).omit({
   id: true,
@@ -372,6 +439,20 @@ export const updateRestaurantMobileSettingsSchema = z.object({
   mobileOnline: z.boolean().optional(),
 });
 
+export const insertRestaurantFavoriteSchema = createInsertSchema(restaurantFavorites).omit({
+  id: true,
+  favoritedAt: true,
+  createdAt: true,
+});
+
+export const insertRestaurantRecommendationSchema = createInsertSchema(restaurantRecommendations).omit({
+  id: true,
+  showedAt: true,
+  createdAt: true,
+}).extend({
+  recommendationType: z.enum(['homepage', 'search', 'nearby', 'personalized']),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -424,3 +505,9 @@ export type InsertFoodTruckLocation = z.infer<typeof insertFoodTruckLocationSche
 export type FoodTruckLocation = typeof foodTruckLocations.$inferSelect;
 
 export type UpdateRestaurantMobileSettings = z.infer<typeof updateRestaurantMobileSettingsSchema>;
+
+export type InsertRestaurantFavorite = z.infer<typeof insertRestaurantFavoriteSchema>;
+export type RestaurantFavorite = typeof restaurantFavorites.$inferSelect;
+
+export type InsertRestaurantRecommendation = z.infer<typeof insertRestaurantRecommendationSchema>;
+export type RestaurantRecommendation = typeof restaurantRecommendations.$inferSelect;

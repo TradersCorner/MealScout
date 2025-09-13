@@ -83,6 +83,18 @@ export default function RestaurantOwnerDashboard() {
     enabled: !!user,
   });
 
+  // Fetch favorites analytics for paid users
+  const { data: favoritesAnalytics, isLoading: loadingFavorites } = useQuery({
+    queryKey: [`/api/restaurants/${selectedRestaurant}/analytics/favorites`, analyticsDateRange],
+    enabled: !!selectedRestaurant && !!subscription?.hasAccess,
+  });
+
+  // Fetch recommendations analytics for paid users
+  const { data: recommendationsAnalytics, isLoading: loadingRecommendations } = useQuery({
+    queryKey: [`/api/restaurants/${selectedRestaurant}/analytics/recommendations`, analyticsDateRange],
+    enabled: !!selectedRestaurant && !!subscription?.hasAccess,
+  });
+
   // Fetch deals for selected restaurant
   const { data: deals = [], isLoading: loadingDeals } = useQuery<Deal[]>({
     queryKey: [`/api/deals/restaurant/${selectedRestaurant}`],
@@ -870,6 +882,79 @@ export default function RestaurantOwnerDashboard() {
                   </CardContent>
                 </Card>
               </div>
+            )}
+
+            {/* Premium Analytics Cards - Favorites & Recommendations */}
+            {subscription?.hasAccess ? (
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <Card className="border-yellow-200 dark:border-yellow-800">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Star className="h-3 w-3" />
+                          Total Favorites
+                        </p>
+                        <p className="text-2xl font-bold" data-testid="text-total-favorites">
+                          {loadingFavorites ? (
+                            <div className="animate-pulse bg-muted rounded w-16 h-8"></div>
+                          ) : (
+                            favoritesAnalytics?.totalFavorites?.toLocaleString() || 0
+                          )}
+                        </p>
+                      </div>
+                      <Star className="h-8 w-8 text-yellow-500" />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Users who favorited your restaurant
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-blue-200 dark:border-blue-800">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Zap className="h-3 w-3" />
+                          Recommendations
+                        </p>
+                        <p className="text-2xl font-bold" data-testid="text-total-recommendations">
+                          {loadingRecommendations ? (
+                            <div className="animate-pulse bg-muted rounded w-16 h-8"></div>
+                          ) : (
+                            recommendationsAnalytics?.totalRecommendations?.toLocaleString() || 0
+                          )}
+                        </p>
+                      </div>
+                      <Zap className="h-8 w-8 text-blue-500" />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Times shown in recommendations • {recommendationsAnalytics?.clickThroughRate?.toFixed(1) || 0}% CTR
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              <Card className="mt-4 border-dashed border-2">
+                <CardContent className="p-6 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <CreditCard className="h-5 w-5" />
+                      <span className="text-sm font-medium">Premium Analytics</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground max-w-md">
+                      Upgrade to see how many customers have favorited your restaurant and track recommendation performance
+                    </p>
+                    <Link href="/subscribe">
+                      <Button size="sm" className="mt-2" data-testid="button-upgrade-for-analytics">
+                        <TrendingUp className="h-4 w-4 mr-2" />
+                        Upgrade Plan
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
             {/* Charts Section */}

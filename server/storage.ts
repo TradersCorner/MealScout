@@ -8,6 +8,8 @@ import {
   dealViews,
   foodTruckSessions,
   foodTruckLocations,
+  restaurantFavorites,
+  restaurantRecommendations,
   type User,
   type UpsertUser,
   type Restaurant,
@@ -27,6 +29,10 @@ import {
   type FoodTruckLocation,
   type InsertFoodTruckLocation,
   type UpdateRestaurantMobileSettings,
+  type RestaurantFavorite,
+  type InsertRestaurantFavorite,
+  type RestaurantRecommendation,
+  type InsertRestaurantRecommendation,
   type GoogleUserData,
   type EmailUserData,
   type FacebookUserData,
@@ -149,6 +155,33 @@ export interface IStorage {
   getLiveTrucksNearby(lat: number, lng: number, radiusKm: number): Promise<Array<Restaurant & { distance: number; sessionId?: string }>>;
   getTruckLocationHistory(restaurantId: string, dateRange?: { start: Date; end: Date }): Promise<FoodTruckLocation[]>;
   hasRecentLocationUpdate(restaurantId: string, lat: number, lng: number, timeWindowMs?: number, distanceThreshold?: number): Promise<boolean>;
+
+  // Restaurant favorites operations
+  createRestaurantFavorite(favorite: { restaurantId: string; userId: string }): Promise<any>;
+  removeRestaurantFavorite(restaurantId: string, userId: string): Promise<void>;
+  getUserRestaurantFavorites(userId: string): Promise<any[]>;
+  getRestaurantFavoritesAnalytics(restaurantId: string, dateRange?: { start: Date; end: Date }): Promise<{
+    totalFavorites: number;
+    favoritesTrend: Array<{ date: string; count: number }>;
+    recentFavorites: Array<{ userId: string; favoritedAt: Date }>;
+  }>;
+
+  // Restaurant recommendations operations
+  trackRestaurantRecommendation(recommendation: {
+    restaurantId: string;
+    userId?: string;
+    sessionId: string;
+    recommendationType: 'homepage' | 'search' | 'nearby' | 'personalized';
+    recommendationContext?: string;
+  }): Promise<any>;
+  markRecommendationClicked(recommendationId: string): Promise<void>;
+  getRestaurantRecommendationsAnalytics(restaurantId: string, dateRange?: { start: Date; end: Date }): Promise<{
+    totalRecommendations: number;
+    totalClicks: number;
+    clickThroughRate: number;
+    recommendationsByType: Array<{ type: string; count: number; clicks: number }>;
+    recommendationsTrend: Array<{ date: string; count: number; clicks: number }>;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1638,6 +1671,191 @@ export class DatabaseStorage implements IStorage {
       .limit(1000); // Reasonable limit to prevent huge responses
 
     return locations;
+  }
+  // Restaurant favorites operations
+  async createRestaurantFavorite(favorite: { restaurantId: string; userId: string }): Promise<RestaurantFavorite> {
+    const [result] = await db
+      .insert(restaurantFavorites)
+      .values(favorite)
+      .returning();
+    return result;
+  }
+
+  async removeRestaurantFavorite(restaurantId: string, userId: string): Promise<void> {
+    await db
+      .delete(restaurantFavorites)
+      .where(and(
+        eq(restaurantFavorites.restaurantId, restaurantId),
+        eq(restaurantFavorites.userId, userId)
+      ));
+  }
+
+  async getUserRestaurantFavorites(userId: string): Promise<(RestaurantFavorite & { restaurant: Restaurant })[]> {
+    const result = await db
+      .select({
+        id: restaurantFavorites.id,
+        restaurantId: restaurantFavorites.restaurantId,
+        userId: restaurantFavorites.userId,
+        favoritedAt: restaurantFavorites.favoritedAt,
+        createdAt: restaurantFavorites.createdAt,
+        restaurant: restaurants,
+      })
+      .from(restaurantFavorites)
+      .innerJoin(restaurants, eq(restaurantFavorites.restaurantId, restaurants.id))
+      .where(eq(restaurantFavorites.userId, userId))
+      .orderBy(desc(restaurantFavorites.favoritedAt));
+    
+    return result;
+  }
+
+  async getRestaurantFavoritesAnalytics(restaurantId: string, dateRange?: { start: Date; end: Date }) {
+    const baseQuery = db
+      .select({
+        id: restaurantFavorites.id,
+        favoritedAt: restaurantFavorites.favoritedAt,
+        userId: restaurantFavorites.userId,
+      })
+      .from(restaurantFavorites)
+      .where(eq(restaurantFavorites.restaurantId, restaurantId));
+
+    let favorites;
+    if (dateRange) {
+      favorites = await baseQuery.where(
+        and(
+          eq(restaurantFavorites.restaurantId, restaurantId),
+          gte(restaurantFavorites.favoritedAt, dateRange.start),
+          lte(restaurantFavorites.favoritedAt, dateRange.end)
+        )
+      );
+    } else {
+      favorites = await baseQuery;
+    }
+
+    // Calculate trend data (group by day)
+    const favoritesTrend = await db
+      .select({
+        date: sql<string>`DATE(${restaurantFavorites.favoritedAt})`,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(restaurantFavorites)
+      .where(
+        dateRange 
+          ? and(
+              eq(restaurantFavorites.restaurantId, restaurantId),
+              gte(restaurantFavorites.favoritedAt, dateRange.start),
+              lte(restaurantFavorites.favoritedAt, dateRange.end)
+            )
+          : eq(restaurantFavorites.restaurantId, restaurantId)
+      )
+      .groupBy(sql`DATE(${restaurantFavorites.favoritedAt})`)
+      .orderBy(sql`DATE(${restaurantFavorites.favoritedAt})`);
+
+    return {
+      totalFavorites: favorites.length,
+      favoritesTrend,
+      recentFavorites: favorites.slice(0, 10).map(f => ({
+        userId: f.userId,
+        favoritedAt: f.favoritedAt,
+      })),
+    };
+  }
+
+  // Restaurant recommendations operations
+  async trackRestaurantRecommendation(recommendation: {
+    restaurantId: string;
+    userId?: string;
+    sessionId: string;
+    recommendationType: 'homepage' | 'search' | 'nearby' | 'personalized';
+    recommendationContext?: string;
+  }): Promise<RestaurantRecommendation> {
+    const [result] = await db
+      .insert(restaurantRecommendations)
+      .values(recommendation)
+      .returning();
+    return result;
+  }
+
+  async markRecommendationClicked(recommendationId: string): Promise<void> {
+    await db
+      .update(restaurantRecommendations)
+      .set({
+        isClicked: true,
+        clickedAt: new Date(),
+      })
+      .where(eq(restaurantRecommendations.id, recommendationId));
+  }
+
+  async getRestaurantRecommendationsAnalytics(restaurantId: string, dateRange?: { start: Date; end: Date }) {
+    const baseQuery = db
+      .select({
+        id: restaurantRecommendations.id,
+        recommendationType: restaurantRecommendations.recommendationType,
+        isClicked: restaurantRecommendations.isClicked,
+        showedAt: restaurantRecommendations.showedAt,
+        clickedAt: restaurantRecommendations.clickedAt,
+      })
+      .from(restaurantRecommendations)
+      .where(eq(restaurantRecommendations.restaurantId, restaurantId));
+
+    let recommendations;
+    if (dateRange) {
+      recommendations = await baseQuery.where(
+        and(
+          eq(restaurantRecommendations.restaurantId, restaurantId),
+          gte(restaurantRecommendations.showedAt, dateRange.start),
+          lte(restaurantRecommendations.showedAt, dateRange.end)
+        )
+      );
+    } else {
+      recommendations = await baseQuery;
+    }
+
+    const totalClicks = recommendations.filter(r => r.isClicked).length;
+    const clickThroughRate = recommendations.length > 0 ? (totalClicks / recommendations.length) * 100 : 0;
+
+    // Group by recommendation type
+    const recommendationsByType = recommendations.reduce((acc, rec) => {
+      const existing = acc.find(item => item.type === rec.recommendationType);
+      if (existing) {
+        existing.count++;
+        if (rec.isClicked) existing.clicks++;
+      } else {
+        acc.push({
+          type: rec.recommendationType,
+          count: 1,
+          clicks: rec.isClicked ? 1 : 0,
+        });
+      }
+      return acc;
+    }, [] as Array<{ type: string; count: number; clicks: number }>);
+
+    // Calculate trend data (group by day)
+    const recommendationsTrend = await db
+      .select({
+        date: sql<string>`DATE(${restaurantRecommendations.showedAt})`,
+        count: sql<number>`COUNT(*)`,
+        clicks: sql<number>`SUM(CASE WHEN ${restaurantRecommendations.isClicked} = true THEN 1 ELSE 0 END)`,
+      })
+      .from(restaurantRecommendations)
+      .where(
+        dateRange 
+          ? and(
+              eq(restaurantRecommendations.restaurantId, restaurantId),
+              gte(restaurantRecommendations.showedAt, dateRange.start),
+              lte(restaurantRecommendations.showedAt, dateRange.end)
+            )
+          : eq(restaurantRecommendations.restaurantId, restaurantId)
+      )
+      .groupBy(sql`DATE(${restaurantRecommendations.showedAt})`)
+      .orderBy(sql`DATE(${restaurantRecommendations.showedAt})`);
+
+    return {
+      totalRecommendations: recommendations.length,
+      totalClicks,
+      clickThroughRate: Math.round(clickThroughRate * 100) / 100, // Round to 2 decimal places
+      recommendationsByType,
+      recommendationsTrend,
+    };
   }
 }
 

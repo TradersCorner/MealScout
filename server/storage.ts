@@ -614,9 +614,9 @@ export class DatabaseStorage implements IStorage {
     radius?: number;
     sortBy?: string;
   }): Promise<any[]> {
-    // For now, return the same as getFeaturedDeals to ensure it works
-    // We'll enhance this gradually
-    return await this.getFeaturedDeals();
+    // For now, return active deals to ensure it works
+    // We'll enhance this gradually with proper filtering
+    return await this.getActiveDeals();
   }
 
   // Deal claim operations

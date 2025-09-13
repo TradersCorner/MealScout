@@ -276,10 +276,9 @@ export default function PrivacyPolicy() {
                   If you have questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us:
                 </p>
                 <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                  <p className="text-gray-700"><strong>Privacy Officer:</strong> privacy@mealscout.com</p>
-                  <p className="text-gray-700"><strong>General Inquiries:</strong> support@mealscout.com</p>
-                  <p className="text-gray-700"><strong>Address:</strong> [YOUR BUSINESS ADDRESS]</p>
-                  <p className="text-gray-700"><strong>Phone:</strong> [YOUR CONTACT NUMBER]</p>
+                  <p className="text-gray-700"><strong>Privacy Officer:</strong> info.mealscout@gmail.com</p>
+                  <p className="text-gray-700"><strong>General Inquiries:</strong> info.mealscout@gmail.com</p>
+                  <p className="text-gray-700"><strong>Phone:</strong> (985) 662-6247</p>
                 </div>
                 <p className="text-gray-700 leading-relaxed">
                   We will respond to your inquiry within 30 days. For urgent privacy concerns, please mark your email as "Urgent - Privacy Request" in the subject line.

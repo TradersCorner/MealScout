@@ -231,9 +231,8 @@ export default function TermsOfService() {
                   For questions about these Terms, please contact us at:
                 </p>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-gray-700"><strong>Email:</strong> legal@mealscout.com</p>
-                  <p className="text-gray-700"><strong>Address:</strong> [YOUR BUSINESS ADDRESS]</p>
-                  <p className="text-gray-700"><strong>Phone:</strong> [YOUR CONTACT NUMBER]</p>
+                  <p className="text-gray-700"><strong>Email:</strong> info.mealscout@gmail.com</p>
+                  <p className="text-gray-700"><strong>Phone:</strong> (985) 662-6247</p>
                 </div>
               </section>
 

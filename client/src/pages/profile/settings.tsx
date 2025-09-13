@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Navigation from "@/components/navigation";
 import NotificationSettings from "@/components/notification-settings";
@@ -21,22 +21,6 @@ export default function SettingsPage() {
     marketing: false,
   });
 
-  // Initialize dark mode from localStorage and system preference
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode');
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const isDarkMode = savedDarkMode ? JSON.parse(savedDarkMode) : systemPrefersDark;
-    
-    setSettings(prev => ({ ...prev, darkMode: isDarkMode }));
-    
-    // Apply dark mode to document
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, []);
-
   if (!isAuthenticated || !user) {
     return (
       <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
@@ -51,21 +35,7 @@ export default function SettingsPage() {
   }
 
   const handleToggle = (key: keyof typeof settings) => {
-    setSettings(prev => {
-      const newValue = !prev[key];
-      
-      // Special handling for dark mode
-      if (key === 'darkMode') {
-        if (newValue) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-        localStorage.setItem('darkMode', JSON.stringify(newValue));
-      }
-      
-      return { ...prev, [key]: newValue };
-    });
+    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleSelectChange = (key: keyof typeof settings, value: string) => {
@@ -75,7 +45,7 @@ export default function SettingsPage() {
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
       {/* Header */}
-      <header className="px-6 py-6 bg-background border-b border-border">
+      <header className="px-6 py-6 bg-white border-b border-border">
         <div className="flex items-center mb-2">
           <Link href="/profile">
             <Button variant="ghost" size="sm" className="mr-3 -ml-2" data-testid="button-back-settings">

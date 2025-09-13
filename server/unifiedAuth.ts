@@ -252,6 +252,36 @@ export async function setupUnifiedAuth(app: Express) {
     }
   });
 
+  // Email/password login for restaurant owners
+  app.post("/api/auth/restaurant/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({ error: "Email and password are required" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      if (!user || user.userType !== 'restaurant_owner') {
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      if (!user.passwordHash || !await bcrypt.compare(password, user.passwordHash)) {
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      req.login(user, (err) => {
+        if (err) {
+          return res.status(500).json({ error: "Failed to log in" });
+        }
+        res.json({ user, message: "Login successful" });
+      });
+    } catch (error) {
+      console.error("Restaurant login error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Email/password login for all users
   app.post("/api/auth/login", async (req, res) => {
     try {

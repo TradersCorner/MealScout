@@ -139,19 +139,28 @@ export default function SmartSearch({
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5 z-10" />
-        <Input
-          ref={inputRef}
-          type="text"
-          placeholder={placeholder}
-          value={value}
-          onChange={handleInputChange}
-          onFocus={handleInputFocus}
-          onKeyDown={handleKeyDown}
-          className="w-full pl-12 pr-4 py-3 text-base border-2 rounded-xl focus:border-primary transition-colors"
-          data-testid="input-smart-search"
-        />
+      <div className="relative flex">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5 z-10" />
+          <Input
+            ref={inputRef}
+            type="text"
+            placeholder={placeholder}
+            value={value}
+            onChange={handleInputChange}
+            onFocus={handleInputFocus}
+            onKeyDown={handleKeyDown}
+            className="w-full pl-12 pr-4 py-3 text-base border-2 rounded-l-xl focus:border-primary transition-colors border-r-0"
+            data-testid="input-smart-search"
+          />
+        </div>
+        <Button
+          onClick={() => handleSearch(value)}
+          className="px-6 py-3 text-base border-2 border-l-0 border-primary rounded-r-xl bg-primary hover:bg-primary/90 text-primary-foreground"
+          data-testid="button-search"
+        >
+          Search
+        </Button>
       </div>
 
       {/* Search Suggestions Dropdown */}

@@ -1,22 +1,22 @@
-import { MailService } from '@sendgrid/mail';
+import { TransactionalEmailsApi, TransactionalEmailsApiApiKeys } from '@getbrevo/brevo';
 import type { User, Restaurant } from '@shared/schema';
 
-// Initialize SendGrid with API key validation
-const mailService = new MailService();
+// Initialize Brevo with API key validation
+const transactionalEmailsApi = new TransactionalEmailsApi();
 
-// Check if SendGrid is properly configured
+// Check if Brevo is properly configured
 export const isEmailConfigured = (): boolean => {
-  const apiKey = process.env.SENDGRID_API_KEY;
+  const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) {
-    console.warn('SENDGRID_API_KEY environment variable is not set. Email functionality will be disabled.');
+    console.warn('BREVO_API_KEY environment variable is not set. Email functionality will be disabled.');
     return false;
   }
   
   try {
-    mailService.setApiKey(apiKey);
+    transactionalEmailsApi.setApiKey(TransactionalEmailsApiApiKeys.apiKey, apiKey);
     return true;
   } catch (error) {
-    console.error('Failed to configure SendGrid:', error);
+    console.error('Failed to configure Brevo:', error);
     return false;
   }
 };
@@ -570,20 +570,22 @@ export class EmailService {
 
   private async sendEmail(params: BaseEmailParams): Promise<boolean> {
     if (!this.isConfigured) {
-      console.warn(`Email not sent to ${params.to}: SendGrid not configured`);
+      console.warn(`Email not sent to ${params.to}: Brevo not configured`);
       return false;
     }
 
     try {
-      await mailService.send({
-        to: params.to,
-        from: {
+      await transactionalEmailsApi.sendTransacEmail({
+        to: [{ 
+          email: params.to 
+        }],
+        sender: {
           email: EMAIL_CONFIG.fromEmail,
           name: EMAIL_CONFIG.fromName,
         },
         subject: params.subject,
-        html: params.html,
-        text: params.text,
+        htmlContent: params.html,
+        textContent: params.text,
       });
       
       console.log(`Email sent successfully to ${params.to}: ${params.subject}`);

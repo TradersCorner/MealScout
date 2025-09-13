@@ -231,8 +231,18 @@ export default function TermsOfService() {
                   For questions about these Terms, please contact us at:
                 </p>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-gray-700"><strong>Email:</strong> info.mealscout@gmail.com</p>
-                  <p className="text-gray-700"><strong>Phone:</strong> (985) 662-6247</p>
+                  <p className="text-gray-700">
+                    <strong>Email:</strong>{" "}
+                    <a href="mailto:info.mealscout@gmail.com" className="text-blue-600 hover:text-blue-700 underline">
+                      info.mealscout@gmail.com
+                    </a>
+                  </p>
+                  <p className="text-gray-700">
+                    <strong>Phone:</strong>{" "}
+                    <a href="tel:+19856626247" className="text-blue-600 hover:text-blue-700 underline">
+                      (985) 662-6247
+                    </a>
+                  </p>
                 </div>
               </section>
 

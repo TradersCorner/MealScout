@@ -43,9 +43,18 @@ function DashboardSwitcherPage() {
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
+  // Show loading state while authentication is being determined
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
+      {!isAuthenticated ? (
         <>
           <Route path="/" component={Landing} />
           <Route path="/login" component={Login} />
@@ -63,7 +72,9 @@ function Router() {
           <Route path="/deal/:id" component={DealDetail} />
           <Route path="/subscribe" component={Subscribe} />
           <Route path="/subscription" component={SubscriptionManagement} />
+          <Route path="/subscription/manage" component={SubscriptionManagement} />
           <Route path="/restaurant-owner-dashboard" component={RestaurantOwnerDashboard} />
+          <Route path="/restaurant/dashboard" component={RestaurantOwnerDashboard} />
           <Route path="/user-dashboard" component={UserDashboard} />
           <Route path="/search" component={Search} />
           <Route path="/map" component={MapPage} />
@@ -79,6 +90,7 @@ function Router() {
           <Route path="/restaurant/:id" component={RestaurantDetail} />
           <Route path="/profile/notifications" component={NotificationsPage} />
           <Route path="/profile/settings" component={SettingsPage} />
+          <Route path="/settings" component={SettingsPage} />
           <Route path="/profile/addresses" component={AddressesPage} />
           <Route path="/profile/payment" component={PaymentMethodsPage} />
           <Route path="/profile/help" component={HelpSupportPage} />

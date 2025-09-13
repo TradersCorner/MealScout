@@ -1372,6 +1372,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Handle frequent HEAD /api requests efficiently (likely from monitoring)
+  app.head('/api', (req, res) => {
+    res.status(200).end();
+  });
+
   // Health check endpoint for monitoring
   app.get('/api/health', async (req, res) => {
     try {

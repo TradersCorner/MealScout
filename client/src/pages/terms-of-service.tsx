@@ -42,7 +42,6 @@ export default function TermsOfService() {
           </CardHeader>
 
           <CardContent className="prose prose-gray max-w-none">
-            {/* Placeholder content - replace with generated Terms of Service */}
             <div className="space-y-8">
               
               <section>
@@ -51,7 +50,7 @@ export default function TermsOfService() {
                   By accessing and using MealScout ("Service"), you accept and agree to be bound by the terms and provision of this agreement ("Terms"). If you do not agree to these Terms, please do not use our Service. These Terms apply to all visitors, users, and others who access or use the Service.
                 </p>
                 <p className="text-gray-700 leading-relaxed mb-4">
-                  MealScout is operated by [YOUR COMPANY NAME] ("Company," "we," "us," or "our"). By using our Service, you agree to these Terms and our Privacy Policy.
+                  MealScout is operated by MealScout ("Company," "we," "us," or "our"). By using our Service, you agree to these Terms and our Privacy Policy.
                 </p>
               </section>
 
@@ -211,7 +210,7 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-2xl font-semibold text-gray-900 mb-4">10. Governing Law and Disputes</h2>
                 <p className="text-gray-700 leading-relaxed mb-4">
-                  These Terms are governed by the laws of [YOUR STATE/JURISDICTION] without regard to conflict of law principles. Any disputes arising from these Terms or the Service will be resolved through binding arbitration, except that either party may seek injunctive relief in court.
+                  These Terms are governed by the laws of the United States without regard to conflict of law principles. Any disputes arising from these Terms or the Service will be resolved through binding arbitration, except that either party may seek injunctive relief in court.
                 </p>
                 <p className="text-gray-700 leading-relaxed mb-4">
                   If any provision of these Terms is found unenforceable, the remaining provisions will remain in full force and effect.

@@ -42,7 +42,6 @@ export default function PrivacyPolicy() {
           </CardHeader>
 
           <CardContent className="prose prose-gray max-w-none">
-            {/* Placeholder content - replace with generated Privacy Policy */}
             <div className="space-y-8">
               
               <section>

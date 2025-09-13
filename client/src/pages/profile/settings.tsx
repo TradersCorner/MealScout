@@ -84,7 +84,7 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="space-y-1">
                     <p className="font-medium">Dark Mode</p>
                     <p className="text-sm text-muted-foreground">Switch to dark theme</p>
                   </div>

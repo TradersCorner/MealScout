@@ -13,7 +13,7 @@ import { broadcastLocationUpdate, broadcastStatusUpdate } from "./websocket";
 // Optional Stripe integration
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2025-08-27.basil",
+      apiVersion: "2024-06-20",
     })
   : null;
 
@@ -66,9 +66,11 @@ async function validateAnalyticsAccess(userId: string): Promise<{
     }
 
     // Return subscription tier for different feature access
-    const tier = user.subscriptionBillingInterval === 'year' ? 'yearly' : 
+    const tier = user.subscriptionBillingInterval === 'multiple-deals' ? 'multiple-deals' : 
+                 user.subscriptionBillingInterval === 'single-deal' ? 'single-deal' :
+                 user.subscriptionBillingInterval === 'year' ? 'yearly' : 
                  user.subscriptionBillingInterval === '3-month' ? 'quarterly' : 
-                 'monthly';
+                 'monthly'; // legacy fallback
 
     return { 
       hasAccess: true, 
@@ -134,10 +136,8 @@ async function validateSubscriptionLimits(userId: string, excludeDealId?: string
       activeDealsCount += activeDeals.length;
     }
 
-    // Define deal limits based on subscription interval
-    const maxDeals = user.subscriptionBillingInterval === 'year' ? 50 : 
-                     user.subscriptionBillingInterval === '3-month' ? 25 : 
-                     10; // monthly default
+    // Define deal limits based on subscription plan
+    const maxDeals = user.subscriptionBillingInterval === 'multiple-deals' ? 3 : 1; // 3 deals for addon, 1 for base
 
     if (activeDealsCount >= maxDeals) {
       return { 
@@ -1182,14 +1182,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Stripe subscription route for restaurant fees
   app.post('/api/create-subscription', isAuthenticated, async (req: any, res) => {
     const user = req.user;
-    const { billingInterval, promoCode } = req.body; // 'month' | '3-month' | 'year'
+    const { hasMultipleDealsAddon, promoCode } = req.body; // boolean for multiple deals addon
     
     // Check for valid promo codes first (skip payment for beta users)
     if (promoCode && promoCode.toUpperCase() === 'BETA') {
       // Grant free beta access without Stripe subscription
       try {
         await storage.updateUser(user.id, {
-          subscriptionBillingInterval: billingInterval,
+          subscriptionBillingInterval: hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal',
           // We don't set stripeSubscriptionId for beta users
         });
         
@@ -1208,22 +1208,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(503).json({ error: { message: 'Payment processing is not configured' } });
     }
 
-    const interval = billingInterval === 'year' ? 'year' : billingInterval === '3-month' ? 'month' : 'month';
-
-    // Check if user is eligible for quarterly plan (new users only)
-    if (billingInterval === '3-month' && user.stripeSubscriptionId) {
-      return res.status(400).json({ 
-        error: { 
-          message: 'Quarterly plan is only available for new users. Please choose monthly or yearly subscription.' 
-        } 
-      });
-    }
+    const interval = 'month'; // Always monthly billing
 
     if (user.stripeSubscriptionId) {
       try {
         const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId, {
           expand: ['latest_invoice.payment_intent']
         });
+        
+        // If subscription is incomplete, update it with the new plan
+        if (subscription.status === 'incomplete' || subscription.status === 'incomplete_expired') {
+          const unitAmount = hasMultipleDealsAddon ? 7400 : 4900; // $74 or $49
+          const productName = hasMultipleDealsAddon 
+            ? 'MealScout Restaurant Plan - Multiple Deals (3 deals)'
+            : 'MealScout Restaurant Plan - Single Deal (1 deal)';
+          
+          const updatedSubscription = await stripe.subscriptions.update(subscription.id, {
+            items: [{
+              id: subscription.items.data[0].id,
+              price_data: {
+                currency: 'usd',
+                product_data: {
+                  name: productName,
+                },
+                unit_amount: unitAmount,
+                recurring: {
+                  interval: 'month',
+                  interval_count: 1,
+                },
+              } as any,
+            }],
+            expand: ['latest_invoice.payment_intent'],
+          });
+          
+          // Update user billing interval
+          await storage.updateUser(user.id, {
+            subscriptionBillingInterval: hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal'
+          });
+          
+          const latestInvoice = updatedSubscription.latest_invoice;
+          const paymentIntent = typeof latestInvoice === 'object' && latestInvoice ? (latestInvoice as any).payment_intent : null;
+          
+          res.send({
+            subscriptionId: updatedSubscription.id,
+            clientSecret: typeof paymentIntent === 'object' && paymentIntent ? paymentIntent.client_secret : null,
+          });
+          return;
+        }
+        
+        // If subscription is active, return existing
         const latestInvoice = subscription.latest_invoice;
         const paymentIntent = typeof latestInvoice === 'object' && latestInvoice ? (latestInvoice as any).payment_intent : null;
         
@@ -1252,22 +1285,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerId = customer.id;
       }
 
-      // Calculate pricing based on billing interval
-      // Monthly: $49/month, 3-Month: $100/3 months (new users only), Yearly: $450/year (23% discount)
+      // Calculate pricing based on deal addon
+      // Base: $49/month (1 deal), Multiple: $74/month (3 deals total)
       let unitAmount: number;
       let productName: string;
-      let intervalCount = 1;
+      const intervalCount = 1; // Always monthly
       
-      if (billingInterval === '3-month') {
-        unitAmount = 10000; // $100 for 3 months
-        intervalCount = 3; // Bill every 3 months
-        productName = 'MealScout Restaurant Plan (Quarterly - Save 32%)';
-      } else if (billingInterval === 'year') {
-        unitAmount = 45000; // $450 yearly
-        productName = 'MealScout Restaurant Plan (Annual - Save 23%)';
+      if (hasMultipleDealsAddon) {
+        unitAmount = 7400; // $74 monthly for multiple deals (3 total)
+        productName = 'MealScout Restaurant Plan - Multiple Deals (3 deals)';
       } else {
-        unitAmount = 4900; // $49 monthly
-        productName = 'MealScout Restaurant Plan (Monthly)';
+        unitAmount = 4900; // $49 monthly for single deal
+        productName = 'MealScout Restaurant Plan - Single Deal (1 deal)';
       }
 
       const subscription = await stripe.subscriptions.create({
@@ -1289,13 +1318,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expand: ['latest_invoice.payment_intent'],
       });
 
-      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, billingInterval);
+      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal');
   
       // Send payment confirmation email asynchronously
-      const amount = billingInterval === '3-month' ? 1497 : // 3 months @ $5/month ($1 off)
-                    billingInterval === 'year' ? 4800 : // Yearly @ $4/month  
-                    500; // Monthly @ $5/month
-      emailService.sendPaymentConfirmation(user, amount, billingInterval, subscription.id).catch(err => 
+      const amount = hasMultipleDealsAddon ? 7400 : 4900; // $74 or $49 per month
+      const planType = hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal';
+      emailService.sendPaymentConfirmation(user, amount, planType, subscription.id).catch(err => 
         console.error('Failed to send payment confirmation email:', err)
       );
   

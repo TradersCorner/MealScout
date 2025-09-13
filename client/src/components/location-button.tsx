@@ -206,16 +206,67 @@ export default function LocationButton({
           // Update location
           onLocationUpdate({ lat: latitude, lng: longitude });
           
-          // Get location name via reverse geocoding with fallback
+          // Get location name via enhanced reverse geocoding with multiple fallbacks
+          let locationName = "Your Location";
+          
           try {
-            const response = await fetch(
+            // Primary: BigDataCloud API
+            console.log('🌍 Trying BigDataCloud reverse geocoding...');
+            const response1 = await fetch(
               `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
             );
-            const data = await response.json();
-            const locationName = data.locality || data.city || "Your Location";
+            const data1 = await response1.json();
+            
+            // Enhanced location name extraction
+            locationName = data1.city || 
+                         data1.locality || 
+                         data1.principalSubdivision || 
+                         data1.countryName || 
+                         "Your Location";
+                         
+            console.log('🏙️ BigDataCloud result:', { 
+              city: data1.city, 
+              locality: data1.locality, 
+              subdivision: data1.principalSubdivision,
+              final: locationName 
+            });
+            
+            // If we got a generic result like "District X", try alternative service
+            if (locationName.toLowerCase().includes('district') || 
+                locationName.toLowerCase().includes('subdivision') || 
+                locationName === "Your Location") {
+              
+              console.log('🌍 Trying OpenStreetMap reverse geocoding...');
+              const response2 = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
+              );
+              const data2 = await response2.json();
+              
+              if (data2.address) {
+                const newLocationName = data2.address.city || 
+                                       data2.address.town || 
+                                       data2.address.village || 
+                                       data2.address.county || 
+                                       data2.address.state || 
+                                       locationName;
+                                       
+                console.log('🏙️ OpenStreetMap result:', { 
+                  city: data2.address.city, 
+                  town: data2.address.town,
+                  county: data2.address.county,
+                  state: data2.address.state,
+                  final: newLocationName 
+                });
+                
+                if (newLocationName !== locationName && !newLocationName.toLowerCase().includes('district')) {
+                  locationName = newLocationName;
+                }
+              }
+            }
+            
             onLocationNameUpdate(locationName);
           } catch (geocodeError) {
-            // Fallback if reverse geocoding fails
+            console.log('❌ All reverse geocoding failed:', geocodeError);
             onLocationNameUpdate("Your Location");
           }
 

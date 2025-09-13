@@ -63,6 +63,7 @@ export const restaurants = pgTable("restaurants", {
   phone: varchar("phone"),
   businessType: varchar("business_type").notNull().default("restaurant"), // 'restaurant' | 'bar' | 'food_truck'
   cuisineType: varchar("cuisine_type"),
+  promoCode: varchar("promo_code"), // For tracking beta access and special offers
   latitude: decimal("latitude", { precision: 10, scale: 8 }),
   longitude: decimal("longitude", { precision: 11, scale: 8 }),
   // Food truck specific fields

@@ -25,6 +25,7 @@ const restaurantSchema = z.object({
     required_error: "Please select your business type",
   }),
   cuisineType: z.string().min(1, "Cuisine type is required"),
+  promoCode: z.string().optional(),
   acceptTerms: z.boolean().refine(val => val === true, "You must accept the terms"),
 });
 
@@ -69,6 +70,7 @@ export default function RestaurantSignup() {
       phone: "",
       businessType: "restaurant",
       cuisineType: "",
+      promoCode: "",
       acceptTerms: false,
     },
   });
@@ -192,9 +194,40 @@ export default function RestaurantSignup() {
     },
   });
 
-  const onSubmit = (data: RestaurantFormData) => {
-    const { acceptTerms, ...restaurantData } = data;
-    createRestaurantMutation.mutate(restaurantData);
+  const onSubmit = async (data: RestaurantFormData) => {
+    const { acceptTerms, promoCode, ...restaurantData } = data;
+    
+    try {
+      // Create restaurant first
+      const restaurant = await createRestaurantMutation.mutateAsync(restaurantData);
+      
+      // If promo code is provided, create subscription with promo code
+      if (promoCode) {
+        const subscriptionData = { 
+          billingInterval, 
+          promoCode: promoCode.toUpperCase() 
+        };
+        
+        const response = await apiRequest("POST", "/api/create-subscription", subscriptionData);
+        const result = await response.json();
+        
+        if (result.betaAccess) {
+          toast({
+            title: "Beta Access Granted!",
+            description: "You can now create deals without payment during beta testing.",
+          });
+          setLocation("/deal-creation");
+          return;
+        }
+      }
+      
+      // Normal flow continues to verification step
+      setCreatedRestaurant(restaurant);
+      setCurrentStep('verification');
+    } catch (error: any) {
+      console.error("Error in restaurant signup:", error);
+      // Error handling is already done in the mutation
+    }
   };
 
   const handleVerificationSubmit = () => {
@@ -962,6 +995,32 @@ export default function RestaurantSignup() {
                   </div>
                 </div>
               </div>
+
+              {/* Promo Code Field */}
+              <FormField
+                control={form.control}
+                name="promoCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-promo-code">
+                      Promo Code <span className="text-sm font-normal text-gray-500">(Optional)</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter promo code for beta access..." 
+                        {...field} 
+                        className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200 uppercase"
+                        data-testid="input-promo-code"
+                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                      />
+                    </FormControl>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Enter "BETA" for free access during beta testing period
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}

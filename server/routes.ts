@@ -826,12 +826,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Stripe subscription route for restaurant fees
   app.post('/api/create-subscription', isAuthenticated, async (req: any, res) => {
+    const user = req.user;
+    const { billingInterval, promoCode } = req.body; // 'month' | '3-month' | 'year'
+    
+    // Check for valid promo codes first (skip payment for beta users)
+    if (promoCode && promoCode.toUpperCase() === 'BETA') {
+      // Grant free beta access without Stripe subscription
+      try {
+        await storage.updateUser(user.id, {
+          subscriptionBillingInterval: billingInterval,
+          // We don't set stripeSubscriptionId for beta users
+        });
+        
+        return res.json({
+          success: true,
+          message: 'Beta access granted! You can now create deals without payment.',
+          betaAccess: true
+        });
+      } catch (error) {
+        console.error("Error granting beta access:", error);
+        return res.status(500).json({ error: { message: 'Failed to grant beta access' } });
+      }
+    }
+
     if (!stripe) {
       return res.status(503).json({ error: { message: 'Payment processing is not configured' } });
     }
 
-    const user = req.user;
-    const { billingInterval } = req.body; // 'month' | '3-month' | 'year'
     const interval = billingInterval === 'year' ? 'year' : billingInterval === '3-month' ? 'month' : 'month';
 
     // Check if user is eligible for quarterly plan (new users only)

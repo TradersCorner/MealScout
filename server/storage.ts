@@ -44,6 +44,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   upsertUserByAuth(authType: 'google' | 'email' | 'facebook', userData: GoogleUserData | EmailUserData | FacebookUserData, userType?: 'customer' | 'restaurant_owner'): Promise<User>;
   updateUserStripeInfo(id: string, stripeCustomerId: string, stripeSubscriptionId: string, subscriptionBillingInterval?: string): Promise<User>;
+  updateUser(id: string, updates: Partial<Pick<User, 'subscriptionBillingInterval' | 'stripeCustomerId' | 'stripeSubscriptionId'>>): Promise<User>;
   
   // Restaurant operations
   createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant>;
@@ -167,6 +168,18 @@ export class DatabaseStorage implements IStorage {
         stripeCustomerId,
         stripeSubscriptionId,
         subscriptionBillingInterval,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async updateUser(id: string, updates: Partial<Pick<User, 'subscriptionBillingInterval' | 'stripeCustomerId' | 'stripeSubscriptionId'>>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        ...updates,
         updatedAt: new Date(),
       })
       .where(eq(users.id, id))
@@ -1624,7 +1637,9 @@ export class DatabaseStorage implements IStorage {
         name: restaurants.name,
         address: restaurants.address,
         phone: restaurants.phone,
+        businessType: restaurants.businessType,
         cuisineType: restaurants.cuisineType,
+        promoCode: restaurants.promoCode,
         latitude: restaurants.latitude,
         longitude: restaurants.longitude,
         isFoodTruck: restaurants.isFoodTruck,

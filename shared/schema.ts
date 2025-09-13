@@ -61,6 +61,7 @@ export const restaurants = pgTable("restaurants", {
   name: varchar("name").notNull(),
   address: text("address").notNull(),
   phone: varchar("phone"),
+  businessType: varchar("business_type").notNull().default("restaurant"), // 'restaurant' | 'bar' | 'food_truck'
   cuisineType: varchar("cuisine_type"),
   latitude: decimal("latitude", { precision: 10, scale: 8 }),
   longitude: decimal("longitude", { precision: 11, scale: 8 }),

@@ -166,12 +166,12 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Restaurant Link */}
+        {/* Business Link */}
         <div className="mt-8 text-center">
-          <p className="text-gray-600 text-sm mb-3">Looking to promote your restaurant?</p>
+          <p className="text-gray-600 text-sm mb-3">Looking to promote your business?</p>
           <Link href="/restaurant-signup">
             <Button variant="outline" className="text-blue-600 border-blue-300 hover:bg-blue-50">
-              Restaurant Sign Up →
+              Business Sign Up →
             </Button>
           </Link>
         </div>

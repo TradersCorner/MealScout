@@ -18,9 +18,12 @@ import { Mail, Eye, EyeOff, CheckCircle, Upload, ArrowLeft, ArrowRight } from "l
 import DocumentUpload from "@/components/document-upload";
 
 const restaurantSchema = z.object({
-  name: z.string().min(1, "Restaurant name is required"),
+  name: z.string().min(1, "Business name is required"),
   address: z.string().min(1, "Address is required"),
   phone: z.string().min(10, "Valid phone number is required"),
+  businessType: z.enum(["restaurant", "bar", "food_truck"], {
+    required_error: "Please select your business type",
+  }),
   cuisineType: z.string().min(1, "Cuisine type is required"),
   acceptTerms: z.boolean().refine(val => val === true, "You must accept the terms"),
 });
@@ -63,6 +66,7 @@ export default function RestaurantSignup() {
       name: "",
       address: "",
       phone: "",
+      businessType: "restaurant",
       cuisineType: "",
       acceptTerms: false,
     },
@@ -241,7 +245,7 @@ export default function RestaurantSignup() {
                 </svg>
               </button>
             </Link>
-            <h1 className="text-xl font-bold text-gray-900">DealScout for Restaurants</h1>
+            <h1 className="text-xl font-bold text-gray-900">DealScout for Businesses</h1>
           </div>
         </header>
 
@@ -255,7 +259,7 @@ export default function RestaurantSignup() {
                 className="w-full h-full object-contain drop-shadow-2xl"
               />
             </div>
-            <h2 className="text-5xl font-bold text-gray-900 mb-6">Boost Your Restaurant's Revenue</h2>
+            <h2 className="text-5xl font-bold text-gray-900 mb-6">Boost Your Business Revenue</h2>
             <p className="text-gray-600 text-xl leading-relaxed max-w-3xl mx-auto mb-8">
               Join DealScout's advertising platform and connect with hungry customers actively looking for deals in your neighborhood. Increase foot traffic, fill slow periods, and grow your business.
             </p>
@@ -738,7 +742,7 @@ export default function RestaurantSignup() {
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'restaurant' ? 'bg-red-100 border-2 border-red-600' : 'bg-green-100'}`}>
                 {currentStep === 'verification' ? <CheckCircle className="w-5 h-5" /> : <span className="font-bold">1</span>}
               </div>
-              <span className="font-medium">Restaurant Details</span>
+              <span className="font-medium">Business Details</span>
             </div>
             <div className="w-16 h-0.5 bg-gray-300"></div>
             <div className={`flex items-center space-x-2 ${currentStep === 'verification' ? 'text-red-600' : 'text-gray-400'}`}>
@@ -760,15 +764,38 @@ export default function RestaurantSignup() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-restaurant-name">Restaurant Name</FormLabel>
+                    <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-business-name">Business Name</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="Enter your restaurant name" 
+                        placeholder="Enter your business name" 
                         {...field} 
                         className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
-                        data-testid="input-restaurant-name"
+                        data-testid="input-business-name"
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="businessType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-business-type">Business Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md" data-testid="select-business-type">
+                          <SelectValue placeholder="Select your business type..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="restaurant">Restaurant</SelectItem>
+                        <SelectItem value="bar">Bar</SelectItem>
+                        <SelectItem value="food_truck">Food Truck</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -789,7 +789,7 @@ export default function RestaurantOwnerDashboard() {
                       </div>
                       <Eye className="h-8 w-8 text-blue-500" />
                     </div>
-                    {comparison && (
+                    {comparison && (comparison as any)?.changes && typeof (comparison as any).changes.viewsChange === 'number' && (
                       <div className="mt-2 flex items-center text-xs">
                         <TrendingUp className={`h-3 w-3 mr-1 ${(comparison as any).changes.viewsChange >= 0 ? 'text-green-500' : 'text-red-500'}`} />
                         <span className={(comparison as any).changes.viewsChange >= 0 ? 'text-green-500' : 'text-red-500'}>
@@ -812,7 +812,7 @@ export default function RestaurantOwnerDashboard() {
                       </div>
                       <ShoppingCart className="h-8 w-8 text-green-500" />
                     </div>
-                    {comparison && (
+                    {comparison && (comparison as any)?.changes && typeof (comparison as any).changes.claimsChange === 'number' && (
                       <div className="mt-2 flex items-center text-xs">
                         <TrendingUp className={`h-3 w-3 mr-1 ${(comparison as any).changes.claimsChange >= 0 ? 'text-green-500' : 'text-red-500'}`} />
                         <span className={(comparison as any).changes.claimsChange >= 0 ? 'text-green-500' : 'text-red-500'}>
@@ -835,7 +835,7 @@ export default function RestaurantOwnerDashboard() {
                       </div>
                       <DollarSign className="h-8 w-8 text-yellow-500" />
                     </div>
-                    {comparison && (
+                    {comparison && (comparison as any)?.changes && typeof (comparison as any).changes.revenueChange === 'number' && (
                       <div className="mt-2 flex items-center text-xs">
                         <TrendingUp className={`h-3 w-3 mr-1 ${(comparison as any).changes.revenueChange >= 0 ? 'text-green-500' : 'text-red-500'}`} />
                         <span className={(comparison as any).changes.revenueChange >= 0 ? 'text-green-500' : 'text-red-500'}>
@@ -858,7 +858,7 @@ export default function RestaurantOwnerDashboard() {
                       </div>
                       <TrendingUp className="h-8 w-8 text-purple-500" />
                     </div>
-                    {comparison && (
+                    {comparison && (comparison as any)?.changes && typeof (comparison as any).changes.conversionRateChange === 'number' && (
                       <div className="mt-2 flex items-center text-xs">
                         <TrendingUp className={`h-3 w-3 mr-1 ${(comparison as any).changes.conversionRateChange >= 0 ? 'text-green-500' : 'text-red-500'}`} />
                         <span className={(comparison as any).changes.conversionRateChange >= 0 ? 'text-green-500' : 'text-red-500'}>

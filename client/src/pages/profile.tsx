@@ -102,7 +102,10 @@ export default function ProfilePage() {
                 </p>
                 <div className="flex items-center mt-2">
                   <Star className="w-4 h-4 text-yellow-500 mr-1" />
-                  <span className="text-sm font-medium text-foreground">Food Explorer</span>
+                  <span className="text-sm font-medium text-foreground" data-testid="text-user-type">
+                    {user?.userType === 'restaurant_owner' ? 'Restaurant Owner' : 
+                     user?.userType === 'admin' ? 'Admin' : 'Food Explorer'}
+                  </span>
                 </div>
               </div>
             </div>

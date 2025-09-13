@@ -43,6 +43,10 @@ export default function Home() {
   const { user } = useAuth();
   const [location, setLocation] = useState<{lat: number; lng: number} | null>(null);
   const [locationName, setLocationName] = useState("Getting location...");
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
+  const [showLocationInput, setShowLocationInput] = useState(false);
+  const [manualLocation, setManualLocation] = useState('');
   const [searchQuery, setSearchQuery] = useState("");
   const [, setNavigateTo] = useLocation();
   const [restaurantForm, setRestaurantForm] = useState({
@@ -96,6 +100,9 @@ export default function Home() {
         (position) => {
           const { latitude, longitude } = position.coords;
           setLocation({ lat: latitude, lng: longitude });
+          setIsLoadingLocation(false);
+          setLocationError(null);
+          setShowLocationInput(false);
           
           // Subscribe to nearby food trucks (5km radius)
           if (wsConnected) {
@@ -114,7 +121,23 @@ export default function Home() {
         },
         (error) => {
           console.log("Home page location error:", error.message);
-          setLocationName("Location unavailable");
+          setIsLoadingLocation(false);
+          
+          if (error.code === 1) { // PERMISSION_DENIED
+            setLocationError("Location access denied. Please enable location permissions or enter your city manually.");
+            setLocationName("Location access denied");
+          } else if (error.code === 2) { // POSITION_UNAVAILABLE
+            setLocationError("Unable to determine your location. Please check your connection or enter your city manually.");
+            setLocationName("Location unavailable");
+          } else if (error.code === 3) { // TIMEOUT
+            setLocationError("Location request timed out. Please try again or enter your city manually.");
+            setLocationName("Location timeout");
+          } else {
+            setLocationError("Unable to get your location. Please enter your city manually.");
+            setLocationName("Location unavailable");
+          }
+          
+          setShowLocationInput(true);
         },
         { 
           enableHighAccuracy: true, 
@@ -174,6 +197,94 @@ export default function Home() {
     }
   }, [location, foodTrucks.length]);
 
+  // Retry location detection
+  const retryLocation = () => {
+    setIsLoadingLocation(true);
+    setLocationError(null);
+    setShowLocationInput(false);
+    setLocationName("Getting location...");
+    
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setLocation({ lat: latitude, lng: longitude });
+          setIsLoadingLocation(false);
+          setLocationError(null);
+          setShowLocationInput(false);
+          
+          // Subscribe to nearby food trucks (5km radius)
+          if (wsConnected) {
+            subscribeToNearby(latitude, longitude, 5000);
+          }
+          
+          // Reverse geocoding for display name
+          fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
+            .then(res => res.json())
+            .then(data => {
+              setLocationName(data.locality || data.city || "Your Location");
+            })
+            .catch(() => {
+              setLocationName("Your Location");
+            });
+        },
+        (error) => {
+          setIsLoadingLocation(false);
+          
+          if (error.code === 1) {
+            setLocationError("Please enable location permissions in your browser settings.");
+            setLocationName("Permission denied");
+          } else {
+            setLocationError("Unable to get location. Please try again or enter manually.");
+            setLocationName("Location failed");
+          }
+          
+          setShowLocationInput(true);
+        },
+        { 
+          enableHighAccuracy: true, 
+          timeout: 10000, 
+          maximumAge: 30000
+        }
+      );
+    } else {
+      setIsLoadingLocation(false);
+      setLocationError("Geolocation is not supported by this browser.");
+      setLocationName("Not supported");
+      setShowLocationInput(true);
+    }
+  };
+
+  // Handle manual location search
+  const handleManualLocation = async () => {
+    if (!manualLocation.trim()) return;
+    
+    setIsLoadingLocation(true);
+    try {
+      // Use geocoding service to convert city name to coordinates
+      const response = await fetch(`https://api.bigdatacloud.net/data/city?name=${encodeURIComponent(manualLocation)}`);
+      const data = await response.json();
+      
+      if (data.latitude && data.longitude) {
+        setLocation({ lat: data.latitude, lng: data.longitude });
+        setLocationName(manualLocation);
+        setLocationError(null);
+        setShowLocationInput(false);
+        
+        // Subscribe to nearby food trucks
+        if (wsConnected) {
+          subscribeToNearby(data.latitude, data.longitude, 5000);
+        }
+      } else {
+        setLocationError("City not found. Please try a different location.");
+      }
+    } catch (error) {
+      setLocationError("Failed to find location. Please check your connection.");
+    } finally {
+      setIsLoadingLocation(false);
+    }
+  };
+
   const { data: featuredDeals, isLoading: featuredLoading } = useQuery({
     queryKey: ["/api/deals/featured"],
     enabled: true,
@@ -196,7 +307,7 @@ export default function Home() {
       description: ""
     });
     // Show success message
-    alert("Thank you! We'll reach out to this restaurant about joining DealScout.");
+    alert("Thank you! We'll reach out to this restaurant about joining MealScout.");
   };
 
   return (
@@ -209,23 +320,42 @@ export default function Home() {
             <div className="w-10 h-10 flex items-center justify-center">
               <img 
                 src={mealScoutLogo} 
-                alt="DealScout Logo" 
+                alt="MealScout Logo" 
                 className="w-10 h-10 object-contain"
               />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">DealScout</h1>
+              <h1 className="text-xl font-bold text-gray-900">MealScout</h1>
             </div>
           </div>
 
           {/* Location */}
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
-              <MapPin className="w-4 h-4 text-white" />
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+              isLoadingLocation ? 'bg-yellow-500' : 
+              locationError ? 'bg-red-500' : 
+              location ? 'bg-green-500' : 'bg-gray-500'
+            }`}>
+              {isLoadingLocation ? (
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <MapPin className="w-4 h-4 text-white" />
+              )}
             </div>
             <div className="text-right">
               <p className="text-gray-500 text-xs" data-testid="text-location-label">Location</p>
-              <p className="text-gray-900 font-medium text-sm" data-testid="text-location-name">{locationName}</p>
+              <div className="flex items-center space-x-2">
+                <p className="text-gray-900 font-medium text-sm" data-testid="text-location-name">{locationName}</p>
+                {locationError && (
+                  <button
+                    onClick={retryLocation}
+                    className="text-blue-600 text-xs hover:text-blue-700 font-medium"
+                    data-testid="button-retry-location"
+                  >
+                    Retry
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -285,6 +415,50 @@ export default function Home() {
             </Button>
           </Link>
         </div>
+
+        {/* Location Error and Manual Input */}
+        {(locationError || showLocationInput) && (
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            {locationError && (
+              <div className="flex items-start space-x-2 mb-3">
+                <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-2 h-2 bg-white rounded-full"></div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-yellow-800 text-sm font-medium">Location Issue</p>
+                  <p className="text-yellow-700 text-sm" data-testid="text-location-error">{locationError}</p>
+                </div>
+              </div>
+            )}
+            
+            <div className="space-y-3">
+              <p className="text-gray-700 text-sm font-medium">Enter your city to find nearby deals:</p>
+              <div className="flex space-x-2">
+                <Input
+                  type="text"
+                  placeholder="Enter city name (e.g., New York, Los Angeles)"
+                  value={manualLocation}
+                  onChange={(e) => setManualLocation(e.target.value)}
+                  className="flex-1"
+                  data-testid="input-manual-location"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleManualLocation();
+                    }
+                  }}
+                />
+                <Button
+                  onClick={handleManualLocation}
+                  disabled={!manualLocation.trim() || isLoadingLocation}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  data-testid="button-find-location"
+                >
+                  {isLoadingLocation ? "Finding..." : "Find Deals"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Food Trucks Nearby Section */}

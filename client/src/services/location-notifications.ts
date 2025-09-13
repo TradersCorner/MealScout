@@ -141,9 +141,9 @@ class LocationNotificationService {
       (position) => this.handleLocationUpdate(position),
       (error) => console.error('Location error:', error),
       {
-        enableHighAccuracy: false,
+        enableHighAccuracy: true,
         timeout: 30000,
-        maximumAge: 5 * 60 * 1000, // 5 minutes
+        maximumAge: 60 * 1000, // 1 minute for better accuracy
       }
     );
 

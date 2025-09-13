@@ -117,9 +117,9 @@ export default function Home() {
           setLocationName("Location unavailable");
         },
         { 
-          enableHighAccuracy: false, 
-          timeout: 10000, 
-          maximumAge: 300000 // 5 minutes cache
+          enableHighAccuracy: true, 
+          timeout: 15000, 
+          maximumAge: 60000 // 1 minute cache for better accuracy
         }
       );
     }

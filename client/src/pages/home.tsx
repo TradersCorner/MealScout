@@ -287,66 +287,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Featured Deals Section */}
-      <div className="py-6">
-        <div className="flex items-center justify-between mb-6 px-6">
-          <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-featured-title">
-            <span className="w-8 h-8 food-gradient-primary rounded-lg flex items-center justify-center mr-3 shadow-md">
-              <Star className="w-4 h-4 text-white" />
-            </span>
-            Hot Deals Nearby
-          </h2>
-          <Link href="/deals/featured">
-            <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all">View All</button>
-          </Link>
-        </div>
-
-        {featuredLoading ? (
-          <div className="flex space-x-4 overflow-x-auto pb-4 px-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex-shrink-0 w-72">
-                <div className="bg-white rounded-3xl overflow-hidden shadow-lg animate-pulse">
-                  <div className="relative h-56 bg-gradient-to-r from-gray-200 to-gray-300"></div>
-                  <div className="p-6 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-32"></div>
-                      <div className="h-6 bg-gradient-to-r from-green-100 to-green-200 rounded-full w-12"></div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <div className="h-4 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full w-16"></div>
-                      <div className="h-4 bg-gradient-to-r from-blue-100 to-blue-200 rounded-full w-12"></div>
-                    </div>
-                    <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-full"></div>
-                    <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-4/5"></div>
-                    <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-100 rounded-2xl p-4">
-                      <div className="h-4 bg-gradient-to-r from-red-100 to-red-200 rounded-lg w-3/4"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="flex space-x-4 overflow-x-auto pb-4 px-6 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:overflow-visible">
-            {Array.isArray(featuredDeals) && featuredDeals.length > 0 ? (
-              featuredDeals.map((deal: Deal) => (
-                <div key={deal.id} className="flex-shrink-0 w-72 lg:w-auto">
-                  <DealCard deal={deal} />
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-12 px-6 w-full lg:col-span-full">
-                <div className="w-20 h-20 food-gradient-secondary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Utensils className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="font-bold text-lg text-foreground mb-2">No Deals Yet</h3>
-                <p className="text-muted-foreground" data-testid="text-no-deals">Check back soon for amazing deals!</p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Food Trucks Nearby Section */}
       {showFoodTrucks && (
         <div className="py-6 bg-gradient-to-r from-orange-50 to-red-50">
@@ -535,6 +475,66 @@ export default function Home() {
           )}
         </div>
       )}
+
+      {/* Featured Deals Section */}
+      <div className="py-6">
+        <div className="flex items-center justify-between mb-6 px-6">
+          <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-featured-title">
+            <span className="w-8 h-8 food-gradient-primary rounded-lg flex items-center justify-center mr-3 shadow-md">
+              <Star className="w-4 h-4 text-white" />
+            </span>
+            Hot Deals Nearby
+          </h2>
+          <Link href="/deals/featured">
+            <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all">View All</button>
+          </Link>
+        </div>
+
+        {featuredLoading ? (
+          <div className="flex space-x-4 overflow-x-auto pb-4 px-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex-shrink-0 w-72">
+                <div className="bg-white rounded-3xl overflow-hidden shadow-lg animate-pulse">
+                  <div className="relative h-56 bg-gradient-to-r from-gray-200 to-gray-300"></div>
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-32"></div>
+                      <div className="h-6 bg-gradient-to-r from-green-100 to-green-200 rounded-full w-12"></div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <div className="h-4 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full w-16"></div>
+                      <div className="h-4 bg-gradient-to-r from-blue-100 to-blue-200 rounded-full w-12"></div>
+                    </div>
+                    <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-full"></div>
+                    <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-4/5"></div>
+                    <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-100 rounded-2xl p-4">
+                      <div className="h-4 bg-gradient-to-r from-red-100 to-red-200 rounded-lg w-3/4"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex space-x-4 overflow-x-auto pb-4 px-6 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:overflow-visible">
+            {Array.isArray(featuredDeals) && featuredDeals.length > 0 ? (
+              featuredDeals.map((deal: Deal) => (
+                <div key={deal.id} className="flex-shrink-0 w-72 lg:w-auto">
+                  <DealCard deal={deal} />
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-12 px-6 w-full lg:col-span-full">
+                <div className="w-20 h-20 food-gradient-secondary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <Utensils className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="font-bold text-lg text-foreground mb-2">No Deals Yet</h3>
+                <p className="text-muted-foreground" data-testid="text-no-deals">Check back soon for amazing deals!</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Extended Food Categories with Horizontal Scrolling */}
       

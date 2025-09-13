@@ -35,6 +35,11 @@ import UserDashboard from "@/pages/user-dashboard";
 import DashboardSwitcher from "@/components/dashboard-switcher";
 import TermsOfService from "@/pages/terms-of-service";
 import PrivacyPolicy from "@/pages/privacy-policy";
+import About from "@/pages/about";
+import FAQ from "@/pages/faq";
+import HowItWorks from "@/pages/how-it-works";
+import Contact from "@/pages/contact";
+import Sitemap from "@/pages/sitemap";
 
 // Wrapper component to handle route props
 function DashboardSwitcherPage() {
@@ -72,6 +77,11 @@ function Router() {
           <Route path="/restaurant/:id" component={RestaurantDetail} />
           <Route path="/terms-of-service" component={TermsOfService} />
           <Route path="/privacy-policy" component={PrivacyPolicy} />
+          <Route path="/about" component={About} />
+          <Route path="/faq" component={FAQ} />
+          <Route path="/how-it-works" component={HowItWorks} />
+          <Route path="/contact" component={Contact} />
+          <Route path="/sitemap" component={Sitemap} />
           <Route path="/admin" component={AdminLogin} />
         </>
       ) : (
@@ -102,6 +112,11 @@ function Router() {
           <Route path="/restaurant/:id" component={RestaurantDetail} />
           <Route path="/terms-of-service" component={TermsOfService} />
           <Route path="/privacy-policy" component={PrivacyPolicy} />
+          <Route path="/about" component={About} />
+          <Route path="/faq" component={FAQ} />
+          <Route path="/how-it-works" component={HowItWorks} />
+          <Route path="/contact" component={Contact} />
+          <Route path="/sitemap" component={Sitemap} />
           <Route path="/profile/notifications" component={NotificationsPage} />
           <Route path="/profile/settings" component={SettingsPage} />
           <Route path="/settings" component={SettingsPage} />

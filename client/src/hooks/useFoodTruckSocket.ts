@@ -37,6 +37,7 @@ export function useFoodTruckSocket({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const pingIntervalRef = useRef<NodeJS.Timeout>();
+  const subscriptionQueueRef = useRef<string[]>([]);
   
   const maxReconnectAttempts = 5;
   const baseReconnectDelay = 1000; // 1 second
@@ -64,6 +65,16 @@ export function useFoodTruckSocket({
             type: 'auth',
             userId: user.id
           }));
+        }
+
+        // Process queued subscriptions now that connection is established
+        if (subscriptionQueueRef.current.length > 0) {
+          console.log('Processing queued subscriptions:', subscriptionQueueRef.current.length);
+          ws.send(JSON.stringify({
+            type: 'subscribe',
+            channels: subscriptionQueueRef.current
+          }));
+          subscriptionQueueRef.current = []; // Clear the queue
         }
 
         // Start ping interval to keep connection alive
@@ -153,6 +164,9 @@ export function useFoodTruckSocket({
       wsRef.current = null;
     }
 
+    // Clear subscription queue on disconnect
+    subscriptionQueueRef.current = [];
+
     setIsConnected(false);
     setConnectionError(null);
     setReconnectAttempts(0);
@@ -164,6 +178,11 @@ export function useFoodTruckSocket({
         type: 'subscribe',
         channels
       }));
+    } else {
+      // Queue the subscription for when connection is established (prevent duplicates)
+      console.log('Queueing subscription channels:', channels);
+      const newChannels = channels.filter(channel => !subscriptionQueueRef.current.includes(channel));
+      subscriptionQueueRef.current = [...subscriptionQueueRef.current, ...newChannels];
     }
   }, []);
 

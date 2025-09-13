@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import DealCard from "@/components/deal-card";
 import Navigation from "@/components/navigation";
 import SmartSearch from "@/components/smart-search";
+import LocationButton from "@/components/location-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -86,7 +88,7 @@ export default function Home() {
           : truck
       ));
     },
-    autoConnect: false
+    autoConnect: true
   });
 
   // Get user location once only - no continuous retries
@@ -105,8 +107,18 @@ export default function Home() {
           setShowLocationInput(false);
           
           // Subscribe to nearby food trucks (5km radius)
+          // Ensure WebSocket is connected before subscribing
           if (wsConnected) {
             subscribeToNearby(latitude, longitude, 5000);
+          } else {
+            // Connect WebSocket and then subscribe
+            try {
+              connectWS();
+              // Subscribe will work once connection is established
+              subscribeToNearby(latitude, longitude, 5000);
+            } catch (err: any) {
+              console.warn('Failed to connect WebSocket for food truck updates:', err);
+            }
           }
           
           // Reverse geocoding for display name
@@ -214,8 +226,18 @@ export default function Home() {
           setShowLocationInput(false);
           
           // Subscribe to nearby food trucks (5km radius)
+          // Ensure WebSocket is connected before subscribing
           if (wsConnected) {
             subscribeToNearby(latitude, longitude, 5000);
+          } else {
+            // Connect WebSocket and then subscribe
+            try {
+              connectWS();
+              // Subscribe will work once connection is established
+              subscribeToNearby(latitude, longitude, 5000);
+            } catch (err: any) {
+              console.warn('Failed to connect WebSocket for food truck updates:', err);
+            }
           }
           
           // Reverse geocoding for display name
@@ -272,8 +294,18 @@ export default function Home() {
         setShowLocationInput(false);
         
         // Subscribe to nearby food trucks
+        // Ensure WebSocket is connected before subscribing
         if (wsConnected) {
           subscribeToNearby(data.latitude, data.longitude, 5000);
+        } else {
+          // Connect WebSocket and then subscribe
+          try {
+            connectWS();
+            // Subscribe will work once connection is established
+            subscribeToNearby(data.latitude, data.longitude, 5000);
+          } catch (err: any) {
+            console.warn('Failed to connect WebSocket for food truck updates:', err);
+          }
         }
       } else {
         setLocationError("City not found. Please try a different location.");
@@ -294,6 +326,47 @@ export default function Home() {
     queryKey: ["/api/deals/nearby", location?.lat, location?.lng],
     enabled: !!location,
   });
+
+  // Handler for LocationButton component
+  const handleLocationUpdate = (newLocation: { lat: number; lng: number }) => {
+    setLocation(newLocation);
+    setLocationError(null);
+    setShowLocationInput(false);
+    
+    // Invalidate and refresh nearby deals cache immediately
+    queryClient.invalidateQueries({ 
+      queryKey: ["/api/deals/nearby"] 
+    });
+    
+    // Subscribe to nearby food trucks with new location
+    // Ensure WebSocket is connected before subscribing
+    if (wsConnected) {
+      subscribeToNearby(newLocation.lat, newLocation.lng, 5000);
+    } else {
+      // Connect WebSocket and then subscribe
+      try {
+        connectWS();
+        // Subscribe will work once connection is established
+        subscribeToNearby(newLocation.lat, newLocation.lng, 5000);
+      } catch (err: any) {
+        console.warn('Failed to connect WebSocket for food truck updates:', err);
+      }
+    }
+    
+    // Fetch nearby food trucks for the new location
+    setTimeout(() => {
+      fetchNearbyFoodTrucks();
+    }, 500); // Small delay to ensure location state is updated
+  };
+
+  const handleLocationNameUpdate = (name: string) => {
+    setLocationName(name);
+  };
+
+  const handleLocationErrorUpdate = (error: string) => {
+    setLocationError(error);
+    setShowLocationInput(true);
+  };
 
   const handleRestaurantSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -330,7 +403,7 @@ export default function Home() {
           </div>
 
           {/* Location */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
               isLoadingLocation ? 'bg-yellow-500' : 
               locationError ? 'bg-red-500' : 
@@ -356,6 +429,19 @@ export default function Home() {
                   </button>
                 )}
               </div>
+            </div>
+            
+            {/* Location Update Button */}
+            <div className="ml-2">
+              <LocationButton
+                onLocationUpdate={handleLocationUpdate}
+                onLocationNameUpdate={handleLocationNameUpdate}
+                onLocationError={handleLocationErrorUpdate}
+                isLoading={isLoadingLocation}
+                size="sm"
+                variant="default"
+                className="text-xs"
+              />
             </div>
           </div>
         </div>

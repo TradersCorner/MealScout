@@ -175,6 +175,19 @@ export default function Login() {
             </Button>
           </Link>
         </div>
+
+        {/* Legal Links */}
+        <div className="mt-6 text-center">
+          <p className="text-xs text-gray-500">
+            By using MealScout, you agree to our{" "}
+            <Link href="/terms-of-service">
+              <span className="text-blue-600 underline hover:text-blue-700 cursor-pointer">Terms of Service</span>
+            </Link> and{" "}
+            <Link href="/privacy-policy">
+              <span className="text-blue-600 underline hover:text-blue-700 cursor-pointer">Privacy Policy</span>
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

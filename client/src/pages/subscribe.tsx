@@ -435,8 +435,12 @@ export default function Subscribe() {
         <div className="mt-6 text-center">
           <p className="text-xs text-muted-foreground" data-testid="text-terms">
             By subscribing, you agree to our{" "}
-            <span className="text-primary underline">Terms of Service</span> and{" "}
-            <span className="text-primary underline">Privacy Policy</span>. 
+            <Link href="/terms-of-service">
+              <span className="text-primary underline hover:text-primary/80 cursor-pointer">Terms of Service</span>
+            </Link> and{" "}
+            <Link href="/privacy-policy">
+              <span className="text-primary underline hover:text-primary/80 cursor-pointer">Privacy Policy</span>
+            </Link>. 
             You can cancel your subscription at any time.
           </p>
         </div>

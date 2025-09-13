@@ -964,7 +964,13 @@ export default function Landing() {
             </div>
             
             <p className="text-xs text-gray-500 text-center mt-6">
-              By continuing, you agree to our Terms of Service and Privacy Policy
+              By continuing, you agree to our{" "}
+              <Link href="/terms-of-service">
+                <span className="text-blue-600 underline hover:text-blue-700 cursor-pointer">Terms of Service</span>
+              </Link> and{" "}
+              <Link href="/privacy-policy">
+                <span className="text-blue-600 underline hover:text-blue-700 cursor-pointer">Privacy Policy</span>
+              </Link>
             </p>
           </div>
         </div>

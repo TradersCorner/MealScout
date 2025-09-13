@@ -1,10 +1,108 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
 import Navigation from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, Navigation as NavigationIcon, List, Filter, X, Star } from "lucide-react";
 import DealCard from "@/components/deal-card";
+
+// Fix for default markers in react-leaflet
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-shadow.png',
+});
+
+// Custom user location icon
+const userLocationIcon = new L.Icon({
+  iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="8" fill="#3B82F6" stroke="white" stroke-width="3"/>
+      <circle cx="12" cy="12" r="3" fill="white"/>
+    </svg>
+  `),
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
+
+// Custom deal marker icon
+const dealMarkerIcon = new L.Icon({
+  iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="16" cy="16" r="14" fill="#EF4444" stroke="white" stroke-width="3"/>
+      <text x="16" y="20" text-anchor="middle" fill="white" font-size="14" font-weight="bold">%</text>
+    </svg>
+  `),
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+});
+
+// Component to handle map controls
+function MapControls({ onZoomIn, onZoomOut, onCenterUser, userLocation, zoomLevel }: {
+  onZoomIn: () => void;
+  onZoomOut: () => void; 
+  onCenterUser: () => void;
+  userLocation: {lat: number, lng: number} | null;
+  zoomLevel: number;
+}) {
+  const map = useMap();
+  
+  const handleZoomIn = () => {
+    map.zoomIn();
+    onZoomIn();
+  };
+  
+  const handleZoomOut = () => {
+    map.zoomOut();
+    onZoomOut();
+  };
+  
+  const handleCenterUser = () => {
+    if (userLocation) {
+      map.setView([userLocation.lat, userLocation.lng], map.getZoom());
+      onCenterUser();
+    }
+  };
+  
+  return (
+    <div className="absolute top-4 right-4 flex flex-col space-y-2 z-[1000]">
+      <Button
+        variant="secondary"
+        size="sm"
+        className="w-8 h-8 p-0 bg-white border shadow-sm"
+        onClick={handleZoomIn}
+        data-testid="button-zoom-in"
+        title="Zoom in"
+      >
+        +
+      </Button>
+      <Button
+        variant="secondary"
+        size="sm"
+        className="w-8 h-8 p-0 bg-white border shadow-sm"
+        onClick={handleZoomOut}
+        data-testid="button-zoom-out"
+        title="Zoom out"
+      >
+        −
+      </Button>
+      <Button
+        variant="secondary"
+        size="sm"
+        className="w-8 h-8 p-0 bg-white border shadow-sm"
+        onClick={handleCenterUser}
+        disabled={!userLocation}
+        data-testid="button-center-location"
+        title="Center on location"
+      >
+        <NavigationIcon className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+}
 
 interface Restaurant {
   id: string;
@@ -35,7 +133,7 @@ export default function MapPage() {
   const [showList, setShowList] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [isLocating, setIsLocating] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState(1);
+  const [zoomLevel, setZoomLevel] = useState(14);
   const [locationError, setLocationError] = useState<string | null>(null);
 
   // Get user location
@@ -96,34 +194,11 @@ export default function MapPage() {
   };
 
   const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 0.5, 3));
+    setZoomLevel(prev => Math.min(prev + 1, 18));
   };
 
   const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 0.5, 0.5));
-  };
-
-  // Convert GPS coordinates to map pixel position
-  const coordsToPixels = (lat: number, lng: number) => {
-    const mapWidth = 384; // Map container width (96 * 4 = 384px)
-    const mapHeight = 384; // Map container height
-    
-    // Calculate relative position from map center
-    const latDiff = lat - mapCenter.lat;
-    const lngDiff = lng - mapCenter.lng;
-    
-    // Convert to pixels (simplified projection for demo)
-    // In real maps, this would use proper map projection calculations
-    const scale = zoomLevel * 100000; // Zoom scaling factor
-    const x = (lngDiff * scale) + (mapWidth / 2);
-    const y = (-latDiff * scale) + (mapHeight / 2); // Negative because screen Y increases downward
-    
-    return { x, y };
-  };
-
-  // Check if coordinates are within visible map bounds
-  const isInBounds = (x: number, y: number) => {
-    return x >= 0 && x <= 384 && y >= 0 && y <= 384;
+    setZoomLevel(prev => Math.max(prev - 1, 1));
   };
 
   return (
@@ -146,15 +221,6 @@ export default function MapPage() {
             >
               <List className="w-4 h-4" />
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCenterOnUser}
-              disabled={!userLocation}
-              data-testid="button-center-location"
-            >
-              <NavigationIcon className="w-4 h-4" />
-            </Button>
           </div>
         </div>
 
@@ -174,110 +240,77 @@ export default function MapPage() {
 
       {/* Map Container */}
       <div className="relative flex-1">
-        {/* Placeholder Map - In production, this would be Google Maps or Mapbox */}
-        <div className="h-96 bg-gradient-to-br from-blue-50 to-green-50 relative overflow-hidden">
-          {/* Map Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <defs>
-                <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                  <path d="M 10 0 L 0 0 0 10" fill="none" stroke="gray" strokeWidth="0.5"/>
-                </pattern>
-              </defs>
-              <rect width="100" height="100" fill="url(#grid)" />
-            </svg>
-          </div>
-
-          {/* User Location Marker */}
-          {userLocation && (
-            <div 
-              className="absolute transform -translate-x-1/2 -translate-y-1/2 z-20"
-              style={{ 
-                left: '50%', 
-                top: '50%'
-              }}
+        <div className="h-96 relative">
+          {mapCenter && (
+            <MapContainer
+              center={[mapCenter.lat, mapCenter.lng]}
+              zoom={zoomLevel}
+              style={{ height: '100%', width: '100%' }}
+              className="rounded-lg overflow-hidden"
             >
-              <div className="relative">
-                <div className="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-pulse" />
-                <div className="absolute -inset-2 border-2 border-blue-400 rounded-full opacity-50 animate-ping" />
-              </div>
-            </div>
-          )}
-
-          {/* Restaurant/Deal Markers */}
-          {deals.map((deal: Deal) => {
-            if (!deal.restaurant) return null;
-            
-            // Calculate pixel position from GPS coordinates
-            const { x, y } = coordsToPixels(deal.restaurant.latitude, deal.restaurant.longitude);
-            
-            // Only render markers that are within the visible map bounds
-            if (!isInBounds(x, y)) return null;
-            
-            return (
-              <div
-                key={deal.id}
-                className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer z-10 group"
-                style={{
-                  left: `${x}px`,
-                  top: `${y}px`
-                }}
-                onClick={() => handleDealClick(deal)}
-                data-testid={`marker-deal-${deal.id}`}
-              >
-                {/* Deal Marker */}
-                <div className="relative">
-                  <div className="w-8 h-8 bg-red-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center hover:bg-red-600 transition-colors">
-                    <span className="text-white text-xs font-bold">%</span>
-                  </div>
-                  
-                  {/* Hover Card */}
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                    <div className="bg-white rounded-lg shadow-lg p-3 min-w-48 border">
-                      <div className="text-sm font-semibold text-foreground truncate">
-                        {deal.title}
-                      </div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {deal.restaurant.name}
-                      </div>
-                      <div className="text-xs text-primary font-semibold">
-                        {deal.discountValue}% off
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              
+              {/* User Location Marker */}
+              {userLocation && (
+                <Marker
+                  position={[userLocation.lat, userLocation.lng]}
+                  icon={userLocationIcon}
+                >
+                  <Popup>
+                    <div className="text-center">
+                      <div className="font-semibold text-sm">You are here</div>
+                      <div className="text-xs text-muted-foreground">
+                        {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Map Controls */}
-          <div className="absolute top-4 right-4 flex flex-col space-y-2 z-30">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="w-8 h-8 p-0 bg-white border shadow-sm"
-              onClick={handleZoomIn}
-              disabled={zoomLevel >= 3}
-              data-testid="button-zoom-in"
-              title="Zoom in"
-            >
-              +
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="w-8 h-8 p-0 bg-white border shadow-sm"
-              onClick={handleZoomOut}
-              disabled={zoomLevel <= 0.5}
-              data-testid="button-zoom-out"
-              title="Zoom out"
-            >
-              −
-            </Button>
-            <div className="text-xs text-center text-muted-foreground bg-white border rounded px-1 py-0.5 shadow-sm">
-              {zoomLevel.toFixed(1)}x
-            </div>
-          </div>
+                  </Popup>
+                </Marker>
+              )}
+              
+              {/* Deal Markers */}
+              {deals.map((deal: Deal) => {
+                if (!deal.restaurant) return null;
+                
+                return (
+                  <Marker
+                    key={deal.id}
+                    position={[deal.restaurant.latitude, deal.restaurant.longitude]}
+                    icon={dealMarkerIcon}
+                    eventHandlers={{
+                      click: () => handleDealClick(deal)
+                    }}
+                  >
+                    <Popup>
+                      <div className="min-w-48">
+                        <div className="font-semibold text-sm mb-1">{deal.title}</div>
+                        <div className="text-xs text-muted-foreground mb-2">{deal.restaurant.name}</div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-primary font-bold text-sm">
+                            {deal.discountValue}% OFF
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            Min: ${deal.minOrderAmount}
+                          </span>
+                        </div>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+              
+              {/* Map Controls */}
+              <MapControls 
+                onZoomIn={handleZoomIn}
+                onZoomOut={handleZoomOut}
+                onCenterUser={handleCenterOnUser}
+                userLocation={userLocation}
+                zoomLevel={zoomLevel}
+              />
+            </MapContainer>
+          )}
         </div>
 
         {/* Selected Deal Info Card */}

@@ -328,7 +328,6 @@ export default function RestaurantSignup() {
                                 <FormControl>
                                   <Input 
                                     data-testid="input-first-name"
-                                    name="firstName"
                                     autoComplete="given-name"
                                     placeholder="John" 
                                     {...field} 
@@ -347,7 +346,6 @@ export default function RestaurantSignup() {
                                 <FormControl>
                                   <Input 
                                     data-testid="input-last-name"
-                                    name="lastName"
                                     autoComplete="family-name"
                                     placeholder="Doe" 
                                     {...field} 
@@ -370,7 +368,6 @@ export default function RestaurantSignup() {
                                   <Input 
                                     data-testid="input-email"
                                     type="email" 
-                                    name="email"
                                     autoComplete="email"
                                     placeholder="john@restaurant.com" 
                                     className="pl-10" 
@@ -393,7 +390,6 @@ export default function RestaurantSignup() {
                                   <Input 
                                     data-testid="input-password"
                                     type={showPassword ? "text" : "password"} 
-                                    name="password"
                                     autoComplete="new-password"
                                     placeholder="At least 6 characters" 
                                     className="pr-10" 
@@ -424,7 +420,6 @@ export default function RestaurantSignup() {
                                   <Input 
                                     data-testid="input-confirm-password"
                                     type={showConfirmPassword ? "text" : "password"} 
-                                    name="confirmPassword"
                                     autoComplete="new-password"
                                     placeholder="Confirm your password" 
                                     className="pr-10" 
@@ -469,8 +464,7 @@ export default function RestaurantSignup() {
                                   <Input 
                                     data-testid="input-login-email"
                                     type="email" 
-                                    name="email"
-                                    autoComplete="email"
+                                    autoComplete="username"
                                     placeholder="john@restaurant.com" 
                                     className="pl-10" 
                                     {...field} 
@@ -492,7 +486,6 @@ export default function RestaurantSignup() {
                                   <Input 
                                     data-testid="input-login-password"
                                     type={showPassword ? "text" : "password"} 
-                                    name="password"
                                     autoComplete="current-password"
                                     placeholder="Your password" 
                                     className="pr-10" 

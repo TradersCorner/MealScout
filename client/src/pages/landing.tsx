@@ -223,6 +223,7 @@ export default function Landing() {
             },
             (error) => {
               console.log(`❌ ${browserType} attempt ${attempt} failed:`, error.message);
+              // Always reject to properly handle the promise
               reject(error);
             },
             options
@@ -232,8 +233,11 @@ export default function Landing() {
 
       // Facebook browser: try only 2 attempts, regular browsers: 3 attempts
       const maxAttempts = isFacebookBrowser ? 2 : 3;
+      let permissionDenied = false;
       
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        if (permissionDenied) break;
+        
         try {
           const position = await tryLocationMethod(attempt);
           const { latitude, longitude, accuracy } = position.coords;
@@ -307,14 +311,21 @@ export default function Landing() {
           const geoError = error as GeolocationPositionError;
           console.log(`❌ ${browserType} location attempt ${attempt} failed:`, geoError.message);
           
+          // If permission is denied, stop all attempts immediately
+          if (geoError.code === GeolocationPositionError.PERMISSION_DENIED) {
+            console.log(`🛑 ${browserType} permission denied, stopping all location attempts`);
+            setLocationError('Location access denied. You can manually enter your location below.');
+            setLocationName("Location Access Denied");
+            setShowLocationInput(true);
+            return; // Exit the entire function
+          }
+          
           if (attempt === maxAttempts) {
             // All attempts failed
             let errorMessage = 'Unable to detect your location automatically. ';
-            if (geoError.code === 1) {
-              errorMessage += isFacebookBrowser 
-                ? 'Please allow location access and try again, or enter your city manually.'
-                : 'Please enable location access in your browser settings or enter your city manually.';
-            } else if (geoError.code === 2) {
+            if (geoError.code === GeolocationPositionError.TIMEOUT) {
+              errorMessage += 'GPS signal timeout. Please enter your city manually.';
+            } else if (geoError.code === GeolocationPositionError.POSITION_UNAVAILABLE) {
               errorMessage += 'GPS unavailable. Please enter your city manually.';
             } else {
               errorMessage += 'Please enter your city manually below.';
@@ -324,7 +335,7 @@ export default function Landing() {
             setLocationName("Location Not Available");
             setShowLocationInput(true);
           }
-          // Continue to next attempt
+          // Continue to next attempt only if not permission denied
         }
       }
     };

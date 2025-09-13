@@ -111,8 +111,8 @@ export function useFoodTruckSocket({
           pingIntervalRef.current = undefined;
         }
 
-        // Attempt to reconnect if not intentionally closed
-        if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts && autoConnect) {
+        // Only attempt to reconnect if explicitly requested (disabled for now to prevent spam)
+        if (false && event.code !== 1000 && reconnectAttempts < maxReconnectAttempts && autoConnect) {
           const delay = baseReconnectDelay * Math.pow(2, reconnectAttempts);
           setReconnectAttempts(prev => prev + 1);
           
@@ -122,7 +122,7 @@ export function useFoodTruckSocket({
             connect();
           }, delay);
         } else if (reconnectAttempts >= maxReconnectAttempts) {
-          setConnectionError('Max reconnection attempts reached. Please refresh the page.');
+          console.log('WebSocket connection failed. Food truck updates disabled.');
         }
       };
 

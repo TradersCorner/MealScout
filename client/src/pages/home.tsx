@@ -85,9 +85,13 @@ export default function Home() {
     autoConnect: true
   });
 
-  // Get user location and subscribe to nearby food trucks
+  // Get user location once only - no continuous retries
   useEffect(() => {
-    if (navigator.geolocation) {
+    let locationRequested = false;
+    
+    if (navigator.geolocation && !location && !locationRequested) {
+      locationRequested = true;
+      
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
@@ -108,22 +112,28 @@ export default function Home() {
               setLocationName("Your Location");
             });
         },
-        () => {
+        (error) => {
+          console.log("Home page location error:", error.message);
           setLocationName("Location unavailable");
+        },
+        { 
+          enableHighAccuracy: false, 
+          timeout: 10000, 
+          maximumAge: 300000 // 5 minutes cache
         }
       );
     }
-  }, [wsConnected, subscribeToNearby]);
+  }, []); // Remove dependencies to prevent re-runs
 
-  // Fetch initial food truck data
+  // Fetch initial food truck data only once when location is first set
   useEffect(() => {
-    if (location) {
+    if (location && foodTrucks.length === 0) {
       fetchNearbyFoodTrucks();
     }
   }, [location]);
 
   const fetchNearbyFoodTrucks = async () => {
-    if (!location) return;
+    if (!location || loadingFoodTrucks) return;
     
     setLoadingFoodTrucks(true);
     try {
@@ -131,9 +141,12 @@ export default function Home() {
       if (response.ok) {
         const data = await response.json();
         setFoodTrucks(data.foodTrucks || []);
+      } else {
+        console.error('Food truck API response not ok:', response.status);
       }
     } catch (error) {
       console.error('Failed to fetch nearby food trucks:', error);
+      // Don't retry automatically on error
     } finally {
       setLoadingFoodTrucks(false);
     }

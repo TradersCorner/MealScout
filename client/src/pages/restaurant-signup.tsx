@@ -882,10 +882,81 @@ export default function RestaurantSignup() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          {/* American Cuisines */}
                           <SelectItem value="american">American</SelectItem>
+                          <SelectItem value="bbq">BBQ & Smokehouse</SelectItem>
+                          <SelectItem value="southern">Southern & Soul Food</SelectItem>
+                          <SelectItem value="cajun">Cajun & Creole</SelectItem>
+                          <SelectItem value="tex-mex">Tex-Mex</SelectItem>
+                          <SelectItem value="burgers">Burgers & Fries</SelectItem>
+                          <SelectItem value="deli">Deli & Sandwiches</SelectItem>
+                          <SelectItem value="wings">Wings & Sports Bar</SelectItem>
+                          
+                          {/* International Cuisines */}
                           <SelectItem value="italian">Italian</SelectItem>
+                          <SelectItem value="pizza">Pizza</SelectItem>
                           <SelectItem value="mexican">Mexican</SelectItem>
-                          <SelectItem value="asian">Asian</SelectItem>
+                          <SelectItem value="chinese">Chinese</SelectItem>
+                          <SelectItem value="japanese">Japanese & Sushi</SelectItem>
+                          <SelectItem value="korean">Korean</SelectItem>
+                          <SelectItem value="thai">Thai</SelectItem>
+                          <SelectItem value="vietnamese">Vietnamese</SelectItem>
+                          <SelectItem value="indian">Indian</SelectItem>
+                          <SelectItem value="mediterranean">Mediterranean</SelectItem>
+                          <SelectItem value="greek">Greek</SelectItem>
+                          <SelectItem value="middle-eastern">Middle Eastern</SelectItem>
+                          <SelectItem value="french">French</SelectItem>
+                          <SelectItem value="german">German</SelectItem>
+                          <SelectItem value="british">British & Pub Food</SelectItem>
+                          <SelectItem value="spanish">Spanish & Tapas</SelectItem>
+                          <SelectItem value="latin-american">Latin American</SelectItem>
+                          <SelectItem value="caribbean">Caribbean</SelectItem>
+                          <SelectItem value="african">African</SelectItem>
+                          <SelectItem value="ethiopian">Ethiopian</SelectItem>
+                          <SelectItem value="moroccan">Moroccan</SelectItem>
+                          <SelectItem value="turkish">Turkish</SelectItem>
+                          <SelectItem value="lebanese">Lebanese</SelectItem>
+                          <SelectItem value="persian">Persian</SelectItem>
+                          <SelectItem value="russian">Russian</SelectItem>
+                          
+                          {/* Specialty Categories */}
+                          <SelectItem value="seafood">Seafood</SelectItem>
+                          <SelectItem value="steakhouse">Steakhouse</SelectItem>
+                          <SelectItem value="vegetarian">Vegetarian</SelectItem>
+                          <SelectItem value="vegan">Vegan</SelectItem>
+                          <SelectItem value="organic">Organic & Farm-to-Table</SelectItem>
+                          <SelectItem value="gluten-free">Gluten-Free</SelectItem>
+                          <SelectItem value="halal">Halal</SelectItem>
+                          <SelectItem value="kosher">Kosher</SelectItem>
+                          
+                          {/* Food Types */}
+                          <SelectItem value="fast-food">Fast Food</SelectItem>
+                          <SelectItem value="fast-casual">Fast Casual</SelectItem>
+                          <SelectItem value="fine-dining">Fine Dining</SelectItem>
+                          <SelectItem value="casual-dining">Casual Dining</SelectItem>
+                          <SelectItem value="food-truck">Food Truck Fusion</SelectItem>
+                          <SelectItem value="street-food">Street Food</SelectItem>
+                          <SelectItem value="comfort-food">Comfort Food</SelectItem>
+                          <SelectItem value="breakfast">Breakfast & Brunch</SelectItem>
+                          <SelectItem value="coffee">Coffee & Café</SelectItem>
+                          <SelectItem value="bakery">Bakery & Pastries</SelectItem>
+                          <SelectItem value="desserts">Desserts & Sweets</SelectItem>
+                          <SelectItem value="ice-cream">Ice Cream & Frozen Treats</SelectItem>
+                          <SelectItem value="juice-bar">Juice Bar & Smoothies</SelectItem>
+                          <SelectItem value="bar">Bar & Cocktails</SelectItem>
+                          <SelectItem value="brewery">Brewery & Craft Beer</SelectItem>
+                          <SelectItem value="wine-bar">Wine Bar</SelectItem>
+                          
+                          {/* Trending & Fusion */}
+                          <SelectItem value="fusion">Fusion Cuisine</SelectItem>
+                          <SelectItem value="gastropub">Gastropub</SelectItem>
+                          <SelectItem value="ramen">Ramen & Noodles</SelectItem>
+                          <SelectItem value="poke">Poke & Hawaiian</SelectItem>
+                          <SelectItem value="boba">Boba Tea & Asian Drinks</SelectItem>
+                          <SelectItem value="healthy">Healthy & Bowls</SelectItem>
+                          <SelectItem value="keto">Keto & Low-Carb</SelectItem>
+                          <SelectItem value="paleo">Paleo</SelectItem>
+                          
                           <SelectItem value="other">Other</SelectItem>
                         </SelectContent>
                       </Select>

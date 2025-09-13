@@ -291,7 +291,7 @@ export default function RestaurantSignup() {
                   {/* Google OAuth Button */}
                   <button 
                     data-testid="button-google-signin"
-                    onClick={() => window.location.href = "/api/auth/google"}
+                    onClick={() => window.location.href = "/api/auth/google/restaurant"}
                     className="w-full bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center space-x-3 mb-4 shadow-sm"
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24">

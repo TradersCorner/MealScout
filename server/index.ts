@@ -1,10 +1,12 @@
 import express, { type Request, Response, NextFunction } from "express";
 import compression from "compression";
 import helmet from "helmet";
+import passport from "passport";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
 import { setupWebSocketServer } from "./websocket";
+import { getSession } from "./facebookAuth";
 
 const app = express();
 
@@ -77,8 +79,15 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Initialize admin account
+  // Initialize admin account and seed data
   await storage.ensureAdminExists();
+  await storage.seedDevelopmentData();
+  
+  // Setup session configuration before routes
+  app.set("trust proxy", 1);
+  app.use(getSession());
+  app.use(passport.initialize());
+  app.use(passport.session());
   
   const server = await registerRoutes(app);
 

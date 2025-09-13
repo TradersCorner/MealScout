@@ -23,8 +23,10 @@ export async function setupUnifiedAuth(app: Express) {
     }
   });
 
-  // Google Strategy for all users
+  // Google Strategy and routes for all users (only enabled if credentials are configured)
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    console.log("Setting up Google OAuth strategies...");
+    
     passport.use('google-customer', new GoogleStrategy({
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -70,35 +72,103 @@ export async function setupUnifiedAuth(app: Express) {
         return done(error, null);
       }
     }));
+
+    // Google OAuth routes for customers
+    app.get("/api/auth/google/customer", (req, res, next) => {
+      passport.authenticate('google-customer', {
+        scope: ['profile', 'email']
+      })(req, res, next);
+    });
+
+    app.get("/api/auth/google/customer/callback", (req, res, next) => {
+      passport.authenticate('google-customer', {
+        successRedirect: "/",
+        failureRedirect: "/?error=auth_failed",
+      })(req, res, next);
+    });
+
+    // Google OAuth routes for restaurant owners
+    app.get("/api/auth/google/restaurant", (req, res, next) => {
+      passport.authenticate('google-restaurant', {
+        scope: ['profile', 'email']
+      })(req, res, next);
+    });
+
+    app.get("/api/auth/google/restaurant/callback", (req, res, next) => {
+      passport.authenticate('google-restaurant', {
+        successRedirect: "/restaurant-signup",
+        failureRedirect: "/restaurant-signup?error=auth_failed",
+      })(req, res, next);
+    });
+  } else {
+    console.log("Google OAuth not configured: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables are missing");
+    
+    // Add error handling routes for when Google OAuth is not configured
+    app.get("/api/auth/google/customer", (req, res) => {
+      res.status(503).json({ 
+        error: "Google OAuth not configured", 
+        message: "Google authentication is not available at this time" 
+      });
+    });
+
+    app.get("/api/auth/google/restaurant", (req, res) => {
+      res.status(503).json({ 
+        error: "Google OAuth not configured", 
+        message: "Google authentication is not available at this time" 
+      });
+    });
+
+    app.get("/api/auth/google/customer/callback", (req, res) => {
+      res.redirect("/?error=google_not_configured");
+    });
+
+    app.get("/api/auth/google/restaurant/callback", (req, res) => {
+      res.redirect("/restaurant-signup?error=google_not_configured");
+    });
   }
 
-  // Google OAuth routes for customers
-  app.get("/api/auth/google/customer", (req, res, next) => {
-    passport.authenticate('google-customer', {
-      scope: ['profile', 'email']
-    })(req, res, next);
-  });
+  // Facebook Strategy
+  if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
+    passport.use(new FacebookStrategy({
+      clientID: process.env.FACEBOOK_APP_ID,
+      clientSecret: process.env.FACEBOOK_APP_SECRET,
+      callbackURL: `/api/auth/facebook/callback`,
+      profileFields: ['id', 'displayName', 'emails', 'photos', 'first_name', 'last_name']
+    },
+    async (accessToken: string, refreshToken: string, profile: any, done: any) => {
+      try {
+        const userData: FacebookUserData = {
+          facebookId: profile.id,
+          email: profile.emails?.[0]?.value || null,
+          firstName: profile.name?.givenName || profile._json?.first_name || null,
+          lastName: profile.name?.familyName || profile._json?.last_name || null,
+          profileImageUrl: profile.photos?.[0]?.value || null,
+          facebookAccessToken: accessToken,
+        };
 
-  app.get("/api/auth/google/customer/callback", (req, res, next) => {
-    passport.authenticate('google-customer', {
-      successRedirect: "/",
-      failureRedirect: "/?error=auth_failed",
-    })(req, res, next);
-  });
+        const user = await storage.upsertUserByAuth('facebook', userData, 'customer');
+        return done(null, user);
+      } catch (error) {
+        return done(error, null);
+      }
+    }));
 
-  // Google OAuth routes for restaurant owners
-  app.get("/api/auth/google/restaurant", (req, res, next) => {
-    passport.authenticate('google-restaurant', {
-      scope: ['profile', 'email']
-    })(req, res, next);
-  });
+    // Facebook auth routes
+    app.get('/api/auth/facebook',
+      passport.authenticate('facebook', { 
+        scope: ['email', 'public_profile'] 
+      })
+    );
 
-  app.get("/api/auth/google/restaurant/callback", (req, res, next) => {
-    passport.authenticate('google-restaurant', {
-      successRedirect: "/restaurant-signup",
-      failureRedirect: "/restaurant-signup?error=auth_failed",
-    })(req, res, next);
-  });
+    app.get('/api/auth/facebook/callback',
+      passport.authenticate('facebook', { 
+        failureRedirect: '/?error=auth_failed' 
+      }),
+      (req, res) => {
+        res.redirect('/');
+      }
+    );
+  }
 
   // Email/password registration for customers
   app.post("/api/auth/customer/register", async (req, res) => {

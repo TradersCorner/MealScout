@@ -34,7 +34,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Auth middleware
-  await setupAuth(app);
   await setupUnifiedAuth(app);
 
   // Auth routes

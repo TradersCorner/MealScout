@@ -183,6 +183,8 @@ export default function Landing() {
   };
 
   const onLogin = (data: LoginFormData) => {
+    console.log("🔍 Login form data:", data);
+    console.log("🔍 Login form errors:", loginForm.formState.errors);
     loginMutation.mutate(data);
   };
 
@@ -718,6 +720,11 @@ export default function Landing() {
                         className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-medium"
                         disabled={loginMutation.isPending}
                         data-testid="button-login-submit"
+                        onClick={() => {
+                          console.log("🔍 Button clicked - Form values:", loginForm.getValues());
+                          console.log("🔍 Button clicked - Form errors:", loginForm.formState.errors);
+                          console.log("🔍 Button clicked - Form valid:", loginForm.formState.isValid);
+                        }}
                       >
                         {loginMutation.isPending ? "Signing in..." : "Sign In"}
                       </Button>

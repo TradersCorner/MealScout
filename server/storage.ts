@@ -32,7 +32,7 @@ import {
   type FacebookUserData,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, sql, desc, asc, inArray } from "drizzle-orm";
+import { eq, and, gte, lte, sql, desc, asc, inArray, isNull, isNotNull } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 // Interface for storage operations
@@ -713,7 +713,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRestaurantDealClaims(restaurantId: string, status?: string): Promise<any[]> {
-    let query = db
+    const conditions = [eq(deals.restaurantId, restaurantId)];
+    
+    if (status === 'pending') {
+      conditions.push(isNull(dealClaims.usedAt));
+    } else if (status === 'used') {
+      conditions.push(isNotNull(dealClaims.usedAt));
+    }
+
+    return await db
       .select({
         claimId: dealClaims.id,
         dealId: dealClaims.dealId,
@@ -728,16 +736,8 @@ export class DatabaseStorage implements IStorage {
       .from(dealClaims)
       .innerJoin(deals, eq(dealClaims.dealId, deals.id))
       .innerJoin(users, eq(dealClaims.userId, users.id))
-      .where(eq(deals.restaurantId, restaurantId))
+      .where(and(...conditions))
       .orderBy(desc(dealClaims.claimedAt));
-
-    if (status === 'pending') {
-      query = query.where(and(eq(deals.restaurantId, restaurantId), isNull(dealClaims.usedAt)));
-    } else if (status === 'used') {
-      query = query.where(and(eq(deals.restaurantId, restaurantId), isNotNull(dealClaims.usedAt)));
-    }
-
-    return await query;
   }
 
   // Review operations
@@ -812,6 +812,174 @@ export class DatabaseStorage implements IStorage {
       console.log('✅ Admin account created successfully');
     } catch (error) {
       console.error('❌ Failed to create admin account:', error);
+    }
+  }
+
+  // Seed data for development and testing
+  async seedDevelopmentData(): Promise<void> {
+    try {
+      // Check if data already exists
+      const existingRestaurants = await db.select().from(restaurants).limit(1);
+      if (existingRestaurants.length > 0) {
+        console.log('✅ Seed data already exists');
+        return;
+      }
+
+      console.log('🌱 Seeding development data...');
+
+      // Create sample restaurant owners
+      const owner1 = await this.upsertUserByAuth('email', {
+        email: 'owner1@example.com',
+        firstName: 'Mario',
+        lastName: 'Rossi',
+        passwordHash: await bcrypt.hash('password123', 10)
+      }, 'restaurant_owner');
+
+      const owner2 = await this.upsertUserByAuth('email', {
+        email: 'owner2@example.com',
+        firstName: 'Luigi',
+        lastName: 'Verde',
+        passwordHash: await bcrypt.hash('password123', 10)
+      }, 'restaurant_owner');
+
+      const owner3 = await this.upsertUserByAuth('email', {
+        email: 'owner3@example.com',
+        firstName: 'Giuseppe',
+        lastName: 'Bianchi',
+        passwordHash: await bcrypt.hash('password123', 10)
+      }, 'restaurant_owner');
+
+      // Create sample customer
+      const customer1 = await this.upsertUserByAuth('email', {
+        email: 'customer@example.com',
+        firstName: 'John',
+        lastName: 'Doe',
+        passwordHash: await bcrypt.hash('password123', 10)
+      }, 'customer');
+
+      // Create sample restaurants
+      const restaurant1 = await this.createRestaurant({
+        name: 'Tony\'s Pizza Palace',
+        address: '123 Main Street, Downtown, NY 10001',
+        phone: '+1 (555) 123-4567',
+        cuisineType: 'Italian',
+        latitude: '40.7128',
+        longitude: '-74.0060',
+        ownerId: owner1.id
+      });
+
+      const restaurant2 = await this.createRestaurant({
+        name: 'Sakura Sushi Express',
+        address: '456 Oak Avenue, Midtown, NY 10002',
+        phone: '+1 (555) 234-5678',
+        cuisineType: 'Japanese',
+        latitude: '40.7614',
+        longitude: '-73.9776',
+        ownerId: owner2.id
+      });
+
+      // Create food truck
+      const foodTruck = await this.createRestaurant({
+        name: 'Gourmet Burger Truck',
+        address: 'Mobile - Follow social media for locations',
+        phone: '+1 (555) 345-6789',
+        cuisineType: 'American',
+        isFoodTruck: true,
+        latitude: '40.7505',
+        longitude: '-73.9934',
+        ownerId: owner3.id
+      });
+
+      // Create sample deals
+      const deal1 = await this.createDeal({
+        restaurantId: restaurant1.id,
+        title: 'Buy One Get One Free Pizza',
+        description: 'Order any large pizza and get a second one of equal or lesser value absolutely free! Perfect for sharing or taking home leftovers.',
+        dealType: 'percentage',
+        discountValue: '50.00',
+        minOrderAmount: '24.99',
+        imageUrl: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=500',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        startTime: '11:00',
+        endTime: '22:00',
+        totalUsesLimit: 100,
+        perCustomerLimit: 2,
+        isFeatured: true,
+        isActive: true
+      });
+
+      const deal2 = await this.createDeal({
+        restaurantId: restaurant2.id,
+        title: '50% Off Sushi Lunch Special',
+        description: 'Enjoy our premium sushi lunch sets at half price. Includes miso soup, salad, and your choice of sushi roll.',
+        dealType: 'percentage',
+        discountValue: '50.00',
+        minOrderAmount: '15.00',
+        imageUrl: 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=500',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        startTime: '11:30',
+        endTime: '15:00',
+        totalUsesLimit: 50,
+        perCustomerLimit: 1,
+        isFeatured: true,
+        isActive: true
+      });
+
+      const deal3 = await this.createDeal({
+        restaurantId: foodTruck.id,
+        title: 'Gourmet Burger Combo Deal',
+        description: 'Get our signature gourmet burger with hand-cut fries and a drink for an unbeatable price!',
+        dealType: 'fixed',
+        discountValue: '4.00',
+        minOrderAmount: '10.00',
+        imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+        startTime: '10:00',
+        endTime: '20:00',
+        totalUsesLimit: 75,
+        perCustomerLimit: 1,
+        isFeatured: false,
+        isActive: true
+      });
+
+      // Create sample reviews
+      await this.createReview({
+        userId: customer1.id,
+        restaurantId: restaurant1.id,
+        rating: 5,
+        comment: 'Amazing pizza! The crust was perfect and the toppings were so fresh. Will definitely be back!'
+      });
+
+      await this.createReview({
+        userId: customer1.id,
+        restaurantId: restaurant2.id,
+        rating: 5,
+        comment: 'Best sushi in the city! Super fresh fish and great presentation. The lunch special is a steal!'
+      });
+
+      await this.createReview({
+        userId: customer1.id,
+        restaurantId: foodTruck.id,
+        rating: 4,
+        comment: 'Great burgers! Found them at the park and the food was delicious. Worth tracking them down!'
+      });
+
+      // Start a food truck session for demo
+      await this.startTruckSession(foodTruck.id, 'demo-device-123', owner3.id);
+
+      console.log('✅ Development seed data created successfully');
+      console.log('📊 Created:');
+      console.log('   - 3 restaurant owners (password: password123)');
+      console.log('   - 1 customer (customer@example.com, password: password123)');
+      console.log('   - 3 restaurants (including 1 food truck)');
+      console.log('   - 3 deals');
+      console.log('   - 3 reviews');
+      console.log('   - 1 active food truck session');
+    } catch (error) {
+      console.error('❌ Failed to seed development data:', error);
     }
   }
 
@@ -1426,7 +1594,9 @@ export class DatabaseStorage implements IStorage {
     const [newLocation] = await db
       .insert(foodTruckLocations)
       .values({
-        ...location,
+        restaurantId: location.restaurantId,
+        latitude: location.latitude.toString(),
+        longitude: location.longitude.toString(),
         sessionId: activeSession?.id,
       })
       .returning();
@@ -1510,20 +1680,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTruckLocationHistory(restaurantId: string, dateRange?: { start: Date; end: Date }): Promise<FoodTruckLocation[]> {
-    let query = db
-      .select()
-      .from(foodTruckLocations)
-      .where(eq(foodTruckLocations.restaurantId, restaurantId));
-
+    const conditions = [eq(foodTruckLocations.restaurantId, restaurantId)];
+    
     if (dateRange) {
-      query = query.where(and(
-        eq(foodTruckLocations.restaurantId, restaurantId),
-        gte(foodTruckLocations.recordedAt, dateRange.start),
-        lte(foodTruckLocations.recordedAt, dateRange.end)
-      ));
+      conditions.push(gte(foodTruckLocations.recordedAt, dateRange.start));
+      conditions.push(lte(foodTruckLocations.recordedAt, dateRange.end));
     }
 
-    const locations = await query
+    const locations = await db
+      .select()
+      .from(foodTruckLocations)
+      .where(and(...conditions))
       .orderBy(desc(foodTruckLocations.recordedAt))
       .limit(1000); // Reasonable limit to prevent huge responses
 

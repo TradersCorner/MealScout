@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
+import Login from "@/pages/login";
 import Home from "@/pages/home";
 import RestaurantSignup from "@/pages/restaurant-signup";
 import DealCreation from "@/pages/deal-creation";
@@ -47,6 +48,7 @@ function Router() {
       {isLoading || !isAuthenticated ? (
         <>
           <Route path="/" component={Landing} />
+          <Route path="/login" component={Login} />
           <Route path="/restaurant-signup" component={RestaurantSignup} />
           <Route path="/deal-creation" component={DealCreation} />
           <Route path="/deal/:id" component={DealDetail} />
@@ -55,6 +57,7 @@ function Router() {
       ) : (
         <>
           <Route path="/" component={Home} />
+          <Route path="/login" component={Login} />
           <Route path="/restaurant-signup" component={RestaurantSignup} />
           <Route path="/deal-creation" component={DealCreation} />
           <Route path="/deal/:id" component={DealDetail} />

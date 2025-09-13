@@ -82,7 +82,7 @@ export default function Home() {
           : truck
       ));
     },
-    autoConnect: true
+    autoConnect: false
   });
 
   // Get user location once only - no continuous retries

@@ -121,15 +121,47 @@ export default function Home() {
             }
           }
           
-          // Reverse geocoding for display name
-          fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
-            .then(res => res.json())
-            .then(data => {
-              setLocationName(data.locality || data.city || "Your Location");
-            })
-            .catch(() => {
+          // Reverse geocoding for display name with improved fallback logic
+          const getLocationName = async () => {
+            try {
+              // Try BigDataCloud first
+              const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+              const data = await response.json();
+              
+              // Get potential city names, prioritizing actual city names over districts
+              let cityName = data.city || data.locality || data.principalSubdivision;
+              
+              // If we get a poor result like "District X" or very short name, try alternative services
+              if (!cityName || cityName.toLowerCase().startsWith('district') || cityName.length < 3) {
+                console.log('🔄 BigDataCloud gave poor result, trying OpenStreetMap...');
+                
+                try {
+                  const osmResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
+                  const osmData = await osmResponse.json();
+                  
+                  if (osmData && osmData.address) {
+                    const addr = osmData.address;
+                    cityName = addr.city || addr.town || addr.village || addr.county || addr.state;
+                  }
+                } catch (osmError) {
+                  console.log('🔄 OpenStreetMap also failed, using fallback logic');
+                }
+              }
+              
+              // Final fallback to any available location identifier
+              if (!cityName || cityName.toLowerCase().startsWith('district')) {
+                cityName = data.principalSubdivision || data.countryName || "Your Location";
+              }
+              
+              console.log('🏙️ Final location name:', cityName);
+              setLocationName(cityName);
+            } catch (error) {
+              console.error('❌ All geocoding failed:', error);
               setLocationName("Your Location");
-            });
+            }
+          };
+          
+          getLocationName();
         },
         (error) => {
           console.log("Home page location error:", error.message);
@@ -240,15 +272,47 @@ export default function Home() {
             }
           }
           
-          // Reverse geocoding for display name
-          fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
-            .then(res => res.json())
-            .then(data => {
-              setLocationName(data.locality || data.city || "Your Location");
-            })
-            .catch(() => {
+          // Reverse geocoding for display name with improved fallback logic
+          const getLocationName = async () => {
+            try {
+              // Try BigDataCloud first
+              const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+              const data = await response.json();
+              
+              // Get potential city names, prioritizing actual city names over districts
+              let cityName = data.city || data.locality || data.principalSubdivision;
+              
+              // If we get a poor result like "District X" or very short name, try alternative services
+              if (!cityName || cityName.toLowerCase().startsWith('district') || cityName.length < 3) {
+                console.log('🔄 BigDataCloud gave poor result, trying OpenStreetMap...');
+                
+                try {
+                  const osmResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
+                  const osmData = await osmResponse.json();
+                  
+                  if (osmData && osmData.address) {
+                    const addr = osmData.address;
+                    cityName = addr.city || addr.town || addr.village || addr.county || addr.state;
+                  }
+                } catch (osmError) {
+                  console.log('🔄 OpenStreetMap also failed, using fallback logic');
+                }
+              }
+              
+              // Final fallback to any available location identifier
+              if (!cityName || cityName.toLowerCase().startsWith('district')) {
+                cityName = data.principalSubdivision || data.countryName || "Your Location";
+              }
+              
+              console.log('🏙️ Final location name:', cityName);
+              setLocationName(cityName);
+            } catch (error) {
+              console.error('❌ All geocoding failed:', error);
               setLocationName("Your Location");
-            });
+            }
+          };
+          
+          getLocationName();
         },
         (error) => {
           setIsLoadingLocation(false);

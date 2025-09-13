@@ -94,7 +94,7 @@ export const deals = pgTable("deals", {
   totalUsesLimit: integer("total_uses_limit"),
   perCustomerLimit: integer("per_customer_limit").default(1),
   currentUses: integer("current_uses").default(0),
-  isFeatured: boolean("is_featured").default(false),
+  facebookPageUrl: varchar("facebook_page_url"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

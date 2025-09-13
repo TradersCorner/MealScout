@@ -16,7 +16,7 @@ interface Deal {
   discountValue: string;
   minOrderAmount?: string;
   imageUrl?: string;
-  isFeatured: boolean;
+  facebookPageUrl?: string;
   restaurant?: {
     name: string;
     cuisineType?: string;
@@ -156,11 +156,9 @@ export default function DealCard({ deal }: DealCardProps) {
             />
             
             {/* Deal badge */}
-            {deal.isFeatured && (
-              <div className="absolute top-4 right-4 bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-2xl text-sm font-bold shadow-xl">
-                {formatDiscount()} off
-              </div>
-            )}
+            <div className="absolute top-4 right-4 bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-2xl text-sm font-bold shadow-xl">
+              {formatDiscount()} off
+            </div>
             
             {/* Action buttons */}
             <div className="absolute top-4 left-4 flex space-x-2">

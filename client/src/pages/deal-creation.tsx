@@ -30,7 +30,7 @@ const dealSchema = z.object({
   endTime: z.string().min(1, "End time is required"),
   totalUsesLimit: z.string().optional(),
   perCustomerLimit: z.string().optional(),
-  isFeatured: z.boolean().default(false),
+  facebookPageUrl: z.string().optional(),
 });
 
 type DealFormData = z.infer<typeof dealSchema>;
@@ -63,7 +63,7 @@ export default function DealCreation() {
       endTime: "15:00",
       totalUsesLimit: "",
       perCustomerLimit: "1",
-      isFeatured: false,
+      facebookPageUrl: "",
     },
   });
 
@@ -162,7 +162,7 @@ export default function DealCreation() {
     dealType: form.watch("dealType"),
     discountValue: form.watch("discountValue") || "0",
     minOrderAmount: form.watch("minOrderAmount"),
-    isFeatured: form.watch("isFeatured"),
+    facebookPageUrl: form.watch("facebookPageUrl"),
     image: selectedImage,
   };
 
@@ -256,14 +256,6 @@ export default function DealCreation() {
                   </div>
                 )}
                 
-                {dealPreviewData.isFeatured && (
-                  <div className="absolute top-2 left-2">
-                    <Badge className="bg-yellow-500 text-yellow-900 text-xs font-semibold">
-                      <Sparkles className="w-3 h-3 mr-1" />
-                      Featured
-                    </Badge>
-                  </div>
-                )}
                 
                 <div className="absolute bottom-2 right-2 bg-red-500 text-white px-2 py-1 rounded-md text-sm font-bold">
                   {dealPreviewData.dealType === "percentage" 
@@ -661,47 +653,30 @@ export default function DealCreation() {
               </div>
             </div>
 
-            {/* Promotion Budget */}
-            <Card className="bg-gradient-to-r from-primary/10 to-secondary/10">
+            {/* Facebook Integration */}
+            <Card className="bg-gradient-to-r from-blue-50 to-indigo-50">
               <CardContent className="p-4">
-                <h3 className="font-semibold text-foreground text-sm mb-2" data-testid="text-boost-title">Boost This Deal</h3>
-                <p className="text-muted-foreground text-xs mb-4" data-testid="text-boost-desc">
-                  Pay extra to feature your deal at the top of search results
+                <h3 className="font-semibold text-foreground text-sm mb-2" data-testid="text-facebook-title">Social Media Integration</h3>
+                <p className="text-muted-foreground text-xs mb-4" data-testid="text-facebook-desc">
+                  Connect your Facebook page to automatically post deals and tag @MealScout
                 </p>
                 
                 <FormField
                   control={form.control}
-                  name="isFeatured"
+                  name="facebookPageUrl"
                   render={({ field }) => (
-                    <FormItem className="space-y-3">
+                    <FormItem>
                       <FormControl>
-                        <RadioGroup
-                          onValueChange={(value) => field.onChange(value === "featured")}
-                          defaultValue={field.value ? "featured" : "standard"}
-                        >
-                          <Label className="flex items-center justify-between p-3 border border-border rounded-lg cursor-pointer bg-white">
-                            <div className="flex items-center space-x-3">
-                              <RadioGroupItem value="standard" id="standard" data-testid="radio-standard" />
-                              <div>
-                                <p className="font-medium text-sm" data-testid="text-standard-title">Standard Listing</p>
-                                <p className="text-xs text-muted-foreground" data-testid="text-standard-desc">Appears in regular results</p>
-                              </div>
-                            </div>
-                            <span className="font-semibold text-accent" data-testid="text-standard-price">Free</span>
-                          </Label>
-                          
-                          <Label className="flex items-center justify-between p-3 border border-border rounded-lg cursor-pointer bg-white">
-                            <div className="flex items-center space-x-3">
-                              <RadioGroupItem value="featured" id="featured" data-testid="radio-featured" />
-                              <div>
-                                <p className="font-medium text-sm" data-testid="text-featured-title">Featured Deal</p>
-                                <p className="text-xs text-muted-foreground" data-testid="text-featured-desc">Top 3 spots, 2x visibility</p>
-                              </div>
-                            </div>
-                            <span className="font-semibold text-primary" data-testid="text-featured-price">$5/day</span>
-                          </Label>
-                        </RadioGroup>
+                        <Input 
+                          type="url" 
+                          placeholder="https://facebook.com/your-restaurant-page" 
+                          {...field}
+                          data-testid="input-facebook-url"
+                        />
                       </FormControl>
+                      <p className="text-xs text-muted-foreground mt-1" data-testid="text-facebook-help">
+                        Link your Facebook page to cross-post deals automatically
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}

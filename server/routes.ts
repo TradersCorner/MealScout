@@ -701,8 +701,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/deals/featured', async (req, res) => {
     try {
-      // Use cached version for better performance
-      const deals = await storage.getFeaturedDealsCached();
+      // Return active deals instead of featured deals since we removed the pay-to-play model
+      const deals = await storage.getActiveDeals();
       
       // Add cache headers for client-side caching
       res.set({
@@ -1317,20 +1317,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/admin/deals/:id/featured', isAuthenticated, async (req: any, res) => {
-    try {
-      if (req.user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
-      const { isFeatured } = req.body;
-      await storage.updateDealFeatured(req.params.id, isFeatured);
-      res.json({ message: "Deal featured status updated successfully" });
-    } catch (error) {
-      console.error("Error updating deal:", error);
-      res.status(500).json({ message: "Failed to update deal" });
-    }
-  });
 
   // Admin verification routes
   app.get('/api/admin/verifications', isAuthenticated, async (req: any, res) => {

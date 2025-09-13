@@ -59,7 +59,6 @@ export interface IStorage {
   getDeal(id: string): Promise<Deal | undefined>;
   getDealsByRestaurant(restaurantId: string): Promise<Deal[]>;
   getActiveDeals(): Promise<Deal[]>;
-  getFeaturedDeals(): Promise<Deal[]>;
   getNearbyDeals(lat: number, lng: number, radiusKm: number): Promise<Deal[]>;
   searchDeals(filters: {
     query?: string;
@@ -418,76 +417,10 @@ export class DatabaseStorage implements IStorage {
           gte(deals.endTime, currentTime)
         )
       )
-      .orderBy(desc(deals.isFeatured), desc(deals.createdAt))
+      .orderBy(desc(deals.createdAt))
       .limit(50); // Limit results for better performance
   }
 
-  async getFeaturedDeals(): Promise<any[]> {
-    const now = new Date();
-    const currentTime = now.toTimeString().slice(0, 5);
-    
-    // Get all active deals and randomly select a subset as "featured"
-    return await db
-      .select({
-        id: deals.id,
-        restaurantId: deals.restaurantId,
-        title: deals.title,
-        description: deals.description,
-        dealType: deals.dealType,
-        discountValue: deals.discountValue,
-        minOrderAmount: deals.minOrderAmount,
-        imageUrl: deals.imageUrl,
-        startDate: deals.startDate,
-        endDate: deals.endDate,
-        startTime: deals.startTime,
-        endTime: deals.endTime,
-        totalUsesLimit: deals.totalUsesLimit,
-        perCustomerLimit: deals.perCustomerLimit,
-        currentUses: deals.currentUses,
-        isFeatured: deals.isFeatured,
-        isActive: deals.isActive,
-        createdAt: deals.createdAt,
-        updatedAt: deals.updatedAt,
-        restaurant: {
-          name: restaurants.name,
-          cuisineType: restaurants.cuisineType,
-          phone: restaurants.phone,
-          latitude: restaurants.latitude,
-          longitude: restaurants.longitude,
-        }
-      })
-      .from(deals)
-      .innerJoin(restaurants, eq(deals.restaurantId, restaurants.id))
-      .where(
-        and(
-          eq(deals.isActive, true),
-          eq(restaurants.isActive, true),
-          lte(deals.startDate, now),
-          gte(deals.endDate, now),
-          lte(deals.startTime, currentTime),
-          gte(deals.endTime, currentTime)
-        )
-      )
-      .orderBy(sql`RANDOM()`) // Random order each time
-      .limit(6); // Limit to 6 random featured deals
-  }
-
-  // Cache frequently accessed data
-  private featuredDealsCache: { data: any[]; timestamp: number } | null = null;
-  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-  async getFeaturedDealsCached(): Promise<any[]> {
-    const now = Date.now();
-    
-    if (this.featuredDealsCache && now - this.featuredDealsCache.timestamp < this.CACHE_TTL) {
-      return this.featuredDealsCache.data;
-    }
-    
-    const data = await this.getFeaturedDeals();
-    this.featuredDealsCache = { data, timestamp: now };
-    
-    return data;
-  }
 
   // Admin specific methods
   async getAdminStats(): Promise<any> {
@@ -564,7 +497,6 @@ export class DatabaseStorage implements IStorage {
         title: deals.title,
         discountValue: deals.discountValue,
         isActive: deals.isActive,
-        isFeatured: deals.isFeatured,
         restaurant: {
           id: restaurants.id,
           name: restaurants.name,
@@ -575,12 +507,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(deals.createdAt));
   }
 
-  async updateDealFeatured(dealId: string, isFeatured: boolean): Promise<void> {
-    await db
-      .update(deals)
-      .set({ isFeatured })
-      .where(eq(deals.id, dealId));
-  }
 
   async getNearbyDeals(lat: number, lng: number, radiusKm: number): Promise<any[]> {
     const now = new Date();
@@ -603,7 +529,6 @@ export class DatabaseStorage implements IStorage {
         totalUsesLimit: deals.totalUsesLimit,
         perCustomerLimit: deals.perCustomerLimit,
         currentUses: deals.currentUses,
-        isFeatured: deals.isFeatured,
         isActive: deals.isActive,
         createdAt: deals.createdAt,
         updatedAt: deals.updatedAt,
@@ -918,7 +843,7 @@ export class DatabaseStorage implements IStorage {
         endTime: '22:00',
         totalUsesLimit: 100,
         perCustomerLimit: 2,
-        isFeatured: true,
+
         isActive: true
       });
 
@@ -936,7 +861,7 @@ export class DatabaseStorage implements IStorage {
         endTime: '15:00',
         totalUsesLimit: 50,
         perCustomerLimit: 1,
-        isFeatured: true,
+
         isActive: true
       });
 
@@ -954,7 +879,6 @@ export class DatabaseStorage implements IStorage {
         endTime: '20:00',
         totalUsesLimit: 75,
         perCustomerLimit: 1,
-        isFeatured: false,
         isActive: true
       });
 

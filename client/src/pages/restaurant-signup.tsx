@@ -978,8 +978,14 @@ export default function RestaurantSignup() {
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel className="text-gray-600 leading-relaxed text-base" data-testid="label-terms">
-                        I agree to the <span className="text-red-600 font-medium underline">Terms of Service</span> and{" "}
-                        <span className="text-red-600 font-medium underline">Privacy Policy</span>
+                        I agree to the{" "}
+                        <Link href="/terms-of-service">
+                          <span className="text-red-600 font-medium underline hover:text-red-700 cursor-pointer">Terms of Service</span>
+                        </Link>
+                        {" "}and{" "}
+                        <Link href="/privacy-policy">
+                          <span className="text-red-600 font-medium underline hover:text-red-700 cursor-pointer">Privacy Policy</span>
+                        </Link>
                       </FormLabel>
                       <FormMessage />
                     </div>

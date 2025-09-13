@@ -32,6 +32,8 @@ import SubscriptionManagement from "@/pages/subscription-management";
 import RestaurantOwnerDashboard from "@/pages/restaurant-owner-dashboard";
 import UserDashboard from "@/pages/user-dashboard";
 import DashboardSwitcher from "@/components/dashboard-switcher";
+import TermsOfService from "@/pages/terms-of-service";
+import PrivacyPolicy from "@/pages/privacy-policy";
 
 // Wrapper component to handle route props
 function DashboardSwitcherPage() {
@@ -67,6 +69,8 @@ function Router() {
           <Route path="/deals" component={FeaturedDealsPage} />
           <Route path="/deals/featured" component={FeaturedDealsPage} />
           <Route path="/restaurant/:id" component={RestaurantDetail} />
+          <Route path="/terms-of-service" component={TermsOfService} />
+          <Route path="/privacy-policy" component={PrivacyPolicy} />
           <Route path="/admin" component={AdminLogin} />
         </>
       ) : (
@@ -94,6 +98,8 @@ function Router() {
           <Route path="/deals" component={FeaturedDealsPage} />
           <Route path="/deals/featured" component={FeaturedDealsPage} />
           <Route path="/restaurant/:id" component={RestaurantDetail} />
+          <Route path="/terms-of-service" component={TermsOfService} />
+          <Route path="/privacy-policy" component={PrivacyPolicy} />
           <Route path="/profile/notifications" component={NotificationsPage} />
           <Route path="/profile/settings" component={SettingsPage} />
           <Route path="/settings" component={SettingsPage} />

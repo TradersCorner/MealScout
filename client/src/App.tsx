@@ -71,6 +71,7 @@ function Router() {
           <Route path="/admin/dashboard" component={AdminDashboard} />
           <Route path="/admin/switcher" component={DashboardSwitcherPage} />
           <Route path="/category/:category" component={CategoryPage} />
+          <Route path="/deals" component={FeaturedDealsPage} />
           <Route path="/deals/featured" component={FeaturedDealsPage} />
           <Route path="/restaurant/:id" component={RestaurantDetail} />
           <Route path="/profile/notifications" component={NotificationsPage} />

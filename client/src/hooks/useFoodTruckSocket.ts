@@ -59,10 +59,10 @@ export function useFoodTruckSocket({
         setReconnectAttempts(0);
 
         // Send authentication if user is logged in
-        if (user && (user as any).id) {
+        if (user && user.id) {
           ws.send(JSON.stringify({
             type: 'auth',
-            userId: (user as any).id
+            userId: user.id
           }));
         }
 

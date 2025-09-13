@@ -58,7 +58,7 @@ export default function ProfilePage() {
     { icon: Heart, label: "Favorites", badge: userStats.favoriteRestaurants.toString(), href: "/favorites" },
     { icon: Bell, label: "Notifications", badge: null, href: "/profile/notifications" },
     // Only show Payment Methods for restaurant owners who need subscription billing
-    ...((user as any)?.userType === 'restaurant_owner' ? [
+    ...(user?.userType === 'restaurant_owner' ? [
       { icon: CreditCard, label: "Payment Methods", badge: null, href: "/profile/payment" }
     ] : []),
     { icon: MapPin, label: "Addresses", badge: null, href: "/profile/addresses" },
@@ -79,9 +79,9 @@ export default function ProfilePage() {
         <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
           <CardContent className="p-6">
             <div className="flex items-center space-x-4">
-              {(user as any)?.profileImageUrl ? (
+              {user?.profileImageUrl ? (
                 <img
-                  src={(user as any).profileImageUrl}
+                  src={user.profileImageUrl}
                   alt="Profile"
                   className="w-16 h-16 rounded-full object-cover"
                 />
@@ -92,13 +92,13 @@ export default function ProfilePage() {
               )}
               <div className="flex-1">
                 <h2 className="text-xl font-bold text-foreground" data-testid="text-user-name">
-                  {(user as any)?.firstName && (user as any)?.lastName 
-                    ? `${(user as any).firstName} ${(user as any).lastName}`
-                    : (user as any)?.email || 'User'
+                  {user?.firstName && user?.lastName 
+                    ? `${user.firstName} ${user.lastName}`
+                    : user?.email || 'User'
                   }
                 </h2>
                 <p className="text-sm text-muted-foreground" data-testid="text-user-email">
-                  {(user as any)?.email}
+                  {user?.email}
                 </p>
                 <div className="flex items-center mt-2">
                   <Star className="w-4 h-4 text-yellow-500 mr-1" />

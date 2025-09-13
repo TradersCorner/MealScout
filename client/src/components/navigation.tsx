@@ -1,16 +1,31 @@
 import { Link, useLocation } from "wouter";
-import { Home, Search, Heart, Receipt, User, MapPin } from "lucide-react";
+import { Home, Search, Heart, Receipt, User, MapPin, Store, Plus, BarChart3 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Navigation() {
   const [location] = useLocation();
+  const { user } = useAuth();
 
-  const navItems = [
+  // Check if user is a restaurant owner
+  const isRestaurantOwner = user && user.userType === 'restaurant_owner';
+
+  const customerNavItems = [
     { path: "/", icon: Home, label: "Home" },
     { path: "/search", icon: Search, label: "Search" },
     { path: "/map", icon: MapPin, label: "Map" },
     { path: "/favorites", icon: Heart, label: "Favorites" },
     { path: "/profile", icon: User, label: "Profile" },
   ];
+
+  const restaurantOwnerNavItems = [
+    { path: "/", icon: Home, label: "Home" },
+    { path: "/restaurant-owner-dashboard", icon: Store, label: "Dashboard" },
+    { path: "/deal-creation", icon: Plus, label: "Create Deal" },
+    { path: "/subscription", icon: BarChart3, label: "Subscription" },
+    { path: "/profile", icon: User, label: "Profile" },
+  ];
+
+  const navItems = isRestaurantOwner ? restaurantOwnerNavItems : customerNavItems;
 
   return (
     <nav className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-white border-t border-border px-4 py-2">

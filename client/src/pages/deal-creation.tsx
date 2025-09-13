@@ -45,8 +45,20 @@ export default function DealCreation() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: restaurants } = useQuery({
-    queryKey: ["/api/restaurants/my"],
+    queryKey: ["/api/restaurants/my-restaurants"],
     enabled: isAuthenticated,
+  });
+
+  // Fetch subscription status for deal limits
+  const { data: subscription } = useQuery({
+    queryKey: ["/api/subscription/status"],
+    enabled: isAuthenticated,
+  });
+
+  // Fetch current deal count for limits
+  const { data: currentDeals } = useQuery({
+    queryKey: ["/api/deals/my-active"],
+    enabled: isAuthenticated && Array.isArray(restaurants) && restaurants.length > 0,
   });
 
   const form = useForm<DealFormData>({
@@ -115,6 +127,7 @@ export default function DealCreation() {
   });
 
   const onSubmit = (data: DealFormData) => {
+    // Server-side validation will handle subscription limits
     createDealMutation.mutate(data);
   };
 

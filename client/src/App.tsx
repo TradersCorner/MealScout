@@ -10,6 +10,7 @@ import Login from "@/pages/login";
 import Home from "@/pages/home";
 import RestaurantSignup from "@/pages/restaurant-signup";
 import DealCreation from "@/pages/deal-creation";
+import DealEdit from "@/pages/deal-edit";
 import DealDetail from "@/pages/deal-detail";
 import Subscribe from "@/pages/subscribe";
 import Search from "@/pages/search";
@@ -79,6 +80,7 @@ function Router() {
           <Route path="/login" component={Login} />
           <Route path="/restaurant-signup" component={RestaurantSignup} />
           <Route path="/deal-creation" component={DealCreation} />
+          <Route path="/deal-edit/:dealId" component={DealEdit} />
           <Route path="/deal/:id" component={DealDetail} />
           <Route path="/subscribe" component={Subscribe} />
           <Route path="/subscription" component={SubscriptionManagement} />

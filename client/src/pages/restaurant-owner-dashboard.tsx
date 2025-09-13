@@ -591,12 +591,6 @@ export default function RestaurantOwnerDashboard() {
                         <Badge className={getDealTypeColor(deal.dealType)}>
                           {deal.dealType}
                         </Badge>
-                        {deal.isFeatured && (
-                          <Badge variant="secondary">
-                            <Star className="h-3 w-3 mr-1" />
-                            Featured
-                          </Badge>
-                        )}
                       </div>
                       
                       <p className="text-muted-foreground mb-3">{deal.description}</p>
@@ -620,26 +614,20 @@ export default function RestaurantOwnerDashboard() {
                     </div>
                     
                     <div className="flex gap-2">
+                      <Link href={`/deal/${deal.id}`}>
+                        <Button variant="ghost" size="sm" data-testid={`button-view-${deal.id}`}>
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                      </Link>
+                      <Link href={`/deal-edit/${deal.id}`}>
+                        <Button variant="outline" size="sm" data-testid={`button-edit-${deal.id}`}>
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                      </Link>
                       <Button
                         variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          // Quick edit toggle - we'll use a simple approach with prompts for now
-                          const newTitle = prompt("Edit deal title:", deal.title);
-                          if (newTitle && newTitle !== deal.title) {
-                            updateDealMutation.mutate({ 
-                              dealId: deal.id, 
-                              updates: { title: newTitle }
-                            });
-                          }
-                        }}
-                        data-testid={`button-quick-edit-${deal.id}`}
-                      >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Quick Edit
-                      </Button>
-                      <Button
-                        variant="outline"
                         size="sm"
                         onClick={() => toggleDealMutation.mutate({ dealId: deal.id, isActive: Boolean(deal.isActive) })}
                         data-testid={`button-deactivate-${deal.id}`}

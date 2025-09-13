@@ -94,7 +94,7 @@ export default function Subscribe() {
   const [isCreatingSubscription, setIsCreatingSubscription] = useState(false);
 
   // Check if user is new (never had a subscription)
-  const isNewUser = !(user as any)?.stripeSubscriptionId;
+  const isNewUser = !user?.stripeSubscriptionId;
 
   const createSubscription = async (interval: 'month' | '3-month' | 'year') => {
     setIsCreatingSubscription(true);

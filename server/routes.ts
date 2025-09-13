@@ -28,6 +28,86 @@ function validateEnvironment() {
   }
 }
 
+// Subscription validation function
+async function validateSubscriptionLimits(userId: string, excludeDealId?: string): Promise<{
+  isValid: boolean;
+  error?: string;
+  currentCount?: number;
+  maxDeals?: number;
+}> {
+  try {
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return { isValid: false, error: "User not found" };
+    }
+
+    // Check if user has beta access (free)
+    if (user.subscriptionBillingInterval && !user.stripeSubscriptionId) {
+      // Beta user - allow unlimited deals for now
+      return { isValid: true, currentCount: 0, maxDeals: 999 };
+    }
+
+    // Check if user has active subscription
+    if (!stripe || !user.stripeSubscriptionId) {
+      return { 
+        isValid: false, 
+        error: "Active subscription required to create deals. Please upgrade your plan.",
+        currentCount: 0,
+        maxDeals: 0
+      };
+    }
+
+    // Verify subscription status with Stripe
+    const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+    if (!subscription || subscription.status !== 'active') {
+      return { 
+        isValid: false, 
+        error: "Your subscription is not active. Please check your payment method and try again.",
+        currentCount: 0,
+        maxDeals: 0
+      };
+    }
+
+    // Get user's restaurants and count active deals
+    const restaurants = await storage.getRestaurantsByOwner(userId);
+    let activeDealsCount = 0;
+    
+    for (const restaurant of restaurants) {
+      const deals = await storage.getDealsByRestaurant(restaurant.id);
+      const activeDeals = deals.filter(d => d.isActive && (!excludeDealId || d.id !== excludeDealId));
+      activeDealsCount += activeDeals.length;
+    }
+
+    // Define deal limits based on subscription interval
+    const maxDeals = user.subscriptionBillingInterval === 'year' ? 50 : 
+                     user.subscriptionBillingInterval === '3-month' ? 25 : 
+                     10; // monthly default
+
+    if (activeDealsCount >= maxDeals) {
+      return { 
+        isValid: false, 
+        error: `You've reached your limit of ${maxDeals} active deals. Upgrade your plan or deactivate existing deals.`,
+        currentCount: activeDealsCount,
+        maxDeals
+      };
+    }
+
+    return { 
+      isValid: true, 
+      currentCount: activeDealsCount, 
+      maxDeals 
+    };
+  } catch (error) {
+    console.error("Subscription validation error:", error);
+    return { 
+      isValid: false, 
+      error: "Unable to verify subscription status. Please try again.",
+      currentCount: 0,
+      maxDeals: 0
+    };
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Validate environment in production
   if (process.env.NODE_ENV === 'production') {
@@ -89,6 +169,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { dealId } = req.params;
       const updates = req.body;
+      const userId = req.user.id;
+      
+      // Get current deal to check ownership
+      const currentDeal = await storage.getDeal(dealId);
+      if (!currentDeal) {
+        return res.status(404).json({ message: "Deal not found" });
+      }
+      
+      // Verify restaurant ownership
+      const restaurant = await storage.getRestaurant(currentDeal.restaurantId);
+      if (!restaurant || restaurant.ownerId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      // If activating a deal, validate subscription limits
+      if (updates.isActive === true && !currentDeal.isActive) {
+        const subscriptionValidation = await validateSubscriptionLimits(userId, dealId);
+        if (!subscriptionValidation.isValid) {
+          return res.status(402).json({ 
+            message: subscriptionValidation.error,
+            currentCount: subscriptionValidation.currentCount,
+            maxDeals: subscriptionValidation.maxDeals
+          });
+        }
+      }
+      
       const updatedDeal = await storage.updateDeal(dealId, updates);
       res.json(updatedDeal);
     } catch (error) {
@@ -680,6 +786,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const restaurant = await storage.getRestaurant(dealData.restaurantId);
       if (!restaurant || restaurant.ownerId !== userId) {
         return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      // Validate subscription limits
+      const subscriptionValidation = await validateSubscriptionLimits(userId);
+      if (!subscriptionValidation.isValid) {
+        return res.status(402).json({ 
+          message: subscriptionValidation.error,
+          currentCount: subscriptionValidation.currentCount,
+          maxDeals: subscriptionValidation.maxDeals
+        });
       }
       
       const deal = await storage.createDeal(dealData);

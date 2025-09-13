@@ -45,7 +45,7 @@ export default function DashboardSwitcher({ defaultView = 'admin' }: DashboardSw
 
   // If not admin, redirect to appropriate dashboard
   if (adminError || !adminUser) {
-    if ((user as any)?.userType === 'restaurant_owner') {
+    if (user?.userType === 'restaurant_owner') {
       return <RestaurantOwnerDashboard />;
     } else {
       return <UserDashboard />;
@@ -148,7 +148,7 @@ export default function DashboardSwitcher({ defaultView = 'admin' }: DashboardSw
               <div className="flex items-center gap-4 text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Settings className="h-4 w-4" />
-                  Admin: {(user as any)?.email}
+                  Admin: {user?.email}
                 </span>
                 <Button variant="ghost" size="sm" asChild data-testid="button-exit-switcher">
                   <Link href="/admin/dashboard">Exit Switcher</Link>

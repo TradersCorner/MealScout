@@ -134,7 +134,7 @@ export default function UserDashboard() {
           <div className="text-right">
             <div className="text-sm text-muted-foreground">Welcome back</div>
             <div className="font-semibold" data-testid="text-user-welcome">
-              {(user as any)?.firstName ? `${(user as any).firstName}!` : 'Food Explorer!'}
+              {user?.firstName ? `${user.firstName}!` : 'Food Explorer!'}
             </div>
           </div>
         </div>

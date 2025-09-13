@@ -1616,7 +1616,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLiveTrucksNearby(lat: number, lng: number, radiusKm: number): Promise<Array<Restaurant & { distance: number; sessionId?: string }>> {
-    // Use Haversine formula for distance calculation
+    // Simple query first - just return food trucks with valid locations
     const results = await db
       .select({
         id: restaurants.id,
@@ -1637,15 +1637,6 @@ export class DatabaseStorage implements IStorage {
         createdAt: restaurants.createdAt,
         updatedAt: restaurants.updatedAt,
         sessionId: foodTruckSessions.id,
-        distance: sql<number>`
-          6371 * acos(
-            cos(radians(${lat})) * 
-            cos(radians(cast(current_latitude as float))) * 
-            cos(radians(cast(current_longitude as float)) - radians(${lng})) + 
-            sin(radians(${lat})) * 
-            sin(radians(cast(current_latitude as float)))
-          )
-        `,
       })
       .from(restaurants)
       .leftJoin(foodTruckSessions, and(
@@ -1657,26 +1648,39 @@ export class DatabaseStorage implements IStorage {
         eq(restaurants.mobileOnline, true),
         eq(restaurants.isActive, true),
         sql`current_latitude IS NOT NULL`,
-        sql`current_longitude IS NOT NULL`,
-        // Only include trucks that have broadcast location recently (within last 5 minutes)
-        gte(restaurants.lastBroadcastAt, new Date(Date.now() - 5 * 60 * 1000)),
-        // Distance filter using Haversine formula  
-        sql`
-          6371 * acos(
-            cos(radians(${lat})) * 
-            cos(radians(cast(current_latitude as float))) * 
-            cos(radians(cast(current_longitude as float)) - radians(${lng})) + 
-            sin(radians(${lat})) * 
-            sin(radians(cast(current_latitude as float)))
-          ) <= ${radiusKm}
-        `
-      ))
-      .orderBy(sql`distance`);
+        sql`current_longitude IS NOT NULL`
+      ));
 
-    return results.map(result => ({
-      ...result,
-      sessionId: result.sessionId || undefined,
-    }));
+    // Calculate distance in JavaScript for now (simpler than complex SQL)
+    const trucksWithDistance = results.map(truck => {
+      if (!truck.currentLatitude || !truck.currentLongitude) {
+        return { ...truck, distance: 999999, sessionId: truck.sessionId || undefined };
+      }
+      
+      const truckLat = parseFloat(truck.currentLatitude);
+      const truckLng = parseFloat(truck.currentLongitude);
+      
+      // Haversine formula for distance calculation
+      const R = 6371; // Earth's radius in kilometers
+      const dLat = (truckLat - lat) * Math.PI / 180;
+      const dLng = (truckLng - lng) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat * Math.PI / 180) * Math.cos(truckLat * Math.PI / 180) *
+                Math.sin(dLng/2) * Math.sin(dLng/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distance = R * c;
+      
+      return {
+        ...truck,
+        distance,
+        sessionId: truck.sessionId || undefined,
+      };
+    });
+
+    // Filter by radius and sort by distance
+    return trucksWithDistance
+      .filter(truck => truck.distance <= radiusKm)
+      .sort((a, b) => a.distance - b.distance);
   }
 
   async getTruckLocationHistory(restaurantId: string, dateRange?: { start: Date; end: Date }): Promise<FoodTruckLocation[]> {

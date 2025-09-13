@@ -137,10 +137,10 @@ export default function Home() {
     
     setLoadingFoodTrucks(true);
     try {
-      const response = await fetch(`/api/food-trucks/nearby?lat=${location.lat}&lng=${location.lng}&radius=5000`);
+      const response = await fetch(`/api/trucks/live?lat=${location.lat}&lng=${location.lng}&radiusKm=5`);
       if (response.ok) {
         const data = await response.json();
-        setFoodTrucks(data.foodTrucks || []);
+        setFoodTrucks(data.trucks || []);
       } else {
         console.error('Food truck API response not ok:', response.status);
       }

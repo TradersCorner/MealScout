@@ -146,8 +146,8 @@ export default function SubscriptionManagement() {
                 </div>
 
                 {subscriptionStatus.cancelAtPeriodEnd && (
-                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                    <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <div className="flex items-center gap-2 text-amber-800">
                       <AlertCircle className="h-4 w-4" />
                       <span className="text-sm font-medium">
                         Subscription will cancel at the end of the billing period

@@ -198,7 +198,7 @@ export default function DocumentUpload({
               "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
               dragOver 
                 ? "border-primary bg-primary/5" 
-                : "border-gray-300 hover:border-gray-400 dark:border-gray-600 dark:hover:border-gray-500"
+                : "border-gray-300 hover:border-gray-400"
             )}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -251,7 +251,7 @@ export default function DocumentUpload({
               {documents.map((doc) => (
                 <div
                   key={doc.id}
-                  className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50"
                   data-testid={`document-item-${doc.id}`}
                 >
                   <div className="flex-shrink-0">
@@ -307,7 +307,7 @@ export default function DocumentUpload({
           data-testid="preview-modal"
         >
           <div 
-            className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl max-h-[90vh] overflow-auto"
+            className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b flex items-center justify-between">

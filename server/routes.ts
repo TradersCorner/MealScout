@@ -12,10 +12,16 @@ import { broadcastLocationUpdate, broadcastStatusUpdate } from "./websocket";
 
 // Optional Stripe integration
 const stripe = process.env.STRIPE_SECRET_KEY 
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2024-06-20",
-    })
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
+
+// Beta mode flag - when enabled, all users get free access to all features
+const BETA_MODE = process.env.BETA_MODE === 'true';
+
+// Production safety check: warn if beta mode is enabled in production
+if (process.env.NODE_ENV === 'production' && BETA_MODE) {
+  console.warn('⚠️  WARNING: BETA_MODE is enabled in production environment! All users will have free access to premium features.');
+}
 
 // Environment validation for production
 function validateEnvironment() {
@@ -38,6 +44,11 @@ async function validateAnalyticsAccess(userId: string): Promise<{
     const user = await storage.getUser(userId);
     if (!user) {
       return { hasAccess: false, error: "User not found" };
+    }
+
+    // During beta testing, all users get free access to analytics
+    if (BETA_MODE) {
+      return { hasAccess: true, subscriptionTier: "beta" };
     }
 
     // Check if user has beta access (free analytics for beta users)
@@ -97,6 +108,11 @@ async function validateSubscriptionLimits(userId: string, excludeDealId?: string
     const user = await storage.getUser(userId);
     if (!user) {
       return { isValid: false, error: "User not found" };
+    }
+
+    // During beta testing, all users get unlimited deals
+    if (BETA_MODE) {
+      return { isValid: true, currentCount: 0, maxDeals: 999 };
     }
 
     // Check if user has beta access (free)
@@ -505,6 +521,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Unauthorized: You can only access analytics for restaurants you own" });
       }
       
+      // Validate analytics access (paid feature)
+      const analyticsAccess = await validateAnalyticsAccess(req.user.id);
+      if (!analyticsAccess.hasAccess) {
+        return res.status(402).json({ 
+          message: analyticsAccess.error,
+          subscriptionTier: analyticsAccess.subscriptionTier
+        });
+      }
+      
       let dateRange: { start: Date; end: Date } | undefined;
       if (startDate && endDate) {
         dateRange = {
@@ -530,6 +555,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
       if (!isAuthorized) {
         return res.status(403).json({ message: "Unauthorized: You can only access analytics for restaurants you own" });
+      }
+      
+      // Validate analytics access (paid feature)
+      const analyticsAccess = await validateAnalyticsAccess(req.user.id);
+      if (!analyticsAccess.hasAccess) {
+        return res.status(402).json({ 
+          message: analyticsAccess.error,
+          subscriptionTier: analyticsAccess.subscriptionTier
+        });
       }
       
       if (!startDate || !endDate) {
@@ -564,6 +598,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Unauthorized: You can only access analytics for restaurants you own" });
       }
       
+      // Validate analytics access (paid feature)
+      const analyticsAccess = await validateAnalyticsAccess(req.user.id);
+      if (!analyticsAccess.hasAccess) {
+        return res.status(402).json({ 
+          message: analyticsAccess.error,
+          subscriptionTier: analyticsAccess.subscriptionTier
+        });
+      }
+      
       let dateRange: { start: Date; end: Date } | undefined;
       if (startDate && endDate) {
         dateRange = {
@@ -594,6 +637,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
       if (!isAuthorized) {
         return res.status(403).json({ message: "Unauthorized: You can only access analytics for restaurants you own" });
+      }
+      
+      // Validate analytics access (paid feature)
+      const analyticsAccess = await validateAnalyticsAccess(req.user.id);
+      if (!analyticsAccess.hasAccess) {
+        return res.status(402).json({ 
+          message: analyticsAccess.error,
+          subscriptionTier: analyticsAccess.subscriptionTier
+        });
       }
       
       if (!currentStart || !currentEnd || !previousStart || !previousEnd) {
@@ -647,6 +699,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
       if (!isAuthorized) {
         return res.status(403).json({ message: "Unauthorized: You can only access analytics for restaurants you own" });
+      }
+      
+      // Validate analytics access (paid feature)
+      const analyticsAccess = await validateAnalyticsAccess(req.user.id);
+      if (!analyticsAccess.hasAccess) {
+        return res.status(402).json({ 
+          message: analyticsAccess.error,
+          subscriptionTier: analyticsAccess.subscriptionTier
+        });
       }
       
       if (!startDate || !endDate) {

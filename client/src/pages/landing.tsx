@@ -84,8 +84,8 @@ export default function Landing() {
   };
 
   const handleGoogleLogin = () => {
-    // Use Replit Auth which includes Google, GitHub, Apple, and email authentication
-    window.location.href = '/api/login';
+    // Use direct Google OAuth authentication
+    window.location.href = '/api/auth/google/customer';
   };
 
   const handleEmailLogin = () => {

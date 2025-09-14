@@ -94,7 +94,7 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
               </div>
               <h3 className="text-xl font-bold text-foreground mb-3">Claim This Deal</h3>
               <p className="text-muted-foreground mb-6">
-                To claim this deal, you'll need to check in at the restaurant on Facebook and tag TradeScout.
+                To claim this deal, you'll need to check in at the restaurant on Facebook and tag MealScout.
               </p>
               <div className="space-y-3">
                 <Button

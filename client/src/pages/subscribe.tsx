@@ -122,7 +122,7 @@ export default function Subscribe() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/api/auth/google/restaurant";
         }, 500);
         return;
       }
@@ -157,7 +157,7 @@ export default function Subscribe() {
         <Card>
           <CardContent className="p-6">
             <p className="text-center text-muted-foreground mb-4">Please log in to subscribe</p>
-            <Button onClick={() => window.location.href = "/api/login"} className="w-full">
+            <Button onClick={() => window.location.href = "/api/auth/google/restaurant"} className="w-full">
               Log In
             </Button>
           </CardContent>

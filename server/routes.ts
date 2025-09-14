@@ -1977,7 +1977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         restaurantName: restaurant.name,
         restaurantAddress: restaurant.address,
         facebookPostData: {
-          message: `Just claimed this amazing deal at ${restaurant.name}! 🍽️\n\n${deal.title}\n\nFound this through TradeScout - check it out! #TradeScout #FoodDeals`,
+          message: `Just claimed this amazing deal at ${restaurant.name}! 🍽️\n\n${deal.title}\n\nFound this through MealScout - check it out! #MealScout #FoodDeals`,
           place: restaurant.name,
           link: `${req.protocol}://${req.get('host')}/deal/${dealId}`,
           name: deal.title,

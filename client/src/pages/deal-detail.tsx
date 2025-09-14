@@ -103,7 +103,7 @@ export default function DealDetail() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/api/auth/google/customer";
         }, 500);
         return;
       }

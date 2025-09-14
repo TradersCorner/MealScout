@@ -28,7 +28,7 @@ export const initFacebookSDK = () => {
     (function(d, s, id) {
       var js, fjs = d.getElementsByTagName(s)[0];
       if (d.getElementById(id)) { return; }
-      js = d.createElement(s); js.id = id;
+      js = d.createElement(s) as HTMLScriptElement; js.id = id;
       js.src = "https://connect.facebook.net/en_US/sdk.js";
       fjs.parentNode?.insertBefore(js, fjs);
     }(document, 'script', 'facebook-jssdk'));
@@ -92,7 +92,7 @@ export const checkInToPlace = (postData: {
     }
 
     // Create a post with location mention using Facebook Share Dialog
-    const shareMessage = `📍 Checked in at ${postData.restaurantName}!\n\n${postData.message}\n\n#FoodDeals`;
+    const shareMessage = `📍 Checked in at ${postData.restaurantName}!\n\n${postData.message}\n\nDiscovered through MealScout! #MealScout #FoodDeals`;
     
     window.FB.ui({
       method: 'share',

@@ -150,6 +150,7 @@ export async function setupUnifiedAuth(app: Express) {
 
   // Facebook Strategy
   if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
+    console.log("Setting up Facebook OAuth strategy...");
     passport.use(new FacebookStrategy({
       clientID: process.env.FACEBOOK_APP_ID,
       clientSecret: process.env.FACEBOOK_APP_SECRET,
@@ -201,6 +202,9 @@ export async function setupUnifiedAuth(app: Express) {
         res.redirect('/');
       }
     );
+    console.log("✅ Facebook OAuth strategy configured successfully");
+  } else {
+    console.log("Facebook OAuth not configured: FACEBOOK_APP_ID and FACEBOOK_APP_SECRET environment variables are missing");
   }
 
   // Email/password registration for customers

@@ -43,6 +43,9 @@ export default function LocationButton({
   const statusRef = useRef(status);
   const mountedRef = useRef(true);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const inFlightRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const lastCoordsRef = useRef<{ lat: number; lng: number; timestamp: number } | null>(null);
 
   // Fetch user addresses if authenticated
   const { data: userAddresses = [] } = useQuery<UserAddress[]>({
@@ -129,7 +132,11 @@ export default function LocationButton({
   };
 
   const handleLocationDetection = async () => {
-    if (isLoading) return;
+    // Single-flight guard: prevent duplicate detection attempts
+    if (isLoading || inFlightRef.current) {
+      console.log('🚫 Location detection already in progress, skipping...');
+      return;
+    }
 
     if (!navigator.geolocation) {
       onLocationError("Geolocation is not supported by this browser.");
@@ -156,6 +163,17 @@ export default function LocationButton({
       setInternalLoading(true);
       setStatus("loading");
     }
+
+    // Cancel any in-flight requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Set up new abort controller for this detection
+    abortControllerRef.current = new AbortController();
+    
+    // Mark detection as in-flight (after all early checks)
+    inFlightRef.current = true;
 
     const platform = detectPlatform();
     let attemptNumber = 0;
@@ -210,7 +228,7 @@ export default function LocationButton({
       });
     };
 
-    // Try multiple location detection methods
+    // Try multiple location detection methods  
     for (attemptNumber = 1; attemptNumber <= maxAttempts; attemptNumber++) {
       try {
         const position = await tryLocationMethod(attemptNumber);
@@ -308,6 +326,11 @@ export default function LocationButton({
           }, 2000);
           
           if (mountedRef.current) setInternalLoading(false);
+          
+          // Clean up on success
+          inFlightRef.current = false;
+          abortControllerRef.current = null;
+          
           return; // Success! Exit the retry loop
           
         } catch (error) {
@@ -423,7 +446,13 @@ export default function LocationButton({
         // Small delay before next attempt
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
+    
+    // If we get here, all attempts failed
+    inFlightRef.current = false;
+    if (mountedRef.current) {
+      setInternalLoading(false);
     }
+    abortControllerRef.current = null;
   };
 
   const getButtonContent = () => {

@@ -148,104 +148,14 @@ export default function Home() {
     }
   }, [location, foodTrucks.length]);
 
-  // Retry location detection
+  // Retry location detection using LocationButton
   const retryLocation = () => {
-    setIsLoadingLocation(true);
+    // Clear error state and let LocationButton handle detection
     setLocationError(null);
     setShowLocationInput(false);
-    setLocationName("Getting location...");
     
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setLocation({ lat: latitude, lng: longitude });
-          setIsLoadingLocation(false);
-          setLocationError(null);
-          setShowLocationInput(false);
-          
-          // Subscribe to nearby food trucks (5km radius)
-          // Ensure WebSocket is connected before subscribing
-          if (wsConnected) {
-            subscribeToNearby(latitude, longitude, 5000);
-          } else {
-            // Connect WebSocket and then subscribe
-            try {
-              connectWS();
-              // Subscribe will work once connection is established
-              subscribeToNearby(latitude, longitude, 5000);
-            } catch (err: any) {
-              console.warn('Failed to connect WebSocket for food truck updates:', err);
-            }
-          }
-          
-          // Reverse geocoding for display name with improved fallback logic
-          const getLocationName = async () => {
-            try {
-              // Try BigDataCloud first
-              const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
-              const data = await response.json();
-              
-              // Get potential city names, prioritizing actual city names over districts
-              let cityName = data.city || data.locality || data.principalSubdivision;
-              
-              // If we get a poor result like "District X" or very short name, try alternative services
-              if (!cityName || cityName.toLowerCase().startsWith('district') || cityName.length < 3) {
-                console.log('🔄 BigDataCloud gave poor result, trying OpenStreetMap...');
-                
-                try {
-                  const osmResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
-                  const osmData = await osmResponse.json();
-                  
-                  if (osmData && osmData.address) {
-                    const addr = osmData.address;
-                    cityName = addr.city || addr.town || addr.village || addr.county || addr.state;
-                  }
-                } catch (osmError) {
-                  console.log('🔄 OpenStreetMap also failed, using fallback logic');
-                }
-              }
-              
-              // Final fallback to any available location identifier
-              if (!cityName || cityName.toLowerCase().startsWith('district')) {
-                cityName = data.principalSubdivision || data.countryName || "Your Location";
-              }
-              
-              console.log('🏙️ Final location name:', cityName);
-              setLocationName(cityName);
-            } catch (error) {
-              console.error('❌ All geocoding failed:', error);
-              setLocationName("Your Location");
-            }
-          };
-          
-          getLocationName();
-        },
-        (error) => {
-          setIsLoadingLocation(false);
-          
-          if (error.code === 1) {
-            setLocationError("Please enable location permissions in your browser settings.");
-            setLocationName("Permission denied");
-          } else {
-            setLocationError("Unable to get location. Please try again or enter manually.");
-            setLocationName("Location failed");
-          }
-          
-          setShowLocationInput(true);
-        },
-        { 
-          enableHighAccuracy: true, 
-          timeout: 10000, 
-          maximumAge: 30000
-        }
-      );
-    } else {
-      setIsLoadingLocation(false);
-      setLocationError("Geolocation is not supported by this browser.");
-      setLocationName("Not supported");
-      setShowLocationInput(true);
-    }
+    // The actual location detection will be handled by LocationButton component
+    // when user clicks it. This just resets the error state.
   };
 
   // Handle manual location search

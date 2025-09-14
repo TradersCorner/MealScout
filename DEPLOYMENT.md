@@ -40,7 +40,7 @@
 ### Essential
 - `DATABASE_URL` - PostgreSQL connection string
 - `SESSION_SECRET` - Secure session secret (32+ characters)
-- `REPLIT_DOMAINS` - Your deployment domain
+- Configure your deployment domain in your hosting platform settings
 
 ### Optional but Recommended
 - `STRIPE_SECRET_KEY` - For payment processing

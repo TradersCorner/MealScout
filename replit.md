@@ -1,86 +1,67 @@
 # Overview
 
-MealScout is a hyper-local meal deals discovery platform built as a full-stack React application. The application connects restaurants with nearby customers by enabling restaurant owners to create and manage special meal deals for breakfast, lunch, and dinner, while allowing users to discover and claim deals within walking distance of their location. The platform focuses on time-based dining offers with location-based services to create a targeted dining experience.
+MealScout is a hyper-local meal deals discovery platform that connects restaurants with nearby customers. The application enables restaurant owners to create and manage promotional deals while allowing customers to discover, claim, and share food deals in their vicinity. Built as a full-stack TypeScript application with React frontend and Express backend, MealScout features location-based services, payment integration via Stripe, social sharing capabilities, and real-time updates through WebSocket connections for food trucks.
 
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
 
-# Phase 4 Complete: Production Ready! 🚀
-
-**MealScout** is now production-ready with all phases completed:
-- ✅ Phase 1: Core functionality and user authentication
-- ✅ Phase 2: Enhanced features with location services and ratings
-- ✅ Phase 3: Payment integration, social features, and smart search
-- ✅ Phase 4: Production deployment with performance and security optimizations
-
 # System Architecture
 
 ## Frontend Architecture
 
-The client application is built with React 18 using TypeScript and follows a modern component-based architecture:
+The client application uses modern React 18 with TypeScript and follows a component-based architecture:
 
-- **UI Framework**: Uses Radix UI components with shadcn/ui for a comprehensive design system
-- **Styling**: Tailwind CSS with CSS variables for theming and responsive design
-- **Routing**: Wouter for lightweight client-side routing
-- **State Management**: TanStack Query (React Query) for server state management with built-in caching
-- **Forms**: React Hook Form with Zod validation for type-safe form handling
-- **Location Services**: Browser Geolocation API with reverse geocoding for location-based features
+- **UI Framework**: Radix UI components with shadcn/ui design system for consistent, accessible UI components
+- **Styling**: Tailwind CSS with CSS variables for theming, responsive design, and DoorDash-inspired color palette
+- **Routing**: Wouter for lightweight client-side routing without the overhead of React Router
+- **State Management**: TanStack Query (React Query) for server state management with built-in caching, background updates, and optimistic updates
+- **Forms**: React Hook Form with Zod validation for type-safe form handling and client-side validation
+- **Location Services**: Browser Geolocation API with reverse geocoding using BigDataCloud and OpenStreetMap APIs
+- **Real-time Features**: WebSocket integration for live food truck location tracking and status updates
 
 ## Backend Architecture
 
-The server follows a Node.js/Express REST API pattern with TypeScript:
+The server follows a Node.js/Express REST API pattern with comprehensive middleware:
 
-- **Framework**: Express.js with middleware for JSON parsing, logging, and error handling
-- **Authentication**: Google OAuth integration with OpenID Connect and Passport.js
-- **Session Management**: Express sessions stored in PostgreSQL using connect-pg-simple
-- **Database Access**: Drizzle ORM with type-safe schema definitions
-- **Build System**: Vite for development with ESBuild for production bundling
+- **Framework**: Express.js with compression, helmet security headers, and CORS handling
+- **Authentication**: Multi-provider authentication supporting Google OAuth, Facebook OAuth, and email/password with bcrypt hashing
+- **Session Management**: Express sessions stored in PostgreSQL using connect-pg-simple with configurable TTL
+- **Database Access**: Drizzle ORM with type-safe schema definitions and prepared statements
+- **Build System**: Vite for development with hot module replacement, ESBuild for optimized production bundling
+- **WebSocket Server**: Socket.IO for real-time food truck location broadcasting and status updates
+- **Email Service**: Brevo (formerly SendinBlue) integration for transactional emails including welcome emails, password resets, and verification requests
+- **File Handling**: Base64 document upload system for restaurant verification with validation and rate limiting
 
 ## Data Storage
 
-The application uses PostgreSQL as the primary database with the following schema design:
+PostgreSQL database with carefully designed schema optimized for location-based queries:
 
-- **Users Table**: Stores user profiles with Stripe integration fields for subscription management
-- **Restaurants Table**: Contains restaurant information with geolocation data (latitude/longitude)
-- **Deals Table**: Manages deal information with time-based validity, usage limits, and feature flags
-- **Deal Claims Table**: Tracks user interactions with deals to prevent abuse
-- **Reviews Table**: Handles user feedback and ratings for restaurants
-- **Sessions Table**: Manages user authentication sessions (required for session management)
-
-The database uses UUID primary keys and includes proper foreign key relationships with cascading deletes where appropriate.
+- **Users Table**: Supports multiple authentication methods (Google, Facebook, email/password) with subscription management fields for Stripe integration
+- **Restaurants Table**: Geolocation data (latitude/longitude) with verification status, food truck capabilities, and mobile settings
+- **Deals Table**: Time-based validity, usage limits, feature flags, and comprehensive deal metadata
+- **Deal Claims/Views**: Anti-abuse tracking with rate limiting and usage analytics
+- **Reviews System**: User feedback and ratings with moderation capabilities
+- **Sessions Table**: Required for PostgreSQL session storage with automatic cleanup
+- **Food Truck Features**: Real-time location tracking with session management and WebSocket broadcasting
+- **Location Services**: User address management and restaurant favorites with distance calculations
 
 ## Authentication and Authorization
 
-The system implements Google OAuth authentication:
+Multi-layered authentication system supporting different user types:
 
-- **Provider**: Google OAuth with automatic user provisioning
-- **Session Storage**: PostgreSQL-backed sessions with configurable TTL
-- **Route Protection**: Middleware-based authentication checks for protected endpoints
-- **User Management**: Automatic user creation and profile synchronization
+- **Google OAuth**: Primary authentication method for restaurant owners with profile data extraction
+- **Facebook OAuth**: Social authentication for customers with profile integration
+- **Email/Password**: Traditional authentication with bcrypt hashing and email verification
+- **Role-Based Access**: Customer, restaurant owner, and admin roles with appropriate route protection
+- **Session Security**: HttpOnly cookies, CSRF protection, and secure session storage in PostgreSQL
 
 ## External Dependencies
 
-### Payment Processing
-- **Stripe**: Integrated for subscription management with both client-side (Stripe.js, React Stripe.js) and server-side implementations
-- **Subscription Model**: Handles premium features for restaurant owners
-
-### Location Services
-- **Browser Geolocation**: Primary location detection method
-- **BigDataCloud API**: Reverse geocoding service for converting coordinates to readable addresses
-- **Spatial Queries**: Database-level geographic calculations for nearby restaurant/deal discovery
-
-### Development Tools
-- **Development Environment**: Custom Vite plugins for development features including error overlays and cartographer integration
-- **Development Banner**: Automatic development environment detection
-
-### UI and Styling
-- **Radix UI**: Comprehensive accessible component library
-- **shadcn/ui**: Pre-built component system with consistent styling
-- **Lucide React**: Icon library for consistent iconography
-- **Class Variance Authority**: Type-safe variant handling for component styling
-
-### Database and ORM
-- **Neon Database**: Serverless PostgreSQL with WebSocket support
-- **Drizzle ORM**: Type-safe database operations with schema migrations
-- **Connection Pooling**: PostgreSQL connection pooling for improved performance
+- **PostgreSQL**: Primary database with Neon serverless for scalability and connection pooling
+- **Stripe**: Payment processing for subscription management with customer portal integration
+- **Brevo Email API**: Transactional email service for user communications and notifications
+- **Google OAuth**: Authentication and profile services for restaurant owners
+- **Facebook OAuth**: Social authentication and sharing capabilities for customers
+- **Location Services**: BigDataCloud and OpenStreetMap for reverse geocoding and address lookup
+- **WebSocket Infrastructure**: Socket.IO for real-time food truck location broadcasting and customer notifications

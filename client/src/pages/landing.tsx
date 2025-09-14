@@ -209,9 +209,9 @@ export default function Landing() {
     loginMutation.mutate(data);
   };
 
-  // Simplified and more reliable location detection
+  // Simple and reliable location detection
   useEffect(() => {
-    // Check if we're in a testing environment or if geolocation is likely to fail
+    // Check if we're in a testing environment
     const isTestEnvironment = navigator.userAgent.includes('HeadlessChrome') || 
                              navigator.userAgent.includes('puppeteer') ||
                              navigator.userAgent.includes('playwright') ||
@@ -224,223 +224,63 @@ export default function Landing() {
       return;
     }
 
-    const detectLocationWithFallbacks = async () => {
-      if (!navigator.geolocation) {
-        setLocationError('Location services not available. Please enter your city manually.');
-        setShowLocationInput(true);
-        return;
-      }
+    if (!navigator.geolocation) {
+      setLocationError('Location services not available. Please enter your city manually.');
+      setLocationName("Location Not Available");
+      setShowLocationInput(true);
+      return;
+    }
 
-      console.log('🎯 Starting location detection...');
-      setLocationName('Getting your location...');
-      
-      // Simplified location detection with better reliability
-      const tryLocationMethod = (attempt = 1) => {
-        return new Promise<GeolocationPosition>((resolve, reject) => {
-          const options = {
-            enableHighAccuracy: attempt === 1, // High accuracy only on first attempt
-            timeout: attempt === 1 ? 15000 : 10000, // Reasonable timeouts
-            maximumAge: attempt === 1 ? 0 : 60000 // Allow cached location after first attempt
-          };
-
-          console.log(`📡 Location attempt ${attempt}:`, options);
-
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              console.log(`✅ Location attempt ${attempt} success:`, {
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-                accuracy: `${Math.round(position.coords.accuracy)}m`,
-                timestamp: new Date().toLocaleTimeString()
-              });
-              resolve(position);
-            },
-            (error) => {
-              console.log(`❌ Location attempt ${attempt} failed:`, error.message, error.code);
-              reject(error);
-            },
-            options
-          );
-        });
-      };
-
-      // Try up to 2 attempts for reliability
-      const maxAttempts = 2;
-      let permissionDenied = false;
-      
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        if (permissionDenied) break;
+    console.log('🎯 Starting location detection...');
+    setLocationName('Getting your location...');
+    
+    // Simple geolocation call
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        console.log('📍 Got coordinates:', { latitude, longitude });
         
+        setLocation({ lat: latitude, lng: longitude });
+        
+        // Try to get a readable location name
         try {
-          const position = await tryLocationMethod(attempt);
-          const { latitude, longitude, accuracy } = position.coords;
+          const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+          const data = await response.json();
           
-          // Validate coordinates are reasonable (within expected ranges)
-          if (latitude < 24 || latitude > 50 || longitude < -130 || longitude > -65) {
-            console.warn('⚠️ GPS coordinates seem invalid for US location, trying next method...');
-            continue;
+          let cityName = data.locality || data.city || data.principalSubdivision || "Your Location";
+          
+          // If it's a parish in Louisiana, format it nicely
+          if (data.principalSubdivision === "Louisiana" && data.localityInfo?.administrative?.[1]?.name?.includes("Parish")) {
+            const parishName = data.localityInfo.administrative[1].name.replace(" Parish", "");
+            cityName = `${parishName} Area, LA`;
           }
           
-          console.log(`📍 FINAL LOCATION:`, { 
-            latitude, 
-            longitude, 
-            accuracy: `${Math.round(accuracy)}m`,
-            method: `attempt-${attempt}`
-          });
-          
-          setLocation({ lat: latitude, lng: longitude });
-          setLocationError(null);
-
-          // Simplified geocoding with fallbacks
-          try {
-            console.log('🔄 Getting location name...');
-            let response = await fetch(
-              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-            );
-            
-            if (!response.ok) throw new Error('BigDataCloud API failed');
-            
-            const data = await response.json();
-            let cityName = data.city || data.locality || data.principalSubdivision;
-            
-            // If BigDataCloud doesn't give a good city name, try Nominatim as backup
-            if (!cityName || cityName.toLowerCase().includes('district') || cityName.toLowerCase().includes('subdivision')) {
-              console.log('🔄 Trying backup geocoding service...');
-              response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=15&addressdetails=1`
-              );
-              
-              if (response.ok) {
-                const backupData = await response.json();
-                const address = backupData.address;
-                // Prioritize actual cities and towns over counties/parishes
-                cityName = address?.city || address?.town || address?.village || address?.hamlet;
-                
-                // Only use county/parish as last resort if no city/town found
-                if (!cityName) {
-                  // Try a specialized nearby places API for better city data
-                  try {
-                    console.log('🔄 Trying nearby places API for nearest city...');
-                    const response3 = await fetch(
-                      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1&accept-language=en`
-                    );
-                    if (response3.ok) {
-                      const place = await response3.json();
-                      console.log('🔍 Nearby place data:', place);
-                      
-                      // Try to get city name from the more detailed reverse geocoding
-                      if (place.address) {
-                        const detailedCity = place.address.city || 
-                                           place.address.town || 
-                                           place.address.village || 
-                                           place.address.hamlet;
-                        
-                        if (detailedCity && 
-                            !detailedCity.toLowerCase().includes('district') && 
-                            !detailedCity.toLowerCase().includes('parish') &&
-                            !detailedCity.toLowerCase().includes('county') &&
-                            detailedCity.length > 2) {
-                          cityName = detailedCity;
-                          console.log('🏙️ Found detailed city:', { name: detailedCity, display: place.display_name });
-                        }
-                      }
-                    } else {
-                      console.log('❌ Nearby places API returned:', response3.status, response3.statusText);
-                    }
-                  } catch (nearestError) {
-                    console.log('❌ Nearby places lookup failed:', nearestError);
-                  }
-                  
-                  // Final fallback to parish/county with user-friendly formatting
-                  if (!cityName) {
-                    const countyName = address?.county || address?.state;
-                    
-                    // For Louisiana parishes, provide a more user-friendly format
-                    if (countyName && countyName.toLowerCase().includes('parish')) {
-                      // Extract the parish name and format it better
-                      const parishName = countyName.replace(/\s+Parish$/i, '').trim();
-                      cityName = `${parishName} Area, LA`; // e.g., "Tangipahoa Area, LA"
-                    } else if (countyName) {
-                      cityName = countyName;
-                    }
-                  }
-                }
-              }
-            }
-            
-            // Final fallback to any available location name
-            if (!cityName) {
-              cityName = data.locality || data.principalSubdivision || data.countryName || "Your Area";
-            }
-            
-            console.log('🏙️ Location resolved:', {
-              city: cityName,
-              state: data.principalSubdivision,
-              coordinates: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-            });
-            
-            console.log('🔄 Setting location name to:', cityName);
-            setLocationName(cityName);
-            
-            // Force multiple re-renders to ensure UI updates
-            setTimeout(() => {
-              console.log('⏰ First timeout - setting location name again:', cityName);
-              setLocationName(cityName); // Set again to force re-render
-            }, 50);
-            
-            setTimeout(() => {
-              console.log('⏰ Second timeout - setting location name again:', cityName);
-              setLocationName(cityName); // Set again to force re-render
-            }, 150);
-            
-            setTimeout(() => {
-              console.log('✅ Final timeout - location name should now be:', cityName);
-              setLocationName(cityName); // Final state update
-            }, 300);
-          } catch (error) {
-            console.error('❌ Geocoding failed:', error);
-            setLocationName(`Location Found (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
-          }
-          
-          return; // Success, exit the retry loop
+          console.log('🏙️ Setting location to:', cityName);
+          setLocationName(cityName);
           
         } catch (error) {
-          const geoError = error as GeolocationPositionError;
-          console.log(`❌ Location attempt ${attempt} failed:`, geoError.message);
-          
-          // If permission is denied, stop all attempts immediately
-          if (geoError.code === GeolocationPositionError.PERMISSION_DENIED) {
-            console.log('🛑 Permission denied, stopping all location attempts');
-            setLocationError('Location access denied. You can manually enter your location below.');
-            setLocationName("Location Access Denied");
-            setShowLocationInput(true);
-            return; // Exit the entire function
-          }
-          
-          if (attempt === maxAttempts) {
-            // All attempts failed
-            let errorMessage = 'Unable to detect your location automatically. ';
-            if (geoError.code === GeolocationPositionError.TIMEOUT) {
-              errorMessage += 'GPS signal timeout. Please enter your city manually.';
-            } else if (geoError.code === GeolocationPositionError.POSITION_UNAVAILABLE) {
-              errorMessage += 'GPS unavailable. Please enter your city manually.';
-            } else {
-              errorMessage += 'Please enter your city manually below.';
-            }
-            
-            setLocationError(errorMessage);
-            setLocationName("Location Not Available");
-            setShowLocationInput(true);
-          }
-          // Continue to next attempt only if not permission denied
+          console.log('⚠️ Geocoding failed, using coordinates');
+          setLocationName(`Location Found (${latitude.toFixed(2)}, ${longitude.toFixed(2)})`);
         }
+      },
+      (error) => {
+        console.error('❌ Geolocation failed:', error);
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocationError('Location access denied. Please enter your location manually.');
+          setLocationName("Location Access Denied");
+        } else {
+          setLocationError('Unable to get your location. Please enter your city manually.');
+          setLocationName("Location Not Available");
+        }
+        setShowLocationInput(true);
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 10000,
+        maximumAge: 300000
       }
-    };
-
-    // Start location detection
-    console.log('🎯 useEffect triggered, isFacebookBrowser:', isFacebookBrowser);
-    detectLocationWithFallbacks();
-  }, []); // Remove dependency to ensure it runs once on mount
+    );
+  }, []);
 
   // Handle manual location input
   const handleManualLocation = async () => {

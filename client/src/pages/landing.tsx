@@ -209,7 +209,7 @@ export default function Landing() {
     loginMutation.mutate(data);
   };
 
-  // Enhanced location detection with Facebook browser optimization
+  // Simplified and more reliable location detection
   useEffect(() => {
     const detectLocationWithFallbacks = async () => {
       if (!navigator.geolocation) {
@@ -218,24 +218,23 @@ export default function Landing() {
         return;
       }
 
-      const browserType = isFacebookBrowser ? '🔵 Facebook Browser' : '🌐 Standard Browser';
-      console.log(`🎯 Starting enhanced location detection for ${browserType}...`);
-      setLocationName('Getting your precise location...');
+      console.log('🎯 Starting location detection...');
+      setLocationName('Getting your location...');
       
-      // Try multiple location detection methods with Facebook browser optimization
+      // Simplified location detection with better reliability
       const tryLocationMethod = (attempt = 1) => {
         return new Promise<GeolocationPosition>((resolve, reject) => {
           const options = {
-            enableHighAccuracy: isFacebookBrowser ? (attempt === 1) : (attempt <= 2), // Facebook browser: only high accuracy on first attempt
-            timeout: isFacebookBrowser ? 20000 : (attempt === 1 ? 30000 : 15000), // Facebook browser: shorter timeout
-            maximumAge: isFacebookBrowser ? 10000 : 0 // Facebook browser: allow cached location up to 10s
+            enableHighAccuracy: attempt === 1, // High accuracy only on first attempt
+            timeout: attempt === 1 ? 15000 : 10000, // Reasonable timeouts
+            maximumAge: attempt === 1 ? 0 : 60000 // Allow cached location after first attempt
           };
 
-          console.log(`📡 ${browserType} location attempt ${attempt}:`, options);
+          console.log(`📡 Location attempt ${attempt}:`, options);
 
           navigator.geolocation.getCurrentPosition(
             (position) => {
-              console.log(`✅ ${browserType} attempt ${attempt} success:`, {
+              console.log(`✅ Location attempt ${attempt} success:`, {
                 latitude: position.coords.latitude,
                 longitude: position.coords.longitude,
                 accuracy: `${Math.round(position.coords.accuracy)}m`,
@@ -244,8 +243,7 @@ export default function Landing() {
               resolve(position);
             },
             (error) => {
-              console.log(`❌ ${browserType} attempt ${attempt} failed:`, error.message);
-              // Always reject to properly handle the promise
+              console.log(`❌ Location attempt ${attempt} failed:`, error.message, error.code);
               reject(error);
             },
             options
@@ -253,8 +251,8 @@ export default function Landing() {
         });
       };
 
-      // Facebook browser: try only 2 attempts, regular browsers: 3 attempts
-      const maxAttempts = isFacebookBrowser ? 2 : 3;
+      // Try up to 2 attempts for reliability
+      const maxAttempts = 2;
       let permissionDenied = false;
       
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -266,11 +264,11 @@ export default function Landing() {
           
           // Validate coordinates are reasonable (within expected ranges)
           if (latitude < 24 || latitude > 50 || longitude < -130 || longitude > -65) {
-            console.warn(`⚠️ ${browserType} GPS coordinates seem invalid for US location, trying next method...`);
+            console.warn('⚠️ GPS coordinates seem invalid for US location, trying next method...');
             continue;
           }
           
-          console.log(`📍 ${browserType} FINAL LOCATION:`, { 
+          console.log(`📍 FINAL LOCATION:`, { 
             latitude, 
             longitude, 
             accuracy: `${Math.round(accuracy)}m`,
@@ -280,15 +278,11 @@ export default function Landing() {
           setLocation({ lat: latitude, lng: longitude });
           setLocationError(null);
 
-          // Enhanced reverse geocoding with Facebook browser optimization
+          // Simplified geocoding with fallbacks
           try {
-            // For Facebook browser, use faster BigDataCloud only initially
+            console.log('🔄 Getting location name...');
             let response = await fetch(
-              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
-              { 
-                method: 'GET',
-                headers: isFacebookBrowser ? { 'Cache-Control': 'max-age=300' } : {},
-              }
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
             );
             
             if (!response.ok) throw new Error('BigDataCloud API failed');
@@ -296,9 +290,9 @@ export default function Landing() {
             const data = await response.json();
             let cityName = data.city || data.locality || data.principalSubdivision;
             
-            // If BigDataCloud doesn't give a good city name or gives poor results like "District X" and NOT Facebook browser, try Nominatim
-            if ((!cityName || cityName.toLowerCase().includes('district') || cityName.toLowerCase().includes('subdivision')) && !isFacebookBrowser) {
-              console.log(`🔄 ${browserType} trying backup geocoding service...`);
+            // If BigDataCloud doesn't give a good city name, try Nominatim as backup
+            if (!cityName || cityName.toLowerCase().includes('district') || cityName.toLowerCase().includes('subdivision')) {
+              console.log('🔄 Trying backup geocoding service...');
               response = await fetch(
                 `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=15&addressdetails=1`
               );
@@ -313,13 +307,13 @@ export default function Landing() {
                 if (!cityName) {
                   // Try a specialized nearby places API for better city data
                   try {
-                    console.log(`🔄 ${browserType} trying nearby places API for nearest city...`);
+                    console.log('🔄 Trying nearby places API for nearest city...');
                     const response3 = await fetch(
                       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1&accept-language=en`
                     );
                     if (response3.ok) {
                       const place = await response3.json();
-                      console.log(`🔍 ${browserType} nearby place data:`, place);
+                      console.log('🔍 Nearby place data:', place);
                       
                       // Try to get city name from the more detailed reverse geocoding
                       if (place.address) {
@@ -334,14 +328,14 @@ export default function Landing() {
                             !detailedCity.toLowerCase().includes('county') &&
                             detailedCity.length > 2) {
                           cityName = detailedCity;
-                          console.log(`🏙️ ${browserType} found detailed city:`, { name: detailedCity, display: place.display_name });
+                          console.log('🏙️ Found detailed city:', { name: detailedCity, display: place.display_name });
                         }
                       }
                     } else {
-                      console.log(`❌ ${browserType} nearby places API returned:`, response3.status, response3.statusText);
+                      console.log('❌ Nearby places API returned:', response3.status, response3.statusText);
                     }
                   } catch (nearestError) {
-                    console.log(`❌ ${browserType} nearby places lookup failed:`, nearestError);
+                    console.log('❌ Nearby places lookup failed:', nearestError);
                   }
                   
                   // Final fallback to parish/county with user-friendly formatting
@@ -366,15 +360,15 @@ export default function Landing() {
               cityName = data.locality || data.principalSubdivision || data.countryName || "Your Area";
             }
             
-            console.log(`🏙️ ${browserType} location resolved:`, {
-              primary: { city: data.city, locality: data.locality, state: data.principalSubdivision },
-              final: cityName,
+            console.log('🏙️ Location resolved:', {
+              city: cityName,
+              state: data.principalSubdivision,
               coordinates: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
             });
             
             setLocationName(cityName);
           } catch (error) {
-            console.error(`❌ ${browserType} geocoding failed:`, error);
+            console.error('❌ Geocoding failed:', error);
             setLocationName(`Location Found (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
           }
           
@@ -382,11 +376,11 @@ export default function Landing() {
           
         } catch (error) {
           const geoError = error as GeolocationPositionError;
-          console.log(`❌ ${browserType} location attempt ${attempt} failed:`, geoError.message);
+          console.log(`❌ Location attempt ${attempt} failed:`, geoError.message);
           
           // If permission is denied, stop all attempts immediately
           if (geoError.code === GeolocationPositionError.PERMISSION_DENIED) {
-            console.log(`🛑 ${browserType} permission denied, stopping all location attempts`);
+            console.log('🛑 Permission denied, stopping all location attempts');
             setLocationError('Location access denied. You can manually enter your location below.');
             setLocationName("Location Access Denied");
             setShowLocationInput(true);
@@ -413,12 +407,8 @@ export default function Landing() {
       }
     };
 
-    // Delay location detection slightly in Facebook browser to ensure proper initialization
-    if (isFacebookBrowser) {
-      setTimeout(detectLocationWithFallbacks, 500);
-    } else {
-      detectLocationWithFallbacks();
-    }
+    // Start location detection
+    detectLocationWithFallbacks();
   }, [isFacebookBrowser]);
 
   // Handle manual location input

@@ -111,16 +111,22 @@ export const postToFacebook = (postData: {
       href: postData.link || window.location.origin,
       quote: postData.message,
     }, (response: any) => {
-      // Facebook share dialog: treat absence of error_code as success
-      // Note: Facebook often returns undefined even on successful shares
+      // Handle Facebook Share dialog response properly
       if (response && response.error_code) {
+        // Clear error from Facebook
         reject(new Error(response.error_message || 'Facebook sharing failed'));
-      } else if (response === null || (response && response.error_code === undefined && !response.post_id)) {
-        // Explicit cancellation usually returns null or empty object
+      } else if (response === null) {
+        // User explicitly cancelled
         reject(new Error('User cancelled Facebook sharing'));
-      } else {
-        // No error_code means success (even if post_id is undefined)
+      } else if (response === undefined) {
+        // Facebook returns undefined for both success and cancellation - unknown outcome
+        reject(new Error('Facebook sharing outcome unknown'));
+      } else if (response && response.post_id) {
+        // Clear success indicator
         resolve();
+      } else {
+        // Any other case - treat as unknown
+        reject(new Error('Facebook sharing outcome unknown'));
       }
     });
   });
@@ -145,16 +151,22 @@ export const shareToFacebook = (postData: {
       href: window.location.origin,
       quote: shareMessage,
     }, (response: any) => {
-      // Facebook share dialog: treat absence of error_code as success
-      // Note: Facebook often returns undefined even on successful shares
+      // Handle Facebook Share dialog response properly
       if (response && response.error_code) {
+        // Clear error from Facebook
         reject(new Error(response.error_message || 'Facebook sharing failed'));
-      } else if (response === null || (response && response.error_code === undefined && !response.post_id)) {
-        // Explicit cancellation usually returns null or empty object
+      } else if (response === null) {
+        // User explicitly cancelled
         reject(new Error('User cancelled Facebook sharing'));
-      } else {
-        // No error_code means success (even if post_id is undefined)
+      } else if (response === undefined) {
+        // Facebook returns undefined for both success and cancellation - unknown outcome
+        reject(new Error('Facebook sharing outcome unknown'));
+      } else if (response && response.post_id) {
+        // Clear success indicator
         resolve();
+      } else {
+        // Any other case - treat as unknown
+        reject(new Error('Facebook sharing outcome unknown'));
       }
     });
   });

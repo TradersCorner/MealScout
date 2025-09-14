@@ -97,7 +97,7 @@ app.use((req, res, next) => {
   app.use(passport.initialize());
   app.use(passport.session());
   
-  // Setup Replit Authentication (includes Google, GitHub, Apple login)
+  // Setup authentication (includes Google, GitHub, Apple login)
   await setupAuth(app);
   
   const server = await registerRoutes(app);

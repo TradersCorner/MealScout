@@ -32,7 +32,7 @@ The client application is built with React 18 using TypeScript and follows a mod
 The server follows a Node.js/Express REST API pattern with TypeScript:
 
 - **Framework**: Express.js with middleware for JSON parsing, logging, and error handling
-- **Authentication**: Replit Auth integration with OpenID Connect and Passport.js
+- **Authentication**: Google OAuth integration with OpenID Connect and Passport.js
 - **Session Management**: Express sessions stored in PostgreSQL using connect-pg-simple
 - **Database Access**: Drizzle ORM with type-safe schema definitions
 - **Build System**: Vite for development with ESBuild for production bundling
@@ -46,15 +46,15 @@ The application uses PostgreSQL as the primary database with the following schem
 - **Deals Table**: Manages deal information with time-based validity, usage limits, and feature flags
 - **Deal Claims Table**: Tracks user interactions with deals to prevent abuse
 - **Reviews Table**: Handles user feedback and ratings for restaurants
-- **Sessions Table**: Manages user authentication sessions (required for Replit Auth)
+- **Sessions Table**: Manages user authentication sessions (required for session management)
 
 The database uses UUID primary keys and includes proper foreign key relationships with cascading deletes where appropriate.
 
 ## Authentication and Authorization
 
-The system implements Replit's authentication service:
+The system implements Google OAuth authentication:
 
-- **Provider**: Replit OpenID Connect with automatic user provisioning
+- **Provider**: Google OAuth with automatic user provisioning
 - **Session Storage**: PostgreSQL-backed sessions with configurable TTL
 - **Route Protection**: Middleware-based authentication checks for protected endpoints
 - **User Management**: Automatic user creation and profile synchronization
@@ -71,8 +71,8 @@ The system implements Replit's authentication service:
 - **Spatial Queries**: Database-level geographic calculations for nearby restaurant/deal discovery
 
 ### Development Tools
-- **Replit Integration**: Custom Vite plugins for Replit-specific development features including error overlays and cartographer integration
-- **Development Banner**: Automatic Replit development environment detection
+- **Development Environment**: Custom Vite plugins for development features including error overlays and cartographer integration
+- **Development Banner**: Automatic development environment detection
 
 ### UI and Styling
 - **Radix UI**: Comprehensive accessible component library

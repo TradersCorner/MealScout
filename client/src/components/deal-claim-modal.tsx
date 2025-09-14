@@ -16,7 +16,7 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
   const [step, setStep] = useState<'confirm' | 'posting' | 'success'>('confirm');
   const [postData, setPostData] = useState<any>(null);
   const [facebookAvailable, setFacebookAvailable] = useState(false);
-  const [shareStatus, setShareStatus] = useState<'none' | 'succeeded' | 'cancelled' | 'failed'>('none');
+  const [shareStatus, setShareStatus] = useState<'none' | 'succeeded' | 'attempted' | 'cancelled' | 'failed'>('none');
   const { toast } = useToast();
 
   // Initialize Facebook SDK when component mounts
@@ -72,7 +72,7 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
         restaurantName: postData.restaurantName,
       });
 
-      // Facebook sharing succeeded
+      // Facebook sharing succeeded (clear post_id returned)
       setShareStatus('succeeded');
       setStep('success');
       
@@ -93,6 +93,13 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
         toast({
           title: "Sharing Cancelled",
           description: "You cancelled Facebook sharing. Your deal is still claimed!",
+        });
+      } else if (error.message.includes('outcome unknown')) {
+        setShareStatus('attempted');
+        setStep('success');
+        toast({
+          title: "Sharing Window Closed",
+          description: "The Facebook sharing window was closed. Your deal is still claimed!",
         });
       } else {
         setShareStatus('failed');
@@ -223,6 +230,11 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
                 {shareStatus === 'succeeded' && (
                   <p className="text-blue-600 font-medium">
                     📱 Successfully shared on Facebook!
+                  </p>
+                )}
+                {shareStatus === 'attempted' && (
+                  <p className="text-muted-foreground">
+                    📱 Facebook sharing window was opened - you may have shared!
                   </p>
                 )}
                 {shareStatus === 'cancelled' && (

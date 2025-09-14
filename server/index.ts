@@ -17,7 +17,11 @@ if (process.env.NODE_ENV === "production") {
       directives: {
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Required for Vite in production
+        scriptSrc: [
+          "'self'", 
+          "'unsafe-inline'", 
+          "'unsafe-eval'" // Required for Vite in production
+        ],
         imgSrc: ["'self'", "data:", "https:"],
         connectSrc: ["'self'", "https:", "ws:", "wss:"],
         fontSrc: ["'self'", "https:", "data:"],
@@ -40,7 +44,10 @@ app.use((req, res, next) => {
   if (req.path.startsWith('/api/')) {
     return next();
   }
-  res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:");
+  res.setHeader(
+    'Content-Security-Policy', 
+    "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:"
+  );
   next();
 });
 

@@ -179,13 +179,15 @@ export async function setupUnifiedAuth(app: Express) {
     }));
 
     // Facebook auth routes
-    app.get('/api/auth/facebook',
+    app.get(
+      '/api/auth/facebook',
       passport.authenticate('facebook', { 
         scope: ['email', 'public_profile'] 
       })
     );
 
-    app.get('/api/auth/facebook/callback',
+    app.get(
+      '/api/auth/facebook/callback',
       passport.authenticate('facebook', { 
         failureRedirect: '/?error=auth_failed' 
       }),

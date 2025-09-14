@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { postToFacebook, checkInToPlace } from '@/lib/facebook';
+import { shareToFacebook, initFacebookSDK } from '@/lib/facebook';
 
 interface DealClaimModalProps {
   dealId: string;
@@ -15,7 +15,26 @@ interface DealClaimModalProps {
 export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimModalProps) {
   const [step, setStep] = useState<'confirm' | 'posting' | 'success'>('confirm');
   const [postData, setPostData] = useState<any>(null);
+  const [facebookAvailable, setFacebookAvailable] = useState(false);
+  const [shareStatus, setShareStatus] = useState<'none' | 'succeeded' | 'cancelled' | 'failed'>('none');
   const { toast } = useToast();
+
+  // Initialize Facebook SDK when component mounts
+  useEffect(() => {
+    const initFacebook = async () => {
+      try {
+        await initFacebookSDK();
+        setFacebookAvailable(true);
+      } catch (error) {
+        console.warn('Facebook SDK initialization failed:', error);
+        setFacebookAvailable(false);
+      }
+    };
+    
+    if (isOpen) {
+      initFacebook();
+    }
+  }, [isOpen]);
 
   const claimDealMutation = useMutation({
     mutationFn: async (dealId: string) => {
@@ -42,18 +61,24 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
         throw new Error('No post data available');
       }
 
-      // Use Facebook check-in functionality
-      await checkInToPlace({
+      if (!facebookAvailable) {
+        throw new Error('Facebook SDK not available');
+      }
+
+      // Use Facebook sharing functionality
+      await shareToFacebook({
         message: postData.facebookPostData.message,
         place: postData.facebookPostData.place,
         restaurantName: postData.restaurantName,
       });
 
+      // Facebook sharing succeeded
+      setShareStatus('succeeded');
       setStep('success');
       
       toast({
-        title: "Success!",
-        description: "Deal claimed and posted to Facebook!",
+        title: "Shared Successfully!",
+        description: "Your deal has been shared on Facebook!",
       });
 
       // Auto close after success
@@ -61,20 +86,37 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
         onClose();
       }, 2000);
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Failed to post to Facebook, but deal was claimed successfully!",
-        variant: "destructive",
-      });
-      setStep('success');
+      // Handle different types of Facebook errors
+      if (error.message.includes('cancelled')) {
+        setShareStatus('cancelled');
+        setStep('success');
+        toast({
+          title: "Sharing Cancelled",
+          description: "You cancelled Facebook sharing. Your deal is still claimed!",
+        });
+      } else {
+        setShareStatus('failed');
+        setStep('success');
+        toast({
+          title: "Sharing Failed",
+          description: "Could not share on Facebook, but your deal is claimed successfully!",
+          variant: "destructive",
+        });
+      }
+      
+      // Auto close after handling error
+      setTimeout(() => {
+        onClose();
+      }, 2000);
     }
   };
 
   const handleSkipPost = () => {
+    setShareStatus('none');
     setStep('success');
     toast({
       title: "Deal Claimed",
-      description: "Deal claimed successfully! You can post to Facebook later.",
+      description: "Deal claimed successfully! You can share on Facebook later if you'd like.",
     });
     setTimeout(() => {
       onClose();
@@ -94,7 +136,7 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
               </div>
               <h3 className="text-xl font-bold text-foreground mb-3">Claim This Deal</h3>
               <p className="text-muted-foreground mb-6">
-                To claim this deal, you'll need to check in at the restaurant on Facebook and tag MealScout.
+                Claim this deal and optionally share it on Facebook to spread the word about great food!
               </p>
               <div className="space-y-3">
                 <Button
@@ -120,9 +162,9 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
               <div className="w-16 h-16 food-gradient-accent rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <i className="fab fa-facebook-f text-white text-xl"></i>
               </div>
-              <h3 className="text-xl font-bold text-foreground mb-3">Check In & Post</h3>
+              <h3 className="text-xl font-bold text-foreground mb-3">Share on Facebook</h3>
               <p className="text-muted-foreground mb-4">
-                Ready to post to Facebook! This will check you in at {postData.restaurantName} and share your amazing deal.
+                Ready to share on Facebook! This will post about your amazing deal at {postData.restaurantName}.
               </p>
               
               {/* Preview of the Facebook post */}
@@ -134,7 +176,7 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
                   <span className="font-semibold text-foreground">Your Name</span>
                 </div>
                 <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">
-                  {postData.facebookPostData?.message || `Just claimed an amazing deal at ${postData.restaurantName}! 🍽️\n\n${postData.dealTitle}\n\nFound this through DealScout - check it out! #DealScout #FoodDeals`}
+                  {postData.facebookPostData?.message || `Just claimed an amazing deal at ${postData.restaurantName}! 🍽️\n\n${postData.dealTitle}\n\nFound this through MealScout - check it out! #MealScout #FoodDeals`}
                 </p>
                 <div className="mt-3 p-3 bg-background rounded-lg border border-border/50">
                   <div className="flex items-center space-x-2">
@@ -149,9 +191,11 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
                 <Button
                   onClick={handleFacebookPost}
                   className="w-full py-3 bg-blue-600 hover:bg-blue-700 border-0 font-bold"
+                  disabled={!facebookAvailable}
+                  data-testid="button-share-facebook"
                 >
                   <i className="fab fa-facebook-f mr-2"></i>
-                  Post to Facebook
+                  {facebookAvailable ? 'Share on Facebook' : 'Facebook unavailable'}
                 </Button>
                 <Button
                   onClick={handleSkipPost}
@@ -169,10 +213,37 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
               <div className="w-16 h-16 food-gradient-accent rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <i className="fas fa-check text-white text-xl"></i>
               </div>
-              <h3 className="text-xl font-bold text-foreground mb-3">Success!</h3>
-              <p className="text-muted-foreground mb-6">
-                Your deal has been claimed successfully. Show this to the restaurant when you visit!
-              </p>
+              <h3 className="text-xl font-bold text-foreground mb-3">
+                {shareStatus === 'succeeded' ? 'Deal Claimed & Shared!' : 'Deal Claimed Successfully!'}
+              </h3>
+              <div className="space-y-3 mb-6">
+                <p className="text-foreground font-medium">
+                  ✅ Your deal has been claimed successfully!
+                </p>
+                {shareStatus === 'succeeded' && (
+                  <p className="text-blue-600 font-medium">
+                    📱 Successfully shared on Facebook!
+                  </p>
+                )}
+                {shareStatus === 'cancelled' && (
+                  <p className="text-muted-foreground">
+                    📱 Facebook sharing was cancelled
+                  </p>
+                )}
+                {shareStatus === 'failed' && (
+                  <p className="text-muted-foreground">
+                    📱 Facebook sharing failed, but your deal is still yours!
+                  </p>
+                )}
+                {shareStatus === 'none' && (
+                  <p className="text-muted-foreground">
+                    📱 You can share on Facebook anytime from your claimed deals
+                  </p>
+                )}
+                <p className="text-sm text-muted-foreground mt-4">
+                  Show this confirmation to the restaurant when you visit!
+                </p>
+              </div>
               <Button
                 onClick={onClose}
                 className="w-full py-3 food-gradient-primary border-0 font-bold"

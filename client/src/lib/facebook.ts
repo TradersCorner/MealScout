@@ -3,33 +3,73 @@ declare global {
   interface Window {
     FB: any;
     fbAsyncInit: () => void;
+    __FB_INITED?: boolean;
   }
 }
 
 export const initFacebookSDK = () => {
-  return new Promise<void>((resolve) => {
-    // Check if Facebook SDK is already loaded
-    if (window.FB) {
+  return new Promise<void>((resolve, reject) => {
+    // Validate Facebook App ID is configured
+    const appId = import.meta.env.VITE_FACEBOOK_APP_ID;
+    if (!appId) {
+      console.warn('Facebook App ID not configured. Facebook sharing will not be available.');
+      reject(new Error('Facebook App ID not configured'));
+      return;
+    }
+
+    // Check if Facebook SDK is already loaded and initialized
+    if (window.FB && window.__FB_INITED) {
       resolve();
       return;
     }
 
+    // If FB exists but not initialized, initialize it
+    if (window.FB && !window.__FB_INITED) {
+      try {
+        window.FB.init({
+          appId: appId,
+          cookie: true,
+          xfbml: true,
+          version: 'v19.0'
+        });
+        window.__FB_INITED = true;
+        console.log('Facebook SDK initialized successfully');
+        resolve();
+        return;
+      } catch (error) {
+        console.error('Failed to initialize existing Facebook SDK:', error);
+        reject(error);
+        return;
+      }
+    }
+
     window.fbAsyncInit = function() {
-      window.FB.init({
-        appId: import.meta.env.VITE_FACEBOOK_APP_ID,
-        cookie: true,
-        xfbml: true,
-        version: 'v19.0'
-      });
-      resolve();
+      try {
+        window.FB.init({
+          appId: appId,
+          cookie: true,
+          xfbml: true,
+          version: 'v19.0'
+        });
+        window.__FB_INITED = true;
+        console.log('Facebook SDK initialized successfully');
+        resolve();
+      } catch (error) {
+        console.error('Failed to initialize Facebook SDK:', error);
+        reject(error);
+      }
     };
 
-    // Load Facebook SDK
+    // Load Facebook SDK with error handling
     (function(d, s, id) {
       var js, fjs = d.getElementsByTagName(s)[0];
       if (d.getElementById(id)) { return; }
       js = d.createElement(s) as HTMLScriptElement; js.id = id;
       js.src = "https://connect.facebook.net/en_US/sdk.js";
+      js.onerror = function() {
+        console.error('Failed to load Facebook SDK script');
+        reject(new Error('Failed to load Facebook SDK script'));
+      };
       fjs.parentNode?.insertBefore(js, fjs);
     }(document, 'script', 'facebook-jssdk'));
   });
@@ -71,16 +111,22 @@ export const postToFacebook = (postData: {
       href: postData.link || window.location.origin,
       quote: postData.message,
     }, (response: any) => {
-      if (response && !response.error_message) {
-        resolve();
+      // Facebook share dialog: treat absence of error_code as success
+      // Note: Facebook often returns undefined even on successful shares
+      if (response && response.error_code) {
+        reject(new Error(response.error_message || 'Facebook sharing failed'));
+      } else if (response === null || (response && response.error_code === undefined && !response.post_id)) {
+        // Explicit cancellation usually returns null or empty object
+        reject(new Error('User cancelled Facebook sharing'));
       } else {
-        reject(new Error(response?.error_message || 'Failed to post to Facebook'));
+        // No error_code means success (even if post_id is undefined)
+        resolve();
       }
     });
   });
 };
 
-export const checkInToPlace = (postData: {
+export const shareToFacebook = (postData: {
   message: string;
   place: string;
   restaurantName: string;
@@ -91,18 +137,24 @@ export const checkInToPlace = (postData: {
       return;
     }
 
-    // Create a post with location mention using Facebook Share Dialog
-    const shareMessage = `📍 Checked in at ${postData.restaurantName}!\n\n${postData.message}\n\nDiscovered through MealScout! #MealScout #FoodDeals`;
+    // Create a post mentioning the restaurant using Facebook Share Dialog
+    const shareMessage = `🍽️ Just discovered this amazing deal at ${postData.restaurantName}!\n\n${postData.message}\n\nFound through MealScout! #MealScout #FoodDeals`;
     
     window.FB.ui({
       method: 'share',
       href: window.location.origin,
       quote: shareMessage,
     }, (response: any) => {
-      if (response && !response.error_message) {
-        resolve();
+      // Facebook share dialog: treat absence of error_code as success
+      // Note: Facebook often returns undefined even on successful shares
+      if (response && response.error_code) {
+        reject(new Error(response.error_message || 'Facebook sharing failed'));
+      } else if (response === null || (response && response.error_code === undefined && !response.post_id)) {
+        // Explicit cancellation usually returns null or empty object
+        reject(new Error('User cancelled Facebook sharing'));
       } else {
-        reject(new Error(response?.error_message || 'Failed to check in'));
+        // No error_code means success (even if post_id is undefined)
+        resolve();
       }
     });
   });

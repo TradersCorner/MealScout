@@ -320,7 +320,11 @@ export class DatabaseStorage implements IStorage {
       const existingUser = await db
         .select()
         .from(users)
-        .where(or(eq(users.facebookId, facebookData.facebookId), eq(users.email, facebookData.email)))
+        .where(
+          facebookData.email 
+            ? or(eq(users.facebookId, facebookData.facebookId), eq(users.email, facebookData.email))
+            : eq(users.facebookId, facebookData.facebookId)
+        )
         .limit(1);
 
       if (existingUser.length > 0) {

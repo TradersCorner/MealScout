@@ -69,7 +69,6 @@ export default function Sitemap() {
         { title: "Italian Food", href: "/category/italian", description: "Italian restaurants and pizza deals" },
         { title: "Asian Food", href: "/category/asian", description: "Asian cuisine including Chinese, Thai, Japanese" },
         { title: "Mexican Food", href: "/category/mexican", description: "Mexican restaurants and Tex-Mex deals" },
-        { title: "Fast Food", href: "/category/fast-food", description: "Quick service restaurant deals" }
       ]
     },
     {

@@ -1166,16 +1166,6 @@ export default function Landing() {
               🔥 All Deals
             </button>
             <button 
-              onClick={() => handleCategoryFilter('american')}
-              className={`flex-shrink-0 px-6 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 ${
-                selectedCategory === 'american' 
-                  ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg' 
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-              }`}
-            >
-              🍔 Fast Food
-            </button>
-            <button 
               onClick={() => handleCategoryFilter('pizza')}
               className={`flex-shrink-0 px-6 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 ${
                 selectedCategory === 'pizza' 
@@ -1278,37 +1268,6 @@ export default function Landing() {
               </div>
             </div>
 
-            {/* Fast Food Section */}
-            {allDeals.filter((deal: any) => 
-              deal.restaurant?.cuisine_type?.toLowerCase().includes('american') || 
-              deal.title?.toLowerCase().includes('burger') ||
-              deal.title?.toLowerCase().includes('fast')
-            ).length > 0 && (
-              <div className="px-4">
-                <div className="max-w-6xl mx-auto">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">🍔 Fast Food</h2>
-                    <button 
-                      onClick={() => handleCategoryFilter('american')}
-                      className="text-red-600 hover:text-red-700 font-medium text-sm"
-                    >
-                      View all →
-                    </button>
-                  </div>
-                  <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
-                    {allDeals.filter((deal: any) => 
-                      deal.restaurant?.cuisine_type?.toLowerCase().includes('american') || 
-                      deal.title?.toLowerCase().includes('burger') ||
-                      deal.title?.toLowerCase().includes('fast')
-                    ).slice(0, 8).map((deal: any) => (
-                      <div key={deal.id} className="flex-shrink-0 w-80">
-                        <DealCard deal={deal} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Pizza Section */}
             {allDeals.filter((deal: any) => 

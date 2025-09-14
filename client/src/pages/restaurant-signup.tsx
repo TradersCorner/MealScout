@@ -927,7 +927,6 @@ export default function RestaurantSignup() {
                           <SelectItem value="kosher">Kosher</SelectItem>
                           
                           {/* Food Types */}
-                          <SelectItem value="fast-food">Fast Food</SelectItem>
                           <SelectItem value="fast-casual">Fast Casual</SelectItem>
                           <SelectItem value="fine-dining">Fine Dining</SelectItem>
                           <SelectItem value="casual-dining">Casual Dining</SelectItem>

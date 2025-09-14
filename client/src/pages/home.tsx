@@ -10,7 +10,7 @@ import LocationButton from "@/components/location-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat, Beef, ChefHat, Soup, Star, Sparkles, Timer, ShoppingBag, Target, Trophy, Rocket, Crown, Coffee, Cookie, Wheat, Leaf, Grape, Cherry, Sandwich, Salad, IceCream, Croissant, Plus, Send, Truck, Radio, Activity, Wifi, Loader2 } from "lucide-react";
+import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat, Beef, ChefHat, Soup, Star, Sparkles, Timer, ShoppingBag, Target, Trophy, Rocket, Crown, Coffee, Cookie, Wheat, Leaf, Grape, Cherry, Sandwich, Salad, IceCream, Croissant, Plus, Send, Truck, Radio, Activity, Wifi, Loader2, Sunrise } from "lucide-react";
 import mealScoutLogo from "@assets/image_1757213417158.png";
 import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
 import { format } from "date-fns";
@@ -733,6 +733,16 @@ export default function Home() {
             </div>
           </Link>
 
+          {/* Breakfast */}
+          <Link href="/search?cuisine=Breakfast" className="flex-shrink-0">
+            <div className="w-20 text-center group cursor-pointer" data-testid="category-breakfast">
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-300 to-yellow-400 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-md group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
+                <Sunrise className="w-8 h-8 text-white" />
+              </div>
+              <span className="text-xs font-medium text-gray-700 group-hover:text-orange-600">Breakfast</span>
+            </div>
+          </Link>
+
           {/* Chinese */}
           <Link href="/search?cuisine=Chinese" className="flex-shrink-0">
             <div className="w-20 text-center group cursor-pointer" data-testid="category-chinese">
@@ -770,6 +780,16 @@ export default function Home() {
                 <Sandwich className="w-8 h-8 text-white" />
               </div>
               <span className="text-xs font-medium text-gray-700 group-hover:text-yellow-600">Burgers</span>
+            </div>
+          </Link>
+
+          {/* Sandwiches */}
+          <Link href="/search?cuisine=Sandwiches" className="flex-shrink-0">
+            <div className="w-20 text-center group cursor-pointer" data-testid="category-sandwiches">
+              <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-yellow-600 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-md group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
+                <Wheat className="w-8 h-8 text-white" />
+              </div>
+              <span className="text-xs font-medium text-gray-700 group-hover:text-amber-600">Sandwiches</span>
             </div>
           </Link>
 

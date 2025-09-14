@@ -41,7 +41,7 @@ import {
   type FacebookUserData,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, sql, desc, asc, inArray, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, gte, lte, sql, desc, asc, inArray, isNull, isNotNull, not } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 // Interface for storage operations
@@ -68,6 +68,7 @@ export interface IStorage {
   getDeal(id: string): Promise<Deal | undefined>;
   getDealsByRestaurant(restaurantId: string): Promise<Deal[]>;
   getActiveDeals(): Promise<Deal[]>;
+  getFilteredDeals(showLimitedTimeOnly?: boolean): Promise<Deal[]>;
   getNearbyDeals(lat: number, lng: number, radiusKm: number): Promise<Deal[]>;
   searchDeals(filters: {
     query?: string;
@@ -457,12 +458,81 @@ export class DatabaseStorage implements IStorage {
           eq(deals.isActive, true),
           lte(deals.startDate, now),
           gte(deals.endDate, now),
-          lte(deals.startTime, currentTime),
-          gte(deals.endTime, currentTime)
+          // Time window logic: handles normal hours, overnight hours, and 24/7
+          sql`(
+            -- 24/7 deals (always active)
+            (${deals.startTime} = '00:00' AND ${deals.endTime} = '23:59')
+            OR
+            -- Normal time window (startTime <= endTime)
+            (${deals.startTime} <= ${deals.endTime} AND ${deals.startTime} <= ${currentTime} AND ${currentTime} <= ${deals.endTime})
+            OR
+            -- Overnight time window (startTime > endTime)
+            (${deals.startTime} > ${deals.endTime} AND (${currentTime} >= ${deals.startTime} OR ${currentTime} <= ${deals.endTime}))
+          )`
         )
       )
       .orderBy(desc(deals.createdAt))
       .limit(50); // Limit results for better performance
+  }
+
+  async getFilteredDeals(showLimitedTimeOnly: boolean = false): Promise<Deal[]> {
+    const now = new Date();
+    const currentTime = now.toTimeString().slice(0, 5); // "HH:MM"
+    
+    if (showLimitedTimeOnly) {
+      // Show only deals with specific time restrictions (not 24/7)
+      return await db
+        .select()
+        .from(deals)
+        .where(
+          and(
+            eq(deals.isActive, true),
+            lte(deals.startDate, now),
+            gte(deals.endDate, now),
+            // Time window logic: handles normal hours and overnight hours (excludes 24/7)
+            sql`(
+              -- Normal time window (startTime <= endTime)
+              (${deals.startTime} <= ${deals.endTime} AND ${deals.startTime} <= ${currentTime} AND ${currentTime} <= ${deals.endTime})
+              OR
+              -- Overnight time window (startTime > endTime)
+              (${deals.startTime} > ${deals.endTime} AND (${currentTime} >= ${deals.startTime} OR ${currentTime} <= ${deals.endTime}))
+            )`,
+            // Exclude 24/7 deals - be more robust in detection
+            sql`NOT (
+              (${deals.startTime} = '00:00' AND ${deals.endTime} = '23:59')
+              OR (${deals.startTime} = '00:00' AND ${deals.endTime} = '24:00')
+              OR (${deals.startTime} = ${deals.endTime})
+            )`
+          )
+        )
+        .orderBy(desc(deals.createdAt))
+        .limit(50);
+    }
+    
+    // Show all currently active deals (includes time-of-day filtering)
+    return await db
+      .select()
+      .from(deals)
+      .where(
+        and(
+          eq(deals.isActive, true),
+          lte(deals.startDate, now),
+          gte(deals.endDate, now),
+          // Apply the same time window logic as getActiveDeals
+          sql`(
+            -- 24/7 deals (always active)
+            (${deals.startTime} = '00:00' AND ${deals.endTime} = '23:59')
+            OR
+            -- Normal time window (startTime <= endTime)
+            (${deals.startTime} <= ${deals.endTime} AND ${deals.startTime} <= ${currentTime} AND ${currentTime} <= ${deals.endTime})
+            OR
+            -- Overnight time window (startTime > endTime)
+            (${deals.startTime} > ${deals.endTime} AND (${currentTime} >= ${deals.startTime} OR ${currentTime} <= ${deals.endTime}))
+          )`
+        )
+      )
+      .orderBy(desc(deals.createdAt))
+      .limit(50);
   }
 
 
@@ -601,8 +671,17 @@ export class DatabaseStorage implements IStorage {
           eq(restaurants.isActive, true),
           lte(deals.startDate, now),
           gte(deals.endDate, now),
-          lte(deals.startTime, currentTime),
-          gte(deals.endTime, currentTime),
+          // Time window logic: handles normal hours, overnight hours, and 24/7
+          sql`(
+            -- 24/7 deals (always active)
+            (${deals.startTime} = '00:00' AND ${deals.endTime} = '23:59')
+            OR
+            -- Normal time window (startTime <= endTime)
+            (${deals.startTime} <= ${deals.endTime} AND ${deals.startTime} <= ${currentTime} AND ${currentTime} <= ${deals.endTime})
+            OR
+            -- Overnight time window (startTime > endTime)
+            (${deals.startTime} > ${deals.endTime} AND (${currentTime} >= ${deals.startTime} OR ${currentTime} <= ${deals.endTime}))
+          )`,
           sql`
             (6371 * acos(
               cos(radians(${lat})) * 

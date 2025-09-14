@@ -1174,13 +1174,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/deals/featured', async (req, res) => {
     try {
-      // Return active deals instead of featured deals since we removed the pay-to-play model
-      const deals = await storage.getActiveDeals();
+      // Support filtering: ?filter=limited-time for limited time deals only, or no filter for all deals
+      const filter = req.query.filter as string;
+      const showLimitedTimeOnly = filter === 'limited-time';
+      
+      const deals = await storage.getFilteredDeals(showLimitedTimeOnly);
       
       // Add cache headers for client-side caching
       res.set({
         'Cache-Control': 'public, max-age=300', // 5 minutes
-        'ETag': `"deals-${Date.now()}"`,
+        'ETag': `"deals-${filter || 'all'}-${Date.now()}"`,
       });
       
       res.json(deals);

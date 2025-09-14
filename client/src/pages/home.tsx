@@ -60,6 +60,7 @@ export default function Home() {
   const [foodTrucks, setFoodTrucks] = useState<FoodTruck[]>([]);
   const [showFoodTrucks, setShowFoodTrucks] = useState(true);
   const [loadingFoodTrucks, setLoadingFoodTrucks] = useState(false);
+  const [dealFilter, setDealFilter] = useState<'all' | 'limited-time'>('all');
 
   // WebSocket integration for real-time food truck updates
   const {
@@ -288,7 +289,11 @@ export default function Home() {
   };
 
   const { data: featuredDeals, isLoading: featuredLoading } = useQuery({
-    queryKey: ["/api/deals/featured"],
+    queryKey: ["/api/deals/featured", dealFilter],
+    queryFn: () => {
+      const params = dealFilter === 'limited-time' ? '?filter=limited-time' : '';
+      return fetch(`/api/deals/featured${params}`).then(res => res.json());
+    },
     enabled: true,
   });
 
@@ -718,6 +723,30 @@ export default function Home() {
           <Link href="/deals/featured">
             <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all">View All</button>
           </Link>
+        </div>
+        
+        {/* Deal Filter Buttons */}
+        <div className="flex gap-2 mb-4 px-6">
+          <Button
+            onClick={() => setDealFilter('all')}
+            variant={dealFilter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            className="flex items-center gap-2"
+            data-testid="button-filter-all-deals"
+          >
+            <Utensils className="w-4 h-4" />
+            All Deals
+          </Button>
+          <Button
+            onClick={() => setDealFilter('limited-time')}
+            variant={dealFilter === 'limited-time' ? 'default' : 'outline'}
+            size="sm"
+            className="flex items-center gap-2"
+            data-testid="button-filter-limited-time"
+          >
+            <Timer className="w-4 h-4" />
+            Limited Time Only
+          </Button>
         </div>
 
         {featuredLoading ? (

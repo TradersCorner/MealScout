@@ -271,8 +271,7 @@ export default function Subscribe() {
                 <span className="text-gray-600 text-lg">for 2 additional deals</span>
               </div>
               <p className="text-gray-600 leading-relaxed">
-                Run breakfast, lunch, and dinner deals simultaneously to maximize your 
-                reach and fill every time slot.
+                Mix it up and promote up to 3 deals at the same time.
               </p>
             </div>
 

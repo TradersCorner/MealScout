@@ -645,7 +645,7 @@ export default function RestaurantSignup() {
                   <strong>3 active deals</strong>
                 </p>
                 <p className="text-gray-500 text-lg">
-                  Run breakfast, lunch, and dinner deals simultaneously to maximize your reach.
+                  Mix it up and promote up to 3 deals at the same time.
                 </p>
               </div>
             </div>

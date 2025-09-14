@@ -953,21 +953,31 @@ export default function Landing() {
                 </div>
               ) : (
                 <div>
-                  {/* Primary Email Login Button */}
+                  {/* Create Account Button - Primary Action */}
                   <button
-                    onClick={() => {
-                      handleEmailLogin();
-                    }}
+                    onClick={() => setAuthMode('signup')}
                     className="w-full flex items-center justify-center space-x-3 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors font-medium mb-3"
-                    data-testid="mobile-email-login-button"
+                    data-testid="button-create-account"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                    </svg>
+                    <span className="font-medium">Create Account</span>
+                  </button>
+                  
+                  {/* Login Button - Secondary Action */}
+                  <button
+                    onClick={() => setAuthMode('login')}
+                    className="w-full flex items-center justify-center space-x-3 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors font-medium mb-3"
+                    data-testid="button-login"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/>
                     </svg>
-                    <span className="font-medium">Continue with Email</span>
+                    <span className="font-medium">Sign In</span>
                   </button>
                   
-                  <div className="text-center text-gray-500 text-sm mb-3">or</div>
+                  <div className="text-center text-gray-500 text-sm mb-3">or continue with</div>
                   
                   {/* Google Login */}
                   <button

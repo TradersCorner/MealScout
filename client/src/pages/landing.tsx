@@ -747,7 +747,7 @@ export default function Landing() {
               {authMode === 'login' ? (
                 <div className="space-y-4">
                   <Form {...loginForm}>
-                    <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
+                    <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4" method="post" autoComplete="on">
                       <FormField
                         control={loginForm.control}
                         name="email"
@@ -758,11 +758,11 @@ export default function Landing() {
                               <Input
                                 {...field}
                                 type="email"
-                                name="email"
-                                autoComplete="email"
                                 placeholder="Enter your email"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                 data-testid="input-login-email"
+                                name="email"
+                                autoComplete="email"
                               />
                             </FormControl>
                             <FormMessage />
@@ -781,11 +781,11 @@ export default function Landing() {
                                 <Input
                                   {...field}
                                   type={showPassword ? "text" : "password"}
-                                  name="password"
-                                  autoComplete="current-password"
                                   placeholder="Enter your password"
                                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   data-testid="input-login-password"
+                                  name="password"
+                                  autoComplete="current-password"
                                 />
                                 <button
                                   type="button"
@@ -830,7 +830,7 @@ export default function Landing() {
               ) : authMode === 'signup' ? (
                 <div className="space-y-4">
                   <Form {...signupForm}>
-                    <form onSubmit={signupForm.handleSubmit(onSignup)} className="space-y-4">
+                    <form onSubmit={signupForm.handleSubmit(onSignup)} className="space-y-4" method="post" autoComplete="on">
                       <div className="grid grid-cols-2 gap-3">
                         <FormField
                           control={signupForm.control}
@@ -841,11 +841,11 @@ export default function Landing() {
                               <FormControl>
                                 <Input
                                   {...field}
-                                  name="firstName"
-                                  autoComplete="given-name"
                                   placeholder="First name"
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   data-testid="input-signup-firstname"
+                                  name="firstName"
+                                  autoComplete="given-name"
                                 />
                               </FormControl>
                               <FormMessage />
@@ -862,11 +862,11 @@ export default function Landing() {
                               <FormControl>
                                 <Input
                                   {...field}
-                                  name="lastName"
-                                  autoComplete="family-name"
                                   placeholder="Last name"
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   data-testid="input-signup-lastname"
+                                  name="lastName"
+                                  autoComplete="family-name"
                                 />
                               </FormControl>
                               <FormMessage />
@@ -885,11 +885,11 @@ export default function Landing() {
                               <Input
                                 {...field}
                                 type="email"
-                                name="email"
-                                autoComplete="email"
                                 placeholder="Enter your email"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                 data-testid="input-signup-email"
+                                name="email"
+                                autoComplete="email"
                               />
                             </FormControl>
                             <FormMessage />
@@ -908,11 +908,11 @@ export default function Landing() {
                                 <Input
                                   {...field}
                                   type={showPassword ? "text" : "password"}
-                                  name="password"
-                                  autoComplete="new-password"
                                   placeholder="Create password (6+ chars)"
                                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   data-testid="input-signup-password"
+                                  name="password"
+                                  autoComplete="new-password"
                                 />
                                 <button
                                   type="button"
@@ -939,11 +939,11 @@ export default function Landing() {
                                 <Input
                                   {...field}
                                   type={showConfirmPassword ? "text" : "password"}
-                                  name="confirmPassword"
-                                  autoComplete="new-password"
                                   placeholder="Confirm your password"
                                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   data-testid="input-signup-confirm-password"
+                                  name="confirmPassword"
+                                  autoComplete="new-password"
                                 />
                                 <button
                                   type="button"

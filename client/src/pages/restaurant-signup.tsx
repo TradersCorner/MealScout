@@ -18,6 +18,7 @@ import { Mail, Eye, EyeOff, CheckCircle, Upload, ArrowLeft, ArrowRight } from "l
 import DocumentUpload from "@/components/document-upload";
 import { BackHeader } from "@/components/back-header";
 import { Store } from "lucide-react";
+import mealScoutLogo from "@assets/image_1757871599519.png";
 
 const restaurantSchema = z.object({
   name: z.string().min(1, "Business name is required"),
@@ -283,7 +284,7 @@ export default function RestaurantSignup() {
           <div className="text-center mb-16">
             <div className="w-48 h-48 mb-8 flex items-center justify-center mx-auto">
               <img 
-                src="/attached_assets/541254193_1828025567749501_7985847689970469117_n_1757207057307.jpg" 
+                src={mealScoutLogo} 
                 alt="MealScout Logo" 
                 className="w-full h-full object-contain drop-shadow-2xl"
               />

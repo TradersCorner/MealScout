@@ -239,7 +239,7 @@ export default function AdminDashboard() {
             <Shield className="w-8 h-8 text-primary" />
             <div>
               <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-              <p className="text-sm text-muted-foreground">Manage your DealScout platform</p>
+              <p className="text-sm text-muted-foreground">Manage your MealScout platform</p>
             </div>
           </div>
           <Button variant="outline" asChild data-testid="button-logout-admin">

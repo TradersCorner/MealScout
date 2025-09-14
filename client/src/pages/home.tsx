@@ -273,7 +273,7 @@ export default function Home() {
       {/* Header with Logo and Location */}
       <header className="bg-white border-b border-gray-100 px-6 py-4 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between">
-          {/* DealScout Logo */}
+          {/* MealScout Logo */}
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 flex items-center justify-center">
               <img 
@@ -1315,7 +1315,7 @@ export default function Home() {
               </span>
               Missing Your Favorite Spot?
             </h2>
-            <p className="text-muted-foreground" data-testid="text-recommend-subtitle">Help us add great local restaurants to DealScout!</p>
+            <p className="text-muted-foreground" data-testid="text-recommend-subtitle">Help us add great local restaurants to MealScout!</p>
           </div>
           <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white shadow-lg">
             <div className="w-full h-full food-gradient-accent flex items-center justify-center">

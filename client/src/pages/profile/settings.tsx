@@ -56,7 +56,7 @@ export default function SettingsPage() {
             <h1 className="text-xl font-bold text-foreground">Settings</h1>
           </div>
         </div>
-        <p className="text-sm text-muted-foreground">Customize your DealScout experience</p>
+        <p className="text-sm text-muted-foreground">Customize your MealScout experience</p>
       </header>
 
       {/* Tabbed Content */}
@@ -149,7 +149,7 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">Analytics</p>
-                    <p className="text-sm text-muted-foreground">Help improve DealScout</p>
+                    <p className="text-sm text-muted-foreground">Help improve MealScout</p>
                   </div>
                   <Switch
                     checked={settings.analytics}

@@ -446,6 +446,7 @@ export default function LocationButton({
         // Small delay before next attempt
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
+    }
     
     // If we get here, all attempts failed
     inFlightRef.current = false;

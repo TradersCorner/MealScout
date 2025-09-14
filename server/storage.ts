@@ -965,7 +965,31 @@ export class DatabaseStorage implements IStorage {
         passwordHash: await bcrypt.hash('password123', 10)
       }, 'customer');
 
-      // Create sample restaurants in Hammond, LA area
+      // Create additional owners for geographic diversity
+      const owner4 = await this.upsertUserByAuth('email', {
+        email: 'owner4@example.com',
+        firstName: 'Maria',
+        lastName: 'Garcia',
+        passwordHash: await bcrypt.hash('password123', 10)
+      }, 'restaurant_owner');
+
+      const owner5 = await this.upsertUserByAuth('email', {
+        email: 'owner5@example.com',
+        firstName: 'David',
+        lastName: 'Chen',
+        passwordHash: await bcrypt.hash('password123', 10)
+      }, 'restaurant_owner');
+
+      const owner6 = await this.upsertUserByAuth('email', {
+        email: 'owner6@example.com',
+        firstName: 'Sarah',
+        lastName: 'Johnson',
+        passwordHash: await bcrypt.hash('password123', 10)
+      }, 'restaurant_owner');
+
+      // Create restaurants across different US cities for testing
+      
+      // Hammond, LA (Local area)
       const restaurant1 = await this.createRestaurant({
         name: 'Café du Monde Hammond',
         address: '315 W Thomas St, Hammond, LA 70401',
@@ -977,7 +1001,7 @@ export class DatabaseStorage implements IStorage {
       });
 
       const restaurant2 = await this.createRestaurant({
-        name: 'Red Lobster',
+        name: 'Red Lobster Hammond',
         address: '1535 W Thomas St, Hammond, LA 70401',
         phone: '+1 (985) 419-1235',
         cuisineType: 'Seafood',
@@ -986,38 +1010,114 @@ export class DatabaseStorage implements IStorage {
         ownerId: owner2.id
       });
 
+      // New York City
       const restaurant3 = await this.createRestaurant({
-        name: 'Chili\'s Grill & Bar',
-        address: '1310 W Thomas St, Hammond, LA 70401',
-        phone: '+1 (985) 419-9823',
-        cuisineType: 'American',
-        latitude: '30.5098',
-        longitude: '-90.4845',
-        ownerId: owner1.id
-      });
-
-      const restaurant4 = await this.createRestaurant({
-        name: 'Cracker Barrel',
-        address: '42434 Veterans Ave, Hammond, LA 70403',
-        phone: '+1 (985) 542-9034',
-        cuisineType: 'Southern',
-        latitude: '30.5456',
-        longitude: '-90.4623',
-        ownerId: owner2.id
-      });
-
-      const restaurant5 = await this.createRestaurant({
-        name: 'The Columbia Restaurant',
-        address: '201 S Oak St, Hammond, LA 70401',
-        phone: '+1 (985) 345-8738',
+        name: 'Joe\'s Pizza NYC',
+        address: '7 Carmine St, New York, NY 10014',
+        phone: '+1 (212) 366-1182',
         cuisineType: 'Italian',
-        latitude: '30.5025',
-        longitude: '-90.4598',
+        latitude: '40.7303',
+        longitude: '-74.0033',
         ownerId: owner3.id
       });
 
-      // Create food truck
-      const foodTruck = await this.createRestaurant({
+      const restaurant4 = await this.createRestaurant({
+        name: 'Katz\'s Delicatessen',
+        address: '205 E Houston St, New York, NY 10002',
+        phone: '+1 (212) 254-2246',
+        cuisineType: 'Jewish',
+        latitude: '40.7222',
+        longitude: '-73.9876',
+        ownerId: owner4.id
+      });
+
+      // Los Angeles
+      const restaurant5 = await this.createRestaurant({
+        name: 'In-N-Out Burger',
+        address: '7009 Sunset Blvd, Hollywood, CA 90028',
+        phone: '+1 (800) 786-1000',
+        cuisineType: 'American',
+        latitude: '34.0985',
+        longitude: '-118.3431',
+        ownerId: owner5.id
+      });
+
+      const restaurant6 = await this.createRestaurant({
+        name: 'Guelaguetza',
+        address: '3014 W Olympic Blvd, Los Angeles, CA 90006',
+        phone: '+1 (213) 427-0608',
+        cuisineType: 'Mexican',
+        latitude: '34.0579',
+        longitude: '-118.2951',
+        ownerId: owner6.id
+      });
+
+      // Chicago
+      const restaurant7 = await this.createRestaurant({
+        name: 'Lou Malnati\'s Pizzeria',
+        address: '439 N Wells St, Chicago, IL 60654',
+        phone: '+1 (312) 828-9800',
+        cuisineType: 'Italian',
+        latitude: '41.8906',
+        longitude: '-87.6342',
+        ownerId: owner1.id
+      });
+
+      const restaurant8 = await this.createRestaurant({
+        name: 'Al\'s Beef',
+        address: '1079 W Taylor St, Chicago, IL 60607',
+        phone: '+1 (312) 226-4017',
+        cuisineType: 'American',
+        latitude: '41.8690',
+        longitude: '-87.6544',
+        ownerId: owner2.id
+      });
+
+      // Houston
+      const restaurant9 = await this.createRestaurant({
+        name: 'The Original Ninfa\'s',
+        address: '2704 Navigation Blvd, Houston, TX 77003',
+        phone: '+1 (713) 228-1175',
+        cuisineType: 'Mexican',
+        latitude: '29.7469',
+        longitude: '-95.3352',
+        ownerId: owner3.id
+      });
+
+      const restaurant10 = await this.createRestaurant({
+        name: 'Franklin Barbecue',
+        address: '900 E 11th St, Austin, TX 78702',
+        phone: '+1 (512) 653-1187',
+        cuisineType: 'BBQ',
+        latitude: '30.2669',
+        longitude: '-97.7318',
+        ownerId: owner4.id
+      });
+
+      // Miami
+      const restaurant11 = await this.createRestaurant({
+        name: 'Versailles Restaurant',
+        address: '3555 SW 8th St, Miami, FL 33135',
+        phone: '+1 (305) 444-0240',
+        cuisineType: 'Cuban',
+        latitude: '25.7654',
+        longitude: '-80.2534',
+        ownerId: owner5.id
+      });
+
+      // Seattle
+      const restaurant12 = await this.createRestaurant({
+        name: 'Pike Place Chowder',
+        address: '1530 Post Alley, Seattle, WA 98101',
+        phone: '+1 (206) 267-2537',
+        cuisineType: 'Seafood',
+        latitude: '47.6089',
+        longitude: '-122.3403',
+        ownerId: owner6.id
+      });
+
+      // Food trucks in different cities
+      const foodTruck1 = await this.createRestaurant({
         name: 'Louisiana Po-Boy Express',
         address: 'Mobile - Hammond & Ponchatoula area',
         phone: '+1 (985) 662-7823',
@@ -1025,10 +1125,34 @@ export class DatabaseStorage implements IStorage {
         isFoodTruck: true,
         latitude: '30.5123',
         longitude: '-90.4567',
+        ownerId: owner1.id
+      });
+
+      const foodTruck2 = await this.createRestaurant({
+        name: 'The Halal Guys NYC',
+        address: 'Mobile - Manhattan area',
+        phone: '+1 (347) 527-1505',
+        cuisineType: 'Middle Eastern',
+        isFoodTruck: true,
+        latitude: '40.7589',
+        longitude: '-73.9851',
+        ownerId: owner2.id
+      });
+
+      const foodTruck3 = await this.createRestaurant({
+        name: 'Kogi BBQ Truck',
+        address: 'Mobile - Los Angeles area',
+        phone: '+1 (323) 582-8889',
+        cuisineType: 'Korean',
+        isFoodTruck: true,
+        latitude: '34.0522',
+        longitude: '-118.2437',
         ownerId: owner3.id
       });
 
-      // Create sample deals
+      // Create diverse deals across different cities and cuisines
+      
+      // Hammond, LA deals
       const deal1 = await this.createDeal({
         restaurantId: restaurant1.id,
         title: 'Free Beignets with Coffee Purchase',
@@ -1063,18 +1187,19 @@ export class DatabaseStorage implements IStorage {
         isActive: true
       });
 
+      // NYC deals
       const deal3 = await this.createDeal({
         restaurantId: restaurant3.id,
-        title: '2 for $25 Dinner Deal',
-        description: 'Two entrees for just $25! Choose from our most popular items including Awesome Blossom Petals and Baby Back Ribs.',
-        dealType: 'fixed',
-        discountValue: '10.00',
-        minOrderAmount: '25.00',
-        imageUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=500',
+        title: 'Buy 1 Get 1 Half Off Pizza Slices',
+        description: 'Get the second pizza slice at 50% off! Valid on our famous NYC-style thin crust slices.',
+        dealType: 'percentage',
+        discountValue: '25.00',
+        minOrderAmount: '6.00',
+        imageUrl: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=500',
         startDate: new Date(),
         endDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
-        startTime: '16:00',
-        endTime: '22:00',
+        startTime: '11:00',
+        endTime: '23:00',
         totalUsesLimit: 150,
         perCustomerLimit: 2,
         isActive: true
@@ -1082,40 +1207,165 @@ export class DatabaseStorage implements IStorage {
 
       const deal4 = await this.createDeal({
         restaurantId: restaurant4.id,
-        title: 'Free Cornbread & Biscuits',
-        description: 'Complimentary basket of our famous cornbread and buttermilk biscuits with any breakfast or dinner order over $12.',
+        title: 'Free Pickle with Pastrami Sandwich',
+        description: 'Get a complimentary full sour pickle with any pastrami sandwich order. A NYC classic!',
         dealType: 'percentage',
         discountValue: '100.00',
-        minOrderAmount: '12.00',
-        imageUrl: 'https://images.unsplash.com/photo-1585307269049-b43e8da0f6ca?w=500',
+        minOrderAmount: '18.00',
+        imageUrl: 'https://images.unsplash.com/photo-1567129937968-cdad8f07e2f8?w=500',
         startDate: new Date(),
         endDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
-        startTime: '06:00',
+        startTime: '08:00',
         endTime: '22:00',
         totalUsesLimit: 300,
         perCustomerLimit: 1,
         isActive: true
       });
 
+      // LA deals
       const deal5 = await this.createDeal({
         restaurantId: restaurant5.id,
-        title: 'Half-Price Wine Wednesday',
-        description: 'Every Wednesday, enjoy 50% off all bottles of wine with the purchase of any pasta dish. Perfect for date night!',
-        dealType: 'percentage',
-        discountValue: '50.00',
-        minOrderAmount: '18.00',
-        imageUrl: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=500',
+        title: 'Animal Style Fries Upgrade',
+        description: 'Free upgrade to Animal Style fries with any Double-Double burger purchase!',
+        dealType: 'fixed',
+        discountValue: '2.50',
+        minOrderAmount: '8.00',
+        imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500',
         startDate: new Date(),
-        endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
-        startTime: '17:00',
-        endTime: '22:00',
-        totalUsesLimit: 50,
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        startTime: '10:30',
+        endTime: '01:00',
+        totalUsesLimit: 200,
         perCustomerLimit: 1,
         isActive: true
       });
 
       const deal6 = await this.createDeal({
-        restaurantId: foodTruck.id,
+        restaurantId: restaurant6.id,
+        title: 'Free Mole Tasting',
+        description: 'Try our seven traditional moles with any entree order over $20. Discover authentic Oaxacan flavors!',
+        dealType: 'percentage',
+        discountValue: '100.00',
+        minOrderAmount: '20.00',
+        imageUrl: 'https://images.unsplash.com/photo-1565299507177-b0ac66763828?w=500',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+        startTime: '17:00',
+        endTime: '22:00',
+        totalUsesLimit: 75,
+        perCustomerLimit: 1,
+        isActive: true
+      });
+
+      // Chicago deals
+      const deal7 = await this.createDeal({
+        restaurantId: restaurant7.id,
+        title: '20% Off Deep Dish Pizza',
+        description: 'Save 20% on our famous Chicago deep dish pizza! Made with our signature buttery crust.',
+        dealType: 'percentage',
+        discountValue: '20.00',
+        minOrderAmount: '25.00',
+        imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        startTime: '11:00',
+        endTime: '23:00',
+        totalUsesLimit: 100,
+        perCustomerLimit: 2,
+        isActive: true
+      });
+
+      const deal8 = await this.createDeal({
+        restaurantId: restaurant8.id,
+        title: 'Free Hot Peppers with Italian Beef',
+        description: 'Get a side of our spicy giardiniera hot peppers free with any Italian beef sandwich!',
+        dealType: 'percentage',
+        discountValue: '100.00',
+        minOrderAmount: '12.00',
+        imageUrl: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=500',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
+        startTime: '10:00',
+        endTime: '22:00',
+        totalUsesLimit: 250,
+        perCustomerLimit: 1,
+        isActive: true
+      });
+
+      // Texas deals
+      const deal9 = await this.createDeal({
+        restaurantId: restaurant9.id,
+        title: 'Happy Hour Margaritas',
+        description: '$3 off our famous frozen margaritas during happy hour! Made with fresh lime juice.',
+        dealType: 'fixed',
+        discountValue: '3.00',
+        minOrderAmount: '8.00',
+        imageUrl: 'https://images.unsplash.com/photo-1551538827-9c037cb4f32a?w=500',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+        startTime: '15:00',
+        endTime: '18:00',
+        totalUsesLimit: 500,
+        perCustomerLimit: 2,
+        isActive: true
+      });
+
+      const deal10 = await this.createDeal({
+        restaurantId: restaurant10.id,
+        title: 'Free Sauce with Brisket Plate',
+        description: 'Choose a complimentary sauce (Espresso BBQ, Hot, or Regular) with any brisket plate order.',
+        dealType: 'percentage',
+        discountValue: '100.00',
+        minOrderAmount: '16.00',
+        imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=500',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        startTime: '11:00',
+        endTime: '21:00',
+        totalUsesLimit: 200,
+        perCustomerLimit: 1,
+        isActive: true
+      });
+
+      // Miami deal
+      const deal11 = await this.createDeal({
+        restaurantId: restaurant11.id,
+        title: 'Free Cuban Coffee with Breakfast',
+        description: 'Complimentary café cubano with any breakfast order before 11 AM.',
+        dealType: 'percentage',
+        discountValue: '100.00',
+        minOrderAmount: '12.00',
+        imageUrl: 'https://images.unsplash.com/photo-1512481844049-fce44975de78?w=500',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        startTime: '07:00',
+        endTime: '11:00',
+        totalUsesLimit: 150,
+        perCustomerLimit: 1,
+        isActive: true
+      });
+
+      // Seattle deal
+      const deal12 = await this.createDeal({
+        restaurantId: restaurant12.id,
+        title: '25% Off Clam Chowder Friday',
+        description: 'Every Friday, save 25% on our award-winning New England clam chowder!',
+        dealType: 'percentage',
+        discountValue: '25.00',
+        minOrderAmount: '8.00',
+        imageUrl: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=500',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+        startTime: '11:00',
+        endTime: '21:00',
+        totalUsesLimit: 100,
+        perCustomerLimit: 1,
+        isActive: true
+      });
+
+      // Food truck deals
+      const deal13 = await this.createDeal({
+        restaurantId: foodTruck1.id,
         title: 'Buy 2 Po-Boys, Get 1 Free',
         description: 'Purchase any two po-boys and get a third one free! Choose from our authentic New Orleans-style shrimp, oyster, or roast beef po-boys.',
         dealType: 'percentage',
@@ -1131,7 +1381,41 @@ export class DatabaseStorage implements IStorage {
         isActive: true
       });
 
-      // Create sample reviews
+      const deal14 = await this.createDeal({
+        restaurantId: foodTruck2.id,
+        title: 'Free White Sauce with Combo',
+        description: 'Get our famous white sauce free with any combo platter! The secret recipe that made us famous.',
+        dealType: 'percentage',
+        discountValue: '100.00',
+        minOrderAmount: '10.00',
+        imageUrl: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=500',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        startTime: '11:00',
+        endTime: '23:00',
+        totalUsesLimit: 200,
+        perCustomerLimit: 1,
+        isActive: true
+      });
+
+      const deal15 = await this.createDeal({
+        restaurantId: foodTruck3.id,
+        title: '$2 Off Korean BBQ Tacos',
+        description: 'Save $2 on our fusion Korean BBQ tacos! Marinated bulgogi with Korean spices in warm tortillas.',
+        dealType: 'fixed',
+        discountValue: '2.00',
+        minOrderAmount: '8.00',
+        imageUrl: 'https://images.unsplash.com/photo-1565299585323-38174c4a6303?w=500',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+        startTime: '11:30',
+        endTime: '22:00',
+        totalUsesLimit: 100,
+        perCustomerLimit: 2,
+        isActive: true
+      });
+
+      // Create sample reviews across different cities
       await this.createReview({
         userId: customer1.id,
         restaurantId: restaurant1.id,
@@ -1149,42 +1433,108 @@ export class DatabaseStorage implements IStorage {
       await this.createReview({
         userId: customer1.id,
         restaurantId: restaurant3.id,
-        rating: 4,
-        comment: 'Love the 2 for $25 deal! Portions are huge and the food is consistently good. Great place for families.'
+        rating: 5,
+        comment: 'Authentic NYC pizza! Thin crust perfection. The deal makes it even better - great value in the city.'
       });
 
       await this.createReview({
         userId: customer1.id,
         restaurantId: restaurant4.id,
         rating: 5,
-        comment: 'The cornbread here is incredible! Country atmosphere and hearty Southern cooking. Kids love the rocking chairs on the porch.'
+        comment: 'Iconic NYC deli! The pastrami sandwich is legendary. Worth the wait and every penny. A true New York experience.'
       });
 
       await this.createReview({
         userId: customer1.id,
         restaurantId: restaurant5.id,
         rating: 4,
-        comment: 'Authentic Italian in Hammond! The wine selection is excellent and the pasta is made fresh. Wine Wednesday is our favorite!'
+        comment: 'Classic LA burger joint! Fresh ingredients and the Animal Style fries are addictive. Great California vibes.'
       });
 
       await this.createReview({
         userId: customer1.id,
-        restaurantId: foodTruck.id,
+        restaurantId: restaurant6.id,
+        rating: 5,
+        comment: 'Incredible authentic Oaxacan food! The mole varieties are amazing. Each one tells a story of traditional flavors.'
+      });
+
+      await this.createReview({
+        userId: customer1.id,
+        restaurantId: restaurant7.id,
+        rating: 5,
+        comment: 'Best deep dish in Chicago! The crust is buttery perfection and loaded with cheese. A Chicago must-have!'
+      });
+
+      await this.createReview({
+        userId: customer1.id,
+        restaurantId: restaurant8.id,
+        rating: 4,
+        comment: 'True Chicago Italian beef! Messy but delicious. The juice and hot peppers make it perfect. Pure Chicago tradition.'
+      });
+
+      await this.createReview({
+        userId: customer1.id,
+        restaurantId: restaurant9.id,
+        rating: 4,
+        comment: 'Great Tex-Mex in Houston! The margaritas are strong and the fajitas sizzle. Happy hour deals are fantastic.'
+      });
+
+      await this.createReview({
+        userId: customer1.id,
+        restaurantId: restaurant10.id,
+        rating: 5,
+        comment: 'BBQ perfection in Austin! The brisket melts in your mouth. Worth the line - Texas BBQ at its finest.'
+      });
+
+      await this.createReview({
+        userId: customer1.id,
+        restaurantId: restaurant11.id,
+        rating: 4,
+        comment: 'Authentic Cuban food in Miami! The café cubano is perfect and the breakfast is hearty. Real Cuban flavors.'
+      });
+
+      await this.createReview({
+        userId: customer1.id,
+        restaurantId: restaurant12.id,
+        rating: 5,
+        comment: 'Amazing chowder in Seattle! Creamy, rich, and full of fresh clams. Perfect for the Pacific Northwest weather.'
+      });
+
+      await this.createReview({
+        userId: customer1.id,
+        restaurantId: foodTruck1.id,
         rating: 5,
         comment: 'Best po-boys outside of New Orleans! The shrimp po-boy is massive and perfectly seasoned. Worth finding wherever they are!'
       });
 
-      // Start a food truck session for demo
-      await this.startTruckSession(foodTruck.id, 'demo-device-123', owner3.id);
+      await this.createReview({
+        userId: customer1.id,
+        restaurantId: foodTruck2.id,
+        rating: 5,
+        comment: 'NYC street food legend! The white sauce is incredible and the chicken is perfectly seasoned. Late night favorite!'
+      });
+
+      await this.createReview({
+        userId: customer1.id,
+        restaurantId: foodTruck3.id,
+        rating: 4,
+        comment: 'Fusion done right in LA! Korean BBQ tacos are unique and delicious. Great mix of flavors and cultures.'
+      });
+
+      // Start food truck sessions for demo
+      await this.startTruckSession(foodTruck1.id, 'demo-device-123', owner1.id);
+      await this.startTruckSession(foodTruck2.id, 'demo-device-456', owner2.id);
+      await this.startTruckSession(foodTruck3.id, 'demo-device-789', owner3.id);
 
       console.log('✅ Development seed data created successfully');
       console.log('📊 Created:');
-      console.log('   - 3 restaurant owners (password: password123)');
+      console.log('   - 6 restaurant owners (password: password123)');
       console.log('   - 1 customer (customer@example.com, password: password123)');
-      console.log('   - 6 restaurants in Hammond, LA area (including 1 food truck)');
-      console.log('   - 6 realistic deals with Louisiana cuisine');
-      console.log('   - 6 authentic reviews');
-      console.log('   - 1 active food truck session');
+      console.log('   - 15 restaurants across 8+ US cities (Hammond, NYC, LA, Chicago, Houston, Austin, Miami, Seattle)');
+      console.log('   - 3 food trucks in different cities');
+      console.log('   - 15 diverse deals with regional cuisine specialties');
+      console.log('   - 15 authentic location-specific reviews');
+      console.log('   - 3 active food truck sessions');
     } catch (error) {
       console.error('❌ Failed to seed development data:', error);
     }

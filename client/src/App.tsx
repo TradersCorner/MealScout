@@ -35,6 +35,7 @@ import UserDashboard from "@/pages/user-dashboard";
 import DashboardSwitcher from "@/components/dashboard-switcher";
 import TermsOfService from "@/pages/terms-of-service";
 import PrivacyPolicy from "@/pages/privacy-policy";
+import DataDeletion from "@/pages/data-deletion";
 import About from "@/pages/about";
 import FAQ from "@/pages/faq";
 import HowItWorks from "@/pages/how-it-works";
@@ -77,6 +78,7 @@ function Router() {
           <Route path="/restaurant/:id" component={RestaurantDetail} />
           <Route path="/terms-of-service" component={TermsOfService} />
           <Route path="/privacy-policy" component={PrivacyPolicy} />
+          <Route path="/data-deletion" component={DataDeletion} />
           <Route path="/about" component={About} />
           <Route path="/faq" component={FAQ} />
           <Route path="/how-it-works" component={HowItWorks} />
@@ -112,6 +114,7 @@ function Router() {
           <Route path="/restaurant/:id" component={RestaurantDetail} />
           <Route path="/terms-of-service" component={TermsOfService} />
           <Route path="/privacy-policy" component={PrivacyPolicy} />
+          <Route path="/data-deletion" component={DataDeletion} />
           <Route path="/about" component={About} />
           <Route path="/faq" component={FAQ} />
           <Route path="/how-it-works" component={HowItWorks} />

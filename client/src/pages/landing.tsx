@@ -70,8 +70,16 @@ export default function Landing() {
   }, []);
 
   const handleFacebookLogin = () => {
-    // Use Replit Auth which includes Google, GitHub, Apple, and email authentication
-    window.location.href = '/api/login';
+    // In Facebook browser, use different approach for better compatibility
+    if (isFacebookBrowser) {
+      console.log('🔵 Facebook Browser login - using optimized flow');
+      // Add small delay to ensure proper handling in Facebook browser
+      setTimeout(() => {
+        window.location.href = '/api/auth/facebook';
+      }, 100);
+    } else {
+      window.location.href = '/api/auth/facebook';
+    }
   };
 
   const handleGoogleLogin = () => {

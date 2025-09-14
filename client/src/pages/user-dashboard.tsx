@@ -25,7 +25,7 @@ interface UserStats {
 export default function UserDashboard() {
   const { user } = useAuth();
   const [location, setLocation] = useState<{lat: number; lng: number} | null>(null);
-  const [locationName, setLocationName] = useState("Getting location...");
+  const [locationName, setLocationName] = useState("Hammond, LA");
 
   // Get user location
   useEffect(() => {

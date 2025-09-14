@@ -44,7 +44,7 @@ import {
   type FacebookUserData,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, sql, desc, asc, inArray, isNull, isNotNull, not } from "drizzle-orm";
+import { eq, and, or, gte, lte, sql, desc, asc, inArray, isNull, isNotNull, not } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 // Interface for storage operations
@@ -273,56 +273,88 @@ export class DatabaseStorage implements IStorage {
   async upsertUserByAuth(authType: 'google' | 'email' | 'facebook', userData: GoogleUserData | EmailUserData | FacebookUserData, userType: 'customer' | 'restaurant_owner' | 'admin' = 'customer'): Promise<User> {
     if (authType === 'google') {
       const googleData = userData as GoogleUserData;
-      const [user] = await db
-        .insert(users)
-        .values({
-          userType,
-          googleId: googleData.googleId,
-          email: googleData.email,
-          firstName: googleData.firstName,
-          lastName: googleData.lastName,
-          profileImageUrl: googleData.profileImageUrl,
-          googleAccessToken: googleData.googleAccessToken,
-        })
-        .onConflictDoUpdate({
-          target: users.googleId,
-          set: {
+      
+      // First try to find existing user by Google ID or email
+      const existingUser = await db
+        .select()
+        .from(users)
+        .where(or(eq(users.googleId, googleData.googleId), eq(users.email, googleData.email)))
+        .limit(1);
+
+      if (existingUser.length > 0) {
+        // Update existing user with Google auth info
+        const [user] = await db
+          .update(users)
+          .set({
+            googleId: googleData.googleId,
             email: googleData.email,
             firstName: googleData.firstName,
             lastName: googleData.lastName,
             profileImageUrl: googleData.profileImageUrl,
             googleAccessToken: googleData.googleAccessToken,
             updatedAt: new Date(),
-          },
-        })
-        .returning();
-      return user;
+          })
+          .where(eq(users.id, existingUser[0].id))
+          .returning();
+        return user;
+      } else {
+        // Create new user
+        const [user] = await db
+          .insert(users)
+          .values({
+            userType,
+            googleId: googleData.googleId,
+            email: googleData.email,
+            firstName: googleData.firstName,
+            lastName: googleData.lastName,
+            profileImageUrl: googleData.profileImageUrl,
+            googleAccessToken: googleData.googleAccessToken,
+          })
+          .returning();
+        return user;
+      }
     } else if (authType === 'facebook') {
       const facebookData = userData as FacebookUserData;
-      const [user] = await db
-        .insert(users)
-        .values({
-          userType,
-          facebookId: facebookData.facebookId,
-          email: facebookData.email,
-          firstName: facebookData.firstName,
-          lastName: facebookData.lastName,
-          profileImageUrl: facebookData.profileImageUrl,
-          facebookAccessToken: facebookData.facebookAccessToken,
-        })
-        .onConflictDoUpdate({
-          target: users.facebookId,
-          set: {
+      
+      // First try to find existing user by Facebook ID or email
+      const existingUser = await db
+        .select()
+        .from(users)
+        .where(or(eq(users.facebookId, facebookData.facebookId), eq(users.email, facebookData.email)))
+        .limit(1);
+
+      if (existingUser.length > 0) {
+        // Update existing user with Facebook auth info
+        const [user] = await db
+          .update(users)
+          .set({
+            facebookId: facebookData.facebookId,
             email: facebookData.email,
             firstName: facebookData.firstName,
             lastName: facebookData.lastName,
             profileImageUrl: facebookData.profileImageUrl,
             facebookAccessToken: facebookData.facebookAccessToken,
             updatedAt: new Date(),
-          },
-        })
-        .returning();
-      return user;
+          })
+          .where(eq(users.id, existingUser[0].id))
+          .returning();
+        return user;
+      } else {
+        // Create new user
+        const [user] = await db
+          .insert(users)
+          .values({
+            userType,
+            facebookId: facebookData.facebookId,
+            email: facebookData.email,
+            firstName: facebookData.firstName,
+            lastName: facebookData.lastName,
+            profileImageUrl: facebookData.profileImageUrl,
+            facebookAccessToken: facebookData.facebookAccessToken,
+          })
+          .returning();
+        return user;
+      }
     } else {
       const emailData = userData as EmailUserData;
       const [user] = await db

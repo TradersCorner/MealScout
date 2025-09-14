@@ -657,7 +657,8 @@ export default function Landing() {
             {/* Mobile Menu Button */}
             <div className="sm:hidden flex items-center space-x-1">
               <button 
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent click outside handler
                   setAuthMode('signup'); // Open directly in signup mode
                   setShowAuth(true);
                 }}
@@ -669,7 +670,8 @@ export default function Landing() {
                 </svg>
               </button>
               <button 
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent click outside handler
                   setAuthMode('primary'); // Set to primary mode to show main auth options
                   setShowAuth(!showAuth);
                 }}

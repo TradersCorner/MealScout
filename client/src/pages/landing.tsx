@@ -656,13 +656,18 @@ export default function Landing() {
             
             {/* Mobile Menu Button */}
             <div className="sm:hidden flex items-center space-x-1">
-              <Link href="/restaurant-signup">
-                <button className="w-9 h-9 bg-red-500 hover:bg-red-600 rounded-lg flex items-center justify-center transition-colors duration-200 shadow-sm">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                  </svg>
-                </button>
-              </Link>
+              <button 
+                onClick={() => {
+                  setAuthMode('signup'); // Open directly in signup mode
+                  setShowAuth(true);
+                }}
+                className="w-9 h-9 bg-red-500 hover:bg-red-600 rounded-lg flex items-center justify-center transition-colors duration-200 shadow-sm"
+                data-testid="mobile-create-account-button"
+              >
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+              </button>
               <button 
                 onClick={() => {
                   setAuthMode('primary'); // Set to primary mode to show main auth options

@@ -533,7 +533,7 @@ export default function Home() {
           </h2>
         </div>
         
-        <div className="flex overflow-x-auto pb-4 px-6 space-x-4 lg:grid lg:grid-cols-6 lg:gap-4 lg:overflow-visible">
+        <div className="flex overflow-x-auto pb-4 px-6 space-x-4 lg:grid lg:grid-cols-8 lg:gap-4 lg:overflow-visible">
           {/* Pizza */}
           <Link href="/search?cuisine=Italian" className="flex-shrink-0">
             <div className="w-20 text-center group cursor-pointer" data-testid="category-pizza">
@@ -544,13 +544,33 @@ export default function Home() {
             </div>
           </Link>
 
-          {/* Asian */}
-          <Link href="/search?cuisine=Asian" className="flex-shrink-0">
-            <div className="w-20 text-center group cursor-pointer" data-testid="category-asian">
-              <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-md group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
+          {/* Chinese */}
+          <Link href="/search?cuisine=Chinese" className="flex-shrink-0">
+            <div className="w-20 text-center group cursor-pointer" data-testid="category-chinese">
+              <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-yellow-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-md group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
                 <Soup className="w-8 h-8 text-white" />
               </div>
-              <span className="text-xs font-medium text-gray-700 group-hover:text-orange-600">Asian</span>
+              <span className="text-xs font-medium text-gray-700 group-hover:text-red-600">Chinese</span>
+            </div>
+          </Link>
+
+          {/* Japanese */}
+          <Link href="/search?cuisine=Japanese" className="flex-shrink-0">
+            <div className="w-20 text-center group cursor-pointer" data-testid="category-japanese">
+              <div className="w-16 h-16 bg-gradient-to-br from-pink-400 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-md group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
+                <Fish className="w-8 h-8 text-white" />
+              </div>
+              <span className="text-xs font-medium text-gray-700 group-hover:text-pink-600">Japanese</span>
+            </div>
+          </Link>
+
+          {/* Wings */}
+          <Link href="/search?cuisine=Wings" className="flex-shrink-0">
+            <div className="w-20 text-center group cursor-pointer" data-testid="category-wings">
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-md group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
+                <Zap className="w-8 h-8 text-white" />
+              </div>
+              <span className="text-xs font-medium text-gray-700 group-hover:text-orange-600">Wings</span>
             </div>
           </Link>
 
@@ -574,6 +594,46 @@ export default function Home() {
             </div>
           </Link>
 
+          {/* Thai */}
+          <Link href="/search?cuisine=Thai" className="flex-shrink-0">
+            <div className="w-20 text-center group cursor-pointer" data-testid="category-thai">
+              <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-yellow-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-md group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
+                <Flame className="w-8 h-8 text-white" />
+              </div>
+              <span className="text-xs font-medium text-gray-700 group-hover:text-green-600">Thai</span>
+            </div>
+          </Link>
+
+          {/* Indian */}
+          <Link href="/search?cuisine=Indian" className="flex-shrink-0">
+            <div className="w-20 text-center group cursor-pointer" data-testid="category-indian">
+              <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-md group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
+                <Soup className="w-8 h-8 text-white" />
+              </div>
+              <span className="text-xs font-medium text-gray-700 group-hover:text-yellow-600">Indian</span>
+            </div>
+          </Link>
+
+          {/* BBQ */}
+          <Link href="/search?cuisine=BBQ" className="flex-shrink-0">
+            <div className="w-20 text-center group cursor-pointer" data-testid="category-bbq">
+              <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-md group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
+                <Beef className="w-8 h-8 text-white" />
+              </div>
+              <span className="text-xs font-medium text-gray-700 group-hover:text-red-600">BBQ</span>
+            </div>
+          </Link>
+
+          {/* Korean */}
+          <Link href="/search?cuisine=Korean" className="flex-shrink-0">
+            <div className="w-20 text-center group cursor-pointer" data-testid="category-korean">
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-md group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
+                <ChefHat className="w-8 h-8 text-white" />
+              </div>
+              <span className="text-xs font-medium text-gray-700 group-hover:text-purple-600">Korean</span>
+            </div>
+          </Link>
+
           {/* Seafood */}
           <Link href="/search?cuisine=Seafood" className="flex-shrink-0">
             <div className="w-20 text-center group cursor-pointer" data-testid="category-seafood">
@@ -581,6 +641,16 @@ export default function Home() {
                 <Fish className="w-8 h-8 text-white" />
               </div>
               <span className="text-xs font-medium text-gray-700 group-hover:text-blue-600">Seafood</span>
+            </div>
+          </Link>
+
+          {/* Coffee */}
+          <Link href="/search?cuisine=Coffee" className="flex-shrink-0">
+            <div className="w-20 text-center group cursor-pointer" data-testid="category-coffee">
+              <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-md group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
+                <Coffee className="w-8 h-8 text-white" />
+              </div>
+              <span className="text-xs font-medium text-gray-700 group-hover:text-amber-600">Coffee</span>
             </div>
           </Link>
 
@@ -604,23 +674,13 @@ export default function Home() {
             </div>
           </Link>
 
-          {/* Coffee */}
-          <Link href="/search?cuisine=Coffee" className="flex-shrink-0">
-            <div className="w-20 text-center group cursor-pointer" data-testid="category-coffee">
-              <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-md group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
-                <Coffee className="w-8 h-8 text-white" />
+          {/* Bakery */}
+          <Link href="/search?cuisine=Bakery" className="flex-shrink-0">
+            <div className="w-20 text-center group cursor-pointer" data-testid="category-bakery">
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-300 to-yellow-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-md group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
+                <Cookie className="w-8 h-8 text-white" />
               </div>
-              <span className="text-xs font-medium text-gray-700 group-hover:text-amber-600">Coffee</span>
-            </div>
-          </Link>
-
-          {/* Indian */}
-          <Link href="/search?cuisine=Indian" className="flex-shrink-0">
-            <div className="w-20 text-center group cursor-pointer" data-testid="category-indian">
-              <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-md group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
-                <Flame className="w-8 h-8 text-white" />
-              </div>
-              <span className="text-xs font-medium text-gray-700 group-hover:text-yellow-600">Indian</span>
+              <span className="text-xs font-medium text-gray-700 group-hover:text-orange-600">Bakery</span>
             </div>
           </Link>
 
@@ -631,26 +691,6 @@ export default function Home() {
                 <Croissant className="w-8 h-8 text-white" />
               </div>
               <span className="text-xs font-medium text-gray-700 group-hover:text-purple-600">French</span>
-            </div>
-          </Link>
-
-          {/* BBQ */}
-          <Link href="/search?cuisine=BBQ" className="flex-shrink-0">
-            <div className="w-20 text-center group cursor-pointer" data-testid="category-bbq">
-              <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-md group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
-                <Beef className="w-8 h-8 text-white" />
-              </div>
-              <span className="text-xs font-medium text-gray-700 group-hover:text-red-600">BBQ</span>
-            </div>
-          </Link>
-
-          {/* Bakery */}
-          <Link href="/search?cuisine=Bakery" className="flex-shrink-0">
-            <div className="w-20 text-center group cursor-pointer" data-testid="category-bakery">
-              <div className="w-16 h-16 bg-gradient-to-br from-orange-300 to-yellow-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-md group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
-                <Cookie className="w-8 h-8 text-white" />
-              </div>
-              <span className="text-xs font-medium text-gray-700 group-hover:text-orange-600">Bakery</span>
             </div>
           </Link>
         </div>

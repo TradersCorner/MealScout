@@ -217,6 +217,7 @@ export default function Home() {
     setLocation(newLocation);
     setLocationError(null);
     setShowLocationInput(false);
+    setIsLoadingLocation(false); // Clear loading state on location success
     
     // Invalidate and refresh nearby deals cache immediately
     queryClient.invalidateQueries({ 
@@ -246,6 +247,7 @@ export default function Home() {
 
   const handleLocationNameUpdate = (name: string) => {
     setLocationName(name);
+    setIsLoadingLocation(false); // Clear loading state on name update
   };
 
   const handleLocationErrorUpdate = (error: string) => {

@@ -317,7 +317,9 @@ export default function LocationButton({
               }
             }
             
-            onLocationNameUpdate(locationName);
+            // Always call the name update callback
+            console.debug('📍 Final location name:', locationName);
+            onLocationNameUpdate(locationName || "Your Location");
           } catch (geocodeError) {
             console.log('❌ All reverse geocoding failed:', geocodeError);
             onLocationNameUpdate("Your Location");
@@ -339,6 +341,7 @@ export default function LocationButton({
           inFlightRef.current = false;
           abortControllerRef.current = null;
           
+          console.debug('✅ GPS location detection completed successfully');
           return; // Success! Exit the retry loop
           
         } catch (error) {

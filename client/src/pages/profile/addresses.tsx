@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { isUnauthorizedError } from "@/lib/authUtils";
 import type { UserAddress } from "@shared/schema";
 
 const addAddressFormSchema = z.object({
@@ -60,7 +61,18 @@ export default function AddressesPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/user/addresses'] });
       toast({ title: "Address deleted successfully" });
     },
-    onError: () => {
+    onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized", 
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/auth/google/customer";
+        }, 500);
+        return;
+      }
       toast({ title: "Failed to delete address", variant: "destructive" });
     },
   });
@@ -73,7 +85,18 @@ export default function AddressesPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/user/addresses'] });
       toast({ title: "Default address updated" });
     },
-    onError: () => {
+    onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/auth/google/customer";
+        }, 500);
+        return;
+      }
       toast({ title: "Failed to update default address", variant: "destructive" });
     },
   });
@@ -88,7 +111,18 @@ export default function AddressesPage() {
       setShowAddForm(false);
       form.reset();
     },
-    onError: () => {
+    onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/auth/google/customer";
+        }, 500);
+        return;
+      }
       toast({ title: "Failed to add address", variant: "destructive" });
     },
   });

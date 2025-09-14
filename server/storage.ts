@@ -10,6 +10,7 @@ import {
   foodTruckLocations,
   restaurantFavorites,
   restaurantRecommendations,
+  userAddresses,
   type User,
   type UpsertUser,
   type Restaurant,
@@ -33,6 +34,8 @@ import {
   type InsertRestaurantFavorite,
   type RestaurantRecommendation,
   type InsertRestaurantRecommendation,
+  type UserAddress,
+  type InsertUserAddress,
   type GoogleUserData,
   type EmailUserData,
   type FacebookUserData,
@@ -182,6 +185,14 @@ export interface IStorage {
     recommendationsByType: Array<{ type: string; count: number; clicks: number }>;
     recommendationsTrend: Array<{ date: string; count: number; clicks: number }>;
   }>;
+
+  // User address operations
+  createUserAddress(address: InsertUserAddress): Promise<UserAddress>;
+  getUserAddresses(userId: string): Promise<UserAddress[]>;
+  getUserAddress(id: string): Promise<UserAddress | undefined>;
+  updateUserAddress(id: string, address: Partial<InsertUserAddress>): Promise<UserAddress>;
+  deleteUserAddress(id: string): Promise<void>;
+  setDefaultAddress(userId: string, addressId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1856,6 +1867,66 @@ export class DatabaseStorage implements IStorage {
       recommendationsByType,
       recommendationsTrend,
     };
+  }
+
+  // User address operations
+  async createUserAddress(address: InsertUserAddress): Promise<UserAddress> {
+    const [createdAddress] = await db
+      .insert(userAddresses)
+      .values(address)
+      .returning();
+    return createdAddress;
+  }
+
+  async getUserAddresses(userId: string): Promise<UserAddress[]> {
+    return await db
+      .select()
+      .from(userAddresses)
+      .where(eq(userAddresses.userId, userId))
+      .orderBy(desc(userAddresses.isDefault), asc(userAddresses.createdAt));
+  }
+
+  async getUserAddress(id: string): Promise<UserAddress | undefined> {
+    const [address] = await db
+      .select()
+      .from(userAddresses)
+      .where(eq(userAddresses.id, id));
+    return address;
+  }
+
+  async updateUserAddress(id: string, address: Partial<InsertUserAddress>): Promise<UserAddress> {
+    const [updatedAddress] = await db
+      .update(userAddresses)
+      .set({
+        ...address,
+        updatedAt: new Date(),
+      })
+      .where(eq(userAddresses.id, id))
+      .returning();
+    return updatedAddress;
+  }
+
+  async deleteUserAddress(id: string): Promise<void> {
+    await db
+      .delete(userAddresses)
+      .where(eq(userAddresses.id, id));
+  }
+
+  async setDefaultAddress(userId: string, addressId: string): Promise<void> {
+    // First, unset all default addresses for the user
+    await db
+      .update(userAddresses)
+      .set({ isDefault: false, updatedAt: new Date() })
+      .where(eq(userAddresses.userId, userId));
+    
+    // Then set the specified address as default
+    await db
+      .update(userAddresses)
+      .set({ isDefault: true, updatedAt: new Date() })
+      .where(and(
+        eq(userAddresses.id, addressId),
+        eq(userAddresses.userId, userId)
+      ));
   }
 }
 

@@ -242,6 +242,31 @@ export const foodTruckLocations = pgTable(
   ],
 );
 
+// User addresses for saved locations
+export const userAddresses = pgTable(
+  "user_addresses",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+    type: varchar("type").notNull(), // 'home' | 'work' | 'other'
+    label: varchar("label").notNull(),
+    address: text("address").notNull(),
+    city: varchar("city").notNull(),
+    state: varchar("state"),
+    postalCode: varchar("postal_code"),
+    latitude: decimal("latitude", { precision: 10, scale: 8 }),
+    longitude: decimal("longitude", { precision: 11, scale: 8 }),
+    isDefault: boolean("is_default").default(false),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_user_addresses_user").on(table.userId, table.createdAt.desc()),
+    index("IDX_user_addresses_type").on(table.userId, table.type),
+    index("IDX_user_addresses_default").on(table.userId, table.isDefault),
+  ],
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   restaurants: many(restaurants),
@@ -250,6 +275,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   dealViews: many(dealViews),
   restaurantFavorites: many(restaurantFavorites),
   restaurantRecommendations: many(restaurantRecommendations),
+  addresses: many(userAddresses),
 }));
 
 export const restaurantsRelations = relations(restaurants, ({ one, many }) => ({
@@ -364,6 +390,13 @@ export const restaurantRecommendationsRelations = relations(restaurantRecommenda
   }),
 }));
 
+export const userAddressesRelations = relations(userAddresses, ({ one }) => ({
+  user: one(users, {
+    fields: [userAddresses.userId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertRestaurantSchema = createInsertSchema(restaurants).omit({
   id: true,
@@ -453,6 +486,21 @@ export const insertRestaurantRecommendationSchema = createInsertSchema(restauran
   recommendationType: z.enum(['homepage', 'search', 'nearby', 'personalized']),
 });
 
+export const insertUserAddressSchema = createInsertSchema(userAddresses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  type: z.enum(['home', 'work', 'other']),
+  label: z.string().min(1, "Label is required").max(50, "Label must be less than 50 characters"),
+  address: z.string().min(1, "Address is required").max(500, "Address must be less than 500 characters"),
+  city: z.string().min(1, "City is required").max(100, "City must be less than 100 characters"),
+  state: z.string().max(50, "State must be less than 50 characters").optional(),
+  postalCode: z.string().max(20, "Postal code must be less than 20 characters").optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -511,3 +559,6 @@ export type RestaurantFavorite = typeof restaurantFavorites.$inferSelect;
 
 export type InsertRestaurantRecommendation = z.infer<typeof insertRestaurantRecommendationSchema>;
 export type RestaurantRecommendation = typeof restaurantRecommendations.$inferSelect;
+
+export type InsertUserAddress = z.infer<typeof insertUserAddressSchema>;
+export type UserAddress = typeof userAddresses.$inferSelect;

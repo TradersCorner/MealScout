@@ -41,6 +41,8 @@ import FAQ from "@/pages/faq";
 import HowItWorks from "@/pages/how-it-works";
 import Contact from "@/pages/contact";
 import Sitemap from "@/pages/sitemap";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 
 // Wrapper component to handle route props
 function DashboardSwitcherPage() {
@@ -84,6 +86,8 @@ function Router() {
           <Route path="/how-it-works" component={HowItWorks} />
           <Route path="/contact" component={Contact} />
           <Route path="/sitemap" component={Sitemap} />
+          <Route path="/forgot-password" component={ForgotPassword} />
+          <Route path="/reset-password" component={ResetPassword} />
           <Route path="/admin" component={AdminLogin} />
         </>
       ) : (
@@ -120,6 +124,8 @@ function Router() {
           <Route path="/how-it-works" component={HowItWorks} />
           <Route path="/contact" component={Contact} />
           <Route path="/sitemap" component={Sitemap} />
+          <Route path="/forgot-password" component={ForgotPassword} />
+          <Route path="/reset-password" component={ResetPassword} />
           <Route path="/profile/notifications" component={NotificationsPage} />
           <Route path="/profile/settings" component={SettingsPage} />
           <Route path="/settings" component={SettingsPage} />

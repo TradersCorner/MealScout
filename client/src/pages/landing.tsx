@@ -818,12 +818,11 @@ export default function Landing() {
                     >
                       Need an account? Sign up
                     </button>
-                    <button
-                      onClick={() => setAuthMode('signup')}
-                      className="text-gray-600 hover:text-gray-700"
-                    >
-                      Back to options
-                    </button>
+                    <Link href="/forgot-password">
+                      <span className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer" data-testid="link-forgot-password">
+                        Forgot password?
+                      </span>
+                    </Link>
                   </div>
                 </div>
               ) : authMode === 'signup' ? (

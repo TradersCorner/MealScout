@@ -49,9 +49,11 @@ export async function setupUnifiedAuth(app: Express) {
         emailService.sendWelcomeEmail(user).catch(err => 
           console.error('Failed to send customer welcome email:', err)
         );
-        // Send admin notification asynchronously
-        emailService.sendAdminNotification(user).catch(err => 
-          console.error('Failed to send admin notification:', err)
+        // Send admin signup notification with context asynchronously
+        emailService.sendAdminSignupNotification(user, { 
+          signupMethod: 'google' 
+        }).catch(err => 
+          console.error('Failed to send admin signup notification:', err)
         );
         return done(null, user);
       } catch (error) {
@@ -80,9 +82,11 @@ export async function setupUnifiedAuth(app: Express) {
         emailService.sendWelcomeEmail(user).catch(err => 
           console.error('Failed to send restaurant owner welcome email:', err)
         );
-        // Send admin notification asynchronously
-        emailService.sendAdminNotification(user).catch(err => 
-          console.error('Failed to send admin notification:', err)
+        // Send admin signup notification with context asynchronously
+        emailService.sendAdminSignupNotification(user, { 
+          signupMethod: 'google' 
+        }).catch(err => 
+          console.error('Failed to send admin signup notification:', err)
         );
         return done(null, user);
       } catch (error) {
@@ -168,9 +172,11 @@ export async function setupUnifiedAuth(app: Express) {
         emailService.sendWelcomeEmail(user).catch(err => 
           console.error('Failed to send customer welcome email:', err)
         );
-        // Send admin notification asynchronously
-        emailService.sendAdminNotification(user).catch(err => 
-          console.error('Failed to send admin notification:', err)
+        // Send admin signup notification with context asynchronously
+        emailService.sendAdminSignupNotification(user, { 
+          signupMethod: 'facebook' 
+        }).catch(err => 
+          console.error('Failed to send admin signup notification:', err)
         );
         return done(null, user);
       } catch (error) {
@@ -230,9 +236,11 @@ export async function setupUnifiedAuth(app: Express) {
       emailService.sendWelcomeEmail(user).catch(err => 
         console.error('Failed to send customer welcome email:', err)
       );
-      // Send admin notification asynchronously
-      emailService.sendAdminNotification(user).catch(err => 
-        console.error('Failed to send admin notification:', err)
+      // Send admin signup notification with context asynchronously
+      emailService.sendAdminSignupNotification(user, { 
+        signupMethod: 'email' 
+      }).catch(err => 
+        console.error('Failed to send admin signup notification:', err)
       );
 
       req.login(user, (err) => {
@@ -280,9 +288,11 @@ export async function setupUnifiedAuth(app: Express) {
       emailService.sendWelcomeEmail(user).catch(err => 
         console.error('Failed to send restaurant owner welcome email:', err)
       );
-      // Send admin notification asynchronously
-      emailService.sendAdminNotification(user).catch(err => 
-        console.error('Failed to send admin notification:', err)
+      // Send admin signup notification with context asynchronously
+      emailService.sendAdminSignupNotification(user, { 
+        signupMethod: 'email' 
+      }).catch(err => 
+        console.error('Failed to send admin signup notification:', err)
       );
 
       req.login(user, (err) => {

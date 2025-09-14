@@ -542,6 +542,13 @@ export default function RestaurantSignup() {
                         >
                           {loginMutation.isPending ? 'Signing In...' : 'Sign In to Restaurant Account'}
                         </Button>
+                        <div className="text-center mt-4">
+                          <Link href="/forgot-password">
+                            <span className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer text-sm" data-testid="link-forgot-password">
+                              Forgot your password?
+                            </span>
+                          </Link>
+                        </div>
                       </form>
                     </Form>
                   )}

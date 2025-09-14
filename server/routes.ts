@@ -5,9 +5,11 @@ import { storage } from "./storage";
 import { setupAuth } from "./facebookAuth";
 import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner } from "./unifiedAuth";
 import { emailService } from "./emailService";
-import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema } from "@shared/schema";
+import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema } from "@shared/schema";
 import { z } from "zod";
 import { validateDocuments, checkRateLimit } from "./documentValidation";
+import { randomBytes, timingSafeEqual, createHash } from "crypto";
+import bcrypt from "bcryptjs";
 import { broadcastLocationUpdate, broadcastStatusUpdate } from "./websocket";
 
 // Optional Stripe integration
@@ -22,6 +24,60 @@ const BETA_MODE = process.env.BETA_MODE === 'true';
 if (process.env.NODE_ENV === 'production' && BETA_MODE) {
   console.warn('⚠️  WARNING: BETA_MODE is enabled in production environment! All users will have free access to premium features.');
 }
+
+// Password reset rate limiting (similar to document submission rate limiting)
+const passwordResetAttempts = new Map<string, number[]>();
+
+function checkPasswordResetRateLimit(key: string): { allowed: boolean; nextAllowedTime?: Date; remainingAttempts?: number } {
+  const now = Date.now();
+  const fifteenMinutes = 15 * 60 * 1000; // 15 minutes
+  const maxAttempts = 3; // Max 3 attempts per 15 minutes per IP/email combo
+  
+  // Get existing attempts for this key (IP+email combination)
+  const attempts = passwordResetAttempts.get(key) || [];
+  
+  // Remove attempts older than 15 minutes
+  const recentAttempts = attempts.filter(timestamp => now - timestamp < fifteenMinutes);
+  
+  // Update the map with cleaned attempts
+  passwordResetAttempts.set(key, recentAttempts);
+  
+  // Check if rate limit exceeded
+  if (recentAttempts.length >= maxAttempts) {
+    const oldestAttempt = Math.min(...recentAttempts);
+    const nextAllowedTime = new Date(oldestAttempt + fifteenMinutes);
+    
+    return {
+      allowed: false,
+      nextAllowedTime,
+      remainingAttempts: 0
+    };
+  }
+  
+  // Record this attempt
+  recentAttempts.push(now);
+  passwordResetAttempts.set(key, recentAttempts);
+  
+  return { 
+    allowed: true, 
+    remainingAttempts: maxAttempts - recentAttempts.length 
+  };
+}
+
+// Clean up old password reset rate limit entries periodically
+setInterval(() => {
+  const now = Date.now();
+  const fifteenMinutes = 15 * 60 * 1000;
+  
+  for (const [key, attempts] of Array.from(passwordResetAttempts.entries())) {
+    const recentAttempts = attempts.filter((timestamp: number) => now - timestamp < fifteenMinutes);
+    if (recentAttempts.length === 0) {
+      passwordResetAttempts.delete(key);
+    } else {
+      passwordResetAttempts.set(key, recentAttempts);
+    }
+  }
+}, 5 * 60 * 1000); // Clean up every 5 minutes
 
 // Environment validation for production
 function validateEnvironment() {
@@ -197,6 +253,290 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Password reset endpoints
+  app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+      // Validate request body
+      const schema = z.object({
+        email: z.string().email("Valid email is required").toLowerCase(),
+      });
+      
+      const { email } = schema.parse(req.body);
+      const clientIp = req.ip || req.connection.remoteAddress || 'unknown';
+      const userAgent = req.get('User-Agent') || 'unknown';
+      
+      // Rate limiting by IP+email combination for security
+      const rateLimitKey = `${clientIp}:${email}`;
+      const rateLimit = checkPasswordResetRateLimit(rateLimitKey);
+      
+      if (!rateLimit.allowed) {
+        const resetTimeMinutes = Math.ceil((rateLimit.nextAllowedTime!.getTime() - Date.now()) / (1000 * 60));
+        return res.status(429).json({
+          error: "Too many password reset attempts",
+          message: `Please try again in ${resetTimeMinutes} minutes`,
+          nextAllowedTime: rateLimit.nextAllowedTime
+        });
+      }
+      
+      // Check if email service is available
+      if (!emailService.isAvailable()) {
+        console.error("Password reset failed: Email service not configured");
+        // Still return success to prevent account enumeration
+        return res.json({ 
+          success: true, 
+          message: "If an account with that email exists, a password reset link has been sent." 
+        });
+      }
+      
+      // Look up user by email
+      const user = await storage.getUserByEmail(email);
+      
+      if (user && user.passwordHash) {
+        // Only allow password reset for users with email/password authentication
+        try {
+          // Clean up existing tokens for this user
+          await storage.deleteUserResetTokens(user.id);
+          
+          // Generate secure token: tokenId.randomVerifier
+          const tokenId = randomBytes(16).toString('hex');
+          const verifier = randomBytes(32).toString('hex');
+          const fullToken = `${tokenId}.${verifier}`;
+          
+          // Hash the verifier for secure storage using SHA-256 for exact lookup capability
+          const tokenHash = createHash('sha256').update(verifier).digest('hex');
+          
+          // Token expires in 1 hour
+          const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+          
+          // Store token in database
+          const tokenData = insertPasswordResetTokenSchema.parse({
+            userId: user.id,
+            tokenHash,
+            expiresAt,
+            requestIp: clientIp,
+            userAgent: userAgent.substring(0, 500), // Truncate to fit DB constraint
+          });
+          
+          await storage.createPasswordResetToken(tokenData);
+          
+          // Create reset URL with full token
+          const resetUrl = `${req.get('Origin') || req.protocol + '://' + req.get('host')}/reset-password?token=${encodeURIComponent(fullToken)}`;
+          
+          // Send password reset email
+          const emailSent = await emailService.sendPasswordResetEmail(user, resetUrl);
+          
+          if (!emailSent) {
+            console.error("Failed to send password reset email for user:", user.email);
+          }
+          
+        } catch (error) {
+          console.error("Error processing password reset for user:", user.email, error);
+          // Don't expose error details
+        }
+      }
+      
+      // Always return success to prevent account enumeration
+      res.json({ 
+        success: true, 
+        message: "If an account with that email exists, a password reset link has been sent.",
+        remainingAttempts: rateLimit.remainingAttempts
+      });
+      
+    } catch (error) {
+      console.error("Password reset request error:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ 
+          error: "Invalid request", 
+          message: "Valid email is required",
+          details: error.errors 
+        });
+      } else {
+        res.status(500).json({ 
+          error: "Internal server error", 
+          message: "Unable to process password reset request" 
+        });
+      }
+    }
+  });
+
+  app.get('/api/auth/reset-password/validate', async (req, res) => {
+    try {
+      const { token } = req.query;
+      
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({
+          valid: false,
+          error: "Token is required"
+        });
+      }
+      
+      // Parse token format: tokenId.verifier
+      const tokenParts = token.split('.');
+      if (tokenParts.length !== 2) {
+        return res.status(400).json({
+          valid: false,
+          error: "Invalid token format"
+        });
+      }
+      
+      const [tokenId, verifier] = tokenParts;
+      
+      if (!tokenId || !verifier || 
+          tokenId.length !== 32 || verifier.length !== 64 ||
+          !/^[a-f0-9]+$/.test(tokenId) || !/^[a-f0-9]+$/.test(verifier)) {
+        return res.status(400).json({
+          valid: false,
+          error: "Invalid token format"
+        });
+      }
+      
+      try {
+        // Hash the verifier for database lookup using SHA-256
+        const verifierHash = createHash('sha256').update(verifier).digest('hex');
+        
+        // Look up the token in the database
+        const tokenRecord = await storage.getPasswordResetTokenByTokenHash(verifierHash);
+        
+        // Return validation result with timing-safe response
+        const isValid = !!tokenRecord;
+        
+        res.json({
+          valid: isValid
+        });
+        
+      } catch (error) {
+        console.error("Token validation error:", error);
+        res.json({
+          valid: false,
+          error: "Invalid token"
+        });
+      }
+      
+    } catch (error) {
+      console.error("Reset password validation error:", error);
+      res.status(500).json({
+        valid: false,
+        error: "Unable to validate token"
+      });
+    }
+  });
+
+  app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+      // Validate request body
+      const schema = z.object({
+        token: z.string().min(1, "Token is required"),
+        password: z.string().min(6, "Password must be at least 6 characters"),
+      });
+      
+      const { token, password } = schema.parse(req.body);
+      
+      // Parse token format: tokenId.verifier
+      const tokenParts = token.split('.');
+      if (tokenParts.length !== 2) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid token format"
+        });
+      }
+      
+      const [tokenId, verifier] = tokenParts;
+      
+      if (!tokenId || !verifier || 
+          tokenId.length !== 32 || verifier.length !== 64 ||
+          !/^[a-f0-9]+$/.test(tokenId) || !/^[a-f0-9]+$/.test(verifier)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid token format"
+        });
+      }
+      
+      try {
+        // Hash the verifier for database lookup using SHA-256
+        const verifierHash = createHash('sha256').update(verifier).digest('hex');
+        
+        // Look up the token in the database
+        const tokenRecord = await storage.getPasswordResetTokenByTokenHash(verifierHash);
+        
+        if (!tokenRecord) {
+          return res.status(400).json({
+            success: false,
+            error: "Invalid or expired token"
+          });
+        }
+        
+        // Get the user for this token
+        const user = await storage.getUser(tokenRecord.userId);
+        
+        if (!user || !user.passwordHash) {
+          return res.status(400).json({
+            success: false,
+            error: "Invalid user account or authentication method"
+          });
+        }
+        
+        // Hash the new password
+        const hashedPassword = await bcrypt.hash(password, 12);
+        
+        // Update the user's password - we need to use the updateUser method or create a new one
+        // Since updateUser might not handle passwordHash, we'll need to use the upsertUser method
+        await storage.upsertUser({
+          id: user.id,
+          userType: user.userType,
+          email: user.email!,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profileImageUrl: user.profileImageUrl,
+          passwordHash: hashedPassword,
+          emailVerified: user.emailVerified,
+          facebookId: user.facebookId,
+          facebookAccessToken: user.facebookAccessToken,
+          googleId: user.googleId,
+          googleAccessToken: user.googleAccessToken,
+          stripeCustomerId: user.stripeCustomerId,
+          stripeSubscriptionId: user.stripeSubscriptionId,
+          subscriptionBillingInterval: user.subscriptionBillingInterval,
+          birthYear: user.birthYear,
+          gender: user.gender,
+          postalCode: user.postalCode,
+        });
+        
+        // Mark the token as used
+        await storage.markPasswordResetTokenUsed(tokenRecord.id);
+        
+        // Clean up any other reset tokens for this user for security
+        await storage.deleteUserResetTokens(user.id);
+        
+        res.json({
+          success: true,
+          message: "Password has been successfully reset"
+        });
+        
+      } catch (error) {
+        console.error("Password reset error:", error);
+        return res.status(400).json({
+          success: false,
+          error: "Invalid or expired token"
+        });
+      }
+      
+    } catch (error) {
+      console.error("Reset password error:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          error: "Invalid request",
+          details: error.errors
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: "Unable to reset password"
+        });
+      }
     }
   });
 

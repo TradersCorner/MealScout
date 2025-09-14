@@ -11,6 +11,7 @@ import {
   restaurantFavorites,
   restaurantRecommendations,
   userAddresses,
+  passwordResetTokens,
   type User,
   type UpsertUser,
   type Restaurant,
@@ -36,6 +37,8 @@ import {
   type InsertRestaurantRecommendation,
   type UserAddress,
   type InsertUserAddress,
+  type PasswordResetToken,
+  type InsertPasswordResetToken,
   type GoogleUserData,
   type EmailUserData,
   type FacebookUserData,
@@ -194,6 +197,14 @@ export interface IStorage {
   updateUserAddress(id: string, address: Partial<InsertUserAddress>): Promise<UserAddress>;
   deleteUserAddress(id: string): Promise<void>;
   setDefaultAddress(userId: string, addressId: string): Promise<void>;
+
+  // Password reset token operations
+  createPasswordResetToken(tokenData: InsertPasswordResetToken): Promise<PasswordResetToken>;
+  getPasswordResetToken(id: string): Promise<PasswordResetToken | undefined>;
+  getPasswordResetTokenByTokenHash(tokenHash: string): Promise<PasswordResetToken | undefined>;
+  markPasswordResetTokenUsed(id: string): Promise<PasswordResetToken>;
+  deleteUserResetTokens(userId: string): Promise<void>;
+  deleteExpiredResetTokens(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1799,26 +1810,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRestaurantFavoritesAnalytics(restaurantId: string, dateRange?: { start: Date; end: Date }) {
-    const baseQuery = db
-      .select({
-        id: restaurantFavorites.id,
-        favoritedAt: restaurantFavorites.favoritedAt,
-        userId: restaurantFavorites.userId,
-      })
-      .from(restaurantFavorites)
-      .where(eq(restaurantFavorites.restaurantId, restaurantId));
-
     let favorites;
     if (dateRange) {
-      favorites = await baseQuery.where(
-        and(
-          eq(restaurantFavorites.restaurantId, restaurantId),
-          gte(restaurantFavorites.favoritedAt, dateRange.start),
-          lte(restaurantFavorites.favoritedAt, dateRange.end)
-        )
-      );
+      favorites = await db
+        .select({
+          id: restaurantFavorites.id,
+          favoritedAt: restaurantFavorites.favoritedAt,
+          userId: restaurantFavorites.userId,
+        })
+        .from(restaurantFavorites)
+        .where(
+          and(
+            eq(restaurantFavorites.restaurantId, restaurantId),
+            gte(restaurantFavorites.favoritedAt, dateRange.start),
+            lte(restaurantFavorites.favoritedAt, dateRange.end)
+          )
+        );
     } else {
-      favorites = await baseQuery;
+      favorites = await db
+        .select({
+          id: restaurantFavorites.id,
+          favoritedAt: restaurantFavorites.favoritedAt,
+          userId: restaurantFavorites.userId,
+        })
+        .from(restaurantFavorites)
+        .where(eq(restaurantFavorites.restaurantId, restaurantId));
     }
 
     // Calculate trend data (group by day)
@@ -1843,9 +1859,9 @@ export class DatabaseStorage implements IStorage {
     return {
       totalFavorites: favorites.length,
       favoritesTrend,
-      recentFavorites: favorites.slice(0, 10).map(f => ({
+      recentFavorites: favorites.slice(0, 10).map((f: { userId: string; favoritedAt: Date | null }) => ({
         userId: f.userId,
-        favoritedAt: f.favoritedAt,
+        favoritedAt: f.favoritedAt || new Date(),
       })),
     };
   }
@@ -1876,44 +1892,51 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRestaurantRecommendationsAnalytics(restaurantId: string, dateRange?: { start: Date; end: Date }) {
-    const baseQuery = db
-      .select({
-        id: restaurantRecommendations.id,
-        recommendationType: restaurantRecommendations.recommendationType,
-        isClicked: restaurantRecommendations.isClicked,
-        showedAt: restaurantRecommendations.showedAt,
-        clickedAt: restaurantRecommendations.clickedAt,
-      })
-      .from(restaurantRecommendations)
-      .where(eq(restaurantRecommendations.restaurantId, restaurantId));
-
     let recommendations;
     if (dateRange) {
-      recommendations = await baseQuery.where(
-        and(
-          eq(restaurantRecommendations.restaurantId, restaurantId),
-          gte(restaurantRecommendations.showedAt, dateRange.start),
-          lte(restaurantRecommendations.showedAt, dateRange.end)
-        )
-      );
+      recommendations = await db
+        .select({
+          id: restaurantRecommendations.id,
+          recommendationType: restaurantRecommendations.recommendationType,
+          isClicked: restaurantRecommendations.isClicked,
+          showedAt: restaurantRecommendations.showedAt,
+          clickedAt: restaurantRecommendations.clickedAt,
+        })
+        .from(restaurantRecommendations)
+        .where(
+          and(
+            eq(restaurantRecommendations.restaurantId, restaurantId),
+            gte(restaurantRecommendations.showedAt, dateRange.start),
+            lte(restaurantRecommendations.showedAt, dateRange.end)
+          )
+        );
     } else {
-      recommendations = await baseQuery;
+      recommendations = await db
+        .select({
+          id: restaurantRecommendations.id,
+          recommendationType: restaurantRecommendations.recommendationType,
+          isClicked: restaurantRecommendations.isClicked,
+          showedAt: restaurantRecommendations.showedAt,
+          clickedAt: restaurantRecommendations.clickedAt,
+        })
+        .from(restaurantRecommendations)
+        .where(eq(restaurantRecommendations.restaurantId, restaurantId));
     }
 
-    const totalClicks = recommendations.filter(r => r.isClicked).length;
+    const totalClicks = recommendations.filter((r: { isClicked: boolean | null }) => r.isClicked === true).length;
     const clickThroughRate = recommendations.length > 0 ? (totalClicks / recommendations.length) * 100 : 0;
 
     // Group by recommendation type
-    const recommendationsByType = recommendations.reduce((acc, rec) => {
-      const existing = acc.find(item => item.type === rec.recommendationType);
+    const recommendationsByType = recommendations.reduce((acc: Array<{ type: string; count: number; clicks: number }>, rec: { recommendationType: string; isClicked: boolean | null }) => {
+      const existing = acc.find((item: { type: string }) => item.type === rec.recommendationType);
       if (existing) {
         existing.count++;
-        if (rec.isClicked) existing.clicks++;
+        if (rec.isClicked === true) existing.clicks++;
       } else {
         acc.push({
           type: rec.recommendationType,
           count: 1,
-          clicks: rec.isClicked ? 1 : 0,
+          clicks: rec.isClicked === true ? 1 : 0,
         });
       }
       return acc;
@@ -1950,9 +1973,19 @@ export class DatabaseStorage implements IStorage {
 
   // User address operations
   async createUserAddress(address: InsertUserAddress): Promise<UserAddress> {
+    const addressData: any = { ...address };
+    
+    // Convert numeric latitude/longitude to strings if present
+    if (typeof addressData.latitude === 'number') {
+      addressData.latitude = addressData.latitude.toString();
+    }
+    if (typeof addressData.longitude === 'number') {
+      addressData.longitude = addressData.longitude.toString();
+    }
+    
     const [createdAddress] = await db
       .insert(userAddresses)
-      .values(address)
+      .values([addressData])
       .returning();
     return createdAddress;
   }
@@ -1974,12 +2007,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserAddress(id: string, address: Partial<InsertUserAddress>): Promise<UserAddress> {
+    const updateData: any = {
+      ...address,
+      updatedAt: new Date(),
+    };
+    
+    // Convert numeric latitude/longitude to strings if present
+    if (typeof updateData.latitude === 'number') {
+      updateData.latitude = updateData.latitude.toString();
+    }
+    if (typeof updateData.longitude === 'number') {
+      updateData.longitude = updateData.longitude.toString();
+    }
+    
     const [updatedAddress] = await db
       .update(userAddresses)
-      .set({
-        ...address,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(userAddresses.id, id))
       .returning();
     return updatedAddress;
@@ -2006,6 +2049,59 @@ export class DatabaseStorage implements IStorage {
         eq(userAddresses.id, addressId),
         eq(userAddresses.userId, userId)
       ));
+  }
+
+  // Password reset token operations
+  async createPasswordResetToken(tokenData: InsertPasswordResetToken): Promise<PasswordResetToken> {
+    const [token] = await db
+      .insert(passwordResetTokens)
+      .values(tokenData)
+      .returning();
+    return token;
+  }
+
+  async getPasswordResetToken(id: string): Promise<PasswordResetToken | undefined> {
+    const [token] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(eq(passwordResetTokens.id, id));
+    return token;
+  }
+
+  async getPasswordResetTokenByTokenHash(tokenHash: string): Promise<PasswordResetToken | undefined> {
+    const [token] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(and(
+        eq(passwordResetTokens.tokenHash, tokenHash),
+        gte(passwordResetTokens.expiresAt, new Date()),
+        isNull(passwordResetTokens.usedAt)
+      ));
+    return token;
+  }
+
+  async markPasswordResetTokenUsed(id: string): Promise<PasswordResetToken> {
+    const [token] = await db
+      .update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(passwordResetTokens.id, id))
+      .returning();
+    return token;
+  }
+
+  async deleteUserResetTokens(userId: string): Promise<void> {
+    await db
+      .delete(passwordResetTokens)
+      .where(eq(passwordResetTokens.userId, userId));
+  }
+
+  async deleteExpiredResetTokens(): Promise<number> {
+    const result = await db
+      .delete(passwordResetTokens)
+      .where(lte(passwordResetTokens.expiresAt, new Date()));
+    
+    // Return the number of deleted rows
+    return result.rowCount || 0;
   }
 }
 

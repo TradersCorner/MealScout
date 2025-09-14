@@ -267,6 +267,27 @@ export const userAddresses = pgTable(
   ],
 );
 
+// Password reset tokens for secure password reset functionality
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: text("token_hash").notNull(), // Store hashed token for security
+    expiresAt: timestamp("expires_at").notNull(),
+    usedAt: timestamp("used_at"), // Nullable - set when token is used
+    requestIp: varchar("request_ip"), // Track IP for security auditing
+    userAgent: varchar("user_agent"), // Track user agent for security auditing
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_password_reset_tokens_user").on(table.userId, table.createdAt.desc()),
+    index("IDX_password_reset_tokens_token").on(table.tokenHash),
+    index("IDX_password_reset_tokens_expires").on(table.expiresAt),
+    index("IDX_password_reset_tokens_used").on(table.usedAt),
+  ],
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   restaurants: many(restaurants),
@@ -276,6 +297,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   restaurantFavorites: many(restaurantFavorites),
   restaurantRecommendations: many(restaurantRecommendations),
   addresses: many(userAddresses),
+  passwordResetTokens: many(passwordResetTokens),
 }));
 
 export const restaurantsRelations = relations(restaurants, ({ one, many }) => ({
@@ -397,6 +419,13 @@ export const userAddressesRelations = relations(userAddresses, ({ one }) => ({
   }),
 }));
 
+export const passwordResetTokensRelations = relations(passwordResetTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [passwordResetTokens.userId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertRestaurantSchema = createInsertSchema(restaurants).omit({
   id: true,
@@ -501,6 +530,17 @@ export const insertUserAddressSchema = createInsertSchema(userAddresses).omit({
   longitude: z.number().min(-180).max(180).optional(),
 });
 
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
+  id: true,
+  usedAt: true,
+  createdAt: true,
+}).extend({
+  tokenHash: z.string().min(1, "Token hash is required"),
+  expiresAt: z.date().refine((date) => date > new Date(), "Expiry date must be in the future"),
+  requestIp: z.string().ip().optional(),
+  userAgent: z.string().max(500, "User agent must be less than 500 characters").optional(),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -562,3 +602,6 @@ export type RestaurantRecommendation = typeof restaurantRecommendations.$inferSe
 
 export type InsertUserAddress = z.infer<typeof insertUserAddressSchema>;
 export type UserAddress = typeof userAddresses.$inferSelect;
+
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;

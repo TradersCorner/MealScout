@@ -550,6 +550,188 @@ This notification was generated automatically by the MealScout system.
 
     return { html, text };
   }
+
+  static getAdminSignupNotificationTemplate(user: User, context?: { signupMethod?: string; restaurant?: Restaurant }): { html: string; text: string } {
+    const userTypeDisplay = user.userType === 'customer' ? 'Customer' : user.userType === 'restaurant_owner' ? 'Restaurant Owner' : 'Admin';
+    const signupMethod = context?.signupMethod || 'Email';
+    
+    let restaurantInfo = '';
+    if (context?.restaurant) {
+      restaurantInfo = `
+        <div class="feature">
+          <div class="feature-icon">🏪</div>
+          <div class="feature-text">
+            <div class="feature-title">Restaurant Information</div>
+            <div class="feature-desc">
+              <strong>Name:</strong> ${context.restaurant.name}<br>
+              <strong>Address:</strong> ${context.restaurant.address}<br>
+              <strong>Phone:</strong> ${context.restaurant.phone || 'Not provided'}<br>
+              <strong>Business Type:</strong> ${context.restaurant.businessType}<br>
+              <strong>Cuisine Type:</strong> ${context.restaurant.cuisineType || 'Not specified'}<br>
+              ${context.restaurant.isFoodTruck ? '<strong>Food Truck:</strong> Yes<br>' : ''}
+              <strong>Verified:</strong> ${context.restaurant.isVerified ? 'Yes' : 'Pending'}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    const content = `
+      <h2>New MealScout Signup 🎉</h2>
+      <p>A new user has registered for MealScout and requires admin attention.</p>
+      
+      <div class="highlight-box">
+        <strong>📋 User Summary</strong><br>
+        <strong>Name:</strong> ${user.firstName || ''} ${user.lastName || ''}<br>
+        <strong>Email:</strong> ${user.email}<br>
+        <strong>User Type:</strong> ${userTypeDisplay}<br>
+        <strong>Signup Method:</strong> ${signupMethod}<br>
+        <strong>Registration Date:</strong> ${new Date().toLocaleDateString()}
+      </div>
+
+      <div class="features">
+        <div class="feature">
+          <div class="feature-icon">👤</div>
+          <div class="feature-text">
+            <div class="feature-title">Account Details</div>
+            <div class="feature-desc">
+              <strong>User ID:</strong> ${user.id || 'Pending'}<br>
+              <strong>Account Status:</strong> Active<br>
+              <strong>Email Verified:</strong> ${user.emailVerified ? 'Yes' : 'Pending'}
+            </div>
+          </div>
+        </div>
+        ${restaurantInfo}
+      </div>
+
+      ${user.userType === 'restaurant_owner' ? `
+        <div class="highlight-box" style="border-left-color: #f7931e;">
+          <strong>⚠️ Action Required</strong><br>
+          This restaurant owner account may require verification review before full platform access is granted.
+        </div>
+      ` : ''}
+
+      <p>You can manage this user account through the MealScout admin dashboard.</p>
+      
+      <p>For questions or support, contact our development team.<br>
+      <strong>MealScout Admin System</strong> 🛠️</p>
+    `;
+
+    const html = this.getBaseTemplate('New MealScout Signup', content);
+    const text = `New MealScout Signup
+
+A new user has registered for MealScout:
+
+User Information:
+Name: ${user.firstName || ''} ${user.lastName || ''}
+Email: ${user.email}
+User Type: ${userTypeDisplay}
+Signup Method: ${signupMethod}
+Registration Date: ${new Date().toLocaleDateString()}
+User ID: ${user.id || 'Pending'}
+Account Status: Active
+Email Verified: ${user.emailVerified ? 'Yes' : 'Pending'}
+
+${context?.restaurant ? `Restaurant Details:
+Name: ${context.restaurant.name}
+Address: ${context.restaurant.address}
+Phone: ${context.restaurant.phone || 'Not provided'}
+Business Type: ${context.restaurant.businessType}
+Cuisine Type: ${context.restaurant.cuisineType || 'Not specified'}
+${context.restaurant.isFoodTruck ? 'Food Truck: Yes' : ''}
+Verified: ${context.restaurant.isVerified ? 'Yes' : 'Pending'}` : ''}
+
+${user.userType === 'restaurant_owner' ? 'ACTION REQUIRED: This restaurant owner account may require verification review.' : ''}
+
+You can manage this user account through the MealScout admin dashboard.
+
+MealScout Admin System
+
+© 2025 MealScout. All rights reserved.`;
+
+    return { html, text };
+  }
+
+  static getPasswordResetTemplate(user: User, resetUrl: string): { html: string; text: string } {
+    const content = `
+      <h2>Reset Your MealScout Password 🔐</h2>
+      <p>Hello ${user.firstName || 'MealScout User'}!</p>
+      <p>We received a request to reset the password for your MealScout account. If you made this request, click the button below to create a new password.</p>
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${resetUrl}" class="cta-button" style="display: inline-block;">Reset My Password</a>
+      </div>
+
+      <div class="highlight-box">
+        <strong>🛡️ Security Information</strong><br>
+        • This password reset link is valid for <strong>1 hour</strong><br>
+        • The link can only be used once<br>
+        • If you didn't request this reset, you can safely ignore this email<br>
+        • Your current password will remain unchanged until you create a new one
+      </div>
+
+      <div class="features">
+        <div class="feature">
+          <div class="feature-icon">⚠️</div>
+          <div class="feature-text">
+            <div class="feature-title">Didn't Request This?</div>
+            <div class="feature-desc">If you didn't request a password reset, please ignore this email. Your account remains secure.</div>
+          </div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">🔒</div>
+          <div class="feature-text">
+            <div class="feature-title">Keep Your Account Secure</div>
+            <div class="feature-desc">Choose a strong password with at least 8 characters, including numbers and special characters.</div>
+          </div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">❓</div>
+          <div class="feature-text">
+            <div class="feature-title">Need Help?</div>
+            <div class="feature-desc">If you're having trouble accessing your account, contact our support team at info.mealscout@gmail.com</div>
+          </div>
+        </div>
+      </div>
+
+      <p><strong>Can't click the button?</strong> Copy and paste this link into your browser:<br>
+      <span style="word-break: break-all; color: #ff6b35; font-size: 14px;">${resetUrl}</span></p>
+      
+      <p>Best regards,<br>
+      The MealScout Security Team 🔐</p>
+    `;
+
+    const html = this.getBaseTemplate('Reset Your MealScout Password', content);
+    const text = `Reset Your MealScout Password
+
+Hello ${user.firstName || 'MealScout User'}!
+
+We received a request to reset the password for your MealScout account. If you made this request, use the link below to create a new password.
+
+Reset Link: ${resetUrl}
+
+Security Information:
+• This password reset link is valid for 1 hour
+• The link can only be used once
+• If you didn't request this reset, you can safely ignore this email
+• Your current password will remain unchanged until you create a new one
+
+Didn't Request This?
+If you didn't request a password reset, please ignore this email. Your account remains secure.
+
+Keep Your Account Secure:
+Choose a strong password with at least 8 characters, including numbers and special characters.
+
+Need Help?
+If you're having trouble accessing your account, contact our support team at info.mealscout@gmail.com
+
+Best regards,
+The MealScout Security Team
+
+© 2025 MealScout. All rights reserved.`;
+
+    return { html, text };
+  }
 }
 
 // Email service class
@@ -651,10 +833,43 @@ export class EmailService {
     });
   }
 
+  // Send admin signup notification with enhanced details
+  async sendAdminSignupNotification(user: User, context?: { signupMethod?: string; restaurant?: Restaurant }): Promise<boolean> {
+    const template = EmailTemplates.getAdminSignupNotificationTemplate(user, context);
+    
+    return await this.sendEmail({
+      to: EMAIL_CONFIG.adminEmail,
+      subject: `New MealScout Signup - ${user.firstName || ''} ${user.lastName || ''} (${user.userType})`,
+      html: template.html,
+      text: template.text,
+    });
+  }
+
+  // Send password reset email
+  async sendPasswordResetEmail(user: User, resetUrl: string): Promise<boolean> {
+    const template = EmailTemplates.getPasswordResetTemplate(user, resetUrl);
+    
+    return await this.sendEmail({
+      to: user.email!,
+      subject: 'Reset your MealScout password 🔐',
+      html: template.html,
+      text: template.text,
+    });
+  }
+
   // Utility method to check if email service is available
   isAvailable(): boolean {
     return this.isConfigured;
   }
+}
+
+// Convenience functions for rendering email content
+export function renderAdminSignupEmail(user: User, context?: { signupMethod?: string; restaurant?: Restaurant }): { html: string; text: string } {
+  return EmailTemplates.getAdminSignupNotificationTemplate(user, context);
+}
+
+export function renderPasswordResetEmail(user: User, resetUrl: string): { html: string; text: string } {
+  return EmailTemplates.getPasswordResetTemplate(user, resetUrl);
 }
 
 // Export singleton instance

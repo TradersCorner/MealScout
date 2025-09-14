@@ -222,7 +222,8 @@ export default function DealDetail() {
               <div className="flex items-center space-x-1">
                 <i className="fas fa-star text-yellow-400"></i>
                 <span data-testid="text-restaurant-rating">
-                  {(rating as any)?.rating ? (rating as any).rating.toFixed(1) : "New"} 
+                  {(rating as any)?.rating && typeof (rating as any).rating === 'number' ? (rating as any).rating.toFixed(1) : 
+                   (rating as any)?.rating && !isNaN(Number((rating as any).rating)) ? Number((rating as any).rating).toFixed(1) : "New"} 
                   {Array.isArray(reviews) && ` (${reviews.length} reviews)`}
                 </span>
               </div>

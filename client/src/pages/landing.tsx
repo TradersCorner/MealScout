@@ -6,7 +6,7 @@ import { useFacebook } from '@/hooks/useFacebook';
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link } from "wouter";
 import { z } from "zod";
 import { Mail, Eye, EyeOff, Pizza, Utensils, Coffee, Cookie, Apple, Fish, ChefHat, IceCream, Sandwich, Beef, Cherry, Soup, Wheat, Grape, Croissant } from "lucide-react";
@@ -49,6 +49,7 @@ export default function Landing() {
   const [authMode, setAuthMode] = useState<'signup' | 'login'>('signup');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
   
   // Facebook Browser Detection
   const [isFacebookBrowser, setIsFacebookBrowser] = useState(false);
@@ -104,17 +105,17 @@ export default function Landing() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
-      if (!target.closest('.modal-content')) {
+      if (modalRef.current && !modalRef.current.contains(target)) {
         setShowAuth(false);
       }
     };
 
     if (showAuth) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('click', handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('click', handleClickOutside);
     };
   }, [showAuth]);
 
@@ -690,9 +691,10 @@ export default function Landing() {
           data-testid="login-modal-overlay"
         >
           <div 
+            ref={modalRef}
             className="modal-content bg-white rounded-2xl w-full max-w-sm p-6"
-            onClick={(e) => {
-              // Prevent modal from closing when clicking inside content
+            onMouseDown={(e) => {
+              // Prevent the global click handler from firing when interacting with modal content
               e.stopPropagation();
             }}
             data-testid="login-modal-content"
@@ -758,6 +760,7 @@ export default function Landing() {
                             <FormControl>
                               <Input
                                 {...field}
+                                name="email"
                                 type="email"
                                 placeholder="Enter your email"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
@@ -780,6 +783,7 @@ export default function Landing() {
                               <div className="relative">
                                 <Input
                                   {...field}
+                                  name="password"
                                   type={showPassword ? "text" : "password"}
                                   placeholder="Enter your password"
                                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
@@ -839,6 +843,7 @@ export default function Landing() {
                               <FormControl>
                                 <Input
                                   {...field}
+                                  name="firstName"
                                   placeholder="First name"
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   data-testid="input-signup-firstname"
@@ -859,6 +864,7 @@ export default function Landing() {
                               <FormControl>
                                 <Input
                                   {...field}
+                                  name="lastName"
                                   placeholder="Last name"
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   data-testid="input-signup-lastname"
@@ -880,6 +886,7 @@ export default function Landing() {
                             <FormControl>
                               <Input
                                 {...field}
+                                name="email"
                                 type="email"
                                 placeholder="Enter your email"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
@@ -902,6 +909,7 @@ export default function Landing() {
                               <div className="relative">
                                 <Input
                                   {...field}
+                                  name="password"
                                   type={showPassword ? "text" : "password"}
                                   placeholder="Create password (6+ chars)"
                                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
@@ -932,6 +940,7 @@ export default function Landing() {
                               <div className="relative">
                                 <Input
                                   {...field}
+                                  name="confirmPassword"
                                   type={showConfirmPassword ? "text" : "password"}
                                   placeholder="Confirm your password"
                                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"

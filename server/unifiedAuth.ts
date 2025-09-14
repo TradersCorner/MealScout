@@ -151,6 +151,7 @@ export async function setupUnifiedAuth(app: Express) {
   // Facebook Strategy
   if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
     console.log("Setting up Facebook OAuth strategy...");
+    console.log("Facebook App ID:", process.env.FACEBOOK_APP_ID);
     passport.use(new FacebookStrategy({
       clientID: process.env.FACEBOOK_APP_ID,
       clientSecret: process.env.FACEBOOK_APP_SECRET,

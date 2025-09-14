@@ -39,7 +39,7 @@ export default function Landing() {
   const { toast } = useToast();
   const { isLoaded } = useFacebook();
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [locationName, setLocationName] = useState<string>("Getting your location...");
+  const [locationName, setLocationName] = useState<string>("Hammond, LA");
   const [locationError, setLocationError] = useState<string | null>(null);
   const [showLocationInput, setShowLocationInput] = useState(false);
   const [manualLocation, setManualLocation] = useState('');

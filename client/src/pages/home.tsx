@@ -62,12 +62,13 @@ export default function Home() {
   const [loadingFoodTrucks, setLoadingFoodTrucks] = useState(false);
   const [dealFilter, setDealFilter] = useState<'all' | 'limited-time'>('all');
 
-  // WebSocket integration for real-time food truck updates
+  // WebSocket integration for real-time food truck updates (disabled to prevent errors)
   const {
     isConnected: wsConnected,
     subscribeToNearby,
     connect: connectWS
   } = useFoodTruckSocket({
+    autoConnect: false, // Disable auto-connection to prevent error spam
     onLocationUpdate: (locationUpdate) => {
       setFoodTrucks(prev => prev.map(truck => 
         truck.id === locationUpdate.restaurantId 
@@ -88,8 +89,7 @@ export default function Home() {
           ? { ...truck, isOnline: statusUpdate.isOnline, lastSeen: statusUpdate.lastSeen }
           : truck
       ));
-    },
-    autoConnect: true
+    }
   });
 
   // WebSocket subscription when location is available

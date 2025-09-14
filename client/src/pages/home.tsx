@@ -91,106 +91,12 @@ export default function Home() {
     autoConnect: true
   });
 
-  // Get user location once only - no continuous retries
+  // WebSocket subscription when location is available
   useEffect(() => {
-    let locationRequested = false;
-    
-    if (navigator.geolocation && !location && !locationRequested) {
-      locationRequested = true;
-      
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setLocation({ lat: latitude, lng: longitude });
-          setIsLoadingLocation(false);
-          setLocationError(null);
-          setShowLocationInput(false);
-          
-          // Subscribe to nearby food trucks (5km radius)
-          // Ensure WebSocket is connected before subscribing
-          if (wsConnected) {
-            subscribeToNearby(latitude, longitude, 5000);
-          } else {
-            // Connect WebSocket and then subscribe
-            try {
-              connectWS();
-              // Subscribe will work once connection is established
-              subscribeToNearby(latitude, longitude, 5000);
-            } catch (err: any) {
-              console.warn('Failed to connect WebSocket for food truck updates:', err);
-            }
-          }
-          
-          // Reverse geocoding for display name with improved fallback logic
-          const getLocationName = async () => {
-            try {
-              // Try BigDataCloud first
-              const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
-              const data = await response.json();
-              
-              // Get potential city names, prioritizing actual city names over districts
-              let cityName = data.city || data.locality || data.principalSubdivision;
-              
-              // If we get a poor result like "District X" or very short name, try alternative services
-              if (!cityName || cityName.toLowerCase().startsWith('district') || cityName.length < 3) {
-                console.log('🔄 BigDataCloud gave poor result, trying OpenStreetMap...');
-                
-                try {
-                  const osmResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
-                  const osmData = await osmResponse.json();
-                  
-                  if (osmData && osmData.address) {
-                    const addr = osmData.address;
-                    cityName = addr.city || addr.town || addr.village || addr.county || addr.state;
-                  }
-                } catch (osmError) {
-                  console.log('🔄 OpenStreetMap also failed, using fallback logic');
-                }
-              }
-              
-              // Final fallback to any available location identifier
-              if (!cityName || cityName.toLowerCase().startsWith('district')) {
-                cityName = data.principalSubdivision || data.countryName || "Your Location";
-              }
-              
-              console.log('🏙️ Final location name:', cityName);
-              setLocationName(cityName);
-            } catch (error) {
-              console.error('❌ All geocoding failed:', error);
-              setLocationName("Your Location");
-            }
-          };
-          
-          getLocationName();
-        },
-        (error) => {
-          console.log("Home page location error:", error.message);
-          setIsLoadingLocation(false);
-          
-          if (error.code === 1) { // PERMISSION_DENIED
-            setLocationError("Location access denied. Please enable location permissions or enter your city manually.");
-            setLocationName("Location access denied");
-          } else if (error.code === 2) { // POSITION_UNAVAILABLE
-            setLocationError("Unable to determine your location. Please check your connection or enter your city manually.");
-            setLocationName("Location unavailable");
-          } else if (error.code === 3) { // TIMEOUT
-            setLocationError("Location request timed out. Please try again or enter your city manually.");
-            setLocationName("Location timeout");
-          } else {
-            setLocationError("Unable to get your location. Please enter your city manually.");
-            setLocationName("Location unavailable");
-          }
-          
-          setShowLocationInput(true);
-        },
-        { 
-          enableHighAccuracy: true, 
-          timeout: 15000, 
-          maximumAge: 60000 // 1 minute cache for better accuracy
-        }
-      );
+    if (location && wsConnected) {
+      subscribeToNearby(location.lat, location.lng, 5000);
     }
-  }, []); // Remove dependencies to prevent re-runs
+  }, [location, wsConnected, subscribeToNearby]);
 
   // Fetch initial food truck data only once when location is first set
   useEffect(() => {

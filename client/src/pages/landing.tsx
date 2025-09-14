@@ -758,6 +758,8 @@ export default function Landing() {
                               <Input
                                 {...field}
                                 type="email"
+                                name="email"
+                                autoComplete="email"
                                 placeholder="Enter your email"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                 data-testid="input-login-email"
@@ -779,6 +781,8 @@ export default function Landing() {
                                 <Input
                                   {...field}
                                   type={showPassword ? "text" : "password"}
+                                  name="password"
+                                  autoComplete="current-password"
                                   placeholder="Enter your password"
                                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   data-testid="input-login-password"
@@ -837,6 +841,8 @@ export default function Landing() {
                               <FormControl>
                                 <Input
                                   {...field}
+                                  name="firstName"
+                                  autoComplete="given-name"
                                   placeholder="First name"
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   data-testid="input-signup-firstname"
@@ -856,6 +862,8 @@ export default function Landing() {
                               <FormControl>
                                 <Input
                                   {...field}
+                                  name="lastName"
+                                  autoComplete="family-name"
                                   placeholder="Last name"
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   data-testid="input-signup-lastname"
@@ -877,6 +885,8 @@ export default function Landing() {
                               <Input
                                 {...field}
                                 type="email"
+                                name="email"
+                                autoComplete="email"
                                 placeholder="Enter your email"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                 data-testid="input-signup-email"
@@ -898,6 +908,8 @@ export default function Landing() {
                                 <Input
                                   {...field}
                                   type={showPassword ? "text" : "password"}
+                                  name="password"
+                                  autoComplete="new-password"
                                   placeholder="Create password (6+ chars)"
                                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   data-testid="input-signup-password"
@@ -927,6 +939,8 @@ export default function Landing() {
                                 <Input
                                   {...field}
                                   type={showConfirmPassword ? "text" : "password"}
+                                  name="confirmPassword"
+                                  autoComplete="new-password"
                                   placeholder="Confirm your password"
                                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   data-testid="input-signup-confirm-password"

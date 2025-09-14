@@ -196,11 +196,12 @@ export function useFoodTruckSocket({
     }
   }, []);
 
-  // Auto-connect on mount if enabled
+  // Auto-connect on mount if enabled (disabled to prevent console errors)
   useEffect(() => {
-    if (autoConnect) {
-      connect();
-    }
+    // Temporarily disabled to prevent WebSocket error spam
+    // if (autoConnect) {
+    //   connect();
+    // }
 
     return () => {
       disconnect();

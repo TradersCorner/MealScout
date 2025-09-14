@@ -762,7 +762,6 @@ export default function Landing() {
                                 placeholder="Enter your email"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                 data-testid="input-login-email"
-                                name="email"
                                 autoComplete="email"
                               />
                             </FormControl>
@@ -785,7 +784,6 @@ export default function Landing() {
                                   placeholder="Enter your password"
                                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   data-testid="input-login-password"
-                                  name="password"
                                   autoComplete="current-password"
                                 />
                                 <button
@@ -845,7 +843,6 @@ export default function Landing() {
                                   placeholder="First name"
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   data-testid="input-signup-firstname"
-                                  name="firstName"
                                   autoComplete="given-name"
                                 />
                               </FormControl>
@@ -866,7 +863,6 @@ export default function Landing() {
                                   placeholder="Last name"
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   data-testid="input-signup-lastname"
-                                  name="lastName"
                                   autoComplete="family-name"
                                 />
                               </FormControl>
@@ -889,7 +885,6 @@ export default function Landing() {
                                 placeholder="Enter your email"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                 data-testid="input-signup-email"
-                                name="email"
                                 autoComplete="email"
                               />
                             </FormControl>
@@ -912,7 +907,6 @@ export default function Landing() {
                                   placeholder="Create password (6+ chars)"
                                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   data-testid="input-signup-password"
-                                  name="password"
                                   autoComplete="new-password"
                                 />
                                 <button
@@ -943,7 +937,6 @@ export default function Landing() {
                                   placeholder="Confirm your password"
                                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   data-testid="input-signup-confirm-password"
-                                  name="confirmPassword"
                                   autoComplete="new-password"
                                 />
                                 <button

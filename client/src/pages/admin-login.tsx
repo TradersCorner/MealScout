@@ -80,10 +80,12 @@ export default function AdminLogin() {
               </Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter admin email"
+                autoComplete="email"
                 required
                 disabled={loginMutation.isPending}
                 data-testid="input-admin-email"
@@ -98,10 +100,12 @@ export default function AdminLogin() {
               <div className="relative">
                 <Input
                   id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter admin password"
+                  autoComplete="current-password"
                   required
                   disabled={loginMutation.isPending}
                   data-testid="input-admin-password"

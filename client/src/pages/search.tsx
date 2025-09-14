@@ -10,7 +10,20 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Filter, MapPin, Clock, X, SlidersHorizontal, Utensils, Pizza, Beef, ChefHat, Crown, Salad } from "lucide-react";
+import { Search, Filter, MapPin, Clock, X, SlidersHorizontal, Utensils, Pizza, Beef, ChefHat, Crown, Salad, Coffee, Fish, Cake } from "lucide-react";
+
+// Category configuration mapping (from category.tsx)
+const categoryConfig = {
+  pizza: { title: "Pizza", icon: Pizza, keywords: ['pizza', 'italian'] },
+  burgers: { title: "Burgers", icon: Beef, keywords: ['american', 'burger', 'sandwich'] },
+  asian: { title: "Asian", icon: ChefHat, keywords: ['asian', 'chinese', 'japanese', 'sushi', 'noodle'] },
+  mexican: { title: "Mexican", icon: Crown, keywords: ['mexican', 'taco', 'burrito'] },
+  healthy: { title: "Healthy", icon: Salad, keywords: ['healthy', 'salad', 'smoothie'] },
+  breakfast: { title: "Breakfast", icon: Coffee, keywords: ['breakfast', 'brunch', 'pancake', 'coffee'] },
+  seafood: { title: "Seafood", icon: Fish, keywords: ['seafood', 'fish', 'shrimp'] },
+  coffee: { title: "Coffee", icon: Coffee, keywords: ['cafe', 'coffee', 'latte'] },
+  dessert: { title: "Desserts", icon: Cake, keywords: ['dessert', 'ice cream', 'cake'] }
+};
 
 export default function SearchPage() {
   const [location, setLocation] = useLocation();
@@ -19,6 +32,11 @@ export default function SearchPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState([0, 50]);
   const [sortBy, setSortBy] = useState("relevance");
+  
+  // Location state management
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   // Parse URL query parameter
   useEffect(() => {
@@ -29,30 +47,132 @@ export default function SearchPage() {
     }
   }, [location]);
 
-  // Use featured deals for now - we'll enhance search later
-  const { data: featuredDeals, isLoading } = useQuery({
-    queryKey: ["/api/deals/featured"],
-    enabled: true,
+  // Get user location on component mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      setIsLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          setUserLocation(location);
+          setIsLocating(false);
+        },
+        (error) => {
+          console.log("Location error:", error);
+          setLocationError("Unable to get your location");
+          setIsLocating(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+  }, []);
+
+  // Fetch nearby deals when location is available, otherwise featured deals
+  const { data: nearbyDeals, isLoading: nearbyLoading } = useQuery({
+    queryKey: userLocation 
+      ? ["/api/deals/nearby", userLocation.lat, userLocation.lng]
+      : ["/api/deals/featured"],
+    queryFn: userLocation 
+      ? async () => {
+          const response = await fetch(`/api/deals/nearby/${userLocation.lat}/${userLocation.lng}`);
+          if (!response.ok) throw new Error('Failed to fetch nearby deals');
+          return response.json();
+        }
+      : undefined,
+    enabled: !!userLocation || !isLocating,
   });
 
-  const categories = [
+  const { data: featuredDeals, isLoading: featuredLoading } = useQuery({
+    queryKey: ["/api/deals/featured"],
+    enabled: !userLocation && !isLocating,
+  });
+
+  const isLoading = nearbyLoading || featuredLoading;
+
+  // Function to map cuisine types and titles to category IDs
+  const mapDealToCategory = (deal: any): string[] => {
+    const categories: string[] = [];
+    const cuisineType = deal.restaurant?.cuisineType?.toLowerCase() || '';
+    const title = deal.title?.toLowerCase() || '';
+    
+    // Check each category for matches
+    Object.entries(categoryConfig).forEach(([categoryId, config]) => {
+      const keywords = config.keywords;
+      const matches = keywords.some(keyword => 
+        cuisineType.includes(keyword) || title.includes(keyword)
+      );
+      if (matches) {
+        categories.push(categoryId);
+      }
+    });
+    
+    return categories;
+  };
+
+  // Generate dynamic categories based on nearby deals
+  const generateDynamicCategories = (deals: any[]) => {
+    const categoryCounts: Record<string, number> = {};
+    
+    // Count deals per category
+    deals.forEach(deal => {
+      const dealCategories = mapDealToCategory(deal);
+      dealCategories.forEach(categoryId => {
+        categoryCounts[categoryId] = (categoryCounts[categoryId] || 0) + 1;
+      });
+    });
+    
+    // Sort categories by count and take top 5
+    const sortedCategories = Object.entries(categoryCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5)
+      .map(([categoryId]) => categoryId);
+    
+    // Build category buttons
+    const dynamicCategories = [{ id: "all", label: "All", icon: Utensils }];
+    
+    sortedCategories.forEach(categoryId => {
+      if (categoryConfig[categoryId as keyof typeof categoryConfig]) {
+        const config = categoryConfig[categoryId as keyof typeof categoryConfig];
+        dynamicCategories.push({
+          id: categoryId,
+          label: config.title,
+          icon: config.icon
+        });
+      }
+    });
+    
+    return dynamicCategories;
+  };
+
+  // Static fallback categories
+  const staticCategories = [
     { id: "all", label: "All", icon: Utensils },
     { id: "pizza", label: "Pizza", icon: Pizza },
-    { id: "burger", label: "Burgers", icon: Beef },
+    { id: "burgers", label: "Burgers", icon: Beef },
     { id: "asian", label: "Asian", icon: ChefHat },
     { id: "mexican", label: "Mexican", icon: Crown },
     { id: "healthy", label: "Healthy", icon: Salad },
   ];
 
-  const allDeals = Array.isArray(featuredDeals) ? featuredDeals : [];
+  // Use dynamic categories when we have nearby deals, otherwise use static
+  const allDeals = Array.isArray(nearbyDeals) ? nearbyDeals : Array.isArray(featuredDeals) ? featuredDeals : [];
+  const categories = userLocation && nearbyDeals && nearbyDeals.length > 0 
+    ? generateDynamicCategories(nearbyDeals)
+    : staticCategories;
+
+  // allDeals is already defined above
   const filteredDeals = allDeals.filter((deal: any) => {
     const matchesSearch = !searchQuery || 
       deal.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       deal.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       deal.restaurant?.name?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesCategory = selectedCategory === "all" || 
-      deal.restaurant?.cuisineType?.toLowerCase().includes(selectedCategory);
+    const matchesCategory = selectedCategory === "all" || (
+      selectedCategory && mapDealToCategory(deal).includes(selectedCategory)
+    );
     
     // Apply price range filter
     const dealPrice = parseFloat(deal.minOrderAmount) || 0;
@@ -82,7 +202,9 @@ export default function SearchPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Search Deals</h1>
-            <p className="text-sm text-muted-foreground">Find your perfect meal</p>
+            <p className="text-sm text-muted-foreground">
+              {isLocating ? "Finding your location..." : userLocation ? "Popular deals near you" : "Find your perfect meal"}
+            </p>
           </div>
           <Button 
             variant="outline" 

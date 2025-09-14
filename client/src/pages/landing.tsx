@@ -226,55 +226,123 @@ export default function Landing() {
       return;
     }
 
-    // For real browsers, just set a default location immediately 
-    // and then try to get actual location in background
-    console.log('🌍 Setting default location and attempting GPS...');
-    setLocationName("Tangipahoa Area, LA"); // Set immediately to prevent stuck state
-    setLocation({ lat: 30.5364992, lng: -90.5347072 });
+    console.log('🌍 Getting your location...');
+    setLocationName('Getting your location...');
 
-    // Then try to get actual location if available
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
-          console.log('📍 Got real coordinates:', { latitude, longitude });
+          console.log('📍 Got coordinates:', { latitude, longitude });
           
           setLocation({ lat: latitude, lng: longitude });
           
+          // Try multiple geocoding services to find the nearest actual city
+          let cityName = null;
+          
           try {
-            const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
-            const data = await response.json();
+            // First try to find the nearest city using Nominatim (good for finding cities)
+            console.log('🔍 Looking for nearest city...');
+            const nominatimResponse = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14&addressdetails=1`
+            );
             
-            let cityName = data.locality || data.city || data.principalSubdivision || "Your Location";
-            
-            // If it's a parish in Louisiana, format it nicely
-            if (data.principalSubdivision === "Louisiana" && data.localityInfo?.administrative?.[1]?.name?.includes("Parish")) {
-              const parishName = data.localityInfo.administrative[1].name.replace(" Parish", "");
-              cityName = `${parishName} Area, LA`;
+            if (nominatimResponse.ok) {
+              const nominatimData = await nominatimResponse.json();
+              const address = nominatimData.address;
+              
+              // Prioritize actual cities and towns over administrative divisions
+              cityName = address?.city || address?.town || address?.village || address?.hamlet;
+              
+              if (cityName) {
+                // Format with state abbreviation if we have it
+                const state = address?.state;
+                if (state === "Louisiana") {
+                  cityName = `${cityName}, LA`;
+                } else if (state) {
+                  // Get state abbreviation for other states
+                  const stateAbbrev = getStateAbbreviation(state);
+                  cityName = `${cityName}, ${stateAbbrev}`;
+                }
+                console.log('🏙️ Found city from Nominatim:', cityName);
+              }
             }
-            
-            console.log('🏙️ Updated location to:', cityName);
-            setLocationName(cityName);
-            
           } catch (error) {
-            console.log('⚠️ Geocoding failed, keeping default');
-            // Keep the default location if geocoding fails
+            console.log('⚠️ Nominatim lookup failed:', error);
           }
+          
+          // If we still don't have a city name, try a different approach
+          if (!cityName) {
+            try {
+              console.log('🔍 Trying BigDataCloud for city...');
+              const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+              const data = await response.json();
+              
+              // Only use locality or city, avoid administrative divisions
+              cityName = data.locality || data.city;
+              
+              if (cityName && data.principalSubdivision === "Louisiana") {
+                cityName = `${cityName}, LA`;
+              } else if (cityName && data.principalSubdivision) {
+                const stateAbbrev = getStateAbbreviation(data.principalSubdivision);
+                cityName = `${cityName}, ${stateAbbrev}`;
+              }
+              
+              if (cityName) {
+                console.log('🏙️ Found city from BigDataCloud:', cityName);
+              }
+            } catch (error) {
+              console.log('⚠️ BigDataCloud lookup failed:', error);
+            }
+          }
+          
+          // Final fallback - use coordinates if no city found
+          if (!cityName) {
+            cityName = `Location Found (${latitude.toFixed(3)}, ${longitude.toFixed(3)})`;
+            console.log('📍 Using coordinates as fallback:', cityName);
+          }
+          
+          setLocationName(cityName);
         },
         (error) => {
-          console.log('❌ GPS failed, keeping default location:', error.message);
-          // Keep the default location if GPS fails
+          console.error('❌ Geolocation failed:', error);
+          if (error.code === error.PERMISSION_DENIED) {
+            setLocationError('Location access denied. Please enter your city manually.');
+            setLocationName("Location Access Denied");
+          } else {
+            setLocationError('Unable to get your location. Please enter your city manually.');
+            setLocationName("Location Not Available");
+          }
+          setShowLocationInput(true);
         },
         {
-          enableHighAccuracy: false,
-          timeout: 8000,
-          maximumAge: 600000
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 300000
         }
       );
     } else {
-      console.log('📍 No geolocation available, using default location');
+      setLocationError('Location services not available. Please enter your city manually.');
+      setLocationName("Location Not Available");
+      setShowLocationInput(true);
     }
   }, []);
+
+  // Helper function to get state abbreviations
+  const getStateAbbreviation = (stateName: string): string => {
+    const stateMap: { [key: string]: string } = {
+      'Louisiana': 'LA',
+      'Mississippi': 'MS',
+      'Texas': 'TX',
+      'Alabama': 'AL',
+      'Arkansas': 'AR',
+      'Florida': 'FL',
+      'Georgia': 'GA',
+      'Tennessee': 'TN',
+      // Add more states as needed
+    };
+    return stateMap[stateName] || stateName;
+  };
 
   // Handle manual location input
   const handleManualLocation = async () => {

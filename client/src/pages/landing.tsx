@@ -278,13 +278,67 @@ export default function Landing() {
             if ((!cityName || cityName.toLowerCase().includes('district') || cityName.toLowerCase().includes('subdivision')) && !isFacebookBrowser) {
               console.log(`🔄 ${browserType} trying backup geocoding service...`);
               response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=15&addressdetails=1`
               );
               
               if (response.ok) {
                 const backupData = await response.json();
                 const address = backupData.address;
-                cityName = address?.city || address?.town || address?.village || address?.county;
+                // Prioritize actual cities and towns over counties/parishes
+                cityName = address?.city || address?.town || address?.village || address?.hamlet;
+                
+                // Only use county/parish as last resort if no city/town found
+                if (!cityName) {
+                  // Try a specialized nearby places API for better city data
+                  try {
+                    console.log(`🔄 ${browserType} trying nearby places API for nearest city...`);
+                    const response3 = await fetch(
+                      `https://nominatim.openstreetmap.org/search?format=json&lat=${latitude}&lon=${longitude}&limit=5&addressdetails=1&extratags=1&namedetails=1&accept-language=en&layer=place&class=place&type=city,town,village`
+                    );
+                    if (response3.ok) {
+                      const nearbyPlaces = await response3.json();
+                      console.log(`🔍 ${browserType} nearby places found:`, nearbyPlaces.length, nearbyPlaces);
+                      
+                      // Find the closest actual city/town
+                      for (const place of nearbyPlaces) {
+                        console.log(`🔍 Checking place:`, place);
+                        if (place.display_name) {
+                          // Extract city name from display_name as fallback
+                          const displayParts = place.display_name.split(',');
+                          const potentialCity = displayParts[0]?.trim();
+                          
+                          if (potentialCity && 
+                              !potentialCity.toLowerCase().includes('district') && 
+                              !potentialCity.toLowerCase().includes('parish') &&
+                              !potentialCity.toLowerCase().includes('county') &&
+                              potentialCity.length > 2) {
+                            cityName = potentialCity;
+                            console.log(`🏙️ ${browserType} found nearby place:`, { name: potentialCity, display: place.display_name });
+                            break;
+                          }
+                        }
+                      }
+                    } else {
+                      console.log(`❌ ${browserType} nearby places API returned:`, response3.status, response3.statusText);
+                    }
+                  } catch (nearestError) {
+                    console.log(`❌ ${browserType} nearby places lookup failed:`, nearestError);
+                  }
+                  
+                  // Final fallback to parish/county with user-friendly formatting
+                  if (!cityName) {
+                    const countyName = address?.county || address?.state;
+                    
+                    // For Louisiana parishes, provide a more user-friendly format
+                    if (countyName && countyName.toLowerCase().includes('parish')) {
+                      // Extract the parish name and format it better
+                      const parishName = countyName.replace(/\s+Parish$/i, '').trim();
+                      cityName = `${parishName} Area, LA`; // e.g., "Tangipahoa Area, LA"
+                    } else if (countyName) {
+                      cityName = countyName;
+                    }
+                  }
+                }
               }
             }
             

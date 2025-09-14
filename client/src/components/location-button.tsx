@@ -238,28 +238,33 @@ export default function LocationButton({
               
               console.log('🌍 Trying OpenStreetMap reverse geocoding...');
               const response2 = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=15&addressdetails=1`
               );
               const data2 = await response2.json();
               
               if (data2.address) {
+                // Prioritize actual cities and towns over counties/parishes
                 const newLocationName = data2.address.city || 
                                        data2.address.town || 
                                        data2.address.village || 
-                                       data2.address.county || 
-                                       data2.address.state || 
-                                       locationName;
+                                       data2.address.hamlet;
+                
+                // Only use county/parish as last resort if no city/town found
+                const fallbackLocationName = newLocationName || 
+                                            data2.address.county || 
+                                            data2.address.state || 
+                                            locationName;
                                        
                 console.log('🏙️ OpenStreetMap result:', { 
                   city: data2.address.city, 
                   town: data2.address.town,
                   county: data2.address.county,
                   state: data2.address.state,
-                  final: newLocationName 
+                  final: fallbackLocationName 
                 });
                 
-                if (newLocationName !== locationName && !newLocationName.toLowerCase().includes('district')) {
-                  locationName = newLocationName;
+                if (fallbackLocationName !== locationName && !fallbackLocationName.toLowerCase().includes('district')) {
+                  locationName = fallbackLocationName;
                 }
               }
             }

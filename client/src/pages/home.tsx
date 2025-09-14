@@ -288,7 +288,7 @@ export default function Home() {
           </div>
 
           {/* Location */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 min-w-0 flex-1 justify-end">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
               isLoadingLocation ? 'bg-yellow-500' : 
               locationError ? 'bg-red-500' : 
@@ -300,14 +300,16 @@ export default function Home() {
                 <MapPin className="w-4 h-4 text-white" />
               )}
             </div>
-            <div className="text-right">
-              <p className="text-gray-500 text-xs" data-testid="text-location-label">Location</p>
-              <div className="flex items-center space-x-2">
-                <p className="text-gray-900 font-medium text-sm" data-testid="text-location-name">{locationName}</p>
+            <div className="text-right min-w-0 flex-1 max-w-32">
+              <p className="text-gray-500 text-xs whitespace-nowrap" data-testid="text-location-label">Location</p>
+              <div className="flex items-center space-x-1">
+                <p className="text-gray-900 font-medium text-sm truncate" data-testid="text-location-name" title={locationName}>
+                  {locationName}
+                </p>
                 {locationError && (
                   <button
                     onClick={retryLocation}
-                    className="text-blue-600 text-xs hover:text-blue-700 font-medium"
+                    className="text-blue-600 text-xs hover:text-blue-700 font-medium whitespace-nowrap"
                     data-testid="button-retry-location"
                   >
                     Retry
@@ -317,7 +319,7 @@ export default function Home() {
             </div>
             
             {/* Location Update Button */}
-            <div className="ml-2">
+            <div className="flex-shrink-0">
               <LocationButton
                 onLocationUpdate={handleLocationUpdate}
                 onLocationNameUpdate={handleLocationNameUpdate}
@@ -325,7 +327,7 @@ export default function Home() {
                 isLoading={isLoadingLocation}
                 size="sm"
                 variant="default"
-                className="text-xs"
+                className="text-xs whitespace-nowrap"
               />
             </div>
           </div>

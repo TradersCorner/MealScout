@@ -3,60 +3,60 @@ import { useParams, Link } from "wouter";
 import Navigation from "@/components/navigation";
 import DealCard from "@/components/deal-card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Filter, MapPin, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Filter, MapPin, SlidersHorizontal, Pizza, Beef, Utensils, ChefHat, Coffee, Salad, Fish, Cake, Crown } from "lucide-react";
 
 const categoryConfig = {
   pizza: {
     title: "Pizza & Italian",
-    icon: "🍕",
+    icon: Pizza,
     gradient: "from-orange-500 to-red-500",
     description: "Delicious pizza and authentic Italian cuisine"
   },
   burgers: {
     title: "Burgers & American",
-    icon: "🍔", 
+    icon: Beef, 
     gradient: "from-red-500 to-yellow-500",
     description: "Juicy burgers and classic American dishes"
   },
   asian: {
     title: "Asian Cuisine",
-    icon: "🥢",
+    icon: ChefHat,
     gradient: "from-red-600 to-orange-500", 
     description: "Authentic Asian flavors and fresh ingredients"
   },
   mexican: {
     title: "Mexican Food",
-    icon: "🌮",
+    icon: Crown,
     gradient: "from-green-500 to-red-500",
     description: "Spicy and flavorful Mexican specialties"
   },
   breakfast: {
     title: "Breakfast & Brunch",
-    icon: "🥞",
+    icon: Coffee,
     gradient: "from-yellow-400 to-orange-500",
     description: "Start your day with great breakfast deals"
   },
   healthy: {
     title: "Healthy Options",
-    icon: "🥗",
+    icon: Salad,
     gradient: "from-green-400 to-green-600",
     description: "Fresh, nutritious, and delicious healthy meals"
   },
   seafood: {
     title: "Seafood",
-    icon: "🐟",
+    icon: Fish,
     gradient: "from-blue-500 to-teal-500", 
     description: "Fresh catch and seafood specialties"
   },
   coffee: {
     title: "Coffee & Cafes",
-    icon: "☕",
+    icon: Coffee,
     gradient: "from-amber-600 to-orange-600",
     description: "Great coffee and cozy cafe atmosphere"
   },
   dessert: {
     title: "Desserts & Sweets",
-    icon: "🍰",
+    icon: Cake,
     gradient: "from-pink-400 to-purple-500",
     description: "Sweet treats and decadent desserts"
   }
@@ -137,7 +137,7 @@ export default function CategoryPage() {
           </Link>
           <div className="flex items-center">
             <div className={`w-8 h-8 bg-gradient-to-r ${config.gradient} rounded-lg flex items-center justify-center mr-3 shadow-sm`}>
-              <span className="text-sm">{config.icon}</span>
+              <config.icon className="w-4 h-4 text-white" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-foreground">{config.title}</h1>
@@ -187,7 +187,7 @@ export default function CategoryPage() {
         ) : (
           <div className="text-center py-12">
             <div className={`w-20 h-20 bg-gradient-to-r ${config.gradient} rounded-2xl flex items-center justify-center mx-auto mb-4 opacity-20`}>
-              <span className="text-2xl">{config.icon}</span>
+              <config.icon className="w-8 h-8 text-white" />
             </div>
             <h3 className="font-bold text-lg text-foreground mb-2">No {config.title} deals yet</h3>
             <p className="text-muted-foreground mb-6">

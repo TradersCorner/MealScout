@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Filter, MapPin, Clock, X, SlidersHorizontal } from "lucide-react";
+import { Search, Filter, MapPin, Clock, X, SlidersHorizontal, Utensils, Pizza, Beef, ChefHat, Crown, Salad } from "lucide-react";
 
 export default function SearchPage() {
   const [location, setLocation] = useLocation();
@@ -36,12 +36,12 @@ export default function SearchPage() {
   });
 
   const categories = [
-    { id: "all", label: "All", icon: "🍽️" },
-    { id: "pizza", label: "Pizza", icon: "🍕" },
-    { id: "burger", label: "Burgers", icon: "🍔" },
-    { id: "asian", label: "Asian", icon: "🥢" },
-    { id: "mexican", label: "Mexican", icon: "🌮" },
-    { id: "healthy", label: "Healthy", icon: "🥗" },
+    { id: "all", label: "All", icon: Utensils },
+    { id: "pizza", label: "Pizza", icon: Pizza },
+    { id: "burger", label: "Burgers", icon: Beef },
+    { id: "asian", label: "Asian", icon: ChefHat },
+    { id: "mexican", label: "Mexican", icon: Crown },
+    { id: "healthy", label: "Healthy", icon: Salad },
   ];
 
   const allDeals = Array.isArray(featuredDeals) ? featuredDeals : [];
@@ -119,7 +119,7 @@ export default function SearchPage() {
               className="flex-shrink-0 rounded-full px-4 py-2"
               data-testid={`button-category-${category.id}`}
             >
-              <span className="mr-2">{category.icon}</span>
+              <category.icon className="w-4 h-4 mr-2" />
               {category.label}
             </Button>
           ))}

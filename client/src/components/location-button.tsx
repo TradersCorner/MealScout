@@ -308,11 +308,11 @@ export default function LocationButton({
                   town: data2.address.town,
                   county: data2.address.county,
                   state: data2.address.state,
-                  final: fallbackLocationName 
+                  final: newLocationName 
                 });
                 
-                if (fallbackLocationName !== locationName && !fallbackLocationName.toLowerCase().includes('district')) {
-                  locationName = fallbackLocationName;
+                if (newLocationName !== locationName && !newLocationName.toLowerCase().includes('district')) {
+                  locationName = newLocationName;
                 }
               }
             }

@@ -132,6 +132,21 @@ export default function LocationButton({
   };
 
   const handleLocationDetection = async () => {
+    // Check for forced location first (for testing)
+    const { getForcedLocation } = await import('@/lib/location');
+    const forcedLocation = getForcedLocation();
+    if (forcedLocation) {
+      console.log('🎯 Using forced location for testing:', forcedLocation);
+      onLocationUpdate({ lat: forcedLocation.lat, lng: forcedLocation.lng });
+      onLocationNameUpdate(forcedLocation.name);
+      if (mountedRef.current) {
+        setStatus('success');
+        setInternalLoading(false);
+        setLastUpdateTime(new Date());
+      }
+      return;
+    }
+
     // Single-flight guard: prevent duplicate detection attempts
     if (isLoading || inFlightRef.current) {
       console.log('🚫 Location detection already in progress, skipping...');

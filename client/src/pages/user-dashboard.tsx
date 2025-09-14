@@ -25,12 +25,24 @@ interface UserStats {
 export default function UserDashboard() {
   const { user } = useAuth();
   const [location, setLocation] = useState<{lat: number; lng: number} | null>(null);
-  const [locationName, setLocationName] = useState("Hammond, LA");
+  const [locationName, setLocationName] = useState("Getting location...");
 
-  // Set location for testing - no GPS detection
+  // Check for forced location on mount
   useEffect(() => {
-    setLocation({ lat: 30.5047, lng: -90.4612 });
-    // Location name is already set in state initialization
+    const checkForcedLocation = async () => {
+      const { getForcedLocation } = await import('@/lib/location');
+      const forcedLocation = getForcedLocation();
+      if (forcedLocation) {
+        console.log('🎯 Using forced location in dashboard:', forcedLocation);
+        setLocation({ lat: forcedLocation.lat, lng: forcedLocation.lng });
+        setLocationName(forcedLocation.name);
+      } else {
+        // Fallback to Hammond, LA if no forced location is set
+        setLocation({ lat: 30.5047, lng: -90.4612 });
+        setLocationName("Hammond, LA");
+      }
+    };
+    checkForcedLocation();
   }, []);
 
   // Fetch user stats

@@ -47,6 +47,22 @@ export default function Home() {
   const [locationName, setLocationName] = useState("Getting location...");
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
+
+  // Check for forced location on mount
+  useEffect(() => {
+    const checkForcedLocation = async () => {
+      const { getForcedLocation } = await import('@/lib/location');
+      const forcedLocation = getForcedLocation();
+      if (forcedLocation) {
+        console.log('🎯 Using forced location on mount:', forcedLocation);
+        setLocation({ lat: forcedLocation.lat, lng: forcedLocation.lng });
+        setLocationName(forcedLocation.name);
+        setLocationError(null);
+        setIsLoadingLocation(false);
+      }
+    };
+    checkForcedLocation();
+  }, []);
   const [showLocationInput, setShowLocationInput] = useState(false);
   const [manualLocation, setManualLocation] = useState('');
   const [searchQuery, setSearchQuery] = useState("");

@@ -366,7 +366,14 @@ export default function Landing() {
               coordinates: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
             });
             
+            console.log('🔄 Setting location name to:', cityName);
             setLocationName(cityName);
+            
+            // Force a small delay to ensure state update is processed
+            setTimeout(() => {
+              console.log('✅ Location name should now be:', cityName);
+              setLocationName(cityName); // Set again to force re-render
+            }, 100);
           } catch (error) {
             console.error('❌ Geocoding failed:', error);
             setLocationName(`Location Found (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
@@ -408,8 +415,9 @@ export default function Landing() {
     };
 
     // Start location detection
+    console.log('🎯 useEffect triggered, isFacebookBrowser:', isFacebookBrowser);
     detectLocationWithFallbacks();
-  }, [isFacebookBrowser]);
+  }, []); // Remove dependency to ensure it runs once on mount
 
   // Handle manual location input
   const handleManualLocation = async () => {

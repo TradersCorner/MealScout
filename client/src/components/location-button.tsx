@@ -1,12 +1,24 @@
 import { useState, useRef, useEffect } from "react";
-import { MapPin, Loader2, CheckCircle, XCircle, RefreshCw } from "lucide-react";
+import { MapPin, Loader2, CheckCircle, XCircle, RefreshCw, Home, MapPinIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import type { UserAddress } from "@shared/schema";
 
 interface LocationButtonProps {
   onLocationUpdate: (location: { lat: number; lng: number }) => void;
   onLocationNameUpdate: (name: string) => void;
   onLocationError: (error: string) => void;
+  onShowManualInput?: () => void;
   isLoading?: boolean;
   className?: string;
   size?: "sm" | "default" | "lg";
@@ -17,17 +29,27 @@ export default function LocationButton({
   onLocationUpdate,
   onLocationNameUpdate,
   onLocationError,
+  onShowManualInput,
   isLoading: externalLoading = false,
   className,
   size = "default",
   variant = "default"
 }: LocationButtonProps) {
+  const { isAuthenticated } = useAuth();
   const [internalLoading, setInternalLoading] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
+  const [showLocationOptions, setShowLocationOptions] = useState(false);
   const statusRef = useRef(status);
   const mountedRef = useRef(true);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch user addresses if authenticated
+  const { data: userAddresses = [] } = useQuery<UserAddress[]>({
+    queryKey: ['/api/user/addresses'],
+    enabled: isAuthenticated,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
   
   // Keep refs in sync with state
   statusRef.current = status;
@@ -298,13 +320,27 @@ export default function LocationButton({
         
         const normalizedError = normalizeGeolocationError(error);
         
-        // If this is a permission denied error, don't retry
+        // If this is a permission denied error, offer alternatives
         if (normalizedError.isDenied) {
           if (mountedRef.current) {
             setInternalLoading(false);
             setStatus("error");
           }
-          onLocationError("Location access denied. Please enable location permissions in your browser settings and try again.");
+          
+          // Provide helpful alternatives when location is denied
+          const errorMessage = userAddresses.length > 0 
+            ? "Location access denied. You can use one of your saved addresses or enter your location manually."
+            : "Location access denied. Please enter your location manually below.";
+          
+          onLocationError(errorMessage);
+          
+          // Show manual input option after a short delay
+          if (onShowManualInput) {
+            setTimeout(() => {
+              onShowManualInput();
+            }, 1500);
+          }
+          
           return;
         }
         
@@ -340,21 +376,37 @@ export default function LocationButton({
           
           let errorMessage = "Unable to get your location. Please try again.";
           
+          // Enhanced error messages with helpful alternatives
           switch (normalizedError.code) {
             case 2: // POSITION_UNAVAILABLE
               errorMessage = platform.isWindows || platform.isAndroid 
-                ? "Location unavailable. Please check your device's location settings and ensure GPS is enabled."
-                : "Location information is unavailable. Please check your connection.";
+                ? userAddresses.length > 0
+                  ? "Location unavailable. You can use one of your saved addresses instead."
+                  : "Location unavailable. Please check your device's location settings or enter your location manually."
+                : userAddresses.length > 0
+                  ? "Location information is unavailable. You can select from your saved addresses."
+                  : "Location information is unavailable. Please enter your city manually.";
               break;
             case 3: // TIMEOUT
               errorMessage = platform.isWindows || platform.isAndroid
-                ? "Location request timed out. Please ensure GPS is enabled and try again."
-                : "Location request timed out. Please try again.";
+                ? "Location request timed out. Try using a saved address or enter your location manually."
+                : "Location request timed out. You can enter your location manually below.";
               break;
             default:
               errorMessage = platform.isWindows || platform.isAndroid
-                ? "GPS not working. Please check your device settings or enter your location manually."
-                : "Unable to get your location. Please try again.";
+                ? userAddresses.length > 0
+                  ? "GPS not working. Use a saved address or enter your location manually."
+                  : "GPS not working. Please enter your location manually."
+                : userAddresses.length > 0
+                  ? "Unable to get your location. Select from your saved addresses or enter manually."
+                  : "Unable to get your location. Please enter your city manually.";
+          }
+          
+          // Show manual input for location errors  
+          if (onShowManualInput) {
+            setTimeout(() => {
+              onShowManualInput();
+            }, 2000);
           }
           
           onLocationError(errorMessage);
@@ -444,16 +496,121 @@ export default function LocationButton({
     );
   };
 
+  const handleSavedAddressSelect = async (address: UserAddress) => {
+    if (!address.latitude || !address.longitude) {
+      // If coordinates aren't saved, try geocoding the address
+      try {
+        const fullAddress = `${address.address}, ${address.city}, ${address.state} ${address.postalCode}`.trim();
+        const response = await fetch(
+          `https://api.bigdatacloud.net/data/city?name=${encodeURIComponent(fullAddress)}`
+        );
+        const data = await response.json();
+        
+        if (data.latitude && data.longitude) {
+          onLocationUpdate({ lat: data.latitude, lng: data.longitude });
+          onLocationNameUpdate(`${address.city}, ${address.state}`);
+          setStatus("success");
+          setLastUpdateTime(new Date());
+        } else {
+          onLocationError(`Could not locate ${address.label}. Please try updating the address.`);
+        }
+      } catch (error) {
+        onLocationError(`Error locating ${address.label}. Please try again.`);
+      }
+    } else {
+      // Use saved coordinates
+      onLocationUpdate({ 
+        lat: parseFloat(address.latitude), 
+        lng: parseFloat(address.longitude) 
+      });
+      onLocationNameUpdate(`${address.city}, ${address.state}`);
+      setStatus("success");
+      setLastUpdateTime(new Date());
+    }
+  };
+
+  const LocationButton = (
+    <Button
+      onClick={handleLocationDetection}
+      disabled={isLoading}
+      className={getButtonClasses()}
+      data-testid="button-update-location"
+    >
+      {getButtonContent()}
+    </Button>
+  );
+
+  // If user has saved addresses, show dropdown with options
+  if (userAddresses.length > 0) {
+    return (
+      <div className="relative">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <div className="flex items-center space-x-2">
+              {LocationButton}
+              <Button
+                variant="outline"
+                size={size}
+                className="px-2"
+                data-testid="button-location-options"
+              >
+                <MapPinIcon className="w-4 h-4" />
+              </Button>
+            </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuLabel>Quick Location Options</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {userAddresses.map((address) => (
+              <DropdownMenuItem
+                key={address.id}
+                onClick={() => handleSavedAddressSelect(address)}
+                className="cursor-pointer"
+                data-testid={`menu-address-${address.id}`}
+              >
+                <Home className="w-4 h-4 mr-2" />
+                <div className="flex-1">
+                  <div className="font-medium">{address.label}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {address.city}, {address.state}
+                  </div>
+                </div>
+                {address.isDefault && (
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                    Default
+                  </span>
+                )}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            {onShowManualInput && (
+              <DropdownMenuItem
+                onClick={onShowManualInput}
+                className="cursor-pointer"
+                data-testid="menu-enter-manually"
+              >
+                <MapPin className="w-4 h-4 mr-2" />
+                Enter location manually
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        
+        {lastUpdateTime && status === "idle" && (
+          <div className="absolute -bottom-6 left-0 right-0 text-center">
+            <span className="text-xs text-gray-500" data-testid="text-last-update">
+              Updated {lastUpdateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Fallback to simple button if no saved addresses
   return (
     <div className="relative">
-      <Button
-        onClick={handleLocationDetection}
-        disabled={isLoading}
-        className={getButtonClasses()}
-        data-testid="button-update-location"
-      >
-        {getButtonContent()}
-      </Button>
+      {LocationButton}
       
       {lastUpdateTime && status === "idle" && (
         <div className="absolute -bottom-6 left-0 right-0 text-center">

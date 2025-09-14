@@ -274,8 +274,8 @@ export default function Landing() {
             const data = await response.json();
             let cityName = data.city || data.locality || data.principalSubdivision;
             
-            // If BigDataCloud doesn't give a good city name and NOT Facebook browser, try Nominatim
-            if (!cityName && !isFacebookBrowser) {
+            // If BigDataCloud doesn't give a good city name or gives poor results like "District X" and NOT Facebook browser, try Nominatim
+            if ((!cityName || cityName.toLowerCase().includes('district') || cityName.toLowerCase().includes('subdivision')) && !isFacebookBrowser) {
               console.log(`🔄 ${browserType} trying backup geocoding service...`);
               response = await fetch(
                 `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`

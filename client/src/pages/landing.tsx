@@ -46,6 +46,7 @@ export default function Landing() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAuth, setShowAuth] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const [authMode, setAuthMode] = useState<'signup' | 'login' | 'primary'>('primary');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -118,6 +119,25 @@ export default function Landing() {
       document.removeEventListener('click', handleClickOutside);
     };
   }, [showAuth]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleDropdownClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      const dropdown = document.querySelector('.login-dropdown');
+      if (dropdown && !dropdown.contains(target)) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('click', handleDropdownClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleDropdownClickOutside);
+    };
+  }, [showDropdown]);
 
 
   const signupForm = useForm<SignupFormData>({
@@ -611,7 +631,10 @@ export default function Landing() {
             {/* Login Dropdown Menu */}
             <div className="hidden sm:block relative login-dropdown">
               <button 
-                onClick={() => setShowAuth(!showAuth)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDropdown(!showDropdown);
+                }}
                 className="flex items-center space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm text-gray-700 shadow-sm hover:shadow-md transition-all duration-200"
                 data-testid="button-login-dropdown"
               >
@@ -626,7 +649,7 @@ export default function Landing() {
               </button>
               
               {/* Login Dropdown */}
-              {showAuth && (
+              {showDropdown && (
                 <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-50">
                   <div className="p-4">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Choose Login Method</h3>
@@ -642,7 +665,7 @@ export default function Landing() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setShowAuth(false);
+                        setShowDropdown(false);
                         setAuthMode('signup');
                         setShowAuth(true);
                       }}
@@ -659,7 +682,7 @@ export default function Landing() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setShowAuth(false);
+                        setShowDropdown(false);
                         setAuthMode('login');
                         setShowAuth(true);
                       }}
@@ -678,7 +701,7 @@ export default function Landing() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setShowAuth(false);
+                        setShowDropdown(false);
                         handleGoogleLogin();
                       }}
                       className="w-full flex items-center space-x-3 px-4 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors mb-2"
@@ -697,7 +720,7 @@ export default function Landing() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setShowAuth(false);
+                        setShowDropdown(false);
                         handleFacebookLogin();
                       }}
                       className="w-full flex items-center space-x-3 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"

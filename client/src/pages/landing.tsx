@@ -13,7 +13,7 @@ import { Mail, Eye, EyeOff, Pizza, Utensils, Coffee, Cookie, Apple, Fish, ChefHa
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import DealCard from "@/components/deal-card";
-import mealScoutLogo from "@assets/image_1757871599519.png";
+import mealScoutLogo from "@assets/ChatGPT Image Sep 14, 2025, 09_25_52 AM_1757872111259.png";
 import "../facebook-browser.css";
 
 const signupSchema = z.object({

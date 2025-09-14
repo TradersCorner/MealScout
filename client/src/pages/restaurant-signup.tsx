@@ -18,7 +18,7 @@ import { Mail, Eye, EyeOff, CheckCircle, Upload, ArrowLeft, ArrowRight } from "l
 import DocumentUpload from "@/components/document-upload";
 import { BackHeader } from "@/components/back-header";
 import { Store } from "lucide-react";
-import mealScoutLogo from "@assets/image_1757871599519.png";
+import mealScoutLogo from "@assets/ChatGPT Image Sep 14, 2025, 09_25_52 AM_1757872111259.png";
 
 const restaurantSchema = z.object({
   name: z.string().min(1, "Business name is required"),

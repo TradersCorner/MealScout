@@ -965,88 +965,167 @@ export class DatabaseStorage implements IStorage {
         passwordHash: await bcrypt.hash('password123', 10)
       }, 'customer');
 
-      // Create sample restaurants
+      // Create sample restaurants in Hammond, LA area
       const restaurant1 = await this.createRestaurant({
-        name: 'Tony\'s Pizza Palace',
-        address: '123 Main Street, Downtown, NY 10001',
-        phone: '+1 (555) 123-4567',
-        cuisineType: 'Italian',
-        latitude: '40.7128',
-        longitude: '-74.0060',
+        name: 'Café du Monde Hammond',
+        address: '315 W Thomas St, Hammond, LA 70401',
+        phone: '+1 (985) 345-2233',
+        cuisineType: 'Cajun',
+        latitude: '30.5047',
+        longitude: '-90.4612',
         ownerId: owner1.id
       });
 
       const restaurant2 = await this.createRestaurant({
-        name: 'Sakura Sushi Express',
-        address: '456 Oak Avenue, Midtown, NY 10002',
-        phone: '+1 (555) 234-5678',
-        cuisineType: 'Japanese',
-        latitude: '40.7614',
-        longitude: '-73.9776',
+        name: 'Red Lobster',
+        address: '1535 W Thomas St, Hammond, LA 70401',
+        phone: '+1 (985) 419-1235',
+        cuisineType: 'Seafood',
+        latitude: '30.5125',
+        longitude: '-90.4897',
         ownerId: owner2.id
+      });
+
+      const restaurant3 = await this.createRestaurant({
+        name: 'Chili\'s Grill & Bar',
+        address: '1310 W Thomas St, Hammond, LA 70401',
+        phone: '+1 (985) 419-9823',
+        cuisineType: 'American',
+        latitude: '30.5098',
+        longitude: '-90.4845',
+        ownerId: owner1.id
+      });
+
+      const restaurant4 = await this.createRestaurant({
+        name: 'Cracker Barrel',
+        address: '42434 Veterans Ave, Hammond, LA 70403',
+        phone: '+1 (985) 542-9034',
+        cuisineType: 'Southern',
+        latitude: '30.5456',
+        longitude: '-90.4623',
+        ownerId: owner2.id
+      });
+
+      const restaurant5 = await this.createRestaurant({
+        name: 'The Columbia Restaurant',
+        address: '201 S Oak St, Hammond, LA 70401',
+        phone: '+1 (985) 345-8738',
+        cuisineType: 'Italian',
+        latitude: '30.5025',
+        longitude: '-90.4598',
+        ownerId: owner3.id
       });
 
       // Create food truck
       const foodTruck = await this.createRestaurant({
-        name: 'Gourmet Burger Truck',
-        address: 'Mobile - Follow social media for locations',
-        phone: '+1 (555) 345-6789',
-        cuisineType: 'American',
+        name: 'Louisiana Po-Boy Express',
+        address: 'Mobile - Hammond & Ponchatoula area',
+        phone: '+1 (985) 662-7823',
+        cuisineType: 'Cajun',
         isFoodTruck: true,
-        latitude: '40.7505',
-        longitude: '-73.9934',
+        latitude: '30.5123',
+        longitude: '-90.4567',
         ownerId: owner3.id
       });
 
       // Create sample deals
       const deal1 = await this.createDeal({
         restaurantId: restaurant1.id,
-        title: 'Buy One Get One Free Pizza',
-        description: 'Order any large pizza and get a second one of equal or lesser value absolutely free! Perfect for sharing or taking home leftovers.',
+        title: 'Free Beignets with Coffee Purchase',
+        description: 'Get 3 fresh, hot beignets absolutely free when you purchase any coffee or café au lait. Served with powdered sugar!',
         dealType: 'percentage',
-        discountValue: '50.00',
-        minOrderAmount: '24.99',
-        imageUrl: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=500',
+        discountValue: '100.00',
+        minOrderAmount: '3.50',
+        imageUrl: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=500',
         startDate: new Date(),
         endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        startTime: '11:00',
-        endTime: '22:00',
-        totalUsesLimit: 100,
-        perCustomerLimit: 2,
-
+        startTime: '06:00',
+        endTime: '11:00',
+        totalUsesLimit: 200,
+        perCustomerLimit: 1,
         isActive: true
       });
 
       const deal2 = await this.createDeal({
         restaurantId: restaurant2.id,
-        title: '50% Off Sushi Lunch Special',
-        description: 'Enjoy our premium sushi lunch sets at half price. Includes miso soup, salad, and your choice of sushi roll.',
-        dealType: 'percentage',
-        discountValue: '50.00',
-        minOrderAmount: '15.00',
-        imageUrl: 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=500',
+        title: '$5 Off Endless Shrimp',
+        description: 'Save $5 on our famous Endless Shrimp special! Choose from over 30 different shrimp preparations.',
+        dealType: 'fixed',
+        discountValue: '5.00',
+        minOrderAmount: '19.99',
+        imageUrl: 'https://images.unsplash.com/photo-1565680018434-b513d5e5fd47?w=500',
         startDate: new Date(),
         endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-        startTime: '11:30',
-        endTime: '15:00',
-        totalUsesLimit: 50,
+        startTime: '15:00',
+        endTime: '21:00',
+        totalUsesLimit: 100,
         perCustomerLimit: 1,
-
         isActive: true
       });
 
       const deal3 = await this.createDeal({
-        restaurantId: foodTruck.id,
-        title: 'Gourmet Burger Combo Deal',
-        description: 'Get our signature gourmet burger with hand-cut fries and a drink for an unbeatable price!',
+        restaurantId: restaurant3.id,
+        title: '2 for $25 Dinner Deal',
+        description: 'Two entrees for just $25! Choose from our most popular items including Awesome Blossom Petals and Baby Back Ribs.',
         dealType: 'fixed',
-        discountValue: '4.00',
-        minOrderAmount: '10.00',
-        imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500',
+        discountValue: '10.00',
+        minOrderAmount: '25.00',
+        imageUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=500',
         startDate: new Date(),
         endDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
-        startTime: '10:00',
-        endTime: '20:00',
+        startTime: '16:00',
+        endTime: '22:00',
+        totalUsesLimit: 150,
+        perCustomerLimit: 2,
+        isActive: true
+      });
+
+      const deal4 = await this.createDeal({
+        restaurantId: restaurant4.id,
+        title: 'Free Cornbread & Biscuits',
+        description: 'Complimentary basket of our famous cornbread and buttermilk biscuits with any breakfast or dinner order over $12.',
+        dealType: 'percentage',
+        discountValue: '100.00',
+        minOrderAmount: '12.00',
+        imageUrl: 'https://images.unsplash.com/photo-1585307269049-b43e8da0f6ca?w=500',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
+        startTime: '06:00',
+        endTime: '22:00',
+        totalUsesLimit: 300,
+        perCustomerLimit: 1,
+        isActive: true
+      });
+
+      const deal5 = await this.createDeal({
+        restaurantId: restaurant5.id,
+        title: 'Half-Price Wine Wednesday',
+        description: 'Every Wednesday, enjoy 50% off all bottles of wine with the purchase of any pasta dish. Perfect for date night!',
+        dealType: 'percentage',
+        discountValue: '50.00',
+        minOrderAmount: '18.00',
+        imageUrl: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=500',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+        startTime: '17:00',
+        endTime: '22:00',
+        totalUsesLimit: 50,
+        perCustomerLimit: 1,
+        isActive: true
+      });
+
+      const deal6 = await this.createDeal({
+        restaurantId: foodTruck.id,
+        title: 'Buy 2 Po-Boys, Get 1 Free',
+        description: 'Purchase any two po-boys and get a third one free! Choose from our authentic New Orleans-style shrimp, oyster, or roast beef po-boys.',
+        dealType: 'percentage',
+        discountValue: '33.00',
+        minOrderAmount: '16.00',
+        imageUrl: 'https://images.unsplash.com/photo-1619096252214-ef06c45683e3?w=500',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+        startTime: '11:00',
+        endTime: '19:00',
         totalUsesLimit: 75,
         perCustomerLimit: 1,
         isActive: true
@@ -1057,21 +1136,42 @@ export class DatabaseStorage implements IStorage {
         userId: customer1.id,
         restaurantId: restaurant1.id,
         rating: 5,
-        comment: 'Amazing pizza! The crust was perfect and the toppings were so fresh. Will definitely be back!'
+        comment: 'Best beignets in Hammond! Just like being in New Orleans. The coffee is strong and perfect with the powdered sugar treats.'
       });
 
       await this.createReview({
         userId: customer1.id,
         restaurantId: restaurant2.id,
+        rating: 4,
+        comment: 'Great seafood as always! The endless shrimp deal is amazing - so many varieties to try. Service was quick and friendly.'
+      });
+
+      await this.createReview({
+        userId: customer1.id,
+        restaurantId: restaurant3.id,
+        rating: 4,
+        comment: 'Love the 2 for $25 deal! Portions are huge and the food is consistently good. Great place for families.'
+      });
+
+      await this.createReview({
+        userId: customer1.id,
+        restaurantId: restaurant4.id,
         rating: 5,
-        comment: 'Best sushi in the city! Super fresh fish and great presentation. The lunch special is a steal!'
+        comment: 'The cornbread here is incredible! Country atmosphere and hearty Southern cooking. Kids love the rocking chairs on the porch.'
+      });
+
+      await this.createReview({
+        userId: customer1.id,
+        restaurantId: restaurant5.id,
+        rating: 4,
+        comment: 'Authentic Italian in Hammond! The wine selection is excellent and the pasta is made fresh. Wine Wednesday is our favorite!'
       });
 
       await this.createReview({
         userId: customer1.id,
         restaurantId: foodTruck.id,
-        rating: 4,
-        comment: 'Great burgers! Found them at the park and the food was delicious. Worth tracking them down!'
+        rating: 5,
+        comment: 'Best po-boys outside of New Orleans! The shrimp po-boy is massive and perfectly seasoned. Worth finding wherever they are!'
       });
 
       // Start a food truck session for demo
@@ -1081,9 +1181,9 @@ export class DatabaseStorage implements IStorage {
       console.log('📊 Created:');
       console.log('   - 3 restaurant owners (password: password123)');
       console.log('   - 1 customer (customer@example.com, password: password123)');
-      console.log('   - 3 restaurants (including 1 food truck)');
-      console.log('   - 3 deals');
-      console.log('   - 3 reviews');
+      console.log('   - 6 restaurants in Hammond, LA area (including 1 food truck)');
+      console.log('   - 6 realistic deals with Louisiana cuisine');
+      console.log('   - 6 authentic reviews');
       console.log('   - 1 active food truck session');
     } catch (error) {
       console.error('❌ Failed to seed development data:', error);

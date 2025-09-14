@@ -17,7 +17,7 @@ const stripePromise = import.meta.env.VITE_STRIPE_PUBLIC_KEY
   ? loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
   : null;
 
-const SubscribeForm = ({ hasMultipleDealsAddon }: { hasMultipleDealsAddon: boolean }) => {
+const SubscribeForm = ({ selectedPlan }: { selectedPlan: 'single' | 'two' | 'all' }) => {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
@@ -81,7 +81,7 @@ const SubscribeForm = ({ hasMultipleDealsAddon }: { hasMultipleDealsAddon: boole
         disabled={!stripe || !elements || isProcessing}
         data-testid="button-subscribe"
       >
-{isProcessing ? "Processing..." : `Subscribe Now - $${hasMultipleDealsAddon ? '74' : '49'}/month`}
+{isProcessing ? "Processing..." : `Subscribe Now - $${selectedPlan === 'single' ? '49' : selectedPlan === 'two' ? '74' : '99'}/month`}
       </Button>
     </form>
   );
@@ -92,19 +92,19 @@ export default function Subscribe() {
   const { toast } = useToast();
   const [clientSecret, setClientSecret] = useState("");
   const [subscriptionError, setSubscriptionError] = useState("");
-  const [hasMultipleDealsAddon, setHasMultipleDealsAddon] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'single' | 'two' | 'all'>('single');
   const [isCreatingSubscription, setIsCreatingSubscription] = useState(false);
 
   // Check if user is new (never had a subscription)
   const isNewUser = !user?.stripeSubscriptionId;
 
-  const createSubscription = async (multipleDeals: boolean) => {
+  const createSubscription = async (planType: 'single' | 'two' | 'all') => {
     setIsCreatingSubscription(true);
     setClientSecret("");
     setSubscriptionError("");
     
     try {
-      const res = await apiRequest("POST", "/api/create-subscription", { hasMultipleDealsAddon: multipleDeals });
+      const res = await apiRequest("POST", "/api/create-subscription", { selectedPlan: planType });
       const data = await res.json();
       
       if (data.clientSecret) {
@@ -140,7 +140,7 @@ export default function Subscribe() {
   // Only create subscription on initial load, not on addon toggle
   useEffect(() => {
     if (!isAuthenticated || isLoading) return;
-    createSubscription(hasMultipleDealsAddon);
+    createSubscription(selectedPlan);
   }, [isAuthenticated, isLoading]);
 
   if (isLoading) {
@@ -261,18 +261,13 @@ export default function Subscribe() {
           </CardContent>
         </Card>
 
-        {/* Multiple Deals Addon */}
-        <Card className="mb-6 bg-white border-orange-200">
+        {/* Plan Selection */}
+        <Card className="mb-6 bg-white border-gray-200">
           <CardContent className="p-6">
             <div className="text-center mb-6">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Need Multiple Deals?</h3>
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <span className="text-4xl font-bold text-orange-600">+$25</span>
-                <span className="text-gray-600 text-lg">for 2 additional deals</span>
-              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Choose Your Plan</h3>
               <p className="text-gray-600 leading-relaxed">
-                Run breakfast, lunch, and dinner deals simultaneously to maximize your 
-                reach and fill every time slot.
+                Select the perfect plan for your restaurant's needs. You can change your plan anytime.
               </p>
             </div>
 
@@ -280,50 +275,78 @@ export default function Subscribe() {
             <div className="space-y-4">
               <div 
                 className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${
-                  !hasMultipleDealsAddon 
+                  selectedPlan === 'single'
                     ? 'border-blue-500 bg-blue-50 shadow-md' 
                     : 'border-gray-200 bg-white hover:border-blue-300'
                 }`}
                 onClick={() => {
-                  setHasMultipleDealsAddon(false);
-                  createSubscription(false);
+                  setSelectedPlan('single');
+                  createSubscription('single');
                 }}
                 data-testid="card-single-deal"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-semibold text-gray-900">Single Deal - $49/month</div>
-                    <div className="text-sm text-gray-600">1 active deal included</div>
+                    <div className="font-semibold text-gray-900">Single Deal</div>
+                    <div className="text-xl font-bold text-blue-600">$49/month</div>
+                    <div className="text-sm text-gray-600">1 breakfast special</div>
                   </div>
                   <div className={`w-4 h-4 rounded-full border-2 ${
-                    !hasMultipleDealsAddon ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                    selectedPlan === 'single' ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
                   }`}>
-                    {!hasMultipleDealsAddon && <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>}
+                    {selectedPlan === 'single' && <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>}
                   </div>
                 </div>
               </div>
 
               <div 
                 className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${
-                  hasMultipleDealsAddon 
+                  selectedPlan === 'two'
                     ? 'border-orange-500 bg-orange-50 shadow-md' 
                     : 'border-gray-200 bg-white hover:border-orange-300'
                 }`}
                 onClick={() => {
-                  setHasMultipleDealsAddon(true);
-                  createSubscription(true);
+                  setSelectedPlan('two');
+                  createSubscription('two');
                 }}
-                data-testid="card-multiple-deals"
+                data-testid="card-two-deals"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-semibold text-gray-900">Multiple Deals - $74/month</div>
-                    <div className="text-sm text-gray-600">3 active deals total (+2 additional)</div>
+                    <div className="font-semibold text-gray-900">Two Deals</div>
+                    <div className="text-xl font-bold text-orange-600">$74/month</div>
+                    <div className="text-sm text-gray-600">Lunch + dinner deals</div>
                   </div>
                   <div className={`w-4 h-4 rounded-full border-2 ${
-                    hasMultipleDealsAddon ? 'border-orange-500 bg-orange-500' : 'border-gray-300'
+                    selectedPlan === 'two' ? 'border-orange-500 bg-orange-500' : 'border-gray-300'
                   }`}>
-                    {hasMultipleDealsAddon && <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>}
+                    {selectedPlan === 'two' && <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>}
+                  </div>
+                </div>
+              </div>
+
+              <div 
+                className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${
+                  selectedPlan === 'all'
+                    ? 'border-purple-500 bg-purple-50 shadow-md' 
+                    : 'border-gray-200 bg-white hover:border-purple-300'
+                }`}
+                onClick={() => {
+                  setSelectedPlan('all');
+                  createSubscription('all');
+                }}
+                data-testid="card-all-day"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold text-gray-900">All Day</div>
+                    <div className="text-xl font-bold text-purple-600">$99/month</div>
+                    <div className="text-sm text-gray-600">Breakfast, lunch & dinner</div>
+                  </div>
+                  <div className={`w-4 h-4 rounded-full border-2 ${
+                    selectedPlan === 'all' ? 'border-purple-500 bg-purple-500' : 'border-gray-300'
+                  }`}>
+                    {selectedPlan === 'all' && <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>}
                   </div>
                 </div>
               </div>
@@ -374,7 +397,7 @@ export default function Subscribe() {
                   </div>
                   <div className="flex items-center space-x-3">
                     <i className="fas fa-check text-orange-500 w-4"></i>
-                    <span className="text-sm text-gray-700" data-testid="text-feature-multiple">Multiple deals (+$25 for 2 extra)</span>
+                    <span className="text-sm text-gray-700" data-testid="text-feature-multiple">Up to 3 active deals</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <i className="fas fa-check text-orange-500 w-4"></i>
@@ -394,15 +417,20 @@ export default function Subscribe() {
         <Card className="mb-6">
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-6 text-center">Pricing Examples:</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <div className="text-blue-600 font-bold text-lg mb-2">Single Deal</div>
                 <div className="text-2xl font-bold text-gray-900 mb-2">$49/month</div>
                 <div className="text-sm text-gray-600">1 breakfast special</div>
               </div>
               <div className="text-center p-4 bg-orange-50 rounded-lg">
-                <div className="text-orange-600 font-bold text-lg mb-2">Multiple Deals</div>
+                <div className="text-orange-600 font-bold text-lg mb-2">Two Deals</div>
                 <div className="text-2xl font-bold text-gray-900 mb-2">$74/month</div>
+                <div className="text-sm text-gray-600">Lunch + dinner deals</div>
+              </div>
+              <div className="text-center p-4 bg-purple-50 rounded-lg">
+                <div className="text-purple-600 font-bold text-lg mb-2">All Day</div>
+                <div className="text-2xl font-bold text-gray-900 mb-2">$99/month</div>
                 <div className="text-sm text-gray-600">Breakfast, lunch & dinner</div>
               </div>
             </div>
@@ -414,7 +442,7 @@ export default function Subscribe() {
           <h3 className="font-semibold text-foreground mb-4" data-testid="text-payment-title">Payment Information</h3>
           
           <Elements stripe={stripePromise} options={{ clientSecret }}>
-            <SubscribeForm hasMultipleDealsAddon={hasMultipleDealsAddon} />
+            <SubscribeForm selectedPlan={selectedPlan} />
           </Elements>
         </div>
 

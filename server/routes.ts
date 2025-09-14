@@ -153,7 +153,17 @@ async function validateSubscriptionLimits(userId: string, excludeDealId?: string
     }
 
     // Define deal limits based on subscription plan
-    const maxDeals = user.subscriptionBillingInterval === 'multiple-deals' ? 3 : 1; // 3 deals for addon, 1 for base
+    let maxDeals: number;
+    if (user.subscriptionBillingInterval === 'single-deal') {
+      maxDeals = 1; // Single Deal plan: 1 active deal
+    } else if (user.subscriptionBillingInterval === 'two-deals') {
+      maxDeals = 2; // Two Deals plan: 2 active deals
+    } else if (user.subscriptionBillingInterval === 'all-day') {
+      maxDeals = 3; // All Day plan: 3 active deals
+    } else {
+      // Legacy fallback for old plans
+      maxDeals = user.subscriptionBillingInterval === 'multiple-deals' ? 3 : 1;
+    }
 
     if (activeDealsCount >= maxDeals) {
       return { 
@@ -1340,14 +1350,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Stripe subscription route for restaurant fees
   app.post('/api/create-subscription', isAuthenticated, async (req: any, res) => {
     const user = req.user;
-    const { hasMultipleDealsAddon, promoCode } = req.body; // boolean for multiple deals addon
+    const { selectedPlan, promoCode } = req.body; // 'single' | 'two' | 'all' for plan selection
     
     // Check for valid promo codes first (skip payment for beta users)
     if (promoCode && promoCode.toUpperCase() === 'BETA') {
       // Grant free beta access without Stripe subscription
       try {
         await storage.updateUser(user.id, {
-          subscriptionBillingInterval: hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal',
+          subscriptionBillingInterval: selectedPlan === 'single' ? 'single-deal' : selectedPlan === 'two' ? 'two-deals' : 'all-day',
           // We don't set stripeSubscriptionId for beta users
         });
         
@@ -1376,10 +1386,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // If subscription is incomplete, update it with the new plan
         if (subscription.status === 'incomplete' || subscription.status === 'incomplete_expired') {
-          const unitAmount = hasMultipleDealsAddon ? 7400 : 4900; // $74 or $49
-          const productName = hasMultipleDealsAddon 
-            ? 'MealScout Restaurant Plan - Multiple Deals (3 deals)'
-            : 'MealScout Restaurant Plan - Single Deal (1 deal)';
+          let unitAmount: number;
+          let productName: string;
+          
+          if (selectedPlan === 'single') {
+            unitAmount = 4900; // $49
+            productName = 'MealScout Restaurant Plan - Single Deal (1 deal)';
+          } else if (selectedPlan === 'two') {
+            unitAmount = 7400; // $74
+            productName = 'MealScout Restaurant Plan - Two Deals (2 deals)';
+          } else { // 'all'
+            unitAmount = 9900; // $99
+            productName = 'MealScout Restaurant Plan - All Day (3 deals)';
+          }
           
           const updatedSubscription = await stripe.subscriptions.update(subscription.id, {
             items: [{
@@ -1401,7 +1420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Update user billing interval
           await storage.updateUser(user.id, {
-            subscriptionBillingInterval: hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal'
+            subscriptionBillingInterval: selectedPlan === 'single' ? 'single-deal' : selectedPlan === 'two' ? 'two-deals' : 'all-day'
           });
           
           const latestInvoice = updatedSubscription.latest_invoice;
@@ -1443,18 +1462,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerId = customer.id;
       }
 
-      // Calculate pricing based on deal addon
-      // Base: $49/month (1 deal), Multiple: $74/month (3 deals total)
+      // Calculate pricing based on selected plan
+      // Single: $49/month (1 deal), Two: $74/month (2 deals), All: $99/month (3 deals)
       let unitAmount: number;
       let productName: string;
       const intervalCount = 1; // Always monthly
       
-      if (hasMultipleDealsAddon) {
-        unitAmount = 7400; // $74 monthly for multiple deals (3 total)
-        productName = 'MealScout Restaurant Plan - Multiple Deals (3 deals)';
-      } else {
+      if (selectedPlan === 'single') {
         unitAmount = 4900; // $49 monthly for single deal
         productName = 'MealScout Restaurant Plan - Single Deal (1 deal)';
+      } else if (selectedPlan === 'two') {
+        unitAmount = 7400; // $74 monthly for two deals
+        productName = 'MealScout Restaurant Plan - Two Deals (2 deals)';
+      } else { // 'all'
+        unitAmount = 9900; // $99 monthly for all day
+        productName = 'MealScout Restaurant Plan - All Day (3 deals)';
       }
 
       const subscription = await stripe.subscriptions.create({
@@ -1476,12 +1498,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expand: ['latest_invoice.payment_intent'],
       });
 
-      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal');
+      const billingInterval = selectedPlan === 'single' ? 'single-deal' : selectedPlan === 'two' ? 'two-deals' : 'all-day';
+      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, billingInterval);
   
       // Send payment confirmation email asynchronously
-      const amount = hasMultipleDealsAddon ? 7400 : 4900; // $74 or $49 per month
-      const planType = hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal';
-      emailService.sendPaymentConfirmation(user, amount, planType, subscription.id).catch(err => 
+      emailService.sendPaymentConfirmation(user, unitAmount, billingInterval, subscription.id).catch(err => 
         console.error('Failed to send payment confirmation email:', err)
       );
   

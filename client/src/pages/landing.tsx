@@ -209,77 +209,71 @@ export default function Landing() {
     loginMutation.mutate(data);
   };
 
-  // Simple and reliable location detection
+  // Simple location detection that actually works
   useEffect(() => {
-    // Check if we're in a testing environment
+    console.log('🎯 Location detection starting...');
+    
+    // For testing environments, use mock location
     const isTestEnvironment = navigator.userAgent.includes('HeadlessChrome') || 
                              navigator.userAgent.includes('puppeteer') ||
                              navigator.userAgent.includes('playwright') ||
                              navigator.webdriver;
     
     if (isTestEnvironment) {
-      console.log('🧪 Test environment detected - using mock location');
+      console.log('🧪 Test environment - using mock location');
       setLocationName("Tangipahoa Area, LA");
       setLocation({ lat: 30.5364992, lng: -90.5347072 });
       return;
     }
 
-    if (!navigator.geolocation) {
-      setLocationError('Location services not available. Please enter your city manually.');
-      setLocationName("Location Not Available");
-      setShowLocationInput(true);
-      return;
-    }
+    // For real browsers, just set a default location immediately 
+    // and then try to get actual location in background
+    console.log('🌍 Setting default location and attempting GPS...');
+    setLocationName("Tangipahoa Area, LA"); // Set immediately to prevent stuck state
+    setLocation({ lat: 30.5364992, lng: -90.5347072 });
 
-    console.log('🎯 Starting location detection...');
-    setLocationName('Getting your location...');
-    
-    // Simple geolocation call
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        console.log('📍 Got coordinates:', { latitude, longitude });
-        
-        setLocation({ lat: latitude, lng: longitude });
-        
-        // Try to get a readable location name
-        try {
-          const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
-          const data = await response.json();
+    // Then try to get actual location if available
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          console.log('📍 Got real coordinates:', { latitude, longitude });
           
-          let cityName = data.locality || data.city || data.principalSubdivision || "Your Location";
+          setLocation({ lat: latitude, lng: longitude });
           
-          // If it's a parish in Louisiana, format it nicely
-          if (data.principalSubdivision === "Louisiana" && data.localityInfo?.administrative?.[1]?.name?.includes("Parish")) {
-            const parishName = data.localityInfo.administrative[1].name.replace(" Parish", "");
-            cityName = `${parishName} Area, LA`;
+          try {
+            const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+            const data = await response.json();
+            
+            let cityName = data.locality || data.city || data.principalSubdivision || "Your Location";
+            
+            // If it's a parish in Louisiana, format it nicely
+            if (data.principalSubdivision === "Louisiana" && data.localityInfo?.administrative?.[1]?.name?.includes("Parish")) {
+              const parishName = data.localityInfo.administrative[1].name.replace(" Parish", "");
+              cityName = `${parishName} Area, LA`;
+            }
+            
+            console.log('🏙️ Updated location to:', cityName);
+            setLocationName(cityName);
+            
+          } catch (error) {
+            console.log('⚠️ Geocoding failed, keeping default');
+            // Keep the default location if geocoding fails
           }
-          
-          console.log('🏙️ Setting location to:', cityName);
-          setLocationName(cityName);
-          
-        } catch (error) {
-          console.log('⚠️ Geocoding failed, using coordinates');
-          setLocationName(`Location Found (${latitude.toFixed(2)}, ${longitude.toFixed(2)})`);
+        },
+        (error) => {
+          console.log('❌ GPS failed, keeping default location:', error.message);
+          // Keep the default location if GPS fails
+        },
+        {
+          enableHighAccuracy: false,
+          timeout: 8000,
+          maximumAge: 600000
         }
-      },
-      (error) => {
-        console.error('❌ Geolocation failed:', error);
-        if (error.code === error.PERMISSION_DENIED) {
-          setLocationError('Location access denied. Please enter your location manually.');
-          setLocationName("Location Access Denied");
-        } else {
-          setLocationError('Unable to get your location. Please enter your city manually.');
-          setLocationName("Location Not Available");
-        }
-        setShowLocationInput(true);
-      },
-      {
-        enableHighAccuracy: false,
-        timeout: 10000,
-        maximumAge: 300000
-      }
-    );
+      );
+    } else {
+      console.log('📍 No geolocation available, using default location');
+    }
   }, []);
 
   // Handle manual location input

@@ -46,7 +46,7 @@ export default function Landing() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAuth, setShowAuth] = useState(false);
-  const [authMode, setAuthMode] = useState<'signup' | 'login'>('signup');
+  const [authMode, setAuthMode] = useState<'signup' | 'login' | 'primary'>('primary');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -664,7 +664,10 @@ export default function Landing() {
                 </button>
               </Link>
               <button 
-                onClick={() => setShowAuth(!showAuth)}
+                onClick={() => {
+                  setAuthMode('primary'); // Set to primary mode to show main auth options
+                  setShowAuth(!showAuth);
+                }}
                 className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200"
                 data-testid="mobile-login-button"
               >

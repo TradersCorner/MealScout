@@ -43,10 +43,10 @@ interface FoodTruck {
 
 export default function Home() {
   const { user } = useAuth();
-  const [location, setLocation] = useState<{lat: number; lng: number} | null>({ lat: 30.5047, lng: -90.4612 });
-  const [locationName, setLocationName] = useState("Hammond, LA");
+  const [location, setLocation] = useState<{lat: number; lng: number} | null>(null);
+  const [locationName, setLocationName] = useState("Getting location...");
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [showLocationInput, setShowLocationInput] = useState(false);
   const [manualLocation, setManualLocation] = useState('');
   const [searchQuery, setSearchQuery] = useState("");
@@ -318,14 +318,17 @@ export default function Home() {
               </div>
             </div>
             
-            {/* Location Update Button - Disabled for testing */}
+            {/* Location Update Button */}
             <div className="flex-shrink-0">
-              <button
-                className="text-xs text-blue-600 hover:text-blue-700 font-medium whitespace-nowrap px-2 py-1 rounded"
-                onClick={() => console.log('Location locked to Hammond, LA for testing')}
-              >
-                📍 Update
-              </button>
+              <LocationButton
+                onLocationUpdate={handleLocationUpdate}
+                onLocationNameUpdate={handleLocationNameUpdate}
+                onLocationError={handleLocationErrorUpdate}
+                isLoading={isLoadingLocation}
+                size="sm"
+                variant="default"
+                className="text-xs whitespace-nowrap"
+              />
             </div>
           </div>
         </div>

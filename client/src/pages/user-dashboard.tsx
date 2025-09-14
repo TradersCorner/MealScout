@@ -24,8 +24,44 @@ interface UserStats {
 
 export default function UserDashboard() {
   const { user } = useAuth();
-  const [location, setLocation] = useState<{lat: number; lng: number} | null>({ lat: 30.5047, lng: -90.4612 });
-  const [locationName, setLocationName] = useState("Hammond, LA");
+  const [location, setLocation] = useState<{lat: number; lng: number} | null>(null);
+  const [locationName, setLocationName] = useState("Getting location...");
+
+  // Get user location
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setLocation({ lat: latitude, lng: longitude });
+          
+          // Better reverse geocoding that prioritizes real city names
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.address) {
+                // Prioritize actual cities over administrative divisions
+                const locationName = data.address.city || 
+                                   data.address.town || 
+                                   data.address.village || 
+                                   data.address.county || 
+                                   data.address.state || 
+                                   "Your Location";
+                setLocationName(locationName);
+              } else {
+                setLocationName("Your Location");
+              }
+            })
+            .catch(() => {
+              setLocationName("Your Location");
+            });
+        },
+        () => {
+          setLocationName("Location unavailable");
+        }
+      );
+    }
+  }, []);
 
   // Fetch user stats
   const { data: userStats } = useQuery<UserStats>({

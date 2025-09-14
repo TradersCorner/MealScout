@@ -272,42 +272,35 @@ export default function LocationButton({
             );
             const data1 = await response1.json();
             
-            // Enhanced location name extraction
+            // Prioritize real city names over administrative divisions
             locationName = data1.city || 
                          data1.locality || 
-                         data1.principalSubdivision || 
-                         data1.countryName || 
                          "Your Location";
                          
             console.log('🏙️ BigDataCloud result:', { 
               city: data1.city, 
               locality: data1.locality, 
-              subdivision: data1.principalSubdivision,
               final: locationName 
             });
             
-            // If we got a generic result like "District X", try alternative service
-            if (locationName.toLowerCase().includes('district') || 
-                locationName.toLowerCase().includes('subdivision') || 
-                locationName === "Your Location") {
+            // If we didn't get a good city name, try OpenStreetMap
+            if (locationName === "Your Location" || 
+                locationName.toLowerCase().includes('district') || 
+                locationName.toLowerCase().includes('subdivision')) {
               
               console.log('🌍 Trying OpenStreetMap reverse geocoding...');
               const response2 = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=15&addressdetails=1`
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
               );
               const data2 = await response2.json();
               
               if (data2.address) {
-                // Prioritize actual cities and towns over counties/parishes
+                // Prioritize actual cities and towns
                 const newLocationName = data2.address.city || 
                                        data2.address.town || 
                                        data2.address.village || 
-                                       data2.address.hamlet;
-                
-                // Only use county/parish as last resort if no city/town found
-                const fallbackLocationName = newLocationName || 
-                                            data2.address.county || 
-                                            data2.address.state || 
+                                       data2.address.county || 
+                                       data2.address.state || 
                                             locationName;
                                        
                 console.log('🏙️ OpenStreetMap result:', { 

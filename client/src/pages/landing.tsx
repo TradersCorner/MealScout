@@ -293,29 +293,26 @@ export default function Landing() {
                   try {
                     console.log(`🔄 ${browserType} trying nearby places API for nearest city...`);
                     const response3 = await fetch(
-                      `https://nominatim.openstreetmap.org/search?format=json&lat=${latitude}&lon=${longitude}&limit=5&addressdetails=1&extratags=1&namedetails=1&accept-language=en&layer=place&class=place&type=city,town,village`
+                      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1&accept-language=en`
                     );
                     if (response3.ok) {
-                      const nearbyPlaces = await response3.json();
-                      console.log(`🔍 ${browserType} nearby places found:`, nearbyPlaces.length, nearbyPlaces);
+                      const place = await response3.json();
+                      console.log(`🔍 ${browserType} nearby place data:`, place);
                       
-                      // Find the closest actual city/town
-                      for (const place of nearbyPlaces) {
-                        console.log(`🔍 Checking place:`, place);
-                        if (place.display_name) {
-                          // Extract city name from display_name as fallback
-                          const displayParts = place.display_name.split(',');
-                          const potentialCity = displayParts[0]?.trim();
-                          
-                          if (potentialCity && 
-                              !potentialCity.toLowerCase().includes('district') && 
-                              !potentialCity.toLowerCase().includes('parish') &&
-                              !potentialCity.toLowerCase().includes('county') &&
-                              potentialCity.length > 2) {
-                            cityName = potentialCity;
-                            console.log(`🏙️ ${browserType} found nearby place:`, { name: potentialCity, display: place.display_name });
-                            break;
-                          }
+                      // Try to get city name from the more detailed reverse geocoding
+                      if (place.address) {
+                        const detailedCity = place.address.city || 
+                                           place.address.town || 
+                                           place.address.village || 
+                                           place.address.hamlet;
+                        
+                        if (detailedCity && 
+                            !detailedCity.toLowerCase().includes('district') && 
+                            !detailedCity.toLowerCase().includes('parish') &&
+                            !detailedCity.toLowerCase().includes('county') &&
+                            detailedCity.length > 2) {
+                          cityName = detailedCity;
+                          console.log(`🏙️ ${browserType} found detailed city:`, { name: detailedCity, display: place.display_name });
                         }
                       }
                     } else {

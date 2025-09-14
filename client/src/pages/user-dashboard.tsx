@@ -27,29 +27,10 @@ export default function UserDashboard() {
   const [location, setLocation] = useState<{lat: number; lng: number} | null>(null);
   const [locationName, setLocationName] = useState("Hammond, LA");
 
-  // Get user location
+  // Set location for testing - no GPS detection
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setLocation({ lat: latitude, lng: longitude });
-          
-          // Reverse geocoding for display name
-          fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
-            .then(res => res.json())
-            .then(data => {
-              setLocationName(data.locality || data.city || "Your Location");
-            })
-            .catch(() => {
-              setLocationName("Your Location");
-            });
-        },
-        () => {
-          setLocationName("Location unavailable");
-        }
-      );
-    }
+    setLocation({ lat: 30.5047, lng: -90.4612 });
+    // Location name is already set in state initialization
   }, []);
 
   // Fetch user stats

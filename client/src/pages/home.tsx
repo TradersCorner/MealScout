@@ -92,12 +92,12 @@ export default function Home() {
     }
   });
 
-  // WebSocket subscription when location is available
-  useEffect(() => {
-    if (location && wsConnected) {
-      subscribeToNearby(location.lat, location.lng, 5000);
-    }
-  }, [location, wsConnected, subscribeToNearby]);
+  // WebSocket subscription disabled to prevent errors
+  // useEffect(() => {
+  //   if (location && wsConnected) {
+  //     subscribeToNearby(location.lat, location.lng, 5000);
+  //   }
+  // }, [location, wsConnected, subscribeToNearby]);
 
   // Fetch initial food truck data only once when location is first set
   useEffect(() => {

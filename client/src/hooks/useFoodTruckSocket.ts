@@ -46,12 +46,10 @@ export function useFoodTruckSocket({
     if (socketRef.current?.connected) return;
 
     try {
-      // Create Socket.IO connection to match the server implementation
-      const socket = io('/ws/food-trucks', {
-        path: '/socket.io/',
-        transports: ['websocket'],
-        upgrade: true,
-        rememberUpgrade: true
+      // Create Socket.IO connection - try the simplest configuration first
+      const socket = io({
+        autoConnect: true,
+        transports: ['polling', 'websocket']
       });
       
       socketRef.current = socket;

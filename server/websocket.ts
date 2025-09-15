@@ -43,15 +43,14 @@ export function setupWebSocketServer(httpServer: Server): SocketIOServer {
     },
   });
 
-  // Create Socket.IO server with custom path for food truck WebSocket
+  // Create Socket.IO server with default configuration
   io = new SocketIOServer(httpServer, {
-    path: "/ws/food-trucks",
     cors: {
       origin: "*",
       methods: ["GET", "POST"],
       credentials: true,
     },
-    transports: ["websocket", "polling"],
+    transports: ["polling", "websocket"],
   });
 
   // Auth middleware for Socket.IO using Express session
@@ -192,7 +191,7 @@ export function setupWebSocketServer(httpServer: Server): SocketIOServer {
     }
   });
 
-  console.log("WebSocket server setup complete at /ws/food-trucks");
+  console.log("Socket.IO server setup complete at default path");
   return io;
 }
 

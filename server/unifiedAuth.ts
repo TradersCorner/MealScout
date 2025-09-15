@@ -17,10 +17,15 @@ export async function setupUnifiedAuth(app: Express) {
 
   passport.deserializeUser(async (id: string, done) => {
     try {
+      // Handle cases where id might not be a string (old session format)
+      if (!id || typeof id !== 'string') {
+        return done(null, false);
+      }
       const user = await storage.getUser(id);
       done(null, user);
     } catch (error) {
-      done(error, null);
+      // For user not found or other errors, return false to clear the session
+      done(null, false);
     }
   });
 

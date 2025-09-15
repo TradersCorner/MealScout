@@ -6,7 +6,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
 import { setupWebSocketServer } from "./websocket";
-import { getSession } from "./facebookAuth";
+import { getSession } from "./unifiedAuth";
 
 const app = express();
 

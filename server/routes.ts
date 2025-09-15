@@ -2,7 +2,6 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import Stripe from "stripe";
 import { storage } from "./storage";
-import { setupAuth } from "./facebookAuth";
 import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner } from "./unifiedAuth";
 import { emailService } from "./emailService";
 import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema, updateRestaurantLocationSchema, updateRestaurantOperatingHoursSchema } from "@shared/schema";

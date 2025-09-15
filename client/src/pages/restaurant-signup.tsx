@@ -36,6 +36,7 @@ const signupSchema = z.object({
   email: z.string().email("Valid email is required"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
+  phone: z.string().min(10, "Valid phone number is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(1, "Please confirm your password"),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -84,6 +85,7 @@ export default function RestaurantSignup() {
       email: "",
       firstName: "",
       lastName: "",
+      phone: "",
       password: "",
       confirmPassword: "",
     },
@@ -404,6 +406,25 @@ export default function RestaurantSignup() {
                                     {...field} 
                                   />
                                 </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={signupForm.control}
+                          name="phone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Phone Number</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  data-testid="input-phone"
+                                  type="tel"
+                                  autoComplete="tel"
+                                  placeholder="(555) 123-4567" 
+                                  {...field} 
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>

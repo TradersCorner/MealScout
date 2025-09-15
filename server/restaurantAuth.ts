@@ -52,15 +52,19 @@ export async function setupRestaurantAuth(app: Express) {
   // Email/password registration for restaurant owners
   app.post("/api/auth/restaurant/register", async (req, res) => {
     try {
-      const { email, firstName, lastName, password } = req.body;
+      const { email, firstName, lastName, phone, password } = req.body;
 
       // Validate input
-      if (!email || !firstName || !lastName || !password) {
+      if (!email || !firstName || !lastName || !phone || !password) {
         return res.status(400).json({ error: "All fields are required" });
       }
 
       if (password.length < 6) {
         return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+
+      if (phone.length < 10) {
+        return res.status(400).json({ error: "Valid phone number is required" });
       }
 
       // Check if user already exists
@@ -76,6 +80,7 @@ export async function setupRestaurantAuth(app: Express) {
         email,
         firstName,
         lastName,
+        phone,
         passwordHash,
       };
 

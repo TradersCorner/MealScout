@@ -132,20 +132,10 @@ export default function LocationButton({
   };
 
   const handleLocationDetection = async () => {
-    // Check for forced location first (for testing)
-    const { getForcedLocation } = await import('@/lib/location');
-    const forcedLocation = getForcedLocation();
-    if (forcedLocation) {
-      console.log('🎯 Using forced location for testing:', forcedLocation);
-      onLocationUpdate({ lat: forcedLocation.lat, lng: forcedLocation.lng });
-      onLocationNameUpdate(forcedLocation.name);
-      if (mountedRef.current) {
-        setStatus('success');
-        setInternalLoading(false);
-        setLastUpdateTime(new Date());
-      }
-      return;
-    }
+    // Clear any forced location for testing and use real GPS
+    const { clearForcedLocation } = await import('@/lib/location');
+    clearForcedLocation();
+    console.log('🧭 Using real GPS location detection');
 
     // Single-flight guard: prevent duplicate detection attempts
     if (isLoading || inFlightRef.current) {

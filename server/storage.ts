@@ -800,9 +800,125 @@ export class DatabaseStorage implements IStorage {
     radius?: number;
     sortBy?: string;
   }): Promise<any[]> {
-    // For now, return active deals to ensure it works
-    // We'll enhance this gradually with proper filtering
-    return await this.getActiveDeals();
+    // Start with active deals (which includes time filtering and operating hours filtering)
+    let dealsResult = await this.getActiveDeals();
+    
+    // Convert to any[] type for additional filtering
+    let searchResults: any[] = dealsResult.map(deal => ({
+      ...deal,
+      // We'll need restaurant data for filtering, so let's fetch it
+      restaurantData: null
+    }));
+
+    // If we have filters that need restaurant data, fetch it
+    const needsRestaurantData = filters.query || filters.cuisineType || 
+                                 (filters.latitude && filters.longitude && filters.radius);
+    
+    if (needsRestaurantData && searchResults.length > 0) {
+      // Get unique restaurant IDs
+      const restaurantIds = Array.from(new Set(searchResults.map(deal => deal.restaurantId)));
+      
+      // Fetch restaurant data
+      const restaurantData = await db
+        .select({
+          id: restaurants.id,
+          name: restaurants.name,
+          address: restaurants.address,
+          latitude: restaurants.latitude,
+          longitude: restaurants.longitude,
+          cuisineType: restaurants.cuisineType,
+          isVerified: restaurants.isVerified,
+        })
+        .from(restaurants)
+        .where(inArray(restaurants.id, restaurantIds));
+
+      // Create restaurant lookup map
+      const restaurantMap = new Map(restaurantData.map(r => [r.id, r]));
+
+      // Add restaurant data to results
+      searchResults = searchResults.map(deal => ({
+        ...deal,
+        restaurantData: restaurantMap.get(deal.restaurantId)
+      }));
+    }
+
+    // Apply search filters
+    if (filters.query && filters.query.trim()) {
+      const searchTerm = filters.query.trim().toLowerCase();
+      searchResults = searchResults.filter(deal => 
+        deal.title.toLowerCase().includes(searchTerm) ||
+        deal.description.toLowerCase().includes(searchTerm) ||
+        deal.restaurantData?.name?.toLowerCase().includes(searchTerm) ||
+        deal.restaurantData?.cuisineType?.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    // Apply cuisine type filter
+    if (filters.cuisineType && filters.cuisineType.trim()) {
+      const cuisineFilter = filters.cuisineType.toLowerCase();
+      searchResults = searchResults.filter(deal => 
+        deal.restaurantData?.cuisineType?.toLowerCase().includes(cuisineFilter)
+      );
+    }
+
+    // Apply price range filters
+    if (filters.minPrice !== undefined) {
+      searchResults = searchResults.filter(deal => deal.discountedPrice >= filters.minPrice!);
+    }
+    if (filters.maxPrice !== undefined) {
+      searchResults = searchResults.filter(deal => deal.discountedPrice <= filters.maxPrice!);
+    }
+
+    // Apply location filtering if coordinates provided
+    if (filters.latitude && filters.longitude && filters.radius) {
+      searchResults = searchResults.filter(deal => {
+        const lat1 = filters.latitude!;
+        const lng1 = filters.longitude!;
+        const lat2 = parseFloat(deal.restaurantData?.latitude || '0');
+        const lng2 = parseFloat(deal.restaurantData?.longitude || '0');
+        
+        if (lat2 === 0 || lng2 === 0) return false;
+        
+        // Calculate distance using Haversine formula
+        const R = 6371; // Earth's radius in kilometers
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLng/2) * Math.sin(dLng/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = R * c;
+        
+        return distance <= filters.radius!;
+      });
+    }
+
+    // Apply sorting
+    if (filters.sortBy === 'price-low') {
+      searchResults.sort((a, b) => a.discountedPrice - b.discountedPrice);
+    } else if (filters.sortBy === 'price-high') {
+      searchResults.sort((a, b) => b.discountedPrice - a.discountedPrice);
+    } else if (filters.sortBy === 'discount') {
+      searchResults.sort((a, b) => (b.discountPercentage || 0) - (a.discountPercentage || 0));
+    } else if (filters.sortBy === 'date') {
+      searchResults.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else {
+      // Default relevance sort (verified restaurants first, then by creation date)
+      searchResults.sort((a, b) => {
+        const aVerified = a.restaurantData?.isVerified ? 1 : 0;
+        const bVerified = b.restaurantData?.isVerified ? 1 : 0;
+        if (aVerified !== bVerified) return bVerified - aVerified;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+    }
+
+    // Limit results for performance and remove restaurantData before returning
+    const finalResults = searchResults.slice(0, 100).map(deal => {
+      const { restaurantData, ...dealWithoutRestaurantData } = deal;
+      return dealWithoutRestaurantData;
+    });
+
+    return finalResults;
   }
 
   // Deal claim operations
@@ -2108,7 +2224,10 @@ export class DatabaseStorage implements IStorage {
     if (deals.length === 0) return deals;
 
     // Get unique restaurant IDs to batch check operating hours
-    const restaurantIds = Array.from(new Set(deals.map(deal => deal.restaurantId)));
+    const restaurantIds = Array.from(new Set(deals.map(deal => deal.restaurantId))).filter(id => id != null);
+    
+    // Return early if no valid restaurant IDs
+    if (restaurantIds.length === 0) return deals;
     
     // Batch fetch restaurants with operating hours
     const restaurantsWithHours = await db

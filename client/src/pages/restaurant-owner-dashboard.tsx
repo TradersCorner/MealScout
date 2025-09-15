@@ -239,11 +239,64 @@ export default function RestaurantOwnerDashboard() {
     }
   }, [restaurants, selectedRestaurant]);
 
-  // GPS tracking effect
+  // Get current restaurant data
+  const currentRestaurant = restaurants.find(r => r.id === selectedRestaurant);
+
+  // GPS fallback function using IP geolocation
+  const tryFallbackLocation = async (): Promise<{lat: number; lng: number; accuracy?: number} | null> => {
+    try {
+      // Try IP-based geolocation as fallback
+      const response = await fetch('https://ipapi.co/json/');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.latitude && data.longitude) {
+          return {
+            lat: parseFloat(data.latitude),
+            lng: parseFloat(data.longitude),
+            accuracy: 10000 // IP location is less accurate
+          };
+        }
+      }
+    } catch (error) {
+      console.warn('IP geolocation fallback failed:', error);
+    }
+
+    // Final fallback: use restaurant's base location if available
+    if (currentRestaurant?.latitude && currentRestaurant?.longitude) {
+      return {
+        lat: parseFloat(currentRestaurant.latitude),
+        lng: parseFloat(currentRestaurant.longitude),
+        accuracy: 5000 // Restaurant location accuracy estimate
+      };
+    }
+
+    return null;
+  };
+
+  // GPS tracking effect with fallback
   useEffect(() => {
     if (isBroadcasting && sessionId) {
       if (!navigator.geolocation) {
-        setLocationError('Geolocation not supported by this browser');
+        setLocationError('GPS not supported. Trying fallback location...');
+        
+        // Use fallback location when GPS is not supported
+        tryFallbackLocation().then(fallbackLocation => {
+          if (fallbackLocation) {
+            setCurrentLocation(fallbackLocation);
+            setGpsAccuracy(fallbackLocation.accuracy || 10000);
+            setLocationError('Using approximate location (GPS unavailable)');
+            setConnectionStatus('connected');
+            
+            updateLocationMutation.mutate({
+              lat: fallbackLocation.lat,
+              lng: fallbackLocation.lng,
+              accuracy: fallbackLocation.accuracy || 10000
+            });
+          } else {
+            setLocationError('Unable to determine location. Please check your settings.');
+            setConnectionStatus('disconnected');
+          }
+        });
         return;
       }
 
@@ -260,6 +313,7 @@ export default function RestaurantOwnerDashboard() {
           setCurrentLocation(newLocation);
           setGpsAccuracy(position.coords.accuracy);
           setLocationError(null);
+          setConnectionStatus('connected');
 
           // Only send updates if location changed significantly (50m threshold)
           if (!lastBroadcast || 
@@ -276,10 +330,38 @@ export default function RestaurantOwnerDashboard() {
             });
           }
         },
-        (error) => {
+        async (error) => {
           console.error('GPS error:', error);
-          setLocationError(error.message);
-          setConnectionStatus('disconnected');
+          
+          // Try fallback location when GPS fails
+          let fallbackMessage = 'GPS error. ';
+          if (error.code === error.PERMISSION_DENIED) {
+            fallbackMessage += 'Location access denied. ';
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            fallbackMessage += 'Location unavailable. ';
+          } else if (error.code === error.TIMEOUT) {
+            fallbackMessage += 'Location timeout. ';
+          }
+          
+          setLocationError(fallbackMessage + 'Trying fallback...');
+          setConnectionStatus('connecting');
+          
+          const fallbackLocation = await tryFallbackLocation();
+          if (fallbackLocation) {
+            setCurrentLocation(fallbackLocation);
+            setGpsAccuracy(fallbackLocation.accuracy || 10000);
+            setLocationError(fallbackMessage + 'Using approximate location.');
+            setConnectionStatus('connected');
+            
+            updateLocationMutation.mutate({
+              lat: fallbackLocation.lat,
+              lng: fallbackLocation.lng,
+              accuracy: fallbackLocation.accuracy || 10000
+            });
+          } else {
+            setLocationError(fallbackMessage + 'Unable to determine location.');
+            setConnectionStatus('disconnected');
+          }
         },
         {
           enableHighAccuracy: true,
@@ -294,7 +376,7 @@ export default function RestaurantOwnerDashboard() {
         navigator.geolocation.clearWatch(watchId);
       };
     }
-  }, [isBroadcasting, sessionId, lastBroadcast, currentLocation, updateLocationMutation]);
+  }, [isBroadcasting, sessionId, lastBroadcast, currentLocation, updateLocationMutation, currentRestaurant]);
 
   // Auto-stop broadcasting after 2 minutes of inactivity
   useEffect(() => {
@@ -310,9 +392,6 @@ export default function RestaurantOwnerDashboard() {
     }
   }, [lastBroadcast, isBroadcasting, stopFoodTruckSessionMutation]);
 
-  // Get current restaurant data
-  const currentRestaurant = restaurants.find(r => r.id === selectedRestaurant);
-  
   // Operating hours form schema
   const operatingHoursSchema = z.object({
     mon: z.array(z.object({

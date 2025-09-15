@@ -347,55 +347,87 @@ export default function LocationButton({
                   console.log('❌ Alternative geocoding failed:', error);
                 }
                 
-                // Final fallback: try another geocoding service
+                // Final fallback: search for nearest cities using GPS coordinates
                 if (!bestCityName) {
-                  console.log('🗺️ Trying final geocoding service...');
+                  console.log('🗺️ Searching for cities near GPS coordinates...');
                   try {
-                    const finalResponse = await fetch(
-                      `https://geocoding-api.open-meteo.com/v1/search?name=${latitude},${longitude}&count=1&language=en&format=json`
+                    // Search for cities within a small radius of the GPS coordinates
+                    const searchResponse = await fetch(
+                      `https://nominatim.openstreetmap.org/search?format=json&q=city&bounded=1&viewbox=${longitude-0.1},${latitude+0.1},${longitude+0.1},${latitude-0.1}&limit=10&addressdetails=1`
                     );
-                    const finalData = await finalResponse.json();
+                    const searchData = await searchResponse.json();
                     
-                    if (finalData.results && finalData.results.length > 0) {
-                      const result = finalData.results[0];
-                      const cityName = result.name;
+                    console.log('🏙️ Found nearby cities:', searchData.map((item: any) => ({
+                      name: item.display_name?.split(',')[0],
+                      distance: Math.sqrt(Math.pow(item.lat - latitude, 2) + Math.pow(item.lon - longitude, 2))
+                    })));
+                    
+                    // Find the closest city to our GPS coordinates
+                    let closestCity = null;
+                    let closestDistance = Infinity;
+                    
+                    for (const place of searchData) {
+                      const distance = Math.sqrt(
+                        Math.pow(parseFloat(place.lat) - latitude, 2) + 
+                        Math.pow(parseFloat(place.lon) - longitude, 2)
+                      );
                       
-                      if (cityName && !cityName.toLowerCase().includes('parish')) {
-                        locationName = cityName;
-                        console.log('✅ Found city via final service:', cityName);
+                      const cityName = place.display_name?.split(',')[0]?.trim();
+                      
+                      if (cityName && 
+                          !cityName.toLowerCase().includes('parish') &&
+                          !cityName.toLowerCase().includes('district') &&
+                          distance < closestDistance) {
+                        closestCity = cityName;
+                        closestDistance = distance;
                       }
                     }
+                    
+                    if (closestCity) {
+                      locationName = closestCity;
+                      console.log('✅ Found closest city to GPS:', closestCity);
+                    }
                   } catch (error) {
-                    console.log('❌ Final geocoding service failed:', error);
-                  }
-                }
-                
-                // If still no good name, use IP fallback to get approximate city
-                if (locationName === "District 6" || locationName === "Your Location") {
-                  console.log('🌐 Trying IP-based location as final fallback...');
-                  const ipLocation = await ipGeolocationFallback();
-                  if (ipLocation && ipLocation.city) {
-                    locationName = `${ipLocation.city} (approximate)`;
-                    console.log('✅ Using IP-based city:', ipLocation.city);
+                    console.log('❌ City search failed:', error);
                   }
                 }
               }
             }
             
-            // Final check: if we still have a bad location name, use IP fallback
+            // Final check: if we still have a bad location name, try one more precise search
             if (locationName === "District 6" || locationName === "Your Location" || 
                 locationName.toLowerCase().includes('district') ||
                 locationName.toLowerCase().includes('parish')) {
               
-              console.log('🌐 Using IP fallback for better city name...');
+              console.log('🎯 Final attempt: searching for exact location name...');
               try {
-                const ipLocation = await ipGeolocationFallback();
-                if (ipLocation && ipLocation.city) {
-                  locationName = ipLocation.city;
-                  console.log('✅ IP fallback found city:', ipLocation.city);
+                // Try a very specific search for the exact coordinates
+                const exactResponse = await fetch(
+                  `https://nominatim.openstreetmap.org/search?format=json&q=${latitude},${longitude}&limit=1&addressdetails=1&extratags=1`
+                );
+                const exactData = await exactResponse.json();
+                
+                if (exactData.length > 0) {
+                  const place = exactData[0];
+                  const parts = place.display_name?.split(',') || [];
+                  
+                  // Look for city name in the display name parts
+                  for (const part of parts) {
+                    const trimmed = part.trim();
+                    if (trimmed && 
+                        !trimmed.toLowerCase().includes('parish') &&
+                        !trimmed.toLowerCase().includes('district') &&
+                        !trimmed.toLowerCase().includes('louisiana') &&
+                        !trimmed.toLowerCase().includes('united states') &&
+                        trimmed.length > 2) {
+                      locationName = trimmed;
+                      console.log('✅ Found exact location:', trimmed);
+                      break;
+                    }
+                  }
                 }
               } catch (error) {
-                console.log('❌ IP fallback failed:', error);
+                console.log('❌ Exact location search failed:', error);
               }
             }
             

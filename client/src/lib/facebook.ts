@@ -88,7 +88,7 @@ export const facebookLogin = (): Promise<any> => {
       } else {
         reject(new Error('Facebook login cancelled'));
       }
-    }, { scope: 'email,public_profile,publish_to_groups' });
+    }, { scope: 'email,public_profile' });
   });
 };
 

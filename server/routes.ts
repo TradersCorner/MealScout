@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { setupAuth } from "./facebookAuth";
 import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner } from "./unifiedAuth";
 import { emailService } from "./emailService";
-import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema } from "@shared/schema";
+import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema, updateRestaurantLocationSchema, updateRestaurantOperatingHoursSchema } from "@shared/schema";
 import { z } from "zod";
 import { validateDocuments, checkRateLimit } from "./documentValidation";
 import { randomBytes, timingSafeEqual, createHash } from "crypto";
@@ -803,6 +803,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating mobile settings:", error);
       res.status(400).json({ message: error instanceof Error ? error.message : "Failed to update mobile settings" });
+    }
+  });
+
+  // Update restaurant location (owner only)
+  app.patch('/api/restaurants/:restaurantId/location', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      
+      // Verify user owns this restaurant
+      const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "Unauthorized: You can only update location for restaurants you own" });
+      }
+      
+      const locationData = updateRestaurantLocationSchema.parse(req.body);
+      const updatedRestaurant = await storage.updateRestaurantLocation(restaurantId, locationData);
+      
+      // Broadcast location update via WebSocket
+      broadcastLocationUpdate(restaurantId, {
+        latitude: updatedRestaurant.currentLatitude ? parseFloat(updatedRestaurant.currentLatitude) : 0,
+        longitude: updatedRestaurant.currentLongitude ? parseFloat(updatedRestaurant.currentLongitude) : 0,
+        mobileOnline: updatedRestaurant.mobileOnline || false,
+        lastBroadcastAt: updatedRestaurant.lastBroadcastAt || new Date(),
+      });
+      
+      res.json({ success: true, restaurant: updatedRestaurant });
+    } catch (error) {
+      console.error("Error updating restaurant location:", error);
+      res.status(400).json({ message: error instanceof Error ? error.message : "Failed to update location" });
+    }
+  });
+
+  // Update restaurant operating hours (owner only)
+  app.patch('/api/restaurants/:restaurantId/operating-hours', isAuthenticated, async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      
+      // Verify user owns this restaurant
+      const isAuthorized = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "Unauthorized: You can only update operating hours for restaurants you own" });
+      }
+      
+      const hoursData = updateRestaurantOperatingHoursSchema.parse(req.body);
+      const updatedRestaurant = await storage.setRestaurantOperatingHours(restaurantId, hoursData.operatingHours);
+      
+      res.json({ success: true, restaurant: updatedRestaurant });
+    } catch (error) {
+      console.error("Error updating operating hours:", error);
+      res.status(400).json({ message: error instanceof Error ? error.message : "Failed to update operating hours" });
+    }
+  });
+
+  // Check if restaurant is currently open (public endpoint)
+  app.get('/api/restaurants/:restaurantId/is-open', async (req: any, res) => {
+    try {
+      const { restaurantId } = req.params;
+      const isOpen = await storage.isRestaurantOpenNow(restaurantId);
+      
+      res.json({ success: true, isOpen });
+    } catch (error) {
+      console.error("Error checking restaurant hours:", error);
+      res.status(400).json({ message: error instanceof Error ? error.message : "Failed to check restaurant hours" });
     }
   });
 

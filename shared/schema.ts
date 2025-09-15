@@ -72,6 +72,8 @@ export const restaurants = pgTable("restaurants", {
   currentLatitude: decimal("current_latitude", { precision: 10, scale: 8 }),
   currentLongitude: decimal("current_longitude", { precision: 11, scale: 8 }),
   lastBroadcastAt: timestamp("last_broadcast_at"),
+  // Operating hours as JSONB: { mon: [{ open: "HH:MM", close: "HH:MM" }], tue: [...], ... }
+  operatingHours: jsonb("operating_hours"),
   isActive: boolean("is_active").default(true),
   isVerified: boolean("is_verified").default(false),
   createdAt: timestamp("created_at").defaultNow(),
@@ -426,11 +428,47 @@ export const passwordResetTokensRelations = relations(passwordResetTokens, ({ on
   }),
 }));
 
+// Operating hours schema - supports multiple open/close periods per day
+export const operatingHoursTimeSlotSchema = z.object({
+  open: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format"),
+  close: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format"),
+}).refine((slot) => {
+  const [openHours, openMinutes] = slot.open.split(':').map(Number);
+  const [closeHours, closeMinutes] = slot.close.split(':').map(Number);
+  const openTime = openHours * 60 + openMinutes;
+  const closeTime = closeHours * 60 + closeMinutes;
+  
+  // Allow closing time to be earlier than opening time (overnight operation)
+  return openTime !== closeTime;
+}, "Open and close times cannot be the same");
+
+export const operatingHoursSchema = z.object({
+  mon: z.array(operatingHoursTimeSlotSchema).max(3, "Maximum 3 time slots per day").optional(),
+  tue: z.array(operatingHoursTimeSlotSchema).max(3, "Maximum 3 time slots per day").optional(),
+  wed: z.array(operatingHoursTimeSlotSchema).max(3, "Maximum 3 time slots per day").optional(),
+  thu: z.array(operatingHoursTimeSlotSchema).max(3, "Maximum 3 time slots per day").optional(),
+  fri: z.array(operatingHoursTimeSlotSchema).max(3, "Maximum 3 time slots per day").optional(),
+  sat: z.array(operatingHoursTimeSlotSchema).max(3, "Maximum 3 time slots per day").optional(),
+  sun: z.array(operatingHoursTimeSlotSchema).max(3, "Maximum 3 time slots per day").optional(),
+});
+
+export const updateRestaurantLocationSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  mobileOnline: z.boolean().optional(),
+});
+
+export const updateRestaurantOperatingHoursSchema = z.object({
+  operatingHours: operatingHoursSchema,
+});
+
 // Insert schemas
 export const insertRestaurantSchema = createInsertSchema(restaurants).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  operatingHours: operatingHoursSchema.optional(),
 });
 
 export const insertDealSchema = createInsertSchema(deals).omit({
@@ -605,3 +643,8 @@ export type UserAddress = typeof userAddresses.$inferSelect;
 
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+export type OperatingHoursTimeSlot = z.infer<typeof operatingHoursTimeSlotSchema>;
+export type OperatingHours = z.infer<typeof operatingHoursSchema>;
+export type UpdateRestaurantLocation = z.infer<typeof updateRestaurantLocationSchema>;
+export type UpdateRestaurantOperatingHours = z.infer<typeof updateRestaurantOperatingHoursSchema>;

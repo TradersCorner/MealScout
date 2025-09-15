@@ -42,6 +42,8 @@ import {
   type GoogleUserData,
   type EmailUserData,
   type FacebookUserData,
+  type UpdateRestaurantLocation,
+  type OperatingHours,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, sql, desc, asc, inArray, isNull, isNotNull, not } from "drizzle-orm";
@@ -155,6 +157,9 @@ export interface IStorage {
   
   // Food truck operations
   setRestaurantMobileSettings(restaurantId: string, settings: UpdateRestaurantMobileSettings): Promise<Restaurant>;
+  updateRestaurantLocation(restaurantId: string, location: UpdateRestaurantLocation): Promise<Restaurant>;
+  setRestaurantOperatingHours(restaurantId: string, operatingHours: OperatingHours): Promise<Restaurant>;
+  isRestaurantOpenNow(restaurantId: string): Promise<boolean>;
   startTruckSession(restaurantId: string, deviceId: string, userId: string): Promise<FoodTruckSession>;
   endTruckSession(restaurantId: string, userId: string): Promise<void>;
   getActiveTruckSession(restaurantId: string): Promise<FoodTruckSession | undefined>;
@@ -497,7 +502,7 @@ export class DatabaseStorage implements IStorage {
     const now = new Date();
     const currentTime = now.toTimeString().slice(0, 5); // "HH:MM"
     
-    return await db
+    const activeDealsResult = await db
       .select()
       .from(deals)
       .where(
@@ -520,15 +525,20 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(desc(deals.createdAt))
       .limit(50); // Limit results for better performance
+
+    // Filter by restaurant operating hours
+    return await this.filterDealsByOperatingHours(activeDealsResult);
   }
 
   async getFilteredDeals(showLimitedTimeOnly: boolean = false): Promise<Deal[]> {
     const now = new Date();
     const currentTime = now.toTimeString().slice(0, 5); // "HH:MM"
     
+    let dealsQuery;
+    
     if (showLimitedTimeOnly) {
       // Show only deals with specific time restrictions (not 24/7)
-      return await db
+      dealsQuery = await db
         .select()
         .from(deals)
         .where(
@@ -554,32 +564,35 @@ export class DatabaseStorage implements IStorage {
         )
         .orderBy(desc(deals.createdAt))
         .limit(50);
-    }
-    
-    // Show all currently active deals (includes time-of-day filtering)
-    return await db
-      .select()
-      .from(deals)
-      .where(
-        and(
-          eq(deals.isActive, true),
-          lte(deals.startDate, now),
-          gte(deals.endDate, now),
-          // Apply the same time window logic as getActiveDeals
-          sql`(
-            -- 24/7 deals (always active)
-            (${deals.startTime} = '00:00' AND ${deals.endTime} = '23:59')
-            OR
-            -- Normal time window (startTime <= endTime)
-            (${deals.startTime} <= ${deals.endTime} AND ${deals.startTime} <= ${currentTime} AND ${currentTime} <= ${deals.endTime})
-            OR
-            -- Overnight time window (startTime > endTime)
-            (${deals.startTime} > ${deals.endTime} AND (${currentTime} >= ${deals.startTime} OR ${currentTime} <= ${deals.endTime}))
-          )`
+    } else {
+      // Show all currently active deals (includes time-of-day filtering)
+      dealsQuery = await db
+        .select()
+        .from(deals)
+        .where(
+          and(
+            eq(deals.isActive, true),
+            lte(deals.startDate, now),
+            gte(deals.endDate, now),
+            // Apply the same time window logic as getActiveDeals
+            sql`(
+              -- 24/7 deals (always active)
+              (${deals.startTime} = '00:00' AND ${deals.endTime} = '23:59')
+              OR
+              -- Normal time window (startTime <= endTime)
+              (${deals.startTime} <= ${deals.endTime} AND ${deals.startTime} <= ${currentTime} AND ${currentTime} <= ${deals.endTime})
+              OR
+              -- Overnight time window (startTime > endTime)
+              (${deals.startTime} > ${deals.endTime} AND (${currentTime} >= ${deals.startTime} OR ${currentTime} <= ${deals.endTime}))
+            )`
+          )
         )
-      )
-      .orderBy(desc(deals.createdAt))
-      .limit(50);
+        .orderBy(desc(deals.createdAt))
+        .limit(50);
+    }
+
+    // Filter by restaurant operating hours
+    return await this.filterDealsByOperatingHours(dealsQuery);
   }
 
 
@@ -673,7 +686,7 @@ export class DatabaseStorage implements IStorage {
     const now = new Date();
     const currentTime = now.toTimeString().slice(0, 5);
     
-    return await db
+    const dealsQuery = await db
       .select({
         id: deals.id,
         restaurantId: deals.restaurantId,
@@ -741,6 +754,9 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(sql`distance ASC, RANDOM()`);
+
+    // Filter by restaurant operating hours
+    return await this.filterDealsByOperatingHours(dealsQuery);
   }
 
 
@@ -2021,6 +2037,133 @@ export class DatabaseStorage implements IStorage {
     return restaurant;
   }
 
+  async updateRestaurantLocation(restaurantId: string, location: UpdateRestaurantLocation): Promise<Restaurant> {
+    const [restaurant] = await db
+      .update(restaurants)
+      .set({
+        currentLatitude: location.latitude.toString(),
+        currentLongitude: location.longitude.toString(),
+        mobileOnline: location.mobileOnline,
+        lastBroadcastAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(restaurants.id, restaurantId))
+      .returning();
+    return restaurant;
+  }
+
+  async setRestaurantOperatingHours(restaurantId: string, operatingHours: OperatingHours): Promise<Restaurant> {
+    const [restaurant] = await db
+      .update(restaurants)
+      .set({
+        operatingHours: operatingHours as any, // JSONB field
+        updatedAt: new Date(),
+      })
+      .where(eq(restaurants.id, restaurantId))
+      .returning();
+    return restaurant;
+  }
+
+  async isRestaurantOpenNow(restaurantId: string): Promise<boolean> {
+    const restaurant = await this.getRestaurant(restaurantId);
+    if (!restaurant || !restaurant.operatingHours) {
+      return true; // Default to open if no hours set
+    }
+
+    const now = new Date();
+    const currentDay = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][now.getDay()];
+    const currentTime = now.getHours() * 60 + now.getMinutes(); // Convert to minutes
+
+    const todayHours = (restaurant.operatingHours as any)?.[currentDay];
+    if (!todayHours || !Array.isArray(todayHours) || todayHours.length === 0) {
+      return false; // Closed if no hours for today
+    }
+
+    // Check if current time falls within any of today's time slots
+    for (const timeSlot of todayHours) {
+      const [openHours, openMinutes] = timeSlot.open.split(':').map(Number);
+      const [closeHours, closeMinutes] = timeSlot.close.split(':').map(Number);
+      const openTime = openHours * 60 + openMinutes;
+      const closeTime = closeHours * 60 + closeMinutes;
+
+      // Handle overnight hours (close time is next day)
+      if (closeTime < openTime) {
+        // Overnight hours: open until midnight OR after midnight until close
+        if (currentTime >= openTime || currentTime < closeTime) {
+          return true;
+        }
+      } else {
+        // Regular hours: within the same day
+        if (currentTime >= openTime && currentTime < closeTime) {
+          return true;
+        }
+      }
+    }
+
+    return false; // Not within any time slot
+  }
+
+  // Helper method to filter deals by restaurant operating hours
+  private async filterDealsByOperatingHours(deals: any[]): Promise<any[]> {
+    if (deals.length === 0) return deals;
+
+    // Get unique restaurant IDs to batch check operating hours
+    const restaurantIds = Array.from(new Set(deals.map(deal => deal.restaurantId)));
+    
+    // Batch fetch restaurants with operating hours
+    const restaurantsWithHours = await db
+      .select({
+        id: restaurants.id,
+        operatingHours: restaurants.operatingHours,
+      })
+      .from(restaurants)
+      .where(inArray(restaurants.id, restaurantIds));
+
+    // Create a map for quick lookup
+    const restaurantHoursMap = new Map(
+      restaurantsWithHours.map(r => [r.id, r.operatingHours])
+    );
+
+    // Filter deals where restaurants are currently open
+    const now = new Date();
+    const currentDay = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][now.getDay()];
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+
+    return deals.filter(deal => {
+      const operatingHours = restaurantHoursMap.get(deal.restaurantId);
+      
+      // Default to open if no hours set
+      if (!operatingHours) return true;
+
+      const todayHours = (operatingHours as any)?.[currentDay];
+      if (!todayHours || !Array.isArray(todayHours) || todayHours.length === 0) {
+        return false; // Closed if no hours for today
+      }
+
+      // Check if current time falls within any of today's time slots
+      for (const timeSlot of todayHours) {
+        const [openHours, openMinutes] = timeSlot.open.split(':').map(Number);
+        const [closeHours, closeMinutes] = timeSlot.close.split(':').map(Number);
+        const openTime = openHours * 60 + openMinutes;
+        const closeTime = closeHours * 60 + closeMinutes;
+
+        // Handle overnight hours (close time is next day)
+        if (closeTime < openTime) {
+          if (currentTime >= openTime || currentTime < closeTime) {
+            return true;
+          }
+        } else {
+          // Regular hours: within the same day
+          if (currentTime >= openTime && currentTime < closeTime) {
+            return true;
+          }
+        }
+      }
+
+      return false; // Not within any time slot
+    });
+  }
+
   async startTruckSession(restaurantId: string, deviceId: string, userId: string): Promise<FoodTruckSession> {
     // End any existing active session first
     await db
@@ -2191,6 +2334,7 @@ export class DatabaseStorage implements IStorage {
         currentLatitude: restaurants.currentLatitude,
         currentLongitude: restaurants.currentLongitude,
         lastBroadcastAt: restaurants.lastBroadcastAt,
+        operatingHours: restaurants.operatingHours,
         isActive: restaurants.isActive,
         isVerified: restaurants.isVerified,
         createdAt: restaurants.createdAt,

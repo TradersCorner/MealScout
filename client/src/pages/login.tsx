@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { useFacebook } from "@/hooks/useFacebook";
-import { facebookLogin } from "@/lib/facebook";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { BackHeader } from "@/components/back-header";
@@ -11,7 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
   const { isAuthenticated, isLoading } = useAuth();
-  const { isLoaded: isFacebookLoaded } = useFacebook();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -19,31 +16,8 @@ export default function Login() {
     window.location.href = '/api/auth/google/customer';
   };
 
-  const handleFacebookLogin = async () => {
-    if (!isFacebookLoaded) {
-      toast({
-        title: "Facebook Not Available",
-        description: "Facebook login is not available at the moment. Please try Google instead.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      await facebookLogin();
-      // Redirect to Facebook OAuth endpoint
-      window.location.href = '/api/auth/facebook';
-    } catch (error: any) {
-      console.error('Facebook login error:', error);
-      toast({
-        title: "Facebook Login Failed",
-        description: error.message || "Unable to connect to Facebook. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
+  const handleFacebookLogin = () => {
+    window.location.href = '/api/auth/facebook';
   };
 
   // Redirect to home if already authenticated
@@ -154,7 +128,7 @@ export default function Login() {
           {/* Facebook Login */}
           <Button 
             onClick={handleFacebookLogin}
-            disabled={isProcessing || !isFacebookLoaded}
+            disabled={isProcessing}
             variant="outline"
             className="w-full py-4 font-semibold text-lg rounded-2xl border-2 border-[#1877F2] text-[#1877F2] hover:bg-[#1877F2] hover:text-white transition-all duration-200 mb-6 disabled:opacity-50 disabled:cursor-not-allowed"
             data-testid="button-facebook-login"

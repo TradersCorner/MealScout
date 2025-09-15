@@ -179,6 +179,17 @@ export default function Login() {
             </div>
           </div>
 
+          {/* Customer Signup Link */}
+          <Link href="/customer-signup">
+            <Button 
+              data-testid="button-customer-signup"
+              variant="outline" 
+              className="w-full py-4 font-semibold text-lg rounded-2xl border-2 border-red-300 text-red-600 hover:bg-red-50 transition-all duration-200 mb-6"
+            >
+              Create Account with Email →
+            </Button>
+          </Link>
+
           <div className="text-center text-sm text-gray-600 mb-4">
             <p>🔒 <strong>Secure & Easy:</strong> No passwords needed</p>
             <p>✨ <strong>Quick Setup:</strong> Your account is created automatically</p>

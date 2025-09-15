@@ -26,7 +26,8 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: false, // Set to true in production with HTTPS
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       maxAge: sessionTtl,
     },
   });
@@ -56,10 +57,19 @@ export async function setupUnifiedAuth(app: Express) {
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     console.log("Setting up Google OAuth strategies...");
     
+    const baseUrl = process.env.PUBLIC_BASE_URL || 
+                    (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000');
+    console.log('🔵 Google OAuth customer callback URL:', `${baseUrl}/api/auth/google/customer/callback`);
+    console.log('🔵 Google OAuth restaurant callback URL:', `${baseUrl}/api/auth/google/restaurant/callback`);
+    
     passport.use('google-customer', new GoogleStrategy({
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: `/api/auth/google/customer/callback`,
+      callbackURL: (() => {
+        const base = process.env.PUBLIC_BASE_URL || 
+                    (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000');
+        return `${base}/api/auth/google/customer/callback`;
+      })(),
     },
     async (accessToken: string, refreshToken: string, profile: any, done: any) => {
       try {
@@ -92,7 +102,11 @@ export async function setupUnifiedAuth(app: Express) {
     passport.use('google-restaurant', new GoogleStrategy({
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: `/api/auth/google/restaurant/callback`,
+      callbackURL: (() => {
+        const base = process.env.PUBLIC_BASE_URL || 
+                    (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000');
+        return `${base}/api/auth/google/restaurant/callback`;
+      })(),
     },
     async (accessToken: string, refreshToken: string, profile: any, done: any) => {
       try {

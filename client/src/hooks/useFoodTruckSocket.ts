@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from './useAuth';
+import { io, Socket } from 'socket.io-client';
 
 interface FoodTruckLocation {
   restaurantId: string;
@@ -34,179 +35,155 @@ export function useFoodTruckSocket({
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  const wsRef = useRef<WebSocket | null>(null);
+  const socketRef = useRef<Socket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
-  const pingIntervalRef = useRef<NodeJS.Timeout>();
   const subscriptionQueueRef = useRef<string[]>([]);
   
   const maxReconnectAttempts = 3;
   const baseReconnectDelay = 2000; // 2 seconds
 
   const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    if (socketRef.current?.connected) return;
 
     try {
-      // Create WebSocket connection to the backend server
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/food-trucks`;
+      // Create Socket.IO connection to match the server implementation
+      const socket = io('/ws/food-trucks', {
+        path: '/socket.io/',
+        transports: ['websocket'],
+        upgrade: true,
+        rememberUpgrade: true
+      });
       
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
+      socketRef.current = socket;
 
-      ws.onopen = () => {
-        console.log('Food truck WebSocket connected');
+      socket.on('connect', () => {
+        console.log('Food truck Socket.IO connected');
         setIsConnected(true);
         setConnectionError(null);
         setReconnectAttempts(0);
 
-        // Send authentication if user is logged in
+        // Send authentication if user is logged in - Socket.IO style
         if (user && user.id) {
-          ws.send(JSON.stringify({
-            type: 'auth',
-            userId: user.id
-          }));
+          socket.emit('auth', { userId: user.id });
         }
 
         // Process queued subscriptions now that connection is established
         if (subscriptionQueueRef.current.length > 0) {
           console.log('Processing queued subscriptions:', subscriptionQueueRef.current.length);
-          ws.send(JSON.stringify({
-            type: 'subscribe',
-            channels: subscriptionQueueRef.current
-          }));
+          subscriptionQueueRef.current.forEach(channel => {
+            // Parse the channel to extract subscription data
+            if (channel.startsWith('nearby:')) {
+              const parts = channel.split(':');
+              const latitude = parseFloat(parts[1]);
+              const longitude = parseFloat(parts[2]);
+              const radiusKm = parseInt(parts[3]) / 1000; // Convert meters to km
+              socket.emit('subscribe_nearby', { latitude, longitude, radiusKm });
+            } else if (channel.startsWith('restaurant:')) {
+              const restaurantId = channel.split(':')[1];
+              socket.emit('subscribe_restaurant', { restaurantId });
+            }
+          });
           subscriptionQueueRef.current = []; // Clear the queue
         }
+      });
 
-        // Start ping interval to keep connection alive
-        pingIntervalRef.current = setInterval(() => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'ping' }));
-          }
-        }, 30000); // Ping every 30 seconds
-      };
+      // Handle location updates
+      socket.on('location_update', (data) => {
+        onLocationUpdate?.(data);
+      });
 
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          switch (data.type) {
-            case 'location_update':
-              onLocationUpdate?.(data.location);
-              break;
-            case 'status_update':
-              onStatusUpdate?.(data.status);
-              break;
-            case 'pong':
-              // Connection is alive
-              break;
-            case 'error':
-              console.error('WebSocket server error:', data.message);
-              setConnectionError(data.message);
-              break;
-            default:
-              console.log('Unknown message type:', data.type);
-          }
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-        }
-      };
+      // Handle status updates
+      socket.on('status_update', (data) => {
+        onStatusUpdate?.(data);
+      });
 
-      ws.onclose = (event) => {
-        console.log('Food truck WebSocket disconnected:', event.code, event.reason);
+      // Handle nearby trucks data
+      socket.on('nearby_trucks', (data) => {
+        console.log('Received nearby trucks:', data.trucks?.length || 0);
+        // This can be handled by parent components if needed
+      });
+
+      // Handle errors
+      socket.on('error', (error) => {
+        console.error('Socket.IO server error:', error.message || error);
+        setConnectionError(error.message || 'Server error');
+      });
+
+      socket.on('disconnect', (reason) => {
+        console.log('Food truck Socket.IO disconnected:', reason);
         setIsConnected(false);
-        wsRef.current = null;
+        socketRef.current = null;
 
-        // Clear ping interval
-        if (pingIntervalRef.current) {
-          clearInterval(pingIntervalRef.current);
-          pingIntervalRef.current = undefined;
+        // Socket.IO handles reconnection automatically, but we track attempts
+        if (reason === 'io server disconnect' || reason === 'io client disconnect') {
+          // Intentional disconnect - don't reconnect
+          return;
         }
 
-        // Attempt to reconnect for non-intentional disconnections
-        if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts && autoConnect) {
-          const delay = baseReconnectDelay * Math.pow(2, reconnectAttempts);
+        // For other disconnects, Socket.IO will auto-reconnect, so we just track state
+        if (reconnectAttempts < maxReconnectAttempts && autoConnect) {
           setReconnectAttempts(prev => prev + 1);
-          
-          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
-          
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
-          }, delay);
+          console.log(`Socket.IO will attempt auto-reconnect (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
         } else if (reconnectAttempts >= maxReconnectAttempts) {
           console.log('Max reconnection attempts reached. Food truck updates disabled.');
           setConnectionError('Connection failed after multiple attempts');
         }
-      };
+      });
 
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        setConnectionError('WebSocket connection failed');
-      };
+      socket.on('connect_error', (error) => {
+        console.error('Socket.IO connection error:', error);
+        setConnectionError('Socket connection failed');
+      });
 
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
+      console.error('Failed to create Socket.IO connection:', error);
       setConnectionError('Failed to establish connection');
     }
   }, [user, onLocationUpdate, onStatusUpdate, autoConnect, reconnectAttempts]);
 
   const disconnect = useCallback(() => {
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+    
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = undefined;
     }
-
-    if (pingIntervalRef.current) {
-      clearInterval(pingIntervalRef.current);
-      pingIntervalRef.current = undefined;
-    }
-
-    if (wsRef.current) {
-      wsRef.current.close(1000, 'Intentional disconnect');
-      wsRef.current = null;
-    }
-
-    // Clear subscription queue on disconnect
-    subscriptionQueueRef.current = [];
-
+    
     setIsConnected(false);
     setConnectionError(null);
     setReconnectAttempts(0);
   }, []);
 
-  const subscribeTo = useCallback((channels: string[]) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'subscribe',
-        channels
-      }));
+  const subscribeToNearby = useCallback((latitude: number, longitude: number, radiusKm: number = 5000) => {
+    if (socketRef.current?.connected) {
+      console.log('Subscribing to nearby trucks:', { latitude, longitude, radiusKm: radiusKm / 1000 });
+      socketRef.current.emit('subscribe_nearby', { latitude, longitude, radiusKm: radiusKm / 1000 });
     } else {
-      // Queue the subscription for when connection is established (prevent duplicates)
-      console.log('Queueing subscription channels:', channels);
-      const newChannels = channels.filter(channel => !subscriptionQueueRef.current.includes(channel));
-      subscriptionQueueRef.current = [...subscriptionQueueRef.current, ...newChannels];
+      // Queue subscription for when connection is established  
+      const channel = `nearby:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${radiusKm}`;
+      console.log('Queueing subscription for nearby trucks:', channel);
+      subscriptionQueueRef.current = [channel];
     }
   }, []);
 
-  const unsubscribeFrom = useCallback((channels: string[]) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'unsubscribe',
-        channels
-      }));
+  const subscribeToRestaurant = useCallback((restaurantId: string) => {
+    if (socketRef.current?.connected) {
+      console.log('Subscribing to restaurant updates:', restaurantId);
+      socketRef.current.emit('subscribe_restaurant', { restaurantId });
+    } else {
+      // Queue subscription for when connection is established
+      subscriptionQueueRef.current.push(`restaurant:${restaurantId}`);
     }
   }, []);
 
-  // Auto-connect on mount if enabled (disabled to prevent console errors)
+  // Auto-connect on mount if enabled
   useEffect(() => {
-    // Temporarily disabled to prevent WebSocket error spam
-    // if (autoConnect) {
-    //   connect();
-    // }
-
-    return () => {
-      disconnect();
-    };
-  }, [connect, disconnect, autoConnect]);
+    if (autoConnect) {
+      connect();
+    }
+  }, [connect, autoConnect]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -218,86 +195,52 @@ export function useFoodTruckSocket({
   return {
     isConnected,
     connectionError,
-    reconnectAttempts,
     connect,
     disconnect,
-    subscribeTo,
-    unsubscribeFrom,
-    // Helper to subscribe to nearby food trucks
-    subscribeToNearby: (latitude: number, longitude: number, radius: number = 5000) => {
-      subscribeTo([`nearby:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${radius}`]);
-    },
-    // Helper to subscribe to specific restaurant
-    subscribeToRestaurant: (restaurantId: string) => {
-      subscribeTo([`restaurant:${restaurantId}`]);
-    }
+    subscribeToNearby,
+    subscribeToRestaurant,
+    reconnectAttempts,
+    socket: socketRef.current
   };
 }
 
+// Legacy hook name for backward compatibility
+export const useFoodTruckWebSocket = useFoodTruckSocket;
+
 // Fallback polling hook for when WebSocket is not available
-export function useFoodTruckPolling({
-  onLocationUpdate,
-  onStatusUpdate,
-  interval = 10000, // 10 seconds
-  enabled = false
-}: {
-  onLocationUpdate?: (locations: FoodTruckLocation[]) => void;
-  onStatusUpdate?: (statuses: FoodTruckStatus[]) => void;
-  interval?: number;
-  enabled?: boolean;
-}) {
-  const [isPolling, setIsPolling] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout>();
+export function useFoodTruckPolling(interval: number = 30000) {
+  const [foodTrucks, setFoodTrucks] = useState<FoodTruckLocation[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const startPolling = useCallback(async () => {
-    if (!enabled || isPolling) return;
-
-    setIsPolling(true);
-
-    const poll = async () => {
-      try {
-        // Fetch current food truck locations
-        const response = await fetch('/api/food-trucks/active');
-        if (response.ok) {
-          const data = await response.json();
-          onLocationUpdate?.(data.locations || []);
-          onStatusUpdate?.(data.statuses || []);
-        }
-      } catch (error) {
-        console.error('Polling error:', error);
+  const fetchFoodTrucks = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/trucks/live');
+      if (!response.ok) {
+        throw new Error('Failed to fetch food trucks');
       }
-    };
-
-    // Initial poll
-    await poll();
-
-    // Set up interval
-    intervalRef.current = setInterval(poll, interval);
-  }, [enabled, isPolling, interval, onLocationUpdate, onStatusUpdate]);
-
-  const stopPolling = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = undefined;
+      const data = await response.json();
+      setFoodTrucks(data.trucks || []);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
-    setIsPolling(false);
   }, []);
 
   useEffect(() => {
-    if (enabled) {
-      startPolling();
-    } else {
-      stopPolling();
-    }
-
-    return () => {
-      stopPolling();
-    };
-  }, [enabled, startPolling, stopPolling]);
+    fetchFoodTrucks(); // Initial fetch
+    const intervalId = setInterval(fetchFoodTrucks, interval);
+    
+    return () => clearInterval(intervalId);
+  }, [fetchFoodTrucks, interval]);
 
   return {
-    isPolling,
-    startPolling,
-    stopPolling
+    foodTrucks,
+    isLoading,
+    error,
+    refetch: fetchFoodTrucks
   };
 }

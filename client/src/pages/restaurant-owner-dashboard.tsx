@@ -78,7 +78,7 @@ export default function RestaurantOwnerDashboard() {
 
   // WebSocket integration for real-time updates
   const { 
-    isConnected: wsConnected, 
+    isConnected, 
     connectionError: wsError,
     subscribeToRestaurant,
     connect: connectWS,
@@ -1508,9 +1508,9 @@ export default function RestaurantOwnerDashboard() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="text-center p-3 bg-muted/50 rounded-lg">
                         <div className="flex items-center justify-center mb-1">
-                          {connectionStatus === 'connected' && wsConnected ? (
+                          {connectionStatus === 'connected' && isConnected ? (
                             <Wifi className="h-4 w-4 text-green-500" />
-                          ) : connectionStatus === 'connected' && !wsConnected ? (
+                          ) : connectionStatus === 'connected' && !isConnected ? (
                             <Zap className="h-4 w-4 text-yellow-500" />
                           ) : (
                             <WifiOff className="h-4 w-4 text-red-500" />
@@ -1518,8 +1518,8 @@ export default function RestaurantOwnerDashboard() {
                         </div>
                         <p className="text-xs text-muted-foreground">Connection</p>
                         <p className="text-sm font-medium capitalize" data-testid="text-connection-status">
-                          {connectionStatus === 'connected' && wsConnected ? 'Real-time' :
-                           connectionStatus === 'connected' && !wsConnected ? 'GPS Only' :
+                          {connectionStatus === 'connected' && isConnected ? 'Real-time' :
+                           connectionStatus === 'connected' && !isConnected ? 'GPS Only' :
                            connectionStatus}
                         </p>
                         {wsError && (

@@ -271,29 +271,9 @@ export default function Landing() {
             console.log('⚠️ Nominatim lookup failed:', error);
           }
           
-          // If we still don't have a city name, try a different approach
+          // Use coordinate-based fallback if no city name found
           if (!cityName) {
-            try {
-              console.log('🔍 Trying BigDataCloud for city...');
-              const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
-              const data = await response.json();
-              
-              // Only use locality or city, avoid administrative divisions
-              cityName = data.locality || data.city;
-              
-              if (cityName && data.principalSubdivision === "Louisiana") {
-                cityName = `${cityName}, LA`;
-              } else if (cityName && data.principalSubdivision) {
-                const stateAbbrev = getStateAbbreviation(data.principalSubdivision);
-                cityName = `${cityName}, ${stateAbbrev}`;
-              }
-              
-              if (cityName) {
-                console.log('🏙️ Found city from BigDataCloud:', cityName);
-              }
-            } catch (error) {
-              console.log('⚠️ BigDataCloud lookup failed:', error);
-            }
+            console.log('📍 Using reliable coordinate-based location naming');
           }
           
           // Final fallback - use coordinates if no city found

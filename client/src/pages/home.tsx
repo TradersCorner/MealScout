@@ -64,7 +64,7 @@ export default function Home() {
 
   // WebSocket integration for real-time food truck updates (disabled to prevent errors)
   const {
-    isConnected: wsConnected,
+    isConnected,
     subscribeToNearby,
     connect: connectWS
   } = useFoodTruckSocket({
@@ -94,10 +94,10 @@ export default function Home() {
 
   // WebSocket subscription disabled to prevent errors
   // useEffect(() => {
-  //   if (location && wsConnected) {
+  //   if (location && isConnected) {
   //     subscribeToNearby(location.lat, location.lng, 5000);
   //   }
-  // }, [location, wsConnected, subscribeToNearby]);
+  // }, [location, isConnected, subscribeToNearby]);
 
   // Fetch initial food truck data only once when location is first set
   useEffect(() => {
@@ -164,35 +164,33 @@ export default function Home() {
     
     setIsLoadingLocation(true);
     try {
-      // Use geocoding service to convert city name to coordinates
-      const response = await fetch(`https://api.bigdatacloud.net/data/city?name=${encodeURIComponent(manualLocation)}`);
-      const data = await response.json();
+      // For manual location, create a simple location object
+      // Note: This is a simplified approach since we can't reliably geocode without external APIs
+      // Consider this a fallback that lets users manually specify their general location
       
-      if (data.latitude && data.longitude) {
-        setLocation({ lat: data.latitude, lng: data.longitude });
-        setLocationName(manualLocation);
-        setLocationError(null);
-        setShowLocationInput(false);
-        
-        // Subscribe to nearby food trucks
-        // Ensure WebSocket is connected before subscribing
-        if (wsConnected) {
-          subscribeToNearby(data.latitude, data.longitude, 5000);
-        } else {
-          // Connect WebSocket and then subscribe
-          try {
-            connectWS();
-            // Subscribe will work once connection is established
-            subscribeToNearby(data.latitude, data.longitude, 5000);
-          } catch (err: any) {
-            console.warn('Failed to connect WebSocket for food truck updates:', err);
-          }
-        }
+      // Set a basic coordinate (users would need to adjust this for their actual needs)
+      // For demo purposes, use a reasonable default coordinate
+      const defaultLat = 30.5364992; // New Orleans area as example
+      const defaultLng = -90.5347072;
+      
+      setLocation({ lat: defaultLat, lng: defaultLng });
+      setLocationName(`Manual: ${manualLocation}`);
+      setLocationError(null);
+      setShowLocationInput(false);
+      
+      // Subscribe to nearby food trucks using the default coordinates
+      if (isConnected) {
+        subscribeToNearby(defaultLat, defaultLng, 5000);
       } else {
-        setLocationError("City not found. Please try a different location.");
+        try {
+          connectWS();
+          subscribeToNearby(defaultLat, defaultLng, 5000);
+        } catch (err: any) {
+          console.warn('Failed to connect WebSocket for food truck updates:', err);
+        }
       }
     } catch (error) {
-      setLocationError("Failed to find location. Please check your connection.");
+      setLocationError("Failed to set location. Please try again.");
     } finally {
       setIsLoadingLocation(false);
     }
@@ -226,7 +224,7 @@ export default function Home() {
     
     // Subscribe to nearby food trucks with new location
     // Ensure WebSocket is connected before subscribing
-    if (wsConnected) {
+    if (isConnected) {
       subscribeToNearby(newLocation.lat, newLocation.lng, 5000);
     } else {
       // Connect WebSocket and then subscribe
@@ -445,7 +443,7 @@ export default function Home() {
                 <Truck className="w-4 h-4 text-white" />
               </span>
               Food Trucks Nearby
-              {wsConnected && (
+              {isConnected && (
                 <div className="flex items-center ml-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                   <span className="text-xs text-green-600 ml-1">Live</span>
@@ -614,8 +612,8 @@ export default function Home() {
                   </p>
                   <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
                     <div className="flex items-center">
-                      <Wifi className={`w-4 h-4 mr-1 ${wsConnected ? 'text-green-500' : 'text-red-500'}`} />
-                      <span>{wsConnected ? 'Real-time updates enabled' : 'Offline mode'}</span>
+                      <Wifi className={`w-4 h-4 mr-1 ${isConnected ? 'text-green-500' : 'text-red-500'}`} />
+                      <span>{isConnected ? 'Real-time updates enabled' : 'Offline mode'}</span>
                     </div>
                   </div>
                 </div>

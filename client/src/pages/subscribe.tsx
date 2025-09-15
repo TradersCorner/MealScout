@@ -17,7 +17,29 @@ const stripePromise = import.meta.env.VITE_STRIPE_PUBLIC_KEY
   ? loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
   : null;
 
-const SubscribeForm = ({ hasMultipleDealsAddon }: { hasMultipleDealsAddon: boolean }) => {
+// Helper function for pricing display
+const getPricingDisplay = (hasMultipleDeals: boolean, billingInterval: string) => {
+  if (billingInterval === 'quarter') {
+    return '$100/3 months';
+  } else if (billingInterval === 'year') {
+    return '$450/year';
+  } else {
+    // Monthly pricing
+    return hasMultipleDeals ? '$75/month' : '$50/month';
+  }
+};
+
+const getPricingAmount = (hasMultipleDeals: boolean, billingInterval: string) => {
+  if (billingInterval === 'quarter') {
+    return '$100';
+  } else if (billingInterval === 'year') {
+    return '$450';
+  } else {
+    return hasMultipleDeals ? '$75' : '$50';
+  }
+};
+
+const SubscribeForm = ({ hasMultipleDealsAddon, billingInterval }: { hasMultipleDealsAddon: boolean, billingInterval: string }) => {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
@@ -81,7 +103,7 @@ const SubscribeForm = ({ hasMultipleDealsAddon }: { hasMultipleDealsAddon: boole
         disabled={!stripe || !elements || isProcessing}
         data-testid="button-subscribe"
       >
-{isProcessing ? "Processing..." : `Subscribe Now - $${hasMultipleDealsAddon ? '74' : '49'}/month`}
+{isProcessing ? "Processing..." : `Subscribe Now - ${getPricingDisplay(hasMultipleDealsAddon, billingInterval)}`}
       </Button>
     </form>
   );
@@ -93,18 +115,22 @@ export default function Subscribe() {
   const [clientSecret, setClientSecret] = useState("");
   const [subscriptionError, setSubscriptionError] = useState("");
   const [hasMultipleDealsAddon, setHasMultipleDealsAddon] = useState(false);
+  const [billingInterval, setBillingInterval] = useState<'month' | 'quarter' | 'year'>('month');
   const [isCreatingSubscription, setIsCreatingSubscription] = useState(false);
 
   // Check if user is new (never had a subscription)
   const isNewUser = !user?.stripeSubscriptionId;
 
-  const createSubscription = async (multipleDeals: boolean) => {
+  const createSubscription = async (multipleDeals: boolean, interval: string = billingInterval) => {
     setIsCreatingSubscription(true);
     setClientSecret("");
     setSubscriptionError("");
     
     try {
-      const res = await apiRequest("POST", "/api/create-subscription", { hasMultipleDealsAddon: multipleDeals });
+      const res = await apiRequest("POST", "/api/create-subscription", { 
+        hasMultipleDealsAddon: multipleDeals,
+        billingInterval: interval
+      });
       const data = await res.json();
       
       if (data.clientSecret) {
@@ -137,11 +163,11 @@ export default function Subscribe() {
     }
   };
 
-  // Only create subscription on initial load, not on addon toggle
+  // Create subscription when auth status changes or billing options change
   useEffect(() => {
     if (!isAuthenticated || isLoading) return;
-    createSubscription(hasMultipleDealsAddon);
-  }, [isAuthenticated, isLoading]);
+    createSubscription(hasMultipleDealsAddon, billingInterval);
+  }, [isAuthenticated, isLoading, hasMultipleDealsAddon, billingInterval]);
 
   if (isLoading) {
     return (
@@ -248,11 +274,72 @@ export default function Subscribe() {
       />
 
       <div className="px-4 py-6">
+        {/* Billing Interval Selection */}
+        <Card className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
+          <CardContent className="p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">Choose Your Billing</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Monthly */}
+              <div 
+                className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 text-center ${
+                  billingInterval === 'month' 
+                    ? 'border-purple-500 bg-purple-50 shadow-md' 
+                    : 'border-gray-200 bg-white hover:border-purple-300'
+                }`}
+                onClick={() => setBillingInterval('month')}
+                data-testid="card-billing-monthly"
+              >
+                <div className="font-semibold text-gray-900 mb-1">Monthly</div>
+                <div className="text-2xl font-bold text-purple-600 mb-2">
+                  ${hasMultipleDealsAddon ? '75' : '50'}
+                </div>
+                <div className="text-sm text-gray-600">per month</div>
+              </div>
+              
+              {/* Quarterly */}
+              <div 
+                className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 text-center ${
+                  billingInterval === 'quarter' 
+                    ? 'border-purple-500 bg-purple-50 shadow-md' 
+                    : 'border-gray-200 bg-white hover:border-purple-300'
+                }`}
+                onClick={() => setBillingInterval('quarter')}
+                data-testid="card-billing-quarterly"
+              >
+                <div className="font-semibold text-gray-900 mb-1">Quarterly</div>
+                <div className="text-2xl font-bold text-purple-600 mb-2">$100</div>
+                <div className="text-sm text-gray-600">for 3 months</div>
+                <div className="text-xs text-green-600 font-semibold">~$33.33/month</div>
+              </div>
+              
+              {/* Yearly */}
+              <div 
+                className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 text-center ${
+                  billingInterval === 'year' 
+                    ? 'border-purple-500 bg-purple-50 shadow-md' 
+                    : 'border-gray-200 bg-white hover:border-purple-300'
+                }`}
+                onClick={() => setBillingInterval('year')}
+                data-testid="card-billing-yearly"
+              >
+                <div className="font-semibold text-gray-900 mb-1">Yearly</div>
+                <div className="text-2xl font-bold text-purple-600 mb-2">$450</div>
+                <div className="text-sm text-gray-600">for 12 months</div>
+                <div className="text-xs text-green-600 font-semibold">$37.50/month</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
         {/* Base Subscription */}
         <Card className="mb-6 bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
           <CardContent className="p-6 text-center">
-            <div className="text-5xl font-bold text-blue-600 mb-2">$49</div>
-            <div className="text-gray-600 text-lg mb-4">/month</div>
+            <div className="text-5xl font-bold text-blue-600 mb-2">
+              {getPricingAmount(false, billingInterval)}
+            </div>
+            <div className="text-gray-600 text-lg mb-4">
+              {billingInterval === 'quarter' ? '/3 months' : billingInterval === 'year' ? '/year' : '/month'}
+            </div>
             <div className="font-semibold text-gray-900 mb-4">Base subscription includes 1 active deal</div>
             <p className="text-gray-600 text-sm leading-relaxed">
               Edit and update your deal anytime to promote different offers - breakfast specials, 
@@ -266,10 +353,21 @@ export default function Subscribe() {
           <CardContent className="p-6">
             <div className="text-center mb-6">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">Need Multiple Deals?</h3>
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <span className="text-4xl font-bold text-orange-600">+$25</span>
-                <span className="text-gray-600 text-lg">for 2 additional deals</span>
-              </div>
+              {billingInterval === 'month' ? (
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <span className="text-4xl font-bold text-orange-600">+$25</span>
+                  <span className="text-gray-600 text-lg">for 2 additional deals</span>
+                </div>
+              ) : (
+                <div className="text-center mb-4">
+                  <div className="text-2xl font-bold text-orange-600 mb-2">
+                    {billingInterval === 'quarter' ? 'Same $100' : 'Same $450'}
+                  </div>
+                  <span className="text-gray-600 text-lg">
+                    {billingInterval === 'quarter' ? 'quarterly price' : 'yearly price'} includes 3 deals
+                  </span>
+                </div>
+              )}
               <p className="text-gray-600 leading-relaxed">
                 Mix it up and promote up to 3 deals at the same time.
               </p>
@@ -283,15 +381,14 @@ export default function Subscribe() {
                     ? 'border-blue-500 bg-blue-50 shadow-md' 
                     : 'border-gray-200 bg-white hover:border-blue-300'
                 }`}
-                onClick={() => {
-                  setHasMultipleDealsAddon(false);
-                  createSubscription(false);
-                }}
+                onClick={() => setHasMultipleDealsAddon(false)}
                 data-testid="card-single-deal"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-semibold text-gray-900">Single Deal - $49/month</div>
+                    <div className="font-semibold text-gray-900">
+                      Single Deal - {getPricingDisplay(false, billingInterval)}
+                    </div>
                     <div className="text-sm text-gray-600">1 active deal included</div>
                   </div>
                   <div className={`w-4 h-4 rounded-full border-2 ${
@@ -308,15 +405,14 @@ export default function Subscribe() {
                     ? 'border-orange-500 bg-orange-50 shadow-md' 
                     : 'border-gray-200 bg-white hover:border-orange-300'
                 }`}
-                onClick={() => {
-                  setHasMultipleDealsAddon(true);
-                  createSubscription(true);
-                }}
+                onClick={() => setHasMultipleDealsAddon(true)}
                 data-testid="card-multiple-deals"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-semibold text-gray-900">Multiple Deals - $74/month</div>
+                    <div className="font-semibold text-gray-900">
+                      Multiple Deals - {getPricingDisplay(true, billingInterval)}
+                    </div>
                     <div className="text-sm text-gray-600">3 active deals total (1 base + 2 additional)</div>
                   </div>
                   <div className={`w-4 h-4 rounded-full border-2 ${
@@ -396,12 +492,16 @@ export default function Subscribe() {
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <div className="text-blue-600 font-bold text-lg mb-2">Single Deal</div>
-                <div className="text-2xl font-bold text-gray-900 mb-2">$49/month</div>
+                <div className="text-2xl font-bold text-gray-900 mb-2">
+                  {getPricingDisplay(false, billingInterval)}
+                </div>
                 <div className="text-sm text-gray-600">1 breakfast special</div>
               </div>
               <div className="text-center p-4 bg-orange-50 rounded-lg">
                 <div className="text-orange-600 font-bold text-lg mb-2">Multiple Deals</div>
-                <div className="text-2xl font-bold text-gray-900 mb-2">$74/month</div>
+                <div className="text-2xl font-bold text-gray-900 mb-2">
+                  {getPricingDisplay(true, billingInterval)}
+                </div>
                 <div className="text-sm text-gray-600">Breakfast, lunch & dinner</div>
               </div>
             </div>
@@ -413,7 +513,7 @@ export default function Subscribe() {
           <h3 className="font-semibold text-foreground mb-4" data-testid="text-payment-title">Payment Information</h3>
           
           <Elements stripe={stripePromise} options={{ clientSecret }}>
-            <SubscribeForm hasMultipleDealsAddon={hasMultipleDealsAddon} />
+            <SubscribeForm hasMultipleDealsAddon={hasMultipleDealsAddon} billingInterval={billingInterval} />
           </Elements>
         </div>
 

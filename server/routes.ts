@@ -1743,14 +1743,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Stripe subscription route for restaurant fees
   app.post('/api/create-subscription', isAuthenticated, async (req: any, res) => {
     const user = req.user;
-    const { hasMultipleDealsAddon, promoCode } = req.body; // boolean for multiple deals addon
+    const { hasMultipleDealsAddon, promoCode, billingInterval = 'month' } = req.body; // boolean for multiple deals addon, billing interval
     
     // Check for valid promo codes first (skip payment for beta users)
     if (promoCode && promoCode.toUpperCase() === 'BETA') {
       // Grant free beta access without Stripe subscription
       try {
         await storage.updateUser(user.id, {
-          subscriptionBillingInterval: hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal',
+          subscriptionBillingInterval: `${hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal'}-${billingInterval}`,
           // We don't set stripeSubscriptionId for beta users
         });
         
@@ -1769,7 +1769,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(503).json({ error: { message: 'Payment processing is not configured' } });
     }
 
-    const interval = 'month'; // Always monthly billing
+    // Support monthly, quarterly, and yearly billing
+    const validIntervals = ['month', 'quarter', 'year'];
+    const interval = validIntervals.includes(billingInterval) ? billingInterval : 'month';
 
     if (user.stripeSubscriptionId) {
       try {
@@ -1779,10 +1781,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // If subscription is incomplete, update it with the new plan
         if (subscription.status === 'incomplete' || subscription.status === 'incomplete_expired') {
-          const unitAmount = hasMultipleDealsAddon ? 7400 : 4900; // $74 or $49
+          // Calculate pricing based on plan and billing interval
+          const getPricing = (hasMultiple: boolean, interval: string) => {
+            const basePrice = hasMultiple ? 7500 : 5000; // $75 or $50 monthly
+            
+            switch (interval) {
+              case 'quarter':
+                return 10000; // $100 for 3 months (same for single or multiple deals)
+              case 'year':
+                return 45000; // $450 for 12 months (same for single or multiple deals)
+              default:
+                return basePrice; // Monthly pricing
+            }
+          };
+          
+          const unitAmount = getPricing(hasMultipleDealsAddon, interval);
+          const getBillingLabel = (interval: string) => {
+            switch (interval) {
+              case 'quarter': return 'Quarterly';
+              case 'year': return 'Yearly';
+              default: return 'Monthly';
+            }
+          };
+          
           const productName = hasMultipleDealsAddon 
-            ? 'MealScout Restaurant Plan - Multiple Deals (3 deals)'
-            : 'MealScout Restaurant Plan - Single Deal (1 deal)';
+            ? `MealScout Restaurant Plan - Multiple Deals (3 deals) - ${getBillingLabel(interval)}`
+            : `MealScout Restaurant Plan - Single Deal (1 deal) - ${getBillingLabel(interval)}`;
           
           const updatedSubscription = await stripe.subscriptions.update(subscription.id, {
             items: [{
@@ -1794,8 +1818,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 },
                 unit_amount: unitAmount,
                 recurring: {
-                  interval: 'month',
-                  interval_count: 1,
+                  interval: interval === 'quarter' ? 'month' : (interval === 'year' ? 'month' : interval) as 'month' | 'year',
+                  interval_count: interval === 'quarter' ? 3 : (interval === 'year' ? 12 : 1),
                 },
               } as any,
             }],
@@ -1804,7 +1828,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Update user billing interval
           await storage.updateUser(user.id, {
-            subscriptionBillingInterval: hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal'
+            subscriptionBillingInterval: `${hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal'}-${interval}`
           });
           
           const latestInvoice = updatedSubscription.latest_invoice;
@@ -1846,19 +1870,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerId = customer.id;
       }
 
-      // Calculate pricing based on deal addon
-      // Base: $49/month (1 deal), Multiple: $74/month (3 deals total)
-      let unitAmount: number;
-      let productName: string;
-      const intervalCount = 1; // Always monthly
+      // Calculate pricing based on deal addon and billing interval
+      // Base: $50/month (1 deal), Multiple: $75/month (3 deals total)
+      // Quarterly: $100 for 3 months, Yearly: $450 for 12 months
+      const getPricing = (hasMultiple: boolean, interval: string) => {
+        const basePrice = hasMultiple ? 7500 : 5000; // $75 or $50 monthly
+        
+        switch (interval) {
+          case 'quarter':
+            return 10000; // $100 for 3 months (same for single or multiple deals)
+          case 'year':
+            return 45000; // $450 for 12 months (same for single or multiple deals)
+          default:
+            return basePrice; // Monthly pricing
+        }
+      };
       
-      if (hasMultipleDealsAddon) {
-        unitAmount = 7400; // $74 monthly for multiple deals (3 total)
-        productName = 'MealScout Restaurant Plan - Multiple Deals (3 deals)';
-      } else {
-        unitAmount = 4900; // $49 monthly for single deal
-        productName = 'MealScout Restaurant Plan - Single Deal (1 deal)';
-      }
+      const getBillingLabel = (interval: string) => {
+        switch (interval) {
+          case 'quarter': return 'Quarterly';
+          case 'year': return 'Yearly';
+          default: return 'Monthly';
+        }
+      };
+      
+      const getIntervalCount = (interval: string) => {
+        switch (interval) {
+          case 'quarter': return 3;
+          case 'year': return 12;
+          default: return 1;
+        }
+      };
+      
+      const unitAmount = getPricing(hasMultipleDealsAddon, interval);
+      const productName = hasMultipleDealsAddon 
+        ? `MealScout Restaurant Plan - Multiple Deals (3 deals) - ${getBillingLabel(interval)}`
+        : `MealScout Restaurant Plan - Single Deal (1 deal) - ${getBillingLabel(interval)}`;
+      const intervalCount = getIntervalCount(interval);
 
       const subscription = await stripe.subscriptions.create({
         customer: customerId,
@@ -1870,7 +1918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             unit_amount: unitAmount,
             recurring: {
-              interval: interval as 'month' | 'year',
+              interval: (interval === 'quarter' || interval === 'year') ? 'month' : interval as 'month' | 'year',
               interval_count: intervalCount,
             },
           } as any,
@@ -1879,11 +1927,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expand: ['latest_invoice.payment_intent'],
       });
 
-      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal');
+      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `${hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal'}-${interval}`);
   
       // Send payment confirmation email asynchronously
-      const amount = hasMultipleDealsAddon ? 7400 : 4900; // $74 or $49 per month
-      const planType = hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal';
+      const amount = unitAmount; // Use calculated amount based on plan and billing
+      const planType = `${hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal'}-${interval}`;
       emailService.sendPaymentConfirmation(user, amount, planType, subscription.id).catch(err => 
         console.error('Failed to send payment confirmation email:', err)
       );

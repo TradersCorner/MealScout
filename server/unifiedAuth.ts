@@ -207,16 +207,39 @@ export async function setupUnifiedAuth(app: Express) {
     },
     async (accessToken: string, refreshToken: string, profile: any, done: any) => {
       try {
+        console.log('🔍 Facebook profile data received:', {
+          id: profile.id,
+          displayName: profile.displayName,
+          emails: profile.emails,
+          name: profile.name,
+          photos: profile.photos,
+          _json: profile._json ? {
+            first_name: profile._json.first_name,
+            last_name: profile._json.last_name,
+            email: profile._json.email
+          } : null
+        });
+
         const userData: FacebookUserData = {
           facebookId: profile.id,
-          email: profile.emails?.[0]?.value || null,
-          firstName: profile.name?.givenName || profile._json?.first_name || null,
-          lastName: profile.name?.familyName || profile._json?.last_name || null,
+          email: profile.emails?.[0]?.value || profile._json?.email || null,
+          firstName: profile.name?.givenName || profile._json?.first_name || profile.displayName?.split(' ')[0] || 'Facebook',
+          lastName: profile.name?.familyName || profile._json?.last_name || profile.displayName?.split(' ').slice(1).join(' ') || 'User',
           profileImageUrl: profile.photos?.[0]?.value || null,
           facebookAccessToken: accessToken,
         };
 
+        console.log('🔍 Processed Facebook user data:', {
+          facebookId: userData.facebookId,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          hasProfileImage: !!userData.profileImageUrl
+        });
+
         const user = await storage.upsertUserByAuth('facebook', userData, 'customer');
+        console.log('✅ Facebook user created/updated successfully:', { userId: user.id, email: user.email });
+        
         // Send welcome email asynchronously (don't block auth flow)
         emailService.sendWelcomeEmail(user).catch(err => 
           console.error('Failed to send customer welcome email:', err)
@@ -229,6 +252,8 @@ export async function setupUnifiedAuth(app: Express) {
         );
         return done(null, user);
       } catch (error) {
+        console.error('❌ Facebook authentication error:', error);
+        console.error('❌ Profile data that caused error:', profile);
         return done(error, null);
       }
     }));

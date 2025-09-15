@@ -246,7 +246,12 @@ export default function LocationButton({
     const isFirefox = userAgent.includes('firefox');
     const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
     
-    return { isWindows, isAndroid, isIOS, isChrome, isFirefox, isMobile };
+    // Detect Facebook in-app browser
+    const isFacebookBrowser = userAgent.includes('fban') || userAgent.includes('fbav') || 
+                             userAgent.includes('fb_iab') || userAgent.includes('fb//') ||
+                             (userAgent.includes('mobile') && userAgent.includes('facebook'));
+    
+    return { isWindows, isAndroid, isIOS, isChrome, isFirefox, isMobile, isFacebookBrowser };
   };
 
   const checkSecureContext = () => {
@@ -313,6 +318,7 @@ export default function LocationButton({
 
     if (!navigator.geolocation) {
       onLocationError("Geolocation is not supported by this browser.");
+      onLocationNameUpdate("Your Location");
       if (mountedRef.current) setStatus("error");
       return;
     }
@@ -320,14 +326,52 @@ export default function LocationButton({
     // Check secure context (HTTPS requirement)
     if (!checkSecureContext()) {
       onLocationError("Location access requires a secure connection (HTTPS). Please access this site via HTTPS.");
+      onLocationNameUpdate("Your Location");
       if (mountedRef.current) setStatus("error");
       return;
+    }
+
+    const platform = detectPlatform();
+    
+    // Handle Facebook in-app browser restrictions
+    if (platform.isFacebookBrowser) {
+      console.log('🔵 Facebook in-app browser detected - using IP fallback');
+      onLocationError("For the best experience, open this in your regular browser. Using approximate location based on your internet connection.");
+      
+      // Try IP fallback immediately for Facebook browser
+      const ipLocation = await ipGeolocationFallback();
+      if (ipLocation && mountedRef.current) {
+        console.log('📍 Facebook browser IP fallback success:', ipLocation);
+        onLocationUpdate({ lat: ipLocation.lat, lng: ipLocation.lng });
+        onLocationNameUpdate(`${ipLocation.city} (approximate)`);
+        setStatus("success");
+        setLastUpdateTime(new Date());
+        
+        // Reset success status after 2 seconds
+        timeoutRef.current = setTimeout(() => {
+          if (mountedRef.current && statusRef.current === "success") {
+            setStatus("idle");
+          }
+        }, 2000);
+        
+        return;
+      } else {
+        // If IP fallback fails in Facebook browser, suggest manual entry
+        onLocationNameUpdate("Your Location");
+        if (onShowManualInput) {
+          setTimeout(() => {
+            onShowManualInput();
+          }, 1000);
+        }
+        return;
+      }
     }
 
     // Check permissions first
     const permissionState = await checkGeolocationPermission();
     if (permissionState === 'denied') {
       onLocationError("Location access is permanently denied. Please reset location permissions in your browser settings.");
+      onLocationNameUpdate("Your Location");
       if (mountedRef.current) setStatus("error");
       return;
     }
@@ -348,7 +392,6 @@ export default function LocationButton({
     // Mark detection as in-flight (after all early checks)
     inFlightRef.current = true;
 
-    const platform = detectPlatform();
     let attemptNumber = 0;
     const maxAttempts = 3;
 

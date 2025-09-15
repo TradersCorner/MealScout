@@ -129,11 +129,11 @@ interface Deal {
 
 export default function MapPage() {
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
-  const [mapCenter, setMapCenter] = useState<{lat: number, lng: number}>({ lat: 29.4194, lng: -90.6047 });
+  const [mapCenter, setMapCenter] = useState<{lat: number, lng: number}>({ lat: 30.5365, lng: -90.5347 });
   const [showList, setShowList] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [isLocating, setIsLocating] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState(14);
+  const [zoomLevel, setZoomLevel] = useState(16);
   const [locationError, setLocationError] = useState<string | null>(null);
 
   // Get user location

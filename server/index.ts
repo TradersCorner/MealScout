@@ -7,7 +7,6 @@ import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
 import { setupWebSocketServer } from "./websocket";
 import { getSession } from "./facebookAuth";
-import { setupAuth } from "./replitAuth";
 
 const app = express();
 
@@ -96,9 +95,6 @@ app.use((req, res, next) => {
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
-  
-  // Setup authentication (includes Google, GitHub, Apple login)
-  await setupAuth(app);
   
   const server = await registerRoutes(app);
 

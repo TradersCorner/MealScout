@@ -481,11 +481,16 @@ export default function Home() {
                 <MapPin className="w-4 h-4 text-white" />
               )}
             </div>
-            <div className="text-right min-w-0 flex-1 max-w-32">
+            <div className="text-right min-w-0 flex-1 max-w-28 sm:max-w-40 md:max-w-48">
               <p className="text-gray-500 text-xs whitespace-nowrap" data-testid="text-location-label">Location</p>
               <div className="flex items-center space-x-1">
                 <p className="text-gray-900 font-medium text-sm truncate" data-testid="text-location-name" title={locationName}>
-                  {locationName}
+                  <span className="sm:hidden">
+                    {locationName.split(',')[0]}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {locationName}
+                  </span>
                 </p>
                 {locationError && (
                   <button

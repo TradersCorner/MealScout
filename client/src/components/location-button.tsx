@@ -273,36 +273,77 @@ export default function LocationButton({
               final: locationName 
             });
             
-            // If we didn't get a good city name, try OpenStreetMap
+            // If we didn't get a good city name, try OpenStreetMap with different approaches
             if (locationName === "Your Location" || 
                 locationName.toLowerCase().includes('district') || 
                 locationName.toLowerCase().includes('subdivision')) {
               
               console.log('🌍 Trying OpenStreetMap reverse geocoding...');
-              const response2 = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
-              );
-              const data2 = await response2.json();
               
-              if (data2.address) {
-                // Prioritize actual cities and towns
-                const newLocationName = data2.address.city || 
-                                       data2.address.town || 
-                                       data2.address.village || 
-                                       data2.address.county || 
-                                       data2.address.state || 
-                                            locationName;
-                                       
-                console.log('🏙️ OpenStreetMap result:', { 
-                  city: data2.address.city, 
-                  town: data2.address.town,
-                  county: data2.address.county,
-                  state: data2.address.state,
-                  final: newLocationName 
-                });
-                
-                if (newLocationName !== locationName && !newLocationName.toLowerCase().includes('district')) {
-                  locationName = newLocationName;
+              // Try multiple zoom levels to get better city results
+              let bestCityName = null;
+              
+              for (const zoom of [14, 12, 10, 8]) {
+                try {
+                  const response2 = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=${zoom}&addressdetails=1`
+                  );
+                  const data2 = await response2.json();
+                  
+                  if (data2.address) {
+                    console.log(`🏙️ OpenStreetMap zoom ${zoom} result:`, { 
+                      city: data2.address.city, 
+                      town: data2.address.town,
+                      village: data2.address.village,
+                      hamlet: data2.address.hamlet,
+                      county: data2.address.county,
+                      state: data2.address.state
+                    });
+                    
+                    // Try to get actual city/town names first
+                    const cityCandidate = data2.address.city || 
+                                         data2.address.town || 
+                                         data2.address.village || 
+                                         data2.address.hamlet;
+                    
+                    if (cityCandidate && 
+                        !cityCandidate.toLowerCase().includes('district') &&
+                        !cityCandidate.toLowerCase().includes('parish') &&
+                        !cityCandidate.toLowerCase().includes('subdivision')) {
+                      bestCityName = cityCandidate;
+                      console.log(`✅ Found good city name at zoom ${zoom}:`, bestCityName);
+                      break;
+                    }
+                  }
+                } catch (error) {
+                  console.log(`❌ OpenStreetMap zoom ${zoom} failed:`, error);
+                }
+              }
+              
+              // If we found a good city name, use it
+              if (bestCityName) {
+                locationName = bestCityName;
+              } else {
+                // Fallback: try getting the nearest place with a different approach
+                console.log('🔍 Trying alternative geocoding for nearest city...');
+                try {
+                  const searchResponse = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=city near ${latitude},${longitude}&limit=1&addressdetails=1`
+                  );
+                  const searchData = await searchResponse.json();
+                  
+                  if (searchData.length > 0 && searchData[0].address) {
+                    const nearestCity = searchData[0].address.city || 
+                                       searchData[0].address.town || 
+                                       searchData[0].display_name?.split(',')[0];
+                    
+                    if (nearestCity && !nearestCity.toLowerCase().includes('parish')) {
+                      locationName = nearestCity;
+                      console.log('✅ Found nearest city:', nearestCity);
+                    }
+                  }
+                } catch (error) {
+                  console.log('❌ Alternative geocoding failed:', error);
                 }
               }
             }

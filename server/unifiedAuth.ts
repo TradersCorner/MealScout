@@ -159,9 +159,13 @@ export async function setupUnifiedAuth(app: Express) {
     passport.use(new FacebookStrategy({
       clientID: process.env.FACEBOOK_APP_ID,
       clientSecret: process.env.FACEBOOK_APP_SECRET,
-      callbackURL: process.env.NODE_ENV === 'production' 
-        ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost'}/api/auth/facebook/callback`
-        : `http://localhost:5000/api/auth/facebook/callback`,
+      callbackURL: (() => {
+        const base = process.env.PUBLIC_BASE_URL || 
+                    (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000');
+        const callbackUrl = `${base}/api/auth/facebook/callback`;
+        console.log('🔵 Facebook OAuth callback URL:', callbackUrl);
+        return callbackUrl;
+      })(),
       profileFields: ['id', 'displayName', 'emails', 'photos', 'first_name', 'last_name']
     },
     async (accessToken: string, refreshToken: string, profile: any, done: any) => {

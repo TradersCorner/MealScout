@@ -209,9 +209,9 @@ export default function DealCreation() {
         <Card>
           <CardContent className="p-6 text-center">
             <i className="fas fa-store text-muted-foreground text-3xl mb-4"></i>
-            <p className="text-muted-foreground mb-4">You need to register a restaurant first</p>
+            <p className="text-muted-foreground mb-4">You need to register a business first</p>
             <Link href="/restaurant-signup">
-              <Button className="w-full">Register Restaurant</Button>
+              <Button className="w-full">Register Business</Button>
             </Link>
           </CardContent>
         </Card>

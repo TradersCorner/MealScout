@@ -276,34 +276,64 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUserByAuth(authType: 'google' | 'email' | 'facebook', userData: GoogleUserData | EmailUserData | FacebookUserData, userType: 'customer' | 'restaurant_owner' | 'admin' = 'customer'): Promise<User> {
-    if (authType === 'google') {
-      const googleData = userData as GoogleUserData;
-      
-      // First try to find existing user by Google ID or email
-      const existingUser = await db
-        .select()
-        .from(users)
-        .where(or(eq(users.googleId, googleData.googleId), eq(users.email, googleData.email)))
-        .limit(1);
+    try {
+      if (authType === 'google') {
+        const googleData = userData as GoogleUserData;
+        console.log('🔍 upsertUserByAuth - Google:', { googleId: googleData.googleId, email: googleData.email, userType });
+        
+        // Step 1: Try to find existing user by Google ID
+        let existingUser = await db
+          .select()
+          .from(users)
+          .where(eq(users.googleId, googleData.googleId))
+          .limit(1);
 
-      if (existingUser.length > 0) {
-        // Update existing user with Google auth info
-        const [user] = await db
-          .update(users)
-          .set({
-            googleId: googleData.googleId,
-            email: googleData.email,
-            firstName: googleData.firstName,
-            lastName: googleData.lastName,
-            profileImageUrl: googleData.profileImageUrl,
-            googleAccessToken: googleData.googleAccessToken,
-            updatedAt: new Date(),
-          })
-          .where(eq(users.id, existingUser[0].id))
-          .returning();
-        return user;
-      } else {
-        // Create new user
+        if (existingUser.length > 0) {
+          console.log('✅ Found existing user by Google ID, updating...');
+          const [user] = await db
+            .update(users)
+            .set({
+              email: googleData.email,
+              firstName: googleData.firstName,
+              lastName: googleData.lastName,
+              profileImageUrl: googleData.profileImageUrl,
+              googleAccessToken: googleData.googleAccessToken,
+              updatedAt: new Date(),
+            })
+            .where(eq(users.id, existingUser[0].id))
+            .returning();
+          return user;
+        }
+
+        // Step 2: If email provided, try to find by email and link the Google account
+        if (googleData.email) {
+          existingUser = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, googleData.email))
+            .limit(1);
+
+          if (existingUser.length > 0) {
+            console.log('✅ Found existing user by email, linking Google account...');
+            const [user] = await db
+              .update(users)
+              .set({
+                googleId: googleData.googleId,
+                firstName: googleData.firstName || existingUser[0].firstName,
+                lastName: googleData.lastName || existingUser[0].lastName,
+                profileImageUrl: googleData.profileImageUrl || existingUser[0].profileImageUrl,
+                googleAccessToken: googleData.googleAccessToken,
+                userType: userType, // Update user type if provided
+                updatedAt: new Date(),
+              })
+              .where(eq(users.id, existingUser[0].id))
+              .returning();
+            return user;
+          }
+        }
+
+        // Step 3: Create new user
+        console.log('✅ Creating new Google user...');
         const [user] = await db
           .insert(users)
           .values({
@@ -316,40 +346,66 @@ export class DatabaseStorage implements IStorage {
             googleAccessToken: googleData.googleAccessToken,
           })
           .returning();
+        console.log('✅ Google user created successfully:', { userId: user.id, email: user.email });
         return user;
-      }
-    } else if (authType === 'facebook') {
-      const facebookData = userData as FacebookUserData;
-      
-      // First try to find existing user by Facebook ID or email
-      const existingUser = await db
-        .select()
-        .from(users)
-        .where(
-          facebookData.email 
-            ? or(eq(users.facebookId, facebookData.facebookId), eq(users.email, facebookData.email))
-            : eq(users.facebookId, facebookData.facebookId)
-        )
-        .limit(1);
 
-      if (existingUser.length > 0) {
-        // Update existing user with Facebook auth info
-        const [user] = await db
-          .update(users)
-          .set({
-            facebookId: facebookData.facebookId,
-            email: facebookData.email,
-            firstName: facebookData.firstName,
-            lastName: facebookData.lastName,
-            profileImageUrl: facebookData.profileImageUrl,
-            facebookAccessToken: facebookData.facebookAccessToken,
-            updatedAt: new Date(),
-          })
-          .where(eq(users.id, existingUser[0].id))
-          .returning();
-        return user;
-      } else {
-        // Create new user
+      } else if (authType === 'facebook') {
+        const facebookData = userData as FacebookUserData;
+        console.log('🔍 upsertUserByAuth - Facebook:', { facebookId: facebookData.facebookId, email: facebookData.email, userType });
+        
+        // Step 1: Try to find existing user by Facebook ID
+        let existingUser = await db
+          .select()
+          .from(users)
+          .where(eq(users.facebookId, facebookData.facebookId))
+          .limit(1);
+
+        if (existingUser.length > 0) {
+          console.log('✅ Found existing user by Facebook ID, updating...');
+          const [user] = await db
+            .update(users)
+            .set({
+              email: facebookData.email,
+              firstName: facebookData.firstName,
+              lastName: facebookData.lastName,
+              profileImageUrl: facebookData.profileImageUrl,
+              facebookAccessToken: facebookData.facebookAccessToken,
+              updatedAt: new Date(),
+            })
+            .where(eq(users.id, existingUser[0].id))
+            .returning();
+          return user;
+        }
+
+        // Step 2: If email provided, try to find by email and link the Facebook account
+        if (facebookData.email) {
+          existingUser = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, facebookData.email))
+            .limit(1);
+
+          if (existingUser.length > 0) {
+            console.log('✅ Found existing user by email, linking Facebook account...');
+            const [user] = await db
+              .update(users)
+              .set({
+                facebookId: facebookData.facebookId,
+                firstName: facebookData.firstName || existingUser[0].firstName,
+                lastName: facebookData.lastName || existingUser[0].lastName,
+                profileImageUrl: facebookData.profileImageUrl || existingUser[0].profileImageUrl,
+                facebookAccessToken: facebookData.facebookAccessToken,
+                userType: userType, // Update user type if provided
+                updatedAt: new Date(),
+              })
+              .where(eq(users.id, existingUser[0].id))
+              .returning();
+            return user;
+          }
+        }
+
+        // Step 3: Create new user
+        console.log('✅ Creating new Facebook user...');
         const [user] = await db
           .insert(users)
           .values({
@@ -362,23 +418,111 @@ export class DatabaseStorage implements IStorage {
             facebookAccessToken: facebookData.facebookAccessToken,
           })
           .returning();
+        console.log('✅ Facebook user created successfully:', { userId: user.id, email: user.email });
+        return user;
+
+      } else {
+        const emailData = userData as EmailUserData;
+        console.log('🔍 upsertUserByAuth - Email:', { email: emailData.email, userType });
+        
+        const [user] = await db
+          .insert(users)
+          .values({
+            userType,
+            email: emailData.email,
+            firstName: emailData.firstName,
+            lastName: emailData.lastName,
+            phone: emailData.phone,
+            passwordHash: emailData.passwordHash,
+            emailVerified: true,
+          })
+          .returning();
+        console.log('✅ Email user created successfully:', { userId: user.id, email: user.email });
         return user;
       }
-    } else {
-      const emailData = userData as EmailUserData;
-      const [user] = await db
-        .insert(users)
-        .values({
-          userType,
-          email: emailData.email,
-          firstName: emailData.firstName,
-          lastName: emailData.lastName,
-          phone: emailData.phone,
-          passwordHash: emailData.passwordHash,
-          emailVerified: true,
-        })
-        .returning();
-      return user;
+    } catch (error: any) {
+      console.error('❌ upsertUserByAuth error:', {
+        authType,
+        userType,
+        errorCode: error.code,
+        errorMessage: error.message,
+        errorConstraint: error.constraint,
+        errorDetail: error.detail
+      });
+
+      // Handle unique constraint violations (23505)
+      if (error.code === '23505') {
+        console.log('🔄 Handling unique constraint violation, retrying with fetch-and-update...');
+        
+        if (authType === 'google') {
+          const googleData = userData as GoogleUserData;
+          
+          // Retry: find by GoogleID or email and update
+          const existingUser = await db
+            .select()
+            .from(users)
+            .where(
+              googleData.email 
+                ? or(eq(users.googleId, googleData.googleId), eq(users.email, googleData.email))
+                : eq(users.googleId, googleData.googleId)
+            )
+            .limit(1);
+
+          if (existingUser.length > 0) {
+            console.log('✅ Found existing user during retry, updating...');
+            const [user] = await db
+              .update(users)
+              .set({
+                googleId: googleData.googleId,
+                email: googleData.email,
+                firstName: googleData.firstName,
+                lastName: googleData.lastName,
+                profileImageUrl: googleData.profileImageUrl,
+                googleAccessToken: googleData.googleAccessToken,
+                userType: userType,
+                updatedAt: new Date(),
+              })
+              .where(eq(users.id, existingUser[0].id))
+              .returning();
+            return user;
+          }
+        } else if (authType === 'facebook') {
+          const facebookData = userData as FacebookUserData;
+          
+          // Retry: find by FacebookID or email and update
+          const existingUser = await db
+            .select()
+            .from(users)
+            .where(
+              facebookData.email 
+                ? or(eq(users.facebookId, facebookData.facebookId), eq(users.email, facebookData.email))
+                : eq(users.facebookId, facebookData.facebookId)
+            )
+            .limit(1);
+
+          if (existingUser.length > 0) {
+            console.log('✅ Found existing user during retry, updating...');
+            const [user] = await db
+              .update(users)
+              .set({
+                facebookId: facebookData.facebookId,
+                email: facebookData.email,
+                firstName: facebookData.firstName,
+                lastName: facebookData.lastName,
+                profileImageUrl: facebookData.profileImageUrl,
+                facebookAccessToken: facebookData.facebookAccessToken,
+                userType: userType,
+                updatedAt: new Date(),
+              })
+              .where(eq(users.id, existingUser[0].id))
+              .returning();
+            return user;
+          }
+        }
+      }
+
+      // Re-throw the error if we can't handle it
+      throw error;
     }
   }
 

@@ -452,10 +452,10 @@ export default function Home() {
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative overflow-hidden">
       {/* Header with Logo and Location */}
-      <header className="bg-white border-b border-gray-100 px-6 py-4 sticky top-0 z-10 shadow-sm">
+      <header className="bg-white border-b border-gray-100 px-4 sm:px-6 py-3 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between">
           {/* MealScout Logo */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 flex-shrink-0">
             <div className="w-10 h-10 flex items-center justify-center">
               <img 
                 src={mealScoutLogo} 
@@ -463,39 +463,42 @@ export default function Home() {
                 className="w-10 h-10 object-contain"
               />
             </div>
-            <div>
+            <div className="hidden xs:block">
               <h1 className="text-xl font-bold text-gray-900">MealScout</h1>
             </div>
           </div>
 
-          {/* Location */}
-          <div className="flex items-center space-x-2 min-w-0 flex-1 justify-end">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-              isLoadingLocation ? 'bg-yellow-500' : 
+          {/* Location Section */}
+          <div className="flex items-center space-x-3 min-w-0 flex-1 justify-end">
+            {/* Location Status Indicator */}
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center shadow-sm transition-colors ${
+              isLoadingLocation ? 'bg-amber-500' : 
               locationError ? 'bg-red-500' : 
-              location ? 'bg-green-500' : 'bg-gray-500'
+              location ? 'bg-emerald-500' : 'bg-gray-500'
             }`}>
               {isLoadingLocation ? (
-                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
                 <MapPin className="w-4 h-4 text-white" />
               )}
             </div>
-            <div className="text-right min-w-0 flex-1 max-w-28 sm:max-w-40 md:max-w-48">
-              <p className="text-gray-500 text-xs whitespace-nowrap" data-testid="text-location-label">Location</p>
+            
+            {/* Location Info */}
+            <div className="text-left min-w-0 flex-1 max-w-32 sm:max-w-40 lg:max-w-48">
+              <p className="text-gray-500 text-xs font-medium mb-0.5" data-testid="text-location-label">Location</p>
               <div className="flex items-center space-x-1">
-                <p className="text-gray-900 font-medium text-sm truncate" data-testid="text-location-name" title={locationName}>
-                  <span className="sm:hidden">
+                <p className="text-gray-900 font-semibold text-sm leading-tight truncate" data-testid="text-location-name" title={locationName}>
+                  <span className="lg:hidden">
                     {locationName.split(',')[0]}
                   </span>
-                  <span className="hidden sm:inline">
+                  <span className="hidden lg:inline">
                     {locationName}
                   </span>
                 </p>
                 {locationError && (
                   <button
                     onClick={retryLocation}
-                    className="text-blue-600 text-xs hover:text-blue-700 font-medium whitespace-nowrap"
+                    className="text-blue-600 text-xs hover:text-blue-700 font-medium whitespace-nowrap transition-colors"
                     data-testid="button-retry-location"
                   >
                     Retry
@@ -513,7 +516,7 @@ export default function Home() {
                 isLoading={isLoadingLocation}
                 size="sm"
                 variant="default"
-                className="text-xs whitespace-nowrap"
+                className="text-xs font-medium bg-gray-900 hover:bg-gray-800 text-white px-3 py-2 rounded-lg transition-colors shadow-sm"
               />
             </div>
           </div>

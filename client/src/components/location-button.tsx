@@ -14,16 +14,77 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import type { UserAddress } from "@shared/schema";
 
-// Simplified location naming - use coordinates as display name
+// Reverse geocoding to get actual location names
 async function getReverseGeocodedLocationName(
   latitude: number, 
   longitude: number, 
   onLocationNameUpdate: (name: string) => void
 ): Promise<void> {
-  // Use coordinate-based name - reliable and always works
+  // First set coordinate-based name as fallback
   const coordinateBasedName = `Location (${latitude.toFixed(3)}, ${longitude.toFixed(3)})`;
   onLocationNameUpdate(coordinateBasedName);
-  console.log('📍 Using reliable coordinate-based location:', coordinateBasedName);
+  
+  try {
+    // Try reverse geocoding with OpenStreetMap Nominatim
+    console.log('🌍 Attempting reverse geocoding for:', { latitude, longitude });
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=16&addressdetails=1&extratags=1`,
+      {
+        headers: {
+          'User-Agent': 'MealScout/1.0'
+        }
+      }
+    );
+    
+    if (response.ok) {
+      const data = await response.json();
+      
+      if (data && data.address) {
+        const address = data.address;
+        
+        // Build location name from most specific to least specific
+        let locationName = '';
+        
+        if (address.city) {
+          locationName = address.city;
+        } else if (address.town) {
+          locationName = address.town;
+        } else if (address.village) {
+          locationName = address.village;
+        } else if (address.hamlet) {
+          locationName = address.hamlet;
+        } else if (address.county) {
+          locationName = address.county;
+        } else if (address.state) {
+          locationName = address.state;
+        }
+        
+        // Add state if we have a city/town
+        if (locationName && address.state && !locationName.includes(address.state)) {
+          locationName += `, ${address.state}`;
+        }
+        
+        // Fallback to display_name parts if no standard address components
+        if (!locationName && data.display_name) {
+          const parts = data.display_name.split(',');
+          if (parts.length >= 2) {
+            locationName = parts.slice(-3, -1).join(',').trim();
+          }
+        }
+        
+        if (locationName) {
+          console.log('✅ Reverse geocoding successful:', locationName);
+          onLocationNameUpdate(locationName);
+          return;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️ Reverse geocoding failed:', error);
+  }
+  
+  // Fallback: keep the coordinate-based name
+  console.log('📍 Using coordinate-based fallback:', coordinateBasedName);
 }
 
 interface LocationButtonProps {

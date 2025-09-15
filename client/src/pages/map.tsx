@@ -389,7 +389,7 @@ export default function MapPage() {
               <div className="space-y-4">
                 {deals.map((deal: Deal) => (
                   <div key={deal.id} onClick={() => handleDealClick(deal)}>
-                    <DealCard deal={{...deal, isFeatured: deal.isFeatured || false}} />
+                    <DealCard deal={deal} />
                   </div>
                 ))}
               </div>

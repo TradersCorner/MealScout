@@ -99,12 +99,74 @@ export default function Home() {
   //   }
   // }, [location, isConnected, subscribeToNearby]);
 
+  // Auto-detect location on page load
+  useEffect(() => {
+    if (!location && !isLoadingLocation) {
+      setIsLoadingLocation(true);
+      handleLocationDetection();
+    }
+  }, []); // Run only once on mount
+
   // Fetch initial food truck data only once when location is first set
   useEffect(() => {
     if (location && foodTrucks.length === 0) {
       fetchNearbyFoodTrucks();
     }
   }, [location]);
+
+  // Auto location detection function
+  const handleLocationDetection = async () => {
+    if (navigator.geolocation) {
+      console.log('🧭 Starting automatic location detection');
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 8000,
+            maximumAge: 0
+          });
+        });
+
+        const newLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+
+        setLocation(newLocation);
+        setLocationName(`Location (${newLocation.lat.toFixed(3)}, ${newLocation.lng.toFixed(3)})`);
+        setLocationError(null);
+        console.log('✅ Automatic location detection successful:', newLocation);
+        
+        // Invalidate and refresh nearby deals cache immediately
+        queryClient.invalidateQueries({ 
+          queryKey: ["/api/deals/nearby"] 
+        });
+        
+        // Subscribe to nearby food trucks
+        if (isConnected) {
+          subscribeToNearby(newLocation.lat, newLocation.lng, 5000);
+        } else {
+          try {
+            connectWS();
+            subscribeToNearby(newLocation.lat, newLocation.lng, 5000);
+          } catch (err: any) {
+            console.warn('Failed to connect WebSocket for food truck updates:', err);
+          }
+        }
+
+      } catch (error: any) {
+        console.warn('Automatic location detection failed:', error.message);
+        setLocationError("Unable to detect location automatically. Please click the location button to set your location.");
+        setShowLocationInput(true);
+      } finally {
+        setIsLoadingLocation(false);
+      }
+    } else {
+      setLocationError("Location services not supported by your browser");
+      setShowLocationInput(true);
+      setIsLoadingLocation(false);
+    }
+  };
 
   const fetchNearbyFoodTrucks = async () => {
     if (!location || loadingFoodTrucks) return;

@@ -373,6 +373,7 @@ export class DatabaseStorage implements IStorage {
           email: emailData.email,
           firstName: emailData.firstName,
           lastName: emailData.lastName,
+          phone: emailData.phone,
           passwordHash: emailData.passwordHash,
           emailVerified: true,
         })
@@ -1046,6 +1047,7 @@ export class DatabaseStorage implements IStorage {
         email: adminEmail,
         firstName: 'Admin',
         lastName: 'User',
+        phone: '+1 (555) 000-0000',
         passwordHash
       }, 'admin');
 
@@ -1072,6 +1074,7 @@ export class DatabaseStorage implements IStorage {
         email: 'owner1@example.com',
         firstName: 'Mario',
         lastName: 'Rossi',
+        phone: '+1 (985) 555-0001',
         passwordHash: await bcrypt.hash('password123', 10)
       }, 'restaurant_owner');
 
@@ -1079,6 +1082,7 @@ export class DatabaseStorage implements IStorage {
         email: 'owner2@example.com',
         firstName: 'Luigi',
         lastName: 'Verde',
+        phone: '+1 (985) 555-0002',
         passwordHash: await bcrypt.hash('password123', 10)
       }, 'restaurant_owner');
 
@@ -1086,6 +1090,7 @@ export class DatabaseStorage implements IStorage {
         email: 'owner3@example.com',
         firstName: 'Giuseppe',
         lastName: 'Bianchi',
+        phone: '+1 (985) 555-0003',
         passwordHash: await bcrypt.hash('password123', 10)
       }, 'restaurant_owner');
 
@@ -1094,6 +1099,7 @@ export class DatabaseStorage implements IStorage {
         email: 'customer@example.com',
         firstName: 'John',
         lastName: 'Doe',
+        phone: '+1 (985) 555-0100',
         passwordHash: await bcrypt.hash('password123', 10)
       }, 'customer');
 
@@ -1102,6 +1108,7 @@ export class DatabaseStorage implements IStorage {
         email: 'owner4@example.com',
         firstName: 'Maria',
         lastName: 'Garcia',
+        phone: '+1 (985) 555-0004',
         passwordHash: await bcrypt.hash('password123', 10)
       }, 'restaurant_owner');
 
@@ -1109,6 +1116,7 @@ export class DatabaseStorage implements IStorage {
         email: 'owner5@example.com',
         firstName: 'David',
         lastName: 'Chen',
+        phone: '+1 (985) 555-0005',
         passwordHash: await bcrypt.hash('password123', 10)
       }, 'restaurant_owner');
 
@@ -1116,6 +1124,7 @@ export class DatabaseStorage implements IStorage {
         email: 'owner6@example.com',
         firstName: 'Sarah',
         lastName: 'Johnson',
+        phone: '+1 (985) 555-0006',
         passwordHash: await bcrypt.hash('password123', 10)
       }, 'restaurant_owner');
 

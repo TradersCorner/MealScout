@@ -26,8 +26,20 @@ async function getReverseGeocodedLocationName(
     // Primary: US Census API (free, unlimited, very accurate for US)
     console.log('🏛️ Trying US Census reverse geocoding...');
     const censusResponse = await fetch(
-      `https://geocoding.census.gov/geocoder/geographies/coordinates?x=${longitude}&y=${latitude}&benchmark=2020&vintage=2020&format=json`
+      `https://geocoding.census.gov/geocoder/geographies/coordinates?x=${longitude}&y=${latitude}&benchmark=2020&vintage=2020&format=json`,
+      {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        signal: AbortSignal.timeout(5000) // 5 second timeout
+      }
     );
+    
+    if (!censusResponse.ok) {
+      throw new Error(`Census API failed: ${censusResponse.status}`);
+    }
+    
     const censusData = await censusResponse.json();
     
     if (censusData.result?.geographies?.['2020 Census Blocks']?.[0]) {
@@ -47,8 +59,20 @@ async function getReverseGeocodedLocationName(
         console.log('📮 Looking up city from zip code:', zipCode);
         try {
           const zipResponse = await fetch(
-            `https://api.zippopotam.us/us/${zipCode}`
+            `https://api.zippopotam.us/us/${zipCode}`,
+            {
+              method: 'GET',
+              headers: {
+                'Accept': 'application/json',
+              },
+              signal: AbortSignal.timeout(3000) // 3 second timeout
+            }
           );
+          
+          if (!zipResponse.ok) {
+            throw new Error(`Zip API failed: ${zipResponse.status}`);
+          }
+          
           const zipData = await zipResponse.json();
           
           if (zipData.places && zipData.places.length > 0) {
@@ -68,8 +92,20 @@ async function getReverseGeocodedLocationName(
       console.log('🌍 Trying BigDataCloud reverse geocoding...');
       try {
         const response = await fetch(
-          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
+          {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+            },
+            signal: AbortSignal.timeout(5000) // 5 second timeout
+          }
         );
+        
+        if (!response.ok) {
+          throw new Error(`BigDataCloud API failed: ${response.status}`);
+        }
+        
         const data = await response.json();
       
         // Prioritize real city names over administrative divisions
@@ -172,13 +208,16 @@ async function getReverseGeocodedLocationName(
       }
     }
     
-    // Always call the name update callback
-    console.debug('📍 Final location name:', locationName);
-    onLocationNameUpdate(locationName || "Your Location");
+    // Always call the name update callback with final fallback
+    const finalLocationName = locationName || `Location (${latitude.toFixed(3)}, ${longitude.toFixed(3)})`;
+    console.debug('📍 Final location name:', finalLocationName);
+    onLocationNameUpdate(finalLocationName);
     
   } catch (geocodeError) {
     console.log('❌ All reverse geocoding failed:', geocodeError);
-    onLocationNameUpdate("Your Location");
+    // Provide coordinate-based fallback when all APIs fail
+    const coordinateFallback = `Location (${latitude.toFixed(3)}, ${longitude.toFixed(3)})`;
+    onLocationNameUpdate(coordinateFallback);
   }
 }
 

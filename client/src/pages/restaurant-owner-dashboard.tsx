@@ -4,9 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "wouter";
 import { 
   Store, Plus, TrendingUp, Users, DollarSign, 
@@ -15,11 +20,13 @@ import {
   Download, Calendar as CalendarIcon, RefreshCw,
   Truck, Navigation, Radio, Power, PowerOff,
   Wifi, WifiOff, Activity, AlertCircle, CheckCircle,
-  Play, Square, Loader2, Zap, Smartphone, Satellite
+  Play, Square, Loader2, Zap, Smartphone, Satellite,
+  Save, RotateCcw
 } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
 import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
+import { z } from "zod";
 import type { Deal, Restaurant } from "@shared/schema";
 
 interface DashboardStats {
@@ -29,6 +36,19 @@ interface DashboardStats {
   totalClaims: number;
   conversionRate: number;
   averageRating: number;
+}
+
+interface FavoritesAnalytics {
+  totalFavorites: number;
+  newFavorites: number;
+  favoritesGrowth: number;
+}
+
+interface RecommendationsAnalytics {
+  totalRecommendations: number;
+  clickThroughRate: number;
+  impressions: number;
+  clicks: number;
 }
 
 export default function RestaurantOwnerDashboard() {
@@ -51,6 +71,10 @@ export default function RestaurantOwnerDashboard() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected');
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  
+  // Location update state
+  const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
+  const [locationUpdateError, setLocationUpdateError] = useState<string | null>(null);
 
   // WebSocket integration for real-time updates
   const { 
@@ -78,21 +102,21 @@ export default function RestaurantOwnerDashboard() {
   });
 
   // Fetch subscription status
-  const { data: subscription } = useQuery({
+  const { data: subscription } = useQuery<{status: string, hasAccess: boolean}>({
     queryKey: ['/api/subscription/status'],
     enabled: !!user,
   });
 
   // Fetch favorites analytics for paid users
-  const { data: favoritesAnalytics, isLoading: loadingFavorites } = useQuery({
+  const { data: favoritesAnalytics, isLoading: loadingFavorites } = useQuery<FavoritesAnalytics>({
     queryKey: [`/api/restaurants/${selectedRestaurant}/analytics/favorites`, analyticsDateRange],
-    enabled: !!selectedRestaurant && !!subscription?.hasAccess,
+    enabled: !!selectedRestaurant && (subscription?.hasAccess ?? false),
   });
 
   // Fetch recommendations analytics for paid users
-  const { data: recommendationsAnalytics, isLoading: loadingRecommendations } = useQuery({
+  const { data: recommendationsAnalytics, isLoading: loadingRecommendations } = useQuery<RecommendationsAnalytics>({
     queryKey: [`/api/restaurants/${selectedRestaurant}/analytics/recommendations`, analyticsDateRange],
-    enabled: !!selectedRestaurant && !!subscription?.hasAccess,
+    enabled: !!selectedRestaurant && (subscription?.hasAccess ?? false),
   });
 
   // Fetch deals for selected restaurant
@@ -288,6 +312,69 @@ export default function RestaurantOwnerDashboard() {
 
   // Get current restaurant data
   const currentRestaurant = restaurants.find(r => r.id === selectedRestaurant);
+  
+  // Operating hours form schema
+  const operatingHoursSchema = z.object({
+    mon: z.array(z.object({
+      open: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format"),
+      close: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format"),
+    })).optional(),
+    tue: z.array(z.object({
+      open: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format"),
+      close: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format"),
+    })).optional(),
+    wed: z.array(z.object({
+      open: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format"),
+      close: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format"),
+    })).optional(),
+    thu: z.array(z.object({
+      open: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format"),
+      close: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format"),
+    })).optional(),
+    fri: z.array(z.object({
+      open: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format"),
+      close: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format"),
+    })).optional(),
+    sat: z.array(z.object({
+      open: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format"),
+      close: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format"),
+    })).optional(),
+    sun: z.array(z.object({
+      open: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format"),
+      close: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format"),
+    })).optional(),
+  });
+  
+  type OperatingHoursFormData = z.infer<typeof operatingHoursSchema>;
+  
+  // Operating hours form
+  const operatingHoursForm = useForm<OperatingHoursFormData>({
+    resolver: zodResolver(operatingHoursSchema),
+    defaultValues: {
+      mon: (currentRestaurant?.operatingHours as any)?.mon || [],
+      tue: (currentRestaurant?.operatingHours as any)?.tue || [],
+      wed: (currentRestaurant?.operatingHours as any)?.wed || [],
+      thu: (currentRestaurant?.operatingHours as any)?.thu || [],
+      fri: (currentRestaurant?.operatingHours as any)?.fri || [],
+      sat: (currentRestaurant?.operatingHours as any)?.sat || [],
+      sun: (currentRestaurant?.operatingHours as any)?.sun || [],
+    },
+  });
+  
+  // Reset form when restaurant changes
+  useEffect(() => {
+    if (currentRestaurant) {
+      operatingHoursForm.reset({
+        mon: (currentRestaurant.operatingHours as any)?.mon || [],
+        tue: (currentRestaurant.operatingHours as any)?.tue || [],
+        wed: (currentRestaurant.operatingHours as any)?.wed || [],
+        thu: (currentRestaurant.operatingHours as any)?.thu || [],
+        fri: (currentRestaurant.operatingHours as any)?.fri || [],
+        sat: (currentRestaurant.operatingHours as any)?.sat || [],
+        sun: (currentRestaurant.operatingHours as any)?.sun || [],
+      });
+    }
+  }, [currentRestaurant, operatingHoursForm]);
 
   // Start broadcasting handler
   const handleStartBroadcasting = () => {
@@ -337,6 +424,66 @@ export default function RestaurantOwnerDashboard() {
   // Stop broadcasting handler
   const handleStopBroadcasting = () => {
     stopFoodTruckSessionMutation.mutate();
+  };
+  
+  // Handle restaurant location update
+  const handleUpdateRestaurantLocation = () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: "GPS Not Available",
+        description: "Your device doesn't support GPS location.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsUpdatingLocation(true);
+    setLocationUpdateError(null);
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const location = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        };
+        
+        updateRestaurantLocationMutation.mutate(location);
+      },
+      (error) => {
+        setLocationUpdateError(error.message);
+        setIsUpdatingLocation(false);
+        toast({
+          title: "Location Error",
+          description: "Unable to get your current location. Please check your GPS settings.",
+          variant: "destructive"
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
+    );
+  };
+  
+  // Handle operating hours form submission
+  const handleOperatingHoursSubmit = (data: OperatingHoursFormData) => {
+    updateOperatingHoursMutation.mutate(data);
+  };
+  
+  // Helper function to add time slot
+  const addTimeSlot = (day: keyof OperatingHoursFormData) => {
+    const currentSlots = operatingHoursForm.getValues(day) || [];
+    if (currentSlots.length < 3) {
+      operatingHoursForm.setValue(day, [...currentSlots, { open: "09:00", close: "17:00" }]);
+    }
+  };
+  
+  // Helper function to remove time slot
+  const removeTimeSlot = (day: keyof OperatingHoursFormData, index: number) => {
+    const currentSlots = operatingHoursForm.getValues(day) || [];
+    const newSlots = currentSlots.filter((_, i) => i !== index);
+    operatingHoursForm.setValue(day, newSlots);
   };
 
   // Toggle deal status
@@ -427,6 +574,54 @@ export default function RestaurantOwnerDashboard() {
       toast({
         title: "Restaurant Updated",
         description: "Food truck settings have been saved.",
+      });
+    }
+  });
+  
+  // Restaurant location update mutation (different from food truck location)
+  const updateRestaurantLocationMutation = useMutation({
+    mutationFn: async (location: { latitude: number; longitude: number }) => {
+      return await apiRequest("PATCH", `/api/restaurants/${selectedRestaurant}/location`, location);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurants/my-restaurants'] });
+      setLocationUpdateError(null);
+      setIsUpdatingLocation(false);
+      toast({
+        title: "Location Updated",
+        description: "Your restaurant location has been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      setLocationUpdateError(error.message || "Failed to update location");
+      setIsUpdatingLocation(false);
+      toast({
+        title: "Error Updating Location",
+        description: error.message || "Failed to update restaurant location.",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Operating hours update mutation
+  const updateOperatingHoursMutation = useMutation({
+    mutationFn: async (operatingHours: OperatingHoursFormData) => {
+      return await apiRequest("PATCH", `/api/restaurants/${selectedRestaurant}/operating-hours`, {
+        operatingHours
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurants/my-restaurants'] });
+      toast({
+        title: "Operating Hours Updated",
+        description: "Your restaurant operating hours have been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error Updating Operating Hours",
+        description: error.message || "Failed to update operating hours.",
+        variant: "destructive"
       });
     }
   });
@@ -1349,6 +1544,208 @@ export default function RestaurantOwnerDashboard() {
                   </div>
                 </div>
               )}
+
+              {/* Restaurant Location Update */}
+              <Separator />
+              <div className="space-y-4">
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 rounded-lg bg-blue-100">
+                        <MapPin className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium">Update Restaurant Location</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Update your restaurant's permanent address location using GPS
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={handleUpdateRestaurantLocation}
+                      disabled={isUpdatingLocation || updateRestaurantLocationMutation.isPending}
+                      variant="outline"
+                      data-testid="button-update-location"
+                    >
+                      {isUpdatingLocation || updateRestaurantLocationMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                      )}
+                      Update Location
+                    </Button>
+                  </div>
+
+                  {/* Current Restaurant Location */}
+                  {currentRestaurant?.latitude && currentRestaurant?.longitude && (
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Current Latitude:</span>
+                        <p className="font-mono" data-testid="text-restaurant-lat">
+                          {parseFloat(currentRestaurant.latitude).toFixed(6)}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Current Longitude:</span>
+                        <p className="font-mono" data-testid="text-restaurant-lng">
+                          {parseFloat(currentRestaurant.longitude).toFixed(6)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Location Update Error */}
+                  {locationUpdateError && (
+                    <div className="mt-3 p-3 border border-red-200 bg-red-50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-red-500" />
+                        <span className="text-sm font-medium text-red-800">Update Error</span>
+                      </div>
+                      <p className="text-sm text-red-700 mt-1" data-testid="text-location-update-error">
+                        {locationUpdateError}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Operating Hours Management */}
+              <Separator />
+              <div className="space-y-4">
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 rounded-lg bg-green-100">
+                        <Clock className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium">Operating Hours</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Set your restaurant's opening and closing hours for each day
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Form {...operatingHoursForm}>
+                    <form onSubmit={operatingHoursForm.handleSubmit(handleOperatingHoursSubmit)} className="space-y-4">
+                      {['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((day) => {
+                        const dayName = {
+                          mon: 'Monday',
+                          tue: 'Tuesday', 
+                          wed: 'Wednesday',
+                          thu: 'Thursday',
+                          fri: 'Friday',
+                          sat: 'Saturday',
+                          sun: 'Sunday'
+                        }[day];
+                        
+                        const timeSlots = operatingHoursForm.watch(day as keyof OperatingHoursFormData) || [];
+                        
+                        return (
+                          <div key={day} className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <FormLabel className="text-sm font-medium">{dayName}</FormLabel>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => addTimeSlot(day as keyof OperatingHoursFormData)}
+                                disabled={timeSlots.length >= 3}
+                                data-testid={`button-add-${day}-hours`}
+                              >
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add Hours
+                              </Button>
+                            </div>
+                            
+                            {timeSlots.length === 0 ? (
+                              <p className="text-sm text-muted-foreground pl-2" data-testid={`text-${day}-closed`}>
+                                Closed
+                              </p>
+                            ) : (
+                              <div className="space-y-2">
+                                {timeSlots.map((slot, index) => (
+                                  <div key={index} className="flex items-center gap-2">
+                                    <FormField
+                                      control={operatingHoursForm.control}
+                                      name={`${day}.${index}.open` as any}
+                                      render={({ field }) => (
+                                        <FormItem className="flex-1">
+                                          <FormControl>
+                                            <Input
+                                              {...field}
+                                              type="time"
+                                              placeholder="09:00"
+                                              data-testid={`input-${day}-${index}-open`}
+                                            />
+                                          </FormControl>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                    <span className="text-sm text-muted-foreground">to</span>
+                                    <FormField
+                                      control={operatingHoursForm.control}
+                                      name={`${day}.${index}.close` as any}
+                                      render={({ field }) => (
+                                        <FormItem className="flex-1">
+                                          <FormControl>
+                                            <Input
+                                              {...field}
+                                              type="time"
+                                              placeholder="17:00"
+                                              data-testid={`input-${day}-${index}-close`}
+                                            />
+                                          </FormControl>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => removeTimeSlot(day as keyof OperatingHoursFormData, index)}
+                                      data-testid={`button-remove-${day}-${index}-hours`}
+                                    >
+                                      <RotateCcw className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      
+                      <div className="flex items-center gap-3 pt-4">
+                        <Button
+                          type="submit"
+                          disabled={updateOperatingHoursMutation.isPending}
+                          data-testid="button-save-operating-hours"
+                        >
+                          {updateOperatingHoursMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4 mr-2" />
+                          )}
+                          Save Operating Hours
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => operatingHoursForm.reset()}
+                          data-testid="button-reset-operating-hours"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Reset
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

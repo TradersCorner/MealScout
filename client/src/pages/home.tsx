@@ -44,9 +44,9 @@ interface FoodTruck {
 export default function Home() {
   const { user } = useAuth();
   const [location, setLocation] = useState<{lat: number; lng: number} | null>(null);
-  const [locationName, setLocationName] = useState("Getting location...");
+  const [locationName, setLocationName] = useState("Your Location");
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showLocationInput, setShowLocationInput] = useState(false);
   const [manualLocation, setManualLocation] = useState('');
   const [searchQuery, setSearchQuery] = useState("");

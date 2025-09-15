@@ -67,7 +67,7 @@ export default function LocationButton({
     };
   }, []);
 
-  const isLoading = externalLoading || internalLoading;
+  const isLoading = internalLoading; // Only use internal loading, not external
 
   const detectPlatform = () => {
     const userAgent = navigator.userAgent.toLowerCase();
@@ -365,6 +365,9 @@ export default function LocationButton({
             }, 1500);
           }
           
+          // Clear flight guard on permission denied
+          inFlightRef.current = false;
+          abortControllerRef.current = null;
           return;
         }
         
@@ -389,6 +392,10 @@ export default function LocationButton({
             }, 2000);
             
             setInternalLoading(false);
+            
+            // Clear flight guard on IP fallback success
+            inFlightRef.current = false;
+            abortControllerRef.current = null;
             return;
           }
           
@@ -441,6 +448,10 @@ export default function LocationButton({
               setStatus("idle");
             }
           }, 3000);
+          
+          // Clear flight guard on final failure
+          inFlightRef.current = false;
+          abortControllerRef.current = null;
           return;
         }
         

@@ -256,7 +256,8 @@ export async function setupUnifiedAuth(app: Express) {
       }),
       (req, res) => {
         console.log('✅ Facebook OAuth callback success:', { userId: (req.user as any)?.id });
-        res.redirect('/');
+        // Add cache-busting parameter to ensure fresh page load
+        res.redirect('/?auth=success&t=' + Date.now());
       }
     );
     console.log("✅ Facebook OAuth strategy configured successfully");

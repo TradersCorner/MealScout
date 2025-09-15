@@ -72,14 +72,17 @@ export default function Landing() {
   }, []);
 
   const handleFacebookLogin = () => {
+    console.log('🔵 Facebook login initiated');
     // In Facebook browser, use different approach for better compatibility
     if (isFacebookBrowser) {
-      console.log('🔵 Facebook Browser login - using optimized flow');
+      console.log('🔵 Facebook Browser detected - using optimized flow');
       // Add small delay to ensure proper handling in Facebook browser
       setTimeout(() => {
+        console.log('🔵 Redirecting to Facebook OAuth in Facebook browser');
         window.location.href = '/api/auth/facebook';
       }, 100);
     } else {
+      console.log('🔵 External browser - using standard OAuth flow');
       window.location.href = '/api/auth/facebook';
     }
   };

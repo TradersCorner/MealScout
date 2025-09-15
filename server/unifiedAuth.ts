@@ -73,16 +73,40 @@ export async function setupUnifiedAuth(app: Express) {
     },
     async (accessToken: string, refreshToken: string, profile: any, done: any) => {
       try {
+        console.log('🔍 Google customer profile data received:', {
+          id: profile.id,
+          displayName: profile.displayName,
+          emails: profile.emails,
+          name: profile.name,
+          photos: profile.photos,
+          _json: profile._json ? {
+            given_name: profile._json.given_name,
+            family_name: profile._json.family_name,
+            email: profile._json.email,
+            picture: profile._json.picture
+          } : null
+        });
+
         const userData: GoogleUserData = {
           googleId: profile.id,
-          email: profile.emails?.[0]?.value,
-          firstName: profile.name?.givenName || null,
-          lastName: profile.name?.familyName || null,
-          profileImageUrl: profile.photos?.[0]?.value || null,
+          email: profile.emails?.[0]?.value || profile._json?.email || null,
+          firstName: profile.name?.givenName || profile._json?.given_name || profile.displayName?.split(' ')[0] || 'Google',
+          lastName: profile.name?.familyName || profile._json?.family_name || profile.displayName?.split(' ').slice(1).join(' ') || 'User',
+          profileImageUrl: profile.photos?.[0]?.value || profile._json?.picture || null,
           googleAccessToken: accessToken,
         };
 
+        console.log('🔍 Processed Google customer user data:', {
+          googleId: userData.googleId,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          hasProfileImage: !!userData.profileImageUrl
+        });
+
         const user = await storage.upsertUserByAuth('google', userData, 'customer');
+        console.log('✅ Google customer user created/updated successfully:', { userId: user.id, email: user.email });
+        
         // Send welcome email asynchronously (don't block auth flow)
         emailService.sendWelcomeEmail(user).catch(err => 
           console.error('Failed to send customer welcome email:', err)
@@ -95,6 +119,8 @@ export async function setupUnifiedAuth(app: Express) {
         );
         return done(null, user);
       } catch (error) {
+        console.error('❌ Google customer authentication error:', error);
+        console.error('❌ Profile data that caused error:', profile);
         return done(error, null);
       }
     }));
@@ -110,16 +136,40 @@ export async function setupUnifiedAuth(app: Express) {
     },
     async (accessToken: string, refreshToken: string, profile: any, done: any) => {
       try {
+        console.log('🔍 Google restaurant profile data received:', {
+          id: profile.id,
+          displayName: profile.displayName,
+          emails: profile.emails,
+          name: profile.name,
+          photos: profile.photos,
+          _json: profile._json ? {
+            given_name: profile._json.given_name,
+            family_name: profile._json.family_name,
+            email: profile._json.email,
+            picture: profile._json.picture
+          } : null
+        });
+
         const userData: GoogleUserData = {
           googleId: profile.id,
-          email: profile.emails?.[0]?.value,
-          firstName: profile.name?.givenName || null,
-          lastName: profile.name?.familyName || null,
-          profileImageUrl: profile.photos?.[0]?.value || null,
+          email: profile.emails?.[0]?.value || profile._json?.email || null,
+          firstName: profile.name?.givenName || profile._json?.given_name || profile.displayName?.split(' ')[0] || 'Google',
+          lastName: profile.name?.familyName || profile._json?.family_name || profile.displayName?.split(' ').slice(1).join(' ') || 'User',
+          profileImageUrl: profile.photos?.[0]?.value || profile._json?.picture || null,
           googleAccessToken: accessToken,
         };
 
+        console.log('🔍 Processed Google restaurant user data:', {
+          googleId: userData.googleId,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          hasProfileImage: !!userData.profileImageUrl
+        });
+
         const user = await storage.upsertUserByAuth('google', userData, 'restaurant_owner');
+        console.log('✅ Google restaurant user created/updated successfully:', { userId: user.id, email: user.email });
+        
         // Send welcome email asynchronously (don't block auth flow)
         emailService.sendWelcomeEmail(user).catch(err => 
           console.error('Failed to send restaurant owner welcome email:', err)
@@ -132,6 +182,8 @@ export async function setupUnifiedAuth(app: Express) {
         );
         return done(null, user);
       } catch (error) {
+        console.error('❌ Google restaurant authentication error:', error);
+        console.error('❌ Profile data that caused error:', profile);
         return done(error, null);
       }
     }));

@@ -39,14 +39,20 @@ if (process.env.NODE_ENV === "production") {
   }));
 }
 
-// Minimal CSP for development
+// Minimal CSP for development - allow external geocoding APIs
 app.use((req, res, next) => {
   if (req.path.startsWith('/api/')) {
     return next();
   }
   res.setHeader(
     'Content-Security-Policy', 
-    "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:"
+    "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: https:; " +
+    "connect-src 'self' https: wss: ws: " +
+    "https://geocoding.census.gov " +
+    "https://api.zippopotam.us " +
+    "https://api.bigdatacloud.net " +
+    "https://nominatim.openstreetmap.org " +
+    "https://ipapi.co;"
   );
   next();
 });

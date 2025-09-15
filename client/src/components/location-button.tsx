@@ -14,211 +14,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import type { UserAddress } from "@shared/schema";
 
-// Extract reverse geocoding logic into a separate function for cleaner code structure
+// Simplified location naming - use coordinates as display name
 async function getReverseGeocodedLocationName(
   latitude: number, 
   longitude: number, 
   onLocationNameUpdate: (name: string) => void
 ): Promise<void> {
-  let locationName = "Your Location";
-  
-  try {
-    // Primary: US Census API (free, unlimited, very accurate for US)
-    console.log('🏛️ Trying US Census reverse geocoding...');
-    const censusResponse = await fetch(
-      `https://geocoding.census.gov/geocoder/geographies/coordinates?x=${longitude}&y=${latitude}&benchmark=2020&vintage=2020&format=json`,
-      {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-        signal: AbortSignal.timeout(5000) // 5 second timeout
-      }
-    );
-    
-    if (!censusResponse.ok) {
-      throw new Error(`Census API failed: ${censusResponse.status}`);
-    }
-    
-    const censusData = await censusResponse.json();
-    
-    if (censusData.result?.geographies?.['2020 Census Blocks']?.[0]) {
-      const censusResult = censusData.result.geographies['2020 Census Blocks'][0];
-      const zipCode = censusResult.ZCTA5CE20;
-      const stateName = censusResult.STATE;
-      
-      console.log('🏛️ US Census result:', { 
-        zip: zipCode, 
-        state: stateName,
-        county: censusResult.COUNTY,
-        block: censusResult.BLOCK
-      });
-      
-      if (zipCode) {
-        // Now get city name from zip code using another free API
-        console.log('📮 Looking up city from zip code:', zipCode);
-        try {
-          const zipResponse = await fetch(
-            `https://api.zippopotam.us/us/${zipCode}`,
-            {
-              method: 'GET',
-              headers: {
-                'Accept': 'application/json',
-              },
-              signal: AbortSignal.timeout(3000) // 3 second timeout
-            }
-          );
-          
-          if (!zipResponse.ok) {
-            throw new Error(`Zip API failed: ${zipResponse.status}`);
-          }
-          
-          const zipData = await zipResponse.json();
-          
-          if (zipData.places && zipData.places.length > 0) {
-            const cityName = zipData.places[0]['place name'];
-            const state = zipData.places[0]['state abbreviation'];
-            locationName = `${cityName}, ${state}`;
-            console.log('✅ Found city from zip code:', locationName);
-          }
-        } catch (zipError) {
-          console.log('❌ Zip code lookup failed:', zipError);
-        }
-      }
-    }
-    
-    // Fallback: Free BigDataCloud API if US Census fails
-    if (locationName === "Your Location") {
-      console.log('🌍 Trying BigDataCloud reverse geocoding...');
-      try {
-        const response = await fetch(
-          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
-          {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json',
-            },
-            signal: AbortSignal.timeout(5000) // 5 second timeout
-          }
-        );
-        
-        if (!response.ok) {
-          throw new Error(`BigDataCloud API failed: ${response.status}`);
-        }
-        
-        const data = await response.json();
-      
-        // Prioritize real city names over administrative divisions
-        locationName = data.city || data.locality || "Your Location";
-                         
-        console.log('🏙️ BigDataCloud result:', { 
-          city: data.city, 
-          locality: data.locality, 
-          final: locationName 
-        });
-      } catch (error) {
-        console.log('❌ BigDataCloud failed:', error);
-      }
-    }
-    
-    // OpenStreetMap fallback for difficult cases
-    if (locationName === "Your Location" || 
-        locationName.toLowerCase().includes('district') || 
-        locationName.toLowerCase().includes('subdivision') ||
-        locationName.toLowerCase().includes('parish')) {
-      
-      console.log('🌍 Trying OpenStreetMap reverse geocoding...');
-      
-      // Try multiple zoom levels to get better city results
-      let bestCityName = null;
-      
-      for (const zoom of [14, 12, 10, 8]) {
-        try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=${zoom}&addressdetails=1`
-          );
-          const data = await response.json();
-          
-          if (data.address) {
-            console.log(`🏙️ OpenStreetMap zoom ${zoom} result:`, { 
-              city: data.address.city, 
-              town: data.address.town,
-              village: data.address.village,
-              hamlet: data.address.hamlet
-            });
-            
-            // Try to get actual city/town names first
-            const cityCandidate = data.address.city || 
-                                 data.address.town || 
-                                 data.address.village || 
-                                 data.address.hamlet;
-            
-            if (cityCandidate && 
-                !cityCandidate.toLowerCase().includes('district') &&
-                !cityCandidate.toLowerCase().includes('parish') &&
-                !cityCandidate.toLowerCase().includes('subdivision')) {
-              bestCityName = cityCandidate;
-              console.log(`✅ Found good city name at zoom ${zoom}:`, bestCityName);
-              break;
-            }
-          }
-        } catch (error) {
-          console.log(`❌ OpenStreetMap zoom ${zoom} failed:`, error);
-        }
-      }
-      
-      if (bestCityName) {
-        locationName = bestCityName;
-      }
-    }
-    
-    // Final check: if we still have a bad location name, try one more precise search
-    if (locationName === "District 6" || locationName === "Your Location" || 
-        locationName.toLowerCase().includes('district') ||
-        locationName.toLowerCase().includes('parish')) {
-      
-      console.log('🎯 Final attempt: searching for exact location name...');
-      try {
-        const exactResponse = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${latitude},${longitude}&limit=1&addressdetails=1&extratags=1`
-        );
-        const exactData = await exactResponse.json();
-        
-        if (exactData.length > 0) {
-          const place = exactData[0];
-          const parts = place.display_name?.split(',') || [];
-          
-          // Look for city name in the display name parts
-          for (const part of parts) {
-            const trimmed = part.trim();
-            if (trimmed && 
-                !trimmed.toLowerCase().includes('parish') &&
-                !trimmed.toLowerCase().includes('district') &&
-                !trimmed.toLowerCase().includes('louisiana') &&
-                !trimmed.toLowerCase().includes('united states') &&
-                trimmed.length > 2) {
-              locationName = trimmed;
-              console.log('✅ Found exact location:', trimmed);
-              break;
-            }
-          }
-        }
-      } catch (error) {
-        console.log('❌ Exact location search failed:', error);
-      }
-    }
-    
-    // Always call the name update callback with final fallback
-    const finalLocationName = locationName || `Location (${latitude.toFixed(3)}, ${longitude.toFixed(3)})`;
-    console.debug('📍 Final location name:', finalLocationName);
-    onLocationNameUpdate(finalLocationName);
-    
-  } catch (geocodeError) {
-    console.log('❌ All reverse geocoding failed:', geocodeError);
-    // Provide coordinate-based fallback when all APIs fail
-    const coordinateFallback = `Location (${latitude.toFixed(3)}, ${longitude.toFixed(3)})`;
-    onLocationNameUpdate(coordinateFallback);
-  }
+  // Use coordinate-based name - reliable and always works
+  const coordinateBasedName = `Location (${latitude.toFixed(3)}, ${longitude.toFixed(3)})`;
+  onLocationNameUpdate(coordinateBasedName);
+  console.log('📍 Using reliable coordinate-based location:', coordinateBasedName);
 }
 
 interface LocationButtonProps {
@@ -274,7 +79,7 @@ export default function LocationButton({
     };
   }, []);
 
-  const isLoading = internalLoading; // Only use internal loading, not external
+  const isLoading = internalLoading;
 
   const detectPlatform = () => {
     const userAgent = navigator.userAgent.toLowerCase();
@@ -501,7 +306,7 @@ export default function LocationButton({
           // Update location
           onLocationUpdate({ lat: latitude, lng: longitude });
           
-          // Get location name via reverse geocoding with zip code approach for maximum accuracy
+          // Get location name via simple coordinate display
           await getReverseGeocodedLocationName(latitude, longitude, onLocationNameUpdate);
 
           setStatus("success");
@@ -546,6 +351,7 @@ export default function LocationButton({
             : "Location access denied. Please enter your location manually below.";
           
           onLocationError(errorMessage);
+          onLocationNameUpdate("Your Location");
           
           // Show manual input option after a short delay
           if (onShowManualInput) {
@@ -594,261 +400,185 @@ export default function LocationButton({
             setStatus("error");
           }
           
-          let errorMessage = "Unable to get your location. Please try again.";
+          // Provide helpful error message
+          const finalErrorMessage = userAddresses.length > 0 
+            ? "Unable to detect your location. You can use one of your saved addresses or enter your location manually."
+            : "Unable to detect your location. Please enter your location manually below.";
           
-          // Enhanced error messages with helpful alternatives
-          switch (normalizedError.code) {
-            case 2: // POSITION_UNAVAILABLE
-              errorMessage = platform.isWindows || platform.isAndroid 
-                ? userAddresses.length > 0
-                  ? "Location unavailable. You can use one of your saved addresses instead."
-                  : "Location unavailable. Please check your device's location settings or enter your location manually."
-                : userAddresses.length > 0
-                  ? "Location information is unavailable. You can select from your saved addresses."
-                  : "Location information is unavailable. Please enter your city manually.";
-              break;
-            case 3: // TIMEOUT
-              errorMessage = platform.isWindows || platform.isAndroid
-                ? "Location request timed out. Try using a saved address or enter your location manually."
-                : "Location request timed out. You can enter your location manually below.";
-              break;
-            default:
-              errorMessage = platform.isWindows || platform.isAndroid
-                ? userAddresses.length > 0
-                  ? "GPS not working. Use a saved address or enter your location manually."
-                  : "GPS not working. Please enter your location manually."
-                : userAddresses.length > 0
-                  ? "Unable to get your location. Select from your saved addresses or enter manually."
-                  : "Unable to get your location. Please enter your city manually.";
-          }
+          onLocationError(finalErrorMessage);
+          onLocationNameUpdate("Your Location");
           
-          // Show manual input for location errors  
+          // Show manual input option after a short delay
           if (onShowManualInput) {
             setTimeout(() => {
               onShowManualInput();
-            }, 2000);
+            }, 1500);
           }
-          
-          onLocationError(errorMessage);
-          
-          // Reset error status after 3 seconds
-          timeoutRef.current = setTimeout(() => {
-            if (mountedRef.current && statusRef.current === "error") {
-              setStatus("idle");
-            }
-          }, 3000);
           
           // Clear flight guard on final failure
           inFlightRef.current = false;
           abortControllerRef.current = null;
           return;
         }
-        
-        // Small delay before next attempt
-        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
-    
-    // If we get here, all attempts failed
-    inFlightRef.current = false;
-    if (mountedRef.current) {
-      setInternalLoading(false);
-    }
-    abortControllerRef.current = null;
   };
 
-  const getButtonContent = () => {
-    switch (status) {
-      case "loading":
-        return (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="ml-2">Detecting...</span>
-          </>
-        );
-      case "success":
-        return (
-          <>
-            <CheckCircle className="w-4 h-4" />
-            <span className="ml-2">Updated!</span>
-          </>
-        );
-      case "error":
-        return (
-          <>
-            <XCircle className="w-4 h-4" />
-            <span className="ml-2">Try Again</span>
-          </>
-        );
-      default:
-        return (
-          <>
-            <RefreshCw className="w-4 h-4" />
-            <span className="ml-2">Update Location</span>
-          </>
-        );
-    }
+  const handleRetry = () => {
+    setStatus("idle");
+    handleLocationDetection();
   };
 
-  const getButtonClasses = () => {
-    const baseClasses = "font-medium transition-all duration-200 flex items-center justify-center";
-    
-    const sizeClasses = {
-      sm: "px-3 py-2 text-sm h-8",
-      default: "px-4 py-2 text-sm h-10",
-      lg: "px-6 py-3 text-base h-12"
-    };
+  const buttonSize = size === "sm" ? "h-8 px-3 text-xs" : size === "lg" ? "h-12 px-6 text-base" : "h-10 px-4 text-sm";
+  const iconSize = size === "sm" ? 16 : size === "lg" ? 24 : 20;
 
-    const statusClasses = {
-      idle: "bg-red-600 hover:bg-red-700 text-white shadow-md hover:shadow-lg transform hover:scale-105",
-      loading: "bg-red-500 text-white shadow-md cursor-not-allowed",
-      success: "bg-green-600 text-white shadow-md",
-      error: "bg-red-700 hover:bg-red-800 text-white shadow-md"
-    };
-
-    if (variant === "minimal") {
-      return cn(
-        baseClasses,
-        sizeClasses[size],
-        "bg-transparent border-2 border-red-600 text-red-600 hover:bg-red-50",
-        status === "loading" && "border-red-500 text-red-500 bg-red-50 cursor-not-allowed",
-        status === "success" && "border-green-600 text-green-600 bg-green-50",
-        status === "error" && "border-red-700 text-red-700 bg-red-50",
-        className
-      );
-    }
-
-    return cn(
-      baseClasses,
-      sizeClasses[size],
-      statusClasses[status],
-      "rounded-lg border-0 focus:ring-2 focus:ring-red-500 focus:ring-offset-2",
-      className
-    );
-  };
-
-  const handleSavedAddressSelect = async (address: UserAddress) => {
-    if (!address.latitude || !address.longitude) {
-      // If coordinates aren't saved, try geocoding the address
-      try {
-        const fullAddress = `${address.address}, ${address.city}, ${address.state} ${address.postalCode}`.trim();
-        const response = await fetch(
-          `https://api.bigdatacloud.net/data/city?name=${encodeURIComponent(fullAddress)}`
-        );
-        const data = await response.json();
-        
-        if (data.latitude && data.longitude) {
-          onLocationUpdate({ lat: data.latitude, lng: data.longitude });
-          onLocationNameUpdate(`${address.city}, ${address.state}`);
-          setStatus("success");
-          setLastUpdateTime(new Date());
-        } else {
-          onLocationError(`Could not locate ${address.label}. Please try updating the address.`);
-        }
-      } catch (error) {
-        onLocationError(`Error locating ${address.label}. Please try again.`);
-      }
-    } else {
-      // Use saved coordinates
-      onLocationUpdate({ 
-        lat: parseFloat(address.latitude), 
-        lng: parseFloat(address.longitude) 
-      });
-      onLocationNameUpdate(`${address.city}, ${address.state}`);
-      setStatus("success");
-      setLastUpdateTime(new Date());
-    }
-  };
-
-  const LocationButton = (
-    <Button
-      onClick={handleLocationDetection}
-      disabled={isLoading}
-      className={getButtonClasses()}
-      data-testid="button-update-location"
-    >
-      {getButtonContent()}
-    </Button>
-  );
-
-  // If user has saved addresses, show dropdown with options
-  if (userAddresses.length > 0) {
+  if (variant === "minimal") {
     return (
-      <div className="relative">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <div className="flex items-center space-x-2">
-              {LocationButton}
-              <Button
-                variant="outline"
-                size={size}
-                className="px-2"
-                data-testid="button-location-options"
-              >
-                <MapPinIcon className="w-4 h-4" />
-              </Button>
-            </div>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuLabel>Quick Location Options</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {userAddresses.map((address) => (
-              <DropdownMenuItem
-                key={address.id}
-                onClick={() => handleSavedAddressSelect(address)}
-                className="cursor-pointer"
-                data-testid={`menu-address-${address.id}`}
-              >
-                <Home className="w-4 h-4 mr-2" />
-                <div className="flex-1">
-                  <div className="font-medium">{address.label}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {address.city}, {address.state}
-                  </div>
-                </div>
-                {address.isDefault && (
-                  <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
-                    Default
-                  </span>
-                )}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            {onShowManualInput && (
-              <DropdownMenuItem
-                onClick={onShowManualInput}
-                className="cursor-pointer"
-                data-testid="menu-enter-manually"
-              >
-                <MapPin className="w-4 h-4 mr-2" />
-                Enter location manually
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
-        {lastUpdateTime && status === "idle" && (
-          <div className="absolute -bottom-6 left-0 right-0 text-center">
-            <span className="text-xs text-gray-500" data-testid="text-last-update">
-              Updated {lastUpdateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          </div>
+      <Button
+        data-testid="button-location-minimal"
+        variant="ghost"
+        size="sm"
+        onClick={handleLocationDetection}
+        disabled={isLoading}
+        className={cn("p-2", className)}
+      >
+        {isLoading ? (
+          <Loader2 size={iconSize} className="animate-spin" />
+        ) : status === "success" ? (
+          <CheckCircle size={iconSize} className="text-green-600" />
+        ) : status === "error" ? (
+          <XCircle size={iconSize} className="text-red-600" />
+        ) : (
+          <MapPin size={iconSize} />
         )}
-      </div>
+      </Button>
     );
   }
 
-  // Fallback to simple button if no saved addresses
   return (
-    <div className="relative">
-      {LocationButton}
-      
-      {lastUpdateTime && status === "idle" && (
-        <div className="absolute -bottom-6 left-0 right-0 text-center">
-          <span className="text-xs text-gray-500" data-testid="text-last-update">
-            Updated {lastUpdateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
-        </div>
+    <div className="flex items-center gap-2">
+      {userAddresses.length > 0 ? (
+        <DropdownMenu open={showLocationOptions} onOpenChange={setShowLocationOptions}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              data-testid="button-location-options"
+              variant="outline"
+              disabled={isLoading}
+              className={cn(buttonSize, className)}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 size={iconSize} className="animate-spin mr-2" />
+                  Detecting...
+                </>
+              ) : status === "success" ? (
+                <>
+                  <CheckCircle size={iconSize} className="text-green-600 mr-2" />
+                  Location Found
+                </>
+              ) : status === "error" ? (
+                <>
+                  <XCircle size={iconSize} className="text-red-600 mr-2" />
+                  Location Error
+                </>
+              ) : (
+                <>
+                  <MapPin size={iconSize} className="mr-2" />
+                  Use Location
+                </>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuLabel>Choose Location</DropdownMenuLabel>
+            <DropdownMenuItem
+              data-testid="menu-location-gps"
+              onClick={handleLocationDetection}
+              disabled={isLoading}
+              className="cursor-pointer"
+            >
+              <MapPinIcon className="mr-2 h-4 w-4" />
+              {isLoading ? "Detecting..." : "Use Current Location"}
+            </DropdownMenuItem>
+            
+            {userAddresses.length > 0 && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Saved Addresses</DropdownMenuLabel>
+                {userAddresses.map((address) => (
+                  <DropdownMenuItem
+                    key={address.id}
+                    data-testid={`menu-address-${address.id}`}
+                    onClick={() => {
+                      if (address.latitude && address.longitude) {
+                        onLocationUpdate({ 
+                          lat: parseFloat(address.latitude), 
+                          lng: parseFloat(address.longitude) 
+                        });
+                        onLocationNameUpdate(address.label || address.address);
+                        setStatus("success");
+                        setLastUpdateTime(new Date());
+                        setShowLocationOptions(false);
+                        
+                        // Reset success status after 2 seconds
+                        timeoutRef.current = setTimeout(() => {
+                          if (mountedRef.current && statusRef.current === "success") {
+                            setStatus("idle");
+                          }
+                        }, 2000);
+                      }
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Home className="mr-2 h-4 w-4" />
+                    <div className="flex flex-col">
+                      <span className="font-medium">{address.label}</span>
+                      <span className="text-xs text-muted-foreground truncate">
+                        {address.address}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : (
+        <Button
+          data-testid="button-location-detect"
+          variant="outline"
+          onClick={status === "error" ? handleRetry : handleLocationDetection}
+          disabled={isLoading}
+          className={cn(buttonSize, className)}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 size={iconSize} className="animate-spin mr-2" />
+              Detecting...
+            </>
+          ) : status === "success" ? (
+            <>
+              <CheckCircle size={iconSize} className="text-green-600 mr-2" />
+              Location Found
+            </>
+          ) : status === "error" ? (
+            <>
+              <RefreshCw size={iconSize} className="mr-2" />
+              Retry Location
+            </>
+          ) : (
+            <>
+              <MapPin size={iconSize} className="mr-2" />
+              Use My Location
+            </>
+          )}
+        </Button>
+      )}
+
+      {lastUpdateTime && status === "success" && (
+        <span className="text-xs text-muted-foreground">
+          Updated {lastUpdateTime.toLocaleTimeString()}
+        </span>
       )}
     </div>
   );

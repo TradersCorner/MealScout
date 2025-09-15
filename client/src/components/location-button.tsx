@@ -276,7 +276,8 @@ export default function LocationButton({
             // If we didn't get a good city name, try OpenStreetMap with different approaches
             if (locationName === "Your Location" || 
                 locationName.toLowerCase().includes('district') || 
-                locationName.toLowerCase().includes('subdivision')) {
+                locationName.toLowerCase().includes('subdivision') ||
+                locationName.toLowerCase().includes('parish')) {
               
               console.log('🌍 Trying OpenStreetMap reverse geocoding...');
               
@@ -344,6 +345,39 @@ export default function LocationButton({
                   }
                 } catch (error) {
                   console.log('❌ Alternative geocoding failed:', error);
+                }
+                
+                // Final fallback: try another geocoding service
+                if (!bestCityName) {
+                  console.log('🗺️ Trying final geocoding service...');
+                  try {
+                    const finalResponse = await fetch(
+                      `https://geocoding-api.open-meteo.com/v1/search?name=${latitude},${longitude}&count=1&language=en&format=json`
+                    );
+                    const finalData = await finalResponse.json();
+                    
+                    if (finalData.results && finalData.results.length > 0) {
+                      const result = finalData.results[0];
+                      const cityName = result.name;
+                      
+                      if (cityName && !cityName.toLowerCase().includes('parish')) {
+                        locationName = cityName;
+                        console.log('✅ Found city via final service:', cityName);
+                      }
+                    }
+                  } catch (error) {
+                    console.log('❌ Final geocoding service failed:', error);
+                  }
+                }
+                
+                // If still no good name, use IP fallback to get approximate city
+                if (locationName === "District 6" || locationName === "Your Location") {
+                  console.log('🌐 Trying IP-based location as final fallback...');
+                  const ipLocation = await ipGeolocationFallback();
+                  if (ipLocation && ipLocation.city) {
+                    locationName = `${ipLocation.city} (approximate)`;
+                    console.log('✅ Using IP-based city:', ipLocation.city);
+                  }
                 }
               }
             }

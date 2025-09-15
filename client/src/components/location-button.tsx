@@ -382,6 +382,23 @@ export default function LocationButton({
               }
             }
             
+            // Final check: if we still have a bad location name, use IP fallback
+            if (locationName === "District 6" || locationName === "Your Location" || 
+                locationName.toLowerCase().includes('district') ||
+                locationName.toLowerCase().includes('parish')) {
+              
+              console.log('🌐 Using IP fallback for better city name...');
+              try {
+                const ipLocation = await ipGeolocationFallback();
+                if (ipLocation && ipLocation.city) {
+                  locationName = ipLocation.city;
+                  console.log('✅ IP fallback found city:', ipLocation.city);
+                }
+              } catch (error) {
+                console.log('❌ IP fallback failed:', error);
+              }
+            }
+            
             // Always call the name update callback
             console.debug('📍 Final location name:', locationName);
             onLocationNameUpdate(locationName || "Your Location");

@@ -1876,98 +1876,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      // Create a PaymentIntent directly for the subscription amount
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: unitAmount,
-        currency: 'usd',
+      // Create subscription with incomplete payment behavior
+      const subscription = await stripe.subscriptions.create({
         customer: customerId,
-        setup_future_usage: 'off_session',
-        metadata: {
-          subscription_type: interval === 'quarter' ? 'single-deal' : (hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal'),
-          billing_interval: interval,
-          user_id: user.id
-        }
+        items: [{
+          price_data: {
+            currency: 'usd',
+            product: product.id,
+            unit_amount: unitAmount,
+            recurring: {
+              interval: interval === 'quarter' || interval === 'year' ? 'month' : interval as 'month' | 'year',
+              interval_count: getIntervalCount(interval),
+            },
+          },
+        }],
+        payment_behavior: 'default_incomplete',
+        payment_settings: { 
+          save_default_payment_method: 'on_subscription'
+        },
+        expand: ['latest_invoice.payment_intent'],
       });
 
-      // Store the payment intent info temporarily (we'll create the subscription after payment)
-      await storage.updateUserStripeInfo(user.id, customerId, `pending_${paymentIntent.id}`, `pending-${interval}`);
+      // Store the actual subscription ID immediately
+      const dealType = interval === 'quarter' ? 'single-deal' : (hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal');
+      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `${dealType}-${interval}`);
 
-      const clientSecret = paymentIntent.client_secret;
+      // Get client secret from the subscription's invoice
+      const invoice = subscription.latest_invoice;
+      const paymentIntent = typeof invoice === 'object' && invoice ? (invoice as any).payment_intent : null;
+      const clientSecret = paymentIntent?.client_secret;
 
       // Send confirmation email
       try {
         if (user.email) {
-          await emailService.sendPaymentConfirmation(user, unitAmount, interval, paymentIntent.id);
+          await emailService.sendPaymentConfirmation(user, unitAmount, interval, subscription.id);
         }
       } catch (emailError) {
         console.error('Failed to send subscription confirmation email:', emailError);
         // Don't fail the subscription creation if email fails
       }
 
+      if (!clientSecret) {
+        throw new Error('Unable to create payment intent for subscription');
+      }
+
       res.send({
         status: 'requires_payment',
-        paymentIntentId: paymentIntent.id,
+        subscriptionId: subscription.id,
         clientSecret: clientSecret,
         intentType: 'payment',
       });
     } catch (error: any) {
       console.error("Error creating subscription:", error);
       res.status(400).send({ error: { message: error.message } });
-    }
-  });
-
-  // Handle payment completion and create subscription
-  app.post('/api/payments/complete', isAuthenticated, async (req: any, res) => {
-    try {
-      const { paymentIntentId } = req.body;
-      const user = req.user;
-
-      if (!stripe) {
-        return res.status(503).json({ error: { message: "Payment service temporarily unavailable" } });
-      }
-
-      // Retrieve the payment intent to verify it succeeded
-      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-      
-      if (paymentIntent.status !== 'succeeded') {
-        return res.status(400).json({ error: { message: 'Payment not completed' } });
-      }
-
-      // Get metadata from payment intent
-      const metadata = paymentIntent.metadata;
-      const subscriptionType = metadata.subscription_type;
-      const billingInterval = metadata.billing_interval;
-
-      // Create the actual subscription now that payment is complete
-      const subscription = await stripe.subscriptions.create({
-        customer: paymentIntent.customer as string,
-        items: [{
-          price_data: {
-            currency: 'usd',
-            product: (await stripe.products.list({ limit: 1 })).data[0].id,
-            unit_amount: paymentIntent.amount,
-            recurring: {
-              interval: billingInterval === 'quarter' || billingInterval === 'year' ? 'month' : billingInterval as 'month' | 'year',
-              interval_count: billingInterval === 'quarter' ? 3 : billingInterval === 'year' ? 12 : 1,
-            },
-          },
-        }],
-        collection_method: 'charge_automatically',
-        default_payment_method: paymentIntent.payment_method as string,
-      });
-
-      // Update user with actual subscription
-      await storage.updateUserStripeInfo(user.id, paymentIntent.customer as string, subscription.id, `${subscriptionType}-${billingInterval}`);
-
-      res.json({
-        success: true,
-        subscriptionId: subscription.id,
-        status: 'active'
-      });
-
-    } catch (error: any) {
-      console.error("Error completing payment:", error);
-      res.status(400).json({ error: { message: error.message } });
     }
   });
 

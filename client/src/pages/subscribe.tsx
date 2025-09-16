@@ -78,8 +78,8 @@ const PaymentForm = ({ clientSecret, intentType = 'payment', onSuccess }: { clie
         });
         // Extract paymentIntentId from the result
         const paymentIntentId = intentType === 'setup' 
-          ? result.setupIntent?.id 
-          : result.paymentIntent?.id;
+          ? ('setupIntent' in result ? result.setupIntent?.id : undefined)
+          : ('paymentIntent' in result ? result.paymentIntent?.id : undefined);
         if (paymentIntentId) {
           onSuccess(paymentIntentId);
         }
@@ -369,7 +369,7 @@ export default function Subscribe() {
       if (data.status === 'requires_payment' && data.clientSecret) {
         setSubscriptionState({
           status: 'requires_payment',
-          subscriptionId: data.paymentIntentId,
+          subscriptionId: data.subscriptionId,
           clientSecret: data.clientSecret,
           intentType: data.intentType || 'payment'
         });
@@ -401,23 +401,8 @@ export default function Subscribe() {
   };
 
   const handlePaymentSuccess = async (paymentIntentId: string) => {
-    try {
-      // Complete the subscription creation on the backend
-      const response = await apiRequest('POST', '/api/payments/complete', { paymentIntentId });
-      const result = await response.json();
-
-      if (result.success) {
-        setLocation("/deal-creation");
-      } else {
-        throw new Error(result.error?.message || 'Failed to complete subscription');
-      }
-    } catch (error: any) {
-      console.error('Subscription completion error:', error);
-      setSubscriptionState({
-        status: 'error',
-        error: error.message || "Failed to complete subscription setup. Please contact support."
-      });
-    }
+    // Payment successful, redirect to deal creation
+    setLocation("/deal-creation");
   };
 
   const handleRetry = () => {

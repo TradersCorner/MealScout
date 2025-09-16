@@ -1903,8 +1903,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get client secret from the subscription's invoice
       const invoice = subscription.latest_invoice;
-      const paymentIntent = typeof invoice === 'object' && invoice ? (invoice as any).payment_intent : null;
-      const clientSecret = paymentIntent?.client_secret;
+      let clientSecret = null;
+      
+      if (typeof invoice === 'object' && invoice) {
+        const paymentIntent = (invoice as any).payment_intent;
+        if (typeof paymentIntent === 'object' && paymentIntent) {
+          clientSecret = paymentIntent.client_secret;
+        }
+      }
 
       // Send confirmation email
       try {

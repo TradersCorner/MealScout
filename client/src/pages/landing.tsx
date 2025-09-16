@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import DealCard from "@/components/deal-card";
 import mealScoutLogo from "@assets/ChatGPT Image Sep 14, 2025, 09_25_52 AM_1757872111259.png";
+import { getReverseGeocodedLocationName, getStateAbbreviation } from "@/utils/locationUtils";
 import "../facebook-browser.css";
 
 const signupSchema = z.object({
@@ -249,52 +250,12 @@ export default function Landing() {
           
           setLocation({ lat: latitude, lng: longitude });
           
-          // Try multiple geocoding services to find the nearest actual city
-          let cityName = null;
-          
-          try {
-            // First try to find the nearest city using Nominatim (good for finding cities)
-            console.log('🔍 Looking for nearest city...');
-            const nominatimResponse = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14&addressdetails=1`
-            );
-            
-            if (nominatimResponse.ok) {
-              const nominatimData = await nominatimResponse.json();
-              const address = nominatimData.address;
-              
-              // Prioritize actual cities and towns over administrative divisions
-              cityName = address?.city || address?.town || address?.village || address?.hamlet;
-              
-              if (cityName) {
-                // Format with state abbreviation if we have it
-                const state = address?.state;
-                if (state === "Louisiana") {
-                  cityName = `${cityName}, LA`;
-                } else if (state) {
-                  // Get state abbreviation for other states
-                  const stateAbbrev = getStateAbbreviation(state);
-                  cityName = `${cityName}, ${stateAbbrev}`;
-                }
-                console.log('🏙️ Found city from Nominatim:', cityName);
-              }
-            }
-          } catch (error) {
-            console.log('⚠️ Nominatim lookup failed:', error);
-          }
-          
-          // Use coordinate-based fallback if no city name found
-          if (!cityName) {
-            console.log('📍 Using reliable coordinate-based location naming');
-          }
-          
-          // Final fallback - use coordinates if no city found
-          if (!cityName) {
-            cityName = `Location Found (${latitude.toFixed(3)}, ${longitude.toFixed(3)})`;
-            console.log('📍 Using coordinates as fallback:', cityName);
-          }
-          
-          setLocationName(cityName);
+          // Use the same sophisticated reverse geocoding as the home page
+          await getReverseGeocodedLocationName(
+            latitude,
+            longitude,
+            setLocationName
+          );
         },
         (error) => {
           console.error('❌ Geolocation failed:', error);
@@ -350,16 +311,19 @@ export default function Landing() {
       
       if (data && data.length > 0) {
         const result = data[0];
-        setLocation({ lat: parseFloat(result.lat), lng: parseFloat(result.lon) });
+        const newLocation = { lat: parseFloat(result.lat), lng: parseFloat(result.lon) };
+        setLocation(newLocation);
         
-        // Use city name from address details
-        const address = result.address;
-        const cityName = address.city || address.town || address.village || address.county || result.display_name.split(',')[0];
+        // Use the same sophisticated reverse geocoding as the home page
+        await getReverseGeocodedLocationName(
+          newLocation.lat,
+          newLocation.lng,
+          setLocationName
+        );
         
-        setLocationName(cityName);
         setLocationError(null);
         setShowLocationInput(false);
-        console.log('✅ Manual location set:', { city: cityName, coords: [result.lat, result.lon] });
+        console.log('✅ Manual location set:', { coords: [result.lat, result.lon] });
       } else {
         throw new Error('Location not found');
       }
@@ -412,41 +376,12 @@ export default function Landing() {
         
         setLocation({ lat: latitude, lng: longitude });
         
-        // Enhanced reverse geocoding
-        try {
-          let response = await fetch(
-            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-          );
-          
-          if (!response.ok) throw new Error('Primary geocoding failed');
-          
-          const data = await response.json();
-          let cityName = data.city || data.locality || data.principalSubdivision;
-          
-          // Backup geocoding if needed
-          if (!cityName || cityName.length < 3) {
-            response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
-            );
-            
-            if (response.ok) {
-              const backupData = await response.json();
-              const address = backupData.address;
-              cityName = address?.city || address?.town || address?.village || address?.county;
-            }
-          }
-          
-          if (!cityName) {
-            cityName = data.locality || data.principalSubdivision || 'Your Area';
-          }
-          
-          console.log('🏙️ Retry location resolved:', { final: cityName });
-          setLocationName(cityName);
-          
-        } catch (error) {
-          console.error('❌ Retry geocoding failed:', error);
-          setLocationName(`Location Found (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
-        }
+        // Use the same sophisticated reverse geocoding as the home page
+        await getReverseGeocodedLocationName(
+          latitude,
+          longitude,
+          setLocationName
+        );
       },
       (error) => {
         console.error('❌ Location retry failed:', error.message);
@@ -579,12 +514,10 @@ export default function Landing() {
                     {/* Create Account Button */}
                     <button
                       onClick={(e) => {
-                        console.log('🔴 DEBUG: Create Account button clicked');
                         e.stopPropagation();
                         setShowDropdown(false);
                         setAuthMode('signup');
                         setShowAuth(true);
-                        console.log('🔴 DEBUG: showAuth should now be true');
                       }}
                       className="w-full flex items-center space-x-3 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors mb-2"
                       data-testid="button-desktop-create-account"
@@ -598,12 +531,10 @@ export default function Landing() {
                     {/* Login Button */}
                     <button
                       onClick={(e) => {
-                        console.log('🔴 DEBUG: Login button clicked');
                         e.stopPropagation();
                         setShowDropdown(false);
                         setAuthMode('login');
                         setShowAuth(true);
-                        console.log('🔴 DEBUG: showAuth should now be true');
                       }}
                       className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors mb-2"
                       data-testid="button-desktop-login"
@@ -638,7 +569,6 @@ export default function Landing() {
                     {/* Facebook Login */}
                     <button
                       onClick={(e) => {
-                        console.log('🔴 DEBUG: Facebook button clicked');
                         e.stopPropagation();
                         setShowDropdown(false);
                         handleFacebookLogin();

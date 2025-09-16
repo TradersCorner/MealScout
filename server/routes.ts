@@ -1928,10 +1928,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // If no payment intent, try pending setup intent
-      if (!clientSecret && typeof pendingSetupIntent === 'object' && pendingSetupIntent && pendingSetupIntent.client_secret) {
-        console.log('🔍 DEBUG - Using setup intent client secret');
-        clientSecret = pendingSetupIntent.client_secret;
-        intentType = 'setup';
+      if (!clientSecret && typeof pendingSetupIntent === 'object' && pendingSetupIntent) {
+        console.log('🔍 DEBUG - Setup intent details:', {
+          type: typeof pendingSetupIntent,
+          hasClientSecret: pendingSetupIntent.client_secret ? 'YES' : 'NO',
+          status: pendingSetupIntent.status || 'N/A'
+        });
+        
+        if (pendingSetupIntent.client_secret) {
+          clientSecret = pendingSetupIntent.client_secret;
+          intentType = 'setup';
+        }
       }
 
       console.log('🔍 DEBUG - Final result:', {

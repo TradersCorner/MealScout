@@ -1912,6 +1912,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // If no payment intent exists, create one manually for the invoice
+      if (!clientSecret && typeof invoice === 'object' && invoice) {
+        try {
+          const invoiceId = typeof invoice === 'string' ? invoice : (invoice as any).id;
+          if (invoiceId) {
+            // Finalize the invoice first if it's in draft
+            const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoiceId);
+            
+            // Create payment intent for the invoice
+            const paymentIntent = await stripe.paymentIntents.create({
+              amount: unitAmount,
+              currency: 'usd',
+              customer: customerId,
+              metadata: {
+                subscription_id: subscription.id,
+                invoice_id: invoiceId
+              },
+              setup_future_usage: 'off_session'
+            });
+            
+            clientSecret = paymentIntent.client_secret;
+          }
+        } catch (intentError) {
+          console.error('Error creating payment intent:', intentError);
+          // Still try to proceed with the subscription setup intent approach
+        }
+      }
+
       // Send confirmation email
       try {
         if (user.email) {

@@ -579,10 +579,12 @@ export default function Landing() {
                     {/* Create Account Button */}
                     <button
                       onClick={(e) => {
+                        console.log('🔴 DEBUG: Create Account button clicked');
                         e.stopPropagation();
                         setShowDropdown(false);
                         setAuthMode('signup');
                         setShowAuth(true);
+                        console.log('🔴 DEBUG: showAuth should now be true');
                       }}
                       className="w-full flex items-center space-x-3 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors mb-2"
                       data-testid="button-desktop-create-account"
@@ -596,10 +598,12 @@ export default function Landing() {
                     {/* Login Button */}
                     <button
                       onClick={(e) => {
+                        console.log('🔴 DEBUG: Login button clicked');
                         e.stopPropagation();
                         setShowDropdown(false);
                         setAuthMode('login');
                         setShowAuth(true);
+                        console.log('🔴 DEBUG: showAuth should now be true');
                       }}
                       className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors mb-2"
                       data-testid="button-desktop-login"
@@ -634,6 +638,7 @@ export default function Landing() {
                     {/* Facebook Login */}
                     <button
                       onClick={(e) => {
+                        console.log('🔴 DEBUG: Facebook button clicked');
                         e.stopPropagation();
                         setShowDropdown(false);
                         handleFacebookLogin();

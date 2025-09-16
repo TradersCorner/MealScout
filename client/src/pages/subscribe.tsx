@@ -117,7 +117,8 @@ const PlanSelector = ({
 }) => {
   const getPricingDisplay = (hasMultiple: boolean, interval: string) => {
     if (interval === 'quarter') {
-      return hasMultiple ? '$225/3 months' : '$150/3 months';
+      // Special new user offer - only for 1 deal
+      return '$100/3 months';
     } else if (interval === 'year') {
       return hasMultiple ? '$900/year' : '$600/year';
     } else {
@@ -127,7 +128,8 @@ const PlanSelector = ({
 
   const getPricingAmount = (hasMultiple: boolean, interval: string) => {
     if (interval === 'quarter') {
-      return hasMultiple ? '$225' : '$150';
+      // Special new user offer - only for 1 deal
+      return '$100';
     } else if (interval === 'year') {
       return hasMultiple ? '$900' : '$600';
     } else {
@@ -207,24 +209,28 @@ const PlanSelector = ({
               <div className="text-sm text-gray-600">per month</div>
             </div>
             
-            {/* Quarterly */}
+            {/* Special 3-Month Offer (New Users Only) */}
             <div 
               className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 text-center relative ${
                 billingInterval === 'quarter' 
                   ? 'border-green-500 bg-green-50 shadow-md' 
                   : 'border-gray-200 bg-white hover:border-green-300'
-              }`}
-              onClick={() => onBillingIntervalChange('quarter')}
+              } ${hasMultipleDeals ? 'opacity-50 cursor-not-allowed' : ''}`}
+              onClick={() => {
+                if (!hasMultipleDeals) {
+                  onBillingIntervalChange('quarter');
+                  onHasMultipleDealsChange(false); // Force single deal for this offer
+                }
+              }}
               data-testid="card-billing-quarterly"
             >
-              <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
-                Save 33%
+              <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                New Users
               </div>
-              <div className="font-semibold text-gray-900 mb-1">Quarterly</div>
-              <div className="text-2xl font-bold text-green-600 mb-2">
-                ${hasMultipleDeals ? '225' : '150'}
-              </div>
-              <div className="text-sm text-gray-600">for 3 months</div>
+              <div className="font-semibold text-gray-900 mb-1">3-Month Deal</div>
+              <div className="text-2xl font-bold text-green-600 mb-2">$100</div>
+              <div className="text-sm text-gray-600">1 deal for 3 months</div>
+              <div className="text-xs text-gray-500 mt-1">Special offer!</div>
             </div>
             
             {/* Yearly */}

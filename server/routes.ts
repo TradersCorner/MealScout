@@ -1824,15 +1824,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Calculate pricing based on deal addon and billing interval
-      // Base: $50/month (1 deal), Multiple: $100/month (3 deals)
+      // Base: $50/month (1 deal), Multiple: $75/month (3 deals)
       const getPricing = (hasMultiple: boolean, interval: string) => {
-        const monthlyPrice = hasMultiple ? 10000 : 5000; // $100 or $50 monthly
+        const monthlyPrice = hasMultiple ? 7500 : 5000; // $75 or $50 monthly
         
         switch (interval) {
           case 'quarter':
-            return monthlyPrice * 3; // 3 months: $300 or $150
+            // Special new user offer: 1 deal for 3 months = $100 (normally $150)
+            return 10000; // $100 for 3 months (only for single deal)
           case 'year':
-            return monthlyPrice * 12; // 12 months: $1200 or $600
+            return monthlyPrice * 12; // 12 months: $900 or $600
           default:
             return monthlyPrice; // Monthly pricing
         }
@@ -1855,17 +1856,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       const unitAmount = getPricing(hasMultipleDealsAddon, interval);
-      const productName = hasMultipleDealsAddon 
-        ? `MealScout Restaurant Plan - Multiple Deals (3 deals) - ${getBillingLabel(interval)}`
-        : `MealScout Restaurant Plan - Single Deal (1 deal) - ${getBillingLabel(interval)}`;
+      let productName;
+      if (interval === 'quarter') {
+        productName = `MealScout Restaurant Plan - Special 3-Month Offer (1 deal)`;
+      } else {
+        productName = hasMultipleDealsAddon 
+          ? `MealScout Restaurant Plan - Multiple Deals (3 deals) - ${getBillingLabel(interval)}`
+          : `MealScout Restaurant Plan - Single Deal (1 deal) - ${getBillingLabel(interval)}`;
+      }
       
       // Create the product first
       const product = await stripe.products.create({
         name: productName,
         metadata: {
           type: 'subscription',
-          deals: hasMultipleDealsAddon ? 'multiple' : 'single',
-          interval: interval
+          deals: interval === 'quarter' ? 'single' : (hasMultipleDealsAddon ? 'multiple' : 'single'),
+          interval: interval,
+          specialOffer: interval === 'quarter' ? 'new-user-3-month' : 'none'
         }
       });
 
@@ -1886,7 +1893,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expand: ['latest_invoice.payment_intent'],
       });
 
-      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `${hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal'}-${interval}`);
+      // For quarterly offer, always treat as single deal regardless of hasMultipleDealsAddon
+      const dealType = interval === 'quarter' ? 'single-deal' : (hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal');
+      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `${dealType}-${interval}`);
 
       const latestInvoice = subscription.latest_invoice;
       const paymentIntent = typeof latestInvoice === 'object' && latestInvoice ? (latestInvoice as any).payment_intent : null;
@@ -2057,13 +2066,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Base: $50/month (1 deal), Multiple: $75/month (3 deals total)
       // Quarterly: $100 for 3 months, Yearly: $450 for 12 months
       const getPricing = (hasMultiple: boolean, interval: string) => {
-        const monthlyPrice = hasMultiple ? 10000 : 5000; // $100 or $50 monthly
+        const monthlyPrice = hasMultiple ? 7500 : 5000; // $75 or $50 monthly
         
         switch (interval) {
           case 'quarter':
-            return monthlyPrice * 3; // 3 months: $300 or $150
+            // Special new user offer: 1 deal for 3 months = $100 (normally $150)
+            return 10000; // $100 for 3 months (only for single deal)
           case 'year':
-            return monthlyPrice * 12; // 12 months: $1200 or $600
+            return monthlyPrice * 12; // 12 months: $900 or $600
           default:
             return monthlyPrice; // Monthly pricing
         }

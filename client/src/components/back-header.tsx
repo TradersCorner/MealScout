@@ -23,19 +23,11 @@ export function BackHeader({
   
   const handleBackClick = (e: React.MouseEvent) => {
     e.preventDefault();
+    console.log('🔙 Back button clicked, navigating to:', fallbackHref);
     
-    // Try to go back in browser history first
-    try {
-      if (window.history.length > 1) {
-        window.history.back();
-      } else {
-        // No history available, use SPA navigation
-        setLocation(fallbackHref);
-      }
-    } catch (error) {
-      // Fallback to SPA navigation if history.back() fails
-      setLocation(fallbackHref);
-    }
+    // For better reliability, always use SPA navigation for now
+    // Browser history can be unreliable in some environments
+    setLocation(fallbackHref);
   };
 
   return (

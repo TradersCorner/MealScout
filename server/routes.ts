@@ -2206,7 +2206,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ status: 'none' });
       }
 
-      const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+      const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId, {
+        expand: ['latest_invoice.payment_intent']
+      });
+      
+      // If subscription is incomplete but payment succeeded, check if we need to activate it
+      if (subscription.status === 'incomplete') {
+        const latestInvoice = subscription.latest_invoice;
+        if (latestInvoice && typeof latestInvoice === 'object') {
+          const invoice = latestInvoice as any;
+          
+          // Check if invoice is paid (payment succeeded)
+          if (invoice.status === 'paid') {
+            console.log(`Invoice ${invoice.id} is paid, subscription should be active. Checking actual status...`);
+            
+            // Force refresh the subscription to get latest status
+            const refreshedSubscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+            
+            res.json({
+              status: refreshedSubscription.status,
+              currentPeriodEnd: refreshedSubscription.current_period_end,
+              cancelAtPeriodEnd: refreshedSubscription.cancel_at_period_end,
+            });
+            return;
+          }
+        }
+      }
       
       res.json({
         status: subscription.status,

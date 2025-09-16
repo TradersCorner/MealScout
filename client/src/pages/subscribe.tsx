@@ -349,6 +349,7 @@ export default function Subscribe() {
         promoCode: promoCode.trim()
       });
       const data = await res.json();
+      console.log('🔍 Subscription response:', data);
       
       if (data.status === 'active') {
         // User already has an active subscription

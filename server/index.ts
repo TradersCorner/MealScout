@@ -102,6 +102,25 @@ app.use((req, res, next) => {
   app.use(passport.initialize());
   app.use(passport.session());
   
+  // Host normalization middleware - redirect all users to canonical domain
+  app.use((req, res, next) => {
+    // Skip for API routes and localhost development
+    if (req.path.startsWith('/api') || req.hostname === 'localhost' || req.hostname === '127.0.0.1') {
+      return next();
+    }
+    
+    const publicBaseUrl = process.env.PUBLIC_BASE_URL;
+    if (publicBaseUrl && !req.url.includes('?')) { // Only redirect if no query params to avoid losing OAuth state
+      const canonicalHost = new URL(publicBaseUrl).hostname;
+      if (req.hostname !== canonicalHost) {
+        const redirectUrl = `${publicBaseUrl}${req.path}`;
+        log(`Redirecting ${req.hostname} to canonical domain: ${redirectUrl}`);
+        return res.redirect(301, redirectUrl);
+      }
+    }
+    next();
+  });
+  
   const server = await registerRoutes(app);
 
   // Setup WebSocket server for food truck GPS tracking

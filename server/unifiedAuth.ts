@@ -35,8 +35,18 @@ export function getSession() {
 }
 
 export async function setupUnifiedAuth(app: Express) {
-  // Use stable callback URL to prevent OAuth session issues
-  const baseUrl = 'https://69cd86f2-c258-4543-8fff-17e15c7fd919-00-1q69tw7hrl31d.janeway.replit.dev';
+  // Get canonical base URL for OAuth callbacks - must be set for multi-user access
+  const getBaseUrl = () => {
+    if (process.env.PUBLIC_BASE_URL) {
+      return process.env.PUBLIC_BASE_URL;
+    }
+    // Fallback for local development
+    if (process.env.NODE_ENV === 'development') {
+      return 'http://localhost:5000';
+    }
+    throw new Error('PUBLIC_BASE_URL must be set for OAuth to work with multiple users');
+  };
+  const baseUrl = getBaseUrl();
   
   // Set up passport serialization for email/password auth
   passport.serializeUser((user: any, done) => {

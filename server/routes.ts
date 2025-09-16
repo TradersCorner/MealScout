@@ -1792,7 +1792,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           items: [{
             price_data: {
               currency: 'usd',
-              product: {
+              product_data: {
                 name: testProductName,
               },
               unit_amount: 100, // $1.00 in cents
@@ -1870,7 +1870,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               id: subscription.items.data[0].id,
               price_data: {
                 currency: 'usd',
-                product: {
+                product_data: {
                   name: productName,
                 },
                 unit_amount: unitAmount,
@@ -1970,7 +1970,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         items: [{
           price_data: {
             currency: 'usd',
-            product: {
+            product_data: {
               name: productName,
             },
             unit_amount: unitAmount,

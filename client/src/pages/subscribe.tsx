@@ -29,7 +29,7 @@ interface SubscriptionState {
   error?: string;
 }
 
-const PaymentForm = ({ clientSecret, intentType = 'payment', onSuccess }: { clientSecret: string, intentType?: string, onSuccess: () => void }) => {
+const PaymentForm = ({ clientSecret, intentType = 'payment', onSuccess }: { clientSecret: string, intentType?: string, onSuccess: (paymentIntentId: string) => void }) => {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
@@ -76,7 +76,13 @@ const PaymentForm = ({ clientSecret, intentType = 'payment', onSuccess }: { clie
           title: intentType === 'setup' ? "Setup Successful!" : "Payment Successful!",
           description: "Welcome to MealScout! You can now create deals.",
         });
-        onSuccess();
+        // Extract paymentIntentId from the result
+        const paymentIntentId = intentType === 'setup' 
+          ? result.setupIntent?.id 
+          : result.paymentIntent?.id;
+        if (paymentIntentId) {
+          onSuccess(paymentIntentId);
+        }
       }
     } catch (error: any) {
       toast({
@@ -394,8 +400,24 @@ export default function Subscribe() {
     }
   };
 
-  const handlePaymentSuccess = () => {
-    setLocation("/deal-creation");
+  const handlePaymentSuccess = async (paymentIntentId: string) => {
+    try {
+      // Complete the subscription creation on the backend
+      const response = await apiRequest('POST', '/api/payments/complete', { paymentIntentId });
+      const result = await response.json();
+
+      if (result.success) {
+        setLocation("/deal-creation");
+      } else {
+        throw new Error(result.error?.message || 'Failed to complete subscription');
+      }
+    } catch (error: any) {
+      console.error('Subscription completion error:', error);
+      setSubscriptionState({
+        status: 'error',
+        error: error.message || "Failed to complete subscription setup. Please contact support."
+      });
+    }
   };
 
   const handleRetry = () => {
@@ -497,7 +519,7 @@ export default function Subscribe() {
               <PaymentForm 
                 clientSecret={subscriptionState.clientSecret} 
                 intentType={subscriptionState.intentType}
-                onSuccess={handlePaymentSuccess}
+                onSuccess={(paymentIntentId: string) => handlePaymentSuccess(paymentIntentId)}
               />
             </div>
           </Elements>

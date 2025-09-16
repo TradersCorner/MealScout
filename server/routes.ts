@@ -1916,6 +1916,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Handle payment completion and create subscription
+  app.post('/api/payments/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const { paymentIntentId } = req.body;
+      const user = req.user;
+
+      if (!stripe) {
+        return res.status(503).json({ error: { message: "Payment service temporarily unavailable" } });
+      }
+
+      // Retrieve the payment intent to verify it succeeded
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      if (paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({ error: { message: 'Payment not completed' } });
+      }
+
+      // Get metadata from payment intent
+      const metadata = paymentIntent.metadata;
+      const subscriptionType = metadata.subscription_type;
+      const billingInterval = metadata.billing_interval;
+
+      // Create the actual subscription now that payment is complete
+      const subscription = await stripe.subscriptions.create({
+        customer: paymentIntent.customer as string,
+        items: [{
+          price_data: {
+            currency: 'usd',
+            product: (await stripe.products.list({ limit: 1 })).data[0].id,
+            unit_amount: paymentIntent.amount,
+            recurring: {
+              interval: billingInterval === 'quarter' || billingInterval === 'year' ? 'month' : billingInterval as 'month' | 'year',
+              interval_count: billingInterval === 'quarter' ? 3 : billingInterval === 'year' ? 12 : 1,
+            },
+          },
+        }],
+        collection_method: 'charge_automatically',
+        default_payment_method: paymentIntent.payment_method as string,
+      });
+
+      // Update user with actual subscription
+      await storage.updateUserStripeInfo(user.id, paymentIntent.customer as string, subscription.id, `${subscriptionType}-${billingInterval}`);
+
+      res.json({
+        success: true,
+        subscriptionId: subscription.id,
+        status: 'active'
+      });
+
+    } catch (error: any) {
+      console.error("Error completing payment:", error);
+      res.status(400).json({ error: { message: error.message } });
+    }
+  });
+
   // Legacy Stripe subscription route for restaurant fees (kept for backward compatibility)
   app.post('/api/create-subscription', isAuthenticated, async (req: any, res) => {
     const user = req.user;

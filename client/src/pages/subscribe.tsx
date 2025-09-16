@@ -298,10 +298,7 @@ const PlanSelector = ({
               </div>
             )}
             <Button 
-              onClick={() => {
-                console.log('🔘 Continue to Payment button clicked');
-                onContinue();
-              }} 
+              onClick={onContinue} 
               className="w-full py-3 font-semibold text-sm"
               data-testid="button-continue-to-payment"
             >
@@ -330,7 +327,6 @@ export default function Subscribe() {
   });
 
   const initializeSubscription = async () => {
-    console.log('🔄 initializeSubscription called with:', { hasMultipleDeals, billingInterval, promoCode });
     setSubscriptionState({ status: 'initializing' });
     
     try {
@@ -340,7 +336,6 @@ export default function Subscribe() {
         promoCode: promoCode.trim()
       });
       const data = await res.json();
-      console.log('🔍 API response:', data);
       
       if (data.status === 'active') {
         // User already has an active subscription
@@ -353,7 +348,6 @@ export default function Subscribe() {
       }
       
       if (data.status === 'requires_payment' && data.clientSecret) {
-        console.log('✅ Setting subscription state to requires_payment with clientSecret:', data.clientSecret);
         setSubscriptionState({
           status: 'requires_payment',
           subscriptionId: data.subscriptionId,

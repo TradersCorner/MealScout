@@ -1898,7 +1898,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `${dealType}-${interval}`);
 
       const latestInvoice = subscription.latest_invoice;
-      const paymentIntent = typeof latestInvoice === 'object' && latestInvoice ? (latestInvoice as any).payment_intent : null;
+      console.log('🔍 Subscription debug:', {
+        subscriptionId: subscription.id,
+        subscriptionStatus: subscription.status,
+        latestInvoiceType: typeof latestInvoice,
+        latestInvoiceId: typeof latestInvoice === 'object' && latestInvoice ? latestInvoice.id : latestInvoice
+      });
+
+      let clientSecret = null;
+      if (typeof latestInvoice === 'object' && latestInvoice) {
+        const paymentIntent = (latestInvoice as any).payment_intent;
+        console.log('🔍 Payment Intent debug:', {
+          paymentIntentType: typeof paymentIntent,
+          paymentIntentId: typeof paymentIntent === 'object' && paymentIntent ? paymentIntent.id : paymentIntent
+        });
+        
+        if (typeof paymentIntent === 'object' && paymentIntent && paymentIntent.client_secret) {
+          clientSecret = paymentIntent.client_secret;
+          console.log('✅ Found client secret');
+        } else {
+          console.log('❌ Payment intent is not expanded or missing client_secret');
+        }
+      } else {
+        console.log('❌ Latest invoice is not expanded');
+      }
 
       // Send confirmation email
       try {
@@ -1913,7 +1936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.send({
         status: 'requires_payment',
         subscriptionId: subscription.id,
-        clientSecret: typeof paymentIntent === 'object' && paymentIntent ? paymentIntent.client_secret : null,
+        clientSecret: clientSecret,
       });
     } catch (error: any) {
       console.error("Error creating subscription:", error);

@@ -28,6 +28,7 @@ import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import { z } from "zod";
 import type { Deal, Restaurant } from "@shared/schema";
+import { BackHeader } from "@/components/back-header";
 
 interface DashboardStats {
   totalDeals: number;
@@ -751,49 +752,57 @@ export default function RestaurantOwnerDashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Restaurant Dashboard</h1>
-          {restaurants.length > 1 && (
-            <select 
-              value={selectedRestaurant}
-              onChange={(e) => setSelectedRestaurant(e.target.value)}
-              className="px-3 py-2 border rounded-lg"
-              data-testid="select-restaurant"
-            >
-              {restaurants.map(restaurant => (
-                <option key={restaurant.id} value={restaurant.id}>
-                  {restaurant.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-        <div className="flex gap-3">
-          {(subscription as any)?.status === 'active' ? (
-            <Link href="/deal-creation">
-              <Button data-testid="button-create-deal">
-                <Plus className="h-4 w-4 mr-2" />
-                Create New Deal
+      {/* Header with Back Button */}
+      <BackHeader
+        title="Restaurant Dashboard"
+        fallbackHref="/"
+        icon={Store}
+        rightActions={
+          <div className="flex gap-3">
+            {(subscription as any)?.status === 'active' ? (
+              <Link href="/deal-creation">
+                <Button data-testid="button-create-deal">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create New Deal
+                </Button>
+              </Link>
+            ) : (
+              <Link href="/subscribe">
+                <Button variant="default" data-testid="button-subscribe">
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Subscribe to Create Deals
+                </Button>
+              </Link>
+            )}
+            <Link href="/subscription">
+              <Button variant="outline" data-testid="button-manage-subscription">
+                <Settings className="h-4 w-4 mr-2" />
+                Manage Subscription
               </Button>
             </Link>
-          ) : (
-            <Link href="/subscribe">
-              <Button variant="default" data-testid="button-subscribe">
-                <CreditCard className="h-4 w-4 mr-2" />
-                Subscribe to Create Deals
-              </Button>
-            </Link>
-          )}
-          <Link href="/subscription">
-            <Button variant="outline" data-testid="button-manage-subscription">
-              <Settings className="h-4 w-4 mr-2" />
-              Manage Subscription
-            </Button>
-          </Link>
+          </div>
+        }
+        className="bg-white border-b border-border mb-8"
+      />
+
+      {/* Restaurant Selector */}
+      {restaurants.length > 1 && (
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Select Restaurant</label>
+          <select 
+            value={selectedRestaurant}
+            onChange={(e) => setSelectedRestaurant(e.target.value)}
+            className="px-3 py-2 border rounded-lg"
+            data-testid="select-restaurant"
+          >
+            {restaurants.map(restaurant => (
+              <option key={restaurant.id} value={restaurant.id}>
+                {restaurant.name}
+              </option>
+            ))}
+          </select>
         </div>
-      </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">

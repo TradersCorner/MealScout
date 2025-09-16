@@ -2212,7 +2212,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Subscription ${user.stripeSubscriptionId} status: ${subscription.status}`);
       
-      // If subscription is incomplete but payment succeeded, check if we need to activate it
+      // If subscription is incomplete, try to pay the invoice directly 
+      if (subscription.status === 'incomplete') {
+        // For test mode, force pay the invoice to complete the subscription
+        const latestInvoice = subscription.latest_invoice;
+        if (latestInvoice && typeof latestInvoice === 'object') {
+          const invoice = latestInvoice as any;
+          console.log(`Force paying invoice ${invoice.id} to complete subscription...`);
+          
+          try {
+            const paidInvoice = await stripe.invoices.pay(invoice.id);
+            console.log(`Successfully paid invoice ${invoice.id}, status: ${paidInvoice.status}`);
+            
+            // Check subscription status after payment
+            const refreshedSubscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+            console.log(`After paying invoice, subscription status: ${refreshedSubscription.status}`);
+            
+            res.json({
+              status: refreshedSubscription.status,
+              currentPeriodEnd: (refreshedSubscription as any).current_period_end,
+              cancelAtPeriodEnd: (refreshedSubscription as any).cancel_at_period_end,
+            });
+            return;
+          } catch (payError: any) {
+            console.log(`Error paying invoice ${invoice.id}:`, payError.message);
+            // If paying fails, continue with original logic below
+          }
+        }
+      }
+      
+      // Original logic kept for backup
       if (subscription.status === 'incomplete') {
         const latestInvoice = subscription.latest_invoice;
         console.log(`Latest invoice:`, latestInvoice ? (latestInvoice as any).id : 'none');

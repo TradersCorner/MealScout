@@ -1923,6 +1923,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!clientSecret) {
+        console.error('Debug info - Subscription:', JSON.stringify(subscription, null, 2));
+        console.error('Debug info - Invoice:', JSON.stringify(invoice, null, 2));
         throw new Error('Unable to create payment intent for subscription');
       }
 

@@ -117,6 +117,7 @@ export default function Subscribe() {
   const [hasMultipleDealsAddon, setHasMultipleDealsAddon] = useState(false);
   const [billingInterval, setBillingInterval] = useState<'month' | 'quarter' | 'year'>('month');
   const [isCreatingSubscription, setIsCreatingSubscription] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
 
   // Check if user is new (never had a subscription)
   const isNewUser = !user?.stripeSubscriptionId;
@@ -129,7 +130,8 @@ export default function Subscribe() {
     try {
       const res = await apiRequest("POST", "/api/create-subscription", { 
         hasMultipleDealsAddon: multipleDeals,
-        billingInterval: interval
+        billingInterval: interval,
+        promoCode: promoCode.trim()
       });
       const data = await res.json();
       
@@ -505,6 +507,38 @@ export default function Subscribe() {
                 <div className="text-sm text-gray-600">Breakfast, lunch & dinner</div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Promo Code Section */}
+        <Card className="mb-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200">
+          <CardContent className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">Have a Promo Code?</h3>
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                placeholder="Enter promo code"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                data-testid="input-promo-code"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => createSubscription(hasMultipleDealsAddon, billingInterval)}
+                disabled={!promoCode.trim() || isCreatingSubscription}
+                className="border-yellow-500 text-yellow-600 hover:bg-yellow-50"
+                data-testid="button-apply-promo"
+              >
+                Apply
+              </Button>
+            </div>
+            {promoCode && (
+              <p className="text-sm text-gray-600 mt-2">
+                Code: <span className="font-mono font-bold">{promoCode}</span>
+              </p>
+            )}
           </CardContent>
         </Card>
 

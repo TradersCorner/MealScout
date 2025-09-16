@@ -1914,7 +1914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // If invoice has no payment_intent and is not finalized, finalize it
-      if (!invoice.payment_intent && (invoice.status === 'draft' || invoice.status === 'open')) {
+      if (!(invoice as any).payment_intent && (invoice.status === 'draft' || invoice.status === 'open')) {
         await stripe.invoices.finalizeInvoice(invoiceId);
         // Retrieve again after finalizing
         invoice = await stripe.invoices.retrieve(invoiceId, {
@@ -1931,11 +1931,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      if (!invoice.payment_intent || !invoice.payment_intent.client_secret) {
+      const paymentIntent = (invoice as any).payment_intent;
+      if (!paymentIntent || !paymentIntent.client_secret) {
         throw new Error('Unable to create payment intent for subscription after finalization');
       }
 
-      const clientSecret = invoice.payment_intent.client_secret;
+      const clientSecret = paymentIntent.client_secret;
 
       // Send confirmation email
       try {

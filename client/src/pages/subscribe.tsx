@@ -298,7 +298,10 @@ const PlanSelector = ({
               </div>
             )}
             <Button 
-              onClick={onContinue} 
+              onClick={() => {
+                console.log('🔘 Continue to Payment button clicked');
+                onContinue();
+              }} 
               className="w-full py-3 font-semibold text-sm"
               data-testid="button-continue-to-payment"
             >
@@ -327,6 +330,7 @@ export default function Subscribe() {
   });
 
   const initializeSubscription = async () => {
+    console.log('🔄 initializeSubscription called with:', { hasMultipleDeals, billingInterval, promoCode });
     setSubscriptionState({ status: 'initializing' });
     
     try {

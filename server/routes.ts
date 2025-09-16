@@ -1792,13 +1792,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           items: [{
             price_data: {
               currency: 'usd',
-              product: testProductName,
+              product_data: {
+                name: testProductName
+              },
               unit_amount: 100, // $1.00 in cents
               recurring: {
                 interval: 'month',
                 interval_count: 1,
               },
-            } as any,
+            },
           }],
           payment_behavior: 'default_incomplete',
           expand: ['latest_invoice.payment_intent'],
@@ -1868,13 +1870,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               id: subscription.items.data[0].id,
               price_data: {
                 currency: 'usd',
-                product: productName,
+                product_data: {
+                  name: productName
+                },
                 unit_amount: unitAmount,
                 recurring: {
                   interval: interval === 'quarter' ? 'month' : (interval === 'year' ? 'month' : interval) as 'month' | 'year',
                   interval_count: interval === 'quarter' ? 3 : (interval === 'year' ? 12 : 1),
                 },
-              } as any,
+              },
             }],
             expand: ['latest_invoice.payment_intent'],
           });
@@ -1966,13 +1970,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         items: [{
           price_data: {
             currency: 'usd',
-            product: productName,
+            product_data: {
+              name: productName
+            },
             unit_amount: unitAmount,
             recurring: {
               interval: (interval === 'quarter' || interval === 'year') ? 'month' : interval as 'month' | 'year',
               interval_count: intervalCount,
             },
-          } as any,
+          },
         }],
         payment_behavior: 'default_incomplete',
         expand: ['latest_invoice.payment_intent'],

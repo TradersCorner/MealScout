@@ -1902,12 +1902,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const latestInvoice = subscription.latest_invoice;
       const pendingSetupIntent = (subscription as any).pending_setup_intent;
       
+      console.log('🔍 DEBUG - Subscription object:', {
+        id: subscription.id,
+        status: subscription.status,
+        latest_invoice: typeof latestInvoice,
+        pending_setup_intent: typeof pendingSetupIntent
+      });
+
       let clientSecret = null;
       let intentType = 'payment';
       
       // First try payment intent from latest invoice
       if (typeof latestInvoice === 'object' && latestInvoice) {
         const paymentIntent = (latestInvoice as any).payment_intent;
+        console.log('🔍 DEBUG - Payment intent:', {
+          type: typeof paymentIntent,
+          hasClientSecret: paymentIntent && paymentIntent.client_secret ? 'YES' : 'NO',
+          status: paymentIntent ? paymentIntent.status : 'N/A'
+        });
+        
         if (typeof paymentIntent === 'object' && paymentIntent && paymentIntent.client_secret) {
           clientSecret = paymentIntent.client_secret;
           intentType = 'payment';
@@ -1916,9 +1929,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If no payment intent, try pending setup intent
       if (!clientSecret && typeof pendingSetupIntent === 'object' && pendingSetupIntent && pendingSetupIntent.client_secret) {
+        console.log('🔍 DEBUG - Using setup intent client secret');
         clientSecret = pendingSetupIntent.client_secret;
         intentType = 'setup';
       }
+
+      console.log('🔍 DEBUG - Final result:', {
+        clientSecret: clientSecret ? 'HAS_SECRET' : 'NULL',
+        intentType
+      });
 
       // Send confirmation email
       try {

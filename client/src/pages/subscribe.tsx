@@ -117,9 +117,9 @@ const PlanSelector = ({
 }) => {
   const getPricingDisplay = (hasMultiple: boolean, interval: string) => {
     if (interval === 'quarter') {
-      return '$100/3 months';
+      return hasMultiple ? '$300/3 months' : '$150/3 months';
     } else if (interval === 'year') {
-      return '$450/year';
+      return hasMultiple ? '$900/year' : '$600/year';
     } else {
       return hasMultiple ? '$75/month' : '$50/month';
     }
@@ -127,9 +127,9 @@ const PlanSelector = ({
 
   const getPricingAmount = (hasMultiple: boolean, interval: string) => {
     if (interval === 'quarter') {
-      return '$100';
+      return hasMultiple ? '$300' : '$150';
     } else if (interval === 'year') {
-      return '$450';
+      return hasMultiple ? '$900' : '$600';
     } else {
       return hasMultiple ? '$75' : '$50';
     }
@@ -221,7 +221,9 @@ const PlanSelector = ({
                 Save 33%
               </div>
               <div className="font-semibold text-gray-900 mb-1">Quarterly</div>
-              <div className="text-2xl font-bold text-green-600 mb-2">$100</div>
+              <div className="text-2xl font-bold text-green-600 mb-2">
+                ${hasMultipleDeals ? '300' : '150'}
+              </div>
               <div className="text-sm text-gray-600">for 3 months</div>
             </div>
             
@@ -239,7 +241,9 @@ const PlanSelector = ({
                 Save 50%
               </div>
               <div className="font-semibold text-gray-900 mb-1">Yearly</div>
-              <div className="text-2xl font-bold text-green-600 mb-2">$450</div>
+              <div className="text-2xl font-bold text-green-600 mb-2">
+                ${hasMultipleDeals ? '900' : '600'}
+              </div>
               <div className="text-sm text-gray-600">for 12 months</div>
             </div>
           </div>

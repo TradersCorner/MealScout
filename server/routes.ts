@@ -1829,9 +1829,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         switch (interval) {
           case 'quarter':
-            return 10000; // $100 for 3 months
+            return hasMultiple ? 30000 : 15000; // $300 or $150 for 3 months
           case 'year':
-            return 45000; // $450 for 12 months
+            return hasMultiple ? 90000 : 60000; // $900 or $600 for 12 months
           default:
             return basePrice; // Monthly pricing
         }
@@ -2060,9 +2060,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         switch (interval) {
           case 'quarter':
-            return 10000; // $100 for 3 months (same for single or multiple deals)
+            return hasMultiple ? 30000 : 15000; // $300 or $150 for 3 months
           case 'year':
-            return 45000; // $450 for 12 months (same for single or multiple deals)
+            return hasMultiple ? 90000 : 60000; // $900 or $600 for 12 months
           default:
             return basePrice; // Monthly pricing
         }

@@ -351,10 +351,10 @@ export default function Subscribe() {
       const data = await res.json();
       
       if (data.status === 'active') {
-        // User already has an active subscription
+        // Subscription is active (e.g., 100% promo code or already paid)
         toast({
-          title: "Already Subscribed",
-          description: "You already have an active subscription!",
+          title: "Subscription Active!",
+          description: "Welcome to MealScout! You can now create deals.",
         });
         setLocation("/deal-creation");
         return;

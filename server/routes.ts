@@ -1891,8 +1891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }],
         payment_behavior: 'default_incomplete',
         payment_settings: { 
-          save_default_payment_method: 'on_subscription',
-          payment_method_types: ['card']
+          save_default_payment_method: 'on_subscription'
         },
         expand: ['latest_invoice.payment_intent'],
       });
@@ -1901,20 +1900,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dealType = interval === 'quarter' ? 'single-deal' : (hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal');
       await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `${dealType}-${interval}`);
 
+      // Get the invoice ID and retrieve it with payment_intent expanded
       const latestInvoice = subscription.latest_invoice;
+      const invoiceId = typeof latestInvoice === 'string' ? latestInvoice : latestInvoice?.id;
       
-      let clientSecret = null;
-      
-      if (typeof latestInvoice === 'object' && latestInvoice) {
-        const paymentIntent = (latestInvoice as any).payment_intent;
-        if (typeof paymentIntent === 'object' && paymentIntent && paymentIntent.client_secret) {
-          clientSecret = paymentIntent.client_secret;
-        }
+      if (!invoiceId) {
+        throw new Error('No invoice found for subscription');
       }
 
-      if (!clientSecret) {
-        throw new Error('Unable to create payment intent for subscription');
+      // Retrieve the invoice with payment_intent expanded
+      let invoice = await stripe.invoices.retrieve(invoiceId, {
+        expand: ['payment_intent']
+      });
+
+      // If invoice has no payment_intent and is not finalized, finalize it
+      if (!invoice.payment_intent && (invoice.status === 'draft' || invoice.status === 'open')) {
+        await stripe.invoices.finalizeInvoice(invoiceId);
+        // Retrieve again after finalizing
+        invoice = await stripe.invoices.retrieve(invoiceId, {
+          expand: ['payment_intent']
+        });
       }
+
+      // Handle different scenarios
+      if (invoice.amount_due === 0) {
+        // No payment required (100% promo code)
+        return res.send({
+          status: 'active',
+          subscriptionId: subscription.id,
+        });
+      }
+
+      if (!invoice.payment_intent || !invoice.payment_intent.client_secret) {
+        throw new Error('Unable to create payment intent for subscription after finalization');
+      }
+
+      const clientSecret = invoice.payment_intent.client_secret;
 
       // Send confirmation email
       try {

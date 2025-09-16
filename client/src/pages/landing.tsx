@@ -565,7 +565,7 @@ export default function Landing() {
               
               {/* Login Dropdown */}
               {showDropdown && (
-                <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-50">
+                <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-[10000] pointer-events-auto">
                   <div className="p-4">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Choose Login Method</h3>
                     

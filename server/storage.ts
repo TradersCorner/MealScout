@@ -235,7 +235,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUser(id: string, updates: Partial<Pick<User, 'subscriptionBillingInterval' | 'stripeCustomerId' | 'stripeSubscriptionId'>>): Promise<User> {
+  async updateUser(id: string, updates: Partial<Pick<User, 'subscriptionBillingInterval' | 'stripeCustomerId' | 'stripeSubscriptionId' | 'passwordHash'>>): Promise<User> {
     const [user] = await db
       .update(users)
       .set({

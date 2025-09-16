@@ -311,7 +311,11 @@ const PlanSelector = ({
               </div>
             )}
             <Button 
-              onClick={onContinue} 
+              onClick={() => {
+                console.log('🚨 BUTTON CLICKED - onContinue about to be called');
+                onContinue();
+                console.log('🚨 BUTTON CLICKED - onContinue was called');
+              }}
               className="w-full py-3 font-semibold text-sm"
               data-testid="button-continue-to-payment"
             >
@@ -340,6 +344,7 @@ export default function Subscribe() {
   });
 
   const initializeSubscription = async () => {
+    console.log('🚨 initializeSubscription function called!');
     setSubscriptionState({ status: 'initializing' });
     
     try {

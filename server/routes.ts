@@ -1792,9 +1792,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           items: [{
             price_data: {
               currency: 'usd',
-              product_data: {
-                name: testProductName,
-              },
+              product: testProductName,
               unit_amount: 100, // $1.00 in cents
               recurring: {
                 interval: 'month',
@@ -1870,9 +1868,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               id: subscription.items.data[0].id,
               price_data: {
                 currency: 'usd',
-                product_data: {
-                  name: productName,
-                },
+                product: productName,
                 unit_amount: unitAmount,
                 recurring: {
                   interval: interval === 'quarter' ? 'month' : (interval === 'year' ? 'month' : interval) as 'month' | 'year',
@@ -1970,9 +1966,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         items: [{
           price_data: {
             currency: 'usd',
-            product_data: {
-              name: productName,
-            },
+            product: productName,
             unit_amount: unitAmount,
             recurring: {
               interval: (interval === 'quarter' || interval === 'year') ? 'month' : interval as 'month' | 'year',

@@ -24,16 +24,16 @@ export function BackHeader({
   const handleBackClick = (e: React.MouseEvent) => {
     e.preventDefault();
     
-    // Check if there's browser history to go back to
-    if (window.history.length > 1 && document.referrer) {
-      try {
+    // Try to go back in browser history first
+    try {
+      if (window.history.length > 1) {
         window.history.back();
-      } catch (error) {
-        // Fallback to SPA navigation if history.back() fails
+      } else {
+        // No history available, use SPA navigation
         setLocation(fallbackHref);
       }
-    } else {
-      // No history available, use SPA navigation
+    } catch (error) {
+      // Fallback to SPA navigation if history.back() fails
       setLocation(fallbackHref);
     }
   };

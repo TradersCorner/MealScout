@@ -109,13 +109,22 @@ export default function Landing() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
-      if (modalRef.current && !modalRef.current.contains(target)) {
+      // Only close if modal exists and click is truly outside
+      if (modalRef.current && !modalRef.current.contains(target) && showAuth) {
         setShowAuth(false);
       }
     };
 
     if (showAuth) {
-      document.addEventListener('click', handleClickOutside);
+      // Add a small delay to prevent immediate closure when opening
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('click', handleClickOutside);
+      }, 100);
+      
+      return () => {
+        clearTimeout(timeoutId);
+        document.removeEventListener('click', handleClickOutside);
+      };
     }
 
     return () => {

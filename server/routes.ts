@@ -1889,10 +1889,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
           },
         }],
-        collection_method: 'charge_automatically',
         payment_behavior: 'default_incomplete',
-        payment_settings: { save_default_payment_method: 'on_subscription' },
-        expand: ['latest_invoice.payment_intent', 'pending_setup_intent'],
+        payment_settings: { 
+          save_default_payment_method: 'on_subscription',
+          payment_method_types: ['card']
+        },
+        expand: ['latest_invoice.payment_intent'],
       });
 
       // For quarterly offer, always treat as single deal regardless of hasMultipleDealsAddon
@@ -1900,52 +1902,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `${dealType}-${interval}`);
 
       const latestInvoice = subscription.latest_invoice;
-      const pendingSetupIntent = (subscription as any).pending_setup_intent;
       
-      console.log('🔍 DEBUG - Subscription object:', {
-        id: subscription.id,
-        status: subscription.status,
-        latest_invoice: typeof latestInvoice,
-        pending_setup_intent: typeof pendingSetupIntent,
-        pending_setup_intent_value: pendingSetupIntent
-      });
-
       let clientSecret = null;
-      let intentType = 'payment';
       
-      // First try payment intent from latest invoice
       if (typeof latestInvoice === 'object' && latestInvoice) {
         const paymentIntent = (latestInvoice as any).payment_intent;
-        console.log('🔍 DEBUG - Payment intent:', {
-          type: typeof paymentIntent,
-          hasClientSecret: paymentIntent && paymentIntent.client_secret ? 'YES' : 'NO',
-          status: paymentIntent ? paymentIntent.status : 'N/A'
-        });
-        
         if (typeof paymentIntent === 'object' && paymentIntent && paymentIntent.client_secret) {
           clientSecret = paymentIntent.client_secret;
-          intentType = 'payment';
-        }
-      }
-      
-      // If no payment intent, try pending setup intent
-      if (!clientSecret && typeof pendingSetupIntent === 'object' && pendingSetupIntent) {
-        console.log('🔍 DEBUG - Setup intent details:', {
-          type: typeof pendingSetupIntent,
-          hasClientSecret: pendingSetupIntent.client_secret ? 'YES' : 'NO',
-          status: pendingSetupIntent.status || 'N/A'
-        });
-        
-        if (pendingSetupIntent.client_secret) {
-          clientSecret = pendingSetupIntent.client_secret;
-          intentType = 'setup';
         }
       }
 
-      console.log('🔍 DEBUG - Final result:', {
-        clientSecret: clientSecret ? 'HAS_SECRET' : 'NULL',
-        intentType
-      });
+      if (!clientSecret) {
+        throw new Error('Unable to create payment intent for subscription');
+      }
 
       // Send confirmation email
       try {
@@ -1961,7 +1930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'requires_payment',
         subscriptionId: subscription.id,
         clientSecret: clientSecret,
-        intentType: intentType,
+        intentType: 'payment',
       });
     } catch (error: any) {
       console.error("Error creating subscription:", error);

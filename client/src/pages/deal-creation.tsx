@@ -119,6 +119,20 @@ export default function DealCreation() {
         }, 500);
         return;
       }
+      
+      // Handle subscription required error (402)
+      if (error.message && (error.message.includes('subscription') || error.message.includes('Payment Required'))) {
+        toast({
+          title: "Subscription Required",
+          description: "Please upgrade your subscription to create deals",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          setLocation("/subscribe");
+        }, 1500);
+        return;
+      }
+      
       toast({
         title: "Error",
         description: error.message || "Failed to create deal",
@@ -212,6 +226,26 @@ export default function DealCreation() {
             <p className="text-muted-foreground mb-4">You need to register a business first</p>
             <Link href="/restaurant-signup">
               <Button className="w-full">Register Business</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Check subscription status - redirect to subscribe page if needed
+  if (subscription && subscription.status !== 'active') {
+    return (
+      <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <div className="text-4xl mb-4">💳</div>
+            <h2 className="text-lg font-semibold mb-2">Subscription Required</h2>
+            <p className="text-muted-foreground mb-4">You need an active subscription to create deals</p>
+            <Link href="/subscribe">
+              <Button className="w-full" data-testid="button-subscribe-to-create">
+                View Subscription Plans
+              </Button>
             </Link>
           </CardContent>
         </Card>

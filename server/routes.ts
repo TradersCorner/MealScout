@@ -1917,10 +1917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const invoiceId = typeof invoice === 'string' ? invoice : (invoice as any).id;
           if (invoiceId) {
-            // Finalize the invoice first if it's in draft
-            const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoiceId);
-            
-            // Create payment intent for the invoice
+            // Create payment intent for the invoice amount
             const paymentIntent = await stripe.paymentIntents.create({
               amount: unitAmount,
               currency: 'usd',

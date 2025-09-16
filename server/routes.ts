@@ -2235,6 +2235,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
               cancelAtPeriodEnd: (refreshedSubscription as any).cancel_at_period_end,
             });
             return;
+          } else if (invoice.status === 'open') {
+            console.log(`Invoice ${invoice.id} is open but payment might have succeeded. Attempting to pay invoice...`);
+            
+            try {
+              // In test mode, if payment was successful but invoice is still open, we can force pay it
+              const paidInvoice = await stripe.invoices.pay(invoice.id);
+              console.log(`Successfully paid invoice ${invoice.id}, new status: ${paidInvoice.status}`);
+              
+              // Now check the subscription status again
+              const refreshedSubscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+              console.log(`After paying invoice, subscription status: ${refreshedSubscription.status}`);
+              
+              res.json({
+                status: refreshedSubscription.status,
+                currentPeriodEnd: (refreshedSubscription as any).current_period_end,
+                cancelAtPeriodEnd: (refreshedSubscription as any).cancel_at_period_end,
+              });
+              return;
+            } catch (payError: any) {
+              console.log(`Failed to pay invoice ${invoice.id}:`, payError.message);
+              // Continue with normal flow
+            }
           } else {
             console.log(`Invoice ${invoice.id} status is ${invoice.status}, subscription remains incomplete`);
           }

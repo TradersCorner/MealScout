@@ -363,7 +363,7 @@ export default function Subscribe() {
       if (data.status === 'requires_payment' && data.clientSecret) {
         setSubscriptionState({
           status: 'requires_payment',
-          subscriptionId: data.subscriptionId,
+          subscriptionId: data.paymentIntentId,
           clientSecret: data.clientSecret,
           intentType: data.intentType || 'payment'
         });

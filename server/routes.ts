@@ -1876,72 +1876,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      const subscription = await stripe.subscriptions.create({
+      // Create a PaymentIntent directly for the subscription amount
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: unitAmount,
+        currency: 'usd',
         customer: customerId,
-        items: [{
-          price_data: {
-            currency: 'usd',
-            product: product.id,
-            unit_amount: unitAmount,
-            recurring: {
-              interval: interval === 'quarter' || interval === 'year' ? 'month' : interval as 'month' | 'year',
-              interval_count: getIntervalCount(interval),
-            },
-          },
-        }],
-        payment_behavior: 'default_incomplete',
-        payment_settings: { 
-          save_default_payment_method: 'on_subscription'
-        },
-        expand: ['latest_invoice.payment_intent'],
+        setup_future_usage: 'off_session',
+        metadata: {
+          subscription_type: interval === 'quarter' ? 'single-deal' : (hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal'),
+          billing_interval: interval,
+          user_id: user.id
+        }
       });
 
-      // For quarterly offer, always treat as single deal regardless of hasMultipleDealsAddon
-      const dealType = interval === 'quarter' ? 'single-deal' : (hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal');
-      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `${dealType}-${interval}`);
-
-      // Get the invoice ID and retrieve it with payment_intent expanded
-      const latestInvoice = subscription.latest_invoice;
-      const invoiceId = typeof latestInvoice === 'string' ? latestInvoice : latestInvoice?.id;
-      
-      if (!invoiceId) {
-        throw new Error('No invoice found for subscription');
-      }
-
-      // Retrieve the invoice with payment_intent expanded
-      let invoice = await stripe.invoices.retrieve(invoiceId, {
-        expand: ['payment_intent']
-      });
-
-      // If invoice has no payment_intent and is not finalized, finalize it
-      if (!(invoice as any).payment_intent && (invoice.status === 'draft' || invoice.status === 'open')) {
-        await stripe.invoices.finalizeInvoice(invoiceId);
-        // Retrieve again after finalizing
-        invoice = await stripe.invoices.retrieve(invoiceId, {
-          expand: ['payment_intent']
-        });
-      }
-
-      // Handle different scenarios
-      if (invoice.amount_due === 0) {
-        // No payment required (100% promo code)
-        return res.send({
-          status: 'active',
-          subscriptionId: subscription.id,
-        });
-      }
-
-      const paymentIntent = (invoice as any).payment_intent;
-      if (!paymentIntent || !paymentIntent.client_secret) {
-        throw new Error('Unable to create payment intent for subscription after finalization');
-      }
+      // Store the payment intent info temporarily (we'll create the subscription after payment)
+      await storage.updateUserStripeInfo(user.id, customerId, `pending_${paymentIntent.id}`, `pending-${interval}`);
 
       const clientSecret = paymentIntent.client_secret;
 
       // Send confirmation email
       try {
         if (user.email) {
-          await emailService.sendPaymentConfirmation(user, unitAmount, interval, subscription.id);
+          await emailService.sendPaymentConfirmation(user, unitAmount, interval, paymentIntent.id);
         }
       } catch (emailError) {
         console.error('Failed to send subscription confirmation email:', emailError);
@@ -1950,7 +1906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.send({
         status: 'requires_payment',
-        subscriptionId: subscription.id,
+        paymentIntentId: paymentIntent.id,
         clientSecret: clientSecret,
         intentType: 'payment',
       });

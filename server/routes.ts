@@ -1889,8 +1889,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
           },
         }],
+        collection_method: 'charge_automatically',
         payment_behavior: 'default_incomplete',
-        expand: ['latest_invoice.payment_intent'],
+        payment_settings: { save_default_payment_method: 'on_subscription' },
+        expand: ['latest_invoice.payment_intent', 'pending_setup_intent'],
       });
 
       // For quarterly offer, always treat as single deal regardless of hasMultipleDealsAddon
@@ -1898,29 +1900,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `${dealType}-${interval}`);
 
       const latestInvoice = subscription.latest_invoice;
-      console.log('🔍 Subscription debug:', {
-        subscriptionId: subscription.id,
-        subscriptionStatus: subscription.status,
-        latestInvoiceType: typeof latestInvoice,
-        latestInvoiceId: typeof latestInvoice === 'object' && latestInvoice ? latestInvoice.id : latestInvoice
-      });
-
+      const pendingSetupIntent = (subscription as any).pending_setup_intent;
+      
       let clientSecret = null;
+      let intentType = 'payment';
+      
+      // First try payment intent from latest invoice
       if (typeof latestInvoice === 'object' && latestInvoice) {
         const paymentIntent = (latestInvoice as any).payment_intent;
-        console.log('🔍 Payment Intent debug:', {
-          paymentIntentType: typeof paymentIntent,
-          paymentIntentId: typeof paymentIntent === 'object' && paymentIntent ? paymentIntent.id : paymentIntent
-        });
-        
         if (typeof paymentIntent === 'object' && paymentIntent && paymentIntent.client_secret) {
           clientSecret = paymentIntent.client_secret;
-          console.log('✅ Found client secret');
-        } else {
-          console.log('❌ Payment intent is not expanded or missing client_secret');
+          intentType = 'payment';
         }
-      } else {
-        console.log('❌ Latest invoice is not expanded');
+      }
+      
+      // If no payment intent, try pending setup intent
+      if (!clientSecret && typeof pendingSetupIntent === 'object' && pendingSetupIntent && pendingSetupIntent.client_secret) {
+        clientSecret = pendingSetupIntent.client_secret;
+        intentType = 'setup';
       }
 
       // Send confirmation email
@@ -1937,6 +1934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'requires_payment',
         subscriptionId: subscription.id,
         clientSecret: clientSecret,
+        intentType: intentType,
       });
     } catch (error: any) {
       console.error("Error creating subscription:", error);

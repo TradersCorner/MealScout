@@ -25,10 +25,11 @@ interface SubscriptionState {
   status: SubscriptionStatus;
   subscriptionId?: string;
   clientSecret?: string;
+  intentType?: string;
   error?: string;
 }
 
-const PaymentForm = ({ clientSecret, onSuccess }: { clientSecret: string, onSuccess: () => void }) => {
+const PaymentForm = ({ clientSecret, intentType = 'payment', onSuccess }: { clientSecret: string, intentType?: string, onSuccess: () => void }) => {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
@@ -44,30 +45,42 @@ const PaymentForm = ({ clientSecret, onSuccess }: { clientSecret: string, onSucc
     setIsProcessing(true);
 
     try {
-      const { error } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: window.location.origin + '/deal-creation',
-        },
-        redirect: 'if_required'
-      });
+      let result;
+      
+      if (intentType === 'setup') {
+        result = await stripe.confirmSetup({
+          elements,
+          confirmParams: {
+            return_url: window.location.origin + '/deal-creation',
+          },
+          redirect: 'if_required'
+        });
+      } else {
+        result = await stripe.confirmPayment({
+          elements,
+          confirmParams: {
+            return_url: window.location.origin + '/deal-creation',
+          },
+          redirect: 'if_required'
+        });
+      }
 
-      if (error) {
+      if (result.error) {
         toast({
-          title: "Payment Failed",
-          description: error.message,
+          title: intentType === 'setup' ? "Setup Failed" : "Payment Failed",
+          description: result.error.message,
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Payment Successful!",
+          title: intentType === 'setup' ? "Setup Successful!" : "Payment Successful!",
           description: "Welcome to MealScout! You can now create deals.",
         });
         onSuccess();
       }
     } catch (error: any) {
       toast({
-        title: "Payment Error",
+        title: intentType === 'setup' ? "Setup Error" : "Payment Error",
         description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
@@ -351,7 +364,8 @@ export default function Subscribe() {
         setSubscriptionState({
           status: 'requires_payment',
           subscriptionId: data.subscriptionId,
-          clientSecret: data.clientSecret
+          clientSecret: data.clientSecret,
+          intentType: data.intentType || 'payment'
         });
       } else {
         setSubscriptionState({
@@ -482,6 +496,7 @@ export default function Subscribe() {
               </Card>
               <PaymentForm 
                 clientSecret={subscriptionState.clientSecret} 
+                intentType={subscriptionState.intentType}
                 onSuccess={handlePaymentSuccess}
               />
             </div>

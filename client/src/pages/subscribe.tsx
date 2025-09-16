@@ -340,6 +340,7 @@ export default function Subscribe() {
         promoCode: promoCode.trim()
       });
       const data = await res.json();
+      console.log('🔍 API response:', data);
       
       if (data.status === 'active') {
         // User already has an active subscription
@@ -352,6 +353,7 @@ export default function Subscribe() {
       }
       
       if (data.status === 'requires_payment' && data.clientSecret) {
+        console.log('✅ Setting subscription state to requires_payment with clientSecret:', data.clientSecret);
         setSubscriptionState({
           status: 'requires_payment',
           subscriptionId: data.subscriptionId,

@@ -15,9 +15,14 @@ import { Label } from "@/components/ui/label";
 
 // Make sure to call `loadStripe` outside of a component's render to avoid
 // recreating the `Stripe` object on every render.
-const stripePromise = import.meta.env.VITE_STRIPE_PUBLIC_KEY 
-  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
-  : null;
+// Create a fresh instance to avoid caching issues
+const getStripePromise = () => {
+  return import.meta.env.VITE_STRIPE_PUBLIC_KEY 
+    ? loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
+    : null;
+};
+
+const stripePromise = getStripePromise();
 
 type SubscriptionStatus = 'selecting' | 'initializing' | 'requires_payment' | 'active' | 'error';
 

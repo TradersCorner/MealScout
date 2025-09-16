@@ -35,6 +35,9 @@ export function getSession() {
 }
 
 export async function setupUnifiedAuth(app: Express) {
+  // Use stable callback URL to prevent OAuth session issues
+  const baseUrl = 'https://69cd86f2-c258-4543-8fff-17e15c7fd919-00-1q69tw7hrl31d.janeway.replit.dev';
+  
   // Set up passport serialization for email/password auth
   passport.serializeUser((user: any, done) => {
     done(null, user.id);
@@ -57,20 +60,13 @@ export async function setupUnifiedAuth(app: Express) {
   // Google Strategy and routes for all users (only enabled if credentials are configured)
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     console.log("Setting up Google OAuth strategies...");
-    
-    const baseUrl = process.env.PUBLIC_BASE_URL || 
-                    (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000');
     console.log('🔵 Google OAuth customer callback URL:', `${baseUrl}/api/auth/google/customer/callback`);
     console.log('🔵 Google OAuth restaurant callback URL:', `${baseUrl}/api/auth/google/restaurant/callback`);
     
     passport.use('google-customer', new GoogleStrategy({
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: (() => {
-        const base = process.env.PUBLIC_BASE_URL || 
-                    (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000');
-        return `${base}/api/auth/google/customer/callback`;
-      })(),
+      callbackURL: `${baseUrl}/api/auth/google/customer/callback`,
     },
     async (accessToken: string, refreshToken: string, profile: any, done: any) => {
       try {
@@ -129,11 +125,7 @@ export async function setupUnifiedAuth(app: Express) {
     passport.use('google-restaurant', new GoogleStrategy({
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: (() => {
-        const base = process.env.PUBLIC_BASE_URL || 
-                    (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000');
-        return `${base}/api/auth/google/restaurant/callback`;
-      })(),
+      callbackURL: `${baseUrl}/api/auth/google/restaurant/callback`,
     },
     async (accessToken: string, refreshToken: string, profile: any, done: any) => {
       try {
@@ -250,9 +242,7 @@ export async function setupUnifiedAuth(app: Express) {
       clientID: process.env.FACEBOOK_APP_ID,
       clientSecret: process.env.FACEBOOK_APP_SECRET,
       callbackURL: (() => {
-        const base = process.env.PUBLIC_BASE_URL || 
-                    (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000');
-        const callbackUrl = `${base}/api/auth/facebook/callback`;
+        const callbackUrl = `${baseUrl}/api/auth/facebook/callback`;
         console.log('🔵 Facebook OAuth callback URL:', callbackUrl);
         return callbackUrl;
       })(),

@@ -2206,37 +2206,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const user = req.user;
-      console.log(`[SUBSCRIPTION DEBUG] User ${user.id} checking subscription status`);
-      console.log(`[SUBSCRIPTION DEBUG] User subscription billing interval: ${user.subscriptionBillingInterval || 'undefined'}`);
-      
-      // TEMP FIX: For this specific user who already paid, return active status
-      if (user.id === '42a7cab4-4939-4344-a777-e38848bcead1') {
-        console.log(`[SUBSCRIPTION DEBUG] Recognized paid test user, returning active status`);
-        return res.json({
-          status: 'active',
-          currentPeriodEnd: Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 days from now
-          cancelAtPeriodEnd: false,
-        });
-      }
+      console.log(`[SUBSCRIPTION DEBUG] Checking subscription for user ${user.id}`);
       
       if (!user.stripeSubscriptionId) {
+        console.log(`[SUBSCRIPTION DEBUG] User ${user.id} has no Stripe subscription ID`);
         return res.json({ status: 'none' });
       }
 
-      // For test mode, if user has subscription billing interval set, consider it active
-      if (user.subscriptionBillingInterval && user.subscriptionBillingInterval.includes('deal')) {
-        console.log(`User ${user.id} has active subscription billing interval: ${user.subscriptionBillingInterval}`);
-        return res.json({
-          status: 'active',
-          currentPeriodEnd: Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 days from now
-          cancelAtPeriodEnd: false,
-        });
-      }
-
-      // Fallback: Check database for subscription billing interval if not in user object
+      // First check database for subscription billing interval (indicating payment success)
       const dbUser = await storage.getUser(user.id);
+      console.log(`[SUBSCRIPTION DEBUG] Database user billing interval: ${dbUser?.subscriptionBillingInterval || 'none'}`);
+      
       if (dbUser && dbUser.subscriptionBillingInterval && dbUser.subscriptionBillingInterval.includes('deal')) {
-        console.log(`Database user ${user.id} has active subscription billing interval: ${dbUser.subscriptionBillingInterval}`);
+        console.log(`[SUBSCRIPTION DEBUG] User ${user.id} has active billing interval, treating as active`);
         return res.json({
           status: 'active',
           currentPeriodEnd: Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 days from now

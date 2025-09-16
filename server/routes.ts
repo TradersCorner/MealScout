@@ -1906,7 +1906,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: subscription.id,
         status: subscription.status,
         latest_invoice: typeof latestInvoice,
-        pending_setup_intent: typeof pendingSetupIntent
+        pending_setup_intent: typeof pendingSetupIntent,
+        pending_setup_intent_value: pendingSetupIntent
       });
 
       let clientSecret = null;

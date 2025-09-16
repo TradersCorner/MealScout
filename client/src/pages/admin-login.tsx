@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -141,6 +142,14 @@ export default function AdminLogin() {
               )}
             </Button>
           </form>
+
+          <div className="mt-4 text-center">
+            <Link href="/forgot-password">
+              <span className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer text-sm" data-testid="link-forgot-password">
+                Forgot your password?
+              </span>
+            </Link>
+          </div>
           
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-center text-sm text-gray-500">

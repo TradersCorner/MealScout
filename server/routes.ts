@@ -2201,6 +2201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const user = req.user;
+      console.log(`User subscription billing interval: ${user.subscriptionBillingInterval || 'undefined'}`);
       
       if (!user.stripeSubscriptionId) {
         return res.json({ status: 'none' });
@@ -2209,6 +2210,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For test mode, if user has subscription billing interval set, consider it active
       if (user.subscriptionBillingInterval && user.subscriptionBillingInterval.includes('deal')) {
         console.log(`User ${user.id} has active subscription billing interval: ${user.subscriptionBillingInterval}`);
+        return res.json({
+          status: 'active',
+          currentPeriodEnd: Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 days from now
+          cancelAtPeriodEnd: false,
+        });
+      }
+
+      // Fallback: Check database for subscription billing interval if not in user object
+      const dbUser = await storage.getUser(user.id);
+      if (dbUser && dbUser.subscriptionBillingInterval && dbUser.subscriptionBillingInterval.includes('deal')) {
+        console.log(`Database user ${user.id} has active subscription billing interval: ${dbUser.subscriptionBillingInterval}`);
         return res.json({
           status: 'active',
           currentPeriodEnd: Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 days from now

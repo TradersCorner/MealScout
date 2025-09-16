@@ -1787,20 +1787,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const testProductName = `MealScout Test Plan - ${hasMultipleDealsAddon ? 'Multiple' : 'Single'} Deal(s) - $1 Test`;
 
+        // Create or get existing product
+        const product = await stripe.products.create({
+          name: testProductName,
+          metadata: {
+            type: 'test',
+            deals: hasMultipleDealsAddon ? 'multiple' : 'single'
+          }
+        });
+
         const subscription = await stripe.subscriptions.create({
           customer: customerId,
           items: [{
             price_data: {
               currency: 'usd',
-              product_data: {
-                name: testProductName
-              },
+              product: product.id,
               unit_amount: 100, // $1.00 in cents
               recurring: {
                 interval: 'month',
                 interval_count: 1,
               },
-            } as any,
+            },
           }],
           payment_behavior: 'default_incomplete',
           expand: ['latest_invoice.payment_intent'],
@@ -1865,20 +1872,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? `MealScout Restaurant Plan - Multiple Deals (3 deals) - ${getBillingLabel(interval)}`
             : `MealScout Restaurant Plan - Single Deal (1 deal) - ${getBillingLabel(interval)}`;
           
+          // Create or get existing product
+          const product = await stripe.products.create({
+            name: productName,
+            metadata: {
+              type: 'subscription',
+              deals: hasMultipleDealsAddon ? 'multiple' : 'single',
+              interval: interval
+            }
+          });
+          
           const updatedSubscription = await stripe.subscriptions.update(subscription.id, {
             items: [{
               id: subscription.items.data[0].id,
               price_data: {
                 currency: 'usd',
-                product_data: {
-                  name: productName
-                },
+                product: product.id,
                 unit_amount: unitAmount,
                 recurring: {
                   interval: interval === 'quarter' ? 'month' : (interval === 'year' ? 'month' : interval) as 'month' | 'year',
                   interval_count: interval === 'quarter' ? 3 : (interval === 'year' ? 12 : 1),
                 },
-              } as any,
+              },
             }],
             expand: ['latest_invoice.payment_intent'],
           });
@@ -1965,20 +1980,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : `MealScout Restaurant Plan - Single Deal (1 deal) - ${getBillingLabel(interval)}`;
       const intervalCount = getIntervalCount(interval);
 
+      // Create or get existing product
+      const product = await stripe.products.create({
+        name: productName,
+        metadata: {
+          type: 'subscription',
+          deals: hasMultipleDealsAddon ? 'multiple' : 'single',
+          interval: interval
+        }
+      });
+
       const subscription = await stripe.subscriptions.create({
         customer: customerId,
         items: [{
           price_data: {
             currency: 'usd',
-            product_data: {
-              name: productName
-            },
+            product: product.id,
             unit_amount: unitAmount,
             recurring: {
               interval: (interval === 'quarter' || interval === 'year') ? 'month' : interval as 'month' | 'year',
               interval_count: intervalCount,
             },
-          } as any,
+          },
         }],
         payment_behavior: 'default_incomplete',
         expand: ['latest_invoice.payment_intent'],

@@ -1824,16 +1824,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Calculate pricing based on deal addon and billing interval
+      // Base: $50/month (1 deal), Multiple: $100/month (3 deals)
       const getPricing = (hasMultiple: boolean, interval: string) => {
-        const basePrice = hasMultiple ? 7500 : 5000; // $75 or $50 monthly
+        const monthlyPrice = hasMultiple ? 10000 : 5000; // $100 or $50 monthly
         
         switch (interval) {
           case 'quarter':
-            return hasMultiple ? 30000 : 15000; // $300 or $150 for 3 months
+            return monthlyPrice * 3; // 3 months: $300 or $150
           case 'year':
-            return hasMultiple ? 90000 : 60000; // $900 or $600 for 12 months
+            return monthlyPrice * 12; // 12 months: $1200 or $600
           default:
-            return basePrice; // Monthly pricing
+            return monthlyPrice; // Monthly pricing
         }
       };
       
@@ -2056,15 +2057,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Base: $50/month (1 deal), Multiple: $75/month (3 deals total)
       // Quarterly: $100 for 3 months, Yearly: $450 for 12 months
       const getPricing = (hasMultiple: boolean, interval: string) => {
-        const basePrice = hasMultiple ? 7500 : 5000; // $75 or $50 monthly
+        const monthlyPrice = hasMultiple ? 10000 : 5000; // $100 or $50 monthly
         
         switch (interval) {
           case 'quarter':
-            return hasMultiple ? 30000 : 15000; // $300 or $150 for 3 months
+            return monthlyPrice * 3; // 3 months: $300 or $150
           case 'year':
-            return hasMultiple ? 90000 : 60000; // $900 or $600 for 12 months
+            return monthlyPrice * 12; // 12 months: $1200 or $600
           default:
-            return basePrice; // Monthly pricing
+            return monthlyPrice; // Monthly pricing
         }
       };
       

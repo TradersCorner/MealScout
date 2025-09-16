@@ -1843,85 +1843,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           expand: ['latest_invoice.payment_intent']
         });
         
-        // If subscription is incomplete, update it with the new plan
+        // If subscription is incomplete or incomplete_expired, cancel it and create a new one
         if (subscription.status === 'incomplete' || subscription.status === 'incomplete_expired') {
-          // Calculate pricing based on plan and billing interval
-          const getPricing = (hasMultiple: boolean, interval: string) => {
-            const basePrice = hasMultiple ? 7500 : 5000; // $75 or $50 monthly
-            
-            switch (interval) {
-              case 'quarter':
-                return 10000; // $100 for 3 months (same for single or multiple deals)
-              case 'year':
-                return 45000; // $450 for 12 months (same for single or multiple deals)
-              default:
-                return basePrice; // Monthly pricing
-            }
-          };
-          
-          const unitAmount = getPricing(hasMultipleDealsAddon, interval);
-          const getBillingLabel = (interval: string) => {
-            switch (interval) {
-              case 'quarter': return 'Quarterly';
-              case 'year': return 'Yearly';
-              default: return 'Monthly';
-            }
-          };
-          
-          const productName = hasMultipleDealsAddon 
-            ? `MealScout Restaurant Plan - Multiple Deals (3 deals) - ${getBillingLabel(interval)}`
-            : `MealScout Restaurant Plan - Single Deal (1 deal) - ${getBillingLabel(interval)}`;
-          
-          // Create or get existing product
-          const product = await stripe.products.create({
-            name: productName,
-            metadata: {
-              type: 'subscription',
-              deals: hasMultipleDealsAddon ? 'multiple' : 'single',
-              interval: interval
-            }
-          });
-          
-          const updatedSubscription = await stripe.subscriptions.update(subscription.id, {
-            items: [{
-              id: subscription.items.data[0].id,
-              price_data: {
-                currency: 'usd',
-                product: product.id,
-                unit_amount: unitAmount,
-                recurring: {
-                  interval: interval === 'quarter' ? 'month' : (interval === 'year' ? 'month' : interval) as 'month' | 'year',
-                  interval_count: interval === 'quarter' ? 3 : (interval === 'year' ? 12 : 1),
-                },
-              },
-            }],
-            expand: ['latest_invoice.payment_intent'],
-          });
-          
-          // Update user billing interval
-          await storage.updateUser(user.id, {
-            subscriptionBillingInterval: `${hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal'}-${interval}`
-          });
-          
-          const latestInvoice = updatedSubscription.latest_invoice;
+          console.log(`Canceling incomplete subscription ${subscription.id} to create new one`);
+          await stripe.subscriptions.cancel(subscription.id);
+          // Clear the subscription ID so we create a new one below
+          await storage.updateUser(user.id, { stripeSubscriptionId: null });
+        } else {
+          // If subscription is active, return existing
+          const latestInvoice = subscription.latest_invoice;
           const paymentIntent = typeof latestInvoice === 'object' && latestInvoice ? (latestInvoice as any).payment_intent : null;
           
           res.send({
-            subscriptionId: updatedSubscription.id,
+            subscriptionId: subscription.id,
             clientSecret: typeof paymentIntent === 'object' && paymentIntent ? paymentIntent.client_secret : null,
           });
           return;
         }
-        
-        // If subscription is active, return existing
-        const latestInvoice = subscription.latest_invoice;
-        const paymentIntent = typeof latestInvoice === 'object' && latestInvoice ? (latestInvoice as any).payment_intent : null;
-        
-        res.send({
-          subscriptionId: subscription.id,
-          clientSecret: typeof paymentIntent === 'object' && paymentIntent ? paymentIntent.client_secret : null,
-        });
-        return;
       } catch (error) {
         console.error("Error retrieving subscription:", error);
       }

@@ -209,6 +209,26 @@ const PlanSelector = ({
               <div className="text-sm text-gray-600">per month</div>
             </div>
             
+            {/* Yearly */}
+            <div 
+              className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 text-center relative ${
+                billingInterval === 'year' 
+                  ? 'border-green-500 bg-green-50 shadow-md' 
+                  : 'border-gray-200 bg-white hover:border-green-300'
+              }`}
+              onClick={() => onBillingIntervalChange('year')}
+              data-testid="card-billing-yearly"
+            >
+              <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                Save 50%
+              </div>
+              <div className="font-semibold text-gray-900 mb-1">Yearly</div>
+              <div className="text-2xl font-bold text-green-600 mb-2">
+                ${hasMultipleDeals ? '900' : '600'}
+              </div>
+              <div className="text-sm text-gray-600">for 12 months</div>
+            </div>
+            
             {/* Special 3-Month Offer (New Users Only) */}
             <div 
               className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 text-center relative ${
@@ -231,26 +251,6 @@ const PlanSelector = ({
               <div className="text-2xl font-bold text-green-600 mb-2">$100</div>
               <div className="text-sm text-gray-600">1 deal for 3 months</div>
               <div className="text-xs text-gray-500 mt-1">Special offer!</div>
-            </div>
-            
-            {/* Yearly */}
-            <div 
-              className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 text-center relative ${
-                billingInterval === 'year' 
-                  ? 'border-green-500 bg-green-50 shadow-md' 
-                  : 'border-gray-200 bg-white hover:border-green-300'
-              }`}
-              onClick={() => onBillingIntervalChange('year')}
-              data-testid="card-billing-yearly"
-            >
-              <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                Save 50%
-              </div>
-              <div className="font-semibold text-gray-900 mb-1">Yearly</div>
-              <div className="text-2xl font-bold text-green-600 mb-2">
-                ${hasMultipleDeals ? '900' : '600'}
-              </div>
-              <div className="text-sm text-gray-600">for 12 months</div>
             </div>
           </div>
         </CardContent>

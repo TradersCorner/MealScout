@@ -234,7 +234,7 @@ export default function DealCreation() {
   }
 
   // Check subscription status - redirect to subscribe page if needed
-  if (subscription && subscription.status !== 'active') {
+  if (subscription && (subscription as any).status !== 'active') {
     return (
       <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
         <Card>

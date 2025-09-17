@@ -115,7 +115,7 @@ app.use((req, res, next) => {
       if (req.hostname !== canonicalHost) {
         const redirectUrl = `${publicBaseUrl}${req.path}`;
         log(`Redirecting ${req.hostname} to canonical domain: ${redirectUrl}`);
-        return res.redirect(301, redirectUrl);
+        return res.redirect(302, redirectUrl);
       }
     }
     next();

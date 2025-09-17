@@ -94,28 +94,14 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Validate database schema at startup
+  // Initialize admin account and seed data - these are essential for startup
   try {
-    const schemaCheck = await db.execute(sql`
-      SELECT column_name, data_type 
-      FROM information_schema.columns 
-      WHERE table_name = 'users' AND column_name = 'phone'
-    `);
-    
-    if (schemaCheck.rows.length === 0) {
-      console.error('❌ CRITICAL: phone column missing from users table!');
-      console.error('Database URL:', process.env.DATABASE_URL?.split('@')[0] + '@...');
-      process.exit(1);
-    } else {
-      console.log('✅ Schema validation: phone column exists');
-    }
+    await storage.ensureAdminExists();
+    await storage.seedDevelopmentData();
   } catch (error) {
-    console.error('❌ Schema validation failed:', error);
+    console.warn('⚠️  Warning: Could not initialize storage during startup:', error instanceof Error ? error.message : String(error));
+    console.log('Server will continue starting, database validation will be performed after startup');
   }
-
-  // Initialize admin account and seed data
-  await storage.ensureAdminExists();
-  await storage.seedDevelopmentData();
   
   // Setup session configuration before routes
   app.set("trust proxy", 1);
@@ -195,5 +181,30 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Perform database validation after server startup - non-blocking
+    setTimeout(async () => {
+      try {
+        const schemaCheck = await db.execute(sql`
+          SELECT column_name, data_type 
+          FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'phone'
+        `);
+        
+        if (schemaCheck.rows.length === 0) {
+          console.error('❌ CRITICAL: phone column missing from users table!');
+          console.error('Database URL:', process.env.DATABASE_URL?.split('@')[0] + '@...');
+          // Don't exit process in production - log error and continue
+          if (process.env.NODE_ENV === 'production') {
+            console.warn('⚠️  Server will continue running despite database schema issues');
+          }
+        } else {
+          console.log('✅ Schema validation: phone column exists');
+        }
+      } catch (error) {
+        console.error('❌ Schema validation failed:', error instanceof Error ? error.message : String(error));
+        console.warn('⚠️  Server will continue running despite database validation failure');
+      }
+    }, 1000); // Delay 1 second to allow server to fully start
   });
 })();

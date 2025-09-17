@@ -12,6 +12,35 @@ import { sql } from "drizzle-orm";
 
 const app = express();
 
+// Global error handlers to prevent server crashes
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('⚠️  Server continuing despite uncaught exception');
+  } else {
+    console.error('💥 Exiting process due to uncaught exception in development');
+    process.exit(1);
+  }
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('⚠️  Server continuing despite unhandled rejection');
+  }
+});
+
+// Graceful shutdown handling
+process.on('SIGTERM', () => {
+  console.log('🔄 SIGTERM received. Shutting down gracefully...');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('🔄 SIGINT received. Shutting down gracefully...');
+  process.exit(0);
+});
+
 // Production security and performance middleware
 if (process.env.NODE_ENV === "production") {
   app.use(helmet({

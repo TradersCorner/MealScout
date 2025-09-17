@@ -7,6 +7,8 @@ import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
 import { setupWebSocketServer } from "./websocket";
 import { getSession } from "./unifiedAuth";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 
 const app = express();
 
@@ -92,6 +94,25 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Validate database schema at startup
+  try {
+    const schemaCheck = await db.execute(sql`
+      SELECT column_name, data_type 
+      FROM information_schema.columns 
+      WHERE table_name = 'users' AND column_name = 'phone'
+    `);
+    
+    if (schemaCheck.rows.length === 0) {
+      console.error('❌ CRITICAL: phone column missing from users table!');
+      console.error('Database URL:', process.env.DATABASE_URL?.split('@')[0] + '@...');
+      process.exit(1);
+    } else {
+      console.log('✅ Schema validation: phone column exists');
+    }
+  } catch (error) {
+    console.error('❌ Schema validation failed:', error);
+  }
+
   // Initialize admin account and seed data
   await storage.ensureAdminExists();
   await storage.seedDevelopmentData();

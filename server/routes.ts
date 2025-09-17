@@ -236,6 +236,24 @@ async function validateSubscriptionLimits(userId: string, excludeDealId?: string
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check endpoint - responds immediately with 200 for deployment health checks
+  app.get('/health', (_req, res) => {
+    res.status(200).json({ 
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime()
+    });
+  });
+
+  // Root endpoint health check as well
+  app.get('/', (_req, res) => {
+    res.status(200).json({ 
+      status: 'ok',
+      service: 'Food Truck Finder API',
+      timestamp: new Date().toISOString()
+    });
+  });
+
   // Validate environment in production
   if (process.env.NODE_ENV === 'production') {
     validateEnvironment();

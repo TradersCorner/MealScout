@@ -46,7 +46,7 @@ export async function setupUnifiedAuth(app: Express) {
     }
     throw new Error('PUBLIC_BASE_URL must be set for OAuth to work with multiple users');
   };
-  const baseUrl = getBaseUrl();
+  const baseUrl = getBaseUrl().replace(/\/+$/, ''); // Remove trailing slashes to prevent double slashes in callback URLs
   
   // Set up passport serialization for email/password auth
   passport.serializeUser((user: any, done) => {
@@ -198,12 +198,22 @@ export async function setupUnifiedAuth(app: Express) {
       })(req, res, next);
     });
 
-    app.get("/api/auth/google/customer/callback", (req, res, next) => {
-      passport.authenticate('google-customer', {
-        successRedirect: "/",
-        failureRedirect: "/?error=auth_failed",
-      })(req, res, next);
-    });
+    app.get("/api/auth/google/customer/callback", 
+      (req, res, next) => {
+        console.log('🔍 Google customer OAuth callback reached:', {
+          query: req.query,
+          hasError: !!req.query.error,
+          errorDescription: req.query.error_description
+        });
+        next();
+      },
+      (req, res, next) => {
+        passport.authenticate('google-customer', {
+          successRedirect: "/",
+          failureRedirect: "/?error=auth_failed",
+        })(req, res, next);
+      }
+    );
 
     // Google OAuth routes for restaurant owners
     app.get("/api/auth/google/restaurant", (req, res, next) => {
@@ -212,12 +222,22 @@ export async function setupUnifiedAuth(app: Express) {
       })(req, res, next);
     });
 
-    app.get("/api/auth/google/restaurant/callback", (req, res, next) => {
-      passport.authenticate('google-restaurant', {
-        successRedirect: "/restaurant-signup",
-        failureRedirect: "/restaurant-signup?error=auth_failed",
-      })(req, res, next);
-    });
+    app.get("/api/auth/google/restaurant/callback", 
+      (req, res, next) => {
+        console.log('🔍 Google restaurant OAuth callback reached:', {
+          query: req.query,
+          hasError: !!req.query.error,
+          errorDescription: req.query.error_description
+        });
+        next();
+      },
+      (req, res, next) => {
+        passport.authenticate('google-restaurant', {
+          successRedirect: "/restaurant-signup",
+          failureRedirect: "/restaurant-signup?error=auth_failed",
+        })(req, res, next);
+      }
+    );
   } else {
     console.log("Google OAuth not configured: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables are missing");
     

@@ -102,6 +102,21 @@ app.use((req, res, next) => {
   app.use(passport.initialize());
   app.use(passport.session());
   
+  // OAuth normalization middleware - redirect Google OAuth to canonical domain to prevent session mismatch
+  app.use((req, res, next) => {
+    const publicBaseUrl = process.env.PUBLIC_BASE_URL;
+    if (publicBaseUrl && req.path.startsWith('/api/auth/google')) {
+      const canonicalHost = new URL(publicBaseUrl).hostname;
+      if (req.hostname !== canonicalHost) {
+        const queryString = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+        const redirectUrl = `${publicBaseUrl}${req.path}${queryString}`;
+        log(`Redirecting Google OAuth ${req.hostname} to canonical domain: ${redirectUrl}`);
+        return res.redirect(307, redirectUrl);
+      }
+    }
+    next();
+  });
+
   // Host normalization middleware - redirect all users to canonical domain
   app.use((req, res, next) => {
     // Skip for API routes and localhost development

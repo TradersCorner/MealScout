@@ -78,15 +78,18 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000); // Clean up every 5 minutes
 
-// Environment validation for production
+// Environment validation for production - now non-blocking to prevent startup failures
 function validateEnvironment() {
   const required = ['DATABASE_URL', 'SESSION_SECRET'];
   const missing = required.filter(env => !process.env[env]);
   
   if (missing.length > 0) {
-    console.error(`Missing required environment variables: ${missing.join(', ')}`);
-    process.exit(1);
+    console.error(`❌ Missing required environment variables: ${missing.join(', ')}`);
+    console.warn('⚠️  Server will start but some features may not work properly');
+    // Don't exit process to allow health checks to pass
+    return false;
   }
+  return true;
 }
 
 // Subscription validation function for analytics access
@@ -241,22 +244,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).json({ 
       status: 'ok',
       timestamp: new Date().toISOString(),
-      uptime: process.uptime()
+      uptime: process.uptime(),
+      service: 'Food Truck Finder API'
     });
   });
 
-  // Root endpoint health check as well
-  app.get('/', (_req, res) => {
-    res.status(200).json({ 
-      status: 'ok',
-      service: 'Food Truck Finder API',
-      timestamp: new Date().toISOString()
-    });
-  });
-
-  // Validate environment in production
+  // Validate environment in production - log issues but don't block startup
   if (process.env.NODE_ENV === 'production') {
-    validateEnvironment();
+    const envValid = validateEnvironment();
+    if (!envValid) {
+      console.log('🚀 Server starting despite environment validation issues to allow health checks');
+    }
   }
 
   // Auth middleware

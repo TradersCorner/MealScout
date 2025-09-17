@@ -182,12 +182,23 @@ app.use((req, res, next) => {
   setupWebSocketServer(server);
   log("WebSocket server initialized for food truck tracking");
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    res.status(status).json({ message });
-    throw err;
+    // Log error for debugging
+    console.error('❌ Express error middleware:', err);
+    
+    // Send response if not already sent
+    if (!res.headersSent) {
+      res.status(status).json({ message });
+    }
+    
+    // Don't throw after responding to avoid triggering uncaughtException
+    // In production, log and continue; in development, we can be more strict
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('💥 Development error - check logs above');
+    }
   });
 
   // importantly only setup vite in development and after

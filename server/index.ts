@@ -138,24 +138,28 @@ app.use((req, res, next) => {
     next();
   });
 
-  // Host normalization middleware - redirect all users to canonical domain
-  app.use((req, res, next) => {
-    // Skip for API routes and localhost development
-    if (req.path.startsWith('/api') || req.hostname === 'localhost' || req.hostname === '127.0.0.1') {
-      return next();
-    }
-    
-    const publicBaseUrl = process.env.PUBLIC_BASE_URL;
-    if (publicBaseUrl && !req.url.includes('?')) { // Only redirect if no query params to avoid losing OAuth state
-      const canonicalHost = new URL(publicBaseUrl).hostname;
-      if (req.hostname !== canonicalHost) {
-        const redirectUrl = `${publicBaseUrl}${req.path}`;
-        log(`Redirecting ${req.hostname} to canonical domain: ${redirectUrl}`);
-        return res.redirect(302, redirectUrl);
-      }
-    }
-    next();
-  });
+  // Host normalization middleware - TEMPORARILY DISABLED to test app functionality
+  // app.use((req, res, next) => {
+  //   // Skip for API routes and localhost development
+  //   if (req.path.startsWith('/api') || req.hostname === 'localhost' || req.hostname === '127.0.0.1') {
+  //     return next();
+  //   }
+  //   
+  //   const publicBaseUrl = process.env.PUBLIC_BASE_URL;
+  //   if (publicBaseUrl && !req.url.includes('?')) { // Only redirect if no query params to avoid losing OAuth state
+  //     const canonicalHost = new URL(publicBaseUrl).hostname;
+  //     
+  //     // Debug logging to see what's happening
+  //     log(`🔍 Hostname check: req.hostname='${req.hostname}', canonicalHost='${canonicalHost}', match=${req.hostname === canonicalHost}`);
+  //     
+  //     if (req.hostname !== canonicalHost) {
+  //       const redirectUrl = `${publicBaseUrl}${req.path}`;
+  //       log(`Redirecting ${req.hostname} to canonical domain: ${redirectUrl}`);
+  //       return res.redirect(302, redirectUrl);
+  //     }
+  //   }
+  //   next();
+  // });
   
   const server = await registerRoutes(app);
 

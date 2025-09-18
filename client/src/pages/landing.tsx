@@ -586,34 +586,42 @@ export default function Landing() {
               )}
             </div>
             
-            {/* Mobile Menu Button */}
-            <div className="sm:hidden flex items-center space-x-1">
+            {/* Mobile Menu Buttons - Enhanced for better UX */}
+            <div className="sm:hidden flex items-center space-x-2">
+              {/* Restaurant Signup Button */}
+              <Link href="/restaurant-signup">
+                <button 
+                  className="px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg font-semibold text-xs shadow-md transition-all duration-200"
+                  data-testid="mobile-restaurant-button"
+                >
+                  Restaurant
+                </button>
+              </Link>
+              
+              {/* Sign Up Button */}
               <button 
                 onClick={(e) => {
                   e.stopPropagation(); // Prevent click outside handler
                   setAuthMode('signup'); // Open directly in signup mode
                   setShowAuth(true);
                 }}
-                className="w-9 h-9 bg-red-500 hover:bg-red-600 rounded-lg flex items-center justify-center transition-colors duration-200 shadow-sm"
-                data-testid="mobile-create-account-button"
+                className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold text-xs shadow-md transition-all duration-200"
+                data-testid="mobile-signup-button"
               >
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                </svg>
+                Sign Up
               </button>
+              
+              {/* Login Button */}
               <button 
                 onClick={(e) => {
                   e.stopPropagation(); // Prevent click outside handler
                   setAuthMode('primary'); // Set to primary mode to show main auth options
                   setShowAuth(!showAuth);
                 }}
-                className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200"
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg font-semibold text-xs text-gray-700 shadow-sm transition-all duration-200"
                 data-testid="mobile-login-button"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                  <circle cx="12" cy="7" r="4"/>
-                </svg>
+                Log In
               </button>
             </div>
           </div>

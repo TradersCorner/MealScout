@@ -109,8 +109,18 @@ export default function RestaurantDealsDrawer({
 
   if (!isOpen) return null;
 
+  // Handle background click to close
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center md:items-center">
+    <div 
+      className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center md:items-center"
+      onClick={handleBackgroundClick}
+    >
       <div className="bg-white rounded-t-3xl md:rounded-3xl w-full max-w-2xl h-[90vh] md:h-[80vh] overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
@@ -122,15 +132,14 @@ export default function RestaurantDealsDrawer({
               {deals ? `${deals.length} deals available` : 'Loading deals...'}
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
+          <button
             onClick={onClose}
             data-testid="button-close-drawer"
-            className="rounded-full"
+            className="rounded-full p-2 hover:bg-gray-100 transition-colors"
+            type="button"
           >
             <X className="w-5 h-5" />
-          </Button>
+          </button>
         </div>
 
         {/* Content */}

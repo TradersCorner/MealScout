@@ -4,6 +4,8 @@ import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import DealClaimModal from "./deal-claim-modal";
+import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
 
 interface Deal {
   id: string;
@@ -73,6 +75,8 @@ export default function RestaurantDealsDrawer({
 }: RestaurantDealsDrawerProps) {
   const [currentDealIndex, setCurrentDealIndex] = useState(0);
   const [showClaimModal, setShowClaimModal] = useState(false);
+  const { isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
 
   const { data: deals, isLoading } = useQuery<Deal[]>({
     queryKey: [`/api/deals/restaurant/${restaurantId}`],
@@ -110,6 +114,11 @@ export default function RestaurantDealsDrawer({
   };
 
   const handleClaimDeal = () => {
+    if (!isAuthenticated) {
+      // Redirect to login page if user is not authenticated
+      setLocation('/login');
+      return;
+    }
     setShowClaimModal(true);
   };
 

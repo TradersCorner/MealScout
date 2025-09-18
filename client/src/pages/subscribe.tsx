@@ -608,13 +608,15 @@ export default function Subscribe() {
     setSubscriptionState({ status: 'initializing' });
 
     try {
-      const data = await apiRequest("POST", "/api/subscriptions/initialize", {
+      const response = await apiRequest("POST", "/api/subscriptions/initialize", {
         hasMultipleDeals,
         billingInterval,
         promoCode: promoCode || undefined
       });
       
-      if (data.status === 'requires_payment') {
+      const data = await response.json();
+      
+      if (data && data.status === 'requires_payment') {
         setSubscriptionState({
           status: 'requires_payment',
           subscriptionId: data.subscriptionId,

@@ -721,13 +721,13 @@ export default function RestaurantSignup() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <button 
-                onClick={() => window.location.href = "/api/auth/facebook"}
+                onClick={() => window.location.href = "/api/auth/google/restaurant"}
                 className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-10 py-4 rounded-2xl font-bold text-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
               >
                 Create Restaurant Account
               </button>
               <button 
-                onClick={() => window.location.href = "/api/auth/facebook"}
+                onClick={() => window.location.href = "/api/auth/google/restaurant"}
                 className="border-2 border-gray-300 hover:bg-gray-50 text-gray-700 hover:text-gray-800 px-10 py-4 rounded-2xl font-bold text-xl transition-all duration-200"
               >
                 Login to Existing Account

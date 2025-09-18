@@ -101,7 +101,7 @@ export default function Landing() {
 
   const handleEmailSignup = () => {
     console.log('✏️ Email signup clicked');
-    setAuthMode('signup');
+    setAuthMode('primary'); // Show primary login options like top right button
     setShowAuth(true); // Show modal directly
   };
 

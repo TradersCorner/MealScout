@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import DealClaimModal from "./deal-claim-modal";
 
 interface Deal {
   id: string;
@@ -71,6 +72,7 @@ export default function RestaurantDealsDrawer({
   initialDealId 
 }: RestaurantDealsDrawerProps) {
   const [currentDealIndex, setCurrentDealIndex] = useState(0);
+  const [showClaimModal, setShowClaimModal] = useState(false);
 
   const { data: deals, isLoading } = useQuery<Deal[]>({
     queryKey: [`/api/deals/restaurant/${restaurantId}`],
@@ -105,6 +107,10 @@ export default function RestaurantDealsDrawer({
     if (currentDealIndex > 0) {
       setCurrentDealIndex(currentDealIndex - 1);
     }
+  };
+
+  const handleClaimDeal = () => {
+    setShowClaimModal(true);
   };
 
   if (!isOpen) return null;
@@ -233,6 +239,7 @@ export default function RestaurantDealsDrawer({
 
                       {/* Action button */}
                       <Button 
+                        onClick={handleClaimDeal}
                         className="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-bold py-3 rounded-2xl"
                         data-testid={`button-claim-deal-${deals[currentDealIndex].id}`}
                       >
@@ -268,6 +275,15 @@ export default function RestaurantDealsDrawer({
           )}
         </div>
       </div>
+
+      {/* Deal Claim Modal */}
+      {deals && deals[currentDealIndex] && (
+        <DealClaimModal
+          isOpen={showClaimModal}
+          onClose={() => setShowClaimModal(false)}
+          dealId={deals[currentDealIndex].id}
+        />
+      )}
     </div>
   );
 }

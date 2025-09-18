@@ -144,7 +144,29 @@ export default function RestaurantSignup() {
 
   const createRestaurantMutation = useMutation({
     mutationFn: async (data: Omit<RestaurantFormData, 'acceptTerms'>) => {
-      return await apiRequest("POST", "/api/restaurants", data);
+      // Get user data from signup form
+      const signupData = signupForm.getValues();
+      
+      // For new registrations, we need to include user account data
+      const requestData = {
+        userData: {
+          email: signupData.email,
+          firstName: signupData.firstName,
+          lastName: signupData.lastName,
+          phone: signupData.phone,
+          password: signupData.password
+        },
+        restaurantData: {
+          name: data.name,
+          address: data.address,
+          phone: data.phone,
+          businessType: data.businessType,
+          cuisineType: data.cuisineType,
+          promoCode: data.promoCode
+        },
+        subscriptionPlan: billingInterval
+      };
+      return await apiRequest("POST", "/api/restaurants/signup", requestData);
     },
     onSuccess: (restaurant) => {
       setCreatedRestaurant(restaurant);

@@ -1276,6 +1276,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Restaurant owner signup endpoint (creates user account + restaurant in one flow)
+  app.post('/api/restaurants/signup', async (req: any, res) => {
+    try {
+      const { userData, restaurantData, subscriptionPlan } = req.body;
+      
+      // Validate user data
+      const userValidation = z.object({
+        email: z.string().email(),
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
+        phone: z.string().min(10),
+        password: z.string().min(6),
+      });
+      
+      const validatedUserData = userValidation.parse(userData);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(validatedUserData.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User with this email already exists" });
+      }
+      
+      // Hash password
+      const bcrypt = await import('bcryptjs');
+      const passwordHash = await bcrypt.hash(validatedUserData.password, 10);
+      
+      // Create restaurant owner user account using email auth
+      const newUser = await storage.upsertUserByAuth('email', {
+        ...validatedUserData,
+        passwordHash
+      }, 'restaurant_owner');
+      
+      // Validate restaurant data
+      const restaurantValidation = insertRestaurantSchema.omit({ ownerId: true });
+      const validatedRestaurantData = restaurantValidation.parse(restaurantData);
+      
+      // Create restaurant profile
+      const restaurant = await storage.createRestaurant({
+        ...validatedRestaurantData,
+        ownerId: newUser.id,
+      });
+      
+      // Log the user in by setting up session
+      req.login(newUser, (err: any) => {
+        if (err) {
+          console.error('Login error after signup:', err);
+          return res.status(500).json({ message: "Account created but login failed" });
+        }
+        
+        res.json({
+          user: newUser,
+          restaurant,
+          message: "Restaurant owner account created successfully",
+          subscriptionPlan
+        });
+      });
+      
+    } catch (error: any) {
+      console.error("Error in restaurant signup:", error);
+      res.status(400).json({ message: error.message || "Failed to create restaurant account" });
+    }
+  });
+
   // Restaurant routes (require restaurant owner authentication)
   app.post('/api/restaurants', isRestaurantOwner, async (req: any, res) => {
     try {

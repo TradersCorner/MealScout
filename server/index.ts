@@ -9,6 +9,8 @@ import { setupWebSocketServer } from "./websocket";
 import { getSession } from "./unifiedAuth";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
+import fs from "fs";
+import path from "path";
 
 const app = express();
 
@@ -267,8 +269,6 @@ app.use((req, res, next) => {
       }
 
       // For HTML requests in production, check if built frontend exists
-      const fs = require('fs');
-      const path = require('path');
       // Use the same path logic as serveStatic function in vite.ts
       const indexPath = path.resolve(process.cwd(), 'server', 'public', 'index.html');
       

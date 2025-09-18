@@ -12,33 +12,60 @@ import { sql } from "drizzle-orm";
 
 const app = express();
 
-// Global error handlers to prevent server crashes
+// Enhanced global error handlers to prevent server crashes during deployment
 process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught Exception:', error);
+  console.error('Stack trace:', error.stack);
+  
   if (process.env.NODE_ENV === 'production') {
-    console.warn('⚠️  Server continuing despite uncaught exception');
+    console.warn('⚠️  Production mode: Server continuing despite uncaught exception to maintain service availability');
+    console.log('🔍 Error details logged for debugging. Service remains operational.');
   } else {
-    console.error('💥 Exiting process due to uncaught exception in development');
+    console.error('💥 Development mode: Exiting process due to uncaught exception');
     process.exit(1);
   }
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('❌ Unhandled Promise Rejection at:', promise);
+  console.error('Rejection reason:', reason);
+  
   if (process.env.NODE_ENV === 'production') {
-    console.warn('⚠️  Server continuing despite unhandled rejection');
+    console.warn('⚠️  Production mode: Server continuing despite unhandled rejection');
+    console.log('🔍 Rejection details logged for debugging. Service remains operational.');
+  } else {
+    console.warn('⚠️  Development mode: Unhandled rejection detected - consider adding proper error handling');
   }
 });
 
-// Graceful shutdown handling
-process.on('SIGTERM', () => {
-  console.log('🔄 SIGTERM received. Shutting down gracefully...');
-  process.exit(0);
-});
+// Enhanced graceful shutdown handling
+let isShuttingDown = false;
 
-process.on('SIGINT', () => {
-  console.log('🔄 SIGINT received. Shutting down gracefully...');
-  process.exit(0);
+const gracefulShutdown = (signal: string) => {
+  if (isShuttingDown) {
+    console.log(`🔄 ${signal} received again. Forcing immediate shutdown...`);
+    process.exit(1);
+  }
+  
+  isShuttingDown = true;
+  console.log(`🔄 ${signal} received. Initiating graceful shutdown...`);
+  
+  // Give the server a few seconds to finish processing current requests
+  setTimeout(() => {
+    console.log('✅ Graceful shutdown completed');
+    process.exit(0);
+  }, 5000);
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Add warning handler for potential memory leaks
+process.on('warning', (warning) => {
+  if (warning.name === 'MaxListenersExceededWarning') {
+    console.warn('⚠️  Memory leak warning:', warning.message);
+    console.warn('🔍 Consider investigating event listener usage');
+  }
 });
 
 // Production security and performance middleware
@@ -123,19 +150,13 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Initialize admin account and seed data - these are essential for startup
-  // Made non-blocking to prevent health check failures
+  // Basic database connection test - non-blocking to prevent health check failures
   try {
-    // Basic database connection test first
     await db.execute(sql`SELECT 1 as test`);
     console.log('✅ Database connection established successfully');
-    
-    await storage.ensureAdminExists();
-    await storage.seedDevelopmentData();
-    console.log('✅ Database initialization completed successfully');
   } catch (error) {
-    console.warn('⚠️  Warning: Could not initialize storage during startup:', error instanceof Error ? error.message : String(error));
-    console.log('🚀 Server will continue starting, database validation will be performed after startup');
+    console.warn('⚠️  Warning: Could not connect to database during startup:', error instanceof Error ? error.message : String(error));
+    console.log('🚀 Server will continue starting, database initialization will be performed after startup');
     
     // Log connection details for debugging (without exposing credentials)
     if (process.env.DATABASE_URL) {
@@ -215,8 +236,8 @@ app.use((req, res, next) => {
     }
   });
 
-  // Root endpoint health guard - handles health checks while preserving SPA functionality
-  app.use('/', async (req, res, next) => {
+  // Root endpoint health guard - handles health checks while preserving SPA functionality  
+  app.use('/', (req, res, next) => {
     // Only handle root path, let other paths go through
     if (req.path !== '/') {
       return next();
@@ -240,10 +261,15 @@ app.use((req, res, next) => {
         });
       }
 
-      // For HTML requests, check if built frontend exists
-      const fs = await import('fs');
-      const path = await import('path');
-      const indexPath = path.resolve(import.meta.dirname, 'public', 'index.html');
+      // For HTML requests in development, always let Vite handle it
+      if (app.get("env") === "development") {
+        return next();
+      }
+
+      // For HTML requests in production, check if built frontend exists
+      const fs = require('fs');
+      const path = require('path');
+      const indexPath = path.resolve(process.cwd(), 'client', 'dist', 'index.html');
       
       if (fs.existsSync(indexPath)) {
         // SPA build exists, let serveStatic handle it
@@ -297,6 +323,18 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Initialize database data after server startup - truly non-blocking
+    setImmediate(async () => {
+      try {
+        await storage.ensureAdminExists();
+        await storage.seedDevelopmentData();
+        console.log('✅ Database initialization completed successfully');
+      } catch (error) {
+        console.warn('⚠️  Warning: Could not initialize storage after startup:', error instanceof Error ? error.message : String(error));
+        console.warn('⚠️  Some features may not work properly until database is initialized');
+      }
+    });
     
     // Perform database validation after server startup - non-blocking
     setTimeout(async () => {

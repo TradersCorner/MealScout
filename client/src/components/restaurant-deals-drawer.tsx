@@ -113,11 +113,21 @@ export default function RestaurantDealsDrawer({
     setShowClaimModal(true);
   };
 
+  const handleClose = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   // Handle background click to close
   const handleBackgroundClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
+      e.preventDefault();
+      e.stopPropagation();
       onClose();
     }
   };
@@ -139,12 +149,13 @@ export default function RestaurantDealsDrawer({
             </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             data-testid="button-close-drawer"
-            className="rounded-full p-2 hover:bg-gray-100 transition-colors"
+            className="rounded-full p-2 hover:bg-gray-100 transition-colors flex items-center justify-center"
             type="button"
+            style={{ minWidth: '40px', minHeight: '40px' }}
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 text-gray-600" />
           </button>
         </div>
 

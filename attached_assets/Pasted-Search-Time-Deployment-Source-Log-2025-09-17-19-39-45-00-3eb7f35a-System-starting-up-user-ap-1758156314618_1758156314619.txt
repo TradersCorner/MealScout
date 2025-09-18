@@ -1,0 +1,173 @@
+Search
+Time
+Deployment
+Source
+Log
+2025-09-17 19:39:45.00
+3eb7f35a
+System
+starting up user application
+2025-09-17 19:39:45.22
+3eb7f35a
+System
+forwarding local port 5000 to external port 80 (mapped as 1104)
+2025-09-17 19:39:46.78
+3eb7f35a
+User
+> rest-express@1.0.0 start
+2025-09-17 19:39:46.78
+3eb7f35a
+User
+> NODE_ENV=production node dist/index.js
+2025-09-17 19:39:49.62
+3eb7f35a
+User
+✅ Database connection established successfully
+2025-09-17 19:39:49.69
+3eb7f35a
+User
+Setting up Google OAuth strategies...
+2025-09-17 19:39:49.69
+3eb7f35a
+User
+🔵 Google OAuth customer callback URL: https://mealscout.replit.app/api/auth/google/customer/callback
+2025-09-17 19:39:49.69
+3eb7f35a
+User
+🔵 Google OAuth restaurant callback URL: https://mealscout.replit.app/api/auth/google/restaurant/callback
+2025-09-17 19:39:49.69
+3eb7f35a
+User
+Setting up Facebook OAuth strategy...
+2025-09-17 19:39:49.69
+3eb7f35a
+User
+🔵 Facebook OAuth callback URL: https://mealscout.replit.app/api/auth/facebook/callback
+2025-09-17 19:39:49.69
+3eb7f35a
+User
+✅ Facebook OAuth strategy configured successfully
+2025-09-17 19:39:49.70
+3eb7f35a
+User
+Socket.IO server setup complete at default path
+2025-09-17 19:39:49.79
+3eb7f35a
+User
+12:39:49 AM [express] WebSocket server initialized for food truck tracking
+2025-09-17 19:39:49.79
+3eb7f35a
+User
+12:39:49 AM [express] serving on port 5000
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+❌ Failed to create admin account: error: column "phone" does not exist
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+at async NeonPreparedQuery.execute (file:///home/runner/workspace/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+at async DatabaseStorage.getUserByEmail (file:///home/runner/workspace/dist/index.js:673:20)
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+at async DatabaseStorage.ensureAdminExists (file:///home/runner/workspace/dist/index.js:1266:29)
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+at async Immediate. (file:///home/runner/workspace/dist/index.js:6760:9) {
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+length: 106,
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+severity: 'ERROR',
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+code: '42703',
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+detail: undefined,
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+hint: undefined,
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+position: '174',
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+internalPosition: undefined,
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+internalQuery: undefined,
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+where: undefined,
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+schema: undefined,
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+table: undefined,
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+column: undefined,
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+dataType: undefined,
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+constraint: undefined,
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+file: 'parse_relation.c',
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+line: '3722',
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+routine: 'errorMissingColumn'
+2025-09-17 19:39:49.83
+3eb7f35a
+User
+}
+2025-09-17 19:39:49.93
+3eb7f35a
+User
+❌ Failed to seed development data: error: column "operating_hours" does not exist
+2025-09-17 19:39:49.93
+3eb7f35a
+User
+at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+2025-09-17 19:39:49.93
+3eb7f35a
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)

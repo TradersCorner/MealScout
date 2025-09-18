@@ -65,7 +65,6 @@ export default function RestaurantSignup() {
   const [currentStep, setCurrentStep] = useState<'restaurant' | 'verification'>('restaurant');
   const [createdRestaurant, setCreatedRestaurant] = useState<any>(null);
   const [verificationDocuments, setVerificationDocuments] = useState<string[]>([]);
-  const [billingInterval, setBillingInterval] = useState<'month' | '3-month' | 'year'>('month');
 
   const form = useForm<RestaurantFormData>({
     resolver: zodResolver(restaurantSchema),
@@ -165,7 +164,7 @@ export default function RestaurantSignup() {
           cuisineType: data.cuisineType,
           promoCode: data.promoCode
         },
-        subscriptionPlan: billingInterval
+        subscriptionPlan: 'month'
       };
       return await apiRequest("POST", "/api/restaurants/signup", requestData);
     },
@@ -232,7 +231,7 @@ export default function RestaurantSignup() {
       // If promo code is provided, create subscription with promo code
       if (promoCode) {
         const subscriptionData = { 
-          billingInterval, 
+          billingInterval: 'month', 
           promoCode: promoCode.toUpperCase() 
         };
         
@@ -1020,89 +1019,60 @@ export default function RestaurantSignup() {
               </div>
 
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/50 rounded-2xl p-8 shadow-lg">
-                <h3 className="font-bold text-gray-900 text-xl mb-6" data-testid="text-pricing-title">Choose Your Plan</h3>
+                <h3 className="font-bold text-gray-900 text-xl mb-6" data-testid="text-pricing-title">Simple Pricing</h3>
                 
-                {/* Billing Options */}
-                <div className="grid gap-4 mb-6 grid-cols-1 sm:grid-cols-3">
-                  {/* Monthly Plan */}
-                  <div 
-                    className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${
-                      billingInterval === 'month' 
-                        ? 'border-red-500 bg-red-50 shadow-md' 
-                        : 'border-gray-200 bg-white hover:border-red-300'
-                    }`}
-                    onClick={() => setBillingInterval('month')}
-                    data-testid="card-monthly-plan"
-                  >
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-red-600 mb-1">$49</div>
-                      <div className="text-sm text-gray-600 mb-1">/month</div>
-                      <div className="text-xs text-gray-500">Billed monthly</div>
-                    </div>
+                {/* Single Plan */}
+                <div className="bg-white rounded-xl p-8 border-2 border-red-500 shadow-lg text-center mb-6 relative">
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-red-500 text-white text-sm font-bold px-4 py-1 rounded-full">
+                    Best Deal
                   </div>
-
-                  {/* Quarterly Plan */}
-                  <div 
-                    className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 relative ${
-                      billingInterval === '3-month' 
-                        ? 'border-red-500 bg-red-50 shadow-md' 
-                        : 'border-gray-200 bg-white hover:border-red-300'
-                    }`}
-                    onClick={() => setBillingInterval('3-month')}
-                    data-testid="card-quarterly-plan"
-                  >
-                    <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                      Save 32%
-                    </div>
-                    <div className="absolute -bottom-2 -left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                      New Users
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-red-600 mb-1">$100</div>
-                      <div className="text-sm text-gray-600 mb-1">/3 months</div>
-                      <div className="text-xs text-gray-500">
-                        <span className="line-through">$147</span> Quarterly
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Yearly Plan */}
-                  <div 
-                    className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 relative ${
-                      billingInterval === 'year' 
-                        ? 'border-red-500 bg-red-50 shadow-md' 
-                        : 'border-gray-200 bg-white hover:border-red-300'
-                    }`}
-                    onClick={() => setBillingInterval('year')}
-                    data-testid="card-yearly-plan"
-                  >
-                    <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                      Best Value
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-red-600 mb-1">$450</div>
-                      <div className="text-sm text-gray-600 mb-1">/year</div>
-                      <div className="text-xs text-gray-500">
-                        <span className="line-through">$588</span> Annually
-                      </div>
-                    </div>
+                  <div className="text-5xl font-bold text-red-600 mb-2">$49</div>
+                  <div className="text-lg text-gray-600 mb-4">/month</div>
+                  <div className="text-xl font-semibold text-gray-900 mb-4">Unlimited Deals</div>
+                  <div className="text-gray-600 text-base">
+                    Post as many deals as you want - no limits!
                   </div>
                 </div>
 
-                {/* Plan Summary */}
-                <div className="bg-white/70 rounded-lg p-4 border border-gray-200/50">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-red-600 font-bold text-xl" data-testid="text-selected-price">
-                        {billingInterval === 'month' && '$49/month'}
-                        {billingInterval === '3-month' && '$100/3 months'}
-                        {billingInterval === 'year' && '$450/year'}
-                      </p>
-                      <p className="text-gray-600" data-testid="text-price-desc">Unlimited deal postings</p>
+                {/* Features List */}
+                <div className="bg-white/70 rounded-lg p-6 border border-gray-200/50">
+                  <h4 className="font-semibold text-gray-900 mb-4">Everything included:</h4>
+                  <div className="grid md:grid-cols-2 gap-3 text-sm text-gray-700">
+                    <div className="flex items-center">
+                      <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                      </svg>
+                      Unlimited active deals
                     </div>
-                    <div className="text-right">
-                      <p className="text-gray-600" data-testid="text-features">Unlimited postings</p>
-                      <p className="text-gray-500 text-sm" data-testid="text-cancel">Cancel anytime</p>
+                    <div className="flex items-center">
+                      <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                      </svg>
+                      Random deal display in feeds
+                    </div>
+                    <div className="flex items-center">
+                      <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                      </svg>
+                      Performance analytics
+                    </div>
+                    <div className="flex items-center">
+                      <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                      </svg>
+                      Location-based promotion
+                    </div>
+                    <div className="flex items-center">
+                      <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                      </svg>
+                      Real-time notifications
+                    </div>
+                    <div className="flex items-center">
+                      <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                      </svg>
+                      Cancel anytime
                     </div>
                   </div>
                 </div>

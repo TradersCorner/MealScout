@@ -318,7 +318,7 @@ export default function RestaurantSignup() {
               Join MealScout's advertising platform and connect with hungry customers actively looking for deals in your neighborhood. Increase foot traffic, fill slow periods, and grow your business.
             </p>
             {/* Authentication Section */}
-            <div className="max-w-md mx-auto">
+            <div className="max-w-md mx-auto" data-signup-section>
               <Card className="bg-white/80 backdrop-blur-sm shadow-xl">
                 <CardContent className="p-8">
                   <div className="flex items-center justify-center space-x-4 mb-6">
@@ -721,13 +721,25 @@ export default function RestaurantSignup() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <button 
-                onClick={() => window.location.href = "/api/auth/google/restaurant"}
+                onClick={() => {
+                  const signupSection = document.querySelector('[data-signup-section]');
+                  if (signupSection) {
+                    signupSection.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
                 className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-10 py-4 rounded-2xl font-bold text-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
               >
                 Create Restaurant Account
               </button>
               <button 
-                onClick={() => window.location.href = "/api/auth/google/restaurant"}
+                onClick={() => {
+                  const signupSection = document.querySelector('[data-signup-section]');
+                  if (signupSection) {
+                    signupSection.scrollIntoView({ behavior: 'smooth' });
+                    // Switch to login mode
+                    setAuthMode('login');
+                  }
+                }}
                 className="border-2 border-gray-300 hover:bg-gray-50 text-gray-700 hover:text-gray-800 px-10 py-4 rounded-2xl font-bold text-xl transition-all duration-200"
               >
                 Login to Existing Account

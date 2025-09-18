@@ -30,7 +30,6 @@ import SettingsPage from "@/pages/profile/settings";
 import AddressesPage from "@/pages/profile/addresses";
 import PaymentMethodsPage from "@/pages/profile/payment";
 import HelpSupportPage from "@/pages/profile/help";
-import SubscriptionManagement from "@/pages/subscription-management";
 import RestaurantOwnerDashboard from "@/pages/restaurant-owner-dashboard";
 import UserDashboard from "@/pages/user-dashboard";
 import DashboardSwitcher from "@/components/dashboard-switcher";
@@ -102,8 +101,8 @@ function Router() {
           <Route path="/deal-edit/:dealId" component={DealEdit} />
           <Route path="/deal/:id" component={DealDetail} />
           <Route path="/subscribe" component={Subscribe} />
-          <Route path="/subscription" component={SubscriptionManagement} />
-          <Route path="/subscription/manage" component={SubscriptionManagement} />
+          <Route path="/subscription" component={Subscribe} />
+          <Route path="/subscription/manage" component={Subscribe} />
           <Route path="/restaurant-owner-dashboard" component={RestaurantOwnerDashboard} />
           <Route path="/restaurant/dashboard" component={RestaurantOwnerDashboard} />
           <Route path="/user-dashboard" component={UserDashboard} />

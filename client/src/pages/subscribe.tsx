@@ -3,19 +3,22 @@ import { loadStripe } from '@stripe/stripe-js';
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/hooks/useAuth';
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { BackHeader } from "@/components/back-header";
-import { CreditCard, Check } from "lucide-react";
+import { CreditCard, Check, Calendar, AlertCircle, CheckCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 // Make sure to call `loadStripe` outside of a component's render to avoid
 // recreating the `Stripe` object on every render.
-// Create a fresh instance to avoid caching issues
 const getStripePromise = () => {
   return import.meta.env.VITE_STRIPE_PUBLIC_KEY 
     ? loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
@@ -32,6 +35,12 @@ interface SubscriptionState {
   clientSecret?: string;
   intentType?: string;
   error?: string;
+}
+
+interface ApiSubscriptionStatus {
+  status: string;
+  currentPeriodEnd?: number;
+  cancelAtPeriodEnd?: boolean;
 }
 
 const PaymentForm = ({ clientSecret, intentType = 'payment', onSuccess }: { clientSecret: string, intentType?: string, onSuccess: (paymentIntentId: string) => void }) => {
@@ -81,7 +90,6 @@ const PaymentForm = ({ clientSecret, intentType = 'payment', onSuccess }: { clie
           title: intentType === 'setup' ? "Setup Successful!" : "Payment Successful!",
           description: "Welcome to MealScout! You can now create deals.",
         });
-        // Extract paymentIntentId from the result
         const paymentIntentId = intentType === 'setup' 
           ? ('setupIntent' in result ? result.setupIntent?.id : undefined)
           : ('paymentIntent' in result ? result.paymentIntent?.id : undefined);
@@ -141,7 +149,6 @@ const PlanSelector = ({
 }) => {
   const getPricingDisplay = (hasMultiple: boolean, interval: string) => {
     if (interval === 'quarter') {
-      // Special new user offer - only for 1 deal
       return '$100/3 months';
     } else if (interval === 'year') {
       return hasMultiple ? '$900/year' : '$600/year';
@@ -152,7 +159,6 @@ const PlanSelector = ({
 
   const getPricingAmount = (hasMultiple: boolean, interval: string) => {
     if (interval === 'quarter') {
-      // Special new user offer - only for 1 deal
       return '$100';
     } else if (interval === 'year') {
       return hasMultiple ? '$900' : '$600';
@@ -263,7 +269,7 @@ const PlanSelector = ({
               onClick={() => {
                 if (!hasMultipleDeals) {
                   onBillingIntervalChange('quarter');
-                  onHasMultipleDealsChange(false); // Force single deal for this offer
+                  onHasMultipleDealsChange(false);
                 }
               }}
               data-testid="card-billing-quarterly"
@@ -335,6 +341,248 @@ const PlanSelector = ({
   );
 };
 
+const SubscriptionManagement = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const { data: subscriptionStatus, isLoading } = useQuery<ApiSubscriptionStatus>({
+    queryKey: ['/api/subscription/status'],
+    enabled: !!user,
+  });
+
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [keepAdsLive, setKeepAdsLive] = useState(true);
+
+  const pauseMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/subscription/pause");
+    },
+    onSuccess: () => {
+      toast({
+        title: "Subscription Paused",
+        description: "Your subscription is paused. You can resume anytime.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/subscription/status'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Pause Failed",
+        description: error.message || "Failed to pause subscription",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/subscription/cancel", { keepAdsLive });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Subscription Cancelled",
+        description: keepAdsLive 
+          ? "Your subscription will end at billing period end. Your deals remain live until then."
+          : "Your subscription will end at billing period end. Your deals will be removed immediately.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/subscription/status'] });
+      setShowCancelDialog(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Cancellation Failed",
+        description: error.message || "Failed to cancel subscription",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Active</Badge>;
+      case 'canceled':
+        return <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Cancelled</Badge>;
+      case 'past_due':
+        return <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Past Due</Badge>;
+      case 'none':
+        return <Badge variant="secondary">No Subscription</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            Current Subscription
+          </CardTitle>
+          <CardDescription>
+            Your subscription status and billing information
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium">Status</span>
+            {getStatusBadge(subscriptionStatus?.status || 'none')}
+          </div>
+
+          {subscriptionStatus?.status === 'active' && (
+            <>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Current Period Ends
+                </span>
+                <span className="text-sm">
+                  {subscriptionStatus.currentPeriodEnd ? formatDate(subscriptionStatus.currentPeriodEnd) : 'N/A'}
+                </span>
+              </div>
+
+              {subscriptionStatus.cancelAtPeriodEnd && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-amber-800">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      Subscription will cancel at the end of the billing period
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-4 border-t">
+                <h4 className="font-medium mb-2">Subscription Features</h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    Create unlimited meal deals
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    Reach customers within 10km radius
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    Analytics and insights dashboard
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    Priority customer support
+                  </li>
+                </ul>
+              </div>
+            </>
+          )}
+
+          {subscriptionStatus?.status === 'active' && !subscriptionStatus.cancelAtPeriodEnd && (
+            <div className="pt-4 space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => pauseMutation.mutate()}
+                  disabled={pauseMutation.isPending}
+                  data-testid="button-pause-subscription"
+                >
+                  {pauseMutation.isPending ? "Pausing..." : "Pause"}
+                </Button>
+                <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      className="w-full"
+                      data-testid="button-cancel-subscription"
+                    >
+                      Cancel
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Cancel Subscription</DialogTitle>
+                      <DialogDescription>
+                        Your subscription will end at the current billing period end ({subscriptionStatus?.currentPeriodEnd ? formatDate(subscriptionStatus.currentPeriodEnd) : 'N/A'}).
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="keep-ads-live" 
+                          checked={keepAdsLive}
+                          onCheckedChange={(checked) => setKeepAdsLive(checked as boolean)}
+                        />
+                        <label 
+                          htmlFor="keep-ads-live" 
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          Keep my deals visible until billing period ends
+                        </label>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {keepAdsLive 
+                          ? "Your deals will remain active and discoverable until your subscription officially ends." 
+                          : "Your deals will be removed immediately upon cancellation."}
+                      </p>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+                        Keep Subscription
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        onClick={() => cancelMutation.mutate()}
+                        disabled={cancelMutation.isPending}
+                      >
+                        {cancelMutation.isPending ? "Cancelling..." : "Cancel Subscription"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <p className="text-xs text-center text-muted-foreground">
+                Pause: Temporarily stop billing. Cancel: End subscription at period end.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Billing History</CardTitle>
+          <CardDescription>
+            View your past invoices and payments
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Billing history will be available after your first payment.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 export default function Subscribe() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
@@ -350,28 +598,23 @@ export default function Subscribe() {
     status: 'selecting'
   });
 
+  // Check current subscription status to determine which view to show
+  const { data: currentSubscription } = useQuery<ApiSubscriptionStatus>({
+    queryKey: ['/api/subscription/status'],
+    enabled: !!user,
+  });
+
   const initializeSubscription = async () => {
     setSubscriptionState({ status: 'initializing' });
-    
+
     try {
-      const res = await apiRequest("POST", "/api/subscriptions/initialize", { 
-        hasMultipleDealsAddon: hasMultipleDeals,
-        billingInterval: billingInterval,
-        promoCode: promoCode.trim()
+      const data = await apiRequest("POST", "/api/subscriptions/initialize", {
+        hasMultipleDeals,
+        billingInterval,
+        promoCode: promoCode || undefined
       });
-      const data = await res.json();
       
-      if (data.status === 'active') {
-        // Subscription is active (e.g., 100% promo code or already paid)
-        toast({
-          title: "Subscription Active!",
-          description: "Welcome to MealScout! You can now create deals.",
-        });
-        setLocation("/deal-creation");
-        return;
-      }
-      
-      if (data.status === 'requires_payment' && data.clientSecret) {
+      if (data.status === 'requires_payment') {
         setSubscriptionState({
           status: 'requires_payment',
           subscriptionId: data.subscriptionId,
@@ -406,11 +649,14 @@ export default function Subscribe() {
   };
 
   const handlePaymentSuccess = async (paymentIntentId: string) => {
-    // Payment successful, redirect to deal creation
     setLocation("/deal-creation");
   };
 
   const handleRetry = () => {
+    setSubscriptionState({ status: 'selecting' });
+  };
+
+  const showNewSubscription = () => {
     setSubscriptionState({ status: 'selecting' });
   };
 
@@ -427,7 +673,7 @@ export default function Subscribe() {
       <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
         <Card>
           <CardContent className="p-6">
-            <p className="text-center text-muted-foreground mb-4">Please log in to subscribe</p>
+            <p className="text-center text-muted-foreground mb-4">Please log in to manage your subscription</p>
             <Button onClick={() => window.location.href = "/api/auth/google/restaurant"} className="w-full">
               Log In
             </Button>
@@ -442,7 +688,7 @@ export default function Subscribe() {
     return (
       <div className="max-w-md mx-auto bg-white min-h-screen">
         <BackHeader
-          title="Subscription"
+          title="Pricing & Subscriptions"
           fallbackHref="/restaurant-owner-dashboard"
           icon={CreditCard}
         />
@@ -465,16 +711,91 @@ export default function Subscribe() {
     );
   }
 
+  // Determine which view to show based on subscription status
+  const hasActiveSubscription = currentSubscription?.status === 'active';
+  const showManagement = hasActiveSubscription && subscriptionState.status === 'selecting';
+
   return (
     <div className="max-w-md mx-auto bg-white min-h-screen">
       <BackHeader
-        title="Subscribe to MealScout"
+        title="Pricing & Subscriptions"
         fallbackHref="/restaurant-owner-dashboard"
         icon={CreditCard}
       />
 
       <div className="px-4 py-6">
-        {subscriptionState.status === 'selecting' && (
+        {/* If user has active subscription and not in payment flow, show management */}
+        {showManagement && (
+          <div className="space-y-6">
+            <SubscriptionManagement />
+            
+            {/* Option to upgrade/change plan */}
+            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+              <CardContent className="p-6 text-center">
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Want to Change Your Plan?</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Upgrade to multiple deals or change your billing frequency
+                </p>
+                <Button 
+                  onClick={showNewSubscription}
+                  variant="outline"
+                  className="w-full"
+                  data-testid="button-change-plan"
+                >
+                  View All Plans
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Show plan selection for new users or when changing plans */}
+        {subscriptionState.status === 'selecting' && !showManagement && (
+          <div className="space-y-6">
+            {/* If user has active subscription, show note about changing plans */}
+            {hasActiveSubscription && (
+              <Card className="bg-amber-50 border-amber-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 text-amber-800">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      You currently have an active subscription. Selecting a new plan will replace your current plan.
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <PlanSelector
+              hasMultipleDeals={hasMultipleDeals}
+              billingInterval={billingInterval}
+              promoCode={promoCode}
+              onHasMultipleDealsChange={setHasMultipleDeals}
+              onBillingIntervalChange={setBillingInterval}
+              onPromoCodeChange={setPromoCode}
+              onContinue={initializeSubscription}
+            />
+
+            {/* If user has active subscription, show option to go back to management */}
+            {hasActiveSubscription && (
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setSubscriptionState({ status: 'selecting' })}
+                    className="w-full"
+                    data-testid="button-back-to-management"
+                  >
+                    Back to Subscription Management
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* Show subscription not found for users without subscriptions */}
+        {currentSubscription?.status === 'none' && subscriptionState.status === 'selecting' && (
           <PlanSelector
             hasMultipleDeals={hasMultipleDeals}
             billingInterval={billingInterval}
@@ -502,7 +823,7 @@ export default function Subscribe() {
                 <CardContent className="p-6 text-center">
                   <h3 className="text-lg font-bold text-gray-900 mb-2">Complete Your Payment</h3>
                   <p className="text-sm text-gray-600">
-                    {hasMultipleDeals ? '3 deals' : '1 deal'} plan • {billingInterval === 'quarter' ? '$100/3 months' : billingInterval === 'year' ? '$450/year' : hasMultipleDeals ? '$75/month' : '$50/month'}
+                    {hasMultipleDeals ? '3 deals' : '1 deal'} plan • {billingInterval === 'quarter' ? '$100/3 months' : billingInterval === 'year' ? (hasMultipleDeals ? '$900/year' : '$600/year') : hasMultipleDeals ? '$75/month' : '$50/month'}
                   </p>
                 </CardContent>
               </Card>

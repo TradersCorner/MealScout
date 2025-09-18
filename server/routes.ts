@@ -1668,11 +1668,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // New endpoint: Get all active deals for a specific restaurant
   app.get('/api/deals/restaurant/:restaurantId', async (req, res) => {
     try {
-      const { restaurantId } = req.params;
-      
-      if (!restaurantId) {
-        return res.status(400).json({ message: "Restaurant ID is required" });
-      }
+      // Validate restaurant ID parameter
+      const restaurantIdSchema = z.string().uuid("Invalid restaurant ID format");
+      const restaurantId = restaurantIdSchema.parse(req.params.restaurantId);
       
       // Get all active deals for this restaurant
       const allRestaurantDeals = await storage.getDealsByRestaurant(restaurantId);
@@ -1685,8 +1683,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json(activeDeals);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching restaurant deals:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid restaurant ID format" });
+      }
       res.status(500).json({ message: "Failed to fetch restaurant deals" });
     }
   });
@@ -1788,15 +1789,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
-  app.get('/api/deals/restaurant/:restaurantId', async (req, res) => {
-    try {
-      const deals = await storage.getDealsByRestaurant(req.params.restaurantId);
-      res.json(deals);
-    } catch (error) {
-      console.error("Error fetching restaurant deals:", error);
-      res.status(500).json({ message: "Failed to fetch restaurant deals" });
-    }
-  });
 
   // Review routes
   app.post('/api/reviews', isAuthenticated, async (req: any, res) => {

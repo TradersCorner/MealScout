@@ -745,20 +745,21 @@ export class DatabaseStorage implements IStorage {
 
   // New method to randomly select one deal per restaurant for diverse feed display
   private randomizeDealsPerRestaurant(deals: Deal[]): Deal[] {
-    const dealsByRestaurant = new Map<string, Deal[]>();
+    const dealsByRestaurant: { [restaurantId: string]: Deal[] } = {};
     
     // Group deals by restaurant
     for (const deal of deals) {
       const restaurantId = deal.restaurantId;
-      if (!dealsByRestaurant.has(restaurantId)) {
-        dealsByRestaurant.set(restaurantId, []);
+      if (!dealsByRestaurant[restaurantId]) {
+        dealsByRestaurant[restaurantId] = [];
       }
-      dealsByRestaurant.get(restaurantId)!.push(deal);
+      dealsByRestaurant[restaurantId].push(deal);
     }
     
     // Randomly select one deal per restaurant
     const randomizedDeals: Deal[] = [];
-    for (const [_, restaurantDeals] of dealsByRestaurant) {
+    for (const restaurantId in dealsByRestaurant) {
+      const restaurantDeals = dealsByRestaurant[restaurantId];
       const randomIndex = Math.floor(Math.random() * restaurantDeals.length);
       randomizedDeals.push(restaurantDeals[randomIndex]);
     }

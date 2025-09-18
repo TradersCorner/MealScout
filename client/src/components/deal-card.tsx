@@ -1,11 +1,11 @@
 
 import { useState, useEffect, useRef } from "react";
-import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Share2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import DealShareModal from "./deal-share-modal";
+import RestaurantDealsDrawer from "./restaurant-deals-drawer";
 
 interface Deal {
   id: string;
@@ -84,6 +84,7 @@ const getDefaultImage = (cuisineType?: string, title?: string) => {
 
 export default function DealCard({ deal }: DealCardProps) {
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showDealsDrawer, setShowDealsDrawer] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const [hasTrackedView, setHasTrackedView] = useState(false);
 
@@ -139,8 +140,12 @@ export default function DealCard({ deal }: DealCardProps) {
     setShowShareModal(true);
   };
 
+  const handleCardClick = () => {
+    setShowDealsDrawer(true);
+  };
+
   return (
-    <Link href={`/deal/${deal.id}`}>
+    <div onClick={handleCardClick}>
       <Card 
         ref={cardRef}
         className="bg-white rounded-3xl overflow-hidden hover:shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer border-0 shadow-lg group" 
@@ -250,6 +255,15 @@ export default function DealCard({ deal }: DealCardProps) {
         onClose={() => setShowShareModal(false)}
         deal={deal}
       />
-    </Link>
+      
+      {/* Restaurant Deals Drawer */}
+      <RestaurantDealsDrawer
+        isOpen={showDealsDrawer}
+        onClose={() => setShowDealsDrawer(false)}
+        restaurantId={deal.restaurantId}
+        restaurantName={deal.restaurant?.name || 'Restaurant'}
+        initialDealId={deal.id}
+      />
+    </div>
   );
 }

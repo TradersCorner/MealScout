@@ -61,6 +61,7 @@ export default function RestaurantSignup() {
   const [authMode, setAuthMode] = useState<'signup' | 'login'>('signup');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [currentStep, setCurrentStep] = useState<'restaurant' | 'verification'>('restaurant');
   const [createdRestaurant, setCreatedRestaurant] = useState<any>(null);
   const [verificationDocuments, setVerificationDocuments] = useState<string[]>([]);
@@ -558,7 +559,7 @@ export default function RestaurantSignup() {
                                 <div className="relative">
                                   <Input 
                                     data-testid="input-login-password"
-                                    type={showPassword ? "text" : "password"} 
+                                    type={showLoginPassword ? "text" : "password"} 
                                     autoComplete="current-password"
                                     placeholder="Your password" 
                                     className="pr-10" 
@@ -567,10 +568,10 @@ export default function RestaurantSignup() {
                                   <button
                                     type="button"
                                     data-testid="button-toggle-login-password"
-                                    onClick={() => setShowPassword(!showPassword)}
+                                    onClick={() => setShowLoginPassword(!showLoginPassword)}
                                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                                   >
-                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                   </button>
                                 </div>
                               </FormControl>

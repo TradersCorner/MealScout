@@ -155,7 +155,7 @@ async function validateAnalyticsAccess(userId: string): Promise<{
   }
 }
 
-// Subscription validation function
+// Subscription validation function - Now allows unlimited deals for all paid subscriptions
 async function validateSubscriptionLimits(userId: string, excludeDealId?: string): Promise<{
   isValid: boolean;
   error?: string;
@@ -200,7 +200,7 @@ async function validateSubscriptionLimits(userId: string, excludeDealId?: string
       };
     }
 
-    // Get user's restaurants and count active deals
+    // Get user's restaurants and count active deals (for reporting purposes)
     const restaurants = await storage.getRestaurantsByOwner(userId);
     let activeDealsCount = 0;
     
@@ -210,17 +210,8 @@ async function validateSubscriptionLimits(userId: string, excludeDealId?: string
       activeDealsCount += activeDeals.length;
     }
 
-    // Define deal limits based on subscription plan
-    const maxDeals = user.subscriptionBillingInterval === 'multiple-deals' ? 3 : 1; // 3 deals for addon, 1 for base
-
-    if (activeDealsCount >= maxDeals) {
-      return { 
-        isValid: false, 
-        error: `You've reached your limit of ${maxDeals} active deals. Upgrade your plan or deactivate existing deals.`,
-        currentCount: activeDealsCount,
-        maxDeals
-      };
-    }
+    // All paid subscriptions now get unlimited deals
+    const maxDeals = 999; // Unlimited deals for all paid plans
 
     return { 
       isValid: true, 

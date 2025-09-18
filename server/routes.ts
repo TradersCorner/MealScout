@@ -1665,6 +1665,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // New endpoint: Get all active deals for a specific restaurant
+  app.get('/api/deals/restaurant/:restaurantId', async (req, res) => {
+    try {
+      const { restaurantId } = req.params;
+      
+      if (!restaurantId) {
+        return res.status(400).json({ message: "Restaurant ID is required" });
+      }
+      
+      // Get all active deals for this restaurant
+      const allRestaurantDeals = await storage.getDealsByRestaurant(restaurantId);
+      const activeDeals = allRestaurantDeals.filter(deal => deal.isActive);
+      
+      // Add cache headers
+      res.set({
+        'Cache-Control': 'public, max-age=180', // 3 minutes
+        'ETag': `"restaurant-deals-${restaurantId}-${Date.now()}"`,
+      });
+      
+      res.json(activeDeals);
+    } catch (error) {
+      console.error("Error fetching restaurant deals:", error);
+      res.status(500).json({ message: "Failed to fetch restaurant deals" });
+    }
+  });
+
   app.get('/api/deals/nearby/:lat/:lng', async (req, res) => {
     try {
       const lat = parseFloat(req.params.lat);

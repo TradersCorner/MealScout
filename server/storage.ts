@@ -708,7 +708,7 @@ export class DatabaseStorage implements IStorage {
           )
         )
         .orderBy(desc(deals.createdAt))
-        .limit(50);
+        .limit(200); // Increase limit to get more deals for randomization
     } else {
       // Show all currently active deals (includes time-of-day filtering)
       dealsQuery = await db
@@ -733,11 +733,43 @@ export class DatabaseStorage implements IStorage {
           )
         )
         .orderBy(desc(deals.createdAt))
-        .limit(50);
+        .limit(200); // Increase limit to get more deals for randomization
     }
 
     // Filter by restaurant operating hours
-    return await this.filterDealsByOperatingHours(dealsQuery);
+    const filteredDeals = await this.filterDealsByOperatingHours(dealsQuery);
+    
+    // Group deals by restaurant and randomly select one deal per restaurant
+    return this.randomizeDealsPerRestaurant(filteredDeals);
+  }
+
+  // New method to randomly select one deal per restaurant for diverse feed display
+  private randomizeDealsPerRestaurant(deals: Deal[]): Deal[] {
+    const dealsByRestaurant = new Map<string, Deal[]>();
+    
+    // Group deals by restaurant
+    for (const deal of deals) {
+      const restaurantId = deal.restaurantId;
+      if (!dealsByRestaurant.has(restaurantId)) {
+        dealsByRestaurant.set(restaurantId, []);
+      }
+      dealsByRestaurant.get(restaurantId)!.push(deal);
+    }
+    
+    // Randomly select one deal per restaurant
+    const randomizedDeals: Deal[] = [];
+    for (const [_, restaurantDeals] of dealsByRestaurant) {
+      const randomIndex = Math.floor(Math.random() * restaurantDeals.length);
+      randomizedDeals.push(restaurantDeals[randomIndex]);
+    }
+    
+    // Shuffle the final array to randomize restaurant order too
+    for (let i = randomizedDeals.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [randomizedDeals[i], randomizedDeals[j]] = [randomizedDeals[j], randomizedDeals[i]];
+    }
+    
+    return randomizedDeals.slice(0, 50); // Limit to 50 restaurants max
   }
 
 

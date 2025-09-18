@@ -124,12 +124,26 @@ app.use((req, res, next) => {
 
 (async () => {
   // Initialize admin account and seed data - these are essential for startup
+  // Made non-blocking to prevent health check failures
   try {
+    // Basic database connection test first
+    await db.execute(sql`SELECT 1 as test`);
+    console.log('✅ Database connection established successfully');
+    
     await storage.ensureAdminExists();
     await storage.seedDevelopmentData();
+    console.log('✅ Database initialization completed successfully');
   } catch (error) {
     console.warn('⚠️  Warning: Could not initialize storage during startup:', error instanceof Error ? error.message : String(error));
-    console.log('Server will continue starting, database validation will be performed after startup');
+    console.log('🚀 Server will continue starting, database validation will be performed after startup');
+    
+    // Log connection details for debugging (without exposing credentials)
+    if (process.env.DATABASE_URL) {
+      const dbUrl = process.env.DATABASE_URL.replace(/\/\/.*@/, '//***:***@');
+      console.log('📋 Database URL format:', dbUrl);
+    } else {
+      console.warn('⚠️  DATABASE_URL environment variable not set');
+    }
   }
   
   // Setup session configuration before routes

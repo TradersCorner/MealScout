@@ -1,0 +1,61 @@
+index-BzgPHe_P.js:48  GET https://mealscout.replit.app/api/auth/user 401 (Unauthorized)
+(anonymous) @ index-BzgPHe_P.js:48
+a @ index-BzgPHe_P.js:48
+w @ index-BzgPHe_P.js:48
+start @ index-BzgPHe_P.js:48
+fetch @ index-BzgPHe_P.js:48
+Qf @ index-BzgPHe_P.js:48
+onSubscribe @ index-BzgPHe_P.js:48
+subscribe @ index-BzgPHe_P.js:48
+(anonymous) @ index-BzgPHe_P.js:48
+T3 @ index-BzgPHe_P.js:38
+Py @ index-BzgPHe_P.js:40
+du @ index-BzgPHe_P.js:40
+YP @ index-BzgPHe_P.js:40
+Yo @ index-BzgPHe_P.js:38
+EH @ index-BzgPHe_P.js:40
+vl @ index-BzgPHe_P.js:40
+o5 @ index-BzgPHe_P.js:40
+S @ index-BzgPHe_P.js:25
+$ @ index-BzgPHe_P.js:25Understand this error
+index-BzgPHe_P.js:663 🎯 Location detection starting...
+index-BzgPHe_P.js:663 🌍 Getting your location...
+index-BzgPHe_P.js:663 [Violation] Only request geolocation information in response to a user gesture.
+(anonymous) @ index-BzgPHe_P.js:663
+Py @ index-BzgPHe_P.js:40
+du @ index-BzgPHe_P.js:40
+EH @ index-BzgPHe_P.js:40
+vl @ index-BzgPHe_P.js:40
+YP @ index-BzgPHe_P.js:40
+Yo @ index-BzgPHe_P.js:38
+(anonymous) @ index-BzgPHe_P.js:40
+setTimeout
+s @ index-BzgPHe_P.js:48
+o @ index-BzgPHe_P.js:48
+batch @ index-BzgPHe_P.js:48
+aa @ index-BzgPHe_P.js:48
+setData @ index-BzgPHe_P.js:48
+onSuccess @ index-BzgPHe_P.js:48
+h @ index-BzgPHe_P.js:48
+Promise.then
+w @ index-BzgPHe_P.js:48
+start @ index-BzgPHe_P.js:48
+fetch @ index-BzgPHe_P.js:48
+Qf @ index-BzgPHe_P.js:48
+onSubscribe @ index-BzgPHe_P.js:48
+subscribe @ index-BzgPHe_P.js:48
+(anonymous) @ index-BzgPHe_P.js:48
+T3 @ index-BzgPHe_P.js:38
+Py @ index-BzgPHe_P.js:40
+du @ index-BzgPHe_P.js:40
+YP @ index-BzgPHe_P.js:40
+Yo @ index-BzgPHe_P.js:38
+EH @ index-BzgPHe_P.js:40
+vl @ index-BzgPHe_P.js:40
+o5 @ index-BzgPHe_P.js:40
+S @ index-BzgPHe_P.js:25
+$ @ index-BzgPHe_P.js:25
+index-BzgPHe_P.js:663 📍 Got coordinates: {latitude: 30.5192, longitude: -90.4739}
+index-BzgPHe_P.js:663 🌍 Attempting reverse geocoding for: {latitude: 30.5192, longitude: -90.4739}
+index-BzgPHe_P.js:608 Facebook SDK initialized successfully
+index-BzgPHe_P.js:663 ✅ Reverse geocoding successful: Hammond, Louisiana

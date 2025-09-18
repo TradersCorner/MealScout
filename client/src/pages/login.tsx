@@ -164,10 +164,6 @@ export default function Login() {
             </Button>
           </Link>
 
-          <div className="text-center text-sm text-gray-600 mb-4">
-            <p>🔒 <strong>Secure & Easy:</strong> No passwords needed</p>
-            <p>✨ <strong>Quick Setup:</strong> Your account is created automatically</p>
-          </div>
 
           {/* Trust indicators */}
           <div className="pt-4 border-t border-gray-200">

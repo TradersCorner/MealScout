@@ -144,29 +144,52 @@ export default function RestaurantSignup() {
 
   const createRestaurantMutation = useMutation({
     mutationFn: async (data: Omit<RestaurantFormData, 'acceptTerms'>) => {
-      // Get user data from signup form
-      const signupData = signupForm.getValues();
-      
-      // For new registrations, we need to include user account data
-      const requestData = {
-        userData: {
-          email: signupData.email,
-          firstName: signupData.firstName,
-          lastName: signupData.lastName,
-          phone: signupData.phone,
-          password: signupData.password
-        },
-        restaurantData: {
-          name: data.name,
-          address: data.address,
-          phone: data.phone,
-          businessType: data.businessType,
-          cuisineType: data.cuisineType,
-          promoCode: data.promoCode
-        },
-        subscriptionPlan: 'month'
-      };
-      return await apiRequest("POST", "/api/restaurants/signup", requestData);
+      // Check if user is already authenticated
+      if (isAuthenticated && user) {
+        // For authenticated users, use existing user data
+        const requestData = {
+          userData: {
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            phone: user.phone || data.phone, // Use restaurant phone if user doesn't have one
+            // No password needed for authenticated users
+          },
+          restaurantData: {
+            name: data.name,
+            address: data.address,
+            phone: data.phone,
+            businessType: data.businessType,
+            cuisineType: data.cuisineType,
+            promoCode: data.promoCode
+          },
+          subscriptionPlan: 'month'
+        };
+        return await apiRequest("POST", "/api/restaurants/signup", requestData);
+      } else {
+        // For new registrations, get user data from signup form
+        const signupData = signupForm.getValues();
+        
+        const requestData = {
+          userData: {
+            email: signupData.email,
+            firstName: signupData.firstName,
+            lastName: signupData.lastName,
+            phone: signupData.phone,
+            password: signupData.password
+          },
+          restaurantData: {
+            name: data.name,
+            address: data.address,
+            phone: data.phone,
+            businessType: data.businessType,
+            cuisineType: data.cuisineType,
+            promoCode: data.promoCode
+          },
+          subscriptionPlan: 'month'
+        };
+        return await apiRequest("POST", "/api/restaurants/signup", requestData);
+      }
     },
     onSuccess: (restaurant) => {
       setCreatedRestaurant(restaurant);

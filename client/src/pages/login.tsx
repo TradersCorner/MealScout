@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { BackHeader } from "@/components/back-header";
 import { UserCheck, Eye, EyeOff } from "lucide-react";
@@ -308,9 +307,9 @@ export default function Login() {
         <div className="mt-8 text-center">
           <p className="text-gray-600 text-sm mb-3">Looking to promote your business?</p>
           <Link href="/restaurant-signup">
-            <Button variant="outline" className="text-blue-600 border-blue-300 hover:bg-blue-50" data-testid="link-business-signup">
+            <button className="py-2 px-4 font-medium text-blue-600 border-2 border-blue-300 hover:bg-blue-50 hover:border-blue-400 rounded-lg transition-all duration-200" data-testid="link-business-signup">
               Business Sign Up →
-            </Button>
+            </button>
           </Link>
         </div>
 

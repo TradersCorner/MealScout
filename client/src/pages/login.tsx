@@ -4,13 +4,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { BackHeader } from "@/components/back-header";
-import { UserCheck } from "lucide-react";
+import { UserCheck, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Login() {
   const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showEmailLogin, setShowEmailLogin] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const handleGoogleLogin = () => {
     window.location.href = '/api/auth/google/customer';
@@ -18,6 +24,43 @@ export default function Login() {
 
   const handleFacebookLogin = () => {
     window.location.href = '/api/auth/facebook';
+  };
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter both email and password.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoggingIn(true);
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Login failed');
+      }
+      
+      // Redirect to home page on success
+      window.location.href = '/';
+    } catch (error: any) {
+      toast({
+        title: "Login Failed", 
+        description: error.message || "Invalid email or password.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   // Redirect to home if already authenticated
@@ -148,19 +191,92 @@ export default function Login() {
               <div className="w-full border-t border-gray-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-4 text-gray-500">New to MealScout? No worries!</span>
+              <span className="bg-white px-4 text-gray-500">Or continue with email</span>
             </div>
           </div>
 
-          {/* Customer Signup Link */}
-          <Link href="/customer-signup">
-            <button 
-              data-testid="button-customer-signup"
-              className="w-full py-4 px-6 font-semibold text-lg rounded-xl border-2 border-red-400 text-red-600 hover:bg-red-50 hover:border-red-500 transition-all duration-200 mb-6 flex items-center justify-center shadow-md hover:shadow-lg"
-            >
-              Create Account with Email →
-            </button>
-          </Link>
+          {/* Toggle between email login and signup */}
+          {!showEmailLogin ? (
+            <div className="space-y-4">
+              <button 
+                onClick={() => setShowEmailLogin(true)}
+                className="w-full py-4 px-6 font-semibold text-lg rounded-xl border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg"
+                data-testid="button-email-login"
+              >
+                Sign In with Email
+              </button>
+              
+              <Link href="/customer-signup">
+                <button 
+                  data-testid="button-customer-signup"
+                  className="w-full py-4 px-6 font-semibold text-lg rounded-xl border-2 border-red-400 text-red-600 hover:bg-red-50 hover:border-red-500 transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg"
+                >
+                  Create Account with Email →
+                </button>
+              </Link>
+            </div>
+          ) : (
+            <form onSubmit={handleEmailLogin} className="space-y-4">
+              <div>
+                <input
+                  type="email"
+                  placeholder="Email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-red-400 focus:outline-none text-lg"
+                  data-testid="input-email"
+                  required
+                />
+              </div>
+              
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-red-400 focus:outline-none text-lg pr-12"
+                  data-testid="input-password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  data-testid="button-toggle-password"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              
+              <button
+                type="submit"
+                disabled={isLoggingIn}
+                className="w-full py-4 px-6 font-semibold text-lg rounded-xl bg-red-500 text-white hover:bg-red-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-md hover:shadow-lg"
+                data-testid="button-login-submit"
+              >
+                {isLoggingIn ? (
+                  <div className="animate-spin w-5 h-5 mr-3 border-2 border-white border-t-transparent rounded-full" />
+                ) : null}
+                {isLoggingIn ? "Signing In..." : "Sign In"}
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setShowEmailLogin(false)}
+                className="w-full text-center text-gray-600 hover:text-gray-800 transition-colors"
+                data-testid="button-back-to-options"
+              >
+                ← Back to login options
+              </button>
+              
+              <div className="text-center">
+                <Link href="/forgot-password" className="text-red-600 hover:text-red-700 text-sm">
+                  Forgot your password?
+                </Link>
+              </div>
+            </form>
+          )}
 
 
           {/* Trust indicators */}

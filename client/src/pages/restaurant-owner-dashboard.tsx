@@ -18,11 +18,12 @@ import {
   Eye, ShoppingCart, Star, Calendar, Settings,
   CreditCard, BarChart3, MapPin, Clock, Edit,
   Download, Calendar as CalendarIcon, RefreshCw,
-  Truck, Navigation, Radio, Power, PowerOff,
+  Truck, Navigation as NavigationIcon, Radio, Power, PowerOff,
   Wifi, WifiOff, Activity, AlertCircle, CheckCircle,
   Play, Square, Loader2, Zap, Smartphone, Satellite,
   Save, RotateCcw
 } from "lucide-react";
+import Navigation from "@/components/navigation";
 import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
 import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
@@ -1577,7 +1578,7 @@ export default function RestaurantOwnerDashboard() {
                           Current Location
                         </h3>
                         <div className="flex items-center text-xs text-muted-foreground">
-                          <Navigation className="h-3 w-3 mr-1" />
+                          <NavigationIcon className="h-3 w-3 mr-1" />
                           Live GPS
                         </div>
                       </div>
@@ -1839,6 +1840,9 @@ export default function RestaurantOwnerDashboard() {
         </TabsContent>
 
       </Tabs>
+      
+      {/* Bottom Navigation */}
+      <Navigation />
     </div>
   );
 }

@@ -18,6 +18,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Badge } from "@/components/ui/badge";
 import { Upload, X, Eye, Sparkles, Clock, Users, DollarSign } from "lucide-react";
 import { BackHeader } from "@/components/back-header";
+import Navigation from "@/components/navigation";
 
 const dealSchema = z.object({
   title: z.string().min(1, "Deal title is required"),
@@ -749,6 +750,9 @@ export default function DealCreation() {
           </form>
         </Form>
       </div>
+      
+      {/* Bottom Navigation */}
+      <Navigation />
     </div>
   );
 }

@@ -714,10 +714,8 @@ export default function Subscribe() {
             )}
 
             <PlanSelector
-              hasMultipleDeals={hasMultipleDeals}
               billingInterval={billingInterval}
               promoCode={promoCode}
-              onHasMultipleDealsChange={setHasMultipleDeals}
               onBillingIntervalChange={setBillingInterval}
               onPromoCodeChange={setPromoCode}
               onContinue={initializeSubscription}

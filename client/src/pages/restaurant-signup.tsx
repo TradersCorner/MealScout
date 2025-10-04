@@ -680,57 +680,45 @@ export default function RestaurantSignup() {
 
           {/* Pricing Card */}
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/50 rounded-3xl p-12 shadow-2xl text-center mb-16">
-            <h3 className="font-bold text-gray-900 text-3xl mb-6">Simple Deal Pricing</h3>
+            <h3 className="font-bold text-gray-900 text-3xl mb-6">Simple, Transparent Pricing</h3>
             
-            {/* Two pricing tiers side by side */}
-            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-              
-              {/* Base Plan */}
-              <div className="bg-white/70 rounded-2xl p-8 border border-blue-200/30">
-                <h4 className="font-bold text-gray-900 text-2xl mb-4">Base Plan</h4>
-                <div className="flex items-center justify-center mb-4">
-                  <span className="text-5xl font-bold text-blue-600">$49</span>
-                  <span className="text-gray-600 text-xl ml-2">/month</span>
+            {/* Single pricing tier */}
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-white/70 rounded-2xl p-8 border border-blue-200/30 mb-8">
+                <div className="flex items-center justify-center mb-6">
+                  <span className="text-6xl font-bold text-blue-600">$50</span>
+                  <span className="text-gray-600 text-2xl ml-2">/month</span>
                 </div>
-                <p className="text-gray-600 text-xl mb-4">
-                  <strong>1 active deal</strong>
+                <p className="text-gray-600 text-xl mb-6">
+                  Create unlimited deals and reach more customers
                 </p>
-                <p className="text-gray-500 text-lg">
-                  Perfect for single-location restaurants. Edit and update your deal anytime.
-                </p>
+                
+                {/* Special offers */}
+                <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                    <p className="text-green-700 font-semibold">3 months for $100</p>
+                    <p className="text-green-600 text-sm">First-time users</p>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                    <p className="text-purple-700 font-semibold">$450/year</p>
+                    <p className="text-purple-600 text-sm">Save 25%</p>
+                  </div>
+                </div>
               </div>
 
-              {/* Multiple Deals Plan */}
-              <div className="bg-white/70 rounded-2xl p-8 border border-orange-200/50 ring-2 ring-orange-300/30">
-                <div className="bg-orange-500 text-white text-sm font-bold px-3 py-1 rounded-full inline-block mb-3">POPULAR</div>
-                <h4 className="font-bold text-gray-900 text-2xl mb-4">Multiple Deals</h4>
-                <div className="flex items-center justify-center mb-4">
-                  <span className="text-5xl font-bold text-orange-600">$74</span>
-                  <span className="text-gray-600 text-xl ml-2">/month</span>
-                </div>
-                <p className="text-gray-600 text-xl mb-4">
-                  <strong>3 active deals</strong>
-                </p>
-                <p className="text-gray-500 text-lg">
-                  Mix it up and promote up to 3 deals at the same time.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-8">
-              <h4 className="font-bold text-gray-900 text-xl mb-6">Both plans include:</h4>
-              <div className="grid md:grid-cols-2 gap-6 text-left max-w-2xl mx-auto">
+              <h4 className="font-bold text-gray-900 text-xl mb-6">Everything included:</h4>
+              <div className="grid md:grid-cols-2 gap-4 text-left">
                 <div className="space-y-3">
+                  <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Unlimited deals</span></div>
                   <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Edit deals anytime</span></div>
                   <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Performance analytics</span></div>
                   <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Customer targeting</span></div>
-                  <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Real-time notifications</span></div>
                 </div>
                 <div className="space-y-3">
+                  <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Real-time notifications</span></div>
                   <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Location-based promotion</span></div>
                   <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">24/7 support</span></div>
                   <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Cancel anytime</span></div>
-                  <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">No setup fees</span></div>
                 </div>
               </div>
             </div>

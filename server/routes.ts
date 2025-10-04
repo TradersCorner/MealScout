@@ -135,11 +135,22 @@ async function validateAnalyticsAccess(userId: string): Promise<{
     }
 
     // Return subscription tier for different feature access
-    const tier = user.subscriptionBillingInterval === 'multiple-deals' ? 'multiple-deals' : 
-                 user.subscriptionBillingInterval === 'single-deal' ? 'single-deal' :
-                 user.subscriptionBillingInterval === 'year' ? 'yearly' : 
-                 user.subscriptionBillingInterval === '3-month' ? 'quarterly' : 
-                 'monthly'; // legacy fallback
+    // Handle both new format (standard-month) and legacy formats
+    const billingInterval = user.subscriptionBillingInterval || '';
+    let tier = 'monthly'; // default
+    
+    if (billingInterval.startsWith('standard-')) {
+      const interval = billingInterval.replace('standard-', '');
+      tier = interval === 'year' ? 'yearly' : interval === 'quarter' ? 'quarterly' : 'monthly';
+    } else if (billingInterval === 'multiple-deals' || billingInterval.includes('multiple-deals')) {
+      tier = 'multiple-deals';
+    } else if (billingInterval === 'single-deal' || billingInterval.includes('single-deal')) {
+      tier = 'single-deal';
+    } else if (billingInterval === 'year' || billingInterval.includes('year')) {
+      tier = 'yearly';
+    } else if (billingInterval === '3-month' || billingInterval === 'quarter' || billingInterval.includes('quarter')) {
+      tier = 'quarterly';
+    }
 
     return { 
       hasAccess: true, 
@@ -1851,7 +1862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Grant free beta access without Stripe subscription
       try {
         await storage.updateUser(user.id, {
-          subscriptionBillingInterval: `${hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal'}-${interval}`,
+          subscriptionBillingInterval: `standard-${interval}`,
           // We don't set stripeSubscriptionId for beta users
         });
         
@@ -2066,7 +2077,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Grant free beta access without Stripe subscription
       try {
         await storage.updateUser(user.id, {
-          subscriptionBillingInterval: `${hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal'}-${billingInterval}`,
+          subscriptionBillingInterval: `standard-${billingInterval}`,
           // We don't set stripeSubscriptionId for beta users
         });
         
@@ -2130,7 +2141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           expand: ['latest_invoice.payment_intent'],
         });
 
-        await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `${hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal'}-${billingInterval}`);
+        await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `standard-${billingInterval}`);
     
         const latestInvoice = subscription.latest_invoice;
         const paymentIntent = typeof latestInvoice === 'object' && latestInvoice ? (latestInvoice as any).payment_intent : null;

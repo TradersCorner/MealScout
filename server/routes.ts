@@ -1921,19 +1921,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerId = customer.id;
       }
 
-      // Calculate pricing based on deal addon and billing interval
-      // Base: $50/month (1 deal), Multiple: $75/month (3 deals)
-      const getPricing = (hasMultiple: boolean, interval: string) => {
-        const monthlyPrice = hasMultiple ? 7500 : 5000; // $75 or $50 monthly
-        
+      // Calculate pricing based on billing interval
+      // Standard pricing: $50/month, $100 for 3 months (first-time users), $450/year
+      const getPricing = (interval: string) => {
         switch (interval) {
           case 'quarter':
-            // Special new user offer: 1 deal for 3 months = $100 (normally $150)
-            return 10000; // $100 for 3 months (only for single deal)
+            return 10000; // $100 for 3 months (first-time user special)
           case 'year':
-            return monthlyPrice * 12; // 12 months: $900 or $600
+            return 45000; // $450 for 12 months
           default:
-            return monthlyPrice; // Monthly pricing
+            return 5000; // $50 monthly
         }
       };
       
@@ -1953,14 +1950,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
       
-      const unitAmount = getPricing(hasMultipleDealsAddon, interval);
+      const unitAmount = getPricing(interval);
       let productName;
       if (interval === 'quarter') {
-        productName = `MealScout Restaurant Plan - Special 3-Month Offer (1 deal)`;
+        productName = `MealScout Restaurant Plan - Special 3-Month Offer`;
       } else {
-        productName = hasMultipleDealsAddon 
-          ? `MealScout Restaurant Plan - Multiple Deals (3 deals) - ${getBillingLabel(interval)}`
-          : `MealScout Restaurant Plan - Single Deal (1 deal) - ${getBillingLabel(interval)}`;
+        productName = `MealScout Restaurant Plan - ${getBillingLabel(interval)}`;
       }
       
       // Create the product first
@@ -1968,7 +1963,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: productName,
         metadata: {
           type: 'subscription',
-          deals: interval === 'quarter' ? 'single' : (hasMultipleDealsAddon ? 'multiple' : 'single'),
           interval: interval,
           specialOffer: interval === 'quarter' ? 'new-user-3-month' : 'none'
         }
@@ -1996,8 +1990,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Store the actual subscription ID immediately
-      const dealType = interval === 'quarter' ? 'single-deal' : (hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal');
-      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `${dealType}-${interval}`);
+      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `standard-${interval}`);
 
       // Get client secret from the subscription's invoice
       const invoice = subscription.latest_invoice;
@@ -2204,20 +2197,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerId = customer.id;
       }
 
-      // Calculate pricing based on deal addon and billing interval
-      // Base: $50/month (1 deal), Multiple: $75/month (3 deals total)
-      // Quarterly: $100 for 3 months, Yearly: $450 for 12 months
-      const getPricing = (hasMultiple: boolean, interval: string) => {
-        const monthlyPrice = hasMultiple ? 7500 : 5000; // $75 or $50 monthly
-        
+      // Calculate pricing based on billing interval
+      // Standard pricing: $50/month, $100 for 3 months (first-time users), $450/year
+      const getPricing = (interval: string) => {
         switch (interval) {
           case 'quarter':
-            // Special new user offer: 1 deal for 3 months = $100 (normally $150)
-            return 10000; // $100 for 3 months (only for single deal)
+            return 10000; // $100 for 3 months (first-time user special)
           case 'year':
-            return monthlyPrice * 12; // 12 months: $900 or $600
+            return 45000; // $450 for 12 months
           default:
-            return monthlyPrice; // Monthly pricing
+            return 5000; // $50 monthly
         }
       };
       
@@ -2237,10 +2226,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
       
-      const unitAmount = getPricing(hasMultipleDealsAddon, interval);
-      const productName = hasMultipleDealsAddon 
-        ? `MealScout Restaurant Plan - Multiple Deals (3 deals) - ${getBillingLabel(interval)}`
-        : `MealScout Restaurant Plan - Single Deal (1 deal) - ${getBillingLabel(interval)}`;
+      const unitAmount = getPricing(interval);
+      const productName = interval === 'quarter' 
+        ? `MealScout Restaurant Plan - Special 3-Month Offer`
+        : `MealScout Restaurant Plan - ${getBillingLabel(interval)}`;
       const intervalCount = getIntervalCount(interval);
 
       // Create or get existing product
@@ -2248,8 +2237,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: productName,
         metadata: {
           type: 'subscription',
-          deals: hasMultipleDealsAddon ? 'multiple' : 'single',
-          interval: interval
+          interval: interval,
+          specialOffer: interval === 'quarter' ? 'new-user-3-month' : 'none'
         }
       });
 
@@ -2270,11 +2259,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expand: ['latest_invoice.payment_intent'],
       });
 
-      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `${hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal'}-${interval}`);
+      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `standard-${interval}`);
   
       // Send payment confirmation email asynchronously
       const amount = unitAmount; // Use calculated amount based on plan and billing
-      const planType = `${hasMultipleDealsAddon ? 'multiple-deals' : 'single-deal'}-${interval}`;
+      const planType = `standard-${interval}`;
       emailService.sendPaymentConfirmation(user, amount, planType, subscription.id).catch(err => 
         console.error('Failed to send payment confirmation email:', err)
       );

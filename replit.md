@@ -6,6 +6,26 @@ MealScout is a hyper-local meal deals discovery platform that connects restauran
 
 Preferred communication style: Simple, everyday language.
 
+# Recent Changes (October 2025)
+
+## Pricing Model Update
+- **Simplified Single-Tier Pricing**: Removed multi-tier pricing (single-deal vs multiple-deals)
+- **New Pricing Structure**:
+  - $50/month - Standard monthly subscription
+  - $100 for 3 months - First-time user special offer (quarterly billing)
+  - $450/year - Annual subscription (save 25%)
+- **Unlimited Deals**: All paid subscriptions now include unlimited deal creation
+
+## Subscription Format Standardization
+- **New Format**: All subscriptions use `standard-{interval}` format (e.g., `standard-month`, `standard-quarter`, `standard-year`)
+- **Legacy Compatibility**: System maintains backward compatibility with old formats (`multiple-deals-month`, `single-deal-month`, etc.)
+- **Promo Codes**: BETA and TEST1 promo codes updated to use new format
+- **Analytics**: Tier parsing logic handles both new and legacy subscription formats
+
+## Critical Authentication Fixes
+- **Google OAuth Session Fix**: Implemented manual `session.save()` with callback before redirect to prevent race conditions
+- **Session Race Condition**: Fixed 400 password validation errors during OAuth flows by ensuring session persistence before redirect
+
 # System Architecture
 
 ## Frontend Architecture

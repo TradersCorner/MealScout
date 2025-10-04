@@ -17,6 +17,7 @@ interface Deal {
   minOrderAmount?: string;
   imageUrl?: string;
   facebookPageUrl?: string;
+  isAiGenerated?: boolean;
   restaurant?: {
     name: string;
     cuisineType?: string;
@@ -159,6 +160,16 @@ export default function DealCard({ deal }: DealCardProps) {
               alt={deal.title}
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
             />
+            
+            {/* AI-Generated Sample Badge */}
+            {deal.isAiGenerated && (
+              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-gray-900 px-4 py-2 rounded-full text-xs font-bold shadow-lg border-2 border-yellow-500 flex items-center gap-1">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
+                </svg>
+                SAMPLE DEAL
+              </div>
+            )}
             
             {/* Deal badge */}
             <div className="absolute top-4 right-4 bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-2xl text-sm font-bold shadow-xl">

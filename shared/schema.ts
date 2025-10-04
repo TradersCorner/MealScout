@@ -99,6 +99,7 @@ export const deals = pgTable("deals", {
   currentUses: integer("current_uses").default(0),
   facebookPageUrl: varchar("facebook_page_url"),
   isActive: boolean("is_active").default(true),
+  isAiGenerated: boolean("is_ai_generated").default(false), // Mark AI-generated sample deals for beta testing
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

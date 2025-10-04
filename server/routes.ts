@@ -4,7 +4,7 @@ import Stripe from "stripe";
 import { storage } from "./storage";
 import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner } from "./unifiedAuth";
 import { emailService } from "./emailService";
-import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema, updateRestaurantLocationSchema, updateRestaurantOperatingHoursSchema } from "@shared/schema";
+import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema, updateRestaurantLocationSchema, updateRestaurantOperatingHoursSchema, type User } from "@shared/schema";
 import { z } from "zod";
 import { validateDocuments, checkRateLimit } from "./documentValidation";
 import { randomBytes, timingSafeEqual, createHash } from "crypto";
@@ -1272,32 +1272,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userData, restaurantData, subscriptionPlan } = req.body;
       
-      // Validate user data
-      const userValidation = z.object({
-        email: z.string().email(),
-        firstName: z.string().min(1),
-        lastName: z.string().min(1),
-        phone: z.string().min(10),
-        password: z.string().min(6),
-      });
+      let user: User;
       
-      const validatedUserData = userValidation.parse(userData);
-      
-      // Check if user already exists
-      const existingUser = await storage.getUserByEmail(validatedUserData.email);
-      if (existingUser) {
-        return res.status(400).json({ message: "User with this email already exists" });
+      // Check if user is already authenticated (e.g., via Google OAuth)
+      if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+        // User is already authenticated, use existing user
+        user = req.user as User;
+        console.log('Using authenticated user for restaurant signup:', { userId: user.id, userType: user.userType });
+      } else {
+        // User is not authenticated, create new account
+        // Validate user data with password required
+        const userValidation = z.object({
+          email: z.string().email(),
+          firstName: z.string().min(1),
+          lastName: z.string().min(1),
+          phone: z.string().min(10),
+          password: z.string().min(6),
+        });
+        
+        const validatedUserData = userValidation.parse(userData);
+        
+        // Check if user already exists
+        const existingUser = await storage.getUserByEmail(validatedUserData.email);
+        if (existingUser) {
+          return res.status(400).json({ message: "User with this email already exists" });
+        }
+        
+        // Hash password
+        const bcrypt = await import('bcryptjs');
+        const passwordHash = await bcrypt.hash(validatedUserData.password, 10);
+        
+        // Create restaurant owner user account using email auth
+        user = await storage.upsertUserByAuth('email', {
+          ...validatedUserData,
+          passwordHash
+        }, 'restaurant_owner');
+        
+        // Log the new user in by setting up session
+        await new Promise<User>((resolve, reject) => {
+          req.login(user, (err: any) => {
+            if (err) reject(err);
+            else resolve(user);
+          });
+        });
       }
-      
-      // Hash password
-      const bcrypt = await import('bcryptjs');
-      const passwordHash = await bcrypt.hash(validatedUserData.password, 10);
-      
-      // Create restaurant owner user account using email auth
-      const newUser = await storage.upsertUserByAuth('email', {
-        ...validatedUserData,
-        passwordHash
-      }, 'restaurant_owner');
       
       // Validate restaurant data
       const restaurantValidation = insertRestaurantSchema.omit({ ownerId: true });
@@ -1306,22 +1324,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create restaurant profile
       const restaurant = await storage.createRestaurant({
         ...validatedRestaurantData,
-        ownerId: newUser.id,
+        ownerId: user.id,
       });
       
-      // Log the user in by setting up session
-      req.login(newUser, (err: any) => {
-        if (err) {
-          console.error('Login error after signup:', err);
-          return res.status(500).json({ message: "Account created but login failed" });
-        }
-        
-        res.json({
-          user: newUser,
-          restaurant,
-          message: "Restaurant owner account created successfully",
-          subscriptionPlan
-        });
+      res.json({
+        user,
+        restaurant,
+        message: "Restaurant owner account created successfully",
+        subscriptionPlan
       });
       
     } catch (error: any) {

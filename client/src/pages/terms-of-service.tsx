@@ -75,8 +75,8 @@ export default function TermsOfService() {
                 <div className="bg-gray-50 p-4 rounded-lg mb-4">
                   <h3 className="font-semibold text-gray-900 mb-2">Pricing Plans:</h3>
                   <ul className="text-gray-700 space-y-1">
-                    <li>• Monthly: $49/month</li>
-                    <li>• Quarterly: $100/3 months (new users only)</li>
+                    <li>• Monthly: $50/month</li>
+                    <li>• Quarterly: $100/3 months (first-time users only)</li>
                     <li>• Yearly: $450/year</li>
                   </ul>
                 </div>

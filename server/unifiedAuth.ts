@@ -207,11 +207,19 @@ export async function setupUnifiedAuth(app: Express) {
         });
         next();
       },
-      (req, res, next) => {
-        passport.authenticate('google-customer', {
-          successRedirect: "/",
-          failureRedirect: "/?error=auth_failed",
-        })(req, res, next);
+      passport.authenticate('google-customer', {
+        failureRedirect: "/?error=auth_failed",
+      }),
+      (req, res) => {
+        // Ensure session is saved before redirecting
+        req.session.save((err) => {
+          if (err) {
+            console.error('❌ Session save error:', err);
+            return res.redirect("/?error=session_error");
+          }
+          console.log('✅ Google customer OAuth success, session saved, redirecting...');
+          res.redirect("/");
+        });
       }
     );
 
@@ -231,11 +239,19 @@ export async function setupUnifiedAuth(app: Express) {
         });
         next();
       },
-      (req, res, next) => {
-        passport.authenticate('google-restaurant', {
-          successRedirect: "/restaurant-signup",
-          failureRedirect: "/restaurant-signup?error=auth_failed",
-        })(req, res, next);
+      passport.authenticate('google-restaurant', {
+        failureRedirect: "/restaurant-signup?error=auth_failed",
+      }),
+      (req, res) => {
+        // Ensure session is saved before redirecting
+        req.session.save((err) => {
+          if (err) {
+            console.error('❌ Session save error:', err);
+            return res.redirect("/restaurant-signup?error=session_error");
+          }
+          console.log('✅ Google restaurant OAuth success, session saved, redirecting...');
+          res.redirect("/restaurant-signup");
+        });
       }
     );
   } else {

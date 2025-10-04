@@ -25,6 +25,7 @@ Preferred communication style: Simple, everyday language.
 ## Critical Authentication Fixes
 - **Google OAuth Session Fix**: Implemented manual `session.save()` with callback before redirect to prevent race conditions
 - **Session Race Condition**: Fixed 400 password validation errors during OAuth flows by ensuring session persistence before redirect
+- **OAuth Redirect Middleware Fix**: Disabled middleware that was redirecting OAuth requests before Passport could initiate the flow, which was breaking Google and Facebook login
 
 # System Architecture
 

@@ -175,20 +175,22 @@ app.use((req, res, next) => {
   app.use(passport.initialize());
   app.use(passport.session());
   
-  // OAuth normalization middleware - redirect Google OAuth to canonical domain to prevent session mismatch
-  app.use((req, res, next) => {
-    const publicBaseUrl = process.env.PUBLIC_BASE_URL;
-    if (publicBaseUrl && req.path.startsWith('/api/auth/google')) {
-      const canonicalHost = new URL(publicBaseUrl).hostname;
-      if (req.hostname !== canonicalHost) {
-        const queryString = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
-        const redirectUrl = `${publicBaseUrl}${req.path}${queryString}`;
-        log(`Redirecting Google OAuth ${req.hostname} to canonical domain: ${redirectUrl}`);
-        return res.redirect(307, redirectUrl);
-      }
-    }
-    next();
-  });
+  // OAuth normalization middleware - DISABLED because it breaks OAuth flow
+  // The redirect was interfering with the Passport.js OAuth flow by redirecting before authentication
+  // OAuth works correctly as long as callback URLs are properly configured in Google Cloud Console
+  // app.use((req, res, next) => {
+  //   const publicBaseUrl = process.env.PUBLIC_BASE_URL;
+  //   if (publicBaseUrl && req.path.startsWith('/api/auth/google')) {
+  //     const canonicalHost = new URL(publicBaseUrl).hostname;
+  //     if (req.hostname !== canonicalHost) {
+  //       const queryString = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+  //       const redirectUrl = `${publicBaseUrl}${req.path}${queryString}`;
+  //       log(`Redirecting Google OAuth ${req.hostname} to canonical domain: ${redirectUrl}`);
+  //       return res.redirect(307, redirectUrl);
+  //     }
+  //   }
+  //   next();
+  // });
 
   // Host normalization middleware - DISABLED to prevent redirect loops
   // TODO: Re-enable with proper production domain detection

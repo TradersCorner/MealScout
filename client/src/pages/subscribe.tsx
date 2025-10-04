@@ -131,91 +131,40 @@ const PaymentForm = ({ clientSecret, intentType = 'payment', onSuccess }: { clie
 };
 
 const PlanSelector = ({ 
-  hasMultipleDeals, 
   billingInterval, 
   promoCode,
-  onHasMultipleDealsChange, 
   onBillingIntervalChange, 
   onPromoCodeChange,
   onContinue 
 }: {
-  hasMultipleDeals: boolean;
   billingInterval: 'month' | 'quarter' | 'year';
   promoCode: string;
-  onHasMultipleDealsChange: (value: boolean) => void;
   onBillingIntervalChange: (value: 'month' | 'quarter' | 'year') => void;
   onPromoCodeChange: (value: string) => void;
   onContinue: () => void;
 }) => {
-  const getPricingDisplay = (hasMultiple: boolean, interval: string) => {
+  const getPricingDisplay = (interval: string) => {
     if (interval === 'quarter') {
       return '$100/3 months';
     } else if (interval === 'year') {
-      return hasMultiple ? '$900/year' : '$600/year';
+      return '$450/year';
     } else {
-      return hasMultiple ? '$75/month' : '$50/month';
+      return '$50/month';
     }
   };
 
-  const getPricingAmount = (hasMultiple: boolean, interval: string) => {
+  const getPricingAmount = (interval: string) => {
     if (interval === 'quarter') {
       return '$100';
     } else if (interval === 'year') {
-      return hasMultiple ? '$900' : '$600';
+      return '$450';
     } else {
-      return hasMultiple ? '$75' : '$50';
+      return '$50';
     }
-  };
-
-  const getDealsText = (hasMultiple: boolean) => {
-    return hasMultiple ? '3 deals' : '1 deal';
   };
 
   return (
     <div className="space-y-6">
-      {/* Plan Selection */}
-      <Card className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
-        <CardContent className="p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">Choose Your Plan</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Single Deal Plan */}
-            <div 
-              className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 text-center ${
-                !hasMultipleDeals 
-                  ? 'border-purple-500 bg-purple-50 shadow-md' 
-                  : 'border-gray-200 bg-white hover:border-purple-300'
-              }`}
-              onClick={() => onHasMultipleDealsChange(false)}
-              data-testid="card-plan-single"
-            >
-              <div className="font-semibold text-gray-900 mb-2">Single Deal</div>
-              <div className="text-3xl font-bold text-purple-600 mb-2">1</div>
-              <div className="text-sm text-gray-600">Active deal at a time</div>
-              <div className="text-lg font-semibold text-gray-900 mt-2">
-                {getPricingDisplay(false, billingInterval)}
-              </div>
-            </div>
-            
-            {/* Multiple Deals Plan */}
-            <div 
-              className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 text-center ${
-                hasMultipleDeals 
-                  ? 'border-purple-500 bg-purple-50 shadow-md' 
-                  : 'border-gray-200 bg-white hover:border-purple-300'
-              }`}
-              onClick={() => onHasMultipleDealsChange(true)}
-              data-testid="card-plan-multiple"
-            >
-              <div className="font-semibold text-gray-900 mb-2">Multiple Deals</div>
-              <div className="text-3xl font-bold text-purple-600 mb-2">3</div>
-              <div className="text-sm text-gray-600">Active deals at a time</div>
-              <div className="text-lg font-semibold text-gray-900 mt-2">
-                {getPricingDisplay(true, billingInterval)}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Billing Interval Selection */}
       <Card className="bg-gradient-to-r from-green-50 to-teal-50 border-green-200">
@@ -234,7 +183,7 @@ const PlanSelector = ({
             >
               <div className="font-semibold text-gray-900 mb-1">Monthly</div>
               <div className="text-2xl font-bold text-green-600 mb-2">
-                ${hasMultipleDeals ? '75' : '50'}
+                $50
               </div>
               <div className="text-sm text-gray-600">per month</div>
             </div>
@@ -250,11 +199,11 @@ const PlanSelector = ({
               data-testid="card-billing-yearly"
             >
               <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                Save 50%
+                Save 25%
               </div>
               <div className="font-semibold text-gray-900 mb-1">Yearly</div>
               <div className="text-2xl font-bold text-green-600 mb-2">
-                ${hasMultipleDeals ? '900' : '600'}
+                $450
               </div>
               <div className="text-sm text-gray-600">for 12 months</div>
             </div>
@@ -265,12 +214,9 @@ const PlanSelector = ({
                 billingInterval === 'quarter' 
                   ? 'border-green-500 bg-green-50 shadow-md' 
                   : 'border-gray-200 bg-white hover:border-green-300'
-              } ${hasMultipleDeals ? 'opacity-50 cursor-not-allowed' : ''}`}
+              }`}
               onClick={() => {
-                if (!hasMultipleDeals) {
-                  onBillingIntervalChange('quarter');
-                  onHasMultipleDealsChange(false);
-                }
+                onBillingIntervalChange('quarter');
               }}
               data-testid="card-billing-quarterly"
             >
@@ -279,8 +225,8 @@ const PlanSelector = ({
               </div>
               <div className="font-semibold text-gray-900 mb-1">3-Month Deal</div>
               <div className="text-2xl font-bold text-green-600 mb-2">$100</div>
-              <div className="text-sm text-gray-600">1 deal for 3 months</div>
-              <div className="text-xs text-gray-500 mt-1">Special offer!</div>
+              <div className="text-sm text-gray-600">for 3 months</div>
+              <div className="text-xs text-gray-500 mt-1">First-time users!</div>
             </div>
           </div>
         </CardContent>
@@ -314,13 +260,13 @@ const PlanSelector = ({
             <h3 className="text-lg font-bold text-gray-900 mb-2">Plan Summary</h3>
             <div className="flex justify-center items-center space-x-2 mb-2">
               <Check className="w-5 h-5 text-green-600" />
-              <span className="font-semibold">{getDealsText(hasMultipleDeals)} at a time</span>
+              <span className="font-semibold">MealScout Restaurant Plan</span>
             </div>
             <div className="text-3xl font-bold text-blue-600 mb-2">
-              {getPricingAmount(hasMultipleDeals, billingInterval)}
+              {getPricingAmount(billingInterval)}
             </div>
             <div className="text-sm text-gray-600 mb-4">
-              {getPricingDisplay(hasMultipleDeals, billingInterval)}
+              {getPricingDisplay(billingInterval)}
             </div>
             {promoCode && (
               <div className="text-sm text-green-600 mb-4">
@@ -589,7 +535,6 @@ export default function Subscribe() {
   const [, setLocation] = useLocation();
   
   // Plan selection state
-  const [hasMultipleDeals, setHasMultipleDeals] = useState(false);
   const [billingInterval, setBillingInterval] = useState<'month' | 'quarter' | 'year'>('month');
   const [promoCode, setPromoCode] = useState("");
   
@@ -609,7 +554,7 @@ export default function Subscribe() {
 
     try {
       const response = await apiRequest("POST", "/api/subscriptions/initialize", {
-        hasMultipleDeals,
+        hasMultipleDeals: false, // Always false now - single tier pricing
         billingInterval,
         promoCode: promoCode || undefined
       });
@@ -799,10 +744,8 @@ export default function Subscribe() {
         {/* Show subscription not found for users without subscriptions */}
         {currentSubscription?.status === 'none' && subscriptionState.status === 'selecting' && (
           <PlanSelector
-            hasMultipleDeals={hasMultipleDeals}
             billingInterval={billingInterval}
             promoCode={promoCode}
-            onHasMultipleDealsChange={setHasMultipleDeals}
             onBillingIntervalChange={setBillingInterval}
             onPromoCodeChange={setPromoCode}
             onContinue={initializeSubscription}
@@ -825,7 +768,7 @@ export default function Subscribe() {
                 <CardContent className="p-6 text-center">
                   <h3 className="text-lg font-bold text-gray-900 mb-2">Complete Your Payment</h3>
                   <p className="text-sm text-gray-600">
-                    {hasMultipleDeals ? '3 deals' : '1 deal'} plan • {billingInterval === 'quarter' ? '$100/3 months' : billingInterval === 'year' ? (hasMultipleDeals ? '$900/year' : '$600/year') : hasMultipleDeals ? '$75/month' : '$50/month'}
+                    MealScout Restaurant Plan • {billingInterval === 'quarter' ? '$100/3 months' : billingInterval === 'year' ? '$450/year' : '$50/month'}
                   </p>
                 </CardContent>
               </Card>

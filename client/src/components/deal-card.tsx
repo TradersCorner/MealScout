@@ -149,12 +149,12 @@ export default function DealCard({ deal }: DealCardProps) {
     <div onClick={handleCardClick}>
       <Card 
         ref={cardRef}
-        className="bg-white rounded-3xl overflow-hidden hover:shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer border-0 shadow-lg group" 
+        className="bg-white rounded-2xl sm:rounded-3xl overflow-hidden hover:shadow-2xl sm:hover:scale-105 transition-all duration-300 cursor-pointer border-0 shadow-lg group" 
         data-testid={`card-deal-${deal.id}`}
       >
         <CardContent className="p-0">
           {/* Restaurant Image */}
-          <div className="relative h-56 bg-gray-100 overflow-hidden">
+          <div className="relative h-40 sm:h-48 md:h-56 bg-gray-100 overflow-hidden">
             <img 
               src={deal.imageUrl || getDefaultImage(deal.restaurant?.cuisineType, deal.title)}
               alt={deal.title}
@@ -163,8 +163,8 @@ export default function DealCard({ deal }: DealCardProps) {
             
             {/* AI-Generated Sample Badge */}
             {deal.isAiGenerated && (
-              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-gray-900 px-4 py-2 rounded-full text-xs font-bold shadow-lg border-2 border-yellow-500 flex items-center gap-1">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <div className="absolute top-2 sm:top-4 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-gray-900 px-2 sm:px-4 py-1 sm:py-2 rounded-full text-xs font-bold shadow-lg border-2 border-yellow-500 flex items-center gap-1">
+                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
                 </svg>
                 SAMPLE DEAL
@@ -172,15 +172,15 @@ export default function DealCard({ deal }: DealCardProps) {
             )}
             
             {/* Deal badge */}
-            <div className="absolute top-4 right-4 bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-2xl text-sm font-bold shadow-xl">
+            <div className="absolute top-2 sm:top-4 right-2 sm:right-4 bg-gradient-to-r from-red-500 to-pink-500 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold shadow-xl">
               {formatDiscount()} off
             </div>
             
             {/* Action buttons */}
-            <div className="absolute top-4 left-4 flex space-x-2">
+            <div className="absolute top-2 sm:top-4 left-2 sm:left-4 flex space-x-1 sm:space-x-2">
               {/* Save button */}
-              <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600 sm:w-4 sm:h-4">
                   <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
                 </svg>
               </div>
@@ -188,60 +188,60 @@ export default function DealCard({ deal }: DealCardProps) {
               {/* Share button */}
               <button
                 onClick={handleShare}
-                className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
+                className="w-8 h-8 sm:w-10 sm:h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
                 data-testid={`button-share-${deal.id}`}
               >
-                <Share2 className="w-4 h-4 text-gray-600" />
+                <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600" />
               </button>
             </div>
           </div>
 
           {/* Content */}
-          <div className="p-6">
+          <div className="p-3 sm:p-4 md:p-6">
             {/* Restaurant name and rating */}
-            <div className="flex items-start justify-between mb-3">
-              <h3 className="font-bold text-gray-900 text-xl leading-tight" data-testid={`text-restaurant-name-${deal.id}`}>
+            <div className="flex items-start justify-between mb-2 sm:mb-3">
+              <h3 className="font-bold text-gray-900 text-base sm:text-lg md:text-xl leading-tight" data-testid={`text-restaurant-name-${deal.id}`}>
                 {deal.restaurant?.name || 'Restaurant Name'}
               </h3>
-              <div className="flex items-center space-x-1 ml-2 bg-green-100 px-3 py-1 rounded-full">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-green-600">
+              <div className="flex items-center space-x-1 ml-2 bg-green-100 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-green-600 sm:w-3.5 sm:h-3.5">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                 </svg>
-                <span className="text-sm font-bold text-green-700">4.5</span>
+                <span className="text-xs sm:text-sm font-bold text-green-700">4.5</span>
               </div>
             </div>
 
             {/* Categories and location info */}
-            <div className="flex items-center flex-wrap gap-2 mb-4">
-              <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-medium">{deal.restaurant?.cuisineType || 'American'}</span>
-              <span className="flex items-center space-x-1 bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-medium">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-gray-500">
+            <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 mb-3 sm:mb-4">
+              <span className="bg-gray-100 text-gray-700 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-medium">{deal.restaurant?.cuisineType || 'American'}</span>
+              <span className="flex items-center space-x-1 bg-gray-100 text-gray-700 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-medium">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-gray-500 sm:w-3 sm:h-3">
                   <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                 </svg>
                 <span>{deal.distance ? `${deal.distance.toFixed(1)} mi` : '0.5 mi'}</span>
               </span>
-              <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">Pickup</span>
+              <span className="bg-blue-100 text-blue-700 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-medium">Pickup</span>
             </div>
 
             {/* Deal description */}
-            <p className="text-gray-600 text-base mb-5 leading-relaxed" data-testid={`text-restaurant-info-${deal.id}`}>
+            <p className="text-gray-600 text-sm sm:text-base mb-3 sm:mb-5 leading-relaxed line-clamp-2 sm:line-clamp-none" data-testid={`text-restaurant-info-${deal.id}`}>
               {deal.description}
             </p>
 
             {/* Promo highlight */}
-            <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-2xl p-4 mb-5">
+            <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 mb-3 sm:mb-5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-red-500 rounded-full flex items-center justify-center">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white sm:w-3.5 sm:h-3.5">
                       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                     </svg>
                   </div>
                   <div>
-                    <span className="text-red-700 font-bold text-lg">
+                    <span className="text-red-700 font-bold text-sm sm:text-base md:text-lg">
                       {formatDiscount()} off
                     </span>
-                    <p className="text-red-600 text-sm">
+                    <p className="text-red-600 text-xs sm:text-sm">
                       orders ${deal.minOrderAmount || '15'}+
                     </p>
                   </div>
@@ -251,8 +251,8 @@ export default function DealCard({ deal }: DealCardProps) {
 
             {/* Usage stats */}
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600 font-medium">{deal.currentUses || 188} people saved today</span>
-              <div className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold">
+              <span className="text-xs sm:text-sm text-gray-600 font-medium">{deal.currentUses || 188} people saved</span>
+              <div className="bg-orange-100 text-orange-700 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-bold">
                 2h 15m left
               </div>
             </div>

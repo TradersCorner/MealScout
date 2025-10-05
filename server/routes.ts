@@ -2892,6 +2892,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bug report endpoint
+  app.post('/api/bug-report', async (req, res) => {
+    try {
+      const { screenshot, currentUrl, userAgent } = req.body;
+      
+      if (!currentUrl || !userAgent) {
+        return res.status(400).json({ message: "Missing required bug report data" });
+      }
+
+      const user = req.user;
+      const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined;
+      const userEmail = user?.email;
+
+      const bugReportData = {
+        userEmail,
+        userName,
+        userAgent,
+        currentUrl,
+        timestamp: new Date().toLocaleString(),
+        screenshotUrl: screenshot || undefined,
+      };
+
+      const success = await emailService.sendBugReport(bugReportData);
+
+      if (success) {
+        res.json({ success: true, message: "Bug report sent successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to send bug report. Email service may not be configured." });
+      }
+    } catch (error) {
+      console.error("Error submitting bug report:", error);
+      res.status(500).json({ message: "Failed to submit bug report" });
+    }
+  });
+
   // Handle frequent HEAD /api requests efficiently (likely from monitoring)
   app.head('/api', (req, res) => {
     res.status(200).end();

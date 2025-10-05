@@ -34,6 +34,10 @@ interface BaseEmailParams {
   subject: string;
   html: string;
   text?: string;
+  attachments?: Array<{
+    content: string;
+    name: string;
+  }>;
 }
 
 // Email templates
@@ -776,9 +780,9 @@ The MealScout Security Team
       </div>
 
       ${data.screenshotUrl ? `
-      <div style="margin: 20px 0;">
-        <p><strong>Screenshot:</strong></p>
-        <img src="${data.screenshotUrl}" alt="Bug Report Screenshot" style="max-width: 100%; border: 1px solid #e9ecef; border-radius: 8px; margin-top: 10px;">
+      <div class="highlight-box" style="border-left-color: #10b981;">
+        <strong>📎 Screenshot Attached</strong><br>
+        A screenshot of the page has been attached to this email as "bug-report-screenshot.png"
       </div>
       ` : ''}
       
@@ -838,7 +842,7 @@ export class EmailService {
     }
 
     try {
-      await transactionalEmailsApi.sendTransacEmail({
+      const emailData: any = {
         to: [{ 
           email: params.to 
         }],
@@ -849,7 +853,14 @@ export class EmailService {
         subject: params.subject,
         htmlContent: params.html,
         textContent: params.text,
-      });
+      };
+
+      // Add attachments if provided
+      if (params.attachments && params.attachments.length > 0) {
+        emailData.attachment = params.attachments;
+      }
+
+      await transactionalEmailsApi.sendTransacEmail(emailData);
       
       console.log(`Email sent successfully to ${params.to}: ${params.subject}`);
       return true;
@@ -949,12 +960,26 @@ export class EmailService {
   }): Promise<boolean> {
     const template = EmailTemplates.getBugReportTemplate(data);
     
-    return await this.sendEmail({
+    const emailParams: BaseEmailParams = {
       to: EMAIL_CONFIG.adminEmail,
       subject: `🐛 Bug Report - ${data.currentUrl.substring(0, 50)}`,
       html: template.html,
       text: template.text,
-    });
+    };
+
+    // If screenshot is provided, extract base64 data and add as attachment
+    if (data.screenshotUrl) {
+      // Extract base64 data from data URL (format: data:image/png;base64,XXXXX)
+      const base64Match = data.screenshotUrl.match(/^data:image\/\w+;base64,(.+)$/);
+      if (base64Match && base64Match[1]) {
+        emailParams.attachments = [{
+          content: base64Match[1],
+          name: 'bug-report-screenshot.png',
+        }];
+      }
+    }
+    
+    return await this.sendEmail(emailParams);
   }
 
   // Utility method to check if email service is available

@@ -43,6 +43,8 @@ import Contact from "@/pages/contact";
 import Sitemap from "@/pages/sitemap";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
+import { BetaDisclaimer } from "@/components/beta-disclaimer";
+import { BugReportButton } from "@/components/bug-report-button";
 
 // Wrapper component to handle route props
 function DashboardSwitcherPage() {
@@ -147,6 +149,8 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
+        <BetaDisclaimer />
+        <BugReportButton />
         <Router />
       </TooltipProvider>
     </QueryClientProvider>

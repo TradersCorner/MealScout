@@ -150,7 +150,7 @@ export default function DealCard({ deal }: DealCardProps) {
     <div onClick={handleCardClick}>
       <Card 
         ref={cardRef}
-        className="bg-white rounded-2xl sm:rounded-3xl overflow-hidden hover:shadow-2xl sm:hover:scale-105 transition-all duration-300 cursor-pointer border-0 shadow-lg group" 
+        className="bg-white rounded-2xl sm:rounded-3xl hover:shadow-2xl sm:hover:scale-105 transition-all duration-300 cursor-pointer border-0 shadow-lg group" 
         data-testid={`card-deal-${deal.id}`}
       >
         <CardContent className="p-0">

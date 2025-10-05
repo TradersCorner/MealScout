@@ -78,7 +78,11 @@ export function DealFeedback({ dealId, compact = false }: DealFeedbackProps) {
 
   if (compact) {
     return (
-      <div className="flex items-center gap-2" data-testid="feedback-compact">
+      <div 
+        className="flex items-center gap-2" 
+        data-testid="feedback-compact"
+        onClick={(e) => e.stopPropagation()}
+      >
         {stats && stats.totalFeedback > 0 && (
           <div className="flex items-center gap-1 text-sm">
             <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
@@ -90,7 +94,10 @@ export function DealFeedback({ dealId, compact = false }: DealFeedbackProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowForm(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowForm(true);
+            }}
             className="text-sm font-medium"
             data-testid="button-show-feedback-form"
           >
@@ -102,7 +109,10 @@ export function DealFeedback({ dealId, compact = false }: DealFeedbackProps) {
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
-                  onClick={() => setRating(star)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRating(star);
+                  }}
                   onMouseEnter={() => setHoveredRating(star)}
                   onMouseLeave={() => setHoveredRating(0)}
                   className="transition-transform hover:scale-110"
@@ -120,7 +130,10 @@ export function DealFeedback({ dealId, compact = false }: DealFeedbackProps) {
             </div>
             <Button
               size="sm"
-              onClick={handleSubmit}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSubmit();
+              }}
               disabled={rating === 0 || submitFeedbackMutation.isPending}
               data-testid="button-submit-rating"
             >
@@ -129,7 +142,10 @@ export function DealFeedback({ dealId, compact = false }: DealFeedbackProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowForm(false)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowForm(false);
+              }}
               data-testid="button-cancel-feedback"
             >
               Cancel

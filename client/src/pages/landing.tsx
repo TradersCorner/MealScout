@@ -1161,9 +1161,9 @@ export default function Landing() {
                   View all →
                 </button>
               </div>
-              <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+              <div className="flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
                 {dealsToShow.slice(0, 10).map((deal: any) => (
-                  <div key={deal.id} className="flex-shrink-0 w-80">
+                  <div key={deal.id} className="flex-shrink-0 w-72 sm:w-80">
                     <DealCard deal={deal} />
                   </div>
                 ))}
@@ -1178,15 +1178,15 @@ export default function Landing() {
             <div className="px-4">
               <div className="max-w-6xl mx-auto">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">🔥 Featured Deals</h2>
-                <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+                <div className="flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
                   {allDeals.filter((deal: any) => deal.isFeatured).slice(0, 8).map((deal: any) => (
-                    <div key={deal.id} className="flex-shrink-0 w-80">
+                    <div key={deal.id} className="flex-shrink-0 w-72 sm:w-80">
                       <DealCard deal={deal} />
                     </div>
                   ))}
                   {allDeals.filter((deal: any) => deal.isFeatured).length === 0 && 
                     allDeals.slice(0, 6).map((deal: any) => (
-                      <div key={deal.id} className="flex-shrink-0 w-80">
+                      <div key={deal.id} className="flex-shrink-0 w-72 sm:w-80">
                         <DealCard deal={deal} />
                       </div>
                     ))
@@ -1212,12 +1212,12 @@ export default function Landing() {
                       View all →
                     </button>
                   </div>
-                  <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+                  <div className="flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
                     {allDeals.filter((deal: any) => 
                       deal.restaurant?.cuisine_type?.toLowerCase().includes('pizza') || 
                       deal.title?.toLowerCase().includes('pizza')
                     ).slice(0, 8).map((deal: any) => (
-                      <div key={deal.id} className="flex-shrink-0 w-80">
+                      <div key={deal.id} className="flex-shrink-0 w-72 sm:w-80">
                         <DealCard deal={deal} />
                       </div>
                     ))}
@@ -1243,13 +1243,13 @@ export default function Landing() {
                       View all →
                     </button>
                   </div>
-                  <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+                  <div className="flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
                     {allDeals.filter((deal: any) => 
                       deal.restaurant?.cuisine_type?.toLowerCase().includes('mexican') || 
                       deal.title?.toLowerCase().includes('mexican') ||
                       deal.title?.toLowerCase().includes('taco')
                     ).slice(0, 8).map((deal: any) => (
-                      <div key={deal.id} className="flex-shrink-0 w-80">
+                      <div key={deal.id} className="flex-shrink-0 w-72 sm:w-80">
                         <DealCard deal={deal} />
                       </div>
                     ))}
@@ -1276,14 +1276,14 @@ export default function Landing() {
                       View all →
                     </button>
                   </div>
-                  <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+                  <div className="flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
                     {allDeals.filter((deal: any) => 
                       deal.restaurant?.cuisine_type?.toLowerCase().includes('asian') || 
                       deal.restaurant?.cuisine_type?.toLowerCase().includes('chinese') ||
                       deal.restaurant?.cuisine_type?.toLowerCase().includes('thai') ||
                       deal.title?.toLowerCase().includes('sushi')
                     ).slice(0, 8).map((deal: any) => (
-                      <div key={deal.id} className="flex-shrink-0 w-80">
+                      <div key={deal.id} className="flex-shrink-0 w-72 sm:w-80">
                         <DealCard deal={deal} />
                       </div>
                     ))}
@@ -1298,7 +1298,7 @@ export default function Landing() {
           <div className="px-4 mb-8">
             <div className="max-w-6xl mx-auto">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">🔥 Featured Deals in {locationName}</h2>
-              <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+              <div className="flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
                 {isLoading ? (
                   <div className="text-center py-12 px-6 w-full">
                     <div className="animate-spin w-8 h-8 border-4 border-gray-200 border-t-red-500 rounded-full mx-auto mb-4"></div>
@@ -1306,7 +1306,7 @@ export default function Landing() {
                   </div>
                 ) : allDeals.length > 0 ? (
                   allDeals.slice(0, 10).map((deal: any) => (
-                    <div key={deal.id} className="flex-shrink-0 w-80">
+                    <div key={deal.id} className="flex-shrink-0 w-72 sm:w-80">
                       <DealCard deal={deal} />
                     </div>
                   ))

@@ -25,8 +25,15 @@ export function BetaDisclaimer() {
     setOpen(false);
   };
 
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      localStorage.setItem("beta-disclaimer-seen", "true");
+    }
+    setOpen(newOpen);
+  };
+
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent data-testid="dialog-beta-disclaimer" className="max-w-lg">
         <AlertDialogHeader>
           <div className="flex items-center gap-2 mb-2">

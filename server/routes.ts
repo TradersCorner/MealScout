@@ -2901,9 +2901,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Missing required bug report data" });
       }
 
-      const user = req.user;
+      const user = req.user as User | undefined;
       const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined;
-      const userEmail = user?.email;
+      const userEmail = user?.email || undefined;
 
       const bugReportData = {
         userEmail,

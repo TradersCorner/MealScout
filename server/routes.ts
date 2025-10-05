@@ -4,7 +4,7 @@ import Stripe from "stripe";
 import { storage } from "./storage";
 import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner } from "./unifiedAuth";
 import { emailService } from "./emailService";
-import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema, updateRestaurantLocationSchema, updateRestaurantOperatingHoursSchema, type User } from "@shared/schema";
+import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema, updateRestaurantLocationSchema, updateRestaurantOperatingHoursSchema, insertDealFeedbackSchema, type User } from "@shared/schema";
 import { z } from "zod";
 import { validateDocuments, checkRateLimit } from "./documentValidation";
 import { randomBytes, timingSafeEqual, createHash } from "crypto";
@@ -2924,6 +2924,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error submitting bug report:", error);
       res.status(500).json({ message: "Failed to submit bug report" });
+    }
+  });
+
+  // Deal feedback endpoints
+  app.post('/api/deals/:dealId/feedback', async (req: any, res) => {
+    try {
+      const { dealId } = req.params;
+      const feedbackData = req.body;
+      
+      const validatedData = insertDealFeedbackSchema.parse({
+        ...feedbackData,
+        dealId,
+        userId: req.user?.id || null,
+      });
+
+      const feedback = await storage.createDealFeedback(validatedData);
+      res.json(feedback);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid feedback data", errors: error.errors });
+      }
+      console.error("Error creating deal feedback:", error);
+      res.status(500).json({ message: "Failed to submit feedback" });
+    }
+  });
+
+  app.get('/api/deals/:dealId/feedback', async (req, res) => {
+    try {
+      const { dealId } = req.params;
+      const feedback = await storage.getDealFeedback(dealId);
+      res.json(feedback);
+    } catch (error) {
+      console.error("Error fetching deal feedback:", error);
+      res.status(500).json({ message: "Failed to fetch feedback" });
+    }
+  });
+
+  app.get('/api/deals/:dealId/feedback/stats', async (req, res) => {
+    try {
+      const { dealId } = req.params;
+      const stats = await storage.getDealFeedbackStats(dealId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching feedback stats:", error);
+      res.status(500).json({ message: "Failed to fetch feedback stats" });
     }
   });
 

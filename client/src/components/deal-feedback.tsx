@@ -88,9 +88,10 @@ export function DealFeedback({ dealId, compact = false }: DealFeedbackProps) {
         )}
         {!showForm ? (
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => setShowForm(true)}
+            className="text-sm font-medium"
             data-testid="button-show-feedback-form"
           >
             Rate Deal

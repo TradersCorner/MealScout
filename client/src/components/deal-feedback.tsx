@@ -32,7 +32,7 @@ export function DealFeedback({ dealId, compact = false }: DealFeedbackProps) {
 
   const submitFeedbackMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest(`/api/deals/${dealId}/feedback`, 'POST', data);
+      return await apiRequest('POST', `/api/deals/${dealId}/feedback`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/deals', dealId, 'feedback'] });

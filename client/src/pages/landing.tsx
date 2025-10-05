@@ -89,17 +89,8 @@ export default function Landing() {
   };
 
   const handleGoogleLogin = () => {
-    // Check if in Facebook browser - Google OAuth doesn't work there
-    if (isFacebookBrowser) {
-      toast({
-        title: "Google Login Not Available",
-        description: "Google login doesn't work in Facebook's browser. Please use Facebook login or tap the menu (⋯) and select 'Open in Browser' to use Google login.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     // Use direct Google OAuth authentication
+    // Note: In Facebook's in-app browser, this will automatically redirect to external browser
     window.location.href = '/api/auth/google/customer';
   };
 

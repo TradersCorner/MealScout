@@ -93,6 +93,19 @@ export default function RestaurantDealsDrawer({
     }
   }, [isOpen, deals, initialDealId]);
 
+  // Prevent body scroll when drawer is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   const formatDiscount = (dealType: string, discountValue: string) => {
     if (dealType === "percentage") {
       return `${discountValue}%`;
@@ -146,9 +159,9 @@ export default function RestaurantDealsDrawer({
       className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center md:items-center"
       onClick={handleBackgroundClick}
     >
-      <div className="bg-white rounded-t-3xl md:rounded-3xl w-full max-w-2xl h-[90vh] md:h-[80vh] overflow-hidden shadow-2xl">
+      <div className="bg-white rounded-t-3xl md:rounded-3xl w-full max-w-2xl h-[90vh] md:h-[80vh] overflow-hidden shadow-2xl flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+        <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-100">
           <div>
             <h2 className="text-xl font-bold text-gray-900" data-testid="text-restaurant-deals-title">
               {restaurantName}
@@ -169,7 +182,7 @@ export default function RestaurantDealsDrawer({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">

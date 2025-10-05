@@ -52,15 +52,14 @@ export function BugReportButton() {
     <Button
       onClick={captureScreenshotAndReport}
       disabled={isSubmitting}
-      size="lg"
-      className="fixed bottom-6 right-6 rounded-full h-14 w-14 shadow-lg hover:shadow-xl transition-all z-50 bg-orange-500 hover:bg-orange-600 text-white"
+      className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 rounded-full h-12 w-12 sm:h-14 sm:w-14 shadow-lg hover:shadow-xl transition-all z-40 bg-orange-500 hover:bg-orange-600 text-white"
       data-testid="button-bug-report"
       aria-label="Report a bug"
     >
       {isSubmitting ? (
-        <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+        <div className="animate-spin h-4 w-4 sm:h-5 sm:w-5 border-2 border-white border-t-transparent rounded-full" />
       ) : (
-        <Bug className="h-6 w-6" />
+        <Bug className="h-5 w-5 sm:h-6 sm:w-6" />
       )}
     </Button>
   );

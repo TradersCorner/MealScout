@@ -448,17 +448,17 @@ export default function Landing() {
         </div>
       )}
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-100 px-3 sm:px-4 py-3 sm:py-4 sticky top-0 z-20">
+      <div className="bg-white shadow-sm border-b border-gray-100 px-3 sm:px-4 py-2.5 sm:py-3 md:py-4 sticky top-0 z-20">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-3">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center flex-shrink-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center flex-shrink-0">
               <img 
                 src={mealScoutLogo} 
                 alt="MealScout Logo" 
-                className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
+                className="w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain"
               />
             </div>
-            <span className="text-xl sm:text-2xl font-bold text-gray-900 truncate">MealScout</span>
+            <span className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 truncate">MealScout</span>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-3">
             {/* Desktop Buttons */}

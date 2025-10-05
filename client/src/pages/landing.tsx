@@ -1138,25 +1138,25 @@ export default function Landing() {
       </div>
 
       {/* Deals Section */}
-      <div className="py-8 bg-gradient-to-b from-transparent to-red-100/30">
+      <div className="py-6 sm:py-8 bg-gradient-to-b from-transparent to-red-100/30">
         {/* Loading State */}
         {isLoading && (
-          <div className="text-center py-16 px-4">
-            <div className="animate-spin w-16 h-16 border-4 border-gray-200 border-t-red-500 rounded-full mx-auto mb-6"></div>
-            <p className="text-gray-600 text-xl font-medium">Finding amazing deals near you...</p>
+          <div className="text-center py-12 sm:py-16 px-4">
+            <div className="animate-spin w-12 h-12 sm:w-16 sm:h-16 border-4 border-gray-200 border-t-red-500 rounded-full mx-auto mb-4 sm:mb-6"></div>
+            <p className="text-gray-600 text-base sm:text-lg md:text-xl font-medium">Finding amazing deals near you...</p>
           </div>
         )}
 
         {!isLoading && selectedCategory !== 'all' && dealsToShow.length > 0 && (
-          <div className="px-4 mb-8">
+          <div className="px-3 sm:px-4 mb-6 sm:mb-8">
             <div className="max-w-6xl mx-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
                   {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} deals in {locationName}
                 </h2>
                 <button 
                   onClick={() => setSelectedCategory('all')}
-                  className="text-red-600 hover:text-red-700 font-medium text-sm"
+                  className="text-red-600 hover:text-red-700 font-medium text-xs sm:text-sm"
                 >
                   View all →
                 </button>
@@ -1173,11 +1173,11 @@ export default function Landing() {
         )}
 
         {!isLoading && selectedCategory === 'all' && allDeals.length > 0 && (
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             {/* Featured Deals Section */}
-            <div className="px-4">
+            <div className="px-3 sm:px-4">
               <div className="max-w-6xl mx-auto">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">🔥 Featured Deals</h2>
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">🔥 Featured Deals</h2>
                 <div className="flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
                   {allDeals.filter((deal: any) => deal.isFeatured).slice(0, 8).map((deal: any) => (
                     <div key={deal.id} className="flex-shrink-0 w-72 sm:w-80">
@@ -1201,13 +1201,13 @@ export default function Landing() {
               deal.restaurant?.cuisine_type?.toLowerCase().includes('pizza') || 
               deal.title?.toLowerCase().includes('pizza')
             ).length > 0 && (
-              <div className="px-4">
+              <div className="px-3 sm:px-4">
                 <div className="max-w-6xl mx-auto">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">🍕 Pizza</h2>
+                  <div className="flex items-center justify-between mb-4 sm:mb-6">
+                    <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">🍕 Pizza</h2>
                     <button 
                       onClick={() => handleCategoryFilter('pizza')}
-                      className="text-red-600 hover:text-red-700 font-medium text-sm"
+                      className="text-red-600 hover:text-red-700 font-medium text-xs sm:text-sm"
                     >
                       View all →
                     </button>
@@ -1232,13 +1232,13 @@ export default function Landing() {
               deal.title?.toLowerCase().includes('mexican') ||
               deal.title?.toLowerCase().includes('taco')
             ).length > 0 && (
-              <div className="px-4">
+              <div className="px-3 sm:px-4">
                 <div className="max-w-6xl mx-auto">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">🌮 Mexican</h2>
+                  <div className="flex items-center justify-between mb-4 sm:mb-6">
+                    <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">🌮 Mexican</h2>
                     <button 
                       onClick={() => handleCategoryFilter('mexican')}
-                      className="text-red-600 hover:text-red-700 font-medium text-sm"
+                      className="text-red-600 hover:text-red-700 font-medium text-xs sm:text-sm"
                     >
                       View all →
                     </button>
@@ -1265,13 +1265,13 @@ export default function Landing() {
               deal.restaurant?.cuisine_type?.toLowerCase().includes('thai') ||
               deal.title?.toLowerCase().includes('sushi')
             ).length > 0 && (
-              <div className="px-4">
+              <div className="px-3 sm:px-4">
                 <div className="max-w-6xl mx-auto">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">🍜 Asian</h2>
+                  <div className="flex items-center justify-between mb-4 sm:mb-6">
+                    <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">🍜 Asian</h2>
                     <button 
                       onClick={() => handleCategoryFilter('asian')}
-                      className="text-red-600 hover:text-red-700 font-medium text-sm"
+                      className="text-red-600 hover:text-red-700 font-medium text-xs sm:text-sm"
                     >
                       View all →
                     </button>
@@ -1295,9 +1295,9 @@ export default function Landing() {
         )}
 
           {/* Featured Deals - Force Show Always */}
-          <div className="px-4 mb-8">
+          <div className="px-3 sm:px-4 mb-6 sm:mb-8">
             <div className="max-w-6xl mx-auto">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">🔥 Featured Deals in {locationName}</h2>
+              <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">🔥 Featured Deals in {locationName}</h2>
               <div className="flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
                 {isLoading ? (
                   <div className="text-center py-12 px-6 w-full">

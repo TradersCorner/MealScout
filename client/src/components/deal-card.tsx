@@ -6,6 +6,7 @@ import { Share2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import DealShareModal from "./deal-share-modal";
 import RestaurantDealsDrawer from "./restaurant-deals-drawer";
+import { DealFeedback } from "./deal-feedback";
 
 interface Deal {
   id: string;
@@ -250,11 +251,16 @@ export default function DealCard({ deal }: DealCardProps) {
             </div>
 
             {/* Usage stats */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-4">
               <span className="text-xs sm:text-sm text-gray-600 font-medium">{deal.currentUses || 188} people saved</span>
               <div className="bg-orange-100 text-orange-700 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-bold">
                 2h 15m left
               </div>
+            </div>
+
+            {/* Feedback section */}
+            <div className="pt-3 border-t border-gray-100">
+              <DealFeedback dealId={deal.id} compact={true} />
             </div>
           </div>
         </CardContent>

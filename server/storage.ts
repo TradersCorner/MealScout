@@ -12,6 +12,7 @@ import {
   restaurantRecommendations,
   userAddresses,
   passwordResetTokens,
+  dealFeedback,
   type User,
   type UpsertUser,
   type Restaurant,
@@ -39,6 +40,8 @@ import {
   type InsertUserAddress,
   type PasswordResetToken,
   type InsertPasswordResetToken,
+  type DealFeedback,
+  type InsertDealFeedback,
   type GoogleUserData,
   type EmailUserData,
   type FacebookUserData,
@@ -210,6 +213,17 @@ export interface IStorage {
   markPasswordResetTokenUsed(id: string): Promise<PasswordResetToken>;
   deleteUserResetTokens(userId: string): Promise<void>;
   deleteExpiredResetTokens(): Promise<number>;
+
+  // Deal feedback operations
+  createDealFeedback(feedback: InsertDealFeedback): Promise<DealFeedback>;
+  getDealFeedback(dealId: string): Promise<DealFeedback[]>;
+  getUserDealFeedback(userId: string): Promise<DealFeedback[]>;
+  getDealAverageRating(dealId: string): Promise<number>;
+  getDealFeedbackStats(dealId: string): Promise<{
+    averageRating: number;
+    totalFeedback: number;
+    ratingDistribution: { [key: number]: number };
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3037,6 +3051,74 @@ export class DatabaseStorage implements IStorage {
     
     // Return the number of deleted rows
     return result.rowCount || 0;
+  }
+
+  // Deal feedback operations
+  async createDealFeedback(feedback: InsertDealFeedback): Promise<DealFeedback> {
+    const [createdFeedback] = await db
+      .insert(dealFeedback)
+      .values(feedback)
+      .returning();
+    return createdFeedback;
+  }
+
+  async getDealFeedback(dealId: string): Promise<DealFeedback[]> {
+    return await db
+      .select()
+      .from(dealFeedback)
+      .where(eq(dealFeedback.dealId, dealId))
+      .orderBy(desc(dealFeedback.createdAt));
+  }
+
+  async getUserDealFeedback(userId: string): Promise<DealFeedback[]> {
+    return await db
+      .select()
+      .from(dealFeedback)
+      .where(eq(dealFeedback.userId, userId))
+      .orderBy(desc(dealFeedback.createdAt));
+  }
+
+  async getDealAverageRating(dealId: string): Promise<number> {
+    const result = await db
+      .select({
+        avgRating: sql<number>`AVG(${dealFeedback.rating})`,
+      })
+      .from(dealFeedback)
+      .where(eq(dealFeedback.dealId, dealId));
+    
+    return result[0]?.avgRating || 0;
+  }
+
+  async getDealFeedbackStats(dealId: string): Promise<{
+    averageRating: number;
+    totalFeedback: number;
+    ratingDistribution: { [key: number]: number };
+  }> {
+    const feedback = await db
+      .select()
+      .from(dealFeedback)
+      .where(eq(dealFeedback.dealId, dealId));
+    
+    const totalFeedback = feedback.length;
+    const averageRating = totalFeedback > 0
+      ? feedback.reduce((sum, f) => sum + f.rating, 0) / totalFeedback
+      : 0;
+    
+    const ratingDistribution: { [key: number]: number } = {
+      1: 0, 2: 0, 3: 0, 4: 0, 5: 0
+    };
+    
+    feedback.forEach(f => {
+      if (f.rating >= 1 && f.rating <= 5) {
+        ratingDistribution[f.rating] = (ratingDistribution[f.rating] || 0) + 1;
+      }
+    });
+    
+    return {
+      averageRating: Math.round(averageRating * 10) / 10,
+      totalFeedback,
+      ratingDistribution,
+    };
   }
 }
 

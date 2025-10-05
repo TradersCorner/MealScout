@@ -1077,14 +1077,14 @@ export default function Landing() {
       </div>
 
       {/* Filter Chips */}
-      <div className="bg-white px-4 py-6 border-b border-gray-100">
+      <div className="bg-white px-3 sm:px-4 py-4 sm:py-6 border-b border-gray-100">
         <div className="max-w-6xl mx-auto">
           <div className="flex justify-center">
             <div className="max-w-4xl w-full">
-          <div className="flex space-x-4 overflow-x-auto pb-2">
+          <div className="flex space-x-2 sm:space-x-3 md:space-x-4 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
             <button 
               onClick={() => handleCategoryFilter('all')}
-              className={`flex-shrink-0 px-6 py-3 rounded-2xl text-sm font-semibold shadow-md hover:shadow-lg transition-all duration-200 ${
+              className={`flex-shrink-0 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold shadow-md hover:shadow-lg transition-all duration-200 ${
                 selectedCategory === 'all' 
                   ? 'bg-red-500 hover:bg-red-600 text-white' 
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
@@ -1094,7 +1094,7 @@ export default function Landing() {
             </button>
             <button 
               onClick={() => handleCategoryFilter('pizza')}
-              className={`flex-shrink-0 px-6 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 ${
+              className={`flex-shrink-0 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
                 selectedCategory === 'pizza' 
                   ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg' 
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
@@ -1104,7 +1104,7 @@ export default function Landing() {
             </button>
             <button 
               onClick={() => handleCategoryFilter('burger')}
-              className={`flex-shrink-0 px-6 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 ${
+              className={`flex-shrink-0 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
                 selectedCategory === 'burger' 
                   ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg' 
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
@@ -1114,7 +1114,7 @@ export default function Landing() {
             </button>
             <button 
               onClick={() => handleCategoryFilter('mexican')}
-              className={`flex-shrink-0 px-6 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 ${
+              className={`flex-shrink-0 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
                 selectedCategory === 'mexican' 
                   ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg' 
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
@@ -1124,7 +1124,7 @@ export default function Landing() {
             </button>
             <button 
               onClick={() => handleCategoryFilter('asian')}
-              className={`flex-shrink-0 px-6 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 ${
+              className={`flex-shrink-0 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
                 selectedCategory === 'asian' 
                   ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg' 
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-700'

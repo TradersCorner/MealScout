@@ -974,39 +974,39 @@ export default function Landing() {
       )}
 
       {/* Location Header */}
-      <div className="bg-white px-4 py-6 border-b border-gray-100">
+      <div className="bg-white px-3 sm:px-4 py-4 sm:py-6 border-b border-gray-100">
         <div className="max-w-6xl mx-auto">
           <div className="max-w-md mx-auto lg:max-w-none lg:flex lg:justify-center">
           <button 
             onClick={retryLocation}
-            className="w-full text-left hover:bg-gray-50 rounded-xl p-4 -m-2 transition-colors"
+            className="w-full text-left hover:bg-gray-50 rounded-xl p-3 sm:p-4 -m-2 transition-colors"
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3 mb-1">
-                <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className={locationError ? "text-orange-500" : "text-red-500"}>
+              <div className="flex items-center space-x-2 sm:space-x-3 mb-1">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className={`sm:w-4 sm:h-4 ${locationError ? "text-orange-500" : "text-red-500"}`}>
                     <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                   </svg>
                 </div>
-                <span className="text-xl font-bold text-gray-900">Deals near</span>
+                <span className="text-base sm:text-lg md:text-xl font-bold text-gray-900">Deals near</span>
               </div>
-              <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500 sm:w-3.5 sm:h-3.5">
                   <path d="M1 4v6h6"/>
                   <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
                 </svg>
               </div>
             </div>
-            <p className="text-gray-600 text-base font-medium" data-testid="text-location-name">{locationName}</p>
+            <p className="text-sm sm:text-base text-gray-600 font-medium" data-testid="text-location-name">{locationName}</p>
           </button>
           
           {/* Modern location input */}
-          <div className="mt-6 max-w-lg mx-auto">
-            <div className="bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-xl p-6">
-              <div className="space-y-4">
+          <div className="mt-4 sm:mt-6 max-w-lg mx-auto">
+            <div className="bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-xl p-4 sm:p-6">
+              <div className="space-y-3 sm:space-y-4">
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400 group-focus-within:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
+                    <svg className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-focus-within:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                     </svg>
@@ -1016,22 +1016,22 @@ export default function Landing() {
                     value={manualLocation}
                     onChange={(e) => setManualLocation(e.target.value)}
                     placeholder="Search your city..."
-                    className="w-full pl-12 pr-4 py-4 bg-gray-50/80 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:bg-white text-gray-900 placeholder-gray-500 font-medium text-lg transition-all duration-200 shadow-sm focus:shadow-md"
+                    className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 bg-gray-50/80 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:bg-white text-gray-900 placeholder-gray-500 font-medium text-sm sm:text-base md:text-lg transition-all duration-200 shadow-sm focus:shadow-md"
                     onKeyPress={(e) => e.key === 'Enter' && handleManualLocation()}
                   />
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-2 sm:gap-3">
                   <button
                     onClick={handleManualLocation}
-                    className="flex-1 px-6 py-3.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-semibold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
+                    className="flex-1 px-4 sm:px-6 py-2.5 sm:py-3.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-semibold text-sm sm:text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
                   >
                     Find Deals
                   </button>
                   <button
                     onClick={retryLocation}
-                    className="px-5 py-3.5 bg-gray-100/80 hover:bg-gray-200/80 text-gray-700 rounded-xl font-medium text-sm transition-all duration-200 border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md flex items-center space-x-2"
+                    className="px-3 sm:px-5 py-2.5 sm:py-3.5 bg-gray-100/80 hover:bg-gray-200/80 text-gray-700 rounded-xl font-medium text-xs sm:text-sm transition-all duration-200 border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md flex items-center space-x-1.5 sm:space-x-2"
                   >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                     </svg>
                     <span>GPS</span>
@@ -1054,12 +1054,12 @@ export default function Landing() {
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white px-4 py-6">
+      <div className="bg-white px-3 sm:px-4 py-4 sm:py-6">
         <div className="max-w-6xl mx-auto">
           <div className="max-w-2xl mx-auto">
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
+            <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400 sm:w-5 sm:h-5">
                 <circle cx="11" cy="11" r="8"/>
                 <path d="m21 21-4.35-4.35"/>
               </svg>
@@ -1069,7 +1069,7 @@ export default function Landing() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search restaurants, cuisines, or dishes" 
-              className="w-full pl-12 pr-4 py-4 bg-gray-50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 text-lg shadow-sm hover:shadow-md transition-shadow"
+              className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 bg-gray-50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 text-sm sm:text-base md:text-lg shadow-sm hover:shadow-md transition-shadow"
             />
           </div>
           </div>

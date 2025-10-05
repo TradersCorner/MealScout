@@ -292,6 +292,27 @@ export const passwordResetTokens = pgTable(
   ],
 );
 
+// Deal feedback for ratings and suggestions
+export const dealFeedback = pgTable(
+  "deal_feedback",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    dealId: varchar("deal_id").notNull().references(() => deals.id, { onDelete: 'cascade' }),
+    userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }), // Nullable for anonymous feedback
+    rating: integer("rating").notNull(), // 1-5 stars
+    feedbackType: varchar("feedback_type").notNull(), // 'rating' | 'suggestion' | 'issue'
+    comment: text("comment"), // Optional feedback comment
+    isHelpful: boolean("is_helpful"), // Did the deal work as expected?
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_deal_feedback_deal").on(table.dealId, table.createdAt.desc()),
+    index("IDX_deal_feedback_user").on(table.userId, table.createdAt.desc()),
+    index("IDX_deal_feedback_rating").on(table.dealId, table.rating),
+    index("IDX_deal_feedback_type").on(table.feedbackType),
+  ],
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   restaurants: many(restaurants),
@@ -325,6 +346,7 @@ export const dealsRelations = relations(deals, ({ one, many }) => ({
   }),
   claims: many(dealClaims),
   views: many(dealViews),
+  feedback: many(dealFeedback),
 }));
 
 export const dealClaimsRelations = relations(dealClaims, ({ one }) => ({
@@ -426,6 +448,17 @@ export const userAddressesRelations = relations(userAddresses, ({ one }) => ({
 export const passwordResetTokensRelations = relations(passwordResetTokens, ({ one }) => ({
   user: one(users, {
     fields: [passwordResetTokens.userId],
+    references: [users.id],
+  }),
+}));
+
+export const dealFeedbackRelations = relations(dealFeedback, ({ one }) => ({
+  deal: one(deals, {
+    fields: [dealFeedback.dealId],
+    references: [deals.id],
+  }),
+  user: one(users, {
+    fields: [dealFeedback.userId],
     references: [users.id],
   }),
 }));
@@ -581,6 +614,15 @@ export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTo
   userAgent: z.string().max(500, "User agent must be less than 500 characters").optional(),
 });
 
+export const insertDealFeedbackSchema = createInsertSchema(dealFeedback).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  rating: z.number().int().min(1, "Rating must be at least 1").max(5, "Rating must be at most 5"),
+  feedbackType: z.enum(['rating', 'suggestion', 'issue']),
+  comment: z.string().max(500, "Comment must be less than 500 characters").optional(),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -646,6 +688,9 @@ export type UserAddress = typeof userAddresses.$inferSelect;
 
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+export type InsertDealFeedback = z.infer<typeof insertDealFeedbackSchema>;
+export type DealFeedback = typeof dealFeedback.$inferSelect;
 
 export type OperatingHoursTimeSlot = z.infer<typeof operatingHoursTimeSlotSchema>;
 export type OperatingHours = z.infer<typeof operatingHoursSchema>;

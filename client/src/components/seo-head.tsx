@@ -83,14 +83,20 @@ export function SEOHead({
     }
 
     // Structured data (JSON-LD)
+    let pageSchema: HTMLScriptElement | null = null;
     if (schemaData) {
-      let script = document.querySelector('script[type="application/ld+json"]');
-      if (!script) {
-        script = document.createElement("script");
-        script.setAttribute("type", "application/ld+json");
-        document.head.appendChild(script);
+      // Remove any existing page-specific schema
+      const existingPageSchema = document.querySelector('script[type="application/ld+json"][data-page-schema="true"]');
+      if (existingPageSchema) {
+        existingPageSchema.remove();
       }
-      script.textContent = JSON.stringify(schemaData);
+      
+      // Create new page-specific schema
+      pageSchema = document.createElement("script");
+      pageSchema.setAttribute("type", "application/ld+json");
+      pageSchema.setAttribute("data-page-schema", "true");
+      pageSchema.textContent = JSON.stringify(schemaData);
+      document.head.appendChild(pageSchema);
     }
 
     // Cleanup function

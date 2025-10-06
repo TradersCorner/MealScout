@@ -169,6 +169,25 @@ export default function DealDetail() {
   const discountValue = (deal as Deal)?.discountValue || '';
   const dealType = (deal as Deal)?.dealType || '';
 
+  const offerSchema = {
+    "@context": "https://schema.org",
+    "@type": "Offer",
+    "name": dealTitle,
+    "description": dealDescription,
+    "url": `https://mealscout.replit.app/deals/${dealId}`,
+    "priceCurrency": "USD",
+    "price": dealType === 'percentage' ? '0' : discountValue,
+    "discount": dealType === 'percentage' ? `${discountValue}%` : `$${discountValue}`,
+    "seller": {
+      "@type": "Restaurant",
+      "name": restaurantName,
+      "address": (restaurant as Restaurant)?.address || ""
+    },
+    "validFrom": (deal as Deal)?.startDate,
+    "validThrough": (deal as Deal)?.endDate,
+    "availability": "https://schema.org/InStock"
+  };
+
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-white min-h-screen">
       <SEOHead
@@ -176,6 +195,7 @@ export default function DealDetail() {
         description={`${dealDescription}. ${dealType === 'percentage' ? `Get ${discountValue}% off` : `Save $${discountValue}`} at ${restaurantName}. Claim this exclusive deal now on MealScout!`}
         keywords={`${restaurantName}, ${dealTitle}, food deal, restaurant discount, ${(restaurant as Restaurant)?.cuisineType || 'food'}`}
         canonicalUrl={`https://mealscout.replit.app/deals/${dealId}`}
+        schemaData={offerSchema}
       />
       <BackHeader
         title="Deal Details"

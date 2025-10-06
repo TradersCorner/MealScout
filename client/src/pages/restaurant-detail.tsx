@@ -79,6 +79,27 @@ export default function RestaurantDetailPage() {
   const address = (restaurant as any)?.address || '';
   const description = `Visit ${restaurantName} and discover exclusive food deals. ${cuisineType} restaurant with ${restaurantDeals.length} active deals. ${currentRating > 0 ? `Rated ${currentRating.toFixed(1)} stars by ${reviewCount} customers.` : ''}`;
 
+  const localBusinessSchema = {
+    "@context": "https://schema.org",
+    "@type": "Restaurant",
+    "name": restaurantName,
+    "description": description,
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": address
+    },
+    "telephone": (restaurant as any)?.phone || "",
+    "servesCuisine": cuisineType,
+    "url": `https://mealscout.replit.app/restaurants/${restaurantId}`,
+    ...(currentRating > 0 && reviewCount > 0 ? {
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": currentRating.toFixed(1),
+        "reviewCount": reviewCount
+      }
+    } : {})
+  };
+
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
       <SEOHead
@@ -86,6 +107,7 @@ export default function RestaurantDetailPage() {
         description={description}
         keywords={`${restaurantName}, ${cuisineType} restaurant, restaurant deals, ${address}, food discounts`}
         canonicalUrl={`https://mealscout.replit.app/restaurants/${restaurantId}`}
+        schemaData={localBusinessSchema}
       />
       <BackHeader
         title={restaurantName}

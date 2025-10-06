@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Mail, Eye, EyeOff, UserPlus, ArrowLeft } from "lucide-react";
 import { BackHeader } from "@/components/back-header";
+import { SEOHead } from "@/components/seo-head";
 
 const signupSchema = z.object({
   email: z.string().email("Valid email is required"),
@@ -80,6 +81,13 @@ export default function CustomerSignup() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
+      <SEOHead
+        title="Sign Up - MealScout | Create Free Account"
+        description="Join MealScout for free and start discovering exclusive food deals from local restaurants. Save your favorites, track deals, and never miss amazing dining discounts."
+        keywords="sign up, create account, register, join mealscout, free account, food deals signup"
+        canonicalUrl="https://mealscout.replit.app/customer-signup"
+        noIndex={true}
+      />
       <BackHeader
         title="Create Account"
         fallbackHref="/login"

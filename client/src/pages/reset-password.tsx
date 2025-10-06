@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { BackHeader } from "@/components/back-header";
 import { KeyRound, Eye, EyeOff, CheckCircle, AlertTriangle } from "lucide-react";
+import { SEOHead } from "@/components/seo-head";
 
 const resetPasswordSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -183,6 +184,13 @@ export default function ResetPassword() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-indigo-50">
+      <SEOHead
+        title="Reset Password - MealScout | Create New Password"
+        description="Create a new password for your MealScout account. Choose a strong, secure password to protect your account and access exclusive food deals."
+        keywords="reset password, new password, password change, account security"
+        canonicalUrl="https://mealscout.replit.app/reset-password"
+        noIndex={true}
+      />
       <BackHeader
         title="Reset Password"
         fallbackHref="/forgot-password"

@@ -6,6 +6,7 @@ import { BackHeader } from "@/components/back-header";
 import { UserCheck, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { SEOHead } from "@/components/seo-head";
 
 export default function Login() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -79,6 +80,13 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
+      <SEOHead
+        title="Login - MealScout | Access Your Account"
+        description="Log in to MealScout to discover exclusive food deals, save your favorite restaurants, and track your claimed deals. Join thousands of users finding amazing dining discounts."
+        keywords="login, sign in, mealscout account, food deals login, restaurant deals access"
+        canonicalUrl="https://mealscout.replit.app/login"
+        noIndex={true}
+      />
       <BackHeader
         title="Join MealScout"
         fallbackHref="/"

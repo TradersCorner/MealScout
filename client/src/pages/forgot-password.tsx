@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { BackHeader } from "@/components/back-header";
 import { Mail, KeyRound, CheckCircle } from "lucide-react";
+import { SEOHead } from "@/components/seo-head";
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -104,6 +105,13 @@ export default function ForgotPassword() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      <SEOHead
+        title="Forgot Password - MealScout | Reset Your Password"
+        description="Reset your MealScout password. Enter your email address and we'll send you a secure link to create a new password and regain access to your account."
+        keywords="forgot password, reset password, password recovery, account recovery"
+        canonicalUrl="https://mealscout.replit.app/forgot-password"
+        noIndex={true}
+      />
       <BackHeader
         title="Reset Password"
         fallbackHref="/login"

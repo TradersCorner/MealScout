@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, Navigation as NavigationIcon, List, Filter, X, Star } from "lucide-react";
 import DealCard from "@/components/deal-card";
+import { SEOHead } from "@/components/seo-head";
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -203,6 +204,12 @@ export default function MapPage() {
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+      <SEOHead
+        title="Map View - MealScout | Find Deals Near You"
+        description="Explore food deals on an interactive map. See nearby restaurants, view deal locations, and discover dining discounts in your area. Find the perfect meal deal near you!"
+        keywords="map view, nearby deals, restaurant map, food deals location, nearby restaurants, local deals map"
+        canonicalUrl="https://mealscout.replit.app/map"
+      />
       {/* Header */}
       <header className="px-6 py-6 bg-white border-b border-border relative z-10">
         <div className="flex items-center justify-between mb-4">

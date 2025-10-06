@@ -4,6 +4,7 @@ import Navigation from "@/components/navigation";
 import DealCard from "@/components/deal-card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Star, SlidersHorizontal, Filter } from "lucide-react";
+import { SEOHead } from "@/components/seo-head";
 
 export default function FeaturedDealsPage() {
   const { data: featuredDeals, isLoading } = useQuery({
@@ -15,6 +16,12 @@ export default function FeaturedDealsPage() {
 
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">
+      <SEOHead
+        title="Featured Deals - MealScout | Hot Food Deals Near You"
+        description="Discover the best featured food deals from top local restaurants. Save big on your favorite meals with exclusive discounts, limited-time offers, and special promotions."
+        keywords="featured deals, hot deals, restaurant discounts, food promotions, exclusive offers, limited time deals"
+        canonicalUrl="https://mealscout.replit.app/deals/featured"
+      />
       {/* Header */}
       <header className="px-6 py-6 bg-white border-b border-border">
         <div className="flex items-center mb-6">

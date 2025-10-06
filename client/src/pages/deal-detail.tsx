@@ -11,6 +11,7 @@ import DealClaimModal from "@/components/deal-claim-modal";
 import DealShareModal from "@/components/deal-share-modal";
 import { BackHeader } from "@/components/back-header";
 import { Tag, ArrowLeft } from "lucide-react";
+import { SEOHead } from "@/components/seo-head";
 
 interface Deal {
   id: string;
@@ -162,8 +163,20 @@ export default function DealDetail() {
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
+  const dealTitle = (deal as Deal)?.title || 'Food Deal';
+  const restaurantName = (restaurant as Restaurant)?.name || 'Restaurant';
+  const dealDescription = (deal as Deal)?.description || 'Exclusive food deal from a local restaurant';
+  const discountValue = (deal as Deal)?.discountValue || '';
+  const dealType = (deal as Deal)?.dealType || '';
+
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-white min-h-screen">
+      <SEOHead
+        title={`${dealTitle} - ${restaurantName} | MealScout`}
+        description={`${dealDescription}. ${dealType === 'percentage' ? `Get ${discountValue}% off` : `Save $${discountValue}`} at ${restaurantName}. Claim this exclusive deal now on MealScout!`}
+        keywords={`${restaurantName}, ${dealTitle}, food deal, restaurant discount, ${(restaurant as Restaurant)?.cuisineType || 'food'}`}
+        canonicalUrl={`https://mealscout.replit.app/deals/${dealId}`}
+      />
       <BackHeader
         title="Deal Details"
         fallbackHref="/"

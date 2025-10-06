@@ -13,6 +13,7 @@ import { Mail, Eye, EyeOff, Pizza, Utensils, Coffee, Cookie, Apple, Fish, ChefHa
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import DealCard from "@/components/deal-card";
+import { SEOHead } from "@/components/seo-head";
 import mealScoutLogo from "@assets/ChatGPT Image Sep 14, 2025, 09_25_52 AM_1757872111259.png";
 import { getReverseGeocodedLocationName, getStateAbbreviation } from "@/utils/locationUtils";
 import "../facebook-browser.css";
@@ -436,6 +437,25 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
+      <SEOHead
+        title="MealScout - Discover Local Food Deals & Restaurant Promotions Near You"
+        description="Find amazing food deals from restaurants near you. MealScout connects hungry customers with local restaurants offering exclusive discounts and promotions. Browse deals by location, save your favorites, and never miss out on great dining experiences."
+        keywords="food deals, restaurant deals, local restaurants, dining discounts, meal promotions, food discounts near me, restaurant coupons, best food deals, local dining, restaurant promotions"
+        canonicalUrl="https://mealscout.replit.app/"
+        ogType="website"
+        schemaData={{
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "MealScout",
+          "url": "https://mealscout.replit.app",
+          "description": "Discover local food deals and restaurant promotions",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://mealscout.replit.app/search?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        }}
+      />
       
       {/* Facebook Browser Notification */}
       {isFacebookBrowser && (

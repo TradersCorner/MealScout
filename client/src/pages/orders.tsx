@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Receipt, Clock, CheckCircle, XCircle, MapPin } from "lucide-react";
 import { BackHeader } from "@/components/back-header";
+import { SEOHead } from "@/components/seo-head";
 
 export default function OrdersPage() {
   const { isAuthenticated } = useAuth();
@@ -87,6 +88,13 @@ export default function OrdersPage() {
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+      <SEOHead
+        title="Deal History - MealScout | My Orders & Claims"
+        description="View your complete deal history and claimed deals. Track active orders, see past purchases, and review your savings on MealScout."
+        keywords="deal history, orders, claimed deals, order tracking, purchase history"
+        canonicalUrl="https://mealscout.replit.app/orders"
+        noIndex={true}
+      />
       <BackHeader
         title="Deal History"
         fallbackHref="/"

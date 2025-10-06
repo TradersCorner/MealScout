@@ -30,6 +30,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { z } from "zod";
 import type { Deal, Restaurant } from "@shared/schema";
 import { BackHeader } from "@/components/back-header";
+import { SEOHead } from "@/components/seo-head";
 
 interface DashboardStats {
   totalDeals: number;
@@ -753,6 +754,13 @@ export default function RestaurantOwnerDashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <SEOHead
+        title="Restaurant Dashboard - MealScout | Manage Your Deals"
+        description="Manage your restaurant deals, view analytics, track performance, and engage with customers. Access insights on deal claims, views, conversion rates, and customer feedback."
+        keywords="restaurant dashboard, manage deals, restaurant analytics, deal performance, customer insights"
+        canonicalUrl="https://mealscout.replit.app/restaurant-owner-dashboard"
+        noIndex={true}
+      />
       {/* Header with Back Button */}
       <BackHeader
         title="Restaurant Dashboard"

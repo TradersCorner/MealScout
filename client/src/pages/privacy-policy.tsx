@@ -1,10 +1,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Calendar, Lock } from "lucide-react";
 import { BackHeader } from "@/components/back-header";
+import { SEOHead } from "@/components/seo-head";
 
 export default function PrivacyPolicy() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+      <SEOHead
+        title="Privacy Policy - MealScout | Data Protection & Privacy"
+        description="Learn how MealScout collects, uses, and protects your personal information. Our privacy policy details data handling practices, security measures, and your privacy rights."
+        keywords="privacy policy, data protection, privacy rights, data security, personal information"
+        canonicalUrl="https://mealscout.replit.app/privacy-policy"
+      />
       <BackHeader
         title="Privacy Policy"
         fallbackHref="/"

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Navigation from "@/components/navigation";
 import type { Deal, Restaurant, DealClaim } from "@shared/schema";
+import { SEOHead } from "@/components/seo-head";
 
 interface UserStats {
   totalDealsUsed: number;
@@ -132,6 +133,13 @@ export default function UserDashboard() {
 
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen pb-20">
+      <SEOHead
+        title="My Dashboard - MealScout | Track Your Deals & Savings"
+        description="View your personal dashboard with deal history, savings tracker, favorite restaurants, and personalized recommendations. Track your food deal journey on MealScout."
+        keywords="user dashboard, my deals, savings tracker, deal history, favorite restaurants"
+        canonicalUrl="https://mealscout.replit.app/user-dashboard"
+        noIndex={true}
+      />
       {/* Header */}
       <header className="px-6 py-6 bg-gradient-to-br from-primary/10 to-primary/5 border-b border-border">
         <div className="flex items-center justify-between mb-4">

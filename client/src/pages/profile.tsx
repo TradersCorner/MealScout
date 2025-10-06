@@ -18,6 +18,7 @@ import {
   Star,
   MapPin
 } from "lucide-react";
+import { SEOHead } from "@/components/seo-head";
 
 export default function ProfilePage() {
   const { user, isAuthenticated } = useAuth();
@@ -68,6 +69,13 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">
+      <SEOHead
+        title="My Profile - MealScout | Account Settings"
+        description="Manage your MealScout profile, view account settings, update preferences, and access your deal history. Customize your food deal discovery experience."
+        keywords="profile, account settings, user profile, account management, preferences"
+        canonicalUrl="https://mealscout.replit.app/profile"
+        noIndex={true}
+      />
       {/* Header */}
       <header className="px-6 py-6 bg-gradient-to-br from-primary/10 to-primary/5 border-b border-border">
         <h1 className="text-2xl font-bold text-foreground flex items-center mb-6">

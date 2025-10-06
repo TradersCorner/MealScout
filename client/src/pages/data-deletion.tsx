@@ -2,10 +2,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trash2, Calendar, Mail, MessageCircle } from "lucide-react";
 import { BackHeader } from "@/components/back-header";
 import { Button } from "@/components/ui/button";
+import { SEOHead } from "@/components/seo-head";
 
 export default function DataDeletion() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-50">
+      <SEOHead
+        title="Data Deletion - MealScout | Delete Your Account & Data"
+        description="Learn how to request deletion of your personal data from MealScout. Step-by-step instructions for account deletion and data removal in compliance with privacy regulations."
+        keywords="data deletion, account deletion, delete account, remove data, privacy rights"
+        canonicalUrl="https://mealscout.replit.app/data-deletion"
+      />
       <BackHeader
         title="Data Deletion Instructions"
         fallbackHref="/"

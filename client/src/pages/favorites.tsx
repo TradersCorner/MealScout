@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Heart, Search, MapPin, Star } from "lucide-react";
 import { BackHeader } from "@/components/back-header";
 import { useAuth } from "@/hooks/useAuth";
+import { SEOHead } from "@/components/seo-head";
 
 export default function FavoritesPage() {
   const { user } = useAuth();
@@ -29,6 +30,13 @@ export default function FavoritesPage() {
 
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">
+      <SEOHead
+        title="My Favorites - MealScout | Saved Deals & Restaurants"
+        description="View your saved favorite restaurants and deals. Quick access to the food deals you love most. Never lose track of great dining discounts."
+        keywords="favorites, saved deals, favorite restaurants, saved restaurants, bookmarked deals"
+        canonicalUrl="https://mealscout.replit.app/favorites"
+        noIndex={true}
+      />
       <BackHeader
         title="Favorites"
         fallbackHref="/"

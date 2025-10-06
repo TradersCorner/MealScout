@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BackHeader } from "@/components/back-header";
 import { MapPin, Phone, Star, Clock, Navigation as DirectionsIcon, Heart, CheckCircle, Store } from "lucide-react";
+import { SEOHead } from "@/components/seo-head";
 
 export default function RestaurantDetailPage() {
   const { id: restaurantId } = useParams();
@@ -73,10 +74,21 @@ export default function RestaurantDetailPage() {
     </Button>
   );
 
+  const restaurantName = (restaurant as any)?.name || 'Restaurant';
+  const cuisineType = (restaurant as any)?.cuisineType || 'food';
+  const address = (restaurant as any)?.address || '';
+  const description = `Visit ${restaurantName} and discover exclusive food deals. ${cuisineType} restaurant with ${restaurantDeals.length} active deals. ${currentRating > 0 ? `Rated ${currentRating.toFixed(1)} stars by ${reviewCount} customers.` : ''}`;
+
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+      <SEOHead
+        title={`${restaurantName} - ${cuisineType} Restaurant | MealScout`}
+        description={description}
+        keywords={`${restaurantName}, ${cuisineType} restaurant, restaurant deals, ${address}, food discounts`}
+        canonicalUrl={`https://mealscout.replit.app/restaurants/${restaurantId}`}
+      />
       <BackHeader
-        title={(restaurant as any)?.name || "Restaurant"}
+        title={restaurantName}
         fallbackHref="/"
         icon={Store}
         rightActions={rightActions}

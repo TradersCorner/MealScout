@@ -435,6 +435,29 @@ export default function Landing() {
     setSelectedCategory(category);
   };
 
+  const itemListSchema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": "Featured Food Deals",
+    "description": "Discover the best food deals and restaurant promotions near you",
+    "numberOfItems": dealsToShow.length,
+    "itemListElement": dealsToShow.slice(0, 10).map((deal: any, index: number) => ({
+      "@type": "ListItem",
+      "position": index + 1,
+      "item": {
+        "@type": "Offer",
+        "name": deal.title,
+        "description": deal.description,
+        "url": `https://mealscout.replit.app/deals/${deal.id}`,
+        "priceCurrency": "USD",
+        "seller": {
+          "@type": "Restaurant",
+          "name": deal.restaurant?.name || "Restaurant"
+        }
+      }
+    }))
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
       <SEOHead
@@ -443,18 +466,7 @@ export default function Landing() {
         keywords="food deals, restaurant deals, local restaurants, dining discounts, meal promotions, food discounts near me, restaurant coupons, best food deals, local dining, restaurant promotions"
         canonicalUrl="https://mealscout.replit.app/"
         ogType="website"
-        schemaData={{
-          "@context": "https://schema.org",
-          "@type": "WebSite",
-          "name": "MealScout",
-          "url": "https://mealscout.replit.app",
-          "description": "Discover local food deals and restaurant promotions",
-          "potentialAction": {
-            "@type": "SearchAction",
-            "target": "https://mealscout.replit.app/search?q={search_term_string}",
-            "query-input": "required name=search_term_string"
-          }
-        }}
+        schemaData={itemListSchema}
       />
       
       {/* Facebook Browser Notification */}

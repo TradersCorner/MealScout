@@ -11,10 +11,17 @@ import Navigation from "@/components/navigation";
 import { 
   Shield, Users, Store, TrendingUp, DollarSign, 
   AlertCircle, CheckCircle, XCircle, Clock,
-  BarChart3, Activity, Package, Settings
+  BarChart3, Activity, Package, Settings, Eye, MapPin, Phone, Mail, Calendar, CreditCard
 } from "lucide-react";
 import { Link } from "wouter";
 import { QuickDashboardAccess } from "@/components/dashboard-switcher";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface DashboardStats {
   totalUsers: number;
@@ -40,6 +47,8 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedTab, setSelectedTab] = useState("overview");
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [userDetailsOpen, setUserDetailsOpen] = useState(false);
 
   // Check admin authentication
   const { data: adminUser, isLoading: isAuthLoading } = useQuery({
@@ -414,16 +423,44 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>User Management</CardTitle>
+                <CardDescription>View and manage all registered users</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {users.slice(0, 10).map((user: any) => (
-                    <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
+                  {users.map((user: any) => (
+                    <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex-1">
                         <div className="font-medium">{user.firstName} {user.lastName}</div>
-                        <div className="text-sm text-muted-foreground">{user.email}</div>
+                        <div className="text-sm text-muted-foreground flex items-center gap-2">
+                          <Mail className="w-3 h-3" />
+                          {user.email}
+                        </div>
+                        {user.phone && (
+                          <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                            <Phone className="w-3 h-3" />
+                            {user.phone}
+                          </div>
+                        )}
+                        {user.postalCode && (
+                          <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                            <MapPin className="w-3 h-3" />
+                            {user.postalCode}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center space-x-3">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setUserDetailsOpen(true);
+                          }}
+                          data-testid={`button-view-user-${user.id}`}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          Details
+                        </Button>
                         <Badge variant={user.userType === 'admin' ? 'destructive' : 'secondary'}>
                           {user.userType}
                         </Badge>
@@ -607,6 +644,214 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* User Details Dialog */}
+      <Dialog open={userDetailsOpen} onOpenChange={setUserDetailsOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Users className="w-5 h-5" />
+              <span>User Details</span>
+            </DialogTitle>
+            <DialogDescription>
+              Complete profile information and activity details
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedUser && (
+            <div className="space-y-6 mt-4">
+              {/* Basic Information */}
+              <div>
+                <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                  <Users className="w-4 h-4 mr-2" />
+                  BASIC INFORMATION
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Full Name</p>
+                    <p className="font-medium">{selectedUser.firstName} {selectedUser.lastName}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">User Type</p>
+                    <Badge variant={selectedUser.userType === 'admin' ? 'destructive' : 'secondary'}>
+                      {selectedUser.userType}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Email</p>
+                    <p className="text-sm flex items-center gap-1">
+                      <Mail className="w-3 h-3" />
+                      {selectedUser.email}
+                    </p>
+                  </div>
+                  {selectedUser.phone && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Phone</p>
+                      <p className="text-sm flex items-center gap-1">
+                        <Phone className="w-3 h-3" />
+                        {selectedUser.phone}
+                      </p>
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Email Verified</p>
+                    <Badge variant={selectedUser.emailVerified ? 'default' : 'secondary'}>
+                      {selectedUser.emailVerified ? 'Verified' : 'Not Verified'}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Account Status</p>
+                    <Badge variant={selectedUser.isActive ? 'default' : 'destructive'}>
+                      {selectedUser.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Location & Demographics */}
+              {(selectedUser.postalCode || selectedUser.birthYear || selectedUser.gender) && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    LOCATION & DEMOGRAPHICS
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {selectedUser.postalCode && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Postal Code</p>
+                        <p className="text-sm flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {selectedUser.postalCode}
+                        </p>
+                      </div>
+                    )}
+                    {selectedUser.birthYear && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Birth Year</p>
+                        <p className="text-sm">{selectedUser.birthYear}</p>
+                      </div>
+                    )}
+                    {selectedUser.gender && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Gender</p>
+                        <p className="text-sm capitalize">{selectedUser.gender}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Subscription Information */}
+              {(selectedUser.stripeCustomerId || selectedUser.stripeSubscriptionId) && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    SUBSCRIPTION
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {selectedUser.stripeCustomerId && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Stripe Customer ID</p>
+                        <p className="text-sm font-mono text-xs">{selectedUser.stripeCustomerId}</p>
+                      </div>
+                    )}
+                    {selectedUser.stripeSubscriptionId && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Subscription ID</p>
+                        <p className="text-sm font-mono text-xs">{selectedUser.stripeSubscriptionId}</p>
+                      </div>
+                    )}
+                    {selectedUser.subscriptionBillingInterval && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Billing Interval</p>
+                        <Badge variant="outline">
+                          {selectedUser.subscriptionBillingInterval}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Authentication Methods */}
+              <div>
+                <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                  <Shield className="w-4 h-4 mr-2" />
+                  AUTHENTICATION METHODS
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {selectedUser.googleId && (
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      Google OAuth
+                    </Badge>
+                  )}
+                  {selectedUser.facebookId && (
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      Facebook OAuth
+                    </Badge>
+                  )}
+                  {selectedUser.passwordHash && (
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      Email/Password
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* Account Activity */}
+              <div>
+                <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  ACCOUNT ACTIVITY
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Account Created</p>
+                    <p className="text-sm">
+                      {new Date(selectedUser.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                  {selectedUser.updatedAt && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Last Updated</p>
+                      <p className="text-sm">
+                        {new Date(selectedUser.updatedAt).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Profile Image */}
+              {selectedUser.profileImageUrl && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                    <Users className="w-4 h-4 mr-2" />
+                    PROFILE IMAGE
+                  </h3>
+                  <img 
+                    src={selectedUser.profileImageUrl} 
+                    alt="Profile" 
+                    className="w-24 h-24 rounded-full object-cover border-2"
+                    data-testid="img-user-profile"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Navigation />
     </div>

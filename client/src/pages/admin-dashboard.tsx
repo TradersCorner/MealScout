@@ -49,6 +49,9 @@ export default function AdminDashboard() {
   const [selectedTab, setSelectedTab] = useState("overview");
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [userDetailsOpen, setUserDetailsOpen] = useState(false);
+  const [selectedDeal, setSelectedDeal] = useState<any>(null);
+  const [dealDetailsOpen, setDealDetailsOpen] = useState(false);
+  const [extendDays, setExtendDays] = useState(7);
 
   // Check admin authentication
   const { data: adminUser, isLoading: isAuthLoading } = useQuery({
@@ -78,6 +81,12 @@ export default function AdminDashboard() {
   const { data: userAddresses = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/users", selectedUser?.id, "addresses"],
     enabled: !!adminUser && !!selectedUser?.id && userDetailsOpen,
+  });
+
+  // Fetch selected deal's performance stats
+  const { data: dealStats } = useQuery<any>({
+    queryKey: ["/api/admin/deals", selectedDeal?.id, "stats"],
+    enabled: !!adminUser && !!selectedDeal?.id && dealDetailsOpen,
   });
 
   // Fetch all deals
@@ -139,6 +148,66 @@ export default function AdminDashboard() {
       toast({
         title: "Deal Updated",
         description: "Featured status has been updated.",
+      });
+    },
+  });
+
+  // Delete deal
+  const deleteDeal = useMutation({
+    mutationFn: async (dealId: string) => {
+      return await apiRequest("DELETE", `/api/admin/deals/${dealId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/deals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      setDealDetailsOpen(false);
+      toast({
+        title: "Deal Deleted",
+        description: "The deal has been permanently deleted.",
+      });
+    },
+  });
+
+  // Clone deal
+  const cloneDeal = useMutation({
+    mutationFn: async (dealId: string) => {
+      return await apiRequest("POST", `/api/admin/deals/${dealId}/clone`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/deals"] });
+      toast({
+        title: "Deal Cloned",
+        description: "A copy of the deal has been created (inactive).",
+      });
+    },
+  });
+
+  // Toggle deal active status
+  const toggleDealStatus = useMutation({
+    mutationFn: async ({ dealId, isActive }: { dealId: string; isActive: boolean }) => {
+      return await apiRequest("PATCH", `/api/admin/deals/${dealId}/status`, { isActive });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/deals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({
+        title: "Deal Status Updated",
+        description: "The deal has been activated/deactivated.",
+      });
+    },
+  });
+
+  // Extend deal
+  const extendDeal = useMutation({
+    mutationFn: async ({ dealId, days }: { dealId: string; days: number }) => {
+      return await apiRequest("PATCH", `/api/admin/deals/${dealId}/extend`, { days });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/deals"] });
+      setDealDetailsOpen(false);
+      toast({
+        title: "Deal Extended",
+        description: `Deal extended by ${extendDays} days successfully.`,
       });
     },
   });
@@ -491,30 +560,98 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Deal Management</CardTitle>
+                <CardDescription>View, edit, and manage all deals</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {deals.slice(0, 10).map((deal: any) => (
-                    <div key={deal.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <div className="font-medium">{deal.title}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {deal.restaurant?.name} • {deal.discountValue}% off
+                  {deals.map((deal: any) => (
+                    <div key={deal.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="font-medium text-lg">{deal.title}</div>
+                          <div className="text-sm text-muted-foreground mt-1">
+                            {deal.restaurant?.name} • {deal.discountValue}% off • Ends {new Date(deal.endDate).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={deal.isActive ? 'default' : 'secondary'}>
+                            {deal.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                          {deal.isFeatured && (
+                            <Badge variant="outline">Featured</Badge>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center space-x-3">
-                        <Badge variant={deal.isActive ? 'default' : 'secondary'}>
-                          {deal.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm">Featured</span>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Activity className="w-4 h-4" />
+                            {deal.currentUses || 0} uses
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            {deal.startTime} - {deal.endTime}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedDeal(deal);
+                              setDealDetailsOpen(true);
+                            }}
+                            data-testid={`button-view-deal-${deal.id}`}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            Details
+                          </Button>
+                          
+                          <Link href={`/deal-edit/${deal.id}`}>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              data-testid={`button-edit-deal-${deal.id}`}
+                            >
+                              <Settings className="w-4 h-4 mr-1" />
+                              Edit
+                            </Button>
+                          </Link>
+                          
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => cloneDeal.mutate(deal.id)}
+                            disabled={cloneDeal.isPending}
+                            data-testid={`button-clone-deal-${deal.id}`}
+                          >
+                            <Package className="w-4 h-4 mr-1" />
+                            Clone
+                          </Button>
+                          
                           <Switch
-                            checked={deal.isFeatured}
+                            checked={deal.isActive}
                             onCheckedChange={(checked) => 
-                              toggleDealFeatured.mutate({ dealId: deal.id, isFeatured: checked })
+                              toggleDealStatus.mutate({ dealId: deal.id, isActive: checked })
                             }
-                            data-testid={`switch-featured-${deal.id}`}
+                            data-testid={`switch-deal-active-${deal.id}`}
                           />
+                          
+                          <Button 
+                            size="sm" 
+                            variant="destructive"
+                            onClick={() => {
+                              if (window.confirm('Are you sure you want to delete this deal? This action cannot be undone.')) {
+                                deleteDeal.mutate(deal.id);
+                              }
+                            }}
+                            disabled={deleteDeal.isPending}
+                            data-testid={`button-delete-deal-${deal.id}`}
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -897,6 +1034,211 @@ export default function AdminDashboard() {
                   />
                 </div>
               )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Deal Details Dialog */}
+      <Dialog open={dealDetailsOpen} onOpenChange={setDealDetailsOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Package className="w-5 h-5" />
+              <span>Deal Details & Performance</span>
+            </DialogTitle>
+            <DialogDescription>
+              Comprehensive information and analytics for this deal
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedDeal && (
+            <div className="space-y-6 mt-4">
+              {/* Deal Information */}
+              <div>
+                <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                  <Package className="w-4 h-4 mr-2" />
+                  DEAL INFORMATION
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1 col-span-2">
+                    <p className="text-xs text-muted-foreground">Title</p>
+                    <p className="font-medium text-lg">{selectedDeal.title}</p>
+                  </div>
+                  <div className="space-y-1 col-span-2">
+                    <p className="text-xs text-muted-foreground">Description</p>
+                    <p className="text-sm">{selectedDeal.description}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Restaurant</p>
+                    <p className="font-medium">{selectedDeal.restaurant?.name}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Discount</p>
+                    <p className="font-medium">{selectedDeal.discountValue}% off</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Validity Period</p>
+                    <p className="text-sm">
+                      {new Date(selectedDeal.startDate).toLocaleDateString()} - {new Date(selectedDeal.endDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Time Window</p>
+                    <p className="text-sm">{selectedDeal.startTime} - {selectedDeal.endTime}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <Badge variant={selectedDeal.isActive ? 'default' : 'secondary'}>
+                      {selectedDeal.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Featured</p>
+                    <Badge variant={selectedDeal.isFeatured ? 'default' : 'outline'}>
+                      {selectedDeal.isFeatured ? 'Yes' : 'No'}
+                    </Badge>
+                  </div>
+                  {selectedDeal.totalUsesLimit && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Total Uses Limit</p>
+                      <p className="text-sm">{selectedDeal.currentUses} / {selectedDeal.totalUsesLimit}</p>
+                    </div>
+                  )}
+                  {selectedDeal.perCustomerLimit && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Per Customer Limit</p>
+                      <p className="text-sm">{selectedDeal.perCustomerLimit}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Performance Metrics */}
+              {dealStats && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    PERFORMANCE METRICS
+                  </h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <Card>
+                      <CardContent className="pt-4">
+                        <div className="text-2xl font-bold">{dealStats.views || 0}</div>
+                        <div className="text-xs text-muted-foreground">Total Views</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4">
+                        <div className="text-2xl font-bold">{dealStats.claims || 0}</div>
+                        <div className="text-xs text-muted-foreground">Total Claims</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4">
+                        <div className="text-2xl font-bold">
+                          {dealStats.views > 0 ? ((dealStats.claims / dealStats.views) * 100).toFixed(1) : 0}%
+                        </div>
+                        <div className="text-xs text-muted-foreground">Conversion Rate</div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {dealStats.averageRating > 0 && (
+                    <div className="mt-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <p className="text-sm font-medium">Average Rating</p>
+                        <Badge variant="outline">{dealStats.averageRating.toFixed(1)} / 5.0</Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Based on {dealStats.totalFeedback} reviews
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Quick Actions */}
+              <div>
+                <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                  <Settings className="w-4 h-4 mr-2" />
+                  QUICK ACTIONS
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Extend Deal Duration</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        value={extendDays}
+                        onChange={(e) => setExtendDays(parseInt(e.target.value) || 1)}
+                        className="w-20 px-2 py-1 border rounded text-sm"
+                        placeholder="Days"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => extendDeal.mutate({ dealId: selectedDeal.id, days: extendDays })}
+                        disabled={extendDeal.isPending}
+                      >
+                        Extend by {extendDays} days
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Deal Actions</p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setDealDetailsOpen(false);
+                          window.location.href = `/deal-edit/${selectedDeal.id}`;
+                        }}
+                      >
+                        <Settings className="w-4 h-4 mr-1" />
+                        Edit Deal
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          cloneDeal.mutate(selectedDeal.id);
+                          setDealDetailsOpen(false);
+                        }}
+                        disabled={cloneDeal.isPending}
+                      >
+                        <Package className="w-4 h-4 mr-1" />
+                        Clone
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Danger Zone */}
+              <div className="border border-destructive/50 rounded-lg p-4 bg-destructive/5">
+                <h3 className="font-semibold mb-2 text-destructive flex items-center">
+                  <AlertCircle className="w-4 h-4 mr-2" />
+                  Danger Zone
+                </h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Permanently delete this deal. This action cannot be undone.
+                </p>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    if (window.confirm('Are you absolutely sure? This will permanently delete the deal and all associated data.')) {
+                      deleteDeal.mutate(selectedDeal.id);
+                    }
+                  }}
+                  disabled={deleteDeal.isPending}
+                >
+                  <XCircle className="w-4 h-4 mr-1" />
+                  Delete Deal Permanently
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

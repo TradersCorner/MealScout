@@ -2844,6 +2844,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/admin/deals/:dealId/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.userType !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const dealId = req.params.dealId;
+      const [viewsCount, claimsCount, feedbackStats] = await Promise.all([
+        storage.getDealViewsCount(dealId),
+        storage.getDealClaimsCount(dealId),
+        storage.getDealFeedbackStats(dealId),
+      ]);
+
+      res.json({
+        views: viewsCount,
+        claims: claimsCount,
+        averageRating: feedbackStats.averageRating,
+        totalFeedback: feedbackStats.totalFeedback,
+        ratingDistribution: feedbackStats.ratingDistribution,
+      });
+    } catch (error) {
+      console.error("Error fetching deal stats:", error);
+      res.status(500).json({ message: "Failed to fetch deal statistics" });
+    }
+  });
+
+  app.delete('/api/admin/deals/:dealId', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.userType !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      await storage.deleteDeal(req.params.dealId);
+      res.json({ message: "Deal deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting deal:", error);
+      res.status(500).json({ message: "Failed to delete deal" });
+    }
+  });
+
+  app.post('/api/admin/deals/:dealId/clone', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.userType !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const clonedDeal = await storage.duplicateDeal(req.params.dealId);
+      res.json(clonedDeal);
+    } catch (error) {
+      console.error("Error cloning deal:", error);
+      res.status(500).json({ message: "Failed to clone deal" });
+    }
+  });
+
+  app.patch('/api/admin/deals/:dealId/status', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.userType !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { isActive } = req.body;
+      await storage.updateDeal(req.params.dealId, { isActive });
+      res.json({ message: "Deal status updated successfully" });
+    } catch (error) {
+      console.error("Error updating deal status:", error);
+      res.status(500).json({ message: "Failed to update deal status" });
+    }
+  });
+
+  app.patch('/api/admin/deals/:dealId/extend', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.userType !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { days } = req.body;
+      if (!days || days < 1) {
+        return res.status(400).json({ message: "Invalid number of days" });
+      }
+
+      const deal = await storage.getDeal(req.params.dealId);
+      if (!deal) {
+        return res.status(404).json({ message: "Deal not found" });
+      }
+
+      const newEndDate = new Date(deal.endDate);
+      newEndDate.setDate(newEndDate.getDate() + days);
+
+      await storage.updateDeal(req.params.dealId, { endDate: newEndDate });
+      res.json({ message: `Deal extended by ${days} days`, newEndDate });
+    } catch (error) {
+      console.error("Error extending deal:", error);
+      res.status(500).json({ message: "Failed to extend deal" });
+    }
+  });
+
 
   // Admin verification routes
   app.get('/api/admin/verifications', isAuthenticated, async (req: any, res) => {

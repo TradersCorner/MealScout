@@ -91,6 +91,8 @@ export interface IStorage {
   updateDeal(id: string, deal: Partial<InsertDeal>): Promise<Deal>;
   incrementDealUses(id: string): Promise<void>;
   deactivateUserDeals(userId: string): Promise<void>;
+  deleteDeal(id: string): Promise<void>;
+  duplicateDeal(id: string): Promise<Deal>;
   
   // Deal claim operations
   claimDeal(claim: InsertDealClaim): Promise<DealClaim>;
@@ -651,6 +653,27 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDeal(id: string): Promise<void> {
     await db.delete(deals).where(eq(deals.id, id));
+  }
+
+  async duplicateDeal(id: string): Promise<Deal> {
+    const originalDeal = await this.getDeal(id);
+    if (!originalDeal) {
+      throw new Error("Deal not found");
+    }
+
+    const { id: _, createdAt: __, updatedAt: ___, currentUses: ____, ...dealData } = originalDeal;
+    
+    const [clonedDeal] = await db
+      .insert(deals)
+      .values({
+        ...dealData,
+        title: `${dealData.title} (Copy)`,
+        currentUses: 0,
+        isActive: false, // Start cloned deals as inactive
+      })
+      .returning();
+    
+    return clonedDeal;
   }
 
   async getAllDeals(): Promise<Deal[]> {

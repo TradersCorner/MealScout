@@ -92,6 +92,7 @@ function Router() {
           <Route path="/forgot-password" component={ForgotPassword} />
           <Route path="/reset-password" component={ResetPassword} />
           <Route path="/admin" component={AdminLogin} />
+          <Route path="/admin/login" component={AdminLogin} />
         </>
       ) : (
         <>
@@ -130,6 +131,7 @@ function Router() {
           <Route path="/sitemap" component={Sitemap} />
           <Route path="/forgot-password" component={ForgotPassword} />
           <Route path="/reset-password" component={ResetPassword} />
+          <Route path="/admin/login" component={AdminLogin} />
           <Route path="/profile/notifications" component={NotificationsPage} />
           <Route path="/profile/settings" component={SettingsPage} />
           <Route path="/settings" component={SettingsPage} />

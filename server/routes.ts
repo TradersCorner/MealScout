@@ -2816,6 +2816,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/admin/users/:userId/addresses', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.userType !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const addresses = await storage.getUserAddresses(req.params.userId);
+      res.json(addresses);
+    } catch (error) {
+      console.error("Error fetching user addresses:", error);
+      res.status(500).json({ message: "Failed to fetch user addresses" });
+    }
+  });
+
   app.get('/api/admin/deals', isAuthenticated, async (req: any, res) => {
     try {
       if (req.user.userType !== 'admin') {

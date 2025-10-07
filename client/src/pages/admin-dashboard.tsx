@@ -74,6 +74,12 @@ export default function AdminDashboard() {
     enabled: !!adminUser && selectedTab === "users",
   });
 
+  // Fetch selected user's addresses
+  const { data: userAddresses = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/users", selectedUser?.id, "addresses"],
+    enabled: !!adminUser && !!selectedUser?.id && userDetailsOpen,
+  });
+
   // Fetch all deals
   const { data: deals = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/deals"],
@@ -832,6 +838,49 @@ export default function AdminDashboard() {
                   )}
                 </div>
               </div>
+
+              {/* Saved Addresses */}
+              {userAddresses && userAddresses.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    SAVED ADDRESSES ({userAddresses.length})
+                  </h3>
+                  <div className="space-y-3">
+                    {userAddresses.map((address: any) => (
+                      <div key={address.id} className="border rounded-lg p-3 bg-muted/30">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="capitalize">
+                              {address.type}
+                            </Badge>
+                            {address.isDefault && (
+                              <Badge variant="default" className="text-xs">
+                                Default
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-medium text-sm">{address.label}</p>
+                          <p className="text-sm text-muted-foreground">{address.address}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {address.city}
+                            {address.state && `, ${address.state}`}
+                            {address.postalCode && ` ${address.postalCode}`}
+                          </p>
+                          {(address.latitude && address.longitude) && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
+                              <MapPin className="w-3 h-3" />
+                              Coordinates: {parseFloat(address.latitude).toFixed(6)}, {parseFloat(address.longitude).toFixed(6)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Profile Image */}
               {selectedUser.profileImageUrl && (

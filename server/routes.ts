@@ -191,7 +191,60 @@ async function validateSubscriptionLimits(userId: string, excludeDealId?: string
     }
 
     // Check if user has active subscription
-    if (!stripe || !user.stripeSubscriptionId) {
+    if (!stripe) {
+      return { 
+        isValid: false, 
+        error: "Active subscription required to create deals. Please upgrade your plan.",
+        currentCount: 0,
+        maxDeals: 0
+      };
+    }
+
+    let subscriptionId = user.stripeSubscriptionId;
+    
+    // Fallback: If subscription ID is missing but customer ID exists, check Stripe for active subscriptions
+    if (!subscriptionId && user.stripeCustomerId) {
+      try {
+        const subscriptions = await stripe.subscriptions.list({
+          customer: user.stripeCustomerId,
+          status: 'active',
+          limit: 1,
+        });
+        
+        if (subscriptions.data.length > 0) {
+          const activeSubscription = subscriptions.data[0];
+          subscriptionId = activeSubscription.id;
+          
+          // Auto-sync the subscription to database for future checks
+          const intervalMap: { [key: string]: string } = {
+            'month': 'month',
+            'year': 'year',
+          };
+          const interval = activeSubscription.items.data[0]?.price?.recurring?.interval;
+          const intervalCount = activeSubscription.items.data[0]?.price?.recurring?.interval_count || 1;
+          
+          let billingInterval = 'month';
+          if (interval === 'month' && intervalCount === 3) {
+            billingInterval = 'quarter';
+          } else if (interval === 'year') {
+            billingInterval = 'year';
+          }
+          
+          await storage.updateUserStripeInfo(
+            user.id, 
+            user.stripeCustomerId, 
+            subscriptionId, 
+            `standard-${billingInterval}`
+          );
+          
+          console.log(`✅ Auto-synced subscription ${subscriptionId} for user ${user.id}`);
+        }
+      } catch (error) {
+        console.error('Error checking Stripe for active subscriptions:', error);
+      }
+    }
+    
+    if (!subscriptionId) {
       return { 
         isValid: false, 
         error: "Active subscription required to create deals. Please upgrade your plan.",
@@ -201,7 +254,7 @@ async function validateSubscriptionLimits(userId: string, excludeDealId?: string
     }
 
     // Verify subscription status with Stripe
-    const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
     if (!subscription || subscription.status !== 'active') {
       return { 
         isValid: false, 

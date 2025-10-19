@@ -1003,12 +1003,7 @@ export default function Home() {
           
           <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:overflow-visible">
             {subscribedRestaurants.map((restaurant: any) => {
-              // Find if this restaurant has deals in the featured deals
-              const restaurantDeals = Array.isArray(featuredDeals) 
-                ? featuredDeals.filter((deal: any) => deal.restaurantId === restaurant.id)
-                : [];
-              
-              const hasDeals = restaurantDeals.length > 0;
+              const hasDeals = restaurant.activeDealsCount > 0;
               
               return (
                 <div key={restaurant.id} className="flex-shrink-0 w-72 lg:w-auto">
@@ -1043,7 +1038,7 @@ export default function Home() {
                       {hasDeals ? (
                         <div className="bg-green-50 border border-green-200 rounded-xl p-3">
                           <p className="text-green-700 text-sm font-semibold">
-                            {restaurantDeals.length} active deal{restaurantDeals.length > 1 ? 's' : ''} available
+                            {restaurant.activeDealsCount} active deal{restaurant.activeDealsCount > 1 ? 's' : ''} available
                           </p>
                         </div>
                       ) : (

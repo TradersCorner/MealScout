@@ -4,12 +4,14 @@ import Stripe from "stripe";
 import { storage } from "./storage";
 import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner } from "./unifiedAuth";
 import { emailService } from "./emailService";
-import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema, updateRestaurantLocationSchema, updateRestaurantOperatingHoursSchema, insertDealFeedbackSchema, type User } from "@shared/schema";
+import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema, updateRestaurantLocationSchema, updateRestaurantOperatingHoursSchema, insertDealFeedbackSchema, type User, deals } from "@shared/schema";
 import { z } from "zod";
 import { validateDocuments, checkRateLimit } from "./documentValidation";
 import { randomBytes, timingSafeEqual, createHash } from "crypto";
 import bcrypt from "bcryptjs";
 import { broadcastLocationUpdate, broadcastStatusUpdate } from "./websocket";
+import { db } from "./db";
+import { and, inArray, eq, sql } from "drizzle-orm";
 
 // Optional Stripe integration
 const stripe = process.env.STRIPE_SECRET_KEY 
@@ -712,26 +714,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const latitude = parseFloat(lat);
       const longitude = parseFloat(lng);
       
-      if (isNaN(latitude) || isNaN(longitude)) {
+      if (isNaN(latitude) || isNaN(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
         return res.status(400).json({ message: "Invalid coordinates" });
       }
       
-      // Default radius is 50km
-      const radius = req.query.radius ? parseFloat(req.query.radius as string) : 50;
+      // Default radius is 50km, max 100km
+      const radius = req.query.radius ? Math.min(parseFloat(req.query.radius as string), 100) : 50;
+      
+      if (isNaN(radius) || radius <= 0) {
+        return res.status(400).json({ message: "Invalid radius" });
+      }
       
       const restaurants = await storage.getSubscribedRestaurants(latitude, longitude, radius);
       
+      // Get all restaurant IDs to fetch deal counts efficiently
+      const restaurantIds = restaurants.map(r => r.id);
+      
+      // Fetch all active deal counts in one query
+      const dealCounts: { [restaurantId: string]: number } = {};
+      if (restaurantIds.length > 0) {
+        const allDeals = await db
+          .select({
+            restaurantId: deals.restaurantId,
+            count: sql<number>`count(*)::integer`
+          })
+          .from(deals)
+          .where(
+            and(
+              inArray(deals.restaurantId, restaurantIds),
+              eq(deals.isActive, true)
+            )
+          )
+          .groupBy(deals.restaurantId);
+        
+        allDeals.forEach(({ restaurantId, count }) => {
+          dealCounts[restaurantId] = count;
+        });
+      }
+      
       // Add active deal count for each restaurant
-      const restaurantsWithDeals = await Promise.all(
-        restaurants.map(async (restaurant) => {
-          const deals = await storage.getDealsByRestaurant(restaurant.id);
-          const activeDealsCount = deals.filter(d => d.isActive).length;
-          return {
-            ...restaurant,
-            activeDealsCount
-          };
-        })
-      );
+      const restaurantsWithDeals = restaurants.map(restaurant => ({
+        ...restaurant,
+        activeDealsCount: dealCounts[restaurant.id] || 0
+      }));
       
       res.json(restaurantsWithDeals);
     } catch (error) {

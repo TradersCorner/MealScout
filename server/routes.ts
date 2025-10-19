@@ -2477,16 +2477,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const invoice = event.data.object;
           console.log(`[WEBHOOK] Invoice ${invoice.id} payment succeeded`);
           
-          if (invoice.subscription) {
-            // Retrieve the subscription to get customer info
-            const subscription = await stripe?.subscriptions.retrieve(invoice.subscription);
-            if (subscription) {
-              console.log(`[WEBHOOK] Activating subscription ${subscription.id} for customer ${subscription.customer}`);
+          if (invoice.subscription && stripe) {
+            // Retrieve the subscription to get full details
+            const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+            if (subscription && subscription.status === 'active') {
+              console.log(`[WEBHOOK] Subscription ${subscription.id} is now active for customer ${subscription.customer}`);
               
-              // Note: User lookup by Stripe customer ID would happen here
-              // For now, subscription status is handled by the billing interval check
-              console.log(`[WEBHOOK] Payment succeeded for subscription ${subscription.id}, customer ${subscription.customer}`);
-              console.log(`[WEBHOOK] Subscription status will be verified through billing interval in database`);
+              // Find user by subscription ID (more reliable than customer ID)
+              const user = await storage.getUserByStripeSubscriptionId(subscription.id);
+              
+              if (user) {
+                console.log(`[WEBHOOK] Found user ${user.id} (${user.email}) - ensuring subscription is active`);
+                
+                // Make sure the user has the subscription ID stored
+                // (it should already be there from initialization, but this ensures consistency)
+                if (!user.stripeSubscriptionId || user.stripeSubscriptionId !== subscription.id) {
+                  await storage.updateUser(user.id, {
+                    stripeSubscriptionId: subscription.id,
+                    stripeCustomerId: subscription.customer as string,
+                  });
+                  console.log(`[WEBHOOK] Updated user ${user.id} with subscription ID ${subscription.id}`);
+                } else {
+                  console.log(`[WEBHOOK] User ${user.id} subscription already properly configured`);
+                }
+              } else {
+                console.log(`[WEBHOOK] Warning: No user found for subscription ${subscription.id}`);
+              }
             }
           }
           break;
@@ -2495,18 +2511,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const subscriptionUpdated = event.data.object;
           console.log(`[WEBHOOK] Subscription ${subscriptionUpdated.id} updated to status: ${subscriptionUpdated.status}`);
           
-          // Note: User lookup by subscription ID would happen here
-          // Subscription status is handled by real-time Stripe API calls
-          console.log(`[WEBHOOK] Subscription status updated, changes will be reflected in real-time`);
+          // Find user by subscription ID
+          const userForUpdate = await storage.getUserByStripeSubscriptionId(subscriptionUpdated.id);
+          
+          if (userForUpdate) {
+            console.log(`[WEBHOOK] Found user ${userForUpdate.id} for subscription ${subscriptionUpdated.id}`);
+            
+            // If subscription becomes inactive or canceled, we might want to handle it
+            // For now, we rely on real-time checks in validateSubscriptionLimits
+            if (subscriptionUpdated.status === 'canceled' || subscriptionUpdated.status === 'incomplete_expired') {
+              console.log(`[WEBHOOK] Subscription ${subscriptionUpdated.id} is now ${subscriptionUpdated.status} for user ${userForUpdate.id}`);
+              // The validateSubscriptionLimits function will catch this on next deal creation attempt
+            } else if (subscriptionUpdated.status === 'active') {
+              console.log(`[WEBHOOK] Subscription ${subscriptionUpdated.id} is active for user ${userForUpdate.id}`);
+            }
+          } else {
+            console.log(`[WEBHOOK] Warning: No user found for subscription ${subscriptionUpdated.id}`);
+          }
           break;
 
         case 'customer.subscription.deleted':
           const subscriptionDeleted = event.data.object;
           console.log(`[WEBHOOK] Subscription ${subscriptionDeleted.id} was deleted`);
           
-          // Note: User lookup and cleanup would happen here
-          // For now, subscription cancellation is handled through the cancel endpoint
-          console.log(`[WEBHOOK] Subscription deleted, user access will be revoked on next status check`);
+          // Find user and clear their subscription
+          const userForDeletion = await storage.getUserByStripeSubscriptionId(subscriptionDeleted.id);
+          
+          if (userForDeletion) {
+            console.log(`[WEBHOOK] Clearing subscription for user ${userForDeletion.id}`);
+            await storage.updateUser(userForDeletion.id, {
+              stripeSubscriptionId: null,
+            });
+            console.log(`[WEBHOOK] Subscription cleared for user ${userForDeletion.id} (${userForDeletion.email})`);
+          } else {
+            console.log(`[WEBHOOK] Warning: No user found for deleted subscription ${subscriptionDeleted.id}`);
+          }
           break;
 
         default:

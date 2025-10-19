@@ -10,7 +10,7 @@ import LocationButton from "@/components/location-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat, Beef, ChefHat, Soup, Star, Sparkles, Timer, ShoppingBag, Target, Trophy, Rocket, Crown, Coffee, Cookie, Wheat, Leaf, Grape, Cherry, Sandwich, Salad, IceCream, Croissant, Plus, Send, Truck, Radio, Activity, Wifi, Loader2, Sunrise, Heart, Waves, Egg, Apple } from "lucide-react";
+import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat, Beef, ChefHat, Soup, Star, Sparkles, Timer, ShoppingBag, Target, Trophy, Rocket, Crown, Coffee, Cookie, Wheat, Leaf, Grape, Cherry, Sandwich, Salad, IceCream, Croissant, Plus, Send, Truck, Radio, Activity, Wifi, Loader2, Sunrise, Heart, Waves, Egg, Apple, Store, CheckCircle } from "lucide-react";
 import mealScoutLogo from "@assets/ChatGPT Image Sep 14, 2025, 09_25_52 AM_1757872111259.png";
 import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
 import { format } from "date-fns";
@@ -276,6 +276,16 @@ export default function Home() {
 
   const { data: nearbyDeals, isLoading: nearbyLoading } = useQuery({
     queryKey: ["/api/deals/nearby", location?.lat, location?.lng],
+    enabled: !!location,
+  });
+
+  // Fetch subscribed restaurants (with or without deals)
+  const { data: subscribedRestaurants, isLoading: subscribedLoading } = useQuery({
+    queryKey: ["/api/restaurants/subscribed", location?.lat, location?.lng],
+    queryFn: () => {
+      if (!location) return Promise.resolve([]);
+      return fetch(`/api/restaurants/subscribed/${location.lat}/${location.lng}`).then(res => res.json());
+    },
     enabled: !!location,
   });
 
@@ -977,6 +987,80 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Subscribed Restaurants Section */}
+      {location && Array.isArray(subscribedRestaurants) && subscribedRestaurants.length > 0 && (
+        <div className="py-6 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div className="flex items-center justify-between mb-6 px-6">
+            <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-subscribed-restaurants-title">
+              <span className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center mr-3 shadow-md">
+                <Store className="w-4 h-4 text-white" />
+              </span>
+              Active Restaurants
+            </h2>
+            <span className="text-sm text-muted-foreground">{subscribedRestaurants.length} nearby</span>
+          </div>
+          
+          <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:overflow-visible">
+            {subscribedRestaurants.map((restaurant: any) => {
+              // Find if this restaurant has deals in the featured deals
+              const restaurantDeals = Array.isArray(featuredDeals) 
+                ? featuredDeals.filter((deal: any) => deal.restaurantId === restaurant.id)
+                : [];
+              
+              const hasDeals = restaurantDeals.length > 0;
+              
+              return (
+                <div key={restaurant.id} className="flex-shrink-0 w-72 lg:w-auto">
+                  <div className="bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+                    <div className="relative h-48 bg-gradient-to-br from-blue-400 to-indigo-500">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Store className="w-16 h-16 text-white/30" />
+                      </div>
+                      {restaurant.isVerified && (
+                        <div className="absolute top-4 right-4 bg-blue-600 text-white text-xs px-3 py-1 rounded-full font-semibold flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" />
+                          Verified
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-6">
+                      <h3 className="font-bold text-lg text-foreground mb-2" data-testid={`text-restaurant-name-${restaurant.id}`}>
+                        {restaurant.name}
+                      </h3>
+                      <div className="flex items-center text-sm text-muted-foreground mb-3">
+                        <MapPin className="w-4 h-4 mr-1" />
+                        {restaurant.address}
+                      </div>
+                      {restaurant.cuisineType && (
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
+                            {restaurant.cuisineType}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {hasDeals ? (
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                          <p className="text-green-700 text-sm font-semibold">
+                            {restaurantDeals.length} active deal{restaurantDeals.length > 1 ? 's' : ''} available
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                          <p className="text-gray-600 text-sm">
+                            No active deals yet - Coming soon!
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Extended Food Categories with Horizontal Scrolling */}
       

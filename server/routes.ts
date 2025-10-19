@@ -704,6 +704,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Restaurant routes
+  // Get subscribed restaurants (public endpoint)
+  app.get('/api/restaurants/subscribed/:lat/:lng', async (req: any, res) => {
+    try {
+      const { lat, lng } = req.params;
+      const latitude = parseFloat(lat);
+      const longitude = parseFloat(lng);
+      
+      if (isNaN(latitude) || isNaN(longitude)) {
+        return res.status(400).json({ message: "Invalid coordinates" });
+      }
+      
+      // Default radius is 50km
+      const radius = req.query.radius ? parseFloat(req.query.radius as string) : 50;
+      
+      const restaurants = await storage.getSubscribedRestaurants(latitude, longitude, radius);
+      
+      // Add active deal count for each restaurant
+      const restaurantsWithDeals = await Promise.all(
+        restaurants.map(async (restaurant) => {
+          const deals = await storage.getDealsByRestaurant(restaurant.id);
+          const activeDealsCount = deals.filter(d => d.isActive).length;
+          return {
+            ...restaurant,
+            activeDealsCount
+          };
+        })
+      );
+      
+      res.json(restaurantsWithDeals);
+    } catch (error) {
+      console.error("Error fetching subscribed restaurants:", error);
+      res.status(500).json({ message: "Failed to fetch subscribed restaurants" });
+    }
+  });
+
   // Restaurant owner routes
   app.get('/api/restaurants/my-restaurants', isAuthenticated, async (req: any, res) => {
     try {

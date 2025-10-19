@@ -69,6 +69,7 @@ export interface IStorage {
   getRestaurantsByOwner(ownerId: string): Promise<Restaurant[]>;
   updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promise<Restaurant>;
   getNearbyRestaurants(lat: number, lng: number, radiusKm: number): Promise<Restaurant[]>;
+  getSubscribedRestaurants(lat: number, lng: number, radiusKm: number): Promise<Restaurant[]>;
   verifyRestaurantOwnership(restaurantId: string, userId: string): Promise<boolean>;
   
   // Deal operations
@@ -619,6 +620,55 @@ export class DatabaseStorage implements IStorage {
           `
         )
       );
+  }
+
+  async getSubscribedRestaurants(lat: number, lng: number, radiusKm: number): Promise<Restaurant[]> {
+    // Get nearby restaurants whose owners have active subscriptions
+    const results = await db
+      .select({
+        id: restaurants.id,
+        name: restaurants.name,
+        address: restaurants.address,
+        phone: restaurants.phone,
+        businessType: restaurants.businessType,
+        latitude: restaurants.latitude,
+        longitude: restaurants.longitude,
+        cuisineType: restaurants.cuisineType,
+        promoCode: restaurants.promoCode,
+        isActive: restaurants.isActive,
+        isVerified: restaurants.isVerified,
+        ownerId: restaurants.ownerId,
+        createdAt: restaurants.createdAt,
+        updatedAt: restaurants.updatedAt,
+        isFoodTruck: restaurants.isFoodTruck,
+        mobileOnline: restaurants.mobileOnline,
+        currentLatitude: restaurants.currentLatitude,
+        currentLongitude: restaurants.currentLongitude,
+        lastBroadcastAt: restaurants.lastBroadcastAt,
+        operatingHours: restaurants.operatingHours,
+        subscriptionStatus: users.subscriptionBillingInterval,
+      })
+      .from(restaurants)
+      .innerJoin(users, eq(restaurants.ownerId, users.id))
+      .where(
+        and(
+          eq(restaurants.isActive, true),
+          // Owner has subscription (either promo code or paid)
+          isNotNull(users.subscriptionBillingInterval),
+          sql`
+            (6371 * acos(
+              cos(radians(${lat})) * 
+              cos(radians(${restaurants.latitude})) * 
+              cos(radians(${restaurants.longitude}) - radians(${lng})) + 
+              sin(radians(${lat})) * 
+              sin(radians(${restaurants.latitude}))
+            )) <= ${radiusKm}
+          `
+        )
+      );
+    
+    // Map results back to Restaurant type (remove subscriptionStatus)
+    return results.map(({ subscriptionStatus, ...restaurant }) => restaurant as Restaurant);
   }
 
   async verifyRestaurantOwnership(restaurantId: string, userId: string): Promise<boolean> {

@@ -27,6 +27,18 @@ Preferred communication style: Simple, everyday language.
 - **Session Race Condition**: Fixed 400 password validation errors during OAuth flows by ensuring session persistence before redirect
 - **OAuth Redirect Middleware Fix**: Disabled middleware that was redirecting OAuth requests before Passport could initiate the flow, which was breaking Google and Facebook login
 
+## Subscription Activation Fix (October 19, 2025)
+- **Issue**: Users were unable to create deals after subscribing and completing payment
+- **Root Cause**: Stripe webhook handlers were only logging events but not updating user subscription status in the database
+- **Solution**: 
+  - Added `getUserByStripeCustomerId()` and `getUserByStripeSubscriptionId()` storage methods for webhook user lookup
+  - Updated webhook handlers (`invoice.payment_succeeded`, `customer.subscription.updated`, `customer.subscription.deleted`) to persist subscription status changes to database
+  - Ensured idempotent webhook processing with proper error handling
+- **Promo Code Compatibility**: BETA and TEST1 promo codes continue to work correctly
+  - BETA users: Have billing interval but no Stripe subscription ID (free beta access)
+  - TEST1 users: Have both fields and are validated through Stripe ($1 test subscription)
+  - Paid users: Subscription status now properly synced from Stripe webhooks
+
 # System Architecture
 
 ## Frontend Architecture

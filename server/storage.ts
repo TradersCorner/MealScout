@@ -230,6 +230,9 @@ export interface IStorage {
   // Stripe lookup operations
   getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined>;
   getUserByStripeSubscriptionId(stripeSubscriptionId: string): Promise<User | undefined>;
+  
+  // Admin user operations
+  getAllUsers(): Promise<User[]>;
 }
 
 export class DatabaseStorage implements IStorage {

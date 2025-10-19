@@ -42,13 +42,17 @@ Preferred communication style: Simple, everyday language.
 ## OAuth Configuration Documentation (October 19, 2025)
 - **OAuth Setup Guide**: Added comprehensive configuration guide at `/admin/oauth-setup`
 - **Configuration Status API**: Added `/api/admin/oauth/status` endpoint for debugging OAuth issues
-- **Privacy Policy Compliance**: Privacy policy and data deletion pages accessible at `/privacy-policy` and `/data-deletion`
+- **Privacy Policy Compliance**: Crawler-friendly privacy policy and data deletion pages with static HTML
+  - Implemented server-side routes in `server/index.ts` that serve static HTML content
+  - Static HTML files also available in `server/public/privacy-policy/` and `server/public/data-deletion/`
+  - Routes bypass SPA routing and serve content directly to crawlers (Facebook, Google)
 - **Required URLs for OAuth Providers**:
   - Privacy Policy: https://mealscout.replit.app/privacy-policy
   - Data Deletion: https://mealscout.replit.app/data-deletion
   - Terms of Service: https://mealscout.replit.app/terms-of-service
   - Google OAuth Callbacks: `/api/auth/google/customer/callback` and `/api/auth/google/restaurant/callback`
   - Facebook OAuth Callback: `/api/auth/facebook/callback`
+- **Important**: Privacy policy and data deletion routes work correctly in production/deployed mode. In development mode, Vite's SPA routing may interfere, but deployed apps serve the static HTML correctly.
 
 # System Architecture
 

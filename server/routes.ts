@@ -309,6 +309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Static HTML routes for crawlers (Facebook, Google) - must come before SPA routes
   // These serve crawler-friendly HTML with content embedded directly in the page
   app.get('/privacy-policy', (_req, res) => {
+    console.log('🔍 Privacy policy route HIT');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(`
 <!DOCTYPE html>
@@ -453,6 +454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get('/data-deletion', (_req, res) => {
+    console.log('🔍 Data deletion route HIT');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(`
 <!DOCTYPE html>

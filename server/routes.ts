@@ -3331,6 +3331,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).end();
   });
 
+  // OAuth configuration status check
+  app.get('/api/admin/oauth/status', async (req: any, res) => {
+    // Only allow admins to check OAuth status
+    if (!req.user || req.user.userType !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    try {
+      const baseUrl = process.env.PUBLIC_BASE_URL || 
+                     (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000');
+      
+      const status = {
+        google: {
+          configured: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+          clientIdPresent: !!process.env.GOOGLE_CLIENT_ID,
+          clientSecretPresent: !!process.env.GOOGLE_CLIENT_SECRET,
+          callbackUrls: {
+            customer: `${baseUrl}/api/auth/google/customer/callback`,
+            restaurant: `${baseUrl}/api/auth/google/restaurant/callback`,
+          },
+        },
+        facebook: {
+          configured: !!(process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET),
+          appIdPresent: !!process.env.FACEBOOK_APP_ID,
+          appSecretPresent: !!process.env.FACEBOOK_APP_SECRET,
+          callbackUrl: `${baseUrl}/api/auth/facebook/callback`,
+        },
+        requiredUrls: {
+          privacyPolicy: `${baseUrl}/privacy-policy`,
+          dataDeletion: `${baseUrl}/data-deletion`,
+          termsOfService: `${baseUrl}/terms-of-service`,
+        },
+        baseUrl,
+        environment: process.env.NODE_ENV || 'development',
+      };
+
+      res.json(status);
+    } catch (error) {
+      console.error('Error checking OAuth status:', error);
+      res.status(500).json({ error: 'Failed to check OAuth status' });
+    }
+  });
+
   // Health check endpoint for monitoring
   app.get('/api/health', async (req, res) => {
     try {

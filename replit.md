@@ -39,6 +39,17 @@ Preferred communication style: Simple, everyday language.
   - TEST1 users: Have both fields and are validated through Stripe ($1 test subscription)
   - Paid users: Subscription status now properly synced from Stripe webhooks
 
+## OAuth Configuration Documentation (October 19, 2025)
+- **OAuth Setup Guide**: Added comprehensive configuration guide at `/admin/oauth-setup`
+- **Configuration Status API**: Added `/api/admin/oauth/status` endpoint for debugging OAuth issues
+- **Privacy Policy Compliance**: Privacy policy and data deletion pages accessible at `/privacy-policy` and `/data-deletion`
+- **Required URLs for OAuth Providers**:
+  - Privacy Policy: https://mealscout.replit.app/privacy-policy
+  - Data Deletion: https://mealscout.replit.app/data-deletion
+  - Terms of Service: https://mealscout.replit.app/terms-of-service
+  - Google OAuth Callbacks: `/api/auth/google/customer/callback` and `/api/auth/google/restaurant/callback`
+  - Facebook OAuth Callback: `/api/auth/facebook/callback`
+
 # System Architecture
 
 ## Frontend Architecture
@@ -98,3 +109,43 @@ Multi-layered authentication system supporting different user types:
 - **Facebook OAuth**: Social authentication and sharing capabilities for customers
 - **Location Services**: BigDataCloud and OpenStreetMap for reverse geocoding and address lookup
 - **WebSocket Infrastructure**: Socket.IO for real-time food truck location broadcasting and customer notifications
+## OAuth Setup Instructions
+
+### Google OAuth Configuration
+1. **Google Cloud Console**: https://console.cloud.google.com/apis/credentials
+2. **Create OAuth 2.0 Client ID** (Web application type)
+3. **Required Settings**:
+   - Authorized JavaScript origins: `https://mealscout.replit.app`
+   - Authorized redirect URIs:
+     - `https://mealscout.replit.app/api/auth/google/customer/callback`
+     - `https://mealscout.replit.app/api/auth/google/restaurant/callback`
+4. **OAuth Consent Screen**:
+   - Privacy Policy URL: `https://mealscout.replit.app/privacy-policy`
+   - Terms of Service URL: `https://mealscout.replit.app/terms-of-service`
+   - Authorized domains: `replit.app`
+5. **Environment Variables** (Add to Replit Secrets):
+   - `GOOGLE_CLIENT_ID`
+   - `GOOGLE_CLIENT_SECRET`
+
+### Facebook OAuth Configuration
+1. **Facebook Developers**: https://developers.facebook.com/apps
+2. **App Basic Settings**:
+   - App Domain: `mealscout.replit.app`
+   - Privacy Policy URL: `https://mealscout.replit.app/privacy-policy` (REQUIRED)
+   - User Data Deletion: `https://mealscout.replit.app/data-deletion` (REQUIRED)
+   - Terms of Service URL: `https://mealscout.replit.app/terms-of-service`
+3. **Facebook Login Settings** (Products → Facebook Login):
+   - Valid OAuth Redirect URIs: `https://mealscout.replit.app/api/auth/facebook/callback`
+4. **Permissions**: email, public_profile (standard access)
+5. **App Mode**: Switch from Development to Live after configuration
+6. **Environment Variables** (Add to Replit Secrets):
+   - `FACEBOOK_APP_ID`
+   - `FACEBOOK_APP_SECRET`
+
+### Troubleshooting OAuth Issues
+- **View Setup Guide**: Navigate to `/admin/oauth-setup` for detailed configuration instructions
+- **Check Status**: Use `/api/admin/oauth/status` endpoint to verify environment variables and callback URLs
+- **Common Errors**:
+  - "Privacy Policy URL is required" → Add privacy policy URL in provider's developer console
+  - "OAuth Redirect URI Mismatch" → Ensure exact URL match including protocol (https) and paths
+  - "Can't Load URL" → Verify all URLs are publicly accessible via HTTPS

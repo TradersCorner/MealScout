@@ -43,6 +43,7 @@ import Contact from "@/pages/contact";
 import Sitemap from "@/pages/sitemap";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
+import OAuthSetupGuide from "@/pages/oauth-setup-guide";
 import { BetaDisclaimer } from "@/components/beta-disclaimer";
 import { BugReportButton } from "@/components/bug-report-button";
 
@@ -132,6 +133,7 @@ function Router() {
           <Route path="/forgot-password" component={ForgotPassword} />
           <Route path="/reset-password" component={ResetPassword} />
           <Route path="/admin/login" component={AdminLogin} />
+          <Route path="/admin/oauth-setup" component={OAuthSetupGuide} />
           <Route path="/profile/notifications" component={NotificationsPage} />
           <Route path="/profile/settings" component={SettingsPage} />
           <Route path="/settings" component={SettingsPage} />

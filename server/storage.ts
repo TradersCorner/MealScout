@@ -226,6 +226,10 @@ export interface IStorage {
     totalFeedback: number;
     ratingDistribution: { [key: number]: number };
   }>;
+
+  // Stripe lookup operations
+  getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined>;
+  getUserByStripeSubscriptionId(stripeSubscriptionId: string): Promise<User | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -288,6 +292,16 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.stripeCustomerId, stripeCustomerId));
+    return user;
+  }
+
+  async getUserByStripeSubscriptionId(stripeSubscriptionId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.stripeSubscriptionId, stripeSubscriptionId));
     return user;
   }
 

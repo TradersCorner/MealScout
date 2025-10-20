@@ -2316,27 +2316,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const user = req.user;
     const { hasMultipleDealsAddon = false, billingInterval = 'month', promoCode = '' } = req.body;
 
+    console.log('=== Subscription Initialize Request ===');
+    console.log('User ID:', user?.id);
+    console.log('User Email:', user?.email);
+    console.log('Promo Code:', promoCode);
+    console.log('Billing Interval:', billingInterval);
+
     // Validate billing interval
     const validIntervals = ['month', 'quarter', 'year'];
     const interval = validIntervals.includes(billingInterval) ? billingInterval : 'month';
 
     // Check for BETA promo code
     if (promoCode.toUpperCase() === 'BETA') {
+      console.log('✅ BETA code detected, granting free access');
+
       // Grant free beta access without Stripe subscription
       try {
+        console.log('Updating user with BETA access...');
         await storage.updateUser(user.id, {
           subscriptionBillingInterval: `standard-${interval}`,
           // We don't set stripeSubscriptionId for beta users
         });
+        console.log('✅ User updated successfully with BETA access');
         
-        return res.send({
+        const response = {
           status: 'active',
           subscriptionId: null,
           betaAccess: true,
           message: 'BETA access granted! You can now create deals without payment.'
-        });
+        };
+        console.log('Sending response:', response);
+        return res.send(response);
       } catch (error) {
-        console.error("Error granting beta access:", error);
+        console.error("❌ Error granting beta access:", error);
         return res.status(400).send({ error: { message: 'Failed to grant beta access' } });
       }
     }

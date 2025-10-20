@@ -8,6 +8,16 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes (October 2025)
 
+## API Endpoint and Analytics Fixes (October 20, 2025)
+- **Missing Endpoint Fix**: Added `/api/deals/my-active` endpoint to return all active deals for authenticated restaurant owners
+  - Endpoint properly filters deals by restaurant ownership and returns only active deals
+  - Prevents 404 errors in deal creation page when checking current deal count
+- **Analytics Query Optimization**: Fixed 402 (Payment Required) errors on restaurant owner dashboard
+  - Added subscription access checks to analytics queries (summary, timeseries, customers, compare)
+  - Analytics data is now only fetched when user has an active paid subscription
+  - Export CSV button is hidden for users without subscription access to prevent manual 402 errors
+- **Impact**: Restaurant owners without subscriptions no longer see unnecessary API errors in console
+
 ## Pricing Model Update
 - **Simplified Single-Tier Pricing**: Removed multi-tier pricing (single-deal vs multiple-deals)
 - **New Pricing Structure**:

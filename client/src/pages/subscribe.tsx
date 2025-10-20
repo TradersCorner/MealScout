@@ -561,7 +561,15 @@ export default function Subscribe() {
       
       const data = await response.json();
       
-      if (data && data.status === 'requires_payment') {
+      if (data && data.status === 'active') {
+        // BETA or free promo code - no payment required
+        toast({
+          title: "Success!",
+          description: data.message || "Your subscription is now active!",
+        });
+        // Redirect to deal creation
+        setLocation("/deal-creation");
+      } else if (data && data.status === 'requires_payment') {
         setSubscriptionState({
           status: 'requires_payment',
           subscriptionId: data.subscriptionId,

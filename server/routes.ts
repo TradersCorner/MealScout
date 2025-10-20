@@ -2873,6 +2873,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     
+    // BETA MODE: Grant all users active subscription status
+    if (BETA_MODE) {
+      console.log('✅ BETA_MODE: Granting active subscription status to all users');
+      return res.json({ 
+        status: 'active',
+        hasAccess: true,
+        betaMode: true,
+        message: 'BETA MODE - Free access for all users'
+      });
+    }
+    
     if (!stripe) {
       return res.status(503).json({ message: "Payment service unavailable" });
     }
@@ -2888,6 +2899,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[SUBSCRIPTION DEBUG] User ${user.id} is a BETA user with free access`);
         return res.json({ 
           status: 'active',
+          hasAccess: true,
           betaAccess: true,
           message: 'BETA user with free access'
         });
@@ -2895,7 +2907,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user.stripeSubscriptionId) {
         console.log(`[SUBSCRIPTION DEBUG] User ${user.id} has no Stripe subscription ID and no billing interval`);
-        return res.json({ status: 'none' });
+        return res.json({ status: 'none', hasAccess: false });
       }
 
       // SECURITY FIX: Do NOT grant access based on billing interval alone

@@ -679,9 +679,12 @@ export default function Subscribe() {
             {/* Option to upgrade/change plan */}
             <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
               <CardContent className="p-6 text-center">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Want to Change Your Plan?</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Upgrade to multiple deals or change your billing frequency
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Change Plan or Use Promo Code</h3>
+                <p className="text-sm text-gray-600 mb-2">
+                  Change your billing frequency or apply a promo code
+                </p>
+                <p className="text-xs text-blue-600 font-medium mb-4">
+                  💡 Use code "BETA" for free access or "TEST1" for $1 testing
                 </p>
                 <Button 
                   onClick={showNewSubscription}
@@ -689,7 +692,7 @@ export default function Subscribe() {
                   className="w-full"
                   data-testid="button-change-plan"
                 >
-                  View All Plans
+                  View Plans & Enter Promo Code
                 </Button>
               </CardContent>
             </Card>

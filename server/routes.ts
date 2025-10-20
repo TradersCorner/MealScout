@@ -22,6 +22,9 @@ const stripe = process.env.STRIPE_SECRET_KEY
 // Defaults to true - set BETA_MODE=false to disable
 const BETA_MODE = process.env.BETA_MODE !== 'false';
 
+console.log('🎯 BETA_MODE is', BETA_MODE ? 'ENABLED ✅' : 'DISABLED ❌');
+console.log('🎯 process.env.BETA_MODE =', process.env.BETA_MODE);
+
 // Production safety check: warn if beta mode is enabled in production
 if (process.env.NODE_ENV === 'production' && BETA_MODE) {
   console.warn('⚠️  WARNING: BETA_MODE is enabled in production environment! All users will have free access to premium features.');
@@ -182,8 +185,12 @@ async function validateSubscriptionLimits(userId: string, excludeDealId?: string
       return { isValid: false, error: "User not found" };
     }
 
+    console.log('🔍 validateSubscriptionLimits - BETA_MODE:', BETA_MODE);
+    console.log('🔍 validateSubscriptionLimits - User ID:', userId);
+
     // During beta testing, all users get unlimited deals
     if (BETA_MODE) {
+      console.log('✅ BETA_MODE enabled - granting unlimited deals');
       return { isValid: true, currentCount: 0, maxDeals: 999 };
     }
 

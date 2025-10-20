@@ -768,7 +768,7 @@ export default function RestaurantOwnerDashboard() {
         icon={Store}
         rightActions={
           <div className="flex gap-3">
-            {(subscription as any)?.status === 'active' ? (
+            {((subscription as any)?.status === 'active' || (subscription as any)?.betaMode === true || (subscription as any)?.hasAccess === true) ? (
               <Link href="/deal-creation">
                 <Button data-testid="button-create-deal">
                   <Plus className="h-4 w-4 mr-2" />

@@ -247,7 +247,10 @@ export default function DealCreation() {
   }
 
   // Check subscription status - redirect to subscribe page if needed
-  if (subscription && (subscription as any).status !== 'active') {
+  // Allow access if: active subscription OR beta mode enabled OR has access flag
+  const hasAccess = subscription && ((subscription as any).status === 'active' || (subscription as any).betaMode === true || (subscription as any).hasAccess === true);
+  
+  if (subscription && !hasAccess) {
     console.log('Blocking due to subscription status:', (subscription as any).status);
     return (
       <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">

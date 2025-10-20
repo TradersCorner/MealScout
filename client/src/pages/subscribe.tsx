@@ -543,6 +543,9 @@ export default function Subscribe() {
     status: 'selecting'
   });
 
+  // Debug: Log auth status
+  console.log('Subscribe page - Auth Status:', { isAuthenticated, isLoading, hasUser: !!user, userEmail: user?.email });
+
   // Check current subscription status to determine which view to show
   const { data: currentSubscription } = useQuery<ApiSubscriptionStatus>({
     queryKey: ['/api/subscription/status'],

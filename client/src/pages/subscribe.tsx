@@ -553,6 +553,7 @@ export default function Subscribe() {
     setSubscriptionState({ status: 'initializing' });
 
     try {
+      console.log("Initializing subscription with promo code:", promoCode);
       const response = await apiRequest("POST", "/api/subscriptions/initialize", {
         hasMultipleDeals: false, // Always false now - single tier pricing
         billingInterval,
@@ -560,16 +561,22 @@ export default function Subscribe() {
       });
       
       const data = await response.json();
+      console.log("Subscription response:", data);
       
       if (data && data.status === 'active') {
         // BETA or free promo code - no payment required
+        console.log("BETA access granted successfully");
         toast({
           title: "Success!",
           description: data.message || "Your subscription is now active!",
         });
+        // Invalidate queries to refresh subscription status
+        queryClient.invalidateQueries({ queryKey: ['/api/subscription/status'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
         // Redirect to deal creation
-        setLocation("/deal-creation");
+        setTimeout(() => setLocation("/deal-creation"), 500);
       } else if (data && data.status === 'requires_payment') {
+        console.log("Payment required, showing payment form");
         setSubscriptionState({
           status: 'requires_payment',
           subscriptionId: data.subscriptionId,
@@ -577,12 +584,14 @@ export default function Subscribe() {
           intentType: data.intentType || 'payment'
         });
       } else {
+        console.error("Unexpected response:", data);
         setSubscriptionState({
           status: 'error',
-          error: data.error?.message || "Unable to initialize payment. Please try again."
+          error: data.error?.message || data.message || "Unable to initialize payment. Please try again."
         });
       }
     } catch (error: any) {
+      console.error("Error initializing subscription:", error);
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -595,10 +604,9 @@ export default function Subscribe() {
         return;
       }
       
-      console.error("Error initializing subscription:", error);
       setSubscriptionState({
         status: 'error',
-        error: "Failed to initialize subscription. Please try again."
+        error: error.message || "Failed to initialize subscription. Please try again."
       });
     }
   };

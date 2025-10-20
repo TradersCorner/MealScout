@@ -16,7 +16,8 @@ import {
   LogOut,
   ChevronRight,
   Star,
-  MapPin
+  MapPin,
+  Store
 } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
 
@@ -148,6 +149,31 @@ export default function ProfilePage() {
 
       {/* Menu Items */}
       <div className="px-6 pb-6">
+        {/* Become a Restaurant Owner CTA (Only for customers) */}
+        {user?.userType === 'customer' && (
+          <Card className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 transition-all cursor-pointer border-0 shadow-lg mb-6">
+            <CardContent className="p-0">
+              <Link href="/restaurant-signup">
+                <div className="p-5" data-testid="card-become-restaurant-owner">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                      <Store className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-white font-bold text-lg mb-1">
+                        Own a Restaurant?
+                      </h3>
+                      <p className="text-white/90 text-sm">
+                        List your business and start posting deals →
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="space-y-2">
           {menuItems.map((item, index) => (
             <Link key={index} href={item.href}>

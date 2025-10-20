@@ -3157,6 +3157,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Restaurant search endpoint (returns restaurants matching search query)
+  app.get('/api/restaurants/search', async (req, res) => {
+    try {
+      const { q: query, lat, lng, radius = 10 } = req.query;
+
+      if (!query || typeof query !== 'string' || query.length < 2) {
+        return res.json([]);
+      }
+
+      const searchTerm = query.toLowerCase();
+      const restaurants = await storage.getAllRestaurants();
+      
+      let filteredRestaurants = restaurants.filter((restaurant: any) => 
+        restaurant.isActive &&
+        (restaurant.name.toLowerCase().includes(searchTerm) ||
+         restaurant.cuisineType?.toLowerCase().includes(searchTerm) ||
+         restaurant.address?.toLowerCase().includes(searchTerm))
+      );
+
+      // Filter by distance if coordinates provided
+      if (lat && lng && typeof lat === 'string' && typeof lng === 'string') {
+        const userLat = parseFloat(lat);
+        const userLng = parseFloat(lng);
+        const radiusKm = parseFloat(radius as string);
+
+        filteredRestaurants = filteredRestaurants.filter((restaurant: any) => {
+          if (!restaurant.latitude || !restaurant.longitude) return false;
+          
+          // Calculate distance using Haversine formula
+          const R = 6371; // Earth's radius in km
+          const dLat = (restaurant.latitude - userLat) * Math.PI / 180;
+          const dLng = (restaurant.longitude - userLng) * Math.PI / 180;
+          const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(userLat * Math.PI / 180) * Math.cos(restaurant.latitude * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          const distance = R * c;
+          
+          return distance <= radiusKm;
+        });
+      }
+
+      res.json(filteredRestaurants);
+    } catch (error) {
+      console.error("Error searching restaurants:", error);
+      res.status(500).json({ message: "Failed to search restaurants" });
+    }
+  });
+
   // Admin API endpoints
   app.get('/api/auth/admin/verify', isAuthenticated, async (req: any, res) => {
     try {

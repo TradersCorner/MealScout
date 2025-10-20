@@ -1691,6 +1691,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // User is already authenticated, use existing user
         user = req.user as User;
         console.log('Using authenticated user for restaurant signup:', { userId: user.id, userType: user.userType });
+        
+        // If user is currently a customer, upgrade them to restaurant_owner
+        if (user.userType === 'customer') {
+          console.log('Converting customer account to restaurant owner:', user.id);
+          await storage.updateUserType(user.id, 'restaurant_owner');
+          // Update the user object to reflect the change
+          user = await storage.getUserById(user.id) || user;
+        }
       } else {
         // User is not authenticated, create new account
         // Validate user data with password required

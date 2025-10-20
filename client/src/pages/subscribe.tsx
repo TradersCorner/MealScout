@@ -573,11 +573,13 @@ export default function Subscribe() {
           title: "Success!",
           description: data.message || "Your subscription is now active!",
         });
-        // Invalidate queries to refresh subscription status
-        queryClient.invalidateQueries({ queryKey: ['/api/subscription/status'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+        // Invalidate and refetch queries to refresh subscription status
+        await queryClient.invalidateQueries({ queryKey: ['/api/subscription/status'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+        // Wait for refetch to complete
+        await queryClient.refetchQueries({ queryKey: ['/api/auth/user'] });
         // Redirect to deal creation
-        setTimeout(() => setLocation("/deal-creation"), 500);
+        setTimeout(() => setLocation("/deal-creation"), 1000);
       } else if (data && data.status === 'requires_payment') {
         console.log("Payment required, showing payment form");
         setSubscriptionState({

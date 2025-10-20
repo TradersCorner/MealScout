@@ -349,6 +349,7 @@ export class DatabaseStorage implements IStorage {
 
           if (existingUser.length > 0) {
             console.log('✅ Found existing user by email, linking Google account...');
+            console.log('⚠️  Preserving existing userType:', existingUser[0].userType);
             const [user] = await db
               .update(users)
               .set({
@@ -357,7 +358,7 @@ export class DatabaseStorage implements IStorage {
                 lastName: googleData.lastName || existingUser[0].lastName,
                 profileImageUrl: googleData.profileImageUrl || existingUser[0].profileImageUrl,
                 googleAccessToken: googleData.googleAccessToken,
-                userType: userType, // Update user type if provided
+                // Preserve existing userType to prevent account type changes
                 updatedAt: new Date(),
               })
               .where(eq(users.id, existingUser[0].id))
@@ -421,6 +422,7 @@ export class DatabaseStorage implements IStorage {
 
           if (existingUser.length > 0) {
             console.log('✅ Found existing user by email, linking Facebook account...');
+            console.log('⚠️  Preserving existing userType:', existingUser[0].userType);
             const [user] = await db
               .update(users)
               .set({
@@ -429,7 +431,7 @@ export class DatabaseStorage implements IStorage {
                 lastName: facebookData.lastName || existingUser[0].lastName,
                 profileImageUrl: facebookData.profileImageUrl || existingUser[0].profileImageUrl,
                 facebookAccessToken: facebookData.facebookAccessToken,
-                userType: userType, // Update user type if provided
+                // Preserve existing userType to prevent account type changes
                 updatedAt: new Date(),
               })
               .where(eq(users.id, existingUser[0].id))
@@ -504,6 +506,7 @@ export class DatabaseStorage implements IStorage {
 
           if (existingUser.length > 0) {
             console.log('✅ Found existing user during retry, updating...');
+            console.log('⚠️  Preserving existing userType:', existingUser[0].userType);
             const [user] = await db
               .update(users)
               .set({
@@ -513,7 +516,7 @@ export class DatabaseStorage implements IStorage {
                 lastName: googleData.lastName,
                 profileImageUrl: googleData.profileImageUrl,
                 googleAccessToken: googleData.googleAccessToken,
-                userType: userType,
+                // Preserve existing userType to prevent account type changes
                 updatedAt: new Date(),
               })
               .where(eq(users.id, existingUser[0].id))
@@ -536,6 +539,7 @@ export class DatabaseStorage implements IStorage {
 
           if (existingUser.length > 0) {
             console.log('✅ Found existing user during retry, updating...');
+            console.log('⚠️  Preserving existing userType:', existingUser[0].userType);
             const [user] = await db
               .update(users)
               .set({
@@ -545,7 +549,7 @@ export class DatabaseStorage implements IStorage {
                 lastName: facebookData.lastName,
                 profileImageUrl: facebookData.profileImageUrl,
                 facebookAccessToken: facebookData.facebookAccessToken,
-                userType: userType,
+                // Preserve existing userType to prevent account type changes
                 updatedAt: new Date(),
               })
               .where(eq(users.id, existingUser[0].id))

@@ -3074,20 +3074,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async setDefaultAddress(userId: string, addressId: string): Promise<void> {
-    // First, unset all default addresses for the user
-    await db
-      .update(userAddresses)
-      .set({ isDefault: false, updatedAt: new Date() })
-      .where(eq(userAddresses.userId, userId));
-    
-    // Then set the specified address as default
-    await db
-      .update(userAddresses)
-      .set({ isDefault: true, updatedAt: new Date() })
-      .where(and(
-        eq(userAddresses.id, addressId),
-        eq(userAddresses.userId, userId)
-      ));
+    // Use transaction to prevent race conditions where multiple addresses could be set as default
+    await db.transaction(async (tx) => {
+      // First, unset all default addresses for the user
+      await tx
+        .update(userAddresses)
+        .set({ isDefault: false, updatedAt: new Date() })
+        .where(eq(userAddresses.userId, userId));
+      
+      // Then set the specified address as default
+      await tx
+        .update(userAddresses)
+        .set({ isDefault: true, updatedAt: new Date() })
+        .where(and(
+          eq(userAddresses.id, addressId),
+          eq(userAddresses.userId, userId)
+        ));
+    });
   }
 
   // Password reset token operations
@@ -3129,9 +3132,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUserResetTokens(userId: string): Promise<void> {
+    // Only delete expired or already used tokens to preserve valid ones
+    const now = new Date();
     await db
       .delete(passwordResetTokens)
-      .where(eq(passwordResetTokens.userId, userId));
+      .where(and(
+        eq(passwordResetTokens.userId, userId),
+        or(
+          lte(passwordResetTokens.expiresAt, now),
+          isNotNull(passwordResetTokens.usedAt)
+        )
+      ));
   }
 
   async deleteExpiredResetTokens(): Promise<number> {

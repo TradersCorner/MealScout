@@ -2345,6 +2345,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(503).json({ error: { message: 'Payment processing is not configured' } });
     }
 
+    // Check for TEST1 promo code (charges $1 for testing)
+    if (promoCode.toUpperCase() === 'TEST1') {
+      if (!user.email) {
+        return res.status(400).json({ error: { message: 'No user email on file' } });
+      }
+
+      try {
+        let customerId = user.stripeCustomerId;
+        
+        if (!customerId) {
+          const customer = await stripe.customers.create({
+            email: user.email,
+            name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email,
+          });
+          customerId = customer.id;
+        }
+
+        const testProductName = `MealScout Test Plan - $1 Test`;
+
+        const product = await stripe.products.create({
+          name: testProductName,
+          metadata: {
+            type: 'test',
+            interval: interval
+          }
+        });
+
+        const subscription = await stripe.subscriptions.create({
+          customer: customerId,
+          items: [{
+            price_data: {
+              currency: 'usd',
+              product: product.id,
+              unit_amount: 100, // $1.00 in cents
+              recurring: {
+                interval: 'month',
+                interval_count: 1,
+              },
+            },
+          }],
+          payment_behavior: 'default_incomplete',
+          payment_settings: { 
+            save_default_payment_method: 'on_subscription'
+          },
+          expand: ['latest_invoice.payment_intent'],
+        });
+
+        await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `standard-${interval}`);
+    
+        const latestInvoice = subscription.latest_invoice;
+        const paymentIntent = typeof latestInvoice === 'object' && latestInvoice ? (latestInvoice as any).payment_intent : null;
+        
+        return res.send({
+          status: 'requires_payment',
+          subscriptionId: subscription.id,
+          clientSecret: typeof paymentIntent === 'object' && paymentIntent ? paymentIntent.client_secret : null,
+          intentType: 'payment',
+          testPricing: true,
+          message: "Test pricing applied - $1 charge"
+        });
+      } catch (error: any) {
+        console.error("Error creating test subscription:", error);
+        return res.status(400).send({ error: { message: error.message } });
+      }
+    }
+
     if (!user.email) {
       return res.status(400).json({ error: { message: 'No user email on file' } });
     }

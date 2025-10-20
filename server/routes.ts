@@ -19,7 +19,8 @@ const stripe = process.env.STRIPE_SECRET_KEY
   : null;
 
 // Beta mode flag - when enabled, all users get free access to all features
-const BETA_MODE = process.env.BETA_MODE === 'true';
+// Defaults to true - set BETA_MODE=false to disable
+const BETA_MODE = process.env.BETA_MODE !== 'false';
 
 // Production safety check: warn if beta mode is enabled in production
 if (process.env.NODE_ENV === 'production' && BETA_MODE) {

@@ -2846,9 +2846,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user;
       console.log(`[SUBSCRIPTION DEBUG] Checking subscription for user ${user.id}`);
+      console.log(`[SUBSCRIPTION DEBUG] User billing interval: ${user.subscriptionBillingInterval}`);
+      console.log(`[SUBSCRIPTION DEBUG] User Stripe subscription ID: ${user.stripeSubscriptionId}`);
+      
+      // Check for BETA users (have billing interval but no Stripe subscription)
+      if (!user.stripeSubscriptionId && user.subscriptionBillingInterval) {
+        console.log(`[SUBSCRIPTION DEBUG] User ${user.id} is a BETA user with free access`);
+        return res.json({ 
+          status: 'active',
+          betaAccess: true,
+          message: 'BETA user with free access'
+        });
+      }
       
       if (!user.stripeSubscriptionId) {
-        console.log(`[SUBSCRIPTION DEBUG] User ${user.id} has no Stripe subscription ID`);
+        console.log(`[SUBSCRIPTION DEBUG] User ${user.id} has no Stripe subscription ID and no billing interval`);
         return res.json({ status: 'none' });
       }
 

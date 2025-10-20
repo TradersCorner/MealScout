@@ -1797,7 +1797,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { q: query, lat, lng, radius = 10 } = req.query;
 
+      console.log('🔍 Restaurant search request:', { query, lat, lng, radius });
+
       if (!query || typeof query !== 'string' || query.length < 2) {
+        console.log('⚠️  Empty or short query, returning empty array');
         return res.json([]);
       }
 

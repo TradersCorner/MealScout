@@ -91,7 +91,24 @@ export default function SearchPage() {
     enabled: !userLocation && !isLocating,
   });
 
-  const isLoading = nearbyLoading || featuredLoading;
+  // Search for restaurants when there's a search query
+  const { data: searchedRestaurants, isLoading: restaurantsLoading } = useQuery({
+    queryKey: ["/api/restaurants/search", searchQuery, userLocation],
+    queryFn: async () => {
+      if (!searchQuery || searchQuery.length < 2) return [];
+      const params = new URLSearchParams({ q: searchQuery });
+      if (userLocation) {
+        params.append('lat', userLocation.lat.toString());
+        params.append('lng', userLocation.lng.toString());
+      }
+      const response = await fetch(`/api/restaurants/search?${params}`);
+      if (!response.ok) throw new Error('Failed to search restaurants');
+      return response.json();
+    },
+    enabled: searchQuery.length >= 2,
+  });
+
+  const isLoading = nearbyLoading || featuredLoading || restaurantsLoading;
 
   // Function to map cuisine types and titles to category IDs
   const mapDealToCategory = (deal: any): string[] => {
@@ -324,9 +341,57 @@ export default function SearchPage() {
 
       {/* Results */}
       <div className="px-6 py-6">
+        {/* Restaurants Section (when searching) */}
+        {searchQuery && searchedRestaurants && searchedRestaurants.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Restaurants</h2>
+              <span className="text-sm text-muted-foreground">
+                {searchedRestaurants.length} found
+              </span>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+              {searchedRestaurants.map((restaurant: any) => (
+                <Link 
+                  key={restaurant.id} 
+                  href={`/restaurant/${restaurant.id}`}
+                  data-testid={`card-restaurant-${restaurant.id}`}
+                >
+                  <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-foreground mb-1" data-testid={`text-restaurant-name-${restaurant.id}`}>
+                            {restaurant.name}
+                          </h3>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            {restaurant.cuisineType}
+                          </p>
+                          {restaurant.address && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {restaurant.address}
+                            </p>
+                          )}
+                        </div>
+                        {restaurant.isVerified && (
+                          <div className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
+                            Verified
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Deals Section */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-foreground">
-            {searchQuery ? `Results for "${searchQuery}"` : "Popular Deals"}
+            {searchQuery ? `Deals for "${searchQuery}"` : "Popular Deals"}
           </h2>
           <span className="text-sm text-muted-foreground">
             {filteredDeals.length} deals found
@@ -356,9 +421,15 @@ export default function SearchPage() {
             <div className="w-20 h-20 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Search className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h3 className="font-bold text-lg text-foreground mb-2">No deals found</h3>
+            <h3 className="font-bold text-lg text-foreground mb-2">
+              {searchQuery && searchedRestaurants && searchedRestaurants.length > 0 
+                ? "No deals found, but restaurants are listed above"
+                : "No deals found"}
+            </h3>
             <p className="text-muted-foreground">
-              Try adjusting your search or browse all deals
+              {searchQuery && searchedRestaurants && searchedRestaurants.length > 0
+                ? "Check out the restaurants above to see when they post new deals"
+                : "Try adjusting your search or browse all deals"}
             </p>
             <Button 
               onClick={() => {setSearchQuery(""); setSelectedCategory("all");}} 

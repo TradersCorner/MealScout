@@ -137,17 +137,17 @@ export default function RestaurantOwnerDashboard() {
   // Fetch advanced analytics
   const { data: analyticsSummary, isLoading: loadingAnalytics } = useQuery({
     queryKey: ['/api/restaurants', selectedRestaurant, 'analytics/summary', analyticsDateRange],
-    enabled: !!selectedRestaurant,
+    enabled: !!selectedRestaurant && (subscription?.hasAccess ?? false),
   });
 
   const { data: analyticsTimeseries } = useQuery({
     queryKey: ['/api/restaurants', selectedRestaurant, 'analytics/timeseries', analyticsDateRange],
-    enabled: !!selectedRestaurant,
+    enabled: !!selectedRestaurant && (subscription?.hasAccess ?? false),
   });
 
   const { data: customerInsights } = useQuery({
     queryKey: ['/api/restaurants', selectedRestaurant, 'analytics/customers', analyticsDateRange],
-    enabled: !!selectedRestaurant,
+    enabled: !!selectedRestaurant && (subscription?.hasAccess ?? false),
   });
 
   const { data: comparison } = useQuery({
@@ -161,7 +161,7 @@ export default function RestaurantOwnerDashboard() {
       
       return apiRequest('GET', `/api/restaurants/${selectedRestaurant}/analytics/compare?currentStart=${currentStart.toISOString()}&currentEnd=${currentEnd.toISOString()}&previousStart=${previousStart.toISOString()}&previousEnd=${previousEnd.toISOString()}`);
     },
-    enabled: !!selectedRestaurant,
+    enabled: !!selectedRestaurant && (subscription?.hasAccess ?? false),
   });
 
   // Calculate distance between two GPS coordinates
@@ -1049,18 +1049,20 @@ export default function RestaurantOwnerDashboard() {
                         data-testid="input-analytics-end-date"
                       />
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const url = `/api/restaurants/${selectedRestaurant}/analytics/export?startDate=${analyticsDateRange.start}&endDate=${analyticsDateRange.end}&format=csv`;
-                        window.open(url, '_blank');
-                      }}
-                      data-testid="button-export-analytics"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Export CSV
-                    </Button>
+                    {subscription?.hasAccess && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const url = `/api/restaurants/${selectedRestaurant}/analytics/export?startDate=${analyticsDateRange.start}&endDate=${analyticsDateRange.end}&format=csv`;
+                          window.open(url, '_blank');
+                        }}
+                        data-testid="button-export-analytics"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Export CSV
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardHeader>

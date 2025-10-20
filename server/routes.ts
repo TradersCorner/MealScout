@@ -2128,6 +2128,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all active deals for the authenticated restaurant owner's restaurants
+  app.get('/api/deals/my-active', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      
+      // Get all restaurants owned by this user
+      const restaurants = await storage.getRestaurantsByOwner(userId);
+      
+      // Get all active deals for all restaurants
+      const allDeals = await Promise.all(
+        restaurants.map(async (restaurant) => {
+          const deals = await storage.getDealsByRestaurant(restaurant.id);
+          return deals.filter(deal => deal.isActive);
+        })
+      );
+      
+      // Flatten the array of arrays into a single array
+      const activeDeals = allDeals.flat();
+      
+      res.json(activeDeals);
+    } catch (error) {
+      console.error("Error fetching my active deals:", error);
+      res.status(500).json({ message: "Failed to fetch active deals" });
+    }
+  });
+
   app.get('/api/deals/featured', async (req, res) => {
     try {
       // Support filtering: ?filter=limited-time for limited time deals only, or no filter for all deals

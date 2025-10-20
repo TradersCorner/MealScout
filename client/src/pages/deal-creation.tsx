@@ -52,10 +52,13 @@ export default function DealCreation() {
   });
 
   // Fetch subscription status for deal limits
-  const { data: subscription } = useQuery({
+  const { data: subscription, isLoading: isSubscriptionLoading } = useQuery({
     queryKey: ["/api/subscription/status"],
     enabled: isAuthenticated,
   });
+
+  console.log('Deal Creation - Subscription Data:', subscription);
+  console.log('Deal Creation - Is Subscription Loading:', isSubscriptionLoading);
 
   // Fetch current deal count for limits
   const { data: currentDeals } = useQuery({
@@ -234,8 +237,18 @@ export default function DealCreation() {
     );
   }
 
+  // Show loading while checking subscription
+  if (isSubscriptionLoading) {
+    return (
+      <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
   // Check subscription status - redirect to subscribe page if needed
   if (subscription && (subscription as any).status !== 'active') {
+    console.log('Blocking due to subscription status:', (subscription as any).status);
     return (
       <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
         <Card>

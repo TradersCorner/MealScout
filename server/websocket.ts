@@ -164,17 +164,26 @@ export function setupWebSocketServer(httpServer: Server): SocketIOServer {
 
       // Handle unsubscribe
       socket.on("unsubscribe", (data: { room?: string }) => {
-        const userSubs = userSubscriptions.get(userKey);
-        if (data.room && userSubs?.has(data.room)) {
-          socket.leave(data.room);
-          userSubs.delete(data.room);
-          socket.emit("unsubscribed", { room: data.room });
+        try {
+          const userSubs = userSubscriptions.get(userKey);
+          if (data.room && userSubs?.has(data.room)) {
+            socket.leave(data.room);
+            userSubs.delete(data.room);
+            socket.emit("unsubscribed", { room: data.room });
+          }
+        } catch (error) {
+          console.error("Error handling unsubscribe:", error);
+          socket.emit("error", { message: "Failed to unsubscribe" });
         }
       });
 
       // Handle ping for connection keepalive
       socket.on("ping", () => {
-        socket.emit("pong", {});
+        try {
+          socket.emit("pong", {});
+        } catch (error) {
+          console.error("Error handling ping:", error);
+        }
       });
 
       // Handle disconnect

@@ -93,14 +93,11 @@ export default function SearchPage() {
 
   // Search for restaurants when there's a search query
   const { data: searchedRestaurants, isLoading: restaurantsLoading } = useQuery({
-    queryKey: ["/api/restaurants/search", searchQuery, userLocation],
+    queryKey: ["/api/restaurants/search", searchQuery],
     queryFn: async () => {
       if (!searchQuery || searchQuery.length < 2) return [];
       const params = new URLSearchParams({ q: searchQuery });
-      if (userLocation) {
-        params.append('lat', userLocation.lat.toString());
-        params.append('lng', userLocation.lng.toString());
-      }
+      // Don't filter by location when searching by text - show all matching restaurants
       const response = await fetch(`/api/restaurants/search?${params}`);
       if (!response.ok) throw new Error('Failed to search restaurants');
       return response.json();

@@ -90,7 +90,7 @@ export default function RestaurantDetailPage() {
     },
     "telephone": (restaurant as any)?.phone || "",
     "servesCuisine": cuisineType,
-    "url": `https://mealscout.replit.app/restaurants/${restaurantId}`,
+    "url": `https://mealscout.us/restaurants/${restaurantId}`,
     ...(currentRating > 0 && reviewCount > 0 ? {
       "aggregateRating": {
         "@type": "AggregateRating",
@@ -106,7 +106,7 @@ export default function RestaurantDetailPage() {
         title={`${restaurantName} - ${cuisineType} Restaurant | MealScout`}
         description={description}
         keywords={`${restaurantName}, ${cuisineType} restaurant, restaurant deals, ${address}, food discounts`}
-        canonicalUrl={`https://mealscout.replit.app/restaurants/${restaurantId}`}
+        canonicalUrl={`https://mealscout.us/restaurants/${restaurantId}`}
         schemaData={localBusinessSchema}
       />
       <BackHeader

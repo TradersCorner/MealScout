@@ -84,7 +84,7 @@ export default function Login() {
         title="Login - MealScout | Access Your Account"
         description="Log in to MealScout to discover exclusive food deals, save your favorite restaurants, and track your claimed deals. Join thousands of users finding amazing dining discounts."
         keywords="login, sign in, mealscout account, food deals login, restaurant deals access"
-        canonicalUrl="https://mealscout.replit.app/login"
+        canonicalUrl="https://mealscout.us/login"
         noIndex={true}
       />
       <BackHeader

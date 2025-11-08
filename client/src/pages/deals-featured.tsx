@@ -20,7 +20,7 @@ export default function FeaturedDealsPage() {
         title="Featured Deals - MealScout | Hot Food Deals Near You"
         description="Discover the best featured food deals from top local restaurants. Save big on your favorite meals with exclusive discounts, limited-time offers, and special promotions."
         keywords="featured deals, hot deals, restaurant discounts, food promotions, exclusive offers, limited time deals"
-        canonicalUrl="https://mealscout.replit.app/deals/featured"
+        canonicalUrl="https://mealscout.us/deals/featured"
       />
       {/* Header */}
       <header className="px-6 py-6 bg-white border-b border-border">

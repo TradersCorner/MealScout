@@ -137,7 +137,7 @@ export default function UserDashboard() {
         title="My Dashboard - MealScout | Track Your Deals & Savings"
         description="View your personal dashboard with deal history, savings tracker, favorite restaurants, and personalized recommendations. Track your food deal journey on MealScout."
         keywords="user dashboard, my deals, savings tracker, deal history, favorite restaurants"
-        canonicalUrl="https://mealscout.replit.app/user-dashboard"
+        canonicalUrl="https://mealscout.us/user-dashboard"
         noIndex={true}
       />
       {/* Header */}

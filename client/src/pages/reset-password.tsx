@@ -188,7 +188,7 @@ export default function ResetPassword() {
         title="Reset Password - MealScout | Create New Password"
         description="Create a new password for your MealScout account. Choose a strong, secure password to protect your account and access exclusive food deals."
         keywords="reset password, new password, password change, account security"
-        canonicalUrl="https://mealscout.replit.app/reset-password"
+        canonicalUrl="https://mealscout.us/reset-password"
         noIndex={true}
       />
       <BackHeader

@@ -109,7 +109,7 @@ export default function ForgotPassword() {
         title="Forgot Password - MealScout | Reset Your Password"
         description="Reset your MealScout password. Enter your email address and we'll send you a secure link to create a new password and regain access to your account."
         keywords="forgot password, reset password, password recovery, account recovery"
-        canonicalUrl="https://mealscout.replit.app/forgot-password"
+        canonicalUrl="https://mealscout.us/forgot-password"
         noIndex={true}
       />
       <BackHeader

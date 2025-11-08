@@ -14,7 +14,7 @@ export default function FavoritesPage() {
   const { user } = useAuth();
 
   // Fetch user's restaurant favorites
-  const { data: restaurantFavorites = [], isLoading: loadingFavorites } = useQuery({
+  const { data: restaurantFavorites = [], isLoading: loadingFavorites } = useQuery<any[]>({
     queryKey: ["/api/favorites/restaurants"],
     enabled: !!user,
   });
@@ -34,7 +34,7 @@ export default function FavoritesPage() {
         title="My Favorites - MealScout | Saved Deals & Restaurants"
         description="View your saved favorite restaurants and deals. Quick access to the food deals you love most. Never lose track of great dining discounts."
         keywords="favorites, saved deals, favorite restaurants, saved restaurants, bookmarked deals"
-        canonicalUrl="https://mealscout.replit.app/favorites"
+        canonicalUrl="https://mealscout.us/favorites"
         noIndex={true}
       />
       <BackHeader

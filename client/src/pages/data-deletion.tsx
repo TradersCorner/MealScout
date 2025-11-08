@@ -11,7 +11,7 @@ export default function DataDeletion() {
         title="Data Deletion - MealScout | Delete Your Account & Data"
         description="Learn how to request deletion of your personal data from MealScout. Step-by-step instructions for account deletion and data removal in compliance with privacy regulations."
         keywords="data deletion, account deletion, delete account, remove data, privacy rights"
-        canonicalUrl="https://mealscout.replit.app/data-deletion"
+        canonicalUrl="https://mealscout.us/data-deletion"
       />
       <BackHeader
         title="Data Deletion Instructions"

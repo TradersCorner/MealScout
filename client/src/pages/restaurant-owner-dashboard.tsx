@@ -758,7 +758,7 @@ export default function RestaurantOwnerDashboard() {
         title="Restaurant Dashboard - MealScout | Manage Your Deals"
         description="Manage your restaurant deals, view analytics, track performance, and engage with customers. Access insights on deal claims, views, conversion rates, and customer feedback."
         keywords="restaurant dashboard, manage deals, restaurant analytics, deal performance, customer insights"
-        canonicalUrl="https://mealscout.replit.app/restaurant-owner-dashboard"
+        canonicalUrl="https://mealscout.us/restaurant-owner-dashboard"
         noIndex={true}
       />
       {/* Header with Back Button */}

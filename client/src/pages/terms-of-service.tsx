@@ -10,7 +10,7 @@ export default function TermsOfService() {
         title="Terms of Service - MealScout | User Agreement"
         description="Read MealScout's Terms of Service. Understand the rules, regulations, and user agreement for using our food deals platform. Last updated January 2025."
         keywords="terms of service, user agreement, terms and conditions, legal terms, platform rules"
-        canonicalUrl="https://mealscout.replit.app/terms-of-service"
+        canonicalUrl="https://mealscout.us/terms-of-service"
       />
       <BackHeader
         title="Terms of Service"

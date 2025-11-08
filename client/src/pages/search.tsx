@@ -221,7 +221,7 @@ export default function SearchPage() {
         title={`${searchTitle} | MealScout`}
         description={searchDescription}
         keywords={`search food deals, find restaurants, ${searchQuery || 'food search'}, restaurant search, deal finder`}
-        canonicalUrl="https://mealscout.replit.app/search"
+        canonicalUrl="https://mealscout.us/search"
       />
       {/* Header */}
       <header className="px-6 py-6 bg-white border-b border-border">

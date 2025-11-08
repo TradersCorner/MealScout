@@ -174,7 +174,7 @@ export default function DealDetail() {
     "@type": "Offer",
     "name": dealTitle,
     "description": dealDescription,
-    "url": `https://mealscout.replit.app/deals/${dealId}`,
+    "url": `https://mealscout.us/deals/${dealId}`,
     "priceCurrency": "USD",
     "price": dealType === 'percentage' ? '0' : discountValue,
     "discount": dealType === 'percentage' ? `${discountValue}%` : `$${discountValue}`,
@@ -194,7 +194,7 @@ export default function DealDetail() {
         title={`${dealTitle} - ${restaurantName} | MealScout`}
         description={`${dealDescription}. ${dealType === 'percentage' ? `Get ${discountValue}% off` : `Save $${discountValue}`} at ${restaurantName}. Claim this exclusive deal now on MealScout!`}
         keywords={`${restaurantName}, ${dealTitle}, food deal, restaurant discount, ${(restaurant as Restaurant)?.cuisineType || 'food'}`}
-        canonicalUrl={`https://mealscout.replit.app/deals/${dealId}`}
+        canonicalUrl={`https://mealscout.us/deals/${dealId}`}
         schemaData={offerSchema}
       />
       <BackHeader

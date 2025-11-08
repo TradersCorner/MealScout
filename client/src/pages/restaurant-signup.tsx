@@ -769,7 +769,7 @@ export default function RestaurantSignup() {
         title="Restaurant Sign Up - MealScout | Grow Your Business"
         description="Join MealScout and reach more customers with targeted local deals. Restaurant owners can create promotional deals, attract new diners, and boost sales. Sign up for free today!"
         keywords="restaurant signup, business registration, restaurant promotions, attract customers, boost restaurant sales, local marketing"
-        canonicalUrl="https://mealscout.replit.app/restaurant-signup"
+        canonicalUrl="https://mealscout.us/restaurant-signup"
       />
       <BackHeader
         title="Restaurant Registration"

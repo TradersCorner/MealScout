@@ -208,7 +208,7 @@ export default function MapPage() {
         title="Map View - MealScout | Find Deals Near You"
         description="Explore food deals on an interactive map. See nearby restaurants, view deal locations, and discover dining discounts in your area. Find the perfect meal deal near you!"
         keywords="map view, nearby deals, restaurant map, food deals location, nearby restaurants, local deals map"
-        canonicalUrl="https://mealscout.replit.app/map"
+        canonicalUrl="https://mealscout.us/map"
       />
       {/* Header */}
       <header className="px-6 py-6 bg-white border-b border-border relative z-10">

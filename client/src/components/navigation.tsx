@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Search, Heart, Receipt, User, MapPin, Store, Plus, BarChart3 } from "lucide-react";
+import { Home, Search, Heart, Receipt, User, MapPin, Store, Plus, BarChart3, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function Navigation() {
@@ -17,6 +17,13 @@ export default function Navigation() {
     { path: "/profile", icon: User, label: "Profile" },
   ];
 
+  const unauthenticatedNavItems = [
+    { path: "/", icon: Home, label: "Home" },
+    { path: "/search", icon: Search, label: "Search" },
+    { path: "/map", icon: MapPin, label: "Map" },
+    { path: "/customer-signup", icon: UserPlus, label: "Create Account" },
+  ];
+
   const restaurantOwnerNavItems = [
     { path: "/", icon: Home, label: "Home" },
     { path: "/restaurant-owner-dashboard", icon: Store, label: "Dashboard" },
@@ -25,7 +32,11 @@ export default function Navigation() {
     { path: "/profile", icon: User, label: "Profile" },
   ];
 
-  const navItems = isRestaurantOwner ? restaurantOwnerNavItems : customerNavItems;
+  const navItems = !user 
+    ? unauthenticatedNavItems 
+    : isRestaurantOwner 
+      ? restaurantOwnerNavItems 
+      : customerNavItems;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 w-full bg-white border-t border-gray-200 px-4 py-2 z-50 shadow-lg">

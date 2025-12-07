@@ -95,7 +95,7 @@ if (process.env.NODE_ENV === "production") {
   }));
 }
 
-// CSP for development - safer but allows external geocoding APIs
+// CSP for development - permissive to allow Vite HMR and inline scripts
 if (process.env.NODE_ENV !== "production") {
   app.use((req, res, next) => {
     if (req.path.startsWith('/api/')) {
@@ -103,17 +103,18 @@ if (process.env.NODE_ENV !== "production") {
     }
     res.setHeader(
       'Content-Security-Policy', 
-      "default-src 'self' data: https:; " +
+      "default-src 'self' data: https: http: blob:; " +
       "style-src 'self' 'unsafe-inline' https:; " +
-      "script-src 'self' https:; " +
-      "connect-src 'self' https: wss: ws: " +
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http:; " +
+      "connect-src 'self' https: http: wss: ws: " +
       "https://geocoding.census.gov " +
       "https://api.zippopotam.us " +
       "https://api.bigdatacloud.net " +
       "https://nominatim.openstreetmap.org " +
       "https://ipapi.co; " +
-      "img-src 'self' data: https: " +
-      "font-src 'self' https: data:"
+      "img-src 'self' data: https: blob:; " +
+      "font-src 'self' https: data:; " +
+      "worker-src 'self' blob:;"
     );
     next();
   });
@@ -700,14 +701,13 @@ app.use((req, res, next) => {
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
+  // Other ports are firewalled. Default to 5001 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
+  const port = parseInt(process.env.PORT || '5001', 10);
   server.listen({
     port,
     host: "0.0.0.0",
-    reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
     

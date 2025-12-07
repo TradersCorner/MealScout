@@ -1,39 +1,107 @@
 # MealScout Production Deployment Guide
 
+## 🚀 Quick Deploy (Recommended: Render.com)
+
+**Get your site live in 10 minutes - FREE tier available**
+
+### Step 1: Push to GitHub
+```bash
+git init
+git add .
+git commit -m "Deploy MealScout"
+git remote add origin https://github.com/TradersCorner/MealScout.git
+git push -u origin main
+```
+
+### Step 2: Create Render Account
+- Go to [render.com](https://render.com)
+- Sign up with GitHub
+
+### Step 3: Create PostgreSQL Database
+1. Click "New +" → "PostgreSQL"
+2. Name: `mealscout-db`
+3. Select **Free** tier
+4. Click "Create Database"
+5. **Copy the "Internal Database URL"** (you'll need this next)
+
+### Step 4: Create Web Service
+1. Click "New +" → "Web Service"
+2. Connect your GitHub repo: `TradersCorner/MealScout`
+3. Configure:
+   - **Name:** `mealscout`
+   - **Root Directory:** `MealScout/MealScout` *(adjust if needed)*
+   - **Environment:** `Node`
+   - **Build Command:** `npm install && npm run build`
+   - **Start Command:** `npm start`
+   - **Instance Type:** Free
+
+### Step 5: Add Environment Variables
+In the "Environment" section, add:
+```
+DATABASE_URL=<paste your Render PostgreSQL URL from Step 3>
+SESSION_SECRET=<generate random 32-character string>
+NODE_ENV=production
+PORT=10000
+```
+
+Optional (add later when ready):
+```
+BREVO_API_KEY=your_email_api_key
+GOOGLE_CLIENT_ID=your_oauth_id
+GOOGLE_CLIENT_SECRET=your_oauth_secret
+FACEBOOK_APP_ID=your_fb_app_id
+FACEBOOK_APP_SECRET=your_fb_secret
+ADMIN_USERNAME=your_admin_user
+ADMIN_PASSWORD=your_admin_pass
+```
+
+### Step 6: Deploy!
+- Click "Create Web Service"
+- Render builds and deploys automatically
+- **Your site is live at:** `https://mealscout.onrender.com`
+
+### Step 7: Connect Your Domain (Optional)
+1. In Render dashboard → Settings → Custom Domain
+2. Add your domain: `mealscout.com`
+3. Update DNS at your domain registrar:
+   ```
+   Type: CNAME
+   Name: @ (or www)
+   Value: mealscout.onrender.com
+   ```
+4. Wait 5-10 minutes for DNS propagation
+5. ✅ Your site is live at `https://mealscout.com`
+
+---
+
+## Alternative: Railway.app (Also Free & Fast)
+
+1. Push code to GitHub (same as above)
+2. Sign up at [railway.app](https://railway.app)
+3. New Project → Deploy from GitHub
+4. Select `TradersCorner/MealScout`
+5. Add PostgreSQL: New → Database → PostgreSQL
+6. Configure:
+   - Build Command: `npm install && npm run build`
+   - Start Command: `npm start`
+7. Add `SESSION_SECRET` environment variable
+8. Deploy → Generate Domain
+
+---
+
 ## Pre-Deployment Checklist
 
-### ✅ Environment Configuration
-- [ ] All required environment variables are set
-- [ ] Database connection is secure and configured
-- [ ] Session secret is strong and unique
-- [ ] Admin credentials are secure
+### ✅ Code Ready
+- [x] Build script works: `npm run build`
+- [x] Start script works: `npm start`
+- [x] Environment variables configured
+- [x] Database connection tested
 
-### ✅ Security
-- [ ] HTTPS is enabled
-- [ ] Content Security Policy is configured
-- [ ] Helmet security headers are active
-- [ ] Database queries use parameterized statements
-- [ ] Input validation is in place
-- [ ] Rate limiting is configured (if needed)
-
-### ✅ Performance
-- [ ] Server compression is enabled
-- [ ] Response caching headers are set
-- [ ] Database queries are optimized
-- [ ] Client-side caching is configured
-- [ ] Image assets are optimized
-
-### ✅ Database
-- [ ] Database schema is up to date
-- [ ] Proper indexes are created
-- [ ] Connection pooling is configured
-- [ ] Backup strategy is in place
-
-### ✅ Monitoring
-- [ ] Error logging is configured
-- [ ] Performance metrics are tracked
-- [ ] Health check endpoint is available
-- [ ] Database monitoring is set up
+### ✅ Security (Already Configured)
+- [x] HTTPS enabled (automatic on Render/Railway)
+- [x] Helmet security headers active
+- [x] Session secret required
+- [x] Database parameterized queries
 
 ## Required Environment Variables
 

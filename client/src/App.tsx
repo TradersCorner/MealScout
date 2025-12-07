@@ -27,6 +27,8 @@ import AdminControlCenter from "@/pages/AdminControlCenter";
 import AdminSupportTickets from "@/pages/AdminSupportTickets";
 import AdminModerationEvents from "@/pages/AdminModerationEvents";
 import AdminAuditLogs from "@/pages/AdminAuditLogs";
+import AffiliateEarnings from "@/pages/AffiliateEarnings";
+import EmptyCountyExperience from "@/pages/EmptyCountyExperience";
 import CategoryPage from "@/pages/category";
 import FeaturedDealsPage from "@/pages/deals-featured";
 import RestaurantDetail from "@/pages/restaurant-detail";
@@ -75,7 +77,8 @@ function Router() {
     <Switch>
       {!isAuthenticated ? (
         <>
-          <Route path="/" component={Landing} />
+          <Route path="/" component={Home} />
+          <Route path="/welcome" component={Landing} />
           <Route path="/login" component={Login} />
           <Route path="/customer-signup" component={CustomerSignup} />
           <Route path="/restaurant-signup" component={RestaurantSignup} />
@@ -120,6 +123,7 @@ function Router() {
           <Route path="/favorites" component={Favorites} />
           <Route path="/orders" component={Orders} />
           <Route path="/profile" component={Profile} />
+          <Route path="/affiliate/earnings" component={AffiliateEarnings} />
           <Route path="/admin" component={AdminLogin} />
           <Route path="/admin/dashboard" component={AdminDashboard} />
           <Route path="/admin/incidents" component={AdminIncidents} />

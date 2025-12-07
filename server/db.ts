@@ -5,11 +5,20 @@ import * as schema from "@shared/schema";
 
 neonConfig.webSocketConstructor = ws;
 
+// Allow development to boot without a DATABASE_URL; server will run in limited mode
 if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+  if (process.env.NODE_ENV === 'development') {
+    console.warn("[DB] Warning: DATABASE_URL is not set. Running in limited dev mode without DB.");
+  } else {
+    throw new Error(
+      "DATABASE_URL must be set. Did you forget to provision a database?",
+    );
+  }
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
+export const pool = process.env.DATABASE_URL
+  ? new Pool({ connectionString: process.env.DATABASE_URL })
+  : undefined as unknown as Pool;
+export const db = process.env.DATABASE_URL
+  ? drizzle({ client: pool as Pool, schema })
+  : undefined as unknown as ReturnType<typeof drizzle>;

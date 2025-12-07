@@ -683,7 +683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { email } = schema.parse(req.body);
       
-      // Check if user exists
+      // Look up user by email (do this once upfront)
       const user = await storage.getUserByEmail(email);
       
       // Rate limiting by user ID for security
@@ -709,9 +709,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "If an account with that email exists, a password reset link has been sent." 
         });
       }
-      
-      // Look up user by email
-      const user = await storage.getUserByEmail(email);
       
       if (user && user.passwordHash) {
         // Only allow password reset for users with email/password authentication
@@ -1821,6 +1818,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...validatedRestaurantData,
         ownerId: user.id,
       });
+
+      // PHASE 2: Attach referral if present in request
+      const referralId = req.body.referralId || req.query.referralId || req.cookies.referralId;
+      if (referralId) {
+        try {
+          const { attachReferralToSignup } = await import('./referralService');
+          await attachReferralToSignup(referralId, restaurant.id);
+          console.log('[Phase 2] Referral attached:', { referralId, restaurantId: restaurant.id });
+        } catch (err) {
+          console.error('[Phase 2] Error attaching referral:', err);
+          // Don't fail signup if referral attachment fails
+        }
+      }
       
       res.json({
         user,
@@ -3100,6 +3110,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Find user by subscription ID (more reliable than customer ID)
               const user = await storage.getUserByStripeSubscriptionId(subscription.id);
               
+              // PHASE 3: Process affiliate commissions when restaurant pays
+              if (user && user.userType === 'restaurant_owner') {
+                try {
+                  // Find restaurant owned by this user
+                  const ownedRestaurants = await storage.getRestaurantsByOwner(user.id);
+                  if (ownedRestaurants.length > 0) {
+                    const { createCommissionForRestaurantPayment } = await import('./referralService');
+                    for (const restaurant of ownedRestaurants) {
+                      // Create commission for this restaurant payment
+                      await createCommissionForRestaurantPayment(
+                        restaurant.id,
+                        invoice.total, // Total in cents
+                        invoice.id,
+                      );
+                    }
+                  }
+                } catch (commissionError) {
+                  console.error('[WEBHOOK] Error processing affiliate commissions:', commissionError);
+                  // Don't fail the webhook if commission processing fails
+                }
+              }
+              
               if (user) {
                 console.log(`[WEBHOOK] Found user ${user.id} (${user.email}) - ensuring subscription is active`);
                 
@@ -3831,6 +3863,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register admin control center routes (admin-only)
   const adminRoutes = (await import('./adminRoutes')).default;
   app.use('/api/admin', adminRoutes);
+
+  // Register affiliate system routes
+  const affiliateRoutes = (await import('./affiliateRoutes')).default;
+  app.use('/api/affiliate', affiliateRoutes);
+
+  // Register payout preferences routes
+  const setupPayoutRoutes = (await import('./payoutRoutes')).default;
+  setupPayoutRoutes(app);
+
+  // Register empty county experience routes (Phase 6)
+  const setupEmptyCountyRoutes = (await import('./emptyCountyRoutes')).default;
+  setupEmptyCountyRoutes(app);
+
+  // Register share link routes (Phase 7)
+  const setupShareRoutes = (await import('./shareRoutes')).default;
+  setupShareRoutes(app);
+
+  // Register user routes (balance, search)
+  const userRoutes = (await import('./userRoutes')).default;
+  app.use('/api/users', userRoutes);
+
+  // Register redemption routes (Phase R1)
+  const redemptionRoutes = (await import('./redemptionRoutes')).default;
+  app.use('/api/restaurants', redemptionRoutes);
+
+  // Add share middleware (Phase 7) - adds shareUrl helpers to all handlers
+  const { shareUrlMiddleware } = await import('./shareMiddleware');
+  app.use(shareUrlMiddleware);
 
   // Register cron/scheduler endpoints
   app.post('/api/cron/escalations', incidentRoutes.stack.find((layer: any) => 

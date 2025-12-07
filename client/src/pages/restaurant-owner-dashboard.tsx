@@ -24,6 +24,7 @@ import {
   Save, RotateCcw
 } from "lucide-react";
 import Navigation from "@/components/navigation";
+import RestaurantCreditRedemptionForm from "@/components/RestaurantCreditRedemptionForm";
 import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
 import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
@@ -871,6 +872,10 @@ export default function RestaurantOwnerDashboard() {
           <TabsTrigger value="inactive">Inactive Deals</TabsTrigger>
           <TabsTrigger value="claims">Claims</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="credits">
+            <CreditCard className="h-4 w-4 mr-1" />
+            MealScout Credits
+          </TabsTrigger>
           <TabsTrigger value="foodtruck" data-testid="tab-food-truck">
             <Truck className="h-4 w-4 mr-1" />
             Food Truck
@@ -1432,6 +1437,35 @@ export default function RestaurantOwnerDashboard() {
             </div>
           </div>
         </TabsContent>
+
+        {/* PHASE R1: MealScout Credits Redemption */}
+        <TabsContent value="credits" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Accept MealScout Credits
+              </CardTitle>
+              <CardDescription>
+                Accept MealScout credits from users as payment. Credits are settled weekly via Stripe.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          {selectedRestaurant && (
+            <RestaurantCreditRedemptionForm
+              restaurantId={selectedRestaurant}
+              onSuccess={(redemption) => {
+                toast({
+                  title: "Success",
+                  description: `Credit redeemed successfully! Redemption ID: ${redemption.redemption?.id}`,
+                });
+                // Optionally refresh data or update UI
+              }}
+            />
+          )}
+        </TabsContent>
+
         <TabsContent value="foodtruck" className="space-y-6">
           <Card>
             <CardHeader>

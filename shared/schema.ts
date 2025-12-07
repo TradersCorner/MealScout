@@ -830,11 +830,327 @@ export const moderationEvents = pgTable(
   ]
 );
 
+// Affiliate tracking for user-generated referrals
+export const affiliateLinks = pgTable(
+  'affiliate_links',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    affiliateUserId: varchar('affiliate_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    code: varchar('code').notNull().unique(), // Short unique code like "UX72A91"
+    resourceType: varchar('resource_type').notNull(), // 'deal' | 'restaurant' | 'page' | 'collection' | 'search'
+    resourceId: varchar('resource_id'), // Optional - the thing being shared
+    sourceUrl: text('source_url').notNull(), // Original URL they shared from
+    fullUrl: text('full_url').notNull(), // Full URL with ref param
+    clickCount: integer('click_count').default(0),
+    conversions: integer('conversions').default(0), // Number of signups attributed
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_affiliate_links_user').on(table.affiliateUserId),
+    index('idx_affiliate_links_code').on(table.code),
+    index('idx_affiliate_links_created').on(table.createdAt),
+  ]
+);
+
+// Track affiliate clicks and conversions
+export const affiliateClicks = pgTable(
+  'affiliate_clicks',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    affiliateLinkId: varchar('affiliate_link_id').notNull().references(() => affiliateLinks.id, { onDelete: 'cascade' }),
+    visitorIp: varchar('visitor_ip'),
+    visitorUserAgent: text('visitor_user_agent'),
+    referrerSource: varchar('referrer_source'), // 'organic' | 'direct' | 'referrer_url'
+    clickedAt: timestamp('clicked_at').defaultNow(),
+    convertedAt: timestamp('converted_at'), // Null until they signup
+    restaurantSignupId: varchar('restaurant_signup_id').references(() => users.id, { onDelete: 'set null' }),
+    sessionId: varchar('session_id'), // First-click attribution
+  },
+  (table) => [
+    index('idx_affiliate_clicks_link').on(table.affiliateLinkId),
+    index('idx_affiliate_clicks_session').on(table.sessionId),
+    index('idx_affiliate_clicks_created').on(table.clickedAt),
+  ]
+);
+
+// Commission tracking - monthly record of earnings
+export const affiliateCommissions = pgTable(
+  'affiliate_commissions',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    affiliateUserId: varchar('affiliate_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    restaurantUserId: varchar('restaurant_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    affiliateLinkId: varchar('affiliate_link_id').references(() => affiliateLinks.id, { onDelete: 'set null' }),
+    commissionAmount: decimal('commission_amount', { precision: 10, scale: 2 }).notNull(), // Dollar amount earned
+    commissionPercent: integer('commission_percent').notNull(), // e.g., 10 for 10%
+    basedOn: varchar('based_on').notNull(), // 'restaurant_subscription' | 'subscription_value'
+    subscriptionValue: decimal('subscription_value', { precision: 10, scale: 2 }), // What restaurant paid
+    billingCycle: varchar('billing_cycle').notNull(), // 'month' | '3-month' | 'year'
+    forMonth: varchar('for_month').notNull(), // YYYY-MM for which month this commission is for
+    status: varchar('status').notNull().default('pending'), // 'pending' | 'paid' | 'rejected'
+    paidAt: timestamp('paid_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_commissions_affiliate').on(table.affiliateUserId),
+    index('idx_commissions_restaurant').on(table.restaurantUserId),
+    index('idx_commissions_status').on(table.status),
+    index('idx_commissions_month').on(table.forMonth),
+  ]
+);
+
+// Affiliate wallet - tracks balance, credits, and cash outs
+export const affiliateWallet = pgTable(
+  'affiliate_wallet',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar('user_id').notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
+    totalEarned: decimal('total_earned', { precision: 12, scale: 2 }).default('0'),
+    availableBalance: decimal('available_balance', { precision: 12, scale: 2 }).default('0'),
+    pendingCommissions: decimal('pending_commissions', { precision: 12, scale: 2 }).default('0'),
+    totalWithdrawn: decimal('total_withdrawn', { precision: 12, scale: 2 }).default('0'),
+    totalSpent: decimal('total_spent', { precision: 12, scale: 2 }).default('0'),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_wallet_user').on(table.userId),
+  ]
+);
+
+// Withdrawal requests / Cash out requests
+export const affiliateWithdrawals = pgTable(
+  'affiliate_withdrawals',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+    method: varchar('method').notNull(), // 'bank_transfer' | 'paypal' | 'store_credit'
+    status: varchar('status').notNull().default('pending'), // 'pending' | 'processing' | 'completed' | 'failed'
+    methodDetails: jsonb('method_details'), // Bank account, PayPal email, etc
+    requestedAt: timestamp('requested_at').defaultNow(),
+    processedAt: timestamp('processed_at'),
+    notes: text('notes'),
+  },
+  (table) => [
+    index('idx_withdrawals_user').on(table.userId),
+    index('idx_withdrawals_status').on(table.status),
+    index('idx_withdrawals_created').on(table.requestedAt),
+  ]
+);
+
+// PHASE 1: Referral tracking - "who brought who"
+export const referrals = pgTable(
+  'referrals',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    affiliateUserId: varchar('affiliate_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    referredRestaurantId: varchar('referred_restaurant_id').references(() => restaurants.id, { onDelete: 'set null' }),
+    clickedAt: timestamp('clicked_at').notNull(),
+    signedUpAt: timestamp('signed_up_at'),
+    activatedAt: timestamp('activated_at'),
+    commissionEligibleAt: timestamp('commission_eligible_at'),
+    status: varchar('status').notNull().default('clicked'), // 'clicked' | 'signed_up' | 'activated' | 'paid'
+  },
+  (table) => [
+    index('idx_referrals_affiliate').on(table.affiliateUserId),
+    index('idx_referrals_restaurant').on(table.referredRestaurantId),
+    index('idx_referrals_status').on(table.status),
+    index('idx_referrals_clicked').on(table.clickedAt),
+  ]
+);
+
+// PHASE 1: Referral click tracking - records every click on an affiliate link
+export const referralClicks = pgTable(
+  'referral_clicks',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    affiliateUserId: varchar('affiliate_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    url: text('url').notNull(),
+    userAgent: text('user_agent'),
+    ip: varchar('ip'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_referral_clicks_affiliate').on(table.affiliateUserId),
+    index('idx_referral_clicks_created').on(table.createdAt),
+  ]
+);
+
+// PHASE 3: Commission ledger - tracks all commissions earned
+export const affiliateCommissionLedger = pgTable(
+  'affiliate_commission_ledger',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    affiliateUserId: varchar('affiliate_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    referralId: varchar('referral_id').references(() => referrals.id, { onDelete: 'set null' }),
+    restaurantId: varchar('restaurant_id').references(() => restaurants.id, { onDelete: 'set null' }),
+    amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+    commissionSource: varchar('commission_source').notNull(), // 'subscription_payment' | 'restaurant_signup' etc
+    stripeInvoiceId: varchar('stripe_invoice_id'), // For referencing the invoice that triggered this
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_commission_ledger_affiliate').on(table.affiliateUserId),
+    index('idx_commission_ledger_referral').on(table.referralId),
+    index('idx_commission_ledger_created').on(table.createdAt),
+  ]
+);
+
+// PHASE 4: Credit ledger - tracks user credits (balance never stored, derived from SUM)
+export const creditLedger = pgTable(
+  'credit_ledger',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    amount: decimal('amount', { precision: 10, scale: 2 }).notNull(), // Positive or negative
+    sourceType: varchar('source_type').notNull(), // 'commission' | 'redemption' | 'adjustment' etc
+    sourceId: varchar('source_id'), // ID of the commission, redemption, etc
+    redeemedAt: timestamp('redeemed_at'), // NULL if unused
+    redeemedFor: varchar('redeemed_for'), // 'restaurant' | 'cash_payout' etc when redeemed
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_credit_ledger_user').on(table.userId),
+    index('idx_credit_ledger_source').on(table.sourceType),
+    index('idx_credit_ledger_redeemed').on(table.redeemedAt),
+  ]
+);
+
+// PHASE 5: User payout preferences
+export const userPayoutPreferences = pgTable(
+  'user_payout_preferences',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar('user_id').notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
+    method: varchar('method').notNull().default('credit'), // 'cash' | 'credit'
+    stripeConnectedId: varchar('stripe_connected_id'), // For Stripe Connect payouts
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_payout_prefs_user').on(table.userId),
+  ]
+);
+
+// PHASE R1: Restaurant credit redemptions - tracks when users spend credits at restaurants
+export const restaurantCreditRedemptions = pgTable(
+  'restaurant_credit_redemptions',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    restaurantId: varchar('restaurant_id').notNull().references(() => restaurants.id, { onDelete: 'cascade' }),
+    userId: varchar('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    creditAmount: decimal('credit_amount', { precision: 10, scale: 2 }).notNull(),
+    orderReference: varchar('order_reference'), // Optional: "Order #12345" or similar
+    notes: text('notes'), // Optional: details about the redemption
+    redeemedAt: timestamp('redeemed_at').defaultNow(),
+    settlementStatus: varchar('settlement_status').notNull().default('pending'), // 'pending' | 'queued' | 'paid'
+    settlementBatchId: varchar('settlement_batch_id'), // Links to restaurantSettlementBatch
+    disputeUntil: timestamp('dispute_until').defaultNow(), // 7-day dispute window starts at creation
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_redemptions_restaurant').on(table.restaurantId),
+    index('idx_redemptions_user').on(table.userId),
+    index('idx_redemptions_status').on(table.settlementStatus),
+    index('idx_redemptions_batch').on(table.settlementBatchId),
+    index('idx_redemptions_created').on(table.createdAt),
+  ]
+);
+
+// PHASE R2 (preview): Restaurant settlement batches - groups redemptions for payout
+export const restaurantSettlementBatch = pgTable(
+  'restaurant_settlement_batch',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    batchId: varchar('batch_id').notNull().unique(), // Human-readable: "BATCH-2025-01-06-001"
+    periodStart: timestamp('period_start').notNull(),
+    periodEnd: timestamp('period_end').notNull(),
+    totalAmount: decimal('total_amount', { precision: 12, scale: 2 }).notNull(),
+    transactionCount: integer('transaction_count').notNull().default(0),
+    payoutDate: timestamp('payout_date'),
+    status: varchar('status').notNull().default('queued'), // 'queued' | 'processing' | 'paid'
+    stripePayoutId: varchar('stripe_payout_id'), // Stripe payout ID for tracking
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_batch_id').on(table.batchId),
+    index('idx_batch_status').on(table.status),
+    index('idx_batch_period').on(table.periodStart, table.periodEnd),
+  ]
+);
+
+// Community restaurant submissions (for empty counties)
+export const restaurantSubmissions = pgTable(
+  'restaurant_submissions',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    submittedByUserId: varchar('submitted_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    restaurantName: varchar('restaurant_name').notNull(),
+    address: text('address'),
+    website: varchar('website'),
+    phoneNumber: varchar('phone_number'),
+    category: varchar('category'), // 'pizza' | 'burger' | 'chinese', etc
+    county: varchar('county'),
+    state: varchar('state'),
+    latitude: decimal('latitude', { precision: 10, scale: 8 }),
+    longitude: decimal('longitude', { precision: 11, scale: 8 }),
+    description: text('description'), // Why they like it
+    photoUrl: varchar('photo_url'),
+    status: varchar('status').notNull().default('pending'), // 'pending' | 'approved' | 'rejected' | 'converted'
+    approvedAt: timestamp('approved_at'),
+    convertedToRestaurantId: varchar('converted_to_restaurant_id').references(() => restaurants.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_submissions_status').on(table.status),
+    index('idx_submissions_county').on(table.county),
+    index('idx_submissions_created').on(table.createdAt),
+  ]
+);
+
 export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
 export type SupportTicket = typeof supportTickets.$inferSelect;
 
 export type InsertModerationEvent = z.infer<typeof insertModerationEventSchema>;
 export type ModerationEvent = typeof moderationEvents.$inferSelect;
+
+export type AffiliateLink = typeof affiliateLinks.$inferSelect;
+export type InsertAffiliateLink = z.infer<typeof insertAffiliateLinkSchema>;
+
+export type AffiliateClick = typeof affiliateClicks.$inferSelect;
+export type AffiliateCommission = typeof affiliateCommissions.$inferSelect;
+export type AffiliateWallet = typeof affiliateWallet.$inferSelect;
+export type AffiliateWithdrawal = typeof affiliateWithdrawals.$inferSelect;
+export type RestaurantSubmission = typeof restaurantSubmissions.$inferSelect;
+export type InsertRestaurantSubmission = z.infer<typeof insertRestaurantSubmissionSchema>;
+
+// PHASE 1: Referral types
+export type Referral = typeof referrals.$inferSelect;
+export type InsertReferral = typeof referrals.$inferInsert;
+export type ReferralClick = typeof referralClicks.$inferSelect;
+export type InsertReferralClick = typeof referralClicks.$inferInsert;
+
+// PHASE 3: Commission ledger types
+export type AffiliateCommissionLedger = typeof affiliateCommissionLedger.$inferSelect;
+export type InsertAffiliateCommissionLedger = typeof affiliateCommissionLedger.$inferInsert;
+
+// PHASE 4: Credit ledger types
+export type CreditLedger = typeof creditLedger.$inferSelect;
+export type InsertCreditLedger = typeof creditLedger.$inferInsert;
+
+// PHASE 5: Payout preferences types
+export type UserPayoutPreferences = typeof userPayoutPreferences.$inferSelect;
+export type InsertUserPayoutPreferences = typeof userPayoutPreferences.$inferInsert;
+
+// PHASE R1: Restaurant credit redemption types
+export type RestaurantCreditRedemption = typeof restaurantCreditRedemptions.$inferSelect;
+export type InsertRestaurantCreditRedemption = typeof restaurantCreditRedemptions.$inferInsert;
+
+// PHASE R2: Settlement batch types
+export type RestaurantSettlementBatch = typeof restaurantSettlementBatch.$inferSelect;
+export type InsertRestaurantSettlementBatch = typeof restaurantSettlementBatch.$inferInsert;
 
 export type OperatingHoursTimeSlot = z.infer<typeof operatingHoursTimeSlotSchema>;
 export type OperatingHours = z.infer<typeof operatingHoursSchema>;
@@ -858,4 +1174,21 @@ export const insertModerationEventSchema = createInsertSchema(moderationEvents).
   createdAt: true,
   reviewedAt: true,
   reviewedByAdminId: true,
+});
+
+// Schemas for affiliate system
+export const insertAffiliateLinkSchema = createInsertSchema(affiliateLinks).omit({
+  id: true,
+  code: true,
+  clickCount: true,
+  conversions: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRestaurantSubmissionSchema = createInsertSchema(restaurantSubmissions).omit({
+  id: true,
+  approvedAt: true,
+  convertedToRestaurantId: true,
+  createdAt: true,
 });

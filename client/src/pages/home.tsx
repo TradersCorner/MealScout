@@ -10,7 +10,7 @@ import LocationButton from "@/components/location-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat, Beef, ChefHat, Soup, Star, Sparkles, Timer, ShoppingBag, Target, Trophy, Rocket, Crown, Coffee, Cookie, Wheat, Leaf, Grape, Cherry, Sandwich, Salad, IceCream, Croissant, Plus, Send, Truck, Radio, Activity, Wifi, Loader2, Sunrise, Heart, Waves, Egg, Apple, Store, CheckCircle } from "lucide-react";
+import { MapPin, User, Search, Flame, Clock, Pizza, DollarSign, Utensils, Fish, Zap, HardHat, Beef, ChefHat, Soup, Star, Sparkles, Timer, ShoppingBag, Target, Trophy, Rocket, Crown, Coffee, Cookie, Wheat, Leaf, Grape, Cherry, Sandwich, Salad, IceCream, Croissant, Plus, Send, Truck, Radio, Activity, Wifi, Loader2, Sunrise, Heart, Waves, Egg, Apple, Store, CheckCircle, RotateCw } from "lucide-react";
 import mealScoutLogo from "@assets/ChatGPT Image Sep 14, 2025, 09_25_52 AM_1757872111259.png";
 import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
 import { format } from "date-fns";
@@ -289,6 +289,8 @@ export default function Home() {
     enabled: !!location,
   });
 
+  const hasRestaurants = Array.isArray(subscribedRestaurants) && subscribedRestaurants.length > 0;
+
   // Handler for LocationButton component
   const handleLocationUpdate = (newLocation: { lat: number; lng: number }) => {
     setLocation(newLocation);
@@ -368,23 +370,22 @@ export default function Home() {
 
           {/* Location Section */}
           <div className="flex items-center space-x-3 min-w-0 flex-1 justify-end">
-            {/* Location Status Indicator */}
-            <div className={`w-9 h-9 rounded-full flex items-center justify-center shadow-sm transition-colors ${
-              isLoadingLocation ? 'bg-amber-500' : 
-              locationError ? 'bg-red-500' : 
-              location ? 'bg-emerald-500' : 'bg-gray-500'
-            }`}>
-              {isLoadingLocation ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <MapPin className="w-4 h-4 text-white" />
-              )}
-            </div>
-            
-            {/* Location Info */}
-            <div className="text-left min-w-0 flex-1 max-w-32 sm:max-w-40 lg:max-w-48">
-              <p className="text-gray-500 text-xs font-medium mb-0.5" data-testid="text-location-label">Location</p>
-              <div className="flex items-center space-x-1">
+            <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-100 rounded-xl px-3 py-2 flex items-center space-x-3 shadow-sm w-full sm:w-auto">
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center shadow-sm transition-colors ${
+                isLoadingLocation ? 'bg-amber-500' : 
+                locationError ? 'bg-red-500' : 
+                location ? 'bg-emerald-500' : 'bg-gray-400'
+              }`}>
+                {isLoadingLocation ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <MapPin className="w-4 h-4 text-white" />
+                )}
+              </div>
+              <div className="text-left min-w-0 flex-1">
+                <p className="text-gray-700 text-xs font-semibold mb-0.5" data-testid="text-location-label">
+                  {location ? 'Deals near you' : 'Location needed'}
+                </p>
                 <p className="text-gray-900 font-semibold text-sm leading-tight truncate" data-testid="text-location-name" title={locationName}>
                   <span className="lg:hidden">
                     {locationName.split(',')[0]}
@@ -393,113 +394,118 @@ export default function Home() {
                     {locationName}
                   </span>
                 </p>
-                {locationError && (
-                  <button
-                    onClick={retryLocation}
-                    className="text-blue-600 text-xs hover:text-blue-700 font-medium whitespace-nowrap transition-colors"
-                    data-testid="button-retry-location"
-                  >
-                    Retry
-                  </button>
-                )}
+                <p className="text-xs text-muted-foreground truncate" data-testid="text-location-sub">
+                  {locationError ? 'Access denied — enter your city' : location ? 'Live nearby deals' : 'Enable GPS or enter city'}
+                </p>
               </div>
-            </div>
-            
-            {/* Location Update Button */}
-            <div className="flex-shrink-0">
-              <LocationButton
-                onLocationUpdate={handleLocationUpdate}
-                onLocationNameUpdate={handleLocationNameUpdate}
-                onLocationError={handleLocationErrorUpdate}
-                isLoading={isLoadingLocation}
-                size="sm"
-                variant="default"
-                className="text-xs font-medium bg-gray-900 hover:bg-gray-800 text-white px-3 py-2 rounded-lg transition-colors shadow-sm"
-              />
+              <div className="flex items-center space-x-1 flex-shrink-0">
+                <button 
+                  className="flex items-center justify-center w-9 h-9 rounded-lg border border-orange-100 bg-white hover:bg-orange-50 text-gray-700 transition-colors"
+                  aria-label="Retry location"
+                  onClick={retryLocation}
+                  data-testid="button-retry-location"
+                >
+                  <RotateCw className="w-4 h-4" />
+                </button>
+                <LocationButton
+                  onLocationUpdate={handleLocationUpdate}
+                  onLocationNameUpdate={handleLocationNameUpdate}
+                  onLocationError={handleLocationErrorUpdate}
+                  isLoading={isLoadingLocation}
+                  size="sm"
+                  variant="default"
+                  className="text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg transition-colors shadow-sm"
+                />
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Search Bar */}
-      <div className="px-6 py-6 bg-gray-50">
+      {/* Search Bar & Hero Section */}
+      <div className="px-6 py-8 bg-gradient-to-br from-gray-50 via-white to-orange-50 border-b border-orange-100">
+        <div className="mb-6">
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Find Amazing Deals</h2>
+          <p className="text-gray-600">Discover local restaurants & food trucks with exclusive offers</p>
+        </div>
+        
         <SmartSearch
           value={searchQuery}
           onChange={setSearchQuery}
           onSearch={(query) => {
             setNavigateTo(`/search?q=${encodeURIComponent(query)}`);
           }}
-          className="mb-4"
+          className="mb-6"
           placeholder="Search deals, restaurants..."
         />
         
         {/* Filter Chips */}
-        <div className="flex space-x-2 overflow-x-auto pb-2">
+        <div className="flex space-x-2 overflow-x-auto pb-2 -mx-2 px-2">
           <Link href="/deals/featured">
             <Button 
-              className="flex-shrink-0 rounded-lg px-4 py-2 font-medium text-white bg-red-500 hover:bg-red-600 border-0 shadow-sm"
+              className="flex-shrink-0 rounded-full px-4 py-2 font-semibold text-white bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 border-0 shadow-md hover:shadow-lg transition-all"
               size="sm" 
               data-testid="button-filter-hot"
             >
-              <Sparkles className="w-4 h-4 mr-1" /> Hot Deals
+              <Sparkles className="w-4 h-4 mr-2" /> Hot Deals
             </Button>
           </Link>
           <Link href="/search?filter=quick">
             <Button 
               variant="outline" 
               size="sm" 
-              className="flex-shrink-0 rounded-lg px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 font-medium"
+              className="flex-shrink-0 rounded-full px-4 py-2 bg-white border-2 border-orange-200 hover:bg-orange-50 font-semibold text-gray-700 hover:text-orange-600 transition-colors"
               data-testid="button-filter-quick"
             >
-              <Rocket className="w-4 h-4 mr-1" /> Quick Bites
+              <Rocket className="w-4 h-4 mr-2" /> Quick Bites
             </Button>
           </Link>
           <Link href="/category/pizza">
             <Button 
               variant="outline" 
               size="sm" 
-              className="flex-shrink-0 rounded-lg px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 font-medium"
+              className="flex-shrink-0 rounded-full px-4 py-2 bg-white border-2 border-orange-200 hover:bg-orange-50 font-semibold text-gray-700 hover:text-orange-600 transition-colors"
               data-testid="button-filter-italian"
             >
-              <Crown className="w-4 h-4 mr-1" /> Italian
+              <Pizza className="w-4 h-4 mr-2" /> Pizza
             </Button>
           </Link>
           <Link href="/search?filter=budget">
             <Button 
               variant="outline" 
               size="sm" 
-              className="flex-shrink-0 rounded-lg px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 font-medium"
+              className="flex-shrink-0 rounded-full px-4 py-2 bg-white border-2 border-orange-200 hover:bg-orange-50 font-semibold text-gray-700 hover:text-orange-600 transition-colors"
               data-testid="button-filter-budget"
             >
-              <Target className="w-4 h-4 mr-1" /> Under $10
+              <DollarSign className="w-4 h-4 mr-2" /> Budget
             </Button>
           </Link>
         </div>
 
         {/* Location Error and Manual Input */}
         {(locationError || showLocationInput) && (
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="mt-4 p-4 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-100 rounded-xl shadow-sm">
             {locationError && (
-              <div className="flex items-start space-x-2 mb-3">
-                <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-white rounded-full"></div>
+              <div className="flex items-start space-x-3 mb-3">
+                <div className="w-9 h-9 bg-white border border-red-100 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <MapPin className="w-5 h-5 text-red-500" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-yellow-800 text-sm font-medium">Location Issue</p>
-                  <p className="text-yellow-700 text-sm" data-testid="text-location-error">{locationError}</p>
+                  <p className="text-red-700 text-sm font-semibold">Location access denied</p>
+                  <p className="text-gray-700 text-sm" data-testid="text-location-error">{locationError}</p>
                 </div>
               </div>
             )}
             
             <div className="space-y-3">
-              <p className="text-gray-700 text-sm font-medium">Enter your city to find nearby deals:</p>
+              <p className="text-gray-800 text-sm font-semibold">Enter your city to find nearby deals:</p>
               <div className="flex space-x-2">
                 <Input
                   type="text"
                   placeholder="Enter city name (e.g., New York, Los Angeles)"
                   value={manualLocation}
                   onChange={(e) => setManualLocation(e.target.value)}
-                  className="flex-1"
+                  className="flex-1 border-orange-100 focus-visible:ring-orange-500"
                   data-testid="input-manual-location"
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
@@ -510,56 +516,85 @@ export default function Home() {
                 <Button
                   onClick={handleManualLocation}
                   disabled={!manualLocation.trim() || isLoadingLocation}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-orange-500 hover:bg-orange-600 text-white shadow-sm"
                   data-testid="button-find-location"
                 >
                   {isLoadingLocation ? "Finding..." : "Find Deals"}
                 </Button>
+              </div>
+              <div className="flex items-center space-x-2 text-xs text-gray-600">
+                <span className="inline-flex items-center px-2 py-1 rounded-full bg-white border border-orange-100 text-orange-700 font-medium">Tip</span>
+                <span>Use GPS for faster, more accurate results.</span>
               </div>
             </div>
           </div>
         )}
       </div>
 
+      {/* Motivation CTA when no vendors nearby */}
+      {(!loadingFoodTrucks && !hasRestaurants && foodTrucks.filter(t => t.isOnline).length === 0) && (
+        <div className="px-6 py-6">
+          <div className="rounded-2xl border border-orange-200 bg-gradient-to-br from-orange-50 via-white to-red-50 shadow-sm p-6">
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Bring great food to your area</h3>
+            <p className="text-gray-700 mb-4">
+              We don’t see restaurants or food trucks near you yet. Enable location or enter your city to discover deals, or invite local vendors to join MealScout.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button onClick={handleManualLocation} className="bg-orange-500 hover:bg-orange-600 text-white">
+                Search Your City
+              </Button>
+              <Link href={user ? "#affiliate-program" : "/restaurant-signup"} className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full border-orange-300 text-orange-700 hover:bg-orange-50">
+                  Invite Restaurants & Food Trucks
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Food Trucks Nearby Section */}
       {showFoodTrucks && (
-        <div className="py-6 bg-gradient-to-r from-orange-50 to-red-50">
-          <div className="flex items-center justify-between mb-6 px-6">
-            <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-food-trucks-title">
-              <span className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-600 rounded-lg flex items-center justify-center mr-3 shadow-md">
-                <Truck className="w-4 h-4 text-white" />
-              </span>
-              Food Trucks Nearby
+        <div className="py-8 bg-gradient-to-br from-white via-orange-50 to-white">
+          <div className="px-6 mb-8">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center" data-testid="text-food-trucks-title">
+                <span className="w-9 h-9 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+                  <Truck className="w-5 h-5 text-white" />
+                </span>
+                Food Trucks Near You
+              </h2>
               {isConnected && (
-                <div className="flex items-center ml-2">
+                <div className="flex items-center space-x-2 px-3 py-1 bg-green-50 border border-green-200 rounded-full">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs text-green-600 ml-1">Live</span>
+                  <span className="text-xs font-semibold text-green-700">Live</span>
                 </div>
               )}
-            </h2>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="ghost" 
-                size="sm"
-                onClick={() => setShowFoodTrucks(!showFoodTrucks)}
-                data-testid="button-toggle-food-trucks"
-              >
-                {showFoodTrucks ? 'Hide' : 'Show'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchNearbyFoodTrucks}
-                disabled={loadingFoodTrucks}
-                data-testid="button-refresh-food-trucks"
-              >
-                {loadingFoodTrucks ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Activity className="w-4 h-4" />
-                )}
-              </Button>
             </div>
+            <p className="text-gray-600 text-sm ml-12">Real-time updates from mobile restaurants in your area</p>
+          </div>
+          <div className="px-6 flex items-center space-x-2 mb-6">
+            <Button
+              variant="ghost" 
+              size="sm"
+              onClick={() => setShowFoodTrucks(!showFoodTrucks)}
+              data-testid="button-toggle-food-trucks"
+            >
+              {showFoodTrucks ? 'Hide' : 'Show'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchNearbyFoodTrucks}
+              disabled={loadingFoodTrucks}
+              data-testid="button-refresh-food-trucks"
+            >
+              {loadingFoodTrucks ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Activity className="w-4 h-4" />
+              )}
+            </Button>
           </div>
 
           {loadingFoodTrucks ? (
@@ -689,19 +724,37 @@ export default function Home() {
                     </div>
                   ))
               ) : (
-                <div className="text-center py-12 px-6 w-full lg:col-span-full">
-                  <div className="w-20 h-20 bg-gradient-to-r from-orange-100 to-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <Truck className="w-10 h-10 text-orange-600" />
+                <div className="text-center py-16 px-4 sm:px-6 w-full lg:col-span-full max-w-2xl mx-auto">
+                  <div className="w-24 h-24 bg-gradient-to-br from-orange-100 to-red-100 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl">
+                    <Truck className="w-12 h-12 text-orange-600" />
                   </div>
-                  <h3 className="font-bold text-lg text-foreground mb-2">No Food Trucks Nearby</h3>
-                  <p className="text-muted-foreground mb-4" data-testid="text-no-food-trucks">
-                    No mobile restaurants are currently active in your area.
+                  <h3 className="font-bold text-2xl sm:text-3xl text-gray-900 mb-3">
+                    {hasRestaurants
+                      ? 'No food trucks nearby yet'
+                      : 'Welcome to MealScout'}
+                  </h3>
+                  <p className="text-gray-600 mb-6 text-base sm:text-lg leading-relaxed" data-testid="text-no-food-trucks">
+                    {hasRestaurants
+                      ? 'We found great restaurants in your area! Food trucks and mobile vendors are coming soon. Check back regularly for new deals and exclusive offers.'
+                      : 'MealScout connects you with local restaurants and food trucks offering amazing deals. Enable location or enter your city to get started.'}
                   </p>
-                  <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
-                    <div className="flex items-center">
-                      <Wifi className={`w-4 h-4 mr-1 ${isConnected ? 'text-green-500' : 'text-red-500'}`} />
-                      <span>{isConnected ? 'Real-time updates enabled' : 'Offline mode'}</span>
+                  
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
+                    <div className="flex items-center space-x-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
+                      <Wifi className={`w-5 h-5 ${isConnected ? 'text-green-500' : 'text-red-500'}`} />
+                      <span className="text-sm font-medium text-gray-700">{isConnected ? 'Real-time updates enabled' : 'Offline mode'}</span>
                     </div>
+                  </div>
+                  
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button onClick={fetchNearbyFoodTrucks} disabled={loadingFoodTrucks} className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all">
+                      {loadingFoodTrucks ? 'Searching...' : 'Search Again'}
+                    </Button>
+                    <Link href={user ? "#affiliate-program" : "/auth"} className="w-full sm:w-auto">
+                      <Button className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all">
+                        Help bring vendors to your area
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               )}
@@ -980,8 +1033,8 @@ export default function Home() {
                 <div className="w-20 h-20 food-gradient-secondary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                   <Utensils className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="font-bold text-lg text-foreground mb-2">No Deals Yet</h3>
-                <p className="text-muted-foreground" data-testid="text-no-deals">Check back soon for amazing deals!</p>
+                <h3 className="font-bold text-lg text-foreground mb-2">MealScout is New in Your Area</h3>
+                <p className="text-muted-foreground" data-testid="text-no-deals">We're just getting started here. Check back soon as local restaurants join MealScout and start offering amazing deals!</p>
               </div>
             )}
           </div>
@@ -1458,6 +1511,197 @@ export default function Home() {
               <p className="text-muted-foreground">No dessert deals available</p>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Community Builder Program Section */}
+      <div id="affiliate-program" className="px-6 py-8 bg-gradient-to-br from-orange-50 via-red-50 to-orange-50">
+        <div className="bg-white rounded-2xl p-6 lg:p-8 shadow-xl border-2 border-orange-200">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1">
+              <div className="flex items-center mb-3">
+                <span className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+                  <DollarSign className="w-5 h-5 text-white" />
+                </span>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  You’re a MealScout Community Builder
+                </h2>
+              </div>
+              <p className="text-gray-700 text-lg mb-4 leading-relaxed">
+                Every user is automatically a Community Builder. Share any MealScout link and earn <strong className="text-orange-600">10% recurring commission</strong> whenever restaurants you refer subscribe to our platform.
+              </p>
+              <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-lg mb-4">
+                <p className="text-gray-800 font-semibold mb-2">💰 Affiliate Payout Structure:</p>
+                <ul className="space-y-1 text-gray-700">
+                  <li className="flex items-start">
+                    <span className="text-orange-500 mr-2">•</span>
+                    <span><strong>First Month:</strong> Earn $20 when your referral subscribes</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-orange-500 mr-2">•</span>
+                    <span><strong>Every Month After:</strong> Earn $5/month recurring - forever!</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-orange-500 mr-2">•</span>
+                    <span><strong>No Limits:</strong> Refer unlimited restaurants and earn passive income</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-orange-500 mr-2">•</span>
+                    <span><strong>Cash Out Weekly:</strong> Withdraw via Stripe, Plaid, Venmo, or spend directly at MealScout partners</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div className="hidden lg:block w-24 h-24 rounded-2xl bg-gradient-to-br from-orange-400 to-red-500 flex-shrink-0 ml-6 shadow-lg flex items-center justify-center">
+              <Trophy className="w-12 h-12 text-white" />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-4 border border-orange-200">
+              <div className="flex items-center mb-2">
+                <span className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center mr-2">
+                  <span className="text-white font-bold text-sm">1</span>
+                </span>
+                <h3 className="font-bold text-gray-900 text-sm">Share Your Link</h3>
+              </div>
+              <p className="text-sm text-gray-600">
+                Every link you share automatically includes your unique referral code
+              </p>
+            </div>
+            
+            <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-4 border border-orange-200">
+              <div className="flex items-center mb-2">
+                <span className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center mr-2">
+                  <span className="text-white font-bold text-sm">2</span>
+                </span>
+                <h3 className="font-bold text-gray-900 text-sm">Restaurant Subscribes</h3>
+              </div>
+              <p className="text-sm text-gray-600">
+                When a restaurant signs up through your link, they're linked to you forever
+              </p>
+            </div>
+            
+            <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-4 border border-orange-200">
+              <div className="flex items-center mb-2">
+                <span className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center mr-2">
+                  <span className="text-white font-bold text-sm">3</span>
+                </span>
+                <h3 className="font-bold text-gray-900 text-sm">Earn Recurring Income</h3>
+              </div>
+              <p className="text-sm text-gray-600">
+                Get paid $20 first month, then $5/month recurring - unlimited potential!
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-xl p-5 text-white">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <p className="text-sm opacity-90 mb-1">Your Community Builder Credits</p>
+                <p className="text-3xl font-bold">
+                  {user ? `$${((user.creditBalance || 0) * 0.01).toFixed(2)}` : 'Sign in to see balance'}
+                </p>
+                <p className="text-xs opacity-75 mt-1">Redeem at partners or cash out weekly via Stripe/Plaid/Venmo</p>
+              </div>
+              <Link href={user ? "/affiliate-dashboard" : "/auth"}>
+                <Button className="bg-white text-orange-600 hover:bg-orange-50 font-bold shadow-lg px-6 py-3">
+                  {user ? 'Community Builder Dashboard' : 'Start Building'}
+                  <Rocket className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Community Builder Program Section */}
+      <div id="affiliate-program" className="px-6 py-10 bg-gradient-to-br from-orange-50 via-red-50 to-orange-50 border-t border-orange-200">
+        <div className="bg-white rounded-2xl p-6 lg:p-8 shadow-xl border-2 border-orange-200">
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex-1">
+              <div className="flex items-center mb-4">
+                <span className="w-11 h-11 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+                  <Trophy className="w-6 h-6 text-white" />
+                </span>
+                <h2 className="text-2xl lg:text-3xl font-bold text-gray-900">
+                  Earn Money with MealScout
+                </h2>
+              </div>
+              <p className="text-gray-700 text-base lg:text-lg leading-relaxed">
+                Every user is a Community Builder. Share MealScout and earn <span className="font-bold text-orange-600">10% recurring commission</span> on every restaurant referral.
+              </p>
+            </div>
+            <div className="hidden lg:flex w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-400 to-red-500 flex-shrink-0 ml-6 shadow-lg items-center justify-center">
+              <DollarSign className="w-10 h-10 text-white" />
+            </div>
+          </div>
+          
+          <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-lg mb-6">
+            <p className="text-gray-800 font-semibold mb-3">💰 How You Get Paid:</p>
+            <ul className="space-y-2 text-gray-700">
+              <li className="flex items-start">
+                <span className="text-orange-500 mr-3 font-bold">•</span>
+                <span><strong>$20</strong> when your referral subscribes (first month bonus)</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-orange-500 mr-3 font-bold">•</span>
+                <span><strong>$5/month recurring</strong> - earn forever while they stay with us</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-orange-500 mr-3 font-bold">•</span>
+                <span><strong>Unlimited referrals</strong> - no cap on how many you can earn</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-orange-500 mr-3 font-bold">•</span>
+                <span><strong>Weekly payouts</strong> via Stripe, Plaid, Venmo, or spend at partners</span>
+              </li>
+            </ul>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-4 border border-orange-200">
+              <div className="flex items-center mb-2">
+                <span className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center mr-2 text-white font-bold text-sm">1</span>
+                <h3 className="font-bold text-gray-900 text-sm">Share Your Link</h3>
+              </div>
+              <p className="text-sm text-gray-600">Every MealScout link includes your unique referral code automatically</p>
+            </div>
+            
+            <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-4 border border-orange-200">
+              <div className="flex items-center mb-2">
+                <span className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center mr-2 text-white font-bold text-sm">2</span>
+                <h3 className="font-bold text-gray-900 text-sm">Restaurant Subscribes</h3>
+              </div>
+              <p className="text-sm text-gray-600">When they sign up through your link, you're credited forever</p>
+            </div>
+            
+            <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-4 border border-orange-200">
+              <div className="flex items-center mb-2">
+                <span className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center mr-2 text-white font-bold text-sm">3</span>
+                <h3 className="font-bold text-gray-900 text-sm">Start Earning</h3>
+              </div>
+              <p className="text-sm text-gray-600">Get paid $20 first month, then $5/month - unlimited potential!</p>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-xl p-5 text-white">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <p className="text-sm opacity-90 mb-1">Your Community Builder Credits</p>
+                <p className="text-3xl font-bold">
+                  {user ? `$${((user.creditBalance || 0) * 0.01).toFixed(2)}` : 'Sign in to view'}
+                </p>
+                <p className="text-xs opacity-75 mt-1">Redeem at partners or cash out weekly</p>
+              </div>
+              <Link href={user ? "/affiliate-dashboard" : "/auth"}>
+                <Button className="bg-white text-orange-600 hover:bg-orange-50 font-bold shadow-lg px-6 py-2 rounded-lg">
+                  {user ? 'Go to Dashboard' : 'Get Started'}
+                  <Rocket className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
 

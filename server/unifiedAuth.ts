@@ -840,4 +840,4 @@ export const verifyResourceOwnership = (resourceType: 'restaurant' | 'deal') => 
     }
   };
 };
-```
+

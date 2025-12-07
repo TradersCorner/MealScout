@@ -22,6 +22,7 @@ import Orders from "@/pages/orders";
 import Profile from "@/pages/profile";
 import AdminLogin from "@/pages/admin-login";
 import AdminDashboard from "@/pages/admin-dashboard";
+import AdminIncidents from "@/pages/AdminIncidents";
 import CategoryPage from "@/pages/category";
 import FeaturedDealsPage from "@/pages/deals-featured";
 import RestaurantDetail from "@/pages/restaurant-detail";
@@ -117,6 +118,7 @@ function Router() {
           <Route path="/profile" component={Profile} />
           <Route path="/admin" component={AdminLogin} />
           <Route path="/admin/dashboard" component={AdminDashboard} />
+          <Route path="/admin/incidents" component={AdminIncidents} />
           <Route path="/admin/switcher" component={DashboardSwitcherPage} />
           <Route path="/category/:category" component={CategoryPage} />
           <Route path="/deals" component={FeaturedDealsPage} />

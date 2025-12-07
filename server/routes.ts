@@ -3824,6 +3824,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Register incident management routes (admin-only)
+  const incidentRoutes = (await import('./incidentRoutes')).default;
+  app.use('/api/incidents', incidentRoutes);
+
+  // Register cron/scheduler endpoints
+  app.post('/api/cron/escalations', incidentRoutes.stack.find((layer: any) => 
+    layer.route?.path === '/cron/escalations'
+  )?.handle || ((_req, res) => res.status(404).json({ error: 'Not found' })));
+
+  app.post('/api/cron/auto-close', incidentRoutes.stack.find((layer: any) => 
+    layer.route?.path === '/cron/auto-close'
+  )?.handle || ((_req, res) => res.status(404).json({ error: 'Not found' })));
+
   const httpServer = createServer(app);
   return httpServer;
 }
+

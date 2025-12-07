@@ -124,13 +124,15 @@ export async function createIncident({
   }).returning();
 
   // Log incident creation
-  await logAudit({
-    userId: 'system',
-    action: 'incident_created',
-    resourceType: 'incident',
-    resourceId: incident.id,
-    metadata: { ruleId, severity },
-  });
+  await logAudit(
+    'system',
+    'incident_created',
+    'incident',
+    incident.id,
+    'system',
+    'internal',
+    { ruleId, severity }
+  );
 
   // Send notifications
   await notifyIncident(incident, 'created');
@@ -207,13 +209,15 @@ export async function acknowledgeIncident(incidentId: string, acknowledgedBy: st
     .where(eq(incidents.id, incidentId))
     .returning();
 
-  await logAudit({
-    userId: acknowledgedBy,
-    action: 'incident_acknowledged',
-    resourceType: 'incident',
-    resourceId: incidentId,
-    metadata: {},
-  });
+  await logAudit(
+    acknowledgedBy,
+    'incident_acknowledged',
+    'incident',
+    incidentId,
+    'system',
+    'internal',
+    {}
+  );
 
   await notifyIncident(incident, 'acknowledged');
 
@@ -232,13 +236,15 @@ export async function resolveIncident(incidentId: string, resolvedBy: string, re
     .where(eq(incidents.id, incidentId))
     .returning();
 
-  await logAudit({
-    userId: resolvedBy,
-    action: 'incident_resolved',
-    resourceType: 'incident',
-    resourceId: incidentId,
-    metadata: { resolutionNotes },
-  });
+  await logAudit(
+    resolvedBy,
+    'incident_resolved',
+    'incident',
+    incidentId,
+    'system',
+    'internal',
+    { resolutionNotes }
+  );
 
   return incident;
 }
@@ -254,13 +260,15 @@ export async function closeIncident(incidentId: string, closedBy: string) {
     .where(eq(incidents.id, incidentId))
     .returning();
 
-  await logAudit({
-    userId: closedBy,
-    action: 'incident_closed',
-    resourceType: 'incident',
-    resourceId: incidentId,
-    metadata: {},
-  });
+  await logAudit(
+    closedBy,
+    'incident_closed',
+    'incident',
+    incidentId,
+    'system',
+    'internal',
+    {}
+  );
 
   // Generate incident report
   await generateIncidentReport(incident);

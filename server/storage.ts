@@ -13,6 +13,7 @@ import {
   userAddresses,
   passwordResetTokens,
   dealFeedback,
+  apiKeys,
   type User,
   type UpsertUser,
   type Restaurant,
@@ -216,6 +217,10 @@ export interface IStorage {
   markPasswordResetTokenUsed(id: string): Promise<PasswordResetToken>;
   deleteUserResetTokens(userId: string): Promise<void>;
   deleteExpiredResetTokens(): Promise<number>;
+
+  // API Key operations
+  getActiveApiKeys(): Promise<any[]>;
+  updateApiKeyLastUsed(keyId: string): Promise<void>;
 
   // Deal feedback operations
   createDealFeedback(feedback: InsertDealFeedback): Promise<DealFeedback>;
@@ -3170,6 +3175,28 @@ export class DatabaseStorage implements IStorage {
     
     // Return the number of deleted rows
     return result.rowCount || 0;
+  }
+
+  // API Key operations
+  async getActiveApiKeys(): Promise<any[]> {
+    // Get all active, non-expired API keys
+    const keys = await db.query.apiKeys.findMany({
+      where: (table) => and(
+        eq(table.isActive, true),
+        or(
+          isNull(table.expiresAt),
+          gte(table.expiresAt, new Date())
+        )
+      ),
+    });
+    return keys;
+  }
+
+  async updateApiKeyLastUsed(keyId: string): Promise<void> {
+    await db
+      .update(apiKeys)
+      .set({ lastUsedAt: new Date() })
+      .where(eq(apiKeys.id, keyId));
   }
 
   // Deal feedback operations

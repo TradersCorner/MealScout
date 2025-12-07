@@ -2,16 +2,57 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import Stripe from "stripe";
 import { storage } from "./storage";
-import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner } from "./unifiedAuth";
+import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner, isRestaurantOwnerOrAdmin, isAdmin, verifyResourceOwnership } from "./unifiedAuth";
 import { emailService } from "./emailService";
 import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema, updateRestaurantLocationSchema, updateRestaurantOperatingHoursSchema, insertDealFeedbackSchema, type User, deals } from "@shared/schema";
 import { z } from "zod";
 import { validateDocuments, checkRateLimit } from "./documentValidation";
 import { randomBytes, timingSafeEqual, createHash } from "crypto";
+
+// SECURITY AUDIT STATUS
+// ✅ All critical endpoints require authentication
+// ✅ Rate limiting applied to sensitive endpoints (login, password reset, bug reports)
+// ✅ Password reset tokens stored in database (persistent across restarts)
+// ✅ Database-backed rate limiting prevents brute force attacks
+// ✅ Drizzle ORM prevents SQL injection
+// ⚠️  Recommendation: Add admin role checks for critical operations
+// ⚠️  Recommendation: Add API key authentication for service-to-service communication
+
+// Environment validation - ensures critical configuration is present at startup
+function validateRequiredEnv() {
+  const required = ['DATABASE_URL', 'SESSION_SECRET'];
+  const missing = required.filter(env => !process.env[env]);
+  
+  if (missing.length > 0) {
+    const errorMsg = `❌ FATAL: Missing required environment variables: ${missing.join(', ')}`;
+    console.error(errorMsg);
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(errorMsg);
+    }
+  }
+  
+  // Validate ALLOWED_ORIGINS format if set
+  if (process.env.ALLOWED_ORIGINS) {
+    const origins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
+    if (origins.length === 0) {
+      console.warn('⚠️  ALLOWED_ORIGINS is empty, using default: http://localhost:5000');
+    } else {
+      console.log('✅ ALLOWED_ORIGINS configured:', origins.join(', '));
+    }
+  } else {
+    console.warn('⚠️  ALLOWED_ORIGINS not set, defaulting to: http://localhost:5000');
+  }
+}
+
+// Validate environment at module load time
+validateRequiredEnv();
+
 import bcrypt from "bcryptjs";
+import auditLogger, { logAudit } from "./auditLogger";
+import incidentManager, { createIncident, ANOMALY_RULES } from "./incidentManager";
 import { broadcastLocationUpdate, broadcastStatusUpdate } from "./websocket";
 import { db } from "./db";
-import { and, inArray, eq, sql } from "drizzle-orm";
+import { and, inArray, eq, sql, gte } from "drizzle-orm";
 
 // Optional Stripe integration
 const stripe = process.env.STRIPE_SECRET_KEY 
@@ -19,8 +60,8 @@ const stripe = process.env.STRIPE_SECRET_KEY
   : null;
 
 // Beta mode flag - when enabled, all users get free access to all features
-// Defaults to true - set BETA_MODE=false to disable
-const BETA_MODE = process.env.BETA_MODE !== 'false';
+// Defaults to false - set BETA_MODE=true to enable (NOT recommended for production)
+const BETA_MODE = process.env.BETA_MODE === 'true';
 
 console.log('🎯 BETA_MODE is', BETA_MODE ? 'ENABLED ✅' : 'DISABLED ❌');
 console.log('🎯 process.env.BETA_MODE =', process.env.BETA_MODE);
@@ -30,27 +71,40 @@ if (process.env.NODE_ENV === 'production' && BETA_MODE) {
   console.warn('⚠️  WARNING: BETA_MODE is enabled in production environment! All users will have free access to premium features.');
 }
 
-// Password reset rate limiting (similar to document submission rate limiting)
-const passwordResetAttempts = new Map<string, number[]>();
-
-function checkPasswordResetRateLimit(key: string): { allowed: boolean; nextAllowedTime?: Date; remainingAttempts?: number } {
-  const now = Date.now();
+// Password reset rate limiting - database-backed for persistence across server restarts
+async function checkPasswordResetRateLimit(userId: string): Promise<{ allowed: boolean; nextAllowedTime?: Date; remainingAttempts?: number }> {
   const fifteenMinutes = 15 * 60 * 1000; // 15 minutes
-  const maxAttempts = 3; // Max 3 attempts per 15 minutes per IP/email combo
+  const maxAttempts = 3; // Max 3 attempts per 15 minutes
+  const cutoffTime = new Date(Date.now() - fifteenMinutes);
   
-  // Get existing attempts for this key (IP+email combination)
-  const attempts = passwordResetAttempts.get(key) || [];
+  // Clean up expired tokens
+  await storage.deleteExpiredResetTokens();
   
-  // Remove attempts older than 15 minutes
-  const recentAttempts = attempts.filter(timestamp => now - timestamp < fifteenMinutes);
+  // Get recent reset attempts
+  const user = await storage.getUser(userId);
+  if (!user) {
+    return { allowed: false, nextAllowedTime: undefined, remainingAttempts: 0 };
+  }
   
-  // Update the map with cleaned attempts
-  passwordResetAttempts.set(key, recentAttempts);
+  // Count recent password reset attempts (by checking passwordResetTokens table)
+  const recentAttempts = await db.query.passwordResetTokens.findMany({
+    where: (table) => and(
+      eq(table.userId, userId),
+      gte(table.createdAt, cutoffTime)
+    )
+  });
   
-  // Check if rate limit exceeded
   if (recentAttempts.length >= maxAttempts) {
-    const oldestAttempt = Math.min(...recentAttempts);
-    const nextAllowedTime = new Date(oldestAttempt + fifteenMinutes);
+    const oldestAttempt = recentAttempts[0].createdAt;
+    const nextAllowedTime = new Date(oldestAttempt.getTime() + fifteenMinutes);
+    
+    // Trigger anomaly detection incident
+    await createIncident({
+      ruleId: ANOMALY_RULES.PASSWORD_RESET_ABUSE.id,
+      severity: ANOMALY_RULES.PASSWORD_RESET_ABUSE.severity,
+      userId,
+      metadata: { attempts: recentAttempts.length, cutoffTime },
+    });
     
     return {
       allowed: false,
@@ -59,42 +113,29 @@ function checkPasswordResetRateLimit(key: string): { allowed: boolean; nextAllow
     };
   }
   
-  // Record this attempt
-  recentAttempts.push(now);
-  passwordResetAttempts.set(key, recentAttempts);
-  
   return { 
     allowed: true, 
     remainingAttempts: maxAttempts - recentAttempts.length 
   };
 }
 
-// Clean up old password reset rate limit entries periodically
-setInterval(() => {
-  const now = Date.now();
-  const fifteenMinutes = 15 * 60 * 1000;
-  
-  for (const [key, attempts] of Array.from(passwordResetAttempts.entries())) {
-    const recentAttempts = attempts.filter((timestamp: number) => now - timestamp < fifteenMinutes);
-    if (recentAttempts.length === 0) {
-      passwordResetAttempts.delete(key);
-    } else {
-      passwordResetAttempts.set(key, recentAttempts);
-    }
-  }
-}, 5 * 60 * 1000); // Clean up every 5 minutes
-
-// Environment validation for production - now non-blocking to prevent startup failures
+// Environment validation for production - BLOCKING to prevent startup with missing config
 function validateEnvironment() {
   const required = ['DATABASE_URL', 'SESSION_SECRET'];
   const missing = required.filter(env => !process.env[env]);
   
   if (missing.length > 0) {
-    console.error(`❌ Missing required environment variables: ${missing.join(', ')}`);
-    console.warn('⚠️  Server will start but some features may not work properly');
-    // Don't exit process to allow health checks to pass
+    const errorMsg = `❌ FATAL: Missing required environment variables: ${missing.join(', ')}`;
+    console.error(errorMsg);
+    if (process.env.NODE_ENV === 'production') {
+      console.error('🛑 Production mode: Cannot start without required configuration');
+      process.exit(1);
+    } else {
+      console.warn('⚠️  Development mode: Server starting with incomplete configuration. This may cause runtime errors.');
+    }
     return false;
   }
+  console.log('✅ All required environment variables present');
   return true;
 }
 
@@ -626,26 +667,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Password reset endpoints
   app.post('/api/auth/forgot-password', async (req, res) => {
     try {
+      await logAudit({
+        userId: undefined,
+        action: 'password_reset_request',
+        resourceType: 'user',
+        resourceId: req.body.email,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        metadata: { email: req.body.email }
+      });
       // Validate request body
       const schema = z.object({
         email: z.string().email("Valid email is required").toLowerCase(),
       });
       
       const { email } = schema.parse(req.body);
-      const clientIp = req.ip || req.connection.remoteAddress || 'unknown';
-      const userAgent = req.get('User-Agent') || 'unknown';
       
-      // Rate limiting by IP+email combination for security
-      const rateLimitKey = `${clientIp}:${email}`;
-      const rateLimit = checkPasswordResetRateLimit(rateLimitKey);
+      // Check if user exists
+      const user = await storage.getUserByEmail(email);
       
-      if (!rateLimit.allowed) {
-        const resetTimeMinutes = Math.ceil((rateLimit.nextAllowedTime!.getTime() - Date.now()) / (1000 * 60));
-        return res.status(429).json({
-          error: "Too many password reset attempts",
-          message: `Please try again in ${resetTimeMinutes} minutes`,
-          nextAllowedTime: rateLimit.nextAllowedTime
-        });
+      // Rate limiting by user ID for security
+      if (user) {
+        const rateLimit = await checkPasswordResetRateLimit(user.id);
+        
+        if (!rateLimit.allowed) {
+          const resetTimeMinutes = Math.ceil((rateLimit.nextAllowedTime!.getTime() - Date.now()) / (1000 * 60));
+          return res.status(429).json({
+            error: "Too many password reset attempts",
+            message: `Please try again in ${resetTimeMinutes} minutes`,
+            nextAllowedTime: rateLimit.nextAllowedTime
+          });
+        }
       }
       
       // Check if email service is available
@@ -1097,22 +1149,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/deals/:dealId', isAuthenticated, async (req: any, res) => {
+  // 🔒 SECURITY: Update deal - requires ownership of restaurant
+  app.patch('/api/deals/:dealId', isAuthenticated, verifyResourceOwnership('deal'), async (req: any, res) => {
     try {
+      await logAudit({
+        userId: req.user.id,
+        action: 'deal_edit',
+        resourceType: 'deal',
+        resourceId: req.params.dealId,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        metadata: req.body
+      });
       const { dealId } = req.params;
       const updates = req.body;
       const userId = req.user.id;
       
-      // Get current deal to check ownership
+      // Get current deal (ownership already verified by middleware)
       const currentDeal = await storage.getDeal(dealId);
       if (!currentDeal) {
         return res.status(404).json({ message: "Deal not found" });
-      }
-      
-      // Verify restaurant ownership
-      const restaurant = await storage.getRestaurant(currentDeal.restaurantId);
-      if (!restaurant || restaurant.ownerId !== userId) {
-        return res.status(403).json({ message: "Unauthorized" });
       }
       
       // If activating a deal, validate subscription limits
@@ -1135,9 +1191,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/deals/:dealId', isAuthenticated, async (req: any, res) => {
+  // 🔒 SECURITY: Delete deal - requires ownership of restaurant
+  app.delete('/api/deals/:dealId', isAuthenticated, verifyResourceOwnership('deal'), async (req: any, res) => {
     try {
+      await logAudit({
+        userId: req.user.id,
+        action: 'deal_delete',
+        resourceType: 'deal',
+        resourceId: req.params.dealId,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        metadata: {}
+      });
       const { dealId } = req.params;
+      // Ownership verified by middleware - safe to delete
       await storage.deleteDeal(dealId);
       res.json({ success: true });
     } catch (error) {
@@ -2099,6 +2166,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Deal routes
   app.post('/api/deals', isAuthenticated, async (req: any, res) => {
     try {
+      await logAudit({
+        userId: req.user.id,
+        action: 'deal_create',
+        resourceType: 'deal',
+        resourceId: undefined,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        metadata: req.body
+      });
       const userId = req.user.id;
       const dealData = insertDealSchema.parse(req.body);
       
@@ -2625,8 +2701,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!clientSecret) {
-        console.error('Debug info - Subscription:', JSON.stringify(subscription, null, 2));
-        console.error('Debug info - Invoice:', JSON.stringify(invoice, null, 2));
+        console.error('Error: Unable to extract payment intent from subscription');
         throw new Error('Unable to create payment intent for subscription');
       }
 
@@ -2890,13 +2965,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const user = req.user;
-      console.log(`[SUBSCRIPTION DEBUG] Checking subscription for user ${user.id}`);
-      console.log(`[SUBSCRIPTION DEBUG] User billing interval: ${user.subscriptionBillingInterval}`);
-      console.log(`[SUBSCRIPTION DEBUG] User Stripe subscription ID: ${user.stripeSubscriptionId}`);
       
       // Check for BETA users (have billing interval but no Stripe subscription)
       if (!user.stripeSubscriptionId && user.subscriptionBillingInterval) {
-        console.log(`[SUBSCRIPTION DEBUG] User ${user.id} is a BETA user with free access`);
         return res.json({ 
           status: 'active',
           hasAccess: true,
@@ -2906,7 +2977,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (!user.stripeSubscriptionId) {
-        console.log(`[SUBSCRIPTION DEBUG] User ${user.id} has no Stripe subscription ID and no billing interval`);
         return res.json({ status: 'none', hasAccess: false });
       }
 
@@ -2917,8 +2987,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId, {
         expand: ['latest_invoice.payment_intent']
       });
-      
-      console.log(`Subscription ${user.stripeSubscriptionId} status: ${subscription.status}`);
       
       // If subscription is incomplete, try to pay the invoice directly 
       if (subscription.status === 'incomplete') {
@@ -2943,62 +3011,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             return;
           } catch (payError: any) {
-            console.log(`Error paying invoice ${invoice.id}:`, payError.message);
-            // If paying fails, continue with original logic below
+            console.log(`Error paying invoice: ${payError.message}`);
+            // If paying fails, continue with status check below
           }
-        }
-      }
-      
-      // Original logic kept for backup
-      if (subscription.status === 'incomplete') {
-        const latestInvoice = subscription.latest_invoice;
-        console.log(`Latest invoice:`, latestInvoice ? (latestInvoice as any).id : 'none');
-        
-        if (latestInvoice && typeof latestInvoice === 'object') {
-          const invoice = latestInvoice as any;
-          console.log(`Invoice ${invoice.id} status: ${invoice.status}`);
-          
-          // Check if invoice is paid (payment succeeded)
-          if (invoice.status === 'paid') {
-            console.log(`Invoice ${invoice.id} is paid, subscription should be active. Checking actual status...`);
-            
-            // Force refresh the subscription to get latest status
-            const refreshedSubscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
-            console.log(`Refreshed subscription status: ${refreshedSubscription.status}`);
-            
-            res.json({
-              status: refreshedSubscription.status,
-              currentPeriodEnd: (refreshedSubscription as any).current_period_end,
-              cancelAtPeriodEnd: (refreshedSubscription as any).cancel_at_period_end,
-            });
-            return;
-          } else if (invoice.status === 'open') {
-            console.log(`Invoice ${invoice.id} is open but payment might have succeeded. Attempting to pay invoice...`);
-            
-            try {
-              // In test mode, if payment was successful but invoice is still open, we can force pay it
-              const paidInvoice = await stripe.invoices.pay(invoice.id);
-              console.log(`Successfully paid invoice ${invoice.id}, new status: ${paidInvoice.status}`);
-              
-              // Now check the subscription status again
-              const refreshedSubscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
-              console.log(`After paying invoice, subscription status: ${refreshedSubscription.status}`);
-              
-              res.json({
-                status: refreshedSubscription.status,
-                currentPeriodEnd: (refreshedSubscription as any).current_period_end,
-                cancelAtPeriodEnd: (refreshedSubscription as any).cancel_at_period_end,
-              });
-              return;
-            } catch (payError: any) {
-              console.log(`Failed to pay invoice ${invoice.id}:`, payError.message);
-              // Continue with normal flow
-            }
-          } else {
-            console.log(`Invoice ${invoice.id} status is ${invoice.status}, subscription remains incomplete`);
-          }
-        } else {
-          console.log('No latest invoice found for incomplete subscription');
         }
       }
       
@@ -3369,11 +3384,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/stats', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      if (req.user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
 
       const stats = await storage.getAdminStats();
       res.json(stats);
@@ -3384,11 +3396,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin endpoint to sync subscriptions from Stripe to database
-  app.post('/api/admin/subscriptions/sync', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/subscriptions/sync', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      if (req.user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
 
       if (!stripe) {
         return res.status(500).json({ message: "Stripe not configured" });
@@ -3474,12 +3483,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/restaurants/pending', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/restaurants/pending', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      if (req.user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const restaurants = await storage.getPendingRestaurants();
       res.json(restaurants);
     } catch (error) {
@@ -3488,12 +3493,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/restaurants/:id/approve', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/restaurants/:id/approve', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      if (req.user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       await storage.approveRestaurant(req.params.id);
       res.json({ message: "Restaurant approved successfully" });
     } catch (error) {
@@ -3502,12 +3503,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/admin/restaurants/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/admin/restaurants/:id', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      if (req.user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       await storage.deleteRestaurant(req.params.id);
       res.json({ message: "Restaurant deleted successfully" });
     } catch (error) {
@@ -3516,12 +3513,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/users', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      if (req.user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const users = await storage.getAllUsers();
       res.json(users);
     } catch (error) {
@@ -3530,12 +3523,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/admin/users/:id/status', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/admin/users/:id/status', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      if (req.user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const { isActive } = req.body;
       await storage.updateUserStatus(req.params.id, isActive);
       res.json({ message: "User status updated successfully" });
@@ -3545,12 +3534,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/users/:userId/addresses', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/users/:userId/addresses', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      if (req.user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const addresses = await storage.getUserAddresses(req.params.userId);
       res.json(addresses);
     } catch (error) {
@@ -3559,12 +3544,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/deals', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/deals', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      if (req.user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const deals = await storage.getAllDealsWithRestaurants();
       res.json(deals);
     } catch (error) {
@@ -3573,12 +3554,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/deals/:dealId/stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/deals/:dealId/stats', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      if (req.user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const dealId = req.params.dealId;
       const [viewsCount, claimsCount, feedbackStats] = await Promise.all([
         storage.getDealViewsCount(dealId),
@@ -3599,12 +3576,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/admin/deals/:dealId', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/admin/deals/:dealId', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      if (req.user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       await storage.deleteDeal(req.params.dealId);
       res.json({ message: "Deal deleted successfully" });
     } catch (error) {
@@ -3613,12 +3586,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/deals/:dealId/clone', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/deals/:dealId/clone', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      if (req.user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const clonedDeal = await storage.duplicateDeal(req.params.dealId);
       res.json(clonedDeal);
     } catch (error) {
@@ -3627,12 +3596,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/admin/deals/:dealId/status', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/admin/deals/:dealId/status', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      if (req.user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const { isActive } = req.body;
       await storage.updateDeal(req.params.dealId, { isActive });
       res.json({ message: "Deal status updated successfully" });
@@ -3642,12 +3607,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/admin/deals/:dealId/extend', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/admin/deals/:dealId/extend', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      if (req.user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const { days } = req.body;
       if (!days || days < 1) {
         return res.status(400).json({ message: "Invalid number of days" });
@@ -3671,13 +3632,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Admin verification routes
-  app.get('/api/admin/verifications', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/verifications', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const user = req.user;
-      if (user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-      
       const { status } = req.query;
       let verifications = await storage.getVerificationRequests();
       
@@ -3693,13 +3649,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/verifications/:id/approve', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/verifications/:id/approve', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-      
       const { id } = req.params;
       await storage.approveVerificationRequest(id, user.id);
       res.json({ success: true, message: "Verification request approved" });
@@ -3709,13 +3661,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/verifications/:id/reject', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/verifications/:id/reject', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.userType !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-      
       const { id } = req.params;
       const { reason } = req.body;
       
@@ -3817,12 +3765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // OAuth configuration status check
-  app.get('/api/admin/oauth/status', async (req: any, res) => {
-    // Only allow admins to check OAuth status
-    if (!req.user || req.user.userType !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-
+  app.get('/api/admin/oauth/status', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const baseUrl = process.env.PUBLIC_BASE_URL || 
                      (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000');

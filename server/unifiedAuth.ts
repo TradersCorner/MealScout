@@ -707,3 +707,137 @@ export const isRestaurantOwner = (req: any, res: any, next: any) => {
 
   next();
 };
+
+// Role-based access control middleware
+type UserRole = 'customer' | 'restaurant_owner' | 'admin' | 'super_admin';
+
+export const requireRole = (allowedRoles: UserRole[]) => (req: any, res: any, next: any) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+
+  const userRole = req.user?.userType as UserRole;
+  if (!allowedRoles.includes(userRole)) {
+    return res.status(403).json({
+      error: "Forbidden",
+      message: `This action requires one of the following roles: ${allowedRoles.join(', ')}`,
+      userRole
+    });
+  }
+
+  next();
+};
+
+// Convenience middleware for admin-only endpoints
+export const isAdmin = requireRole(['admin', 'super_admin']);
+
+// Convenience middleware for super admin only
+export const isSuperAdmin = requireRole(['super_admin']);
+
+// Convenience middleware for restaurant owner or admin
+export const isRestaurantOwnerOrAdmin = requireRole(['restaurant_owner', 'admin', 'super_admin']);
+
+// API Key authentication middleware
+import bcrypt from "bcryptjs";
+
+export const apiKeyAuth = async (req: any, res: any, next: any) => {
+  const apiKey = req.headers['x-api-key'];
+  
+  if (!apiKey) {
+    return res.status(401).json({ error: "API key required", header: 'X-API-Key' });
+  }
+  
+  if (typeof apiKey !== 'string') {
+    return res.status(400).json({ error: "Invalid API key format" });
+  }
+  
+  try {
+    // Get all active API keys to check against (in production, use cache)
+    const apiKeys = await storage.getActiveApiKeys();
+    
+    let validKey = null;
+    for (const key of apiKeys) {
+      // Compare hashed key
+      if (await bcrypt.compare(apiKey, key.keyHash)) {
+        validKey = key;
+        break;
+      }
+    }
+    
+    if (!validKey) {
+      return res.status(401).json({ error: "Invalid API key" });
+    }
+    
+    if (validKey.expiresAt && new Date(validKey.expiresAt) < new Date()) {
+      return res.status(401).json({ error: "API key expired" });
+    }
+    
+    // Attach user to request
+    const user = await storage.getUser(validKey.userId);
+    if (!user) {
+      return res.status(401).json({ error: "API key user not found" });
+    }
+    
+    req.user = user;
+    req.apiKey = validKey;
+    
+    // Update last used time (async, don't await)
+    storage.updateApiKeyLastUsed(validKey.id).catch(err => 
+      console.error('Failed to update API key usage:', err)
+    );
+    
+    next();
+  } catch (error) {
+    console.error('API key authentication error:', error);
+    res.status(500).json({ error: "Authentication error" });
+  }
+};
+
+// Resource ownership verification middleware
+// Ensures user can only modify their own restaurant or data
+export const verifyResourceOwnership = (resourceType: 'restaurant' | 'deal') => {
+  return async (req: any, res: any, next: any) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    const { restaurantId, dealId } = req.params;
+    
+    try {
+      if (resourceType === 'restaurant' && restaurantId) {
+        // Check if user owns this restaurant
+        const restaurant = await storage.getRestaurant(restaurantId);
+        if (!restaurant) {
+          return res.status(404).json({ error: "Restaurant not found" });
+        }
+        
+        // Allow if user is owner or admin
+        if (restaurant.ownerId !== req.user.id && req.user.userType !== 'admin' && req.user.userType !== 'super_admin') {
+          return res.status(403).json({ error: "You do not own this restaurant" });
+        }
+      } else if (resourceType === 'deal' && dealId) {
+        // Check if user's restaurant owns this deal
+        const deal = await storage.getDeal(dealId);
+        if (!deal) {
+          return res.status(404).json({ error: "Deal not found" });
+        }
+        
+        const restaurant = await storage.getRestaurant(deal.restaurantId);
+        if (!restaurant) {
+          return res.status(404).json({ error: "Deal's restaurant not found" });
+        }
+        
+        // Allow if user is restaurant owner or admin
+        if (restaurant.ownerId !== req.user.id && req.user.userType !== 'admin' && req.user.userType !== 'super_admin') {
+          return res.status(403).json({ error: "You do not own this deal" });
+        }
+      }
+      
+      next();
+    } catch (error) {
+      console.error('Resource ownership verification error:', error);
+      res.status(500).json({ error: "Authorization error" });
+    }
+  };
+};
+```

@@ -76,18 +76,14 @@ if (process.env.NODE_ENV === "production") {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: [
-          "'self'", 
-          "'unsafe-inline'", 
-          "'unsafe-eval'" // Required for Vite in production
-        ],
+        styleSrc: ["'self'"],
+        scriptSrc: ["'self'"],
         imgSrc: ["'self'", "data:", "https:"],
         connectSrc: ["'self'", "https:", "ws:", "wss:"],
         fontSrc: ["'self'", "https:", "data:"],
       },
     },
-    crossOriginEmbedderPolicy: false, // Required for some features
+    crossOriginEmbedderPolicy: false,
   }));
   app.use(compression({
     filter: (req, res) => {
@@ -99,22 +95,113 @@ if (process.env.NODE_ENV === "production") {
   }));
 }
 
-// Minimal CSP for development - allow external geocoding APIs
-app.use((req, res, next) => {
-  if (req.path.startsWith('/api/')) {
-    return next();
-  }
-  res.setHeader(
-    'Content-Security-Policy', 
-    "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: https:; " +
-    "connect-src 'self' https: wss: ws: " +
-    "https://geocoding.census.gov " +
-    "https://api.zippopotam.us " +
-    "https://api.bigdatacloud.net " +
-    "https://nominatim.openstreetmap.org " +
-    "https://ipapi.co;"
-  );
-  next();
+// CSP for development - safer but allows external geocoding APIs
+if (process.env.NODE_ENV !== "production") {
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    res.setHeader(
+      'Content-Security-Policy', 
+      "default-src 'self' data: https:; " +
+      "style-src 'self' 'unsafe-inline' https:; " +
+      "script-src 'self' https:; " +
+      "connect-src 'self' https: wss: ws: " +
+      "https://geocoding.census.gov " +
+      "https://api.zippopotam.us " +
+      "https://api.bigdatacloud.net " +
+      "https://nominatim.openstreetmap.org " +
+      "https://ipapi.co; " +
+      "img-src 'self' data: https: " +
+      "font-src 'self' https: data:"
+    );
+    next();
+  });
+}
+
+// Rate limiting middleware for sensitive endpoints
+interface RateLimitStore {
+  [key: string]: { count: number; resetTime: number };
+}
+
+const rateLimitStore: RateLimitStore = {};
+
+// Helper to create rate limit middleware
+function createRateLimiter(options: { windowMs: number; maxRequests: number; keyGenerator?: (req: Request) => string }) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const key = options.keyGenerator ? options.keyGenerator(req) : req.ip || 'unknown';
+    const now = Date.now();
+    
+    if (!rateLimitStore[key]) {
+      rateLimitStore[key] = { count: 0, resetTime: now + options.windowMs };
+    }
+    
+    // Reset if window expired
+    if (now > rateLimitStore[key].resetTime) {
+      rateLimitStore[key] = { count: 0, resetTime: now + options.windowMs };
+    }
+    
+    rateLimitStore[key].count++;
+    
+    res.setHeader('X-RateLimit-Limit', options.maxRequests);
+    res.setHeader('X-RateLimit-Remaining', Math.max(0, options.maxRequests - rateLimitStore[key].count));
+    res.setHeader('X-RateLimit-Reset', new Date(rateLimitStore[key].resetTime).toISOString());
+    
+    if (rateLimitStore[key].count > options.maxRequests) {
+      return res.status(429).json({
+        error: 'Too many requests',
+        message: `Rate limit exceeded. Please try again after ${Math.ceil((rateLimitStore[key].resetTime - now) / 1000)} seconds.`,
+        retryAfter: Math.ceil((rateLimitStore[key].resetTime - now) / 1000)
+      });
+    }
+    
+    next();
+  };
+}
+
+// RATE LIMIT POLICIES - Optimized per endpoint type
+// Strategy: "Fast first click, slow spam" - generous for normal users, strict for attackers
+
+// 1. Authentication endpoints - Very strict (prevent brute force)
+const strictAuthLimiter = createRateLimiter({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  maxRequests: 3, // 3 attempts max
+  keyGenerator: (req) => `${req.ip}:${req.path}`
+});
+
+// 2. General authentication (moderate)
+const authLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxRequests: 5, // 5 attempts
+  keyGenerator: (req) => `${req.ip}:${req.path}`
+});
+
+// 3. Search and discovery (generous for normal users)
+const searchLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  maxRequests: 50, // 50 searches per minute
+  keyGenerator: (req) => req.ip || 'unknown'
+});
+
+// 4. Deal views and engagement (very generous)
+const viewLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  maxRequests: 120, // 120 views per minute
+  keyGenerator: (req) => req.ip || 'unknown'
+});
+
+// 5. Content updates (strict for restaurant owners)
+const updateLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  maxRequests: 10, // 10 edits per hour
+  keyGenerator: (req) => `${req.user?.id}:${req.path}` // Per-user limit
+});
+
+// 6. General API (moderate baseline)
+const apiLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  maxRequests: 30, // 30 requests per window
+  keyGenerator: (req) => req.ip || 'unknown'
 });
 
 // Body parsing with size limits
@@ -175,6 +262,33 @@ app.use((req, res, next) => {
   app.use(passport.initialize());
   app.use(passport.session());
   
+  // Apply granular rate limiting - optimized per endpoint
+  
+  // 🔒 STRICT - Authentication (prevent brute force)
+  app.use('/api/auth/forgot-password', strictAuthLimiter);
+  app.use('/api/auth/reset-password', strictAuthLimiter);
+  
+  // 🔐 MODERATE - Auth attempts (login, signup)
+  app.use('/api/auth/login', authLimiter);
+  app.use('/api/auth/signup', authLimiter);
+  
+  // 🔍 GENEROUS - Search and discovery
+  app.use('/api/restaurants/search', searchLimiter);
+  app.use('/api/restaurants/nearby', searchLimiter);
+  
+  // 👀 VERY GENEROUS - Deal views (engagement tracking)
+  app.use('/api/deals/:dealId/view', viewLimiter);
+  app.use('/api/restaurants/:restaurantId/locations', viewLimiter);
+  
+  // ✏️  STRICT - Content updates (prevent spam editing)
+  app.use('/api/deals', updateLimiter);
+  app.use('/api/restaurants/:restaurantId/location', updateLimiter);
+  app.use('/api/restaurants/:restaurantId/operating-hours', updateLimiter);
+  app.use('/api/restaurants/:restaurantId/mobile-settings', updateLimiter);
+  
+  // 📞 MODERATE - General API and reports
+  app.use('/api/bug-report', apiLimiter);
+  
   // OAuth normalization middleware - DISABLED because it breaks OAuth flow
   // The redirect was interfering with the Passport.js OAuth flow by redirecting before authentication
   // OAuth works correctly as long as callback URLs are properly configured in Google Cloud Console
@@ -192,25 +306,7 @@ app.use((req, res, next) => {
   //   next();
   // });
 
-  // Host normalization middleware - DISABLED to prevent redirect loops
-  // TODO: Re-enable with proper production domain detection
-  // app.use((req, res, next) => {
-  //   // Skip for API routes and localhost development
-  //   if (req.path.startsWith('/api') || req.hostname === 'localhost' || req.hostname === '127.0.0.1') {
-  //     return next();
-  //   }
-  //   
-  //   const publicBaseUrl = process.env.PUBLIC_BASE_URL;
-  //   if (publicBaseUrl && !req.url.includes('?')) { // Only redirect if no query params to avoid losing OAuth state
-  //     const canonicalHost = new URL(publicBaseUrl).hostname;
-  //     
-  //     // Debug logging to see what's happening
-  //     log(`🔍 Hostname check: req.hostname='${req.hostname}', canonicalHost='${canonicalHost}', match=${req.hostname === canonicalHost}`);
-  //     
-  //     if (req.hostname !== canonicalHost) {
-  //       const redirectUrl = `${publicBaseUrl}${req.path}`;
-  //       log(`Redirecting ${req.hostname} to canonical domain: ${redirectUrl}`);
-  //       return res.redirect(302, redirectUrl);
+    //       return res.redirect(302, redirectUrl);
   //     }
   //   }
   //   next();

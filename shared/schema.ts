@@ -56,6 +56,59 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Security audit log table for all critical actions
+export const securityAuditLog = pgTable('security_audit_log', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar('user_id'),
+  action: varchar('action').notNull(),
+  resourceType: varchar('resource_type'),
+  resourceId: varchar('resource_id'),
+  ip: varchar('ip'),
+  userAgent: varchar('user_agent'),
+  timestamp: timestamp('timestamp').defaultNow(),
+  metadata: jsonb('metadata'),
+}, table => [
+  index('idx_security_audit_user').on(table.userId),
+  index('idx_security_audit_action').on(table.action),
+  index('idx_security_audit_resource').on(table.resourceType, table.resourceId),
+  index('idx_security_audit_time').on(table.timestamp)
+]);
+
+// Incidents table for SOC-lite workflow
+export const incidents = pgTable('incidents', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  ruleId: varchar('rule_id').notNull(),
+  severity: varchar('severity').notNull(), // 'low' | 'medium' | 'high' | 'critical'
+  status: varchar('status').notNull().default('new'), // 'new' | 'acknowledged' | 'resolved' | 'closed'
+  userId: varchar('user_id'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow(),
+  acknowledgedAt: timestamp('acknowledged_at'),
+  acknowledgedBy: varchar('acknowledged_by'),
+  resolvedAt: timestamp('resolved_at'),
+  resolvedBy: varchar('resolved_by'),
+  closedAt: timestamp('closed_at'),
+  closedBy: varchar('closed_by'),
+  signatureHash: varchar('signature_hash'), // Cryptographic signature for tamper detection
+}, table => [
+  index('idx_incidents_status').on(table.status),
+  index('idx_incidents_severity').on(table.severity),
+  index('idx_incidents_rule').on(table.ruleId),
+  index('idx_incidents_created').on(table.createdAt)
+]);
+
+// On-call rotation schedule
+export const oncallRotation = pgTable('oncall_rotation', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar('user_id').notNull().references(() => users.id),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date').notNull(),
+  isPrimary: boolean('is_primary').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+}, table => [
+  index('idx_oncall_dates').on(table.startDate, table.endDate)
+]);
+
 export const restaurants = pgTable("restaurants", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   ownerId: varchar("owner_id").notNull().references(() => users.id),
@@ -313,6 +366,29 @@ export const dealFeedback = pgTable(
   ],
 );
 
+// API Keys for service-to-service authentication
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+    name: varchar("name").notNull(), // 'POS Integration', 'Live Location Service', etc.
+    keyHash: text("key_hash").notNull(), // bcrypt hashed (never store plaintext)
+    keyPrefix: varchar("key_prefix", { length: 8 }), // First 8 chars for display (e.g., 'sk_live_abc123')
+    scope: varchar("scope").notNull(), // 'read', 'write', 'admin'
+    isActive: boolean("is_active").default(true),
+    lastUsedAt: timestamp("last_used_at"),
+    expiresAt: timestamp("expires_at"), // Optional - null means no expiration
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_api_keys_user").on(table.userId, table.isActive),
+    index("IDX_api_keys_prefix").on(table.keyPrefix),
+    index("IDX_api_keys_active").on(table.isActive, table.expiresAt),
+  ],
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   restaurants: many(restaurants),
@@ -323,6 +399,14 @@ export const usersRelations = relations(users, ({ many }) => ({
   restaurantRecommendations: many(restaurantRecommendations),
   addresses: many(userAddresses),
   passwordResetTokens: many(passwordResetTokens),
+  apiKeys: many(apiKeys),
+}));
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  user: one(users, {
+    fields: [apiKeys.userId],
+    references: [users.id],
+  }),
 }));
 
 export const restaurantsRelations = relations(restaurants, ({ one, many }) => ({

@@ -43,10 +43,17 @@ export function setupWebSocketServer(httpServer: Server): SocketIOServer {
     },
   });
 
-  // Create Socket.IO server with default configuration
+  // Create Socket.IO server with restricted CORS
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5000').split(',').map(o => o.trim());
   io = new SocketIOServer(httpServer, {
     cors: {
-      origin: "*",
+      origin: function(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
       methods: ["GET", "POST"],
       credentials: true,
     },

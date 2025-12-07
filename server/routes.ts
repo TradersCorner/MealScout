@@ -3828,6 +3828,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const incidentRoutes = (await import('./incidentRoutes')).default;
   app.use('/api/incidents', incidentRoutes);
 
+  // Register admin control center routes (admin-only)
+  const adminRoutes = (await import('./adminRoutes')).default;
+  app.use('/api/admin', adminRoutes);
+
   // Register cron/scheduler endpoints
   app.post('/api/cron/escalations', incidentRoutes.stack.find((layer: any) => 
     layer.route?.path === '/cron/escalations'

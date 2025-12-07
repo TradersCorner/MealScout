@@ -12,12 +12,12 @@ const auditLogger = winston.createLogger({
 });
 
 export async function logAudit(
-  userId?: string,
-  action?: string,
-  resourceType?: string,
-  resourceId?: string,
-  ip?: string,
-  userAgent?: string,
+  userId: string = '',
+  action: string = 'unknown',
+  resourceType: string = 'unknown',
+  resourceId: string = 'unknown',
+  ip: string = 'unknown',
+  userAgent: string = 'unknown',
   metadata?: any,
 ) {
   // Redact sensitive data before logging

@@ -152,7 +152,7 @@ export function redactPII(obj: any, depth: number = 0): any {
     for (const [key, value] of Object.entries(obj)) {
       const sensitiveRule = isSensitiveField(key);
       if (sensitiveRule && value) {
-        redacted[key] = redactionRules[sensitiveRule](value);
+        redacted[key] = redactionRules[sensitiveRule](String(value));
       } else if (typeof value === 'object') {
         redacted[key] = redactPII(value, depth + 1);
       } else {

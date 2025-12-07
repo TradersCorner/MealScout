@@ -5,13 +5,23 @@
  * All endpoints require admin authentication.
  */
 
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { db } from './db';
-import { incidents, securityAuditLog } from '@shared/schema';
+import { incidents, securityAuditLog, type User } from '@shared/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { isAdmin } from './unifiedAuth';
-import { generateIncidentReport, verifyIncidentSignature, signIncident, acknowledgeIncident, resolveIncident, closeIncident } from './incidentManager';
+import incidentManager, { verifyIncidentSignature } from './incidentManager';
 import { logAudit } from './auditLogger';
+
+// Type augmentation for Express Request
+declare global {
+  namespace Express {
+    interface User {
+      id: string;
+      role?: string[];
+    }
+  }
+}
 
 const router = Router();
 
@@ -97,11 +107,11 @@ router.patch('/:id/status', isAdmin, async (req, res) => {
     let updated;
 
     if (status === 'acknowledged' && incident.status === 'new') {
-      updated = await acknowledgeIncident(req.params.id, userId);
+      updated = await incidentManager.acknowledgeIncident(req.params.id, userId);
     } else if (status === 'resolved' && incident.status === 'acknowledged') {
-      updated = await resolveIncident(req.params.id, userId);
+      updated = await incidentManager.resolveIncident(req.params.id, userId);
     } else if (status === 'closed' && incident.status === 'resolved') {
-      updated = await closeIncident(req.params.id, userId);
+      updated = await incidentManager.closeIncident(req.params.id, userId);
     } else {
       return res.status(400).json({ error: `Cannot transition from ${incident.status} to ${status}` });
     }
@@ -143,7 +153,28 @@ router.get('/:id/report', isAdmin, async (req, res) => {
       where: eq(securityAuditLog.resourceId, req.params.id),
     });
 
-    const report = await generateIncidentReport(incident, auditLogs);
+    // Generate markdown report
+    const report = `# Incident Report: ${incident.id}
+
+## Overview
+- **ID**: ${incident.id}
+- **Rule**: ${incident.ruleId}
+- **Severity**: ${incident.severity}
+- **Status**: ${incident.status}
+- **Created**: ${incident.createdAt ? incident.createdAt.toISOString() : 'Unknown'}
+- **Acknowledged**: ${incident.acknowledgedAt ? incident.acknowledgedAt.toISOString() : 'Pending'}
+- **Resolved**: ${incident.resolvedAt ? incident.resolvedAt.toISOString() : 'Pending'}
+
+## Metadata
+\`\`\`json
+${JSON.stringify(incident.metadata, null, 2)}
+\`\`\`
+
+## Related Audit Logs
+${auditLogs.map((log) => `- [${log.timestamp ? log.timestamp.toISOString() : 'Unknown'}] ${log.action} on ${log.resourceType}:${log.resourceId}`).join('\n')}
+
+---
+Generated on ${new Date().toISOString()}`;
 
     res.set('Content-Type', 'text/markdown');
     res.set('Content-Disposition', `attachment; filename="incident-${incident.id}.md"`);
@@ -168,7 +199,9 @@ router.get('/:id/verify-signature', isAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Incident not found' });
     }
 
-    const valid = verifyIncidentSignature(incident);
+    const valid = incident.signatureHash
+      ? verifyIncidentSignature(incident, incident.signatureHash)
+      : false;
 
     res.json({
       valid,
@@ -201,9 +234,7 @@ router.post('/cron/escalations', async (req, res) => {
     }
 
     // Import escalation runner
-    const { checkEscalations } = await import('../incidentManager');
-
-    const escalatedCount = await checkEscalations();
+    const escalatedCount = await incidentManager.checkEscalations();
 
     res.json({
       success: true,
@@ -233,9 +264,7 @@ router.post('/cron/auto-close', async (req, res) => {
     }
 
     // Import auto-close runner
-    const { autoCloseLowSeverityIncidents } = await import('../incidentManager');
-
-    const closedCount = await autoCloseLowSeverityIncidents();
+    const closedCount = await incidentManager.autoCloseLowSeverityIncidents();
 
     res.json({
       success: true,

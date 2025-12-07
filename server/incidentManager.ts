@@ -143,7 +143,7 @@ export async function createIncident({
 // Get current on-call person
 export async function getCurrentOnCall(): Promise<{ userId: string; isPrimary: boolean } | null> {
   const now = new Date();
-  const [rotation] = await db.query.oncallRotation.findMany({
+  const rotations = await db.query.oncallRotation.findMany({
     where: and(
       lte(oncallRotation.startDate, now),
       gte(oncallRotation.endDate, now)
@@ -152,7 +152,8 @@ export async function getCurrentOnCall(): Promise<{ userId: string; isPrimary: b
     limit: 1,
   });
 
-  return rotation ? { userId: rotation.userId, isPrimary: rotation.isPrimary } : null;
+  const rotation = rotations[0];
+  return rotation ? { userId: rotation.userId, isPrimary: rotation.isPrimary === true } : null;
 }
 
 // Send notifications via configured channels
@@ -169,7 +170,6 @@ async function notifyIncident(incident: any, eventType: 'created' | 'acknowledge
   // Slack notification
   if (NOTIFICATION_CONFIG.slack.enabled) {
     try {
-      const fetch = (await import('node-fetch')).default;
       await fetch(NOTIFICATION_CONFIG.slack.webhookUrl!, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -333,7 +333,8 @@ export async function checkEscalations() {
   });
 
   for (const incident of openIncidents) {
-    const minutesOpen = (now.getTime() - new Date(incident.createdAt).getTime()) / (1000 * 60);
+    if (!incident.createdAt) continue; // Skip if no created date
+    const minutesOpen = (now.getTime() - incident.createdAt.getTime()) / (1000 * 60);
 
     // Check if escalation is needed
     if (minutesOpen > ESCALATION_MINUTES.noAcknowledgment) {

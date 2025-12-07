@@ -777,7 +777,85 @@ export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type InsertDealFeedback = z.infer<typeof insertDealFeedbackSchema>;
 export type DealFeedback = typeof dealFeedback.$inferSelect;
 
+// Support tickets for user help requests
+export const supportTickets = pgTable(
+  'support_tickets',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    subject: varchar('subject').notNull(),
+    description: text('description').notNull(),
+    category: varchar('category').notNull(), // 'bug' | 'feature' | 'payment' | 'account' | 'other'
+    priority: varchar('priority').default('normal'), // 'low' | 'normal' | 'high' | 'critical'
+    status: varchar('status').default('open'), // 'open' | 'in-progress' | 'resolved' | 'closed'
+    adminNotes: text('admin_notes'),
+    assignedToAdminId: varchar('assigned_to_admin_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').notNull().default(sql`now()`),
+    updatedAt: timestamp('updated_at').notNull().default(sql`now()`),
+    resolvedAt: timestamp('resolved_at'),
+    resolvedByAdminId: varchar('resolved_by_admin_id').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    index('idx_support_tickets_user_id').on(table.userId),
+    index('idx_support_tickets_status').on(table.status),
+    index('idx_support_tickets_created_at').on(table.createdAt),
+  ]
+);
+
+// Moderation events for tracking content flags, abuse, policy violations
+export const moderationEvents = pgTable(
+  'moderation_events',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    eventType: varchar('event_type').notNull(), // 'deal_flagged' | 'review_flagged' | 'user_reported' | 'content_removed' | 'user_warned' | 'user_suspended'
+    severity: varchar('severity').notNull().default('medium'), // 'low' | 'medium' | 'high' | 'critical'
+    reportedUserId: varchar('reported_user_id').references(() => users.id, { onDelete: 'cascade' }),
+    reportedResourceType: varchar('reported_resource_type'), // 'deal' | 'review' | 'user' | 'comment'
+    reportedResourceId: varchar('reported_resource_id'),
+    reporterUserId: varchar('reporter_user_id').references(() => users.id, { onDelete: 'set null' }),
+    reason: varchar('reason').notNull(),
+    description: text('description'),
+    metadata: jsonb('metadata'), // Additional context
+    status: varchar('status').default('open'), // 'open' | 'under-review' | 'dismissed' | 'action-taken'
+    actionTaken: varchar('action_taken'), // 'none' | 'warning' | 'content-removed' | 'suspension' | 'ban'
+    reviewedByAdminId: varchar('reviewed_by_admin_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').notNull().default(sql`now()`),
+    reviewedAt: timestamp('reviewed_at'),
+  },
+  (table) => [
+    index('idx_moderation_events_status').on(table.status),
+    index('idx_moderation_events_severity').on(table.severity),
+    index('idx_moderation_events_created_at').on(table.createdAt),
+    index('idx_moderation_events_reported_user').on(table.reportedUserId),
+  ]
+);
+
+export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
+export type SupportTicket = typeof supportTickets.$inferSelect;
+
+export type InsertModerationEvent = z.infer<typeof insertModerationEventSchema>;
+export type ModerationEvent = typeof moderationEvents.$inferSelect;
+
 export type OperatingHoursTimeSlot = z.infer<typeof operatingHoursTimeSlotSchema>;
 export type OperatingHours = z.infer<typeof operatingHoursSchema>;
 export type UpdateRestaurantLocation = z.infer<typeof updateRestaurantLocationSchema>;
 export type UpdateRestaurantOperatingHours = z.infer<typeof updateRestaurantOperatingHoursSchema>;
+
+// Schemas for support tickets
+export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  resolvedAt: true,
+  assignedToAdminId: true,
+  resolvedByAdminId: true,
+  adminNotes: true,
+});
+
+// Schemas for moderation events
+export const insertModerationEventSchema = createInsertSchema(moderationEvents).omit({
+  id: true,
+  createdAt: true,
+  reviewedAt: true,
+  reviewedByAdminId: true,
+});

@@ -11,7 +11,11 @@
     "check": "tsc",
     "db:push": "drizzle-kit push",
     "test:incidents": "tsx scripts/testIncidents.ts",
-    "validate:config": "tsx scripts/validateConfig.ts"
+    "validate:config": "tsx scripts/validateConfig.ts",
+    "stress-test": "tsx scripts/stressTest.ts",
+    "test:flows": "tsx scripts/userFlows.ts",
+    "test:all": "npm run check && npm run test:flows && npm run stress-test",
+    "monitor": "tsx scripts/monitorPerformance.ts"
   },
   "dependencies": {
     "@getbrevo/brevo": "^3.0.1",

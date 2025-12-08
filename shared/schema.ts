@@ -52,6 +52,12 @@ export const users = pgTable("users", {
   birthYear: integer("birth_year"),
   gender: varchar("gender"), // 'male' | 'female' | 'other' | 'prefer_not_to_say'
   postalCode: varchar("postal_code"),
+  // Golden Fork Award for influential food reviewers
+  hasGoldenFork: boolean("has_golden_fork").default(false),
+  goldenForkEarnedAt: timestamp("golden_fork_earned_at"),
+  reviewCount: integer("review_count").default(0),
+  recommendationCount: integer("recommendation_count").default(0),
+  influenceScore: integer("influence_score").default(0), // Calculated from reviews, recommendations, favorites
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -130,6 +136,14 @@ export const restaurants = pgTable("restaurants", {
   operatingHours: jsonb("operating_hours"),
   isActive: boolean("is_active").default(true),
   isVerified: boolean("is_verified").default(false),
+  // Image uploads
+  logoUrl: varchar("logo_url"),
+  coverImageUrl: varchar("cover_image_url"),
+  // Golden Plate Award for top-performing restaurants (awarded every 90 days)
+  hasGoldenPlate: boolean("has_golden_plate").default(false),
+  goldenPlateEarnedAt: timestamp("golden_plate_earned_at"),
+  goldenPlateCount: integer("golden_plate_count").default(0), // Total times awarded (permanent record)
+  rankingScore: integer("ranking_score").default(0), // Calculated from recommendations, favorites, reviews, deal usage
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1110,6 +1124,55 @@ export const restaurantSubmissions = pgTable(
   ]
 );
 
+// Award History - Track Golden Plate awards given every 90 days
+export const awardHistory = pgTable(
+  'award_history',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    awardType: varchar('award_type').notNull(), // 'golden_plate' | 'golden_fork'
+    recipientId: varchar('recipient_id').notNull(), // User ID or Restaurant ID
+    recipientType: varchar('recipient_type').notNull(), // 'user' | 'restaurant'
+    awardPeriodStart: timestamp('award_period_start').notNull(),
+    awardPeriodEnd: timestamp('award_period_end').notNull(),
+    rankingScore: integer('ranking_score').notNull(),
+    rankPosition: integer('rank_position'), // Their position in rankings when awarded
+    geographicArea: varchar('geographic_area'), // County/city for Golden Plate
+    metadata: jsonb('metadata'), // Additional award context
+    awardedAt: timestamp('awarded_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_award_recipient').on(table.recipientId, table.recipientType),
+    index('idx_award_type').on(table.awardType),
+    index('idx_award_period').on(table.awardPeriodStart, table.awardPeriodEnd),
+    index('idx_award_area').on(table.geographicArea),
+  ]
+);
+
+// Image uploads - Track all uploaded images for restaurants and users
+export const imageUploads = pgTable(
+  'image_uploads',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    uploadedByUserId: varchar('uploaded_by_user_id').notNull().references(() => users.id),
+    imageType: varchar('image_type').notNull(), // 'restaurant_logo' | 'restaurant_cover' | 'deal' | 'user_profile'
+    entityId: varchar('entity_id'), // ID of restaurant, deal, or user
+    entityType: varchar('entity_type'), // 'restaurant' | 'deal' | 'user'
+    cloudinaryPublicId: varchar('cloudinary_public_id'), // For Cloudinary
+    cloudinaryUrl: varchar('cloudinary_url').notNull(),
+    thumbnailUrl: varchar('thumbnail_url'),
+    width: integer('width'),
+    height: integer('height'),
+    fileSize: integer('file_size'), // bytes
+    mimeType: varchar('mime_type'),
+    uploadedAt: timestamp('uploaded_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_image_entity').on(table.entityId, table.entityType),
+    index('idx_image_uploader').on(table.uploadedByUserId),
+    index('idx_image_type').on(table.imageType),
+  ]
+);
+
 export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
 export type SupportTicket = typeof supportTickets.$inferSelect;
 
@@ -1192,3 +1255,22 @@ export const insertRestaurantSubmissionSchema = createInsertSchema(restaurantSub
   convertedToRestaurantId: true,
   createdAt: true,
 });
+
+// Schemas for award system
+export const insertAwardHistorySchema = createInsertSchema(awardHistory).omit({
+  id: true,
+  awardedAt: true,
+});
+
+export type AwardHistory = typeof awardHistory.$inferSelect;
+export type InsertAwardHistory = z.infer<typeof insertAwardHistorySchema>;
+
+// Schemas for image uploads
+export const insertImageUploadSchema = createInsertSchema(imageUploads).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export type ImageUpload = typeof imageUploads.$inferSelect;
+export type InsertImageUpload = z.infer<typeof insertImageUploadSchema>;
+

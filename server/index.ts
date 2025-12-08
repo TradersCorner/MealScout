@@ -657,7 +657,7 @@ app.use((req, res, next) => {
 
       // For HTML requests in production, check if built frontend exists
       // Use the same path logic as serveStatic function in vite.ts
-      const indexPath = path.resolve(process.cwd(), 'server', 'public', 'index.html');
+      const indexPath = path.resolve(process.cwd(), 'dist', 'public', 'index.html');
       
       if (fs.existsSync(indexPath)) {
         // SPA build exists, let serveStatic handle it

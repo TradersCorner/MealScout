@@ -68,6 +68,8 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
+  // In production, server code is in dist/ and public assets are in dist/public
+  // import.meta.dirname will be dist/ so we look for public/ relative to it
   const distPath = path.resolve(import.meta.dirname, "public");
 
   if (!fs.existsSync(distPath)) {

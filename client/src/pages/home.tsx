@@ -70,6 +70,13 @@ export default function Home() {
       console.error('Failed to copy link', error);
     }
   };
+
+  const scrollToElement = (elementId: string) => {
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
   const [foodTrucks, setFoodTrucks] = useState<FoodTruck[]>([]);
   const [showFoodTrucks, setShowFoodTrucks] = useState(true);
   const [loadingFoodTrucks, setLoadingFoodTrucks] = useState(false);
@@ -552,11 +559,9 @@ export default function Home() {
               We don’t see restaurants or food trucks near you yet. Enable location or enter your city to discover deals, or invite local vendors to join MealScout.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Link href="#community-builder" className="w-full sm:w-auto">
-                <Button variant="outline" className="w-full border-orange-300 text-orange-700 hover:bg-orange-50">
-                  Invite Restaurants & Food Trucks
-                </Button>
-              </Link>
+              <Button onClick={() => scrollToElement('community-builder')} className="w-full sm:w-auto border-orange-300 text-orange-700 hover:bg-orange-50" variant="outline">
+                Invite Restaurants & Food Trucks
+              </Button>
             </div>
           </div>
         </div>
@@ -759,11 +764,9 @@ export default function Home() {
                     <Button onClick={fetchNearbyFoodTrucks} disabled={loadingFoodTrucks} className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all">
                       {loadingFoodTrucks ? 'Searching...' : 'Search Again'}
                     </Button>
-                    <Link href="#community-builder" className="w-full sm:w-auto">
-                      <Button className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all">
-                        Help bring vendors to your area
-                      </Button>
-                    </Link>
+                    <Button onClick={() => scrollToElement('community-builder')} className="w-full sm:w-auto bg-gray-900 hover:bg-gray-800 text-white font-semibold px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all">
+                      Help bring vendors to your area
+                    </Button>
                   </div>
                 </div>
               )}

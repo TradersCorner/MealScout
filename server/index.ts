@@ -4,6 +4,8 @@ import helmet from "helmet";
 import passport from "passport";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import actionRoutes from "./routes/actionRoutes";
+import { verifyTradeScoutToken, rateLimitActions } from "./middleware/actionAuth";
 import { storage } from "./storage";
 import { setupWebSocketServer } from "./websocket";
 import { getSession } from "./unifiedAuth";
@@ -599,6 +601,11 @@ app.use((req, res, next) => {
 </html>
     `);
   });
+  
+  // ==================== ACTION API FOR TRADESCOUT LLM ====================
+  // Unified endpoint that TradeScout LLM calls to perform actions
+  // Requires authentication via TRADESCOUT_API_TOKEN
+  app.use("/api/actions", rateLimitActions, verifyTradeScoutToken, actionRoutes);
   
   const server = await registerRoutes(app);
 

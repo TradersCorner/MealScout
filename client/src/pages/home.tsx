@@ -540,10 +540,7 @@ export default function Home() {
               We don’t see restaurants or food trucks near you yet. Enable location or enter your city to discover deals, or invite local vendors to join MealScout.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button onClick={handleManualLocation} className="bg-orange-500 hover:bg-orange-600 text-white">
-                Search Your City
-              </Button>
-              <Link href={user ? "#affiliate-program" : "/restaurant-signup"} className="w-full sm:w-auto">
+              <Link href="#community-builder" className="w-full sm:w-auto">
                 <Button variant="outline" className="w-full border-orange-300 text-orange-700 hover:bg-orange-50">
                   Invite Restaurants & Food Trucks
                 </Button>
@@ -750,7 +747,7 @@ export default function Home() {
                     <Button onClick={fetchNearbyFoodTrucks} disabled={loadingFoodTrucks} className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all">
                       {loadingFoodTrucks ? 'Searching...' : 'Search Again'}
                     </Button>
-                    <Link href={user ? "#affiliate-program" : "/auth"} className="w-full sm:w-auto">
+                    <Link href={user ? "#community-builder" : "/auth"} className="w-full sm:w-auto">
                       <Button className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all">
                         Help bring vendors to your area
                       </Button>
@@ -1514,8 +1511,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Community Builder Program Section */}
-      <div id="affiliate-program" className="px-6 py-8 bg-gradient-to-br from-orange-50 via-red-50 to-orange-50">
+      {/* Community Builder Program Section (summary) */}
+      <div id="community-builder-summary" className="px-6 py-8 bg-gradient-to-br from-orange-50 via-red-50 to-orange-50">
         <div className="bg-white rounded-2xl p-6 lg:p-8 shadow-xl border-2 border-orange-200">
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
@@ -1615,8 +1612,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Community Builder Program Section */}
-      <div id="affiliate-program" className="px-6 py-10 bg-gradient-to-br from-orange-50 via-red-50 to-orange-50 border-t border-orange-200">
+      {/* Community Builder Program Section (detailed) */}
+      <div id="community-builder" className="px-6 py-10 bg-gradient-to-br from-orange-50 via-red-50 to-orange-50 border-t border-orange-200">
         <div className="bg-white rounded-2xl p-6 lg:p-8 shadow-xl border-2 border-orange-200">
           <div className="flex items-start justify-between mb-6">
             <div className="flex-1">

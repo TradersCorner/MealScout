@@ -559,6 +559,32 @@ export const videoStoryReports = pgTable(
   ],
 );
 
+// Feed Ads - House ads and affiliate placements in feed
+export const feedAds = pgTable(
+  'feed_ads',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    title: varchar('title').notNull(),
+    mediaUrl: text('media_url'), // image or video
+    targetUrl: text('target_url').notNull(),
+    ctaText: varchar('cta_text').default('Learn more'),
+    isHouseAd: boolean('is_house_ad').default(false), // our own ads
+    isAffiliate: boolean('is_affiliate').default(false),
+    affiliateName: varchar('affiliate_name'),
+    priority: integer('priority').default(0), // higher shows first
+    insertionFrequency: integer('insertion_frequency').default(5), // every N items
+    startAt: timestamp('start_at'),
+    endAt: timestamp('end_at'),
+    isActive: boolean('is_active').default(true),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_feed_ads_active').on(table.isActive, table.startAt, table.endAt),
+    index('idx_feed_ads_priority').on(table.priority),
+  ],
+);
+
 // Story Awards (for golden forks, etc.)
 export const storyAwards = pgTable(
   "story_awards",
@@ -1489,22 +1515,24 @@ export const restaurantSubscriptions = pgTable(
   {
     id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
     restaurantId: varchar('restaurant_id').notNull().references(() => restaurants.id, { onDelete: 'cascade' }),
-    tier: varchar('tier').notNull().default('free'), // 'free' | 'basic' | 'premium'
-    // Basic: $29/mo - 1 featured slot, post deals, video stories, basic analytics
-    // Premium: $99/mo - 3 featured slots, priority rotation, advanced analytics, deal scheduling
+    tier: varchar('tier').notNull().default('free'), // 'free' | 'monthly' | 'quarterly' | 'yearly'
+    // Pricing (USD): monthly $50, quarterly $100, yearly $499
     status: varchar('status').notNull().default('active'), // 'active' | 'canceled' | 'past_due'
+    priceCents: integer('price_cents').default(0),
+    billingInterval: varchar('billing_interval').default('monthly'), // 'monthly' | 'quarterly' | 'yearly'
+    nextBillingAt: timestamp('next_billing_at'),
     // Lifetime free access (granted by admin)
     isLifetimeFree: boolean('is_lifetime_free').default(false), // Admin-granted permanent Premium access
     lifetimeGrantedBy: varchar('lifetime_granted_by'), // Admin user ID who granted it
     lifetimeGrantedAt: timestamp('lifetime_granted_at'),
     lifetimeReason: text('lifetime_reason'), // Why this restaurant got lifetime access
     // Features
-    canPostVideos: boolean('can_post_videos').default(true), // All tiers can post after signup
-    canPostDeals: boolean('can_post_deals').default(false), // Free: no, Basic/Premium: yes
-    canUseFeaturedSlots: boolean('can_use_featured_slots').default(false), // Free: no, Basic/Premium: yes
-    maxFeaturedSlots: integer('max_featured_slots').default(0), // Free: 0, Basic: 1, Premium: 3
-    hasAnalytics: boolean('has_analytics').default(false), // Free: no, Basic/Premium: yes
-    hasDealScheduling: boolean('has_deal_scheduling').default(false), // Free: no, Premium: yes
+    canPostVideos: boolean('can_post_videos').default(false), // Free: false, paid/lifetime: true
+    canPostDeals: boolean('can_post_deals').default(false),
+    canUseFeaturedSlots: boolean('can_use_featured_slots').default(false),
+    maxFeaturedSlots: integer('max_featured_slots').default(0), // Paid: 3 by default
+    hasAnalytics: boolean('has_analytics').default(false),
+    hasDealScheduling: boolean('has_deal_scheduling').default(false),
     // Billing
     stripeCustomerId: varchar('stripe_customer_id'),
     stripeSubscriptionId: varchar('stripe_subscription_id'),
@@ -1825,4 +1853,14 @@ export const insertVideoStoryReportSchema = createInsertSchema(videoStoryReports
 
 export type VideoStoryReport = typeof videoStoryReports.$inferSelect;
 export type InsertVideoStoryReport = z.infer<typeof insertVideoStoryReportSchema>;
+
+// Schemas for feed ads
+export const insertFeedAdSchema = createInsertSchema(feedAds).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type FeedAd = typeof feedAds.$inferSelect;
+export type InsertFeedAd = z.infer<typeof insertFeedAdSchema>;
 

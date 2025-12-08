@@ -15,12 +15,13 @@ import {
   insertStoryViewSchema,
   insertStoryAwardSchema,
   restaurantSubscriptions,
+  feedAds,
   type VideoStory,
   type User,
   restaurants,
   users,
 } from '@shared/schema';
-import { eq, desc, and, lte, sql, count, gte, like } from 'drizzle-orm';
+import { eq, desc, and, lte, sql, count, gte, like, or, isNull } from 'drizzle-orm';
 import { uploadToCloudinary, deleteFromCloudinary } from './imageUpload';
 import { upload } from './imageUpload';
 import multer from 'multer';
@@ -69,7 +70,7 @@ export default function setupStoriesRoutes(app: Express) {
           cuisine: req.body.cuisine || null,
         };
 
-        // Check if this is a restaurant video and verify subscription
+        // Check if this is a restaurant video and verify subscription (paid or lifetime)
         if (bodyData.restaurantId) {
           const subscription = await db
             .select()
@@ -78,22 +79,99 @@ export default function setupStoriesRoutes(app: Express) {
             .limit(1);
 
           if (subscription.length === 0) {
-            // No subscription - create free tier by default
+            // No subscription - create free tier record but block posting
             await db.insert(restaurantSubscriptions).values({
               restaurantId: bodyData.restaurantId,
               tier: 'free',
               status: 'active',
-              canPostVideos: true, // Everyone can post videos for free
+              priceCents: 0,
+              billingInterval: 'monthly',
+              canPostVideos: false,
               canPostDeals: false,
               canUseFeaturedSlots: false,
               maxFeaturedSlots: 0,
               hasAnalytics: false,
               hasDealScheduling: false,
             });
-          } else if (!subscription[0].canPostVideos) {
-            return res.status(403).json({ 
-              message: 'Restaurant subscription does not allow video posts. Please upgrade to post videos.' 
+            return res.status(403).json({
+              message: 'A paid plan is required to post restaurant videos. Plans: $50/mo, $100/quarter, $499/year.',
             });
+          }
+
+          const sub = subscription[0];
+          const isPaidTier = ['monthly', 'quarterly', 'yearly'].includes(sub.tier);
+          const hasLifetime = sub.isLifetimeFree === true;
+
+          if (!hasLifetime && !isPaidTier) {
+            return res.status(403).json({
+              message: 'Restaurant subscription does not allow video posts. Upgrade to monthly ($50), quarterly ($100), or yearly ($499).',
+            });
+          }
+
+          // Ensure posting flag is enabled for paid/lifetime tiers
+          if (!sub.canPostVideos) {
+            await db
+              .update(restaurantSubscriptions)
+              .set({
+                canPostVideos: true,
+                canPostDeals: true,
+                canUseFeaturedSlots: true,
+                maxFeaturedSlots: 3,
+                hasAnalytics: true,
+                hasDealScheduling: sub.billingInterval === 'yearly' || sub.billingInterval === 'quarterly',
+                updatedAt: new Date(),
+              })
+              .where(eq(restaurantSubscriptions.id, sub.id));
+          }
+        }
+
+        // Anti-spam rate limits (allow multi-part uploads but prevent spam)
+        const now = new Date();
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+        const [{ count: hourCount }] = await db
+          .select({ count: count() })
+          .from(videoStories)
+          .where(
+            and(
+              eq(videoStories.userId, userId),
+              gte(videoStories.createdAt, oneHourAgo)
+            )
+          );
+
+        const [{ count: dayCount }] = await db
+          .select({ count: count() })
+          .from(videoStories)
+          .where(
+            and(
+              eq(videoStories.userId, userId),
+              gte(videoStories.createdAt, oneDayAgo)
+            )
+          );
+
+        // Soft limits: up to 10 uploads/hour and 40 uploads/day per user
+        if ((hourCount || 0) >= 10) {
+          return res.status(429).json({ message: 'Upload limit reached: max 10 videos per hour to prevent spam.' });
+        }
+        if ((dayCount || 0) >= 40) {
+          return res.status(429).json({ message: 'Upload limit reached: max 40 videos per day to prevent spam.' });
+        }
+
+        // Additional restaurant-level cap (if restaurantId provided)
+        if (bodyData.restaurantId) {
+          const [{ count: restaurantDayCount }] = await db
+            .select({ count: count() })
+            .from(videoStories)
+            .where(
+              and(
+                eq(videoStories.restaurantId, bodyData.restaurantId),
+                gte(videoStories.createdAt, oneDayAgo)
+              )
+            );
+
+          if ((restaurantDayCount || 0) >= 60) {
+            return res.status(429).json({ message: 'Restaurant daily limit reached: max 60 videos per day to prevent spam.' });
           }
         }
 
@@ -193,6 +271,27 @@ export default function setupStoriesRoutes(app: Express) {
         .orderBy(desc(videoStories.featuredStartedAt))
         .limit(2); // Show 2 featured videos per page
 
+      // Get active ads (house + affiliate)
+      const nowSql = sql`NOW()`;
+      const ads = await db
+        .select()
+        .from(feedAds)
+        .where(
+          and(
+            eq(feedAds.isActive, true),
+            or(
+              isNull(feedAds.startAt),
+              lte(feedAds.startAt, nowSql)
+            ),
+            or(
+              isNull(feedAds.endAt),
+              gte(feedAds.endAt, nowSql)
+            )
+          )
+        )
+        .orderBy(desc(feedAds.priority))
+        .limit(5); // fetch a handful of ads to rotate
+
       // Get community stories (recent uploads)
       const communityStories = await db
         .select()
@@ -209,23 +308,58 @@ export default function setupStoriesRoutes(app: Express) {
         .offset(offset);
 
       // Combine featured + community
-      const allStories = [...featuredStories, ...communityStories];
+      let allStories: any[] = [...featuredStories, ...communityStories];
 
-      // Track impressions for all shown stories
+      // Insert ads every N items based on ad.insertionFrequency (default 5)
+      if (ads.length > 0) {
+        const withAds: any[] = [];
+        let adIndex = 0;
+        const total = allStories.length;
+        for (let i = 0; i < total; i++) {
+          const story = allStories[i];
+          withAds.push(story);
+          // Determine if we should insert an ad after this item
+          const nextAd = ads[adIndex % ads.length];
+          const frequency = nextAd.insertionFrequency || 5;
+          if ((i + 1) % frequency === 0) {
+            withAds.push({
+              __type: 'ad',
+              id: nextAd.id,
+              title: nextAd.title,
+              mediaUrl: nextAd.mediaUrl,
+              targetUrl: nextAd.targetUrl,
+              ctaText: nextAd.ctaText || 'Learn more',
+              isHouseAd: nextAd.isHouseAd,
+              isAffiliate: nextAd.isAffiliate,
+              affiliateName: nextAd.affiliateName,
+            });
+            adIndex++;
+          }
+        }
+        allStories = withAds;
+      }
+
+      // Track impressions for all shown stories (skip ads)
       await Promise.all(
-        allStories.map((story: VideoStory) =>
-          db
-            .update(videoStories)
-            .set({
-              impressionCount: sql`${videoStories.impressionCount} + 1`,
-            })
-            .where(eq(videoStories.id, story.id))
-        )
+        allStories
+          .filter((story: any) => story && story.__type !== 'ad')
+          .map((story: VideoStory) =>
+            db
+              .update(videoStories)
+              .set({
+                impressionCount: sql`${videoStories.impressionCount} + 1`,
+              })
+              .where(eq(videoStories.id, story.id))
+          )
       );
 
-      // Enrich stories with engagement data
+      // Enrich stories with engagement data (skip ads)
       const enrichedStories = await Promise.all(
-        allStories.map(async (story: VideoStory) => {
+        allStories.map(async (story: any) => {
+          if (story.__type === 'ad') {
+            return story;
+          }
+
           const userLiked = await db
             .select({ count: count() })
             .from(storyLikes)

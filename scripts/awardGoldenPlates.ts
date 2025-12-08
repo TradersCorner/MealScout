@@ -11,6 +11,8 @@ import {
   calculateRestaurantRankingScore,
   awardGoldenPlatesForArea 
 } from '../server/awardCalculations';
+import { sendGoldenPlateAwardEmail } from '../server/emailNotifications';
+import { storage } from '../server/storage';
 
 async function runQuarterlyGoldenPlateAwards() {
   console.log('🏆 Starting quarterly Golden Plate award process...');
@@ -66,7 +68,23 @@ async function runQuarterlyGoldenPlateAwards() {
       totalAwardedCount += awardedCount;
       console.log(`   Awarded ${awardedCount} Golden Plates in ${area}`);
       
-      // TODO: Send email notifications to restaurant owners
+      // Send email notifications to restaurant owners in this area
+      const areaRestaurants = await db.query.restaurants.findMany({
+        where: (rest, { eq, and, like }) =>
+          and(
+            eq(rest.hasGoldenPlate, true),
+            like(rest.address, `%${area}%`)
+          ),
+      });
+
+      for (const restaurant of areaRestaurants) {
+        try {
+          await sendGoldenPlateAwardEmail(restaurant.id);
+          console.log(`   📧 Sent notification to ${restaurant.name}`);
+        } catch (emailError) {
+          console.error(`   ⚠️  Failed to send email for ${restaurant.name}:`, emailError);
+        }
+      }
     }
 
     console.log('\n🎉 Golden Plate award process complete!');

@@ -12,6 +12,7 @@ import {
   awardGoldenFork,
   calculateUserInfluenceScore 
 } from '../server/awardCalculations';
+import { sendGoldenForkAwardEmail } from '../server/emailNotifications';
 
 async function runDailyGoldenForkAwards() {
   console.log('🍴 Starting daily Golden Fork award process...');
@@ -49,8 +50,13 @@ async function runDailyGoldenForkAwards() {
         if (awarded) {
           awardedCount++;
           
-          // TODO: Send email notification
-          console.log(`   📧 Email notification sent to ${user.email}`);
+          // Send email notification
+          try {
+            await sendGoldenForkAwardEmail(user.id);
+            console.log(`   📧 Email notification sent to ${user.email}`);
+          } catch (emailError) {
+            console.error(`   ⚠️  Failed to send email to ${user.email}:`, emailError);
+          }
         }
       } else if (checkedCount % 100 === 0) {
         console.log(`Checked ${checkedCount}/${eligibleUsers.length} users...`);

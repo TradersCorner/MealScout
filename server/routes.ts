@@ -17,6 +17,12 @@ import {
   awardGoldenPlatesForArea,
   getAreaLeaderboard
 } from "./awardCalculations";
+import { 
+  sendGoldenForkAwardEmail,
+  sendGoldenPlateAwardEmail,
+  sendDealClaimedNotification,
+  sendWelcomeEmail
+} from "./emailNotifications";
 import { db } from "./db";
 
 // SECURITY AUDIT STATUS
@@ -3288,6 +3294,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Increment deal uses
       await storage.incrementDealUses(dealId);
+      
+      // Send notification to restaurant owner
+      try {
+        await sendDealClaimedNotification(dealId, userId);
+      } catch (emailError) {
+        console.error('Failed to send deal claimed notification:', emailError);
+        // Don't fail the request if email fails
+      }
       
       // Return Facebook post data
       res.json({

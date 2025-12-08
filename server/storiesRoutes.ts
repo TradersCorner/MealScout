@@ -127,18 +127,7 @@ export default function setupStoriesRoutes(app: Express) {
 
         // Anti-spam rate limits (allow multi-part uploads but prevent spam)
         const now = new Date();
-        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
         const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-        const [{ count: hourCount }] = await db
-          .select({ count: count() })
-          .from(videoStories)
-          .where(
-            and(
-              eq(videoStories.userId, userId),
-              gte(videoStories.createdAt, oneHourAgo)
-            )
-          );
 
         const [{ count: dayCount }] = await db
           .select({ count: count() })
@@ -150,12 +139,9 @@ export default function setupStoriesRoutes(app: Express) {
             )
           );
 
-        // Soft limits: up to 10 uploads/hour and 40 uploads/day per user
-        if ((hourCount || 0) >= 10) {
-          return res.status(429).json({ message: 'Upload limit reached: max 10 videos per hour to prevent spam.' });
-        }
-        if ((dayCount || 0) >= 40) {
-          return res.status(429).json({ message: 'Upload limit reached: max 40 videos per day to prevent spam.' });
+        // Limit: 10 uploads per user per day, with 6h cooldown message
+        if ((dayCount || 0) >= 10) {
+          return res.status(429).json({ message: 'Upload limit reached: max 10 videos per day. Please wait ~6 hours before uploading again.' });
         }
 
         // Additional restaurant-level cap (if restaurantId provided)
@@ -170,8 +156,8 @@ export default function setupStoriesRoutes(app: Express) {
               )
             );
 
-          if ((restaurantDayCount || 0) >= 60) {
-            return res.status(429).json({ message: 'Restaurant daily limit reached: max 60 videos per day to prevent spam.' });
+          if ((restaurantDayCount || 0) >= 3) {
+            return res.status(429).json({ message: 'Restaurant daily limit reached: max 3 videos per day. Please wait ~6 hours before uploading again.' });
           }
         }
 

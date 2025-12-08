@@ -8,6 +8,7 @@ import actionRoutes from "./routes/actionRoutes";
 import { verifyTradeScoutToken, rateLimitActions } from "./middleware/actionAuth";
 import { storage } from "./storage";
 import { setupWebSocketServer } from "./websocket";
+import { antiScrape } from "./middleware/antiScrape";
 import { getSession } from "./unifiedAuth";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
@@ -96,6 +97,9 @@ if (process.env.NODE_ENV === "production") {
     },
   }));
 }
+
+// Anti-scrape middleware: allow TradeScout crawler, block obvious scrapers
+app.use(antiScrape);
 
 // CSP for development - permissive to allow Vite HMR and inline scripts
 if (process.env.NODE_ENV !== "production") {

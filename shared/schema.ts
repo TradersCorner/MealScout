@@ -1521,6 +1521,8 @@ export const restaurantSubscriptions = pgTable(
     priceCents: integer('price_cents').default(0),
     billingInterval: varchar('billing_interval').default('monthly'), // 'monthly' | 'quarterly' | 'yearly'
     nextBillingAt: timestamp('next_billing_at'),
+    quarterlyTrialUsed: boolean('quarterly_trial_used').default(false), // 3-month deal usable once
+    quarterlyTrialActivatedAt: timestamp('quarterly_trial_activated_at'),
     // Lifetime free access (granted by admin)
     isLifetimeFree: boolean('is_lifetime_free').default(false), // Admin-granted permanent Premium access
     lifetimeGrantedBy: varchar('lifetime_granted_by'), // Admin user ID who granted it
@@ -1836,6 +1838,8 @@ export const insertRestaurantSubscriptionSchema = createInsertSchema(restaurantS
   id: true,
   createdAt: true,
   updatedAt: true,
+  quarterlyTrialUsed: true,
+  quarterlyTrialActivatedAt: true,
 });
 
 export type RestaurantSubscription = typeof restaurantSubscriptions.$inferSelect;

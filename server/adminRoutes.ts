@@ -369,4 +369,269 @@ router.get('/health', isAdmin, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/admin/grant-lifetime-access
+ * Grant lifetime Premium access to a restaurant (no billing, forever)
+ */
+router.post('/grant-lifetime-access', isAdmin, async (req, res) => {
+  try {
+    const adminUserId = (req as any).user.id;
+    const { restaurantId, reason } = req.body;
+
+    if (!restaurantId) {
+      return res.status(400).json({ message: 'Restaurant ID required' });
+    }
+
+    // Verify restaurant exists
+    const { restaurants, restaurantSubscriptions } = await import('@shared/schema');
+    const restaurant = await db
+      .select()
+      .from(restaurants)
+      .where(eq(restaurants.id, restaurantId))
+      .limit(1);
+
+    if (!restaurant.length) {
+      return res.status(404).json({ message: 'Restaurant not found' });
+    }
+
+    // Check if subscription exists
+    const existingSubscription = await db
+      .select()
+      .from(restaurantSubscriptions)
+      .where(eq(restaurantSubscriptions.restaurantId, restaurantId))
+      .limit(1);
+
+    if (existingSubscription.length > 0) {
+      // Update existing subscription to lifetime Premium
+      await db
+        .update(restaurantSubscriptions)
+        .set({
+          tier: 'premium',
+          status: 'active',
+          isLifetimeFree: true,
+          lifetimeGrantedBy: adminUserId,
+          lifetimeGrantedAt: new Date(),
+          lifetimeReason: reason || 'Admin granted lifetime access',
+          canPostVideos: true,
+          canPostDeals: true,
+          canUseFeaturedSlots: true,
+          maxFeaturedSlots: 3,
+          hasAnalytics: true,
+          hasDealScheduling: true,
+          canceledAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(restaurantSubscriptions.id, existingSubscription[0].id));
+    } else {
+      // Create new lifetime Premium subscription
+      await db.insert(restaurantSubscriptions).values({
+        restaurantId,
+        tier: 'premium',
+        status: 'active',
+        isLifetimeFree: true,
+        lifetimeGrantedBy: adminUserId,
+        lifetimeGrantedAt: new Date(),
+        lifetimeReason: reason || 'Admin granted lifetime access',
+        canPostVideos: true,
+        canPostDeals: true,
+        canUseFeaturedSlots: true,
+        maxFeaturedSlots: 3,
+        hasAnalytics: true,
+        hasDealScheduling: true,
+      });
+    }
+
+    // Log action
+    await logAudit(adminUserId, 'grant_lifetime_access', 'restaurant_subscription', restaurantId, '', '', { reason });
+
+    res.json({
+      message: 'Lifetime Premium access granted successfully',
+      restaurantId,
+      restaurantName: restaurant[0].name,
+    });
+  } catch (error) {
+    console.error('Error granting lifetime access:', error);
+    res.status(500).json({ message: 'Failed to grant lifetime access' });
+  }
+});
+
+/**
+ * GET /api/admin/lifetime-restaurants
+ * List all restaurants with lifetime free access
+ */
+router.get('/lifetime-restaurants', isAdmin, async (req, res) => {
+  try {
+    const { restaurants, restaurantSubscriptions } = await import('@shared/schema');
+    
+    const lifetimeRestaurants = await db
+      .select({
+        subscriptionId: restaurantSubscriptions.id,
+        restaurantId: restaurantSubscriptions.restaurantId,
+        restaurantName: restaurants.name,
+        lifetimeGrantedAt: restaurantSubscriptions.lifetimeGrantedAt,
+        lifetimeReason: restaurantSubscriptions.lifetimeReason,
+        grantedByAdminId: restaurantSubscriptions.lifetimeGrantedBy,
+      })
+      .from(restaurantSubscriptions)
+      .innerJoin(restaurants, eq(restaurantSubscriptions.restaurantId, restaurants.id))
+      .where(eq(restaurantSubscriptions.isLifetimeFree, true))
+      .orderBy(desc(restaurantSubscriptions.lifetimeGrantedAt));
+
+    res.json({ restaurants: lifetimeRestaurants });
+  } catch (error) {
+    console.error('Error fetching lifetime restaurants:', error);
+    res.status(500).json({ message: 'Failed to fetch lifetime restaurants' });
+  }
+});
+
+/**
+ * DELETE /api/admin/revoke-lifetime-access/:restaurantId
+ * Revoke lifetime access and revert to free tier
+ */
+router.delete('/revoke-lifetime-access/:restaurantId', isAdmin, async (req, res) => {
+  try {
+    const adminUserId = (req as any).user.id;
+    const { restaurantId } = req.params;
+    const { restaurantSubscriptions } = await import('@shared/schema');
+
+    const subscription = await db
+      .select()
+      .from(restaurantSubscriptions)
+      .where(eq(restaurantSubscriptions.restaurantId, restaurantId))
+      .limit(1);
+
+    if (!subscription.length) {
+      return res.status(404).json({ message: 'Subscription not found' });
+    }
+
+    // Revert to free tier
+    await db
+      .update(restaurantSubscriptions)
+      .set({
+        tier: 'free',
+        isLifetimeFree: false,
+        lifetimeGrantedBy: null,
+        lifetimeGrantedAt: null,
+        lifetimeReason: null,
+        canPostDeals: false,
+        canUseFeaturedSlots: false,
+        maxFeaturedSlots: 0,
+        hasAnalytics: false,
+        hasDealScheduling: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(restaurantSubscriptions.id, subscription[0].id));
+
+    // Log action
+    await logAudit(adminUserId, 'revoke_lifetime_access', 'restaurant_subscription', restaurantId, '', '', {});
+
+    res.json({ message: 'Lifetime access revoked successfully' });
+  } catch (error) {
+    console.error('Error revoking lifetime access:', error);
+    res.status(500).json({ message: 'Failed to revoke lifetime access' });
+  }
+});
+
+/**
+ * GET /api/admin/reported-videos
+ * Get all reported videos for moderation
+ */
+router.get('/reported-videos', isAdmin, async (req, res) => {
+  try {
+    const status = req.query.status as string || 'pending';
+    const { videoStoryReports, videoStories } = await import('@shared/schema');
+
+    const reports = await db
+      .select({
+        reportId: videoStoryReports.id,
+        storyId: videoStoryReports.storyId,
+        storyTitle: videoStories.title,
+        storyUrl: videoStories.videoUrl,
+        reportedBy: users.email,
+        reason: videoStoryReports.reason,
+        description: videoStoryReports.description,
+        status: videoStoryReports.status,
+        createdAt: videoStoryReports.createdAt,
+      })
+      .from(videoStoryReports)
+      .innerJoin(videoStories, eq(videoStoryReports.storyId, videoStories.id))
+      .innerJoin(users, eq(videoStoryReports.reportedByUserId, users.id))
+      .where(eq(videoStoryReports.status, status))
+      .orderBy(desc(videoStoryReports.createdAt));
+
+    res.json({ reports });
+  } catch (error) {
+    console.error('Error fetching reported videos:', error);
+    res.status(500).json({ message: 'Failed to fetch reported videos' });
+  }
+});
+
+/**
+ * POST /api/admin/review-report/:reportId
+ * Review and take action on a video report (takedown or dismiss)
+ */
+router.post('/review-report/:reportId', isAdmin, async (req, res) => {
+  try {
+    const adminUserId = (req as any).user.id;
+    const { reportId } = req.params;
+    const { action, notes } = req.body; // 'takedown' | 'dismiss'
+    const { videoStoryReports, videoStories } = await import('@shared/schema');
+
+    if (!action || !['takedown', 'dismiss'].includes(action)) {
+      return res.status(400).json({ message: 'Invalid action' });
+    }
+
+    const report = await db
+      .select()
+      .from(videoStoryReports)
+      .where(eq(videoStoryReports.id, reportId))
+      .limit(1);
+
+    if (!report.length) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+
+    if (action === 'takedown') {
+      // Take down the video
+      await db
+        .update(videoStories)
+        .set({
+          status: 'expired',
+          deletedAt: new Date(),
+        })
+        .where(eq(videoStories.id, report[0].storyId));
+
+      // Update all reports for this video
+      await db
+        .update(videoStoryReports)
+        .set({
+          status: 'action_taken',
+          reviewedByAdminId: adminUserId,
+          reviewedAt: new Date(),
+          adminNotes: notes || 'Video taken down by admin',
+        })
+        .where(eq(videoStoryReports.storyId, report[0].storyId));
+    } else {
+      // Dismiss report
+      await db
+        .update(videoStoryReports)
+        .set({
+          status: 'dismissed',
+          reviewedByAdminId: adminUserId,
+          reviewedAt: new Date(),
+          adminNotes: notes || 'Report dismissed',
+        })
+        .where(eq(videoStoryReports.id, reportId));
+    }
+
+    // Log action
+    await logAudit(adminUserId, `video_report_${action}`, 'video_story', report[0].storyId, '', '', { reportId, notes });
+
+    res.json({ message: `Report ${action === 'takedown' ? 'processed and video taken down' : 'dismissed'}` });
+  } catch (error) {
+    console.error('Error reviewing report:', error);
+    res.status(500).json({ message: 'Failed to review report' });
+  }
+});
+
 export default router;

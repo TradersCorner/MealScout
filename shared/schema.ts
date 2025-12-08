@@ -537,6 +537,28 @@ export const userReviewerLevels = pgTable(
   },
 );
 
+// Video Story Reports - Community moderation system
+export const videoStoryReports = pgTable(
+  "video_story_reports",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    storyId: varchar("story_id").notNull().references(() => videoStories.id, { onDelete: 'cascade' }),
+    reportedByUserId: varchar("reported_by_user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+    reason: varchar("reason").notNull(), // 'inappropriate' | 'spam' | 'misleading' | 'offensive' | 'other'
+    description: text("description"),
+    status: varchar("status").notNull().default("pending"), // 'pending' | 'reviewed' | 'action_taken' | 'dismissed'
+    reviewedByAdminId: varchar("reviewed_by_admin_id").references(() => users.id),
+    reviewedAt: timestamp("reviewed_at"),
+    adminNotes: text("admin_notes"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_video_reports_story").on(table.storyId, table.createdAt.desc()),
+    index("IDX_video_reports_user").on(table.reportedByUserId),
+    index("IDX_video_reports_status").on(table.status),
+  ],
+);
+
 // Story Awards (for golden forks, etc.)
 export const storyAwards = pgTable(
   "story_awards",
@@ -1471,6 +1493,11 @@ export const restaurantSubscriptions = pgTable(
     // Basic: $29/mo - 1 featured slot, post deals, video stories, basic analytics
     // Premium: $99/mo - 3 featured slots, priority rotation, advanced analytics, deal scheduling
     status: varchar('status').notNull().default('active'), // 'active' | 'canceled' | 'past_due'
+    // Lifetime free access (granted by admin)
+    isLifetimeFree: boolean('is_lifetime_free').default(false), // Admin-granted permanent Premium access
+    lifetimeGrantedBy: varchar('lifetime_granted_by'), // Admin user ID who granted it
+    lifetimeGrantedAt: timestamp('lifetime_granted_at'),
+    lifetimeReason: text('lifetime_reason'), // Why this restaurant got lifetime access
     // Features
     canPostVideos: boolean('can_post_videos').default(true), // All tiers can post after signup
     canPostDeals: boolean('can_post_deals').default(false), // Free: no, Basic/Premium: yes
@@ -1785,4 +1812,17 @@ export const insertRestaurantSubscriptionSchema = createInsertSchema(restaurantS
 
 export type RestaurantSubscription = typeof restaurantSubscriptions.$inferSelect;
 export type InsertRestaurantSubscription = z.infer<typeof insertRestaurantSubscriptionSchema>;
+
+// Schemas for video story reports
+export const insertVideoStoryReportSchema = createInsertSchema(videoStoryReports).omit({
+  id: true,
+  createdAt: true,
+  status: true,
+  reviewedByAdminId: true,
+  reviewedAt: true,
+  adminNotes: true,
+});
+
+export type VideoStoryReport = typeof videoStoryReports.$inferSelect;
+export type InsertVideoStoryReport = z.infer<typeof insertVideoStoryReportSchema>;
 

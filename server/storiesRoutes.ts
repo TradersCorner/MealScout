@@ -8,6 +8,7 @@ import {
   storyViews,
   storyAwards,
   userReviewerLevels,
+  videoStoryReports,
   insertVideoStorySchema,
   insertStoryLikeSchema,
   insertStoryCommentSchema,
@@ -753,6 +754,120 @@ export default function setupStoriesRoutes(app: Express) {
     } catch (error) {
       console.error('Error fetching reviewer level:', error);
       res.status(500).json({ message: 'Failed to fetch reviewer level' });
+    }
+  });
+
+  // POST - Report a video story
+  app.post('/api/stories/:storyId/report', isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      const { storyId } = req.params;
+      const { reason, description } = req.body;
+
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      if (!reason || !['inappropriate', 'spam', 'misleading', 'offensive', 'other'].includes(reason)) {
+        return res.status(400).json({ message: 'Invalid report reason' });
+      }
+
+      // Check if video exists
+      const story = await db
+        .select()
+        .from(videoStories)
+        .where(eq(videoStories.id, storyId))
+        .limit(1);
+
+      if (!story.length) {
+        return res.status(404).json({ message: 'Video not found' });
+      }
+
+      // Import videoStoryReports
+      const { videoStoryReports } = await import('@shared/schema');
+
+      // Check if user already reported this video
+      const existingReport = await db
+        .select()
+        .from(videoStoryReports)
+        .where(
+          and(
+            eq(videoStoryReports.storyId, storyId),
+            eq(videoStoryReports.reportedByUserId, userId)
+          )
+        )
+        .limit(1);
+
+      if (existingReport.length > 0) {
+        return res.status(400).json({ message: 'You have already reported this video' });
+      }
+
+      // Create report
+      await db.insert(videoStoryReports).values({
+        storyId,
+        reportedByUserId: userId,
+        reason,
+        description: description || null,
+      });
+
+      // Check total reports for this video
+      const reportCount = await db
+        .select({ count: count() })
+        .from(videoStoryReports)
+        .where(eq(videoStoryReports.storyId, storyId));
+
+      const totalReports = reportCount[0]?.count || 0;
+
+      // Auto-takedown if 10+ unique users reported
+      if (totalReports >= 10) {
+        await db
+          .update(videoStories)
+          .set({
+            status: 'expired',
+            deletedAt: new Date(),
+          })
+          .where(eq(videoStories.id, storyId));
+
+        // Update all reports to action_taken
+        await db
+          .update(videoStoryReports)
+          .set({
+            status: 'action_taken',
+            adminNotes: 'Auto-takedown: 10+ community reports',
+          })
+          .where(eq(videoStoryReports.storyId, storyId));
+
+        return res.json({ 
+          message: 'Video reported and automatically taken down due to multiple reports',
+          autoTakedown: true,
+        });
+      }
+
+      res.json({ 
+        message: 'Video reported successfully. Our team will review it shortly.',
+        totalReports,
+      });
+    } catch (error) {
+      console.error('Error reporting video:', error);
+      res.status(500).json({ message: 'Failed to report video' });
+    }
+  });
+
+  // GET - Get report count for a video
+  app.get('/api/stories/:storyId/report-count', async (req, res) => {
+    try {
+      const { storyId } = req.params;
+      const { videoStoryReports } = await import('@shared/schema');
+
+      const reportCount = await db
+        .select({ count: count() })
+        .from(videoStoryReports)
+        .where(eq(videoStoryReports.storyId, storyId));
+
+      res.json({ reportCount: reportCount[0]?.count || 0 });
+    } catch (error) {
+      console.error('Error fetching report count:', error);
+      res.status(500).json({ message: 'Failed to fetch report count' });
     }
   });
 }

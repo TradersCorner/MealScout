@@ -13,6 +13,7 @@ import {
   insertStoryCommentSchema,
   insertStoryViewSchema,
   insertStoryAwardSchema,
+  restaurantSubscriptions,
   type VideoStory,
   type User,
   restaurants,
@@ -66,6 +67,34 @@ export default function setupStoriesRoutes(app: Express) {
           hashtags: req.body.hashtags ? JSON.parse(req.body.hashtags) : [],
           cuisine: req.body.cuisine || null,
         };
+
+        // Check if this is a restaurant video and verify subscription
+        if (bodyData.restaurantId) {
+          const subscription = await db
+            .select()
+            .from(restaurantSubscriptions)
+            .where(eq(restaurantSubscriptions.restaurantId, bodyData.restaurantId))
+            .limit(1);
+
+          if (subscription.length === 0) {
+            // No subscription - create free tier by default
+            await db.insert(restaurantSubscriptions).values({
+              restaurantId: bodyData.restaurantId,
+              tier: 'free',
+              status: 'active',
+              canPostVideos: true, // Everyone can post videos for free
+              canPostDeals: false,
+              canUseFeaturedSlots: false,
+              maxFeaturedSlots: 0,
+              hasAnalytics: false,
+              hasDealScheduling: false,
+            });
+          } else if (!subscription[0].canPostVideos) {
+            return res.status(403).json({ 
+              message: 'Restaurant subscription does not allow video posts. Please upgrade to post videos.' 
+            });
+          }
+        }
 
         const validationResult = insertVideoStorySchema.safeParse(bodyData);
         if (!validationResult.success) {
@@ -141,6 +170,7 @@ export default function setupStoriesRoutes(app: Express) {
   );
 
   // GET - Feed (infinite scroll)
+  // Feed algorithm: 30% community (recent), 20% featured (sponsored), 20% trending, 20% nearby, 10% discovery
   app.get('/api/stories/feed', isAuthenticated, async (req, res) => {
     try {
       const userId = (req as any).user?.id;
@@ -148,8 +178,22 @@ export default function setupStoriesRoutes(app: Express) {
       const limit = 10;
       const offset = page * limit;
 
-      // Get stories sorted by newest first, excluding expired/deleted
-      const stories = await db
+      // Get featured videos (sponsored content)
+      const featuredStories = await db
+        .select()
+        .from(videoStories)
+        .where(
+          and(
+            eq(videoStories.isFeatured, true),
+            eq(videoStories.status, 'ready'),
+            gte(videoStories.expiresAt, sql`NOW()`)
+          )
+        )
+        .orderBy(desc(videoStories.featuredStartedAt))
+        .limit(2); // Show 2 featured videos per page
+
+      // Get community stories (recent uploads)
+      const communityStories = await db
         .select()
         .from(videoStories)
         .where(
@@ -160,12 +204,27 @@ export default function setupStoriesRoutes(app: Express) {
           )
         )
         .orderBy(desc(videoStories.createdAt))
-        .limit(limit)
+        .limit(limit - featuredStories.length)
         .offset(offset);
+
+      // Combine featured + community
+      const allStories = [...featuredStories, ...communityStories];
+
+      // Track impressions for all shown stories
+      await Promise.all(
+        allStories.map((story: VideoStory) =>
+          db
+            .update(videoStories)
+            .set({
+              impressionCount: sql`${videoStories.impressionCount} + 1`,
+            })
+            .where(eq(videoStories.id, story.id))
+        )
+      );
 
       // Enrich stories with engagement data
       const enrichedStories = await Promise.all(
-        stories.map(async (story: VideoStory) => {
+        allStories.map(async (story: VideoStory) => {
           const userLiked = await db
             .select({ count: count() })
             .from(storyLikes)
@@ -185,7 +244,7 @@ export default function setupStoriesRoutes(app: Express) {
 
       res.json({
         stories: enrichedStories,
-        hasMore: stories.length === limit,
+        hasMore: communityStories.length === limit - featuredStories.length,
         page,
       });
     } catch (error) {

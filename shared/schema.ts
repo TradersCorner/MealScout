@@ -443,13 +443,20 @@ export const videoStories = pgTable(
     likeCount: integer("like_count").default(0),
     commentCount: integer("comment_count").default(0),
     shareCount: integer("share_count").default(0),
+    impressionCount: integer("impression_count").default(0), // Times shown in feed
+    engagementScore: decimal("engagement_score", { precision: 5, scale: 2 }).default('0.00'), // Like ratio
     // Tags & search
     hashtags: text("hashtags").array().default([]), // ['#pizza', '#foodie']
     cuisine: varchar("cuisine"), // inherited from restaurant
-    // Expiration
+    // Expiration & featured
     createdAt: timestamp("created_at").defaultNow(),
-    expiresAt: timestamp("expires_at").default(sql`NOW() + INTERVAL '7 days'`),
+    expiresAt: timestamp("expires_at").default(sql`NOW() + INTERVAL '3 days'`), // 3-day expiration
     deletedAt: timestamp("deleted_at"), // soft delete
+    // Featured video system
+    isFeatured: boolean("is_featured").default(false), // Currently in restaurant's featured slot
+    featuredSlotNumber: integer("featured_slot_number"), // 1, 2, or 3
+    featuredStartedAt: timestamp("featured_started_at"), // When featured
+    featuredEndedAt: timestamp("featured_ended_at"), // When removed from featured
     // Moderation
     isApproved: boolean("is_approved").default(true),
     flagCount: integer("flag_count").default(0),
@@ -460,6 +467,7 @@ export const videoStories = pgTable(
     index("IDX_video_stories_expires").on(table.expiresAt),
     index("IDX_video_stories_status").on(table.status),
     index("IDX_video_stories_deleted").on(table.deletedAt),
+    index("IDX_video_stories_featured").on(table.isFeatured, table.featuredSlotNumber),
   ],
 );
 
@@ -1431,6 +1439,62 @@ export const imageUploads = pgTable(
   ]
 );
 
+// Featured Video Slots - Fair rotation of restaurant's featured videos (3 slots max)
+export const featuredVideoSlots = pgTable(
+  'featured_video_slots',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    restaurantId: varchar('restaurant_id').notNull().references(() => restaurants.id, { onDelete: 'cascade' }),
+    slotNumber: integer('slot_number').notNull(), // 1, 2, or 3
+    currentVideoId: varchar('current_video_id').references(() => videoStories.id, { onDelete: 'set null' }),
+    cycleStartDate: timestamp('cycle_start_date').defaultNow(),
+    cycleEndDate: timestamp('cycle_end_date').default(sql`NOW() + INTERVAL '1 day'`), // 24hr rotation
+    previousVideoIds: text('previous_video_ids').array().default([]), // Last 5 videos for variety
+    engagementScore: decimal('engagement_score', { precision: 5, scale: 2 }).default('0.00'), // Score for cycling algorithm
+    impressions: integer('impressions').default(0), // Times shown
+    clicks: integer('clicks').default(0), // Clicks to story details
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_featured_restaurant').on(table.restaurantId, table.slotNumber),
+    index('idx_featured_cycle').on(table.cycleEndDate),
+  ],
+);
+
+// Restaurant Subscriptions - Monetization tiers for restaurants
+export const restaurantSubscriptions = pgTable(
+  'restaurant_subscriptions',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    restaurantId: varchar('restaurant_id').notNull().references(() => restaurants.id, { onDelete: 'cascade' }),
+    tier: varchar('tier').notNull().default('free'), // 'free' | 'basic' | 'premium'
+    // Basic: $29/mo - 1 featured slot, post deals, video stories, basic analytics
+    // Premium: $99/mo - 3 featured slots, priority rotation, advanced analytics, deal scheduling
+    status: varchar('status').notNull().default('active'), // 'active' | 'canceled' | 'past_due'
+    // Features
+    canPostVideos: boolean('can_post_videos').default(true), // All tiers can post after signup
+    canPostDeals: boolean('can_post_deals').default(false), // Free: no, Basic/Premium: yes
+    canUseFeaturedSlots: boolean('can_use_featured_slots').default(false), // Free: no, Basic/Premium: yes
+    maxFeaturedSlots: integer('max_featured_slots').default(0), // Free: 0, Basic: 1, Premium: 3
+    hasAnalytics: boolean('has_analytics').default(false), // Free: no, Basic/Premium: yes
+    hasDealScheduling: boolean('has_deal_scheduling').default(false), // Free: no, Premium: yes
+    // Billing
+    stripeCustomerId: varchar('stripe_customer_id'),
+    stripeSubscriptionId: varchar('stripe_subscription_id'),
+    currentPeriodStart: timestamp('current_period_start'),
+    currentPeriodEnd: timestamp('current_period_end'),
+    canceledAt: timestamp('canceled_at'),
+    // Metadata
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_subscription_restaurant').on(table.restaurantId),
+    index('idx_subscription_tier').on(table.tier),
+    index('idx_subscription_status').on(table.status),
+  ],
+);
+
 // Minimal relations for query builder support on admin/SOC/affiliate tables
 export const incidentsRelations = relations(incidents, ({ one }) => ({
   user: one(users, {
@@ -1701,4 +1765,24 @@ export const insertImageUploadSchema = createInsertSchema(imageUploads).omit({
 
 export type ImageUpload = typeof imageUploads.$inferSelect;
 export type InsertImageUpload = z.infer<typeof insertImageUploadSchema>;
+
+// Schemas for featured video slots
+export const insertFeaturedVideoSlotSchema = createInsertSchema(featuredVideoSlots).omit({
+  id: true,
+  cycleStartDate: true,
+  updatedAt: true,
+});
+
+export type FeaturedVideoSlot = typeof featuredVideoSlots.$inferSelect;
+export type InsertFeaturedVideoSlot = z.infer<typeof insertFeaturedVideoSlotSchema>;
+
+// Schemas for restaurant subscriptions
+export const insertRestaurantSubscriptionSchema = createInsertSchema(restaurantSubscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type RestaurantSubscription = typeof restaurantSubscriptions.$inferSelect;
+export type InsertRestaurantSubscription = z.infer<typeof insertRestaurantSubscriptionSchema>;
 

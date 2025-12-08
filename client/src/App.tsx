@@ -51,6 +51,7 @@ import Sitemap from "@/pages/sitemap";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
 import OAuthSetupGuide from "@/pages/oauth-setup-guide";
+import GoldenPlateWinners from "@/pages/golden-plate-winners";
 import { BetaDisclaimer } from "@/components/beta-disclaimer";
 import { BugReportButton } from "@/components/bug-report-button";
 
@@ -98,6 +99,7 @@ function Router() {
           <Route path="/how-it-works" component={HowItWorks} />
           <Route path="/contact" component={Contact} />
           <Route path="/sitemap" component={Sitemap} />
+          <Route path="/golden-plate-winners" component={GoldenPlateWinners} />
           <Route path="/forgot-password" component={ForgotPassword} />
           <Route path="/reset-password" component={ResetPassword} />
           <Route path="/admin" component={AdminLogin} />

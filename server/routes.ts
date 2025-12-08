@@ -4,10 +4,20 @@ import Stripe from "stripe";
 import { storage } from "./storage";
 import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner, isRestaurantOwnerOrAdmin, isAdmin, verifyResourceOwnership } from "./unifiedAuth";
 import { emailService } from "./emailService";
-import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema, updateRestaurantLocationSchema, updateRestaurantOperatingHoursSchema, insertDealFeedbackSchema, type User, deals } from "@shared/schema";
+import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema, updateRestaurantLocationSchema, updateRestaurantOperatingHoursSchema, insertDealFeedbackSchema, type User, deals, insertImageUploadSchema, insertAwardHistorySchema, imageUploads } from "@shared/schema";
 import { z } from "zod";
 import { validateDocuments, checkRateLimit } from "./documentValidation";
 import { randomBytes, timingSafeEqual, createHash } from "crypto";
+import { upload, uploadToCloudinary, deleteFromCloudinary, isCloudinaryConfigured } from "./imageUpload";
+import { 
+  calculateUserInfluenceScore, 
+  checkGoldenForkEligibility, 
+  awardGoldenFork,
+  calculateRestaurantRankingScore,
+  awardGoldenPlatesForArea,
+  getAreaLeaderboard
+} from "./awardCalculations";
+import { db } from "./db";
 
 // SECURITY AUDIT STATUS
 // ✅ All critical endpoints require authentication
@@ -3853,6 +3863,423 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: 'Database connection failed',
         timestamp: new Date().toISOString()
       });
+    }
+  });
+
+  // ==================== IMAGE UPLOAD ROUTES ====================
+  
+  // Upload restaurant logo
+  app.post('/api/upload/restaurant-logo', isAuthenticated, upload.single('image'), async (req: any, res) => {
+    try {
+      if (!isCloudinaryConfigured()) {
+        return res.status(503).json({ message: 'Image upload service not configured' });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: 'No image file provided' });
+      }
+
+      const restaurantId = req.body.restaurantId;
+      if (!restaurantId) {
+        return res.status(400).json({ message: 'Restaurant ID required' });
+      }
+
+      // Verify user owns this restaurant
+      const restaurant = await storage.getRestaurant(restaurantId);
+      if (!restaurant || restaurant.ownerId !== req.user.id) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      // Upload to Cloudinary
+      const result = await uploadToCloudinary(
+        req.file.buffer,
+        'restaurant-logos',
+        `restaurant-${restaurantId}-logo`
+      );
+
+      // Save to database
+      const imageUpload = await db.insert(imageUploads).values({
+        uploadedByUserId: req.user.id,
+        imageType: 'restaurant_logo',
+        entityId: restaurantId,
+        entityType: 'restaurant',
+        cloudinaryPublicId: result.publicId,
+        cloudinaryUrl: result.secureUrl,
+        thumbnailUrl: result.thumbnailUrl,
+        width: result.width,
+        height: result.height,
+        fileSize: result.bytes,
+        mimeType: req.file.mimetype,
+      }).returning();
+
+      // Update restaurant with new logo URL
+      await storage.updateRestaurant(restaurantId, { logoUrl: result.secureUrl });
+
+      res.json({ imageUpload: imageUpload[0], url: result.secureUrl });
+    } catch (error) {
+      console.error('Error uploading restaurant logo:', error);
+      res.status(500).json({ message: 'Failed to upload image' });
+    }
+  });
+
+  // Upload restaurant cover image
+  app.post('/api/upload/restaurant-cover', isAuthenticated, upload.single('image'), async (req: any, res) => {
+    try {
+      if (!isCloudinaryConfigured()) {
+        return res.status(503).json({ message: 'Image upload service not configured' });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: 'No image file provided' });
+      }
+
+      const restaurantId = req.body.restaurantId;
+      if (!restaurantId) {
+        return res.status(400).json({ message: 'Restaurant ID required' });
+      }
+
+      const restaurant = await storage.getRestaurant(restaurantId);
+      if (!restaurant || restaurant.ownerId !== req.user.id) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      const result = await uploadToCloudinary(
+        req.file.buffer,
+        'restaurant-covers',
+        `restaurant-${restaurantId}-cover`
+      );
+
+      const imageUpload = await db.insert(imageUploads).values({
+        uploadedByUserId: req.user.id,
+        imageType: 'restaurant_cover',
+        entityId: restaurantId,
+        entityType: 'restaurant',
+        cloudinaryPublicId: result.publicId,
+        cloudinaryUrl: result.secureUrl,
+        thumbnailUrl: result.thumbnailUrl,
+        width: result.width,
+        height: result.height,
+        fileSize: result.bytes,
+        mimeType: req.file.mimetype,
+      }).returning();
+
+      await storage.updateRestaurant(restaurantId, { coverImageUrl: result.secureUrl });
+
+      res.json({ imageUpload: imageUpload[0], url: result.secureUrl });
+    } catch (error) {
+      console.error('Error uploading restaurant cover:', error);
+      res.status(500).json({ message: 'Failed to upload image' });
+    }
+  });
+
+  // Upload deal image
+  app.post('/api/upload/deal-image', isAuthenticated, upload.single('image'), async (req: any, res) => {
+    try {
+      if (!isCloudinaryConfigured()) {
+        return res.status(503).json({ message: 'Image upload service not configured' });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: 'No image file provided' });
+      }
+
+      const dealId = req.body.dealId;
+      if (!dealId) {
+        return res.status(400).json({ message: 'Deal ID required' });
+      }
+
+      const deal = await storage.getDeal(dealId);
+      if (!deal) {
+        return res.status(404).json({ message: 'Deal not found' });
+      }
+
+      const restaurant = await storage.getRestaurant(deal.restaurantId);
+      if (!restaurant || restaurant.ownerId !== req.user.id) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      const result = await uploadToCloudinary(
+        req.file.buffer,
+        'deal-images',
+        `deal-${dealId}`
+      );
+
+      const imageUpload = await db.insert(imageUploads).values({
+        uploadedByUserId: req.user.id,
+        imageType: 'deal',
+        entityId: dealId,
+        entityType: 'deal',
+        cloudinaryPublicId: result.publicId,
+        cloudinaryUrl: result.secureUrl,
+        thumbnailUrl: result.thumbnailUrl,
+        width: result.width,
+        height: result.height,
+        fileSize: result.bytes,
+        mimeType: req.file.mimetype,
+      }).returning();
+
+      // Update deal with image URL
+      await storage.updateDeal(dealId, { imageUrl: result.secureUrl });
+
+      res.json({ imageUpload: imageUpload[0], url: result.secureUrl });
+    } catch (error) {
+      console.error('Error uploading deal image:', error);
+      res.status(500).json({ message: 'Failed to upload image' });
+    }
+  });
+
+  // Upload user profile image
+  app.post('/api/upload/user-profile', isAuthenticated, upload.single('image'), async (req: any, res) => {
+    try {
+      if (!isCloudinaryConfigured()) {
+        return res.status(503).json({ message: 'Image upload service not configured' });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: 'No image file provided' });
+      }
+
+      const result = await uploadToCloudinary(
+        req.file.buffer,
+        'user-profiles',
+        `user-${req.user.id}`
+      );
+
+      const imageUpload = await db.insert(imageUploads).values({
+        uploadedByUserId: req.user.id,
+        imageType: 'user_profile',
+        entityId: req.user.id,
+        entityType: 'user',
+        cloudinaryPublicId: result.publicId,
+        cloudinaryUrl: result.secureUrl,
+        thumbnailUrl: result.thumbnailUrl,
+        width: result.width,
+        height: result.height,
+        fileSize: result.bytes,
+        mimeType: req.file.mimetype,
+      }).returning();
+
+      // Update user profile image
+      await storage.upsertUser({
+        ...req.user,
+        profileImageUrl: result.secureUrl,
+      });
+
+      res.json({ imageUpload: imageUpload[0], url: result.secureUrl });
+    } catch (error) {
+      console.error('Error uploading user profile image:', error);
+      res.status(500).json({ message: 'Failed to upload image' });
+    }
+  });
+
+  // Delete uploaded image
+  app.delete('/api/upload/:imageId', isAuthenticated, async (req: any, res) => {
+    try {
+      const imageId = req.params.imageId;
+      const image = await db.query.imageUploads.findFirst({
+        where: (img, { eq }) => eq(img.id, imageId),
+      });
+
+      if (!image) {
+        return res.status(404).json({ message: 'Image not found' });
+      }
+
+      // Check authorization
+      if (image.uploadedByUserId !== req.user.id && req.user.userType !== 'admin') {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      // Delete from Cloudinary
+      if (image.cloudinaryPublicId) {
+        await deleteFromCloudinary(image.cloudinaryPublicId);
+      }
+
+      // Delete from database
+      await db.delete(imageUploads).where({ id: imageId });
+
+      res.json({ message: 'Image deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      res.status(500).json({ message: 'Failed to delete image' });
+    }
+  });
+
+  // ==================== GOLDEN FORK AWARD ROUTES ====================
+
+  // Check Golden Fork eligibility
+  app.get('/api/awards/golden-fork/eligibility', isAuthenticated, async (req: any, res) => {
+    try {
+      const eligibility = await checkGoldenForkEligibility(req.user.id);
+      res.json(eligibility);
+    } catch (error) {
+      console.error('Error checking Golden Fork eligibility:', error);
+      res.status(500).json({ message: 'Failed to check eligibility' });
+    }
+  });
+
+  // Claim Golden Fork award
+  app.post('/api/awards/golden-fork/claim', isAuthenticated, async (req: any, res) => {
+    try {
+      const awarded = await awardGoldenFork(req.user.id);
+      if (awarded) {
+        res.json({ message: 'Golden Fork awarded!', awarded: true });
+      } else {
+        res.status(400).json({ message: 'Not eligible for Golden Fork', awarded: false });
+      }
+    } catch (error) {
+      console.error('Error claiming Golden Fork:', error);
+      res.status(500).json({ message: 'Failed to claim award' });
+    }
+  });
+
+  // Get all Golden Fork holders
+  app.get('/api/awards/golden-fork/holders', async (req, res) => {
+    try {
+      const holders = await db.query.users.findMany({
+        where: (user, { eq }) => eq(user.hasGoldenFork, true),
+        columns: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          profileImageUrl: true,
+          influenceScore: true,
+          reviewCount: true,
+          recommendationCount: true,
+          goldenForkEarnedAt: true,
+        },
+      });
+      res.json(holders);
+    } catch (error) {
+      console.error('Error fetching Golden Fork holders:', error);
+      res.status(500).json({ message: 'Failed to fetch holders' });
+    }
+  });
+
+  // Get user influence stats
+  app.get('/api/user/:userId/influence-stats', async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      const influenceScore = await calculateUserInfluenceScore(userId);
+      
+      res.json({
+        userId: user.id,
+        hasGoldenFork: user.hasGoldenFork,
+        goldenForkEarnedAt: user.goldenForkEarnedAt,
+        reviewCount: user.reviewCount || 0,
+        recommendationCount: user.recommendationCount || 0,
+        influenceScore,
+      });
+    } catch (error) {
+      console.error('Error fetching influence stats:', error);
+      res.status(500).json({ message: 'Failed to fetch stats' });
+    }
+  });
+
+  // ==================== GOLDEN PLATE AWARD ROUTES ====================
+
+  // Get all Golden Plate winners
+  app.get('/api/awards/golden-plate/winners', async (req, res) => {
+    try {
+      const winners = await db.query.restaurants.findMany({
+        where: (rest, { eq }) => eq(rest.hasGoldenPlate, true),
+      });
+      res.json(winners);
+    } catch (error) {
+      console.error('Error fetching Golden Plate winners:', error);
+      res.status(500).json({ message: 'Failed to fetch winners' });
+    }
+  });
+
+  // Get Golden Plate winners by area
+  app.get('/api/awards/golden-plate/winners/:area', async (req, res) => {
+    try {
+      const area = req.params.area;
+      const winners = await db.query.restaurants.findMany({
+        where: (rest, { eq, and, like }) =>
+          and(
+            eq(rest.hasGoldenPlate, true),
+            like(rest.address, `%${area}%`)
+          ),
+      });
+      res.json(winners);
+    } catch (error) {
+      console.error('Error fetching area Golden Plate winners:', error);
+      res.status(500).json({ message: 'Failed to fetch winners' });
+    }
+  });
+
+  // Get leaderboard for an area
+  app.get('/api/awards/golden-plate/leaderboard/:area', async (req, res) => {
+    try {
+      const area = req.params.area;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const leaderboard = await getAreaLeaderboard(area, limit);
+      res.json(leaderboard);
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+      res.status(500).json({ message: 'Failed to fetch leaderboard' });
+    }
+  });
+
+  // Get restaurant ranking stats
+  app.get('/api/restaurants/:restaurantId/ranking-stats', async (req, res) => {
+    try {
+      const restaurantId = req.params.restaurantId;
+      const restaurant = await storage.getRestaurant(restaurantId);
+      if (!restaurant) {
+        return res.status(404).json({ message: 'Restaurant not found' });
+      }
+
+      const rankingScore = await calculateRestaurantRankingScore(restaurantId);
+
+      res.json({
+        restaurantId: restaurant.id,
+        hasGoldenPlate: restaurant.hasGoldenPlate,
+        goldenPlateCount: restaurant.goldenPlateCount || 0,
+        goldenPlateEarnedAt: restaurant.goldenPlateEarnedAt,
+        rankingScore,
+      });
+    } catch (error) {
+      console.error('Error fetching ranking stats:', error);
+      res.status(500).json({ message: 'Failed to fetch stats' });
+    }
+  });
+
+  // Admin: Award Golden Plates for a specific area (manual trigger)
+  app.post('/api/admin/awards/golden-plate/:area', isAdmin, async (req: any, res) => {
+    try {
+      const area = req.params.area;
+      const awardedCount = await awardGoldenPlatesForArea(area);
+      res.json({ 
+        message: `Awarded Golden Plates to ${awardedCount} restaurants in ${area}`,
+        awardedCount 
+      });
+    } catch (error) {
+      console.error('Error awarding Golden Plates:', error);
+      res.status(500).json({ message: 'Failed to award Golden Plates' });
+    }
+  });
+
+  // Get award history
+  app.get('/api/awards/history', async (req, res) => {
+    try {
+      const awardType = req.query.awardType as string;
+      const recipientId = req.query.recipientId as string;
+      
+      let query = db.query.awardHistory.findMany({
+        orderBy: (award, { desc }) => [desc(award.awardedAt)],
+        limit: 100,
+      });
+
+      res.json(await query);
+    } catch (error) {
+      console.error('Error fetching award history:', error);
+      res.status(500).json({ message: 'Failed to fetch award history' });
     }
   });
 

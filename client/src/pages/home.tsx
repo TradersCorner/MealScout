@@ -969,6 +969,32 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Golden Plate Winners Section */}
+      <div className="py-6 bg-gradient-to-r from-amber-50 to-yellow-50">
+        <div className="flex items-center justify-between mb-6 px-6">
+          <h2 className="text-xl font-bold text-foreground flex items-center">
+            <span className="w-8 h-8 bg-gradient-to-r from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center mr-3 shadow-md">
+              <Trophy className="w-4 h-4 text-white" />
+            </span>
+            Golden Plate Winners
+          </h2>
+          <Link href="/golden-plate-winners">
+            <button className="text-amber-600 font-semibold hover:text-amber-700 transition-colors">View All</button>
+          </Link>
+        </div>
+        <div className="px-6">
+          <p className="text-sm text-gray-600 mb-4">
+            Celebrating the finest restaurants in each community, awarded quarterly based on customer recommendations, favorites, and reviews.
+          </p>
+          <Link href="/golden-plate-winners">
+            <Button className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white">
+              <Trophy className="w-4 h-4 mr-2" />
+              See All Golden Plate Winners
+            </Button>
+          </Link>
+        </div>
+      </div>
+
       {/* Featured Deals Section */}
       <div className="py-6">
         <div className="flex items-center justify-between mb-6 px-6">

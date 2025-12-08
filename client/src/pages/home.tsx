@@ -1673,7 +1673,7 @@ export default function Home() {
               <div>
                 <p className="text-sm opacity-90 mb-1">Your Community Builder Credits</p>
                 <p className="text-3xl font-bold">
-                  {user ? `$${((user.creditBalance || 0) * 0.01).toFixed(2)}` : 'Sign in to see balance'}
+                  {user ? `$${((((user as any)?.creditBalance || 0) * 0.01)).toFixed(2)}` : 'Sign in to see balance'}
                 </p>
                 <p className="text-xs opacity-75 mt-1">Redeem at partners or cash out weekly via Stripe/Plaid/Venmo</p>
               </div>
@@ -1763,7 +1763,7 @@ export default function Home() {
               <div>
                 <p className="text-sm opacity-90 mb-1">Your Community Builder Credits</p>
                 <p className="text-3xl font-bold">
-                  {user ? `$${((user.creditBalance || 0) * 0.01).toFixed(2)}` : 'Sign in to view'}
+                  {user ? `$${((((user as any)?.creditBalance || 0) * 0.01)).toFixed(2)}` : 'Sign in to view'}
                 </p>
                 <p className="text-xs opacity-75 mt-1">Redeem at partners or cash out weekly</p>
               </div>

@@ -69,7 +69,7 @@ export default function DealShareModal({ isOpen, onClose, deal }: DealShareModal
   };
 
   const handleEmailShare = () => {
-    const subject = `Great Deal at ${deal.restaurant.name}!`;
+    const subject = `Great Deal at ${deal.restaurant?.name || 'a local restaurant'}!`;
     const body = `${shareText}\n\n${shareUrl}`;
     const emailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.open(emailUrl);

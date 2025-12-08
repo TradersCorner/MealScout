@@ -1173,6 +1173,176 @@ export const imageUploads = pgTable(
   ]
 );
 
+// Minimal relations for query builder support on admin/SOC/affiliate tables
+export const incidentsRelations = relations(incidents, ({ one }) => ({
+  user: one(users, {
+    fields: [incidents.userId],
+    references: [users.id],
+  }),
+}));
+
+export const oncallRotationRelations = relations(oncallRotation, ({ one }) => ({
+  user: one(users, {
+    fields: [oncallRotation.userId],
+    references: [users.id],
+  }),
+}));
+
+export const securityAuditLogRelations = relations(securityAuditLog, ({ one }) => ({
+  user: one(users, {
+    fields: [securityAuditLog.userId],
+    references: [users.id],
+  }),
+}));
+
+export const supportTicketsRelations = relations(supportTickets, ({ one }) => ({
+  user: one(users, {
+    fields: [supportTickets.userId],
+    references: [users.id],
+  }),
+  assignedToAdmin: one(users, {
+    fields: [supportTickets.assignedToAdminId],
+    references: [users.id],
+  }),
+  resolvedByAdmin: one(users, {
+    fields: [supportTickets.resolvedByAdminId],
+    references: [users.id],
+  }),
+}));
+
+export const moderationEventsRelations = relations(moderationEvents, ({ one }) => ({
+  reportedUser: one(users, {
+    fields: [moderationEvents.reportedUserId],
+    references: [users.id],
+  }),
+  reporter: one(users, {
+    fields: [moderationEvents.reporterUserId],
+    references: [users.id],
+  }),
+  reviewedBy: one(users, {
+    fields: [moderationEvents.reviewedByAdminId],
+    references: [users.id],
+  }),
+}));
+
+export const affiliateLinksRelations = relations(affiliateLinks, ({ one, many }) => ({
+  affiliateUser: one(users, {
+    fields: [affiliateLinks.affiliateUserId],
+    references: [users.id],
+  }),
+  clicks: many(affiliateClicks),
+  commissions: many(affiliateCommissions),
+}));
+
+export const affiliateClicksRelations = relations(affiliateClicks, ({ one }) => ({
+  link: one(affiliateLinks, {
+    fields: [affiliateClicks.affiliateLinkId],
+    references: [affiliateLinks.id],
+  }),
+  restaurantUser: one(users, {
+    fields: [affiliateClicks.restaurantSignupId],
+    references: [users.id],
+  }),
+}));
+
+export const affiliateCommissionsRelations = relations(affiliateCommissions, ({ one }) => ({
+  affiliateUser: one(users, {
+    fields: [affiliateCommissions.affiliateUserId],
+    references: [users.id],
+  }),
+  restaurantUser: one(users, {
+    fields: [affiliateCommissions.restaurantUserId],
+    references: [users.id],
+  }),
+  affiliateLink: one(affiliateLinks, {
+    fields: [affiliateCommissions.affiliateLinkId],
+    references: [affiliateLinks.id],
+  }),
+}));
+
+export const affiliateWalletRelations = relations(affiliateWallet, ({ one }) => ({
+  user: one(users, {
+    fields: [affiliateWallet.userId],
+    references: [users.id],
+  }),
+}));
+
+export const affiliateWithdrawalsRelations = relations(affiliateWithdrawals, ({ one }) => ({
+  user: one(users, {
+    fields: [affiliateWithdrawals.userId],
+    references: [users.id],
+  }),
+}));
+
+export const referralsRelations = relations(referrals, ({ one }) => ({
+  affiliateUser: one(users, {
+    fields: [referrals.affiliateUserId],
+    references: [users.id],
+  }),
+  referredRestaurant: one(restaurants, {
+    fields: [referrals.referredRestaurantId],
+    references: [restaurants.id],
+  }),
+}));
+
+export const referralClicksRelations = relations(referralClicks, ({ one }) => ({
+  affiliateUser: one(users, {
+    fields: [referralClicks.affiliateUserId],
+    references: [users.id],
+  }),
+}));
+
+export const restaurantSubmissionsRelations = relations(restaurantSubmissions, ({ one }) => ({
+  submittedBy: one(users, {
+    fields: [restaurantSubmissions.submittedByUserId],
+    references: [users.id],
+  }),
+  convertedRestaurant: one(restaurants, {
+    fields: [restaurantSubmissions.convertedToRestaurantId],
+    references: [restaurants.id],
+  }),
+}));
+
+export const affiliateCommissionLedgerRelations = relations(affiliateCommissionLedger, ({ one }) => ({
+  affiliateUser: one(users, {
+    fields: [affiliateCommissionLedger.affiliateUserId],
+    references: [users.id],
+  }),
+  referral: one(referrals, {
+    fields: [affiliateCommissionLedger.referralId],
+    references: [referrals.id],
+  }),
+  restaurant: one(restaurants, {
+    fields: [affiliateCommissionLedger.restaurantId],
+    references: [restaurants.id],
+  }),
+}));
+
+export const creditLedgerRelations = relations(creditLedger, ({ one }) => ({
+  user: one(users, {
+    fields: [creditLedger.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userPayoutPreferencesRelations = relations(userPayoutPreferences, ({ one }) => ({
+  user: one(users, {
+    fields: [userPayoutPreferences.userId],
+    references: [users.id],
+  }),
+}));
+
+export const restaurantCreditRedemptionsRelations = relations(restaurantCreditRedemptions, ({ one }) => ({
+  restaurant: one(restaurants, {
+    fields: [restaurantCreditRedemptions.restaurantId],
+    references: [restaurants.id],
+  }),
+  user: one(users, {
+    fields: [restaurantCreditRedemptions.userId],
+    references: [users.id],
+  }),
+}));
+
 export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
 export type SupportTicket = typeof supportTickets.$inferSelect;
 

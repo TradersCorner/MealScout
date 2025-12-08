@@ -6,13 +6,12 @@
 
 import { db } from '../server/db';
 import { restaurants } from '@shared/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, and, like } from 'drizzle-orm';
 import { 
   calculateRestaurantRankingScore,
   awardGoldenPlatesForArea 
 } from '../server/awardCalculations';
 import { sendGoldenPlateAwardEmail } from '../server/emailNotifications';
-import { storage } from '../server/storage';
 
 async function runQuarterlyGoldenPlateAwards() {
   console.log('🏆 Starting quarterly Golden Plate award process...');
@@ -20,9 +19,10 @@ async function runQuarterlyGoldenPlateAwards() {
 
   try {
     // Get all active restaurants
-    const allRestaurants = await db.query.restaurants.findMany({
-      where: (rest, { eq }) => eq(rest.isActive, true),
-    });
+    const allRestaurants = await db
+      .select()
+      .from(restaurants)
+      .where(eq(restaurants.isActive, true));
 
     console.log(`Found ${allRestaurants.length} active restaurants`);
 
@@ -69,13 +69,15 @@ async function runQuarterlyGoldenPlateAwards() {
       console.log(`   Awarded ${awardedCount} Golden Plates in ${area}`);
       
       // Send email notifications to restaurant owners in this area
-      const areaRestaurants = await db.query.restaurants.findMany({
-        where: (rest, { eq, and, like }) =>
+      const areaRestaurants = await db
+        .select()
+        .from(restaurants)
+        .where(
           and(
-            eq(rest.hasGoldenPlate, true),
-            like(rest.address, `%${area}%`)
-          ),
-      });
+            eq(restaurants.hasGoldenPlate, true),
+            like(restaurants.address, `%${area}%`)
+          )
+        );
 
       for (const restaurant of areaRestaurants) {
         try {

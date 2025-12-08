@@ -75,7 +75,7 @@ export async function sendGoldenForkAwardEmail(userId: string) {
     </html>
   `;
 
-  await emailService.sendEmail(user.email, subject, html);
+  await emailService.sendBasicEmail(user.email, subject, html);
 }
 
 /**
@@ -158,7 +158,7 @@ export async function sendGoldenPlateAwardEmail(restaurantId: string) {
     </html>
   `;
 
-  await emailService.sendEmail(owner.email, subject, html);
+  await emailService.sendBasicEmail(owner.email, subject, html);
 }
 
 /**
@@ -219,7 +219,7 @@ export async function sendDealClaimedNotification(dealId: string, userId: string
     </html>
   `;
 
-  await emailService.sendEmail(owner.email, subject, html);
+  await emailService.sendBasicEmail(owner.email, subject, html);
 }
 
 /**
@@ -287,5 +287,5 @@ export async function sendWelcomeEmail(userId: string) {
     </html>
   `;
 
-  await emailService.sendEmail(user.email, subject, html);
+  await emailService.sendBasicEmail(user.email, subject, html);
 }

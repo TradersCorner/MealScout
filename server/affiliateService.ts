@@ -11,9 +11,8 @@ import {
   affiliateClicks,
   affiliateCommissions,
   affiliateWallet,
-  users,
 } from '@shared/schema';
-import { eq, and, sum, sql } from 'drizzle-orm';
+import { eq, and, sql, asc } from 'drizzle-orm';
 
 const AFFILIATE_CODE_LENGTH = 8;
 
@@ -45,9 +44,11 @@ export async function createAffiliateLink(
   let attempts = 0;
   do {
     code = generateAffiliateCode();
-    const existing = await db.query.affiliateLinks.findFirst({
-      where: eq(affiliateLinks.code, code),
-    });
+    const existing = (await db
+      .select()
+      .from(affiliateLinks)
+      .where(eq(affiliateLinks.code, code))
+      .limit(1))[0];
     if (!existing) break;
     attempts++;
   } while (attempts < 10);
@@ -60,14 +61,17 @@ export async function createAffiliateLink(
   const separator = sourceUrl.includes('?') ? '&' : '?';
   const fullUrl = `${sourceUrl}${separator}ref=${code}`;
 
-  const link = await db.insert(affiliateLinks).values({
-    affiliateUserId: userId,
-    code,
-    resourceType,
-    resourceId,
-    sourceUrl,
-    fullUrl,
-  }).returning();
+  const link = await db
+    .insert(affiliateLinks)
+    .values({
+      affiliateUserId: userId,
+      code,
+      resourceType,
+      resourceId,
+      sourceUrl,
+      fullUrl,
+    })
+    .returning();
 
   return link[0];
 }
@@ -84,34 +88,40 @@ export async function trackAffiliateClick(
   sessionId: string,
 ) {
   // Find the affiliate link
-  const link = await db.query.affiliateLinks.findFirst({
-    where: eq(affiliateLinks.code, code),
-  });
+  const link = (await db
+    .select()
+    .from(affiliateLinks)
+    .where(eq(affiliateLinks.code, code))
+    .limit(1))[0];
 
   if (!link) {
     return null;
   }
 
   // Check if this session already converted for this link (prevent double-counting)
-  const existingClick = await db.query.affiliateClicks.findFirst({
-    where: and(
-      eq(affiliateClicks.affiliateLinkId, link.id),
-      eq(affiliateClicks.sessionId, sessionId),
-    ),
-  });
+  const existingClick = (await db
+    .select()
+    .from(affiliateClicks)
+    .where(
+      and(eq(affiliateClicks.affiliateLinkId, link.id), eq(affiliateClicks.sessionId, sessionId)),
+    )
+    .limit(1))[0];
 
   if (existingClick) {
     return existingClick; // Return existing, don't create duplicate
   }
 
   // Record the click
-  const click = await db.insert(affiliateClicks).values({
-    affiliateLinkId: link.id,
-    visitorIp,
-    visitorUserAgent,
-    referrerSource,
-    sessionId,
-  }).returning();
+  const click = await db
+    .insert(affiliateClicks)
+    .values({
+      affiliateLinkId: link.id,
+      visitorIp,
+      visitorUserAgent,
+      referrerSource,
+      sessionId,
+    })
+    .returning();
 
   // Increment click count on affiliate link
   await db.update(affiliateLinks)
@@ -130,14 +140,12 @@ export async function attributeSignupToAffiliate(
   restaurantUserId: string,
 ) {
   // Find first click in this session (first-click wins)
-  const firstClick = await db.query.affiliateClicks.findFirst({
-    where: and(
-      eq(affiliateClicks.sessionId, sessionId),
-      sql`${affiliateClicks.convertedAt} IS NULL`, // Not yet converted
-    ),
-    orderBy: (table) => [table.clickedAt],
-    limit: 1,
-  });
+  const firstClick = (await db
+    .select()
+    .from(affiliateClicks)
+    .where(and(eq(affiliateClicks.sessionId, sessionId), sql`${affiliateClicks.convertedAt} IS NULL`))
+    .orderBy(asc(affiliateClicks.clickedAt))
+    .limit(1))[0];
 
   if (!firstClick) {
     return null;
@@ -153,9 +161,11 @@ export async function attributeSignupToAffiliate(
     .returning();
 
   // Increment conversions on the link
-  const click = await db.query.affiliateClicks.findFirst({
-    where: eq(affiliateClicks.id, firstClick.id),
-  });
+  const click = (await db
+    .select()
+    .from(affiliateClicks)
+    .where(eq(affiliateClicks.id, firstClick.id))
+    .limit(1))[0];
 
   if (click) {
     await db.update(affiliateLinks)
@@ -236,12 +246,10 @@ export async function createCommission(
  */
 export async function processPendingCommissions(forMonth: string) {
   // Find all pending commissions for this month
-  const pending = await db.query.affiliateCommissions.findMany({
-    where: and(
-      eq(affiliateCommissions.forMonth, forMonth),
-      eq(affiliateCommissions.status, 'pending'),
-    ),
-  });
+  const pending = await db
+    .select()
+    .from(affiliateCommissions)
+    .where(and(eq(affiliateCommissions.forMonth, forMonth), eq(affiliateCommissions.status, 'pending')));
 
   const updated = [];
 
@@ -283,9 +291,11 @@ export async function updateAffiliateWallet(
   },
 ) {
   // Ensure wallet exists
-  let wallet = await db.query.affiliateWallet.findFirst({
-    where: eq(affiliateWallet.userId, userId),
-  });
+  let wallet = (await db
+    .select()
+    .from(affiliateWallet)
+    .where(eq(affiliateWallet.userId, userId))
+    .limit(1))[0];
 
   if (!wallet) {
     const created = await db.insert(affiliateWallet).values({
@@ -322,7 +332,8 @@ export async function updateAffiliateWallet(
     updateData.totalSpent = (current + updates.totalSpent).toString();
   }
 
-  const updated = await db.update(affiliateWallet)
+  const updated = await db
+    .update(affiliateWallet)
     .set(updateData)
     .where(eq(affiliateWallet.userId, userId))
     .returning();
@@ -334,24 +345,25 @@ export async function updateAffiliateWallet(
  * Get affiliate stats for a user
  */
 export async function getAffiliateStats(userId: string) {
-  const wallet = await db.query.affiliateWallet.findFirst({
-    where: eq(affiliateWallet.userId, userId),
-  });
+  const wallet = (await db
+    .select()
+    .from(affiliateWallet)
+    .where(eq(affiliateWallet.userId, userId))
+    .limit(1))[0];
 
-  const links = await db.query.affiliateLinks.findMany({
-    where: eq(affiliateLinks.affiliateUserId, userId),
-  });
+  const links = await db
+    .select()
+    .from(affiliateLinks)
+    .where(eq(affiliateLinks.affiliateUserId, userId));
 
-  const totalClicks = links.reduce((sum, link) => sum + (link.clickCount || 0), 0);
-  const totalConversions = links.reduce((sum, link) => sum + (link.conversions || 0), 0);
+  const totalClicks = links.reduce((sum: number, link: any) => sum + Number(link.clickCount || 0), 0);
+  const totalConversions = links.reduce((sum: number, link: any) => sum + Number(link.conversions || 0), 0);
 
   // Get pending commissions for next 30 days
-  const pendingCommissions = await db.query.affiliateCommissions.findMany({
-    where: and(
-      eq(affiliateCommissions.affiliateUserId, userId),
-      eq(affiliateCommissions.status, 'pending'),
-    ),
-  });
+  const pendingCommissions = await db
+    .select()
+    .from(affiliateCommissions)
+    .where(and(eq(affiliateCommissions.affiliateUserId, userId), eq(affiliateCommissions.status, 'pending')));
 
   return {
     wallet: wallet || {

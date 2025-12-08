@@ -4,7 +4,7 @@ import Stripe from "stripe";
 import { storage } from "./storage";
 import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner, isRestaurantOwnerOrAdmin, isAdmin, verifyResourceOwnership } from "./unifiedAuth";
 import { emailService } from "./emailService";
-import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema, updateRestaurantLocationSchema, updateRestaurantOperatingHoursSchema, insertDealFeedbackSchema, type User, deals, insertImageUploadSchema, insertAwardHistorySchema, imageUploads } from "@shared/schema";
+import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema, updateRestaurantLocationSchema, updateRestaurantOperatingHoursSchema, insertDealFeedbackSchema, type User, deals, insertImageUploadSchema, insertAwardHistorySchema, imageUploads, passwordResetTokens, users, restaurants, awardHistory } from "@shared/schema";
 import { z } from "zod";
 import { validateDocuments, checkRateLimit } from "./documentValidation";
 import { randomBytes, timingSafeEqual, createHash } from "crypto";
@@ -23,7 +23,6 @@ import {
   sendDealClaimedNotification,
   sendWelcomeEmail
 } from "./emailNotifications";
-import { db } from "./db";
 
 // SECURITY AUDIT STATUS
 // ✅ All critical endpoints require authentication
@@ -68,7 +67,7 @@ import auditLogger, { logAudit } from "./auditLogger";
 import incidentManager, { createIncident, ANOMALY_RULES } from "./incidentManager";
 import { broadcastLocationUpdate, broadcastStatusUpdate } from "./websocket";
 import { db } from "./db";
-import { and, inArray, eq, sql, gte } from "drizzle-orm";
+import { and, inArray, eq, sql, gte, desc, like } from "drizzle-orm";
 
 // Optional Stripe integration
 const stripe = process.env.STRIPE_SECRET_KEY 
@@ -103,12 +102,15 @@ async function checkPasswordResetRateLimit(userId: string): Promise<{ allowed: b
   }
   
   // Count recent password reset attempts (by checking passwordResetTokens table)
-  const recentAttempts = await db.query.passwordResetTokens.findMany({
-    where: (table) => and(
-      eq(table.userId, userId),
-      gte(table.createdAt, cutoffTime)
-    )
-  });
+  const recentAttempts = await db
+    .select()
+    .from(passwordResetTokens)
+    .where(
+      and(
+        eq(passwordResetTokens.userId, userId),
+        gte(passwordResetTokens.createdAt, cutoffTime)
+      )
+    );
   
   if (recentAttempts.length >= maxAttempts) {
     const oldestAttempt = recentAttempts[0].createdAt;
@@ -683,15 +685,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Password reset endpoints
   app.post('/api/auth/forgot-password', async (req, res) => {
     try {
-      await logAudit({
-        userId: undefined,
-        action: 'password_reset_request',
-        resourceType: 'user',
-        resourceId: req.body.email,
-        ip: req.ip,
-        userAgent: req.headers['user-agent'],
-        metadata: { email: req.body.email }
-      });
+      await logAudit(
+        undefined,
+        'password_reset_request',
+        'user',
+        req.body.email,
+        req.ip,
+        req.headers['user-agent'],
+        { email: req.body.email }
+      );
       // Validate request body
       const schema = z.object({
         email: z.string().email("Valid email is required").toLowerCase(),
@@ -743,6 +745,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Token expires in 1 hour
           const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
           
+          // Get client info
+          const clientIp = req.ip;
+          const userAgent = req.headers['user-agent'] || '';
+          
           // Store token in database
           const tokenData = insertPasswordResetTokenSchema.parse({
             userId: user.id,
@@ -773,8 +779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Always return success to prevent account enumeration
       res.json({ 
         success: true, 
-        message: "If an account with that email exists, a password reset link has been sent.",
-        remainingAttempts: rateLimit.remainingAttempts
+        message: "If an account with that email exists, a password reset link has been sent."
       });
       
     } catch (error) {
@@ -1107,7 +1112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           )
           .groupBy(deals.restaurantId);
         
-        allDeals.forEach(({ restaurantId, count }) => {
+        allDeals.forEach(({ restaurantId, count }: { restaurantId: string; count: number }) => {
           dealCounts[restaurantId] = count;
         });
       }
@@ -1165,15 +1170,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 🔒 SECURITY: Update deal - requires ownership of restaurant
   app.patch('/api/deals/:dealId', isAuthenticated, verifyResourceOwnership('deal'), async (req: any, res) => {
     try {
-      await logAudit({
-        userId: req.user.id,
-        action: 'deal_edit',
-        resourceType: 'deal',
-        resourceId: req.params.dealId,
-        ip: req.ip,
-        userAgent: req.headers['user-agent'],
-        metadata: req.body
-      });
+      await logAudit(
+        req.user.id,
+        'deal_edit',
+        'deal',
+        req.params.dealId,
+        req.ip,
+        req.headers['user-agent'],
+        req.body
+      );
       const { dealId } = req.params;
       const updates = req.body;
       const userId = req.user.id;
@@ -1207,15 +1212,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 🔒 SECURITY: Delete deal - requires ownership of restaurant
   app.delete('/api/deals/:dealId', isAuthenticated, verifyResourceOwnership('deal'), async (req: any, res) => {
     try {
-      await logAudit({
-        userId: req.user.id,
-        action: 'deal_delete',
-        resourceType: 'deal',
-        resourceId: req.params.dealId,
-        ip: req.ip,
-        userAgent: req.headers['user-agent'],
-        metadata: {}
-      });
+      await logAudit(
+        req.user.id,
+        'deal_delete',
+        'deal',
+        req.params.dealId,
+        req.ip,
+        req.headers['user-agent'],
+        {}
+      );
       const { dealId } = req.params;
       // Ownership verified by middleware - safe to delete
       await storage.deleteDeal(dealId);
@@ -1727,7 +1732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (format === 'csv') {
         // Generate CSV with proper security measures to prevent injection attacks
         const csvHeader = 'Deal Title,Date,Views,Claims,Revenue\n';
-        const csvRows = exportData.map(row => {
+        const csvRows = exportData.map((row: any) => {
           // Secure CSV sanitization to prevent injection attacks
           const sanitizeCSV = (value: any): string => {
             if (value === null || value === undefined) return '';
@@ -2192,15 +2197,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Deal routes
   app.post('/api/deals', isAuthenticated, async (req: any, res) => {
     try {
-      await logAudit({
-        userId: req.user.id,
-        action: 'deal_create',
-        resourceType: 'deal',
-        resourceId: undefined,
-        ip: req.ip,
-        userAgent: req.headers['user-agent'],
-        metadata: req.body
-      });
+      await logAudit(
+        req.user.id,
+        'deal_create',
+        'deal',
+        undefined,
+        req.ip,
+        req.headers['user-agent'],
+        req.body
+      );
       const userId = req.user.id;
       const dealData = insertDealSchema.parse(req.body);
       
@@ -4090,9 +4095,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/upload/:imageId', isAuthenticated, async (req: any, res) => {
     try {
       const imageId = req.params.imageId;
-      const image = await db.query.imageUploads.findFirst({
-        where: (img, { eq }) => eq(img.id, imageId),
-      });
+      const images = await db
+        .select()
+        .from(imageUploads)
+        .where(eq(imageUploads.id, imageId))
+        .limit(1);
+      const image = images[0];
 
       if (!image) {
         return res.status(404).json({ message: 'Image not found' });
@@ -4149,19 +4157,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all Golden Fork holders
   app.get('/api/awards/golden-fork/holders', async (req, res) => {
     try {
-      const holders = await db.query.users.findMany({
-        where: (user, { eq }) => eq(user.hasGoldenFork, true),
-        columns: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          profileImageUrl: true,
-          influenceScore: true,
-          reviewCount: true,
-          recommendationCount: true,
-          goldenForkEarnedAt: true,
-        },
-      });
+      const holders = await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          influenceScore: users.influenceScore,
+          reviewCount: users.reviewCount,
+          recommendationCount: users.recommendationCount,
+          goldenForkEarnedAt: users.goldenForkEarnedAt,
+        })
+        .from(users)
+        .where(eq(users.hasGoldenFork, true));
       res.json(holders);
     } catch (error) {
       console.error('Error fetching Golden Fork holders:', error);
@@ -4199,9 +4207,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all Golden Plate winners
   app.get('/api/awards/golden-plate/winners', async (req, res) => {
     try {
-      const winners = await db.query.restaurants.findMany({
-        where: (rest, { eq }) => eq(rest.hasGoldenPlate, true),
-      });
+      const winners = await db
+        .select()
+        .from(restaurants)
+        .where(eq(restaurants.hasGoldenPlate, true));
       res.json(winners);
     } catch (error) {
       console.error('Error fetching Golden Plate winners:', error);
@@ -4213,13 +4222,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/awards/golden-plate/winners/:area', async (req, res) => {
     try {
       const area = req.params.area;
-      const winners = await db.query.restaurants.findMany({
-        where: (rest, { eq, and, like }) =>
+      const winners = await db
+        .select()
+        .from(restaurants)
+        .where(
           and(
-            eq(rest.hasGoldenPlate, true),
-            like(rest.address, `%${area}%`)
-          ),
-      });
+            eq(restaurants.hasGoldenPlate, true),
+            like(restaurants.address, `%${area}%`)
+          )
+        );
       res.json(winners);
     } catch (error) {
       console.error('Error fetching area Golden Plate winners:', error);
@@ -4285,12 +4296,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const awardType = req.query.awardType as string;
       const recipientId = req.query.recipientId as string;
       
-      let query = db.query.awardHistory.findMany({
-        orderBy: (award, { desc }) => [desc(award.awardedAt)],
-        limit: 100,
-      });
+      const query = await db
+        .select()
+        .from(awardHistory)
+        .orderBy(desc(awardHistory.awardedAt))
+        .limit(100);
 
-      res.json(await query);
+      res.json(query);
     } catch (error) {
       console.error('Error fetching award history:', error);
       res.status(500).json({ message: 'Failed to fetch award history' });

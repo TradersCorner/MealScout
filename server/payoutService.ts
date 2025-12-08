@@ -13,9 +13,11 @@ import { eq } from 'drizzle-orm';
  */
 export async function getUserPayoutPreferences(userId: string) {
   try {
-    let prefs = await db.query.userPayoutPreferences.findFirst({
-      where: eq(userPayoutPreferences.userId, userId),
-    });
+    let prefs = (await db
+      .select()
+      .from(userPayoutPreferences)
+      .where(eq(userPayoutPreferences.userId, userId))
+      .limit(1))[0];
 
     if (!prefs) {
       // Create default (credit mode)
@@ -46,9 +48,11 @@ export async function setPayoutMethod(
   stripeConnectedId?: string,
 ) {
   try {
-    let prefs = await db.query.userPayoutPreferences.findFirst({
-      where: eq(userPayoutPreferences.userId, userId),
-    });
+    let prefs = (await db
+      .select()
+      .from(userPayoutPreferences)
+      .where(eq(userPayoutPreferences.userId, userId))
+      .limit(1))[0];
 
     if (!prefs) {
       // Create new preference

@@ -7,7 +7,7 @@
 
 import { db } from './db';
 import { creditLedger, affiliateCommissionLedger } from '@shared/schema';
-import { eq, isNull, sum, and } from 'drizzle-orm';
+import { eq, isNull, sum, and, inArray } from 'drizzle-orm';
 
 /**
  * Get user's available credit balance
@@ -19,10 +19,7 @@ export async function getUserCreditBalance(userId: string): Promise<number> {
     const result = await db
       .select({ total: sum(creditLedger.amount) })
       .from(creditLedger)
-      .where(
-        eq(creditLedger.userId, userId),
-        isNull(creditLedger.redeemedAt),
-      );
+      .where(and(eq(creditLedger.userId, userId), isNull(creditLedger.redeemedAt)));
 
     const balance = result[0]?.total ? parseFloat(result[0].total.toString()) : 0;
     return balance;
@@ -81,16 +78,13 @@ export async function redeemCredits(
   redeemedFor: string,
 ) {
   try {
-    const updated = await db.update(creditLedger)
+    const updated = await db
+      .update(creditLedger)
       .set({
         redeemedAt: new Date(),
         redeemedFor,
       })
-      .where(
-        creditIds.length === 1
-          ? eq(creditLedger.id, creditIds[0])
-          : (table) => table.id.inArray ? eq(table.id, creditIds[0]) : table.id.inArray(creditIds),
-      )
+      .where(creditIds.length === 1 ? eq(creditLedger.id, creditIds[0]) : inArray(creditLedger.id, creditIds))
       .returning();
 
     console.log('[Phase 4] Credits redeemed:', {
@@ -110,11 +104,12 @@ export async function redeemCredits(
  */
 export async function getUserCreditHistory(userId: string, limit: number = 50) {
   try {
-    const history = await db.query.creditLedger.findMany({
-      where: eq(creditLedger.userId, userId),
-      limit,
-      orderBy: (table) => [table.createdAt],
-    });
+    const history = await db
+      .select()
+      .from(creditLedger)
+      .where(eq(creditLedger.userId, userId))
+      .orderBy(creditLedger.createdAt)
+      .limit(limit);
 
     return history;
   } catch (error) {
@@ -154,17 +149,16 @@ export async function createCreditFromCommission(
 export async function processPendingCommissionsToCredits() {
   try {
     // Get all non-redeemed commissions from affiliate_commission_ledger
-    const pendingCommissions = await db.query.affiliateCommissionLedger.findMany();
+    const pendingCommissions = await db.select().from(affiliateCommissionLedger);
 
     let processed = 0;
     for (const commission of pendingCommissions) {
       // Check if credit already exists for this commission
-      const existingCredit = await db.query.creditLedger.findFirst({
-        where: (table) => and(
-          eq(table.sourceType, 'commission'),
-          eq(table.sourceId, commission.id)
-        ),
-      });
+      const existingCredit = (await db
+        .select()
+        .from(creditLedger)
+        .where(and(eq(creditLedger.sourceType, 'commission'), eq(creditLedger.sourceId, commission.id)))
+        .limit(1))[0];
 
       if (!existingCredit) {
         await createCreditFromCommission(

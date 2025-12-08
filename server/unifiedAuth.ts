@@ -738,8 +738,6 @@ export const isSuperAdmin = requireRole(['super_admin']);
 export const isRestaurantOwnerOrAdmin = requireRole(['restaurant_owner', 'admin', 'super_admin']);
 
 // API Key authentication middleware
-import bcrypt from "bcryptjs";
-
 export const apiKeyAuth = async (req: any, res: any, next: any) => {
   const apiKey = req.headers['x-api-key'];
   

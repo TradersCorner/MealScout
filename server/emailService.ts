@@ -870,6 +870,10 @@ export class EmailService {
     }
   }
 
+  async sendBasicEmail(to: string, subject: string, html: string, text?: string): Promise<boolean> {
+    return this.sendEmail({ to, subject, html, text });
+  }
+
   // Send welcome email based on user type
   async sendWelcomeEmail(user: User): Promise<boolean> {
     let template: { html: string; text: string };

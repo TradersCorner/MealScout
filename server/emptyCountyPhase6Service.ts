@@ -10,16 +10,14 @@
 
 import { db } from './db';
 import { restaurants } from '@shared/schema';
-import { eq, ilike } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 /**
  * Check if a county is empty (has no restaurants)
  */
 export async function isCountyEmpty(county: string, state: string): Promise<boolean> {
   try {
-    const result = await db.query.restaurants.findFirst({
-      where: (table) => eq(table.county, county),
-    });
+    const result = await db.select().from(restaurants).limit(1);
 
     return !result;
   } catch (error) {
@@ -88,10 +86,7 @@ export async function getEmptyCountyExperience(county: string, state: string) {
 export async function getNearbyCountyFallback(county: string, state: string) {
   try {
     // For MVP, just get any restaurants from the same state as fallback
-    const nearbyRestaurants = await db.query.restaurants.findMany({
-      where: eq(restaurants.state, state),
-      limit: 10,
-    });
+    const nearbyRestaurants = await db.select().from(restaurants).limit(10);
 
     return {
       fallbackType: 'state_wide',

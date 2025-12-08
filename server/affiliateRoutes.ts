@@ -15,6 +15,8 @@ import affiliateService from './affiliateService';
 import shareService from './shareService';
 import emptyCountyService from './emptyCountyService';
 import { logAudit } from './auditLogger';
+import { eq, desc } from 'drizzle-orm';
+import { affiliateWithdrawals, affiliateLinks, affiliateCommissions, affiliateWallet } from '@shared/schema';
 
 const router = Router();
 
@@ -79,9 +81,11 @@ router.get('/click/:code', async (req, res) => {
     }
 
     // Get the affiliate link
-    const link = await db.query.affiliateLinks.findFirst({
-      where: (table) => eq(table.id, click.affiliateLinkId),
-    });
+    const link = (await db
+      .select()
+      .from(affiliateLinks)
+      .where(eq(affiliateLinks.id, click.affiliateLinkId))
+      .limit(1))[0];
 
     if (!link) {
       return res.status(404).json({ error: 'Link not found' });
@@ -131,16 +135,18 @@ router.get('/commissions', isAuthenticated, async (req, res) => {
 
     const offset = (page - 1) * limit;
 
-    const commissions = await db.query.affiliateCommissions.findMany({
-      where: (table) => eq(table.affiliateUserId, userId),
-      orderBy: (table) => desc(table.createdAt),
-      offset,
-      limit,
-    });
+    const commissions = await db
+      .select()
+      .from(affiliateCommissions)
+      .where(eq(affiliateCommissions.affiliateUserId, userId))
+      .orderBy(desc(affiliateCommissions.createdAt))
+      .offset(offset)
+      .limit(limit);
 
-    const total = await db.query.affiliateCommissions.findMany({
-      where: (table) => eq(table.affiliateUserId, userId),
-    });
+    const total = await db
+      .select()
+      .from(affiliateCommissions)
+      .where(eq(affiliateCommissions.affiliateUserId, userId));
 
     res.json({
       commissions,
@@ -177,9 +183,11 @@ router.post('/withdraw', isAuthenticated, async (req, res) => {
     }
 
     // Check available balance
-    const wallet = await db.query.affiliateWallet.findFirst({
-      where: (table) => eq(table.userId, userId),
-    });
+    const wallet = (await db
+      .select()
+      .from(affiliateWallet)
+      .where(eq(affiliateWallet.userId, userId))
+      .limit(1))[0];
 
     if (!wallet || parseFloat(wallet.availableBalance?.toString() || '0') < amountNum) {
       return res.status(400).json({ error: 'Insufficient balance' });
@@ -333,8 +341,5 @@ router.get('/county/fallback', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch content' });
   }
 });
-
-import { eq, desc } from 'drizzle-orm';
-import { affiliateWithdrawals } from '@shared/schema';
 
 export default router;

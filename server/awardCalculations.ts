@@ -1,7 +1,7 @@
 import { storage } from './storage';
 import { db } from './db';
 import { users, restaurants, awardHistory } from '@shared/schema';
-import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
+import { eq, and, or, like, sql } from 'drizzle-orm';
 
 // Golden Fork Award Criteria
 const GOLDEN_FORK_CRITERIA = {
@@ -135,22 +135,22 @@ export async function calculateRestaurantRankingScore(restaurantId: string): Pro
 
   // Get recommendations count
   const recommendations = await db.query.restaurantRecommendations.findMany({
-    where: (rec, { eq }) => eq(rec.restaurantId, restaurantId),
+    where: (rec: any) => eq(rec.restaurantId, restaurantId),
   });
   const recommendationCount = recommendations.length;
 
   // Get favorites count
   const favorites = await db.query.restaurantFavorites.findMany({
-    where: (fav, { eq }) => eq(fav.restaurantId, restaurantId),
+    where: (fav: any) => eq(fav.restaurantId, restaurantId),
   });
   const favoritesCount = favorites.length;
 
   // Get average rating
   const reviews = await db.query.reviews.findMany({
-    where: (rev, { eq }) => eq(rev.restaurantId, restaurantId),
+    where: (rev: any) => eq(rev.restaurantId, restaurantId),
   });
   const avgRating = reviews.length > 0
-    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+    ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
     : 0;
 
   // Get deal claims count
@@ -160,12 +160,12 @@ export async function calculateRestaurantRankingScore(restaurantId: string): Pro
 
   for (const deal of deals) {
     const claims = await db.query.dealClaims.findMany({
-      where: (claim, { eq }) => eq(claim.dealId, deal.id),
+      where: (claim: any) => eq(claim.dealId, deal.id),
     });
     totalDealClaims += claims.length;
 
     const views = await db.query.dealViews.findMany({
-      where: (view, { eq }) => eq(view.dealId, deal.id),
+      where: (view: any) => eq(view.dealId, deal.id),
     });
     totalDealViews += views.length;
   }
@@ -186,13 +186,10 @@ export async function calculateRestaurantRankingScore(restaurantId: string): Pro
 export async function awardGoldenPlatesForArea(area: string): Promise<number> {
   // Get all active restaurants in the area
   const areaRestaurants = await db.query.restaurants.findMany({
-    where: (rest, { eq, and, or, like }) =>
+    where: (rest: any) =>
       and(
         eq(rest.isActive, true),
-        or(
-          like(rest.address, `%${area}%`),
-          eq(sql`lower(${rest.address})`, area.toLowerCase())
-        )
+        or(like(rest.address, `%${area}%`), eq(sql`lower(${rest.address})`, area.toLowerCase()))
       ),
   });
 
@@ -207,9 +204,9 @@ export async function awardGoldenPlatesForArea(area: string): Promise<number> {
 
   // Sort by score descending
   const sortedRestaurants = areaRestaurants
-    .map((r) => ({ restaurant: r, score: scoresMap.get(r.id) || 0 }))
-    .filter((item) => item.score >= GOLDEN_PLATE_CRITERIA.minRankingScore)
-    .sort((a, b) => b.score - a.score);
+    .map((r: any) => ({ restaurant: r, score: scoresMap.get(r.id) || 0 }))
+    .filter((item: any) => item.score >= GOLDEN_PLATE_CRITERIA.minRankingScore)
+    .sort((a: any, b: any) => b.score - a.score);
 
   // Award to top percentage or at least top 1
   const awardCount = Math.max(
@@ -261,13 +258,10 @@ export async function awardGoldenPlatesForArea(area: string): Promise<number> {
  */
 export async function getAreaLeaderboard(area: string, limit: number = 50) {
   const areaRestaurants = await db.query.restaurants.findMany({
-    where: (rest, { eq, and, or, like }) =>
+    where: (rest: any) =>
       and(
         eq(rest.isActive, true),
-        or(
-          like(rest.address, `%${area}%`),
-          eq(sql`lower(${rest.address})`, area.toLowerCase())
-        )
+        or(like(rest.address, `%${area}%`), eq(sql`lower(${rest.address})`, area.toLowerCase()))
       ),
   });
 
@@ -281,5 +275,5 @@ export async function getAreaLeaderboard(area: string, limit: number = 50) {
     });
   }
 
-  return leaderboard.sort((a, b) => b.rankingScore - a.rankingScore).slice(0, limit);
+  return leaderboard.sort((a: any, b: any) => b.rankingScore - a.rankingScore).slice(0, limit);
 }

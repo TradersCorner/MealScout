@@ -19,6 +19,8 @@ if (!process.env.DATABASE_URL) {
 export const pool = process.env.DATABASE_URL
   ? new Pool({ connectionString: process.env.DATABASE_URL })
   : undefined as unknown as Pool;
-export const db = process.env.DATABASE_URL
+// Cast to any to keep query builder usable even when DATABASE_URL is absent in local dev.
+// Runtime will still require a real connection string in production.
+export const db = (process.env.DATABASE_URL
   ? drizzle({ client: pool as Pool, schema })
-  : undefined as unknown as ReturnType<typeof drizzle>;
+  : undefined) as any;

@@ -13,7 +13,7 @@
 
 import { Router } from 'express';
 import { db } from './db';
-import { supportTickets, moderationEvents, securityAuditLog, incidents } from '@shared/schema';
+import { supportTickets, moderationEvents, securityAuditLog, incidents, users } from '@shared/schema';
 import { eq, desc, and, or, gte, lte, like } from 'drizzle-orm';
 import { isAdmin } from './unifiedAuth';
 import { logAudit } from './auditLogger';
@@ -39,29 +39,37 @@ router.get('/stats', isAdmin, async (req, res) => {
       recentModerationEvents,
       auditLogsCount,
     ] = await Promise.all([
-      // Count users
-      db.query.users.findMany().then(u => u.length),
-      
-      // Count incidents
-      db.query.incidents.findMany().then(i => i.length),
-      
-      // Count open incidents
-      db.query.incidents.findMany({ where: eq(incidents.status, 'new') }).then(i => i.length),
-      
-      // Count critical incidents
-      db.query.incidents.findMany({ where: eq(incidents.severity, 'critical') }).then(i => i.length),
-      
-      // Count open tickets
-      db.query.supportTickets.findMany({ where: eq(supportTickets.status, 'open') }).then(t => t.length),
-      
-      // Count high priority tickets
-      db.query.supportTickets.findMany().then(t => t.filter(x => (x as any).priority === 'high' || (x as any).priority === 'critical').length),
-      
-      // Recent moderation events (last 7 days)
-      db.query.moderationEvents.findMany({ where: gte(moderationEvents.createdAt, new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)) }).then(m => m.length),
-      
-      // Recent audit logs
-      db.query.securityAuditLog.findMany({ where: gte(securityAuditLog.timestamp, thirtyDaysAgo) }).then(a => a.length),
+      db.select().from(users).then((u: any[]) => u.length),
+      db.select().from(incidents).then((i: any[]) => i.length),
+      db
+        .select()
+        .from(incidents)
+        .where(eq(incidents.status, 'new'))
+        .then((i: any[]) => i.length),
+      db
+        .select()
+        .from(incidents)
+        .where(eq(incidents.severity, 'critical'))
+        .then((i: any[]) => i.length),
+      db
+        .select()
+        .from(supportTickets)
+        .where(eq(supportTickets.status, 'open'))
+        .then((t: any[]) => t.length),
+      db
+        .select()
+        .from(supportTickets)
+        .then((tickets: any[]) => tickets.filter((t: any) => t.priority === 'high' || t.priority === 'critical').length),
+      db
+        .select()
+        .from(moderationEvents)
+        .where(gte(moderationEvents.createdAt, new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)))
+        .then((m: any[]) => m.length),
+      db
+        .select()
+        .from(securityAuditLog)
+        .where(gte(securityAuditLog.timestamp, thirtyDaysAgo))
+        .then((a: any[]) => a.length),
     ]);
 
     res.json({
@@ -88,13 +96,12 @@ router.get('/audit-logs', isAdmin, async (req, res) => {
     const daysNum = parseInt(String(days)) || 30;
     const cutoffDate = new Date(Date.now() - daysNum * 24 * 60 * 60 * 1000);
 
-    let query = db.query.securityAuditLog.findMany({
-      where: gte(securityAuditLog.timestamp, cutoffDate),
-      orderBy: (table: any) => desc(table.timestamp),
-      limit: 500,
-    });
-
-    const logs = await query;
+    const logs = await db
+      .select()
+      .from(securityAuditLog)
+      .where(gte(securityAuditLog.timestamp, cutoffDate))
+      .orderBy(desc(securityAuditLog.timestamp))
+      .limit(500);
 
     // Client-side filtering for flexibility
     let filtered = logs;
@@ -130,10 +137,11 @@ router.get('/support-tickets', isAdmin, async (req, res) => {
   try {
     const { status, priority } = req.query;
 
-    let tickets = await db.query.supportTickets.findMany({
-      orderBy: (table: any) => [desc(table.createdAt)],
-      limit: 200,
-    });
+    let tickets = await db
+      .select()
+      .from(supportTickets)
+      .orderBy(desc(supportTickets.createdAt))
+      .limit(200);
 
     if (status) {
       tickets = tickets.filter((t: any) => t.status === status);
@@ -155,9 +163,11 @@ router.get('/support-tickets', isAdmin, async (req, res) => {
  */
 router.get('/support-tickets/:id', isAdmin, async (req, res) => {
   try {
-    const ticket = await db.query.supportTickets.findFirst({
-      where: eq(supportTickets.id, req.params.id),
-    });
+    const ticket = (await db
+      .select()
+      .from(supportTickets)
+      .where(eq(supportTickets.id, req.params.id))
+      .limit(1))[0];
 
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
@@ -179,9 +189,11 @@ router.patch('/support-tickets/:id', isAdmin, async (req, res) => {
     const { status, adminNotes, priority } = req.body;
     const userId = (req.user as any)?.id || 'system';
 
-    const ticket = await db.query.supportTickets.findFirst({
-      where: eq(supportTickets.id, req.params.id),
-    });
+    const ticket = (await db
+      .select()
+      .from(supportTickets)
+      .where(eq(supportTickets.id, req.params.id))
+      .limit(1))[0];
 
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
@@ -200,7 +212,8 @@ router.patch('/support-tickets/:id', isAdmin, async (req, res) => {
       updates.resolvedByAdminId = userId;
     }
 
-    const updated = await db.update(supportTickets)
+    const updated = await db
+      .update(supportTickets)
       .set(updates)
       .where(eq(supportTickets.id, req.params.id))
       .returning();
@@ -222,10 +235,11 @@ router.get('/moderation-events', isAdmin, async (req, res) => {
   try {
     const { status, severity } = req.query;
 
-    let events = await db.query.moderationEvents.findMany({
-      orderBy: (table: any) => desc(table.createdAt),
-      limit: 200,
-    });
+    let events = await db
+      .select()
+      .from(moderationEvents)
+      .orderBy(desc(moderationEvents.createdAt))
+      .limit(200);
 
     if (status) {
       events = events.filter((e: any) => e.status === status);
@@ -247,9 +261,11 @@ router.get('/moderation-events', isAdmin, async (req, res) => {
  */
 router.get('/moderation-events/:id', isAdmin, async (req, res) => {
   try {
-    const event = await db.query.moderationEvents.findFirst({
-      where: eq(moderationEvents.id, req.params.id),
-    });
+    const event = (await db
+      .select()
+      .from(moderationEvents)
+      .where(eq(moderationEvents.id, req.params.id))
+      .limit(1))[0];
 
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
@@ -271,9 +287,11 @@ router.patch('/moderation-events/:id', isAdmin, async (req, res) => {
     const { status, actionTaken } = req.body;
     const userId = (req.user as any)?.id || 'system';
 
-    const event = await db.query.moderationEvents.findFirst({
-      where: eq(moderationEvents.id, req.params.id),
-    });
+    const event = (await db
+      .select()
+      .from(moderationEvents)
+      .where(eq(moderationEvents.id, req.params.id))
+      .limit(1))[0];
 
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });

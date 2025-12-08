@@ -20,9 +20,10 @@ async function runDailyGoldenForkAwards() {
 
   try {
     // Get all users who don't have Golden Fork yet
-    const eligibleUsers = await db.query.users.findMany({
-      where: (user, { eq }) => eq(user.hasGoldenFork, false),
-    });
+    const eligibleUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.hasGoldenFork, false));
 
     console.log(`Found ${eligibleUsers.length} users without Golden Fork`);
 

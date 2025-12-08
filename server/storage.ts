@@ -691,7 +691,7 @@ export class DatabaseStorage implements IStorage {
       );
     
     // Map results back to Restaurant type (remove subscriptionStatus)
-    return results.map(({ subscriptionStatus, ...restaurant }) => restaurant as Restaurant);
+    return results.map(({ subscriptionStatus, ...restaurant }: any) => restaurant as Restaurant);
   }
 
   async verifyRestaurantOwnership(restaurantId: string, userId: string): Promise<boolean> {
@@ -1084,7 +1084,7 @@ export class DatabaseStorage implements IStorage {
     
     // Deactivate all deals for those restaurants
     if (userRestaurants.length > 0) {
-      const restaurantIds = userRestaurants.map(r => r.id);
+      const restaurantIds = userRestaurants.map((r: any) => r.id);
       await db
         .update(deals)
         .set({
@@ -1138,7 +1138,7 @@ export class DatabaseStorage implements IStorage {
         .where(inArray(restaurants.id, restaurantIds));
 
       // Create restaurant lookup map
-      const restaurantMap = new Map(restaurantData.map(r => [r.id, r]));
+      const restaurantMap = new Map(restaurantData.map((r: any) => [r.id, r]));
 
       // Add restaurant data to results
       searchResults = searchResults.map(deal => ({
@@ -2041,7 +2041,7 @@ export class DatabaseStorage implements IStorage {
 
   async approveVerificationRequest(id: string, reviewerId: string): Promise<void> {
     // Start transaction to update both tables
-    await db.transaction(async (tx) => {
+    await db.transaction(async (tx: any) => {
       // Update verification request status
       const [request] = await tx
         .update(verificationRequests)
@@ -2071,7 +2071,7 @@ export class DatabaseStorage implements IStorage {
 
   async rejectVerificationRequest(id: string, reviewerId: string, reason: string): Promise<void> {
     // Start transaction to update both tables atomically
-    await db.transaction(async (tx) => {
+    await db.transaction(async (tx: any) => {
       // Update verification request status
       const [request] = await tx
         .update(verificationRequests)
@@ -2208,7 +2208,7 @@ export class DatabaseStorage implements IStorage {
       .from(deals)
       .where(eq(deals.restaurantId, restaurantId));
     
-    const dealIdArray = dealIds.map(d => d.id);
+    const dealIdArray = dealIds.map((d: any) => d.id);
     
     if (dealIdArray.length === 0) {
       return {
@@ -2282,7 +2282,7 @@ export class DatabaseStorage implements IStorage {
       .from(deals)
       .where(eq(deals.restaurantId, restaurantId));
     
-    const dealIdArray = dealIds.map(d => d.id);
+    const dealIdArray = dealIds.map((d: any) => d.id);
     
     if (dealIdArray.length === 0) {
       return [];
@@ -2321,7 +2321,7 @@ export class DatabaseStorage implements IStorage {
       .from(deals)
       .where(eq(deals.restaurantId, restaurantId));
     
-    const dealIdArray = dealIds.map(d => d.id);
+    const dealIdArray = dealIds.map((d: any) => d.id);
     
     if (dealIdArray.length === 0) {
       return {
@@ -2553,7 +2553,7 @@ export class DatabaseStorage implements IStorage {
 
     // Create a map for quick lookup
     const restaurantHoursMap = new Map(
-      restaurantsWithHours.map(r => [r.id, r.operatingHours])
+      restaurantsWithHours.map((r: any) => [r.id, r.operatingHours])
     );
 
     // Filter deals where restaurants are currently open
@@ -2787,7 +2787,7 @@ export class DatabaseStorage implements IStorage {
       ));
 
     // Calculate distance in JavaScript for now (simpler than complex SQL)
-    const trucksWithDistance = results.map(truck => {
+    const trucksWithDistance = results.map((truck: any) => {
       if (!truck.currentLatitude || !truck.currentLongitude) {
         return { ...truck, distance: 999999, sessionId: truck.sessionId || undefined };
       }
@@ -2814,8 +2814,8 @@ export class DatabaseStorage implements IStorage {
 
     // Filter by radius and sort by distance
     return trucksWithDistance
-      .filter(truck => truck.distance <= radiusKm)
-      .sort((a, b) => a.distance - b.distance);
+      .filter((truck: any) => truck.distance <= radiusKm)
+      .sort((a: any, b: any) => a.distance - b.distance);
   }
 
   async getTruckLocationHistory(restaurantId: string, dateRange?: { start: Date; end: Date }): Promise<FoodTruckLocation[]> {
@@ -3098,7 +3098,7 @@ export class DatabaseStorage implements IStorage {
 
   async setDefaultAddress(userId: string, addressId: string): Promise<void> {
     // Use transaction to prevent race conditions where multiple addresses could be set as default
-    await db.transaction(async (tx) => {
+    await db.transaction(async (tx: any) => {
       // First, unset all default addresses for the user
       await tx
         .update(userAddresses)
@@ -3180,15 +3180,18 @@ export class DatabaseStorage implements IStorage {
   // API Key operations
   async getActiveApiKeys(): Promise<any[]> {
     // Get all active, non-expired API keys
-    const keys = await db.query.apiKeys.findMany({
-      where: (table) => and(
-        eq(table.isActive, true),
-        or(
-          isNull(table.expiresAt),
-          gte(table.expiresAt, new Date())
+    const keys = await db
+      .select()
+      .from(apiKeys)
+      .where(
+        and(
+          eq(apiKeys.isActive, true),
+          or(
+            isNull(apiKeys.expiresAt),
+            gte(apiKeys.expiresAt, new Date())
+          )
         )
-      ),
-    });
+      );
     return keys;
   }
 
@@ -3247,14 +3250,14 @@ export class DatabaseStorage implements IStorage {
     
     const totalFeedback = feedback.length;
     const averageRating = totalFeedback > 0
-      ? feedback.reduce((sum, f) => sum + f.rating, 0) / totalFeedback
+      ? feedback.reduce((sum: number, f: any) => sum + f.rating, 0) / totalFeedback
       : 0;
     
     const ratingDistribution: { [key: number]: number } = {
       1: 0, 2: 0, 3: 0, 4: 0, 5: 0
     };
     
-    feedback.forEach(f => {
+    feedback.forEach((f: any) => {
       if (f.rating >= 1 && f.rating <= 5) {
         ratingDistribution[f.rating] = (ratingDistribution[f.rating] || 0) + 1;
       }

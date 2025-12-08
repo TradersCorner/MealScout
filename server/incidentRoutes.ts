@@ -31,10 +31,11 @@ const router = Router();
  */
 router.get('/', isAdmin, async (req, res) => {
   try {
-    const allIncidents = await db.query.incidents.findMany({
-      orderBy: (table) => desc(table.createdAt),
-      limit: 100, // Recent 100 incidents
-    });
+    const allIncidents = await db
+      .select()
+      .from(incidents)
+      .orderBy(desc(incidents.createdAt))
+      .limit(100); // Recent 100 incidents
 
     res.json(allIncidents);
   } catch (error) {
@@ -49,9 +50,11 @@ router.get('/', isAdmin, async (req, res) => {
  */
 router.get('/:id', isAdmin, async (req, res) => {
   try {
-    const incident = await db.query.incidents.findFirst({
-      where: eq(incidents.id, req.params.id),
-    });
+    const incident = (await db
+      .select()
+      .from(incidents)
+      .where(eq(incidents.id, req.params.id))
+      .limit(1))[0];
 
     if (!incident) {
       return res.status(404).json({ error: 'Incident not found' });
@@ -70,10 +73,11 @@ router.get('/:id', isAdmin, async (req, res) => {
  */
 router.get('/:id/audit-logs', isAdmin, async (req, res) => {
   try {
-    const logs = await db.query.securityAuditLog.findMany({
-      where: eq(securityAuditLog.resourceId, req.params.id),
-      orderBy: (table) => desc(table.timestamp),
-    });
+    const logs = await db
+      .select()
+      .from(securityAuditLog)
+      .where(eq(securityAuditLog.resourceId, req.params.id))
+      .orderBy(desc(securityAuditLog.timestamp));
 
     res.json(logs);
   } catch (error) {
@@ -95,9 +99,11 @@ router.patch('/:id/status', isAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Invalid status' });
     }
 
-    const incident = await db.query.incidents.findFirst({
-      where: eq(incidents.id, req.params.id),
-    });
+    const incident = (await db
+      .select()
+      .from(incidents)
+      .where(eq(incidents.id, req.params.id))
+      .limit(1))[0];
 
     if (!incident) {
       return res.status(404).json({ error: 'Incident not found' });
@@ -140,18 +146,21 @@ router.patch('/:id/status', isAdmin, async (req, res) => {
  */
 router.get('/:id/report', isAdmin, async (req, res) => {
   try {
-    const incident = await db.query.incidents.findFirst({
-      where: eq(incidents.id, req.params.id),
-    });
+    const incident = (await db
+      .select()
+      .from(incidents)
+      .where(eq(incidents.id, req.params.id))
+      .limit(1))[0];
 
     if (!incident) {
       return res.status(404).json({ error: 'Incident not found' });
     }
 
     // Get related audit logs
-    const auditLogs = await db.query.securityAuditLog.findMany({
-      where: eq(securityAuditLog.resourceId, req.params.id),
-    });
+    const auditLogs = await db
+      .select()
+      .from(securityAuditLog)
+      .where(eq(securityAuditLog.resourceId, req.params.id));
 
     // Generate markdown report
     const report = `# Incident Report: ${incident.id}
@@ -171,7 +180,7 @@ ${JSON.stringify(incident.metadata, null, 2)}
 \`\`\`
 
 ## Related Audit Logs
-${auditLogs.map((log) => `- [${log.timestamp ? log.timestamp.toISOString() : 'Unknown'}] ${log.action} on ${log.resourceType}:${log.resourceId}`).join('\n')}
+${auditLogs.map((log: any) => `- [${log.timestamp ? log.timestamp.toISOString() : 'Unknown'}] ${log.action} on ${log.resourceType}:${log.resourceId}`).join('\n')}
 
 ---
 Generated on ${new Date().toISOString()}`;
@@ -191,9 +200,11 @@ Generated on ${new Date().toISOString()}`;
  */
 router.get('/:id/verify-signature', isAdmin, async (req, res) => {
   try {
-    const incident = await db.query.incidents.findFirst({
-      where: eq(incidents.id, req.params.id),
-    });
+    const incident = (await db
+      .select()
+      .from(incidents)
+      .where(eq(incidents.id, req.params.id))
+      .limit(1))[0];
 
     if (!incident) {
       return res.status(404).json({ error: 'Incident not found' });

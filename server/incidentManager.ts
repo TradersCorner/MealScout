@@ -143,14 +143,12 @@ export async function createIncident({
 // Get current on-call person
 export async function getCurrentOnCall(): Promise<{ userId: string; isPrimary: boolean } | null> {
   const now = new Date();
-  const rotations = await db.query.oncallRotation.findMany({
-    where: and(
-      lte(oncallRotation.startDate, now),
-      gte(oncallRotation.endDate, now)
-    ),
-    orderBy: [desc(oncallRotation.isPrimary)],
-    limit: 1,
-  });
+  const rotations = await db
+    .select()
+    .from(oncallRotation)
+    .where(and(lte(oncallRotation.startDate, now), gte(oncallRotation.endDate, now)))
+    .orderBy(desc(oncallRotation.isPrimary))
+    .limit(1);
 
   const rotation = rotations[0];
   return rotation ? { userId: rotation.userId, isPrimary: rotation.isPrimary === true } : null;
@@ -328,9 +326,10 @@ export async function checkEscalations() {
   const now = new Date();
 
   // Get all open incidents
-  const openIncidents = await db.query.incidents.findMany({
-    where: eq(incidents.status, 'new'),
-  });
+  const openIncidents = await db
+    .select()
+    .from(incidents)
+    .where(eq(incidents.status, 'new'));
 
   for (const incident of openIncidents) {
     if (!incident.createdAt) continue; // Skip if no created date
@@ -347,9 +346,10 @@ export async function checkEscalations() {
   }
 
   // Get acknowledged but not resolved incidents
-  const acknowledgedIncidents = await db.query.incidents.findMany({
-    where: eq(incidents.status, 'acknowledged'),
-  });
+  const acknowledgedIncidents = await db
+    .select()
+    .from(incidents)
+    .where(eq(incidents.status, 'acknowledged'));
 
   for (const incident of acknowledgedIncidents) {
     const minutesSinceAck = (now.getTime() - new Date(incident.acknowledgedAt!).getTime()) / (1000 * 60);
@@ -368,13 +368,16 @@ export async function checkEscalations() {
 export async function autoCloseLowSeverityIncidents() {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const oldLowIncidents = await db.query.incidents.findMany({
-    where: and(
-      eq(incidents.severity, 'low'),
-      eq(incidents.status, 'resolved'),
-      lte(incidents.resolvedAt, sevenDaysAgo)
-    ),
-  });
+  const oldLowIncidents = await db
+    .select()
+    .from(incidents)
+    .where(
+      and(
+        eq(incidents.severity, 'low'),
+        eq(incidents.status, 'resolved'),
+        lte(incidents.resolvedAt, sevenDaysAgo),
+      ),
+    );
 
   for (const incident of oldLowIncidents) {
     await closeIncident(incident.id, 'system');

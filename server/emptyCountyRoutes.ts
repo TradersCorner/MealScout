@@ -23,14 +23,18 @@ export default function setupEmptyCountyRoutes(app: Express) {
 
       const experience = await getEmptyCountyExperience(county, state);
 
-      // Add user's referral link if logged in
-      if (req.user?.id && experience.isEmpty) {
-        const baseUrl = `${req.protocol}://${req.get('host')}/restaurants?county=${county}&state=${state}`;
-        experience.shareLink = appendReferralParam(baseUrl, req.user.id);
-        experience.shareMessage = `Help ${county} find great restaurants. Share this link and earn when restaurants join!`;
-      }
+      const response = req.user?.id && experience.isEmpty
+        ? {
+            ...experience,
+            shareLink: appendReferralParam(
+              `${req.protocol}://${req.get('host')}/restaurants?county=${county}&state=${state}`,
+              req.user.id,
+            ),
+            shareMessage: `Help ${county} find great restaurants. Share this link and earn when restaurants join!`,
+          }
+        : experience;
 
-      res.json(experience);
+      res.json(response);
     } catch (error: any) {
       console.error('[emptyCounty routes] Error getting experience:', error);
       res.status(500).json({ error: error.message });

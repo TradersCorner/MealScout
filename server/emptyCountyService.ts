@@ -11,7 +11,7 @@
 
 import { db } from './db';
 import { restaurantSubmissions, restaurants } from '@shared/schema';
-import { eq, and, isNull, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 
 interface CountyBounds {
   county: string;
@@ -60,13 +60,17 @@ export async function submitRestaurant(
   },
 ) {
   // Check if already submitted recently
-  const existing = await db.query.restaurantSubmissions.findFirst({
-    where: and(
-      sql`LOWER(${restaurantSubmissions.restaurantName}) = LOWER(${restaurantName})`,
-      eq(restaurantSubmissions.county, county),
-      eq(restaurantSubmissions.state, state),
-    ),
-  });
+  const existing = (await db
+    .select()
+    .from(restaurantSubmissions)
+    .where(
+      and(
+        sql`LOWER(${restaurantSubmissions.restaurantName}) = LOWER(${restaurantName})`,
+        eq(restaurantSubmissions.county, county),
+        eq(restaurantSubmissions.state, state),
+      ),
+    )
+    .limit(1))[0];
 
   if (existing) {
     return {
@@ -102,14 +106,17 @@ export async function submitRestaurant(
  * Get pending submissions for moderation
  */
 export async function getPendingSubmissions(county?: string, state?: string) {
-  const submissions = await db.query.restaurantSubmissions.findMany({
-    where: and(
-      eq(restaurantSubmissions.status, 'pending'),
-      county ? eq(restaurantSubmissions.county, county) : undefined,
-      state ? eq(restaurantSubmissions.state, state) : undefined,
-    ),
-    orderBy: (table) => [table.createdAt],
-  });
+  const submissions = await db
+    .select()
+    .from(restaurantSubmissions)
+    .where(
+      and(
+        eq(restaurantSubmissions.status, 'pending'),
+        county ? eq(restaurantSubmissions.county, county) : undefined,
+        state ? eq(restaurantSubmissions.state, state) : undefined,
+      ),
+    )
+    .orderBy(restaurantSubmissions.createdAt);
 
   return submissions;
 }
@@ -122,9 +129,11 @@ export async function approveSubmission(
   submissionId: string,
   linkToRestaurantId?: string,
 ) {
-  const submission = await db.query.restaurantSubmissions.findFirst({
-    where: eq(restaurantSubmissions.id, submissionId),
-  });
+  const submission = (await db
+    .select()
+    .from(restaurantSubmissions)
+    .where(eq(restaurantSubmissions.id, submissionId))
+    .limit(1))[0];
 
   if (!submission) {
     throw new Error('Submission not found');
@@ -180,9 +189,7 @@ export async function isCountyEmpty(county: string, state: string): Promise<bool
   // 2. Deals from those restaurants
   // For MVP, we'll consider empty if few restaurants exist in database
 
-  const restaurantCount = await db.query.restaurants.findMany({
-    limit: 1,
-  });
+  const restaurantCount = await db.select().from(restaurants).limit(1);
 
   // If no restaurants at all, county is empty
   return restaurantCount.length === 0;
@@ -193,15 +200,18 @@ export async function isCountyEmpty(county: string, state: string): Promise<bool
  * Used to show "You're early" messaging
  */
 export async function getCountyEngagementMetrics(county: string, state: string) {
-  const restaurantList = await db.query.restaurants.findMany();
+  const restaurantList = await db.select().from(restaurants);
 
-  const submissions = await db.query.restaurantSubmissions.findMany({
-    where: and(
-      eq(restaurantSubmissions.county, county),
-      eq(restaurantSubmissions.state, state),
-      eq(restaurantSubmissions.status, 'pending'),
-    ),
-  });
+  const submissions = await db
+    .select()
+    .from(restaurantSubmissions)
+    .where(
+      and(
+        eq(restaurantSubmissions.county, county),
+        eq(restaurantSubmissions.state, state),
+        eq(restaurantSubmissions.status, 'pending'),
+      ),
+    );
 
   return {
     restaurantCount: restaurantList.length,

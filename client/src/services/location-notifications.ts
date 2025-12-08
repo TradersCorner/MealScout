@@ -211,7 +211,7 @@ class LocationNotificationService {
     }
 
     try {
-      const nearbyDeals: Deal[] = await apiRequest('GET', `/api/deals/nearby/${lat}/${lng}?radius=${settings.radius}`);
+      const nearbyDeals = await apiRequest('GET', `/api/deals/nearby/${lat}/${lng}?radius=${settings.radius}`) as unknown as Deal[];
 
       // Filter deals we haven't shown today
       const newDeals = nearbyDeals.filter(deal => 

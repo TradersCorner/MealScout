@@ -69,9 +69,11 @@ export async function attachReferralToSignup(
 ) {
   try {
     // Find the referral record
-    const referral = await db.query.referrals.findFirst({
-      where: eq(referrals.id, referralId),
-    });
+    const referral = (await db
+      .select()
+      .from(referrals)
+      .where(eq(referrals.id, referralId))
+      .limit(1))[0];
 
     if (!referral) {
       console.warn(`[referralService] Referral ${referralId} not found`);
@@ -132,9 +134,10 @@ export function appendReferralParam(url: string, affiliateUserId: string): strin
 export async function getAffiliateReferralStats(affiliateUserId: string) {
   try {
     // Get all referrals for this user
-    const allReferrals = await db.query.referrals.findMany({
-      where: eq(referrals.affiliateUserId, affiliateUserId),
-    });
+    const allReferrals = await db
+      .select()
+      .from(referrals)
+      .where(eq(referrals.affiliateUserId, affiliateUserId));
 
     const stats = {
       totalClicks: 0,
@@ -144,7 +147,7 @@ export async function getAffiliateReferralStats(affiliateUserId: string) {
       referrals: allReferrals,
     };
 
-    allReferrals.forEach((ref) => {
+    allReferrals.forEach((ref: any) => {
       if (ref.status === 'clicked') stats.totalClicks++;
       if (ref.status === 'signed_up' || ['activated', 'paid'].includes(ref.status)) stats.signedUp++;
       if (ref.status === 'activated' || ref.status === 'paid') stats.activated++;
@@ -175,9 +178,11 @@ export async function createCommissionForRestaurantPayment(
 ) {
   try {
     // Find the referral for this restaurant
-    const referral = await db.query.referrals.findFirst({
-      where: eq(referrals.referredRestaurantId, restaurantId),
-    });
+    const referral = (await db
+      .select()
+      .from(referrals)
+      .where(eq(referrals.referredRestaurantId, restaurantId))
+      .limit(1))[0];
 
     if (!referral) {
       console.log(`[Phase 3] No referral found for restaurant ${restaurantId}`);

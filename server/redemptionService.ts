@@ -33,9 +33,11 @@ export async function redeemCreditAtRestaurant(
 }> {
   try {
     // Verify restaurant exists
-    const restaurant = await db.query.restaurants.findFirst({
-      where: eq(restaurants.id, restaurantId),
-    });
+    const restaurant = (await db
+      .select()
+      .from(restaurants)
+      .where(eq(restaurants.id, restaurantId))
+      .limit(1))[0];
 
     if (!restaurant) {
       throw new Error('Restaurant not found');
@@ -106,15 +108,12 @@ export async function getRestaurantRedemptions(
   status?: 'pending' | 'queued' | 'paid',
 ) {
   try {
-    if (status) {
-      return await db.query.restaurantCreditRedemptions.findMany({
-        where: (table) => eq(table.restaurantId, restaurantId),
-      }).then(r => r.filter(item => item.settlementStatus === status));
-    }
+    const redemptions = await db
+      .select()
+      .from(restaurantCreditRedemptions)
+      .where(eq(restaurantCreditRedemptions.restaurantId, restaurantId));
 
-    return await db.query.restaurantCreditRedemptions.findMany({
-      where: eq(restaurantCreditRedemptions.restaurantId, restaurantId),
-    });
+    return status ? redemptions.filter((item: any) => item.settlementStatus === status) : redemptions;
   } catch (error) {
     console.error('[redemptionService] Error getting redemptions:', error);
     throw error;
@@ -128,21 +127,22 @@ export async function getRestaurantRedemptions(
  */
 export async function getRestaurantCreditSummary(restaurantId: string) {
   try {
-    const redemptions = await db.query.restaurantCreditRedemptions.findMany({
-      where: eq(restaurantCreditRedemptions.restaurantId, restaurantId),
-    });
+    const redemptions = await db
+      .select()
+      .from(restaurantCreditRedemptions)
+      .where(eq(restaurantCreditRedemptions.restaurantId, restaurantId));
 
     const pending = redemptions
-      .filter((r) => r.settlementStatus === 'pending')
-      .reduce((sum, r) => sum + parseFloat(r.creditAmount.toString()), 0);
+      .filter((r: any) => r.settlementStatus === 'pending')
+      .reduce((sum: number, r: any) => sum + parseFloat(r.creditAmount.toString()), 0);
 
     const queued = redemptions
-      .filter((r) => r.settlementStatus === 'queued')
-      .reduce((sum, r) => sum + parseFloat(r.creditAmount.toString()), 0);
+      .filter((r: any) => r.settlementStatus === 'queued')
+      .reduce((sum: number, r: any) => sum + parseFloat(r.creditAmount.toString()), 0);
 
     const paid = redemptions
-      .filter((r) => r.settlementStatus === 'paid')
-      .reduce((sum, r) => sum + parseFloat(r.creditAmount.toString()), 0);
+      .filter((r: any) => r.settlementStatus === 'paid')
+      .reduce((sum: number, r: any) => sum + parseFloat(r.creditAmount.toString()), 0);
 
     return {
       pendingCredits: pending,
@@ -168,18 +168,21 @@ export async function getRedemptionHistory(
   offset: number = 0,
 ) {
   try {
-    const redemptions = await db.query.restaurantCreditRedemptions.findMany({
-      where: eq(restaurantCreditRedemptions.restaurantId, restaurantId),
-      limit,
-      offset,
-    });
+    const redemptions = await db
+      .select()
+      .from(restaurantCreditRedemptions)
+      .where(eq(restaurantCreditRedemptions.restaurantId, restaurantId))
+      .limit(limit)
+      .offset(offset);
 
     // Fetch user details for each redemption
     const withUsers = await Promise.all(
-      redemptions.map(async (r) => {
-        const user = await db.query.users.findFirst({
-          where: eq(users.id, r.userId),
-        });
+      redemptions.map(async (r: any) => {
+        const user = (await db
+          .select()
+          .from(users)
+          .where(eq(users.id, r.userId))
+          .limit(1))[0];
         return {
           ...r,
           user,
@@ -204,9 +207,11 @@ export async function flagRedemptionForDispute(
   reason: string,
 ) {
   try {
-    const redemption = await db.query.restaurantCreditRedemptions.findFirst({
-      where: eq(restaurantCreditRedemptions.id, redemptionId),
-    });
+    const redemption = (await db
+      .select()
+      .from(restaurantCreditRedemptions)
+      .where(eq(restaurantCreditRedemptions.id, redemptionId))
+      .limit(1))[0];
 
     if (!redemption) {
       throw new Error('Redemption not found');

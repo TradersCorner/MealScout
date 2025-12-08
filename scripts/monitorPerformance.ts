@@ -94,21 +94,23 @@ class PerformanceMonitor {
       const client = this.baseUrl.startsWith('https') ? https : http;
       const url = new URL(path, this.baseUrl);
 
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'MealScout-Monitor/1.0',
+      };
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const options = {
         hostname: url.hostname,
         port: url.port,
         path: url.pathname + url.search,
         method,
         timeout: 10000,
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'MealScout-Monitor/1.0',
-        },
+        headers,
       };
-
-      if (token) {
-        options.headers['Authorization'] = `Bearer ${token}`;
-      }
 
       const startTime = Date.now();
 
@@ -295,7 +297,8 @@ class PerformanceMonitor {
       latestChecks.set(check.endpoint, check);
     }
 
-    for (const [endpoint, check] of latestChecks) {
+    const checksArray = Array.from(latestChecks.entries());
+    for (const [endpoint, check] of checksArray) {
       const statusColor =
         check.status === 'UP' ? '\x1b[32m' : check.status === 'SLOW' ? '\x1b[33m' : '\x1b[31m';
       const statusReset = '\x1b[0m';

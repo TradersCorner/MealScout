@@ -76,21 +76,23 @@ class StressTest {
       const client = this.config.baseUrl.startsWith('https') ? https : http;
       const url = new URL(config.path, this.config.baseUrl);
 
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'MealScout-StressTest/1.0',
+        ...config.headers,
+      };
+
+      if (config.token) {
+        headers['Authorization'] = `Bearer ${config.token}`;
+      }
+
       const options = {
         hostname: url.hostname,
         port: url.port,
         path: url.pathname + url.search,
         method: config.method,
         timeout: this.config.timeout,
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'MealScout-StressTest/1.0',
-          ...config.headers,
-        },
-      };
-
-      if (config.token) {
-        options.headers['Authorization'] = `Bearer ${config.token}`;
+        headers,
       }
 
       const startTime = Date.now();

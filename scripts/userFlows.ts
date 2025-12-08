@@ -64,21 +64,23 @@ class UserFlowTester {
       const client = this.baseUrl.startsWith('https') ? https : http;
       const url = new URL(config.path, this.baseUrl);
 
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'MealScout-UserFlow/1.0',
+        ...config.headers,
+      };
+
+      if (config.token) {
+        headers['Authorization'] = `Bearer ${config.token}`;
+      }
+
       const options = {
         hostname: url.hostname,
         port: url.port,
         path: url.pathname + url.search,
         method: config.method,
         timeout: 30000,
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'MealScout-UserFlow/1.0',
-          ...config.headers,
-        },
-      };
-
-      if (config.token) {
-        options.headers['Authorization'] = `Bearer ${config.token}`;
+        headers,
       }
 
       const startTime = Date.now();

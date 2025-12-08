@@ -423,6 +423,198 @@ export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
   }),
 }));
 
+// Video Stories - 15 second recommendations and ads
+export const videoStories = pgTable(
+  "video_stories",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+    restaurantId: varchar("restaurant_id").references(() => restaurants.id, { onDelete: 'set null' }), // Nullable for personal reviews
+    title: varchar("title").notNull(),
+    description: text("description"),
+    // Video metadata
+    duration: integer("duration").notNull(), // seconds (10-15)
+    videoUrl: text("video_url").notNull(), // Cloudinary URL
+    thumbnailUrl: text("thumbnail_url"),
+    // Status tracking
+    status: varchar("status").notNull().default("processing"), // 'processing' | 'ready' | 'failed' | 'expired'
+    // Engagement metrics
+    viewCount: integer("view_count").default(0),
+    likeCount: integer("like_count").default(0),
+    commentCount: integer("comment_count").default(0),
+    shareCount: integer("share_count").default(0),
+    // Tags & search
+    hashtags: text("hashtags").array().default([]), // ['#pizza', '#foodie']
+    cuisine: varchar("cuisine"), // inherited from restaurant
+    // Expiration
+    createdAt: timestamp("created_at").defaultNow(),
+    expiresAt: timestamp("expires_at").default(sql`NOW() + INTERVAL '7 days'`),
+    deletedAt: timestamp("deleted_at"), // soft delete
+    // Moderation
+    isApproved: boolean("is_approved").default(true),
+    flagCount: integer("flag_count").default(0),
+  },
+  (table) => [
+    index("IDX_video_stories_user").on(table.userId, table.createdAt.desc()),
+    index("IDX_video_stories_restaurant").on(table.restaurantId, table.createdAt.desc()),
+    index("IDX_video_stories_expires").on(table.expiresAt),
+    index("IDX_video_stories_status").on(table.status),
+    index("IDX_video_stories_deleted").on(table.deletedAt),
+  ],
+);
+
+// Story Likes (favorites)
+export const storyLikes = pgTable(
+  "story_likes",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    storyId: varchar("story_id").notNull().references(() => videoStories.id, { onDelete: 'cascade' }),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_story_likes_story").on(table.storyId, table.createdAt.desc()),
+    index("IDX_story_likes_user").on(table.userId, table.createdAt.desc()),
+    index("IDX_story_likes_unique").on(table.storyId, table.userId),
+  ],
+);
+
+// Story Comments
+export const storyComments: any = pgTable(
+  "story_comments",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    storyId: varchar("story_id").notNull().references(() => videoStories.id, { onDelete: 'cascade' }),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+    parentCommentId: varchar("parent_comment_id").references((): any => storyComments.id, { onDelete: 'cascade' }), // for replies
+    text: text("text").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+    // Moderation
+    isApproved: boolean("is_approved").default(true),
+  },
+  (table) => [
+    index("IDX_story_comments_story").on(table.storyId, table.createdAt.desc()),
+    index("IDX_story_comments_user").on(table.userId, table.createdAt.desc()),
+    index("IDX_story_comments_parent").on(table.parentCommentId),
+  ],
+);
+
+// Story Views (for analytics)
+export const storyViews = pgTable(
+  "story_views",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    storyId: varchar("story_id").notNull().references(() => videoStories.id, { onDelete: 'cascade' }),
+    userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }), // nullable for anonymous
+    viewedAt: timestamp("viewed_at").defaultNow(),
+    watchDuration: integer("watch_duration"), // seconds watched
+  },
+  (table) => [
+    index("IDX_story_views_story").on(table.storyId, table.viewedAt.desc()),
+    index("IDX_story_views_user").on(table.userId, table.viewedAt.desc()),
+  ],
+);
+
+// Reviewer Levels (denormalized for performance)
+export const userReviewerLevels = pgTable(
+  "user_reviewer_levels",
+  {
+    userId: varchar("user_id").primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+    level: integer("level").default(1), // 1-6
+    totalFavorites: integer("total_favorites").default(0),
+    totalStories: integer("total_stories").default(0),
+    topStoryFavorites: integer("top_story_favorites").default(0),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+);
+
+// Story Awards (for golden forks, etc.)
+export const storyAwards = pgTable(
+  "story_awards",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    storyId: varchar("story_id").notNull().references(() => videoStories.id, { onDelete: 'cascade' }),
+    awardType: varchar("award_type").notNull(), // 'bronze_fork' | 'silver_fork' | 'gold_fork' | 'platinum_fork'
+    awardedAt: timestamp("awarded_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_story_awards_story").on(table.storyId),
+    index("IDX_story_awards_type").on(table.awardType),
+    index("IDX_story_awards_date").on(table.awardedAt.desc()),
+  ],
+);
+
+// Relations
+export const videoStoriesRelations = relations(videoStories, ({ one, many }) => ({
+  user: one(users, {
+    fields: [videoStories.userId],
+    references: [users.id],
+  }),
+  restaurant: one(restaurants, {
+    fields: [videoStories.restaurantId],
+    references: [restaurants.id],
+  }),
+  likes: many(storyLikes),
+  comments: many(storyComments),
+  views: many(storyViews),
+  awards: many(storyAwards),
+}));
+
+export const storyLikesRelations = relations(storyLikes, ({ one }) => ({
+  story: one(videoStories, {
+    fields: [storyLikes.storyId],
+    references: [videoStories.id],
+  }),
+  user: one(users, {
+    fields: [storyLikes.userId],
+    references: [users.id],
+  }),
+}));
+
+export const storyCommentsRelations = relations(storyComments, ({ one, many }) => {
+  return {
+    story: one(videoStories, {
+      fields: [storyComments.storyId],
+      references: [videoStories.id],
+    }),
+    user: one(users, {
+      fields: [storyComments.userId],
+      references: [users.id],
+    }),
+    parentComment: one(storyComments, {
+      fields: [storyComments.parentCommentId],
+      references: [storyComments.id],
+    }),
+    replies: many(storyComments),
+  };
+});
+
+export const storyViewsRelations = relations(storyViews, ({ one }) => ({
+  story: one(videoStories, {
+    fields: [storyViews.storyId],
+    references: [videoStories.id],
+  }),
+  user: one(users, {
+    fields: [storyViews.userId],
+    references: [users.id],
+  }),
+}));
+
+export const storyAwardsRelations = relations(storyAwards, ({ one }) => ({
+  story: one(videoStories, {
+    fields: [storyAwards.storyId],
+    references: [videoStories.id],
+  }),
+}));
+
+export const userReviewerLevelsRelations = relations(userReviewerLevels, ({ one }) => ({
+  user: one(users, {
+    fields: [userReviewerLevels.userId],
+    references: [users.id],
+  }),
+}));
+
 export const restaurantsRelations = relations(restaurants, ({ one, many }) => ({
   owner: one(users, {
     fields: [restaurants.ownerId],
@@ -722,6 +914,54 @@ export const insertDealFeedbackSchema = createInsertSchema(dealFeedback).omit({
   isHelpful: z.boolean().optional().nullable(),
 });
 
+// Video Stories insert schemas
+export const insertVideoStorySchema = createInsertSchema(videoStories).omit({
+  id: true,
+  viewCount: true,
+  likeCount: true,
+  commentCount: true,
+  shareCount: true,
+  createdAt: true,
+  expiresAt: true,
+  deletedAt: true,
+  flagCount: true,
+}).extend({
+  title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters"),
+  description: z.string().max(500, "Description must be less than 500 characters").optional().nullable(),
+  duration: z.number().int().min(10, "Duration must be at least 10 seconds").max(15, "Duration must not exceed 15 seconds"),
+  videoUrl: z.string().url("Video URL must be a valid URL"),
+  thumbnailUrl: z.string().url("Thumbnail URL must be a valid URL").optional().nullable(),
+  cuisine: z.string().max(50, "Cuisine must be less than 50 characters").optional().nullable(),
+  hashtags: z.array(z.string().regex(/^#/, "Hashtags must start with #")).max(10, "Maximum 10 hashtags allowed").optional(),
+});
+
+export const insertStoryLikeSchema = createInsertSchema(storyLikes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertStoryCommentSchema = createInsertSchema(storyComments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  text: z.string().min(1, "Comment text is required").max(500, "Comment must be less than 500 characters"),
+});
+
+export const insertStoryViewSchema = createInsertSchema(storyViews).omit({
+  id: true,
+  viewedAt: true,
+}).extend({
+  watchDuration: z.number().int().min(0).optional(),
+});
+
+export const insertStoryAwardSchema = createInsertSchema(storyAwards).omit({
+  id: true,
+  awardedAt: true,
+}).extend({
+  awardType: z.enum(['bronze_fork', 'silver_fork', 'gold_fork', 'platinum_fork']),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -790,6 +1030,24 @@ export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 
 export type InsertDealFeedback = z.infer<typeof insertDealFeedbackSchema>;
 export type DealFeedback = typeof dealFeedback.$inferSelect;
+
+// Video Stories types
+export type InsertVideoStory = z.infer<typeof insertVideoStorySchema>;
+export type VideoStory = typeof videoStories.$inferSelect;
+
+export type InsertStoryLike = z.infer<typeof insertStoryLikeSchema>;
+export type StoryLike = typeof storyLikes.$inferSelect;
+
+export type InsertStoryComment = z.infer<typeof insertStoryCommentSchema>;
+export type StoryComment = typeof storyComments.$inferSelect;
+
+export type InsertStoryView = z.infer<typeof insertStoryViewSchema>;
+export type StoryView = typeof storyViews.$inferSelect;
+
+export type InsertStoryAward = z.infer<typeof insertStoryAwardSchema>;
+export type StoryAward = typeof storyAwards.$inferSelect;
+
+export type UserReviewerLevel = typeof userReviewerLevels.$inferSelect;
 
 // Support tickets for user help requests
 export const supportTickets = pgTable(

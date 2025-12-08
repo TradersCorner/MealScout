@@ -68,6 +68,7 @@ import incidentManager, { createIncident, ANOMALY_RULES } from "./incidentManage
 import { broadcastLocationUpdate, broadcastStatusUpdate } from "./websocket";
 import { db } from "./db";
 import { and, inArray, eq, sql, gte, desc, like } from "drizzle-orm";
+import { registerStoryCronJobs } from "./storiesCronJobs";
 
 // Optional Stripe integration
 const stripe = process.env.STRIPE_SECRET_KEY 
@@ -4308,6 +4309,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Failed to fetch award history' });
     }
   });
+
+  // Register video stories routes (MVP Phase 1)
+  const setupStoriesRoutes = (await import('./storiesRoutes')).default;
+  setupStoriesRoutes(app);
+
+  // Register story cron jobs (cleanup and level recalculation)
+  registerStoryCronJobs(app);
 
   // Register incident management routes (admin-only)
   const incidentRoutes = (await import('./incidentRoutes')).default;

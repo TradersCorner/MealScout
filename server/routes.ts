@@ -351,7 +351,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       status: 'ok',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      service: 'Food Truck Finder API'
+      service: 'MealScout API'
     });
   });
 

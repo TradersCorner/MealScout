@@ -645,7 +645,7 @@ app.use((req, res, next) => {
       if (!acceptHeader.includes('text/html')) {
         return res.status(200).json({ 
           status: 'ok', 
-          service: 'Food Truck Finder API',
+          service: 'MealScout API',
           timestamp: new Date().toISOString()
         });
       }
@@ -673,10 +673,10 @@ app.use((req, res, next) => {
             <head>
               <meta charset="UTF-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Food Truck Finder</title>
+              <title>MealScout</title>
             </head>
             <body>
-              <h1>Food Truck Finder</h1>
+              <h1>MealScout</h1>
               <p>Service is running successfully.</p>
               <p>Status: OK</p>
               <p><a href="/health">Health Check</a></p>

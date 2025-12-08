@@ -46,6 +46,7 @@ export default function Home() {
   const { user } = useAuth();
   const [location, setLocation] = useState<{lat: number; lng: number} | null>(null);
   const [locationName, setLocationName] = useState("Your Location");
+  const [copiedLink, setCopiedLink] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showLocationInput, setShowLocationInput] = useState(false);
@@ -58,6 +59,17 @@ export default function Home() {
     cuisineType: "",
     description: ""
   });
+  const handleCopyAffiliateLink = async () => {
+    try {
+      const ref = (user as any)?.referralCode || (user as any)?.id || "";
+      const url = ref ? `${window.location.origin}/?ref=${ref}` : window.location.origin;
+      await navigator.clipboard.writeText(url);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy link', error);
+    }
+  };
   const [foodTrucks, setFoodTrucks] = useState<FoodTruck[]>([]);
   const [showFoodTrucks, setShowFoodTrucks] = useState(true);
   const [loadingFoodTrucks, setLoadingFoodTrucks] = useState(false);
@@ -747,7 +759,7 @@ export default function Home() {
                     <Button onClick={fetchNearbyFoodTrucks} disabled={loadingFoodTrucks} className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all">
                       {loadingFoodTrucks ? 'Searching...' : 'Search Again'}
                     </Button>
-                    <Link href={user ? "#community-builder" : "/auth"} className="w-full sm:w-auto">
+                    <Link href="#community-builder" className="w-full sm:w-auto">
                       <Button className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all">
                         Help bring vendors to your area
                       </Button>
@@ -1592,6 +1604,41 @@ export default function Home() {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+            {!user ? (
+              <div className="bg-white border border-orange-200 rounded-xl p-4 space-y-3 shadow-sm">
+                <h3 className="font-semibold text-gray-900">Create your account</h3>
+                <p className="text-sm text-gray-700">Choose how you want to join MealScout and start earning or exploring deals.</p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Link href="/customer-signup" className="w-full sm:w-auto">
+                    <Button className="w-full bg-orange-500 text-white hover:bg-orange-600">Sign up as User</Button>
+                  </Link>
+                  <Link href="/restaurant-signup" className="w-full sm:w-auto">
+                    <Button variant="outline" className="w-full border-orange-300 text-orange-700 hover:bg-orange-50">Sign up as Restaurant</Button>
+                  </Link>
+                  <Link href="/restaurant-signup?type=foodtruck" className="w-full sm:w-auto">
+                    <Button variant="outline" className="w-full border-orange-300 text-orange-700 hover:bg-orange-50">Sign up as Food Truck</Button>
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white border border-orange-200 rounded-xl p-4 space-y-3 shadow-sm">
+                <h3 className="font-semibold text-gray-900">Share or invite</h3>
+                <p className="text-sm text-gray-700">Copy your Community Builder link or recommend a restaurant to join.</p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button onClick={handleCopyAffiliateLink} className="bg-orange-500 text-white hover:bg-orange-600 w-full sm:w-auto">
+                    {copiedLink ? 'Link Copied!' : 'Copy Community Builder Link'}
+                  </Button>
+                  <Link href="#recommend-restaurant" className="w-full sm:w-auto">
+                    <Button variant="outline" className="w-full border-orange-300 text-orange-700 hover:bg-orange-50">
+                      Recommend a Restaurant
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-xl p-5 text-white">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
@@ -1703,7 +1750,7 @@ export default function Home() {
       </div>
 
       {/* Restaurant Recommendation Section */}
-      <div className="px-6 py-8 pb-24 bg-gradient-to-br from-accent/10 via-accent/5 to-primary/10 border-t border-border/30">
+      <div id="recommend-restaurant" className="px-6 py-8 pb-24 bg-gradient-to-br from-accent/10 via-accent/5 to-primary/10 border-t border-border/30">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-bold text-foreground flex items-center mb-2" data-testid="text-recommend-title">

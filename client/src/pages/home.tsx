@@ -1845,6 +1845,21 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Legal Footer */}
+      <div className="px-6 py-4 bg-white border-t border-gray-200 text-center text-xs text-gray-500">
+        <p>
+          By using MealScout you agree to our{" "}
+          <Link href="/terms-of-service" className="underline hover:text-gray-700">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy-policy" className="underline hover:text-gray-700">
+            Privacy Policy
+          </Link>
+          .
+        </p>
+      </div>
+
       {/* Bottom Navigation */}
       <Navigation />
     </div>

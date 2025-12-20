@@ -514,7 +514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   </p>
 
   <p style="text-align: center; margin-top: 30px;">
-    <a href="https://mealscout.replit.app" style="color: #2563eb; text-decoration: none;">← Back to MealScout</a>
+    <a href="https://mealscout.us" style="color: #2563eb; text-decoration: none;">← Back to MealScout</a>
   </p>
 </body>
 </html>
@@ -654,7 +654,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   </p>
 
   <p style="text-align: center; margin-top: 30px;">
-    <a href="https://mealscout.replit.app" style="color: #dc2626; text-decoration: none;">← Back to MealScout</a>
+    <a href="https://mealscout.us" style="color: #dc2626; text-decoration: none;">← Back to MealScout</a>
   </p>
 </body>
 </html>

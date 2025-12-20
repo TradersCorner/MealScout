@@ -5,7 +5,7 @@ import { SEOHead } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
 
 export default function OAuthSetupGuide() {
-  const baseUrl = "https://mealscout.replit.app";
+  const baseUrl = "https://mealscout.us";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
@@ -68,7 +68,7 @@ export default function OAuthSetupGuide() {
                   <p className="font-medium text-blue-900">3. App Domain Settings</p>
                   <div className="bg-white p-3 rounded border border-blue-200 mt-2">
                     <p className="text-xs text-gray-600 mb-1">Authorized Domains:</p>
-                    <code className="text-xs bg-gray-100 px-2 py-1 rounded">replit.app</code>
+                    <code className="text-xs bg-gray-100 px-2 py-1 rounded">mealscout.us</code>
                   </div>
                 </div>
 
@@ -176,7 +176,7 @@ export default function OAuthSetupGuide() {
                     </div>
                     <div className="bg-white p-3 rounded border border-blue-200">
                       <p className="text-xs text-gray-600 mb-1">App Domain:</p>
-                      <code className="text-xs bg-gray-100 px-2 py-1 rounded">mealscout.replit.app</code>
+                      <code className="text-xs bg-gray-100 px-2 py-1 rounded">mealscout.us</code>
                     </div>
                   </div>
                 </div>

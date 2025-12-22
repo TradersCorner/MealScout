@@ -46,6 +46,7 @@ import {
   type GoogleUserData,
   type EmailUserData,
   type FacebookUserData,
+  type TradeScoutUserData,
   type UpdateRestaurantLocation,
   type OperatingHours,
 } from "@shared/schema";
@@ -60,7 +61,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
-  upsertUserByAuth(authType: 'google' | 'email' | 'facebook', userData: GoogleUserData | EmailUserData | FacebookUserData, userType?: 'customer' | 'restaurant_owner'): Promise<User>;
+  upsertUserByAuth(authType: 'google' | 'email' | 'facebook' | 'tradescout', userData: GoogleUserData | EmailUserData | FacebookUserData | TradeScoutUserData, userType?: 'customer' | 'restaurant_owner' | 'admin'): Promise<User>;
   updateUserStripeInfo(id: string, stripeCustomerId: string, stripeSubscriptionId: string, subscriptionBillingInterval?: string): Promise<User>;
   updateUser(id: string, updates: Partial<Pick<User, 'subscriptionBillingInterval' | 'stripeCustomerId' | 'stripeSubscriptionId'>>): Promise<User>;
   
@@ -328,9 +329,77 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async upsertUserByAuth(authType: 'google' | 'email' | 'facebook', userData: GoogleUserData | EmailUserData | FacebookUserData, userType: 'customer' | 'restaurant_owner' | 'admin' = 'customer'): Promise<User> {
+  async upsertUserByAuth(authType: 'google' | 'email' | 'facebook' | 'tradescout', userData: GoogleUserData | EmailUserData | FacebookUserData | TradeScoutUserData, userType: 'customer' | 'restaurant_owner' | 'admin' = 'customer'): Promise<User> {
     try {
-      if (authType === 'google') {
+      if (authType === 'tradescout') {
+        const tsData = userData as TradeScoutUserData;
+        console.log('🔍 upsertUserByAuth - TradeScout:', { tradescoutId: tsData.tradescoutId, email: tsData.email, userType });
+
+        // Step 1: Try to find existing user by TradeScout ID
+        let existingUser = await db
+          .select()
+          .from(users)
+          .where(eq(users.tradescoutId, tsData.tradescoutId))
+          .limit(1);
+
+        if (existingUser.length > 0) {
+          console.log('✅ Found existing user by TradeScout ID, updating...');
+          const current = existingUser[0];
+          const [user] = await db
+            .update(users)
+            .set({
+              email: tsData.email ?? current.email,
+              firstName: tsData.firstName ?? current.firstName,
+              lastName: tsData.lastName ?? current.lastName,
+              updatedAt: new Date(),
+            })
+            .where(eq(users.id, current.id))
+            .returning();
+          return user;
+        }
+
+        // Step 2: If email provided, try to find by email and link the TradeScout account
+        if (tsData.email) {
+          existingUser = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, tsData.email))
+            .limit(1);
+
+          if (existingUser.length > 0) {
+            console.log('✅ Found existing user by email, linking TradeScout account...');
+            console.log('⚠️  Preserving existing userType:', existingUser[0].userType);
+            const current = existingUser[0];
+            const [user] = await db
+              .update(users)
+              .set({
+                tradescoutId: tsData.tradescoutId,
+                firstName: tsData.firstName ?? current.firstName,
+                lastName: tsData.lastName ?? current.lastName,
+                updatedAt: new Date(),
+              })
+              .where(eq(users.id, current.id))
+              .returning();
+            return user;
+          }
+        }
+
+        // Step 3: Create new user linked to TradeScout
+        console.log('✅ Creating new TradeScout-linked user...');
+        const [user] = await db
+          .insert(users)
+          .values({
+            userType,
+            tradescoutId: tsData.tradescoutId,
+            email: tsData.email ?? undefined,
+            firstName: tsData.firstName ?? undefined,
+            lastName: tsData.lastName ?? undefined,
+          })
+          .returning();
+        console.log('✅ TradeScout user created successfully:', { userId: user.id, email: user.email });
+        return user;
+
+      } else if (authType === 'google') {
         const googleData = userData as GoogleUserData;
         console.log('🔍 upsertUserByAuth - Google:', { googleId: googleData.googleId, email: googleData.email, userType });
         
@@ -509,7 +578,37 @@ export class DatabaseStorage implements IStorage {
       if (error.code === '23505') {
         console.log('🔄 Handling unique constraint violation, retrying with fetch-and-update...');
         
-        if (authType === 'google') {
+        if (authType === 'tradescout') {
+          const tsData = userData as TradeScoutUserData;
+
+          const existingUser = await db
+            .select()
+            .from(users)
+            .where(
+              tsData.email
+                ? or(eq(users.tradescoutId, tsData.tradescoutId), eq(users.email, tsData.email))
+                : eq(users.tradescoutId, tsData.tradescoutId)
+            )
+            .limit(1);
+
+          if (existingUser.length > 0) {
+            console.log('✅ Found existing user during TradeScout retry, updating...');
+            console.log('⚠️  Preserving existing userType:', existingUser[0].userType);
+            const current = existingUser[0];
+            const [user] = await db
+              .update(users)
+              .set({
+                tradescoutId: tsData.tradescoutId,
+                email: tsData.email ?? current.email,
+                firstName: tsData.firstName ?? current.firstName,
+                lastName: tsData.lastName ?? current.lastName,
+                updatedAt: new Date(),
+              })
+              .where(eq(users.id, current.id))
+              .returning();
+            return user;
+          }
+        } else if (authType === 'google') {
           const googleData = userData as GoogleUserData;
           
           // Retry: find by GoogleID or email and update

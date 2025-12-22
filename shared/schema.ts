@@ -30,6 +30,8 @@ export const sessions = pgTable(
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userType: varchar("user_type").notNull().default("customer"), // 'customer' | 'restaurant_owner' | 'admin'
+  // TradeScout SSO linkage (for unified accounts between TradeScout and MealScout)
+  tradescoutId: varchar("tradescout_id").unique(),
   // Facebook authentication (for regular users)
   facebookId: varchar("facebook_id").unique(),
   facebookAccessToken: text("facebook_access_token"),
@@ -1039,6 +1041,14 @@ export type GoogleUserData = {
   lastName?: string | null;
   profileImageUrl?: string | null;
   googleAccessToken?: string | null;
+};
+
+export type TradeScoutUserData = {
+  tradescoutId: string;
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  roles?: string[] | null;
 };
 
 export type EmailUserData = {

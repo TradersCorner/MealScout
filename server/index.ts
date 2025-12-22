@@ -278,6 +278,7 @@ app.use((req, res, next) => {
   // 🔐 MODERATE - Auth attempts (login, signup)
   app.use('/api/auth/login', authLimiter);
   app.use('/api/auth/signup', authLimiter);
+  app.use('/api/auth/tradescout/sso', authLimiter);
   
   // 🔍 GENEROUS - Search and discovery
   app.use('/api/restaurants/search', searchLimiter);

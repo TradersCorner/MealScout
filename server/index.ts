@@ -245,7 +245,10 @@ app.use((req, res, next) => {
         logLine = logLine.slice(0, 79) + "…";
       }
 
-    console.log(logLine);
+      console.log(logLine);
+    }
+  });
+
   next();
 });
 

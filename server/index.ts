@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import compression from "compression";
 import helmet from "helmet";
@@ -14,6 +15,10 @@ import { db } from "./db";
 import { sql } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
+import { validateEnv } from "./utils/env";
+import { healthRouter } from "./routes/health";
+
+validateEnv();
 
 const app = express();
 
@@ -100,6 +105,9 @@ if (process.env.NODE_ENV === "production") {
 
 // Anti-scrape middleware: allow TradeScout crawler, block obvious scrapers
 app.use(antiScrape);
+
+// Basic health endpoints (no auth)
+app.use(healthRouter);
 
 // CSP for development - permissive to allow Vite HMR and inline scripts
 if (process.env.NODE_ENV !== "production") {

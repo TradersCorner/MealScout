@@ -3,6 +3,7 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
+import { incConnect, incDisconnect, incSubscribeNearby, maybeWarnIfChurn } from "./utils/realtimeMetrics";
 
 const PgSession = connectPg(session);
 
@@ -44,7 +45,8 @@ export function setupWebSocketServer(httpServer: Server): SocketIOServer {
   });
 
   // Create Socket.IO server with restricted CORS
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5000').split(',').map(o => o.trim());
+  const defaultOrigins = 'http://localhost:5000,http://localhost:5173,http://127.0.0.1:5173,https://mealscout.us,https://www.mealscout.us';
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || defaultOrigins).split(',').map(o => o.trim());
   io = new SocketIOServer(httpServer, {
     cors: {
       origin: function(origin, callback) {
@@ -82,6 +84,7 @@ export function setupWebSocketServer(httpServer: Server): SocketIOServer {
 
   // Connection handling
   io.on("connection", async (socket: AuthenticatedSocket) => {
+    incConnect();
     console.log(`WebSocket connected: ${socket.id}, userId: ${socket.userId || 'anonymous'}`);
 
     try {
@@ -99,6 +102,7 @@ export function setupWebSocketServer(httpServer: Server): SocketIOServer {
       // Handle subscription to nearby trucks by location
       socket.on("subscribe_nearby", async (data: { latitude: number; longitude: number; radiusKm?: number }) => {
         try {
+          incSubscribeNearby();
           const { latitude, longitude, radiusKm = 5 } = data;
           
           // Validate coordinates
@@ -196,6 +200,8 @@ export function setupWebSocketServer(httpServer: Server): SocketIOServer {
       // Handle disconnect
       socket.on("disconnect", (reason) => {
         console.log(`WebSocket disconnected: ${socket.id}, reason: ${reason}`);
+        incDisconnect();
+        maybeWarnIfChurn((msg) => console.warn(msg));
         
         // Clean up user subscriptions
         userSubscriptions.delete(userKey);

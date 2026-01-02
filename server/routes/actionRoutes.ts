@@ -214,10 +214,29 @@ async function getFoodTruckLocations(params: {
       };
     }
 
-    const radius = params.radiusKm || 5;
-    // TODO: Implement getNearbyFoodTrucks in storage.ts
-    // For now, return empty result
-    const trucks: any[] = [];
+    const latitude = Number(params.latitude);
+    const longitude = Number(params.longitude);
+    const radius = Math.min(Number(params.radiusKm ?? 5), 50);
+
+    if (
+      Number.isNaN(latitude) ||
+      Number.isNaN(longitude) ||
+      Number.isNaN(radius)
+    ) {
+      return {
+        success: false,
+        error: "Invalid coordinates or radius",
+      };
+    }
+
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      return {
+        success: false,
+        error: "Invalid coordinates range",
+      };
+    }
+
+    const trucks = await storage.getLiveTrucksNearby(latitude, longitude, radius);
 
     return {
       success: true,

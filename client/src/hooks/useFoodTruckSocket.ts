@@ -49,7 +49,9 @@ export function useFoodTruckSocket({
       // Create Socket.IO connection - try the simplest configuration first
       const socket = io({
         autoConnect: true,
-        transports: ['polling', 'websocket']
+        transports: ['polling', 'websocket'],
+        withCredentials: true,
+        path: '/socket.io'
       });
       
       socketRef.current = socket;

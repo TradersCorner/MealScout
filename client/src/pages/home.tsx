@@ -88,7 +88,6 @@ export default function Home() {
     subscribeToNearby,
     connect: connectWS
   } = useFoodTruckSocket({
-    autoConnect: false, // Disable auto-connection to prevent error spam
     onLocationUpdate: (locationUpdate) => {
       setFoodTrucks(prev => prev.map(truck => 
         truck.id === locationUpdate.restaurantId 
@@ -995,19 +994,20 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Featured Deals Section */}
+      {/* Time-Sensitive Deals Section */}
       <div className="py-6">
         <div className="flex items-center justify-between mb-6 px-6">
           <h2 className="text-xl font-bold text-foreground flex items-center" data-testid="text-featured-title">
             <span className="w-8 h-8 food-gradient-primary rounded-lg flex items-center justify-center mr-3 shadow-md">
               <Star className="w-4 h-4 text-white" />
             </span>
-            Hot Deals Nearby
+            Time-Sensitive Deals Nearby
           </h2>
           <Link href="/deals/featured">
             <button className="text-primary font-semibold hover:text-primary/80 transition-colors" data-testid="button-view-all">View All</button>
           </Link>
         </div>
+        <p className="text-sm text-muted-foreground px-6 mb-3">Nearby (distance-based) · Limited-time offers</p>
         
         {/* Deal Filter Buttons */}
         <div className="flex gap-2 mb-4 px-6">
@@ -1095,6 +1095,7 @@ export default function Home() {
           <div className="flex space-x-4 overflow-x-auto pb-4 px-6 scrollbar-hide lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:overflow-visible">
             {subscribedRestaurants.map((restaurant: any) => {
               const hasDeals = restaurant.activeDealsCount > 0;
+              const isOpen = restaurant?.isOpenNow ?? restaurant?.isOpen ?? restaurant?.isOnline;
               
               return (
                 <div key={restaurant.id} className="flex-shrink-0 w-72 lg:w-auto">
@@ -1114,6 +1115,12 @@ export default function Home() {
                       <h3 className="font-bold text-lg text-foreground mb-2" data-testid={`text-restaurant-name-${restaurant.id}`}>
                         {restaurant.name}
                       </h3>
+                      {isOpen && (
+                        <div className="inline-flex items-center gap-2 text-xs font-semibold text-green-700 bg-green-50 border border-green-100 rounded-full px-3 py-1 mb-2">
+                          <span className="w-2 h-2 rounded-full bg-green-500" />
+                          Open now
+                        </div>
+                      )}
                       <div className="flex items-center text-sm text-muted-foreground mb-3">
                         <MapPin className="w-4 h-4 mr-1" />
                         {restaurant.address}

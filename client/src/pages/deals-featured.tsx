@@ -17,9 +17,9 @@ export default function FeaturedDealsPage() {
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">
       <SEOHead
-        title="Featured Deals - MealScout | Hot Food Deals Near You"
-        description="Discover the best featured food deals from top local restaurants. Save big on your favorite meals with exclusive discounts, limited-time offers, and special promotions."
-        keywords="featured deals, hot deals, restaurant discounts, food promotions, exclusive offers, limited time deals"
+        title="Time-Sensitive Deals - MealScout | Nearby Limited-Time Offers"
+        description="Discover time-sensitive food deals near you. Limited-time offers from local restaurants, sorted by proximity."
+        keywords="time-sensitive deals, nearby deals, restaurant discounts, limited time offers"
         canonicalUrl="https://mealscout.us/deals/featured"
       />
       {/* Header */}
@@ -35,8 +35,8 @@ export default function FeaturedDealsPage() {
               <Star className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">Hot Deals Nearby</h1>
-              <p className="text-sm text-muted-foreground">Featured deals from top restaurants</p>
+              <h1 className="text-xl font-bold text-foreground">Time-Sensitive Deals Nearby</h1>
+              <p className="text-sm text-muted-foreground">Limited-time offers from nearby restaurants (distance-based)</p>
             </div>
           </div>
         </div>
@@ -44,7 +44,7 @@ export default function FeaturedDealsPage() {
         {/* Filter & Sort */}
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            {allDeals.length} featured deal{allDeals.length !== 1 ? 's' : ''}
+            {allDeals.length} time-sensitive deal{allDeals.length !== 1 ? 's' : ''}
           </div>
           <div className="flex space-x-2">
             <Button variant="outline" size="sm" data-testid="button-sort-featured">
@@ -84,9 +84,9 @@ export default function FeaturedDealsPage() {
             <div className="w-20 h-20 bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Star className="w-8 h-8 text-red-500" />
             </div>
-            <h3 className="font-bold text-lg text-foreground mb-2">No featured deals yet</h3>
+            <h3 className="font-bold text-lg text-foreground mb-2">No time-sensitive deals yet</h3>
             <p className="text-muted-foreground mb-6">
-              Check back soon for amazing featured deals from top restaurants!
+              Check back soon for nearby limited-time offers from local restaurants!
             </p>
             <Link href="/search">
               <Button data-testid="button-browse-all-featured">

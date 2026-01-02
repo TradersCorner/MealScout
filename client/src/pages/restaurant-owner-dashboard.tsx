@@ -96,7 +96,7 @@ export default function RestaurantOwnerDashboard() {
       console.log('Received status update:', status);
       // Handle status updates from server
     },
-    autoConnect: false // We'll connect manually when needed
+    autoConnect: true
   });
 
   // Fetch user's restaurants

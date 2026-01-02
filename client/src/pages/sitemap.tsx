@@ -43,7 +43,7 @@ export default function Sitemap() {
         { title: "Sign Up", href: "/login", description: "Create your free MealScout account" },
         { title: "Search Deals", href: "/search", description: "Find deals by location, cuisine, or restaurant" },
         { title: "Map View", href: "/map", description: "See deals on an interactive map" },
-        { title: "Featured Deals", href: "/deals/featured", description: "Editor's picks and trending offers" },
+        { title: "Time-Sensitive Deals", href: "/deals/featured", description: "Nearby limited-time offers" },
         { title: "User Dashboard", href: "/user-dashboard", description: "Manage your profile and claimed deals" },
         { title: "Favorites", href: "/favorites", description: "Your saved restaurants and deals" }
       ]

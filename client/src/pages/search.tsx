@@ -212,8 +212,8 @@ export default function SearchPage() {
 
   const searchTitle = searchQuery ? `${searchQuery} - Search Results` : 'Search Deals';
   const searchDescription = searchQuery 
-    ? `Find the best deals for "${searchQuery}". Browse local restaurants and discover exclusive discounts on your favorite food.`
-    : 'Search for food deals near you. Filter by category, price range, and more. Discover the best discounts from local restaurants.';
+    ? `Find nearby deals for "${searchQuery}". Browse local restaurants and discover limited-time discounts close to you.`
+    : 'Search for food deals near you. Filter by category, price range, and more. Discover nearby discounts from local restaurants.';
 
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">

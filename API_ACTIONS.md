@@ -24,6 +24,10 @@ curl -X POST https://mealscout.yourdomain.com/api/actions \
   -d '{"action": "FIND_DEALS", "params": {"search": "pizza"}}'
 ```
 
+Notes:
+- This is a Scout-level token (TradeScout → MealScout bridge). End-user auth is not accepted on this endpoint.
+- Keep the token server-side only; never expose it in client code.
+
 ## Response Format
 
 All responses follow a consistent JSON structure:
@@ -32,7 +36,8 @@ All responses follow a consistent JSON structure:
 ```json
 {
   "success": true,
-  "data": { /* action-specific data */ },
+  "data": { /* action-specific data or a results array */ },
+  "results": [ /* canonical array shape for list responses */ ],
   "count": 5,
   "message": "Optional success message"
 }
@@ -47,11 +52,15 @@ All responses follow a consistent JSON structure:
 }
 ```
 
+Canonical contract (for new or updated actions): use `results` (array) + `count` for lists; `data` for objects. Keep responses deterministic to reduce glue code.
+
 ## Supported Actions
 
 ### 1. FIND_DEALS
 
 Search for active deals by location, category, or text.
+
+**Intent:** `discover_now`
 
 **Parameters:**
 ```json
@@ -107,6 +116,8 @@ curl -X POST https://mealscout.yourdomain.com/api/actions \
 
 Search for restaurants by name, location, or cuisine type.
 
+**Intent:** `discover_now`
+
 **Parameters:**
 ```json
 {
@@ -140,6 +151,8 @@ curl -X POST https://mealscout.yourdomain.com/api/actions \
 ### 3. GET_RESTAURANT_DETAILS
 
 Get detailed information about a specific restaurant and its active deals.
+
+**Intent:** `discover_now`
 
 **Parameters:**
 ```json
@@ -178,6 +191,8 @@ Get detailed information about a specific restaurant and its active deals.
 
 Create a new restaurant (restaurant owner action).
 
+**Intent:** `owner_manage`
+
 **Parameters:**
 ```json
 {
@@ -199,6 +214,8 @@ Create a new restaurant (restaurant owner action).
 ### 5. UPDATE_RESTAURANT
 
 Update restaurant information (restaurant owner action).
+
+**Intent:** `owner_manage`
 
 **Parameters:**
 ```json
@@ -224,6 +241,8 @@ Update restaurant information (restaurant owner action).
 
 Get nearby food truck locations within a radius.
 
+**Intent:** `discover_now`
+
 **Parameters:**
 ```json
 {
@@ -248,11 +267,17 @@ Get nearby food truck locations within a radius.
 }
 ```
 
+Notes:
+- `radiusKm` max = 50; values above are capped.
+- Invalid coordinates are rejected.
+
 ---
 
 ### 7. REDEEM_CREDITS
 
 Redeem user credits (user action).
+
+**Intent:** `save`
 
 **Parameters:**
 ```json
@@ -284,6 +309,8 @@ Redeem user credits (user action).
 
 Check user's credit balance.
 
+**Intent:** `save`
+
 **Parameters:**
 ```json
 {
@@ -311,6 +338,8 @@ Check user's credit balance.
 
 Submit a community builder application (user action).
 
+**Intent:** `owner_manage`
+
 **Parameters:**
 ```json
 {
@@ -330,6 +359,9 @@ Submit a community builder application (user action).
 
 Get transparency data for a specific county.
 
+**Intent:** `discover_now`
+**Scope:** `read_only` (writes: false; writable county data is governed by TradeScout only)
+
 **Parameters:**
 ```json
 {
@@ -345,6 +377,9 @@ Get transparency data for a specific county.
 ### 11. GET_COUNTY_LEDGER
 
 Get redemption ledger for a county.
+
+**Intent:** `discover_now`
+**Scope:** `read_only` (writes: false; writable county data is governed by TradeScout only)
 
 **Parameters:**
 ```json
@@ -362,6 +397,9 @@ Get redemption ledger for a county.
 ### 12. GET_COUNTY_VAULT
 
 Get county vault status and financial information.
+
+**Intent:** `discover_now`
+**Scope:** `read_only` (writes: false; writable county data is governed by TradeScout only)
 
 **Parameters:**
 ```json

@@ -141,7 +141,7 @@ export default function FavoritesPage() {
         ) : favoriteDeals.length > 0 ? (
           <div>
             <h2 className="text-lg font-semibold text-foreground mb-6">
-              Featured Deals ({favoriteDeals.length})
+              Time-Sensitive Deals ({favoriteDeals.length})
             </h2>
             <div className="space-y-4 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:space-y-0">
               {favoriteDeals.map((deal: any) => (

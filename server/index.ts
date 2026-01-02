@@ -245,10 +245,7 @@ app.use((req, res, next) => {
         logLine = logLine.slice(0, 79) + "…";
       }
 
-      log(logLine);
-    }
-  });
-
+    console.log(logLine);
   next();
 });
 
@@ -728,7 +725,7 @@ app.use((req, res, next) => {
     port,
     host: "0.0.0.0",
   }, () => {
-    log(`serving on port ${port}`);
+    console.log(`[express] serving on port ${port}`);
     
     // Initialize database data after server startup - truly non-blocking
     setImmediate(async () => {

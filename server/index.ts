@@ -716,10 +716,8 @@ app.use((req, res, next) => {
   if (app.get("env") === "development") {
     const { setupVite } = await import("./vite");
     await setupVite(app, server);
-  } else {
-    const { serveStatic } = await import("./vite");
-    serveStatic(app);
   }
+  // Production: frontend is served by Vercel, backend is API-only
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5001 if not specified.

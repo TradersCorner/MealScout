@@ -160,49 +160,31 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-3 min-w-0 flex-1 justify-end">
-            <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-100 rounded-xl px-3 py-2 flex items-center space-x-3 shadow-sm w-full sm:w-auto">
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center shadow-sm transition-colors ${
+          <div className="flex items-center space-x-3">
+            <LocationButton
+              onLocationUpdate={handleLocationUpdate}
+              onLocationNameUpdate={handleLocationNameUpdate}
+              onLocationError={handleLocationErrorUpdate}
+              isLoading={isLoadingLocation}
+              size="sm"
+              variant="ghost"
+              className="flex items-center space-x-2"
+            >
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                 isLoadingLocation ? 'bg-amber-500' : 
                 locationError ? 'bg-red-500' : 
                 location ? 'bg-emerald-500' : 'bg-gray-400'
               }`}>
                 {isLoadingLocation ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <MapPin className="w-4 h-4 text-white" />
                 )}
               </div>
-              <div className="text-left min-w-0 flex-1">
-                <p className="text-gray-700 text-xs font-semibold mb-0.5">
-                  {location ? 'Deals near you' : 'Location needed'}
-                </p>
-                <p className="text-gray-900 font-semibold text-sm leading-tight truncate" title={locationName}>
-                  <span className="lg:hidden">{locationName.split(',')[0]}</span>
-                  <span className="hidden lg:inline">{locationName}</span>
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {locationError ? 'Access denied — enter your city' : location ? 'Live nearby deals' : 'Enable GPS or enter city'}
-                </p>
-              </div>
-              <div className="flex items-center space-x-1 flex-shrink-0">
-                <button 
-                  className="flex items-center justify-center w-9 h-9 rounded-lg border border-orange-100 bg-white hover:bg-orange-50 text-gray-700 transition-colors"
-                  onClick={retryLocation}
-                >
-                  <RotateCw className="w-4 h-4" />
-                </button>
-                <LocationButton
-                  onLocationUpdate={handleLocationUpdate}
-                  onLocationNameUpdate={handleLocationNameUpdate}
-                  onLocationError={handleLocationErrorUpdate}
-                  isLoading={isLoadingLocation}
-                  size="sm"
-                  variant="default"
-                  className="text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg transition-colors shadow-sm"
-                />
-              </div>
-            </div>
+              <span className="hidden sm:inline text-sm font-medium text-gray-700">
+                {locationName.split(',')[0]}
+              </span>
+            </LocationButton>
           </div>
         </div>
       </header>
@@ -388,6 +370,62 @@ export default function Home() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Community Building Section */}
+      <div className="px-6 py-12 bg-gradient-to-br from-orange-50 via-red-50 to-orange-50">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <h3 className="text-3xl font-bold text-gray-900 mb-3">Build Your Neighborhood Food Community</h3>
+            <p className="text-lg text-gray-600">Help great local restaurants get discovered — earn recurring income while strengthening your community</p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white p-6 rounded-xl border border-orange-200 shadow-sm">
+              <div className="flex items-center mb-3">
+                <span className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center mr-3">
+                  <span className="text-white font-bold">1</span>
+                </span>
+                <h4 className="font-bold text-gray-900">Share Your Link</h4>
+              </div>
+              <p className="text-sm text-gray-600">
+                Every link you share includes your unique referral code
+              </p>
+            </div>
+            
+            <div className="bg-white p-6 rounded-xl border border-orange-200 shadow-sm">
+              <div className="flex items-center mb-3">
+                <span className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center mr-3">
+                  <span className="text-white font-bold">2</span>
+                </span>
+                <h4 className="font-bold text-gray-900">Restaurant Subscribes</h4>
+              </div>
+              <p className="text-sm text-gray-600">
+                When they sign up through your link, they're linked to you forever
+              </p>
+            </div>
+            
+            <div className="bg-white p-6 rounded-xl border border-orange-200 shadow-sm">
+              <div className="flex items-center mb-3">
+                <span className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center mr-3">
+                  <span className="text-white font-bold">3</span>
+                </span>
+                <h4 className="font-bold text-gray-900">Earn Recurring Income</h4>
+              </div>
+              <p className="text-sm text-gray-600">
+                $20 first month, then $5/month recurring — unlimited potential
+              </p>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <Link href={user ? "/affiliate-dashboard" : "/customer-signup"}>
+              <Button size="lg" className="px-8 py-4 text-lg bg-orange-500 hover:bg-orange-600">
+                {user ? 'Go to Community Builder Dashboard' : 'Start Building Your Community'}
+              </Button>
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Owner Section - ORIGINAL STYLE */}

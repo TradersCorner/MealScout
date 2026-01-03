@@ -148,7 +148,7 @@ export default function Home() {
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative overflow-hidden">
       <Navigation />
       
-      {/* Header with Logo and Location */}
+      {/* Header with Logo and Navigation */}
       <header className="bg-white border-b border-gray-100 px-4 sm:px-6 py-3 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3 flex-shrink-0">
@@ -161,30 +161,54 @@ export default function Home() {
           </div>
 
           <div className="flex items-center space-x-3">
-            <LocationButton
-              onLocationUpdate={handleLocationUpdate}
-              onLocationNameUpdate={handleLocationNameUpdate}
-              onLocationError={handleLocationErrorUpdate}
-              isLoading={isLoadingLocation}
-              size="sm"
-              variant="ghost"
-              className="flex items-center space-x-2"
-            >
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                isLoadingLocation ? 'bg-amber-500' : 
-                locationError ? 'bg-red-500' : 
-                location ? 'bg-emerald-500' : 'bg-gray-400'
-              }`}>
-                {isLoadingLocation ? (
-                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <MapPin className="w-4 h-4 text-white" />
-                )}
+            {!user ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setNavigateTo('/login')}
+                  className="text-sm font-medium text-gray-700 hover:text-red-600"
+                >
+                  Login
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setNavigateTo('/customer-signup')}
+                  className="text-sm font-medium border-red-600 text-red-600 hover:bg-red-50"
+                >
+                  Create Account
+                </Button>
+                <LocationButton
+                  onLocationUpdate={handleLocationUpdate}
+                  onLocationNameUpdate={handleLocationNameUpdate}
+                  onLocationError={handleLocationErrorUpdate}
+                  isLoading={isLoadingLocation}
+                  size="sm"
+                  variant="ghost"
+                  className="flex items-center"
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                    isLoadingLocation ? 'bg-amber-500' : 
+                    locationError ? 'bg-red-500' : 
+                    location ? 'bg-emerald-500' : 'bg-gray-400'
+                  }`}>
+                    {isLoadingLocation ? (
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <MapPin className="w-4 h-4 text-white" />
+                    )}
+                  </div>
+                </LocationButton>
+              </>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <span className="hidden sm:inline text-sm font-medium text-gray-700">
+                  {locationName.split(',')[0]}
+                </span>
+                <div className="w-2 h-2 rounded-full bg-emerald-500" title="Real-time location active" />
               </div>
-              <span className="hidden sm:inline text-sm font-medium text-gray-700">
-                {locationName.split(',')[0]}
-              </span>
-            </LocationButton>
+            )}
           </div>
         </div>
       </header>

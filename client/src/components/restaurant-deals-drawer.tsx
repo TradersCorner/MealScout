@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, MapPin, Phone, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import DealClaimModal from "./deal-claim-modal";
@@ -180,6 +180,56 @@ export default function RestaurantDealsDrawer({
             <X className="w-5 h-5 text-gray-600" />
           </button>
         </div>
+
+        {/* Restaurant Profile Snapshot */}
+        {deals && deals.length > 0 && deals[0].restaurant && (
+          <div className="flex-shrink-0 bg-gradient-to-br from-gray-50 to-white border-b border-gray-100 p-4">
+            <div className="flex items-start gap-3">
+              {/* Restaurant Icon/Avatar */}
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-600">
+                  <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+                  <path d="M7 2v20"/>
+                  <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+                </svg>
+              </div>
+
+              {/* Restaurant Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-1">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-yellow-500">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                    <span className="text-sm font-semibold text-gray-900">4.5</span>
+                  </div>
+                  <span className="text-sm text-gray-400">•</span>
+                  <span className="text-sm text-gray-600">{deals[0].restaurant.cuisineType || 'Restaurant'}</span>
+                  <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                    Open now
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3 text-xs text-gray-500">
+                  {deals[0].restaurant.phone && (
+                    <div className="flex items-center gap-1">
+                      <Phone className="w-3 h-3" />
+                      <span>{deals[0].restaurant.phone}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    <span>0.5 mi</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    <span>Open until 10:00 PM</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 flex flex-col overflow-hidden">

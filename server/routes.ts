@@ -2298,9 +2298,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const restaurantIdSchema = z.string().uuid("Invalid restaurant ID format");
       const restaurantId = restaurantIdSchema.parse(req.params.restaurantId);
       
-      // Get all active deals for this restaurant
+      // Get restaurant info first
+      const restaurant = await storage.getRestaurant(restaurantId);
+      if (!restaurant) {
+        return res.status(404).json({ message: "Restaurant not found" });
+      }
+      
+      // Get all active deals for this restaurant with restaurant data included
       const allRestaurantDeals = await storage.getDealsByRestaurant(restaurantId);
-      const activeDeals = allRestaurantDeals.filter(deal => deal.isActive);
+      const activeDeals = allRestaurantDeals
+        .filter(deal => deal.isActive)
+        .map(deal => ({
+          ...deal,
+          restaurant: {
+            name: restaurant.name,
+            cuisineType: restaurant.cuisineType,
+            phone: restaurant.phoneNumber,
+          }
+        }));
       
       // Add cache headers
       res.set({

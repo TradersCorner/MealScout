@@ -2,11 +2,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Share2, Utensils } from "lucide-react";
+import { Flame, Clock, Utensils } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import DealShareModal from "./deal-share-modal";
 import RestaurantDealsDrawer from "./restaurant-deals-drawer";
-import { DealFeedback } from "./deal-feedback";
 
 interface Deal {
   id: string;
@@ -170,29 +169,34 @@ export default function DealCard({ deal }: DealCardProps) {
   };
 
   return (
-    <div onClick={handleCardClick}>
+    <div>
       <Card 
         ref={cardRef}
-        className="bg-white rounded-3xl hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 shadow-sm group overflow-hidden" 
+        className="bg-white rounded-2xl hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 shadow-sm group overflow-hidden" 
         data-testid={`card-deal-${deal.id}`}
       >
         <CardContent className="p-0">
-          {/* Restaurant Image */}
-          <div className="relative h-32 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden rounded-t-3xl">
+          {/* Image with gradient overlay - framed inside card */}
+          <div className="relative h-16 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden rounded-t-2xl">
             <img 
               src={deal.imageUrl || getDefaultImage(deal.restaurant?.cuisineType, deal.title)}
               alt={deal.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
+            {/* Gradient overlay for text contrast */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
             
-            {/* Save Fork Icon */}
+            {/* Save Fork Icon - top right */}
             <button
-              onClick={handleSave}
-              className="absolute top-3 right-3 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-all duration-300 hover:scale-110"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSave(e);
+              }}
+              className="absolute top-1.5 right-1.5 w-6 h-6 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-all duration-300 hover:scale-110 z-10"
               title={isSaved ? "Saved!" : "Save deal"}
             >
               <Utensils 
-                className={`w-5 h-5 transition-all duration-300 ${
+                className={`w-3 h-3 transition-all duration-300 ${
                   isSaved 
                     ? 'text-yellow-500 fill-yellow-500' 
                     : 'text-gray-600'
@@ -202,70 +206,59 @@ export default function DealCard({ deal }: DealCardProps) {
           </div>
 
           {/* Content */}
-          <div className="p-5">
-            {/* Restaurant name and rating */}
-            <div className="flex items-start justify-between mb-3">
-              <h3 className="font-bold text-gray-900 text-lg leading-tight" data-testid={`text-restaurant-name-${deal.id}`}>
-                {deal.restaurant?.name || 'Restaurant Name'}
-              </h3>
-              <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-green-500">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                </svg>
-                <span className="text-sm font-semibold text-gray-900">4.5</span>
+          <div className="p-2.5" onClick={handleCardClick}>
+            {/* Deal Line: One Tight Row */}
+            <div className="mb-1.5">
+              <div className="text-orange-600 leading-none">
+                <span className="font-semibold text-lg">{formatDiscount()} OFF</span>
+                <span className="text-sm ml-1.5">${deal.minOrderAmount || '8'}+</span>
               </div>
             </div>
 
-            {/* Meta info */}
-            <div className="space-y-2 mb-4">
-              <p className="text-gray-600 text-sm">{deal.restaurant?.cuisineType || 'American'}</p>
-              <div className="flex items-center text-gray-600 text-sm">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-gray-400 mr-1">
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                </svg>
-                <span>{deal.distance ? `${deal.distance.toFixed(1)} mi` : '0.5 mi'}</span>
-              </div>
-              <span className="inline-block bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
-                Pickup
-              </span>
-            </div>
-
-            {/* Deal description */}
-            <p className="text-gray-600 text-sm mb-4 leading-relaxed" data-testid={`text-restaurant-info-${deal.id}`}>
+            {/* Description: One Line, Clean Copy */}
+            <p className="text-gray-900 text-sm font-semibold mb-1.5 line-clamp-1" data-testid={`text-restaurant-info-${deal.id}`}>
               {deal.description}
             </p>
 
-            {/* Promo highlight */}
-            <div className="bg-gradient-to-br from-red-50 to-pink-50 border border-red-100 rounded-2xl p-4 mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-white">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                  </svg>
-                </div>
-                <div>
-                  <div className="text-red-600 font-bold text-xl">
-                    {formatDiscount()} <span className="text-base">off</span>
-                  </div>
-                  <p className="text-red-600 text-sm">
-                    orders ${deal.minOrderAmount || '8.00'}+
-                  </p>
-                </div>
+            {/* Restaurant Name */}
+            <h3 className="font-semibold text-gray-900 text-sm mb-0.5 truncate" data-testid={`text-restaurant-name-${deal.id}`}>
+              {deal.restaurant?.name || 'Restaurant Name'}
+            </h3>
+
+            {/* Rating + Distance (Second Line) */}
+            <div className="flex items-center gap-1 mb-1.5 text-xs text-gray-600">
+              <div className="flex items-center gap-0.5">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" className="text-yellow-500">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+                <span>4.5</span>
+              </div>
+              <span>·</span>
+              <span>{deal.distance ? `${deal.distance.toFixed(1)} mi` : '0.5 mi'}</span>
+            </div>
+
+            {/* Meta Line: Icons Only, Subtle */}
+            <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
+              <div className="flex items-center gap-0.5">
+                <Clock className="w-3 h-3" />
+                <span>2h15m</span>
+              </div>
+              <div className="flex items-center gap-0.5">
+                <Flame className="w-3 h-3 text-orange-500" />
+                <span>{deal.currentUses || 188}</span>
               </div>
             </div>
 
-            {/* Usage stats */}
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600 font-medium">{deal.currentUses || 188} people saved</span>
-              <span className="bg-orange-50 text-orange-600 px-3 py-1 rounded-full text-xs font-semibold">
-                2h 15m left
-              </span>
-            </div>
-
-            {/* Feedback section */}
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <DealFeedback dealId={deal.id} compact={true} />
-            </div>
+            {/* Button: Slim, Secondary Weight */}
+            <Button 
+              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium h-8 text-sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCardClick();
+              }}
+            >
+              View Deal
+            </Button>
           </div>
         </CardContent>
       </Card>

@@ -10,17 +10,17 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Filter, MapPin, Clock, X, SlidersHorizontal, Utensils, Pizza, Beef, ChefHat, Crown, Salad, Coffee, Fish, Cake } from "lucide-react";
+import { Search, Filter, MapPin, Clock, X, SlidersHorizontal, Utensils, Pizza, Sandwich, Soup, UtensilsCrossed, Salad, Coffee, Fish, Cake, Croissant } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
 
 // Category configuration mapping (from category.tsx)
 const categoryConfig = {
   pizza: { title: "Pizza", icon: Pizza, keywords: ['pizza', 'italian'] },
-  burgers: { title: "Burgers", icon: Beef, keywords: ['american', 'burger', 'sandwich'] },
-  asian: { title: "Asian", icon: ChefHat, keywords: ['asian', 'chinese', 'japanese', 'sushi', 'noodle'] },
-  mexican: { title: "Mexican", icon: Crown, keywords: ['mexican', 'taco', 'burrito'] },
+  burgers: { title: "Burgers", icon: Sandwich, keywords: ['american', 'burger', 'sandwich'] },
+  asian: { title: "Asian", icon: Soup, keywords: ['asian', 'chinese', 'japanese', 'sushi', 'noodle'] },
+  mexican: { title: "Mexican", icon: UtensilsCrossed, keywords: ['mexican', 'taco', 'burrito'] },
   healthy: { title: "Healthy", icon: Salad, keywords: ['healthy', 'salad', 'smoothie'] },
-  breakfast: { title: "Breakfast", icon: Coffee, keywords: ['breakfast', 'brunch', 'pancake', 'coffee'] },
+  breakfast: { title: "Breakfast", icon: Croissant, keywords: ['breakfast', 'brunch', 'pancake', 'coffee'] },
   seafood: { title: "Seafood", icon: Fish, keywords: ['seafood', 'fish', 'shrimp'] },
   coffee: { title: "Coffee", icon: Coffee, keywords: ['cafe', 'coffee', 'latte'] },
   dessert: { title: "Desserts", icon: Cake, keywords: ['dessert', 'ice cream', 'cake'] }

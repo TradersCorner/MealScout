@@ -3,7 +3,7 @@ import { useParams, Link } from "wouter";
 import Navigation from "@/components/navigation";
 import DealCard from "@/components/deal-card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Filter, MapPin, SlidersHorizontal, Pizza, Beef, Utensils, ChefHat, Coffee, Salad, Fish, Cake, Crown } from "lucide-react";
+import { ArrowLeft, Filter, MapPin, SlidersHorizontal, Pizza, Sandwich, Utensils, UtensilsCrossed, Coffee, Salad, Fish, Cake, Croissant, Soup } from "lucide-react";
 
 const categoryConfig = {
   pizza: {
@@ -14,25 +14,25 @@ const categoryConfig = {
   },
   burgers: {
     title: "Burgers & American",
-    icon: Beef, 
+    icon: Sandwich, 
     gradient: "from-red-500 to-yellow-500",
     description: "Juicy burgers and classic American dishes"
   },
   asian: {
     title: "Asian Cuisine",
-    icon: ChefHat,
+    icon: Soup,
     gradient: "from-red-600 to-orange-500", 
     description: "Authentic Asian flavors and fresh ingredients"
   },
   mexican: {
     title: "Mexican Food",
-    icon: Crown,
+    icon: UtensilsCrossed,
     gradient: "from-green-500 to-red-500",
     description: "Spicy and flavorful Mexican specialties"
   },
   breakfast: {
     title: "Breakfast & Brunch",
-    icon: Coffee,
+    icon: Croissant,
     gradient: "from-yellow-400 to-orange-500",
     description: "Start your day with great breakfast deals"
   },

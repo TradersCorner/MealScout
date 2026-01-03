@@ -24,6 +24,11 @@ interface Deal {
   minOrderAmount?: string;
   imageUrl?: string;
   isFeatured: boolean;
+  restaurant?: {
+    name: string;
+    cuisineType?: string;
+  };
+  distance?: number;
 }
 
 export default function Home() {
@@ -163,19 +168,34 @@ export default function Home() {
     queryFn: () => fetch('/api/deals/featured').then(res => res.json()),
   });
 
+  const groupedFeaturedDeals = featuredDeals?.reduce((acc: Record<string, { restaurant?: Deal['restaurant']; deals: Deal[]; distance?: number }>, deal: Deal) => {
+    const bucket = acc[deal.restaurantId] || { restaurant: deal.restaurant, deals: [], distance: deal.distance };
+    bucket.deals.push(deal);
+    // prefer the first distance value we see
+    if (bucket.distance === undefined && deal.distance !== undefined) {
+      bucket.distance = deal.distance;
+    }
+    // prefer the first restaurant object we see
+    if (!bucket.restaurant && deal.restaurant) {
+      bucket.restaurant = deal.restaurant;
+    }
+    acc[deal.restaurantId] = bucket;
+    return acc;
+  }, {});
+
   return (
-    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative overflow-hidden">
+    <div className="w-full px-4 bg-background min-h-screen relative overflow-hidden">
       <Navigation />
       
       {/* Header with Logo and Navigation */}
-      <header className="bg-white border-b border-gray-100 px-4 sm:px-6 py-3 sticky top-0 z-10 shadow-sm">
+      <header className="bg-white border-b border-gray-100 px-4 sm:px-6 py-2 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3 flex-shrink-0">
-            <div className="w-10 h-10 flex items-center justify-center">
-              <img src={mealScoutLogo} alt="MealScout Logo" className="w-10 h-10 object-contain" />
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            <div className="w-8 h-8 flex items-center justify-center">
+              <img src={mealScoutLogo} alt="MealScout Logo" className="w-8 h-8 object-contain" />
             </div>
             <div className="hidden xs:block">
-              <h1 className="text-xl font-bold text-gray-900">MealScout</h1>
+              <h1 className="text-lg font-bold text-gray-900">MealScout</h1>
             </div>
           </div>
 
@@ -251,22 +271,23 @@ export default function Home() {
       </header>
 
       {/* Hero & Search Section */}
-      <div className="px-4 sm:px-6 py-8 bg-gradient-to-br from-gray-50 via-white to-orange-50 border-b border-orange-100">
-        <div className="mb-6">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Find Amazing Deals In Your Neighborhood</h2>
-          <p className="text-gray-600">Discover nearby restaurants & food trucks — support your local spots with exclusive offers</p>
-        </div>
-        
-        <SmartSearch
-          value={searchQuery}
-          onChange={setSearchQuery}
-          onSearch={(query) => setNavigateTo(`/search?q=${encodeURIComponent(query)}`)}
-          className="mb-6"
-          placeholder="Search deals, restaurants..."
-        />
-        
-        {/* Filter Chips */}
-        <div className="flex space-x-2 overflow-x-auto pb-2 -mx-2 px-2">
+      <div className="py-3 bg-gradient-to-br from-gray-50 via-white to-orange-50 border-b border-orange-100">
+        <div className="mx-auto max-w-[420px] w-full">
+          <div className="mb-3">
+            <h2 className="text-xl font-bold text-gray-900 mb-1">Find Amazing Deals In Your Neighborhood</h2>
+            <p className="text-sm text-gray-600">Discover nearby restaurants & food trucks — support your local spots with exclusive offers</p>
+          </div>
+          
+          <SmartSearch
+            value={searchQuery}
+            onChange={setSearchQuery}
+            onSearch={(query) => setNavigateTo(`/search?q=${encodeURIComponent(query)}`)}
+            className="mb-3"
+            placeholder="Search deals, restaurants..."
+          />
+          
+          {/* Filter Chips */}
+          <div className="flex space-x-2 overflow-x-auto pb-1">
           <Link href="/deals/featured">
             <Button className="flex-shrink-0 rounded-full px-4 py-2 font-semibold text-white bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 border-0 shadow-md hover:shadow-lg transition-all" size="sm">
               <Sparkles className="w-4 h-4 mr-2" /> Hot Deals
@@ -287,11 +308,11 @@ export default function Home() {
               <DollarSign className="w-4 h-4 mr-2" /> Budget
             </Button>
           </Link>
-        </div>
+          </div>
 
-        {/* Location Error and Manual Input */}
-        {locationError && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          {/* Location Error and Manual Input */}
+          {locationError && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
             <div className="flex space-x-2">
               <Input
                 type="text"
@@ -310,73 +331,155 @@ export default function Home() {
               </Button>
             </div>
           </div>
-        )}
+          )}
+        </div>
+      </div>
+
+      {/* Food Trucks Nearby - Horizontal Scroll Row */}
+      {/* TODO: Replace with actual food truck data */}
+      <div className="py-3 bg-gradient-to-r from-emerald-50 to-green-50 border-b border-emerald-100">
+        <div className="mx-auto max-w-[420px] w-full">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Truck className="w-4 h-4 text-emerald-600" />
+              <h3 className="text-sm font-bold text-emerald-900">Food Trucks Nearby</h3>
+            </div>
+            <Link href="/map">
+              <Button variant="link" className="text-emerald-700 hover:text-emerald-800 p-0 h-auto text-xs">
+                View Map →
+              </Button>
+            </Link>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {/* Placeholder food truck cards - replace with actual data */}
+            {[1, 2, 3].map(i => (
+              <div key={i} className="flex-shrink-0 w-64">
+                <DealCard deal={{
+                id: `truck-${i}`,
+                restaurantId: `truck-${i}`,
+                title: "Food Truck Deal",
+                description: "Special lunch combo",
+                dealType: "percentage",
+                discountValue: "20",
+                minOrderAmount: "10",
+                restaurant: {
+                  name: `Tasty Truck #${i}`,
+                  cuisineType: "Street Food"
+                },
+                distance: 0.3,
+                currentUses: 45,
+                isFeatured: false
+              } as any} />
+            </div>
+          ))}
+        </div>
+        </div>
       </div>
 
       {/* Featured Deals Section - ORIGINAL LAYOUT */}
-      <div className="px-6 py-8 bg-white">
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-foreground flex items-center">
-            <Sparkles className="w-5 h-5 text-orange-500 mr-2" />
-            What's Happening Near You Right Now
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">Time-sensitive offers from neighborhood restaurants</p>
-          <Link href="/deals/featured">
-            <Button variant="link" className="text-orange-600 hover:text-orange-700 p-0 h-auto mt-1">
-              See all nearby deals →
-            </Button>
-          </Link>
-        </div>
+      <div className="py-4 bg-white">
+        <div className="mx-auto max-w-[420px] w-full">
+          <div className="mb-3">
+            <h2 className="text-base font-bold text-foreground flex items-center">
+              <Sparkles className="w-4 h-4 text-orange-500 mr-1.5" />
+              What's Happening Near You Right Now
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Time-sensitive offers from neighborhood restaurants</p>
+            <Link href="/deals/featured">
+              <Button variant="link" className="text-orange-600 hover:text-orange-700 p-0 h-auto mt-1">
+                See all nearby deals →
+              </Button>
+            </Link>
+          </div>
 
-        {featuredLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1,2,3].map(i => (
-              <div key={i} className="bg-gray-100 rounded-lg h-64 animate-pulse" />
-            ))}
-          </div>
-        ) : featuredDeals?.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {featuredDeals.slice(0, 6).map((deal: Deal) => (
-              <DealCard key={deal.id} deal={deal} />
-            ))}
-          </div>
-        ) : (
-          <div className="col-span-full text-center py-12 text-gray-500">
-            <p>No deals nearby yet</p>
-          </div>
-        )}
+          {featuredLoading ? (
+            <div className="grid grid-cols-1 gap-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="bg-gray-100 rounded-lg h-48 animate-pulse" />
+              ))}
+            </div>
+          ) : groupedFeaturedDeals && Object.keys(groupedFeaturedDeals).length > 0 ? (
+            <div className="space-y-3">
+              {Object.entries(groupedFeaturedDeals).map(([restaurantId, bucket]) => {
+                const restaurantName = bucket.restaurant?.name || "Restaurant";
+                const cuisine = bucket.restaurant?.cuisineType;
+                const distance = bucket.distance;
+                const deals = bucket.deals.slice(0, 5);
+                return (
+                  <div key={restaurantId} className="rounded-xl border border-gray-200 bg-white shadow-sm p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-900 leading-tight">{restaurantName}</h3>
+                        <div className="text-[11px] text-gray-600 flex items-center gap-1">
+                          {cuisine && <span>{cuisine}</span>}
+                          {cuisine && distance !== undefined && <span>•</span>}
+                          {distance !== undefined && <span>{distance.toFixed(1)} mi</span>}
+                        </div>
+                      </div>
+                      <Link href={`/restaurant/${restaurantId}`}>
+                        <Button size="sm" variant="secondary" className="px-3 py-1 text-xs">View all deals</Button>
+                      </Link>
+                    </div>
+                    <div className="divide-y divide-gray-100">
+                      {deals.map((deal) => (
+                        <div key={deal.id} className="py-2 flex items-start gap-2">
+                          <div className="px-2 py-1 rounded-md bg-orange-50 text-orange-700 text-[11px] font-semibold leading-none">
+                            {deal.dealType === 'percentage' ? `${deal.discountValue}% off` : deal.dealType === 'dollar' ? `$${deal.discountValue} off` : deal.discountValue}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 leading-tight truncate">{deal.title}</p>
+                            {deal.description && (
+                              <p className="text-[11px] text-gray-600 leading-snug line-clamp-2">{deal.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p className="mb-3">No deals nearby yet</p>
+              <Link href="/recommend-spot">
+                <Button size="sm" variant="outline">
+                  Recommend your favorite spot
+                </Button>
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* AUTH-GATED SECTION - PROGRESSIVE DISCLOSURE */}
-      <div className="px-6 py-12 bg-gradient-to-br from-gray-50 to-white">
-        {!user ? (
-          /* LOGGED OUT - PREVIEW */
-          <div className="max-w-2xl mx-auto text-center">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              Stay connected to your city's food scene
-            </h3>
-            <p className="text-gray-600 mb-8">
-              Join neighbors discovering the best spots in your area — save favorites, track food trucks, and know when your go-to places are open
+      <div className="py-2 bg-gradient-to-br from-gray-50 to-white">
+        <div className="mx-auto max-w-[420px] w-full">
+          {!user ? (
+            /* LOGGED OUT - PREVIEW */
+            <div className="text-center">
+              <h3 className="text-base font-bold text-gray-900 mb-1">
+                Stay connected to your city's food scene
+              </h3>
+            <p className="text-gray-600 mb-2 text-xs">
+              Save favorites, track food trucks, and know when your go-to places are open
             </p>
-            <div className="grid md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-white p-6 rounded-lg border border-gray-200">
-                <Heart className="w-10 h-10 text-orange-600 mx-auto mb-3" />
-                <h4 className="font-semibold text-gray-900 mb-2">Save neighborhood favorites</h4>
-                <p className="text-sm text-gray-600">Quick access to the spots you love</p>
+            <div className="grid grid-cols-1 gap-2 mb-2">
+              <div className="bg-white p-2 rounded-lg border border-gray-200">
+                <Heart className="w-4 h-4 text-orange-600 mx-auto mb-0.5" />
+                <h4 className="font-semibold text-gray-900 text-xs">Save favorites</h4>
               </div>
-              <div className="bg-white p-6 rounded-lg border border-gray-200">
-                <Truck className="w-10 h-10 text-emerald-600 mx-auto mb-3" />
-                <h4 className="font-semibold text-gray-900 mb-2">Track trucks nearby</h4>
-                <p className="text-sm text-gray-600">See where mobile kitchens are right now</p>
+              <div className="bg-white p-2 rounded-lg border border-gray-200">
+                <Truck className="w-4 h-4 text-emerald-600 mx-auto mb-0.5" />
+                <h4 className="font-semibold text-gray-900 text-xs">Track trucks</h4>
               </div>
-              <div className="bg-white p-6 rounded-lg border border-gray-200">
-                <Bell className="w-10 h-10 text-blue-600 mx-auto mb-3" />
-                <h4 className="font-semibold text-gray-900 mb-2">Get real-time alerts</h4>
-                <p className="text-sm text-gray-600">Know when places in your area go live</p>
+              <div className="bg-white p-2 rounded-lg border border-gray-200">
+                <Bell className="w-4 h-4 text-blue-600 mx-auto mb-0.5" />
+                <h4 className="font-semibold text-gray-900 text-xs">Real-time alerts</h4>
               </div>
             </div>
             <Link href="/customer-signup">
-              <Button size="lg" className="px-8 py-6 text-lg">
+              <Button size="sm" className="px-3 py-1 text-xs">
                 Create free account
               </Button>
             </Link>
@@ -387,7 +490,7 @@ export default function Home() {
             <h3 className="text-2xl font-bold text-gray-900 mb-6">
               What's Open In Your Area (Live)
             </h3>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               <Link href="/favorites">
                 <div className="bg-gradient-to-br from-orange-50 to-red-50 p-6 rounded-lg border border-orange-200 hover:shadow-lg transition-shadow cursor-pointer">
                   <Heart className="w-8 h-8 text-orange-600 mb-3" />
@@ -414,58 +517,50 @@ export default function Home() {
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* Community Building Section */}
-      <div className="px-6 py-12 bg-gradient-to-br from-orange-50 via-red-50 to-orange-50">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8">
-            <h3 className="text-3xl font-bold text-gray-900 mb-3">Build Your Neighborhood Food Community</h3>
-            <p className="text-lg text-gray-600">Help great local restaurants get discovered — earn recurring income while strengthening your community</p>
+      <div className="py-2 bg-gradient-to-br from-orange-50 via-red-50 to-orange-50">
+        <div className="mx-auto max-w-[420px] w-full">
+          <div className="text-center mb-2">
+            <h3 className="text-base font-bold text-gray-900 mb-0.5">Build Your Neighborhood Food Community</h3>
+            <p className="text-xs text-gray-600">Earn recurring income while strengthening your community</p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white p-6 rounded-xl border border-orange-200 shadow-sm">
-              <div className="flex items-center mb-3">
-                <span className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center mr-3">
-                  <span className="text-white font-bold">1</span>
+          <div className="grid grid-cols-1 gap-2 mb-2">
+            <div className="bg-white p-2 rounded-xl border border-orange-200 shadow-sm">
+              <div className="flex items-center">
+                <span className="w-4 h-4 bg-orange-500 rounded flex items-center justify-center mr-1.5 text-xs">
+                  <span className="text-white font-bold text-[10px]">1</span>
                 </span>
-                <h4 className="font-bold text-gray-900">Share Your Link</h4>
+                <h4 className="font-bold text-gray-900 text-xs">Share Your Link</h4>
               </div>
-              <p className="text-sm text-gray-600">
-                Every link you share includes your unique referral code
-              </p>
             </div>
             
-            <div className="bg-white p-6 rounded-xl border border-orange-200 shadow-sm">
-              <div className="flex items-center mb-3">
-                <span className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center mr-3">
-                  <span className="text-white font-bold">2</span>
+            <div className="bg-white p-2 rounded-xl border border-orange-200 shadow-sm">
+              <div className="flex items-center">
+                <span className="w-4 h-4 bg-orange-500 rounded flex items-center justify-center mr-1.5 text-xs">
+                  <span className="text-white font-bold text-[10px]">2</span>
                 </span>
-                <h4 className="font-bold text-gray-900">Restaurant Subscribes</h4>
+                <h4 className="font-bold text-gray-900 text-xs">Restaurant Subscribes</h4>
               </div>
-              <p className="text-sm text-gray-600">
-                When they sign up through your link, they're linked to you forever
-              </p>
             </div>
             
-            <div className="bg-white p-6 rounded-xl border border-orange-200 shadow-sm">
-              <div className="flex items-center mb-3">
-                <span className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center mr-3">
-                  <span className="text-white font-bold">3</span>
+            <div className="bg-white p-2 rounded-xl border border-orange-200 shadow-sm">
+              <div className="flex items-center">
+                <span className="w-4 h-4 bg-orange-500 rounded flex items-center justify-center mr-1.5 text-xs">
+                  <span className="text-white font-bold text-[10px]">3</span>
                 </span>
-                <h4 className="font-bold text-gray-900">Earn Recurring Income</h4>
+                <h4 className="font-bold text-gray-900 text-xs">Earn Recurring Income</h4>
               </div>
-              <p className="text-sm text-gray-600">
-                $20 first month, then $5/month recurring — unlimited potential
-              </p>
             </div>
           </div>
 
           <div className="text-center">
             <Link href={user ? "/affiliate-dashboard" : "/customer-signup"}>
-              <Button size="lg" className="px-8 py-4 text-lg bg-orange-500 hover:bg-orange-600">
-                {user ? 'Go to Community Builder Dashboard' : 'Start Building Your Community'}
+              <Button size="sm" className="px-3 py-1 text-xs bg-orange-500 hover:bg-orange-600">
+                {user ? 'Community Builder Dashboard' : 'Start Building'}
               </Button>
             </Link>
           </div>
@@ -473,17 +568,17 @@ export default function Home() {
       </div>
 
       {/* Owner Section - ORIGINAL STYLE */}
-      <div className="px-6 py-12 bg-gradient-to-br from-gray-900 to-gray-800 text-white">
-        <div className="max-w-2xl mx-auto text-center">
-          <ChefHat className="w-16 h-16 mx-auto mb-6 text-orange-400" />
-          <h3 className="text-3xl font-bold mb-4">
+      <div className="py-2 bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+        <div className="mx-auto max-w-[420px] w-full text-center">
+          <ChefHat className="w-6 h-6 mx-auto mb-1 text-orange-400" />
+          <h3 className="text-base font-bold mb-0.5">
             Bring your restaurant to the neighborhood
           </h3>
-          <p className="text-gray-300 mb-6">
-            Connect with customers in your area — post real-time deals, broadcast when you're open, reach people nearby — no pay-to-play rankings
+          <p className="text-gray-300 mb-2 text-xs">
+            Post real-time deals, broadcast when you're open, reach people nearby
           </p>
           <Link href="/restaurant-signup">
-            <Button size="lg" variant="secondary" className="px-8 py-6 text-lg">
+            <Button size="sm" variant="secondary" className="px-3 py-1 text-xs">
               Claim & Go Live
             </Button>
           </Link>
@@ -491,32 +586,34 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <footer className="px-6 py-8 bg-gray-50 border-t border-gray-200">
-        <div className="max-w-4xl mx-auto grid md:grid-cols-3 gap-6">
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-3">Product</h4>
-            <div className="space-y-2">
-              <Link href="/how-it-works" className="block text-gray-600 hover:text-orange-600">How It Works</Link>
-              <Link href="/faq" className="block text-gray-600 hover:text-orange-600">FAQ</Link>
+      <footer className="py-8 bg-gray-50 border-t border-gray-200">
+        <div className="mx-auto max-w-[420px] w-full">
+          <div className="grid grid-cols-1 gap-6">
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-3">Product</h4>
+              <div className="space-y-2">
+                <Link href="/how-it-works" className="block text-gray-600 hover:text-orange-600">How It Works</Link>
+                <Link href="/faq" className="block text-gray-600 hover:text-orange-600">FAQ</Link>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-3">Company</h4>
+              <div className="space-y-2">
+                <Link href="/about" className="block text-gray-600 hover:text-orange-600">About</Link>
+                <Link href="/contact" className="block text-gray-600 hover:text-orange-600">Contact</Link>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-3">Legal</h4>
+              <div className="space-y-2">
+                <Link href="/privacy-policy" className="block text-gray-600 hover:text-orange-600">Privacy</Link>
+                <Link href="/terms-of-service" className="block text-gray-600 hover:text-orange-600">Terms</Link>
+              </div>
             </div>
           </div>
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-3">Company</h4>
-            <div className="space-y-2">
-              <Link href="/about" className="block text-gray-600 hover:text-orange-600">About</Link>
-              <Link href="/contact" className="block text-gray-600 hover:text-orange-600">Contact</Link>
-            </div>
+          <div className="text-center text-sm text-gray-500 border-t border-gray-200 pt-6 mt-6">
+            <p>&copy; 2026 MealScout. A TradeScout Product.</p>
           </div>
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-3">Legal</h4>
-            <div className="space-y-2">
-              <Link href="/privacy-policy" className="block text-gray-600 hover:text-orange-600">Privacy</Link>
-              <Link href="/terms-of-service" className="block text-gray-600 hover:text-orange-600">Terms</Link>
-            </div>
-          </div>
-        </div>
-        <div className="text-center text-sm text-gray-500 border-t border-gray-200 pt-6 mt-6">
-          <p>&copy; 2026 MealScout. A TradeScout Product.</p>
         </div>
       </footer>
 
@@ -526,16 +623,6 @@ export default function Home() {
         onLocationSet={handleWelcomeLocationSet}
         onSkip={handleWelcomeSkip}
       />
-
-      {/* Floating Bug Report Button */}
-      <Button
-        onClick={() => window.open('https://github.com/TradersCorner/MealScout/issues/new', '_blank')}
-        className="fixed bottom-20 right-4 z-40 rounded-full w-12 h-12 bg-orange-500 hover:bg-orange-600 text-white shadow-lg"
-        size="icon"
-        title="Report a Bug"
-      >
-        <Bug className="w-5 h-5" />
-      </Button>
     </div>
   );
 }

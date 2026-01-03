@@ -6,10 +6,10 @@ import { useAuth } from "@/hooks/useAuth";
 import DealCard from "@/components/deal-card";
 import Navigation from "@/components/navigation";
 import SmartSearch from "@/components/smart-search";
-import LocationButton from "@/components/location-button";
+import WelcomeLocationModal from "@/components/WelcomeLocationModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, Sparkles, Rocket, Pizza, DollarSign, Truck, RotateCw, ChefHat, Clock, Target, Heart, Bell, Map } from "lucide-react";
+import { MapPin, Sparkles, Rocket, Pizza, DollarSign, Truck, RotateCw, ChefHat, Clock, Target, Heart, Bell, Map, LogIn, UserPlus, Store, Bug } from "lucide-react";
 import mealScoutLogo from "@assets/ChatGPT Image Sep 14, 2025, 09_25_52 AM_1757872111259.png";
 import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
 import { getReverseGeocodedLocationName } from "@/utils/locationUtils";
@@ -36,14 +36,15 @@ export default function Home() {
   const [manualLocation, setManualLocation] = useState('');
   const [searchQuery, setSearchQuery] = useState("");
   const [, setNavigateTo] = useLocation();
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   const { isConnected, subscribeToNearby, connect: connectWS } = useFoodTruckSocket();
 
-  // Auto-detect location on mount
+  // Show welcome modal on initial session visit
   useEffect(() => {
-    if (!location && !isLoadingLocation) {
-      setIsLoadingLocation(true);
-      handleLocationDetection();
+    const hasSeenWelcome = sessionStorage.getItem('mealscout_welcome_seen');
+    if (!hasSeenWelcome && !location) {
+      setShowWelcomeModal(true);
     }
   }, []);
 
@@ -139,6 +140,24 @@ export default function Home() {
     handleLocationDetection();
   };
 
+  const handleWelcomeLocationSet = (newLocation: {lat: number; lng: number}, name: string) => {
+    setLocation(newLocation);
+    setLocationName(name);
+    setLocationError(null);
+    sessionStorage.setItem('mealscout_welcome_seen', 'true');
+    setShowWelcomeModal(false);
+    queryClient.invalidateQueries({ queryKey: ["/api/deals/nearby"] });
+    
+    if (isConnected) {
+      subscribeToNearby(newLocation.lat, newLocation.lng, 5000);
+    }
+  };
+
+  const handleWelcomeSkip = () => {
+    sessionStorage.setItem('mealscout_welcome_seen', 'true');
+    setShowWelcomeModal(false);
+  };
+
   const { data: featuredDeals, isLoading: featuredLoading } = useQuery({
     queryKey: ["/api/deals/featured"],
     queryFn: () => fetch('/api/deals/featured').then(res => res.json()),
@@ -160,46 +179,50 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
             {!user ? (
               <>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
                   onClick={() => setNavigateTo('/login')}
-                  className="text-sm font-medium text-gray-700 hover:text-red-600"
+                  className="text-gray-700 hover:text-red-600"
+                  title="Login"
                 >
-                  Login
+                  <LogIn className="w-5 h-5" />
                 </Button>
                 <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setNavigateTo('/customer-signup')}
-                  className="text-sm font-medium border-red-600 text-red-600 hover:bg-red-50"
-                >
-                  Create Account
-                </Button>
-                <LocationButton
-                  onLocationUpdate={handleLocationUpdate}
-                  onLocationNameUpdate={handleLocationNameUpdate}
-                  onLocationError={handleLocationErrorUpdate}
-                  isLoading={isLoadingLocation}
-                  size="sm"
                   variant="ghost"
-                  className="flex items-center"
+                  size="icon"
+                  onClick={() => setNavigateTo('/customer-signup')}
+                  className="text-gray-700 hover:text-red-600"
+                  title="Customer Sign Up"
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                    isLoadingLocation ? 'bg-amber-500' : 
-                    locationError ? 'bg-red-500' : 
-                    location ? 'bg-emerald-500' : 'bg-gray-400'
-                  }`}>
-                    {isLoadingLocation ? (
-                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <MapPin className="w-4 h-4 text-white" />
-                    )}
-                  </div>
-                </LocationButton>
+                  <UserPlus className="w-5 h-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setNavigateTo('/restaurant-signup')}
+                  className="text-gray-700 hover:text-red-600"
+                  title="Restaurant/Bar/Food Truck Sign Up"
+                >
+                  <Store className="w-5 h-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={retryLocation}
+                  disabled={isLoadingLocation}
+                  className="text-gray-700 hover:text-red-600"
+                  title="Refresh Location"
+                >
+                  {isLoadingLocation ? (
+                    <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Target className="w-4 h-4" />
+                  )}
+                </Button>
               </>
             ) : (
               <div className="flex items-center space-x-2">
@@ -207,14 +230,28 @@ export default function Home() {
                   {locationName.split(',')[0]}
                 </span>
                 <div className="w-2 h-2 rounded-full bg-emerald-500" title="Real-time location active" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={retryLocation}
+                  disabled={isLoadingLocation}
+                  className="text-gray-700 hover:text-red-600 w-7 h-7"
+                  title="Refresh Location"
+                >
+                  {isLoadingLocation ? (
+                    <div className="w-3.5 h-3.5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Target className="w-3.5 h-3.5" />
+                  )}
+                </Button>
               </div>
             )}
           </div>
         </div>
       </header>
 
-      {/* Search Bar & Hero Section - ORIGINAL WORDING */}
-      <div className="px-6 py-8 bg-gradient-to-br from-gray-50 via-white to-orange-50 border-b border-orange-100">
+      {/* Hero & Search Section */}
+      <div className="px-4 sm:px-6 py-8 bg-gradient-to-br from-gray-50 via-white to-orange-50 border-b border-orange-100">
         <div className="mb-6">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">Find Amazing Deals In Your Neighborhood</h2>
           <p className="text-gray-600">Discover nearby restaurants & food trucks — support your local spots with exclusive offers</p>
@@ -236,56 +273,41 @@ export default function Home() {
             </Button>
           </Link>
           <Link href="/search?filter=quick">
-            <Button variant="outline" size="sm" className="flex-shrink-0 rounded-full px-4 py-2 bg-white border-2 border-orange-200 hover:bg-orange-50 font-semibold text-gray-700 hover:text-orange-600 transition-colors">
+            <Button variant="outline" size="sm" className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50">
               <Rocket className="w-4 h-4 mr-2" /> Quick Bites
             </Button>
           </Link>
           <Link href="/category/pizza">
-            <Button variant="outline" size="sm" className="flex-shrink-0 rounded-full px-4 py-2 bg-white border-2 border-orange-200 hover:bg-orange-50 font-semibold text-gray-700 hover:text-orange-600 transition-colors">
+            <Button variant="outline" size="sm" className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50">
               <Pizza className="w-4 h-4 mr-2" /> Pizza
             </Button>
           </Link>
           <Link href="/search?filter=budget">
-            <Button variant="outline" size="sm" className="flex-shrink-0 rounded-full px-4 py-2 bg-white border-2 border-orange-200 hover:bg-orange-50 font-semibold text-gray-700 hover:text-orange-600 transition-colors">
+            <Button variant="outline" size="sm" className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50">
               <DollarSign className="w-4 h-4 mr-2" /> Budget
             </Button>
           </Link>
         </div>
 
         {/* Location Error and Manual Input */}
-        {(locationError || showLocationInput) && (
-          <div className="mt-4 p-4 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-100 rounded-xl shadow-sm">
-            {locationError && (
-              <div className="flex items-start space-x-3 mb-3">
-                <div className="w-9 h-9 bg-white border border-red-100 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
-                  <MapPin className="w-5 h-5 text-red-500" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-red-700 text-sm font-semibold">Location access denied</p>
-                  <p className="text-gray-700 text-sm">{locationError}</p>
-                </div>
-              </div>
-            )}
-            
-            <div className="space-y-3">
-              <p className="text-gray-800 text-sm font-semibold">Enter your city to find nearby deals:</p>
-              <div className="flex space-x-2">
-                <Input
-                  type="text"
-                  placeholder="Enter city name (e.g., New York, Los Angeles)"
-                  value={manualLocation}
-                  onChange={(e) => setManualLocation(e.target.value)}
-                  className="flex-1 border-orange-100 focus-visible:ring-orange-500"
-                  onKeyPress={(e) => e.key === 'Enter' && handleManualLocation()}
-                />
-                <Button
-                  onClick={handleManualLocation}
-                  disabled={!manualLocation.trim() || isLoadingLocation}
-                  className="bg-orange-500 hover:bg-orange-600 text-white shadow-sm"
-                >
-                  {isLoadingLocation ? "Finding..." : "Find Deals"}
-                </Button>
-              </div>
+        {locationError && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex space-x-2">
+              <Input
+                type="text"
+                placeholder="Enter city or zip"
+                value={manualLocation}
+                onChange={(e) => setManualLocation(e.target.value)}
+                className="flex-1"
+                onKeyPress={(e) => e.key === 'Enter' && handleManualLocation()}
+              />
+              <Button
+                onClick={handleManualLocation}
+                disabled={!manualLocation.trim() || isLoadingLocation}
+                size="sm"
+              >
+                {isLoadingLocation ? "..." : "Go"}
+              </Button>
             </div>
           </div>
         )}
@@ -312,17 +334,15 @@ export default function Home() {
               <div key={i} className="bg-gray-100 rounded-lg h-64 animate-pulse" />
             ))}
           </div>
-        ) : (
+        ) : featuredDeals?.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.isArray(featuredDeals) && featuredDeals.length > 0 ? (
-              featuredDeals.slice(0, 6).map((deal: Deal) => (
-                <DealCard key={deal.id} deal={deal} />
-              ))
-            ) : (
-              <div className="col-span-full text-center py-12 text-gray-500">
-                <p>No featured deals available at the moment</p>
-              </div>
-            )}
+            {featuredDeals.slice(0, 6).map((deal: Deal) => (
+              <DealCard key={deal.id} deal={deal} />
+            ))}
+          </div>
+        ) : (
+          <div className="col-span-full text-center py-12 text-gray-500">
+            <p>No deals nearby yet</p>
           </div>
         )}
       </div>
@@ -499,6 +519,23 @@ export default function Home() {
           <p>&copy; 2026 MealScout. A TradeScout Product.</p>
         </div>
       </footer>
+
+      {/* Welcome Modal for First-Time Session Visitors */}
+      <WelcomeLocationModal
+        open={showWelcomeModal}
+        onLocationSet={handleWelcomeLocationSet}
+        onSkip={handleWelcomeSkip}
+      />
+
+      {/* Floating Bug Report Button */}
+      <Button
+        onClick={() => window.open('https://github.com/TradersCorner/MealScout/issues/new', '_blank')}
+        className="fixed bottom-20 right-4 z-40 rounded-full w-12 h-12 bg-orange-500 hover:bg-orange-600 text-white shadow-lg"
+        size="icon"
+        title="Report a Bug"
+      >
+        <Bug className="w-5 h-5" />
+      </Button>
     </div>
   );
 }

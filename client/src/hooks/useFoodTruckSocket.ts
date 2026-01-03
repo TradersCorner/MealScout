@@ -46,11 +46,11 @@ export function useFoodTruckSocket({
     if (socketRef.current?.connected) return;
 
     try {
-      // Create Socket.IO connection directly to backend (Vercel can't proxy WebSocket)
+      // Create Socket.IO connection directly to backend (WebSocket-only, no polling)
       const backendUrl = import.meta.env.VITE_API_BASE_URL || '';
       const socket = io(backendUrl, {
         autoConnect: true,
-        transports: ['polling', 'websocket'],
+        transports: ['websocket'],
         withCredentials: true,
         path: '/socket.io'
       });

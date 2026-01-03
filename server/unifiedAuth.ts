@@ -609,7 +609,7 @@ export async function setupUnifiedAuth(app: Express) {
         return res.status(400).json({ error: "SSO token missing subject (sub)" });
       }
 
-      const user = await storage.upsertUserByAuth("tradescout", tsUserData, userType === "super_admin" ? "admin" : userType);
+      const user = await storage.upsertUserByAuth("tradescout", tsUserData, userType === "super_admin" ? "admin" : userType as "customer" | "restaurant_owner" | "admin");
 
       // Establish a standard Passport session so all existing
       // isAuthenticated checks continue to work.

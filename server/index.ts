@@ -623,7 +623,7 @@ app.use((req, res, next) => {
 
   // Setup WebSocket server for food truck GPS tracking
   setupWebSocketServer(server);
-  log("WebSocket server initialized for food truck tracking");
+  console.log("[express] WebSocket server initialized for food truck tracking");
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

@@ -39,8 +39,8 @@ export function useFoodTruckSocket({
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const subscriptionQueueRef = useRef<string[]>([]);
   
-  const maxReconnectAttempts = 3;
-  const baseReconnectDelay = 2000; // 2 seconds
+  const maxReconnectAttempts = 10; // Increased for free tier wake-up
+  const baseReconnectDelay = 3000; // 3 seconds to allow backend spin-up
 
   const connect = useCallback(() => {
     if (socketRef.current?.connected) return;
@@ -52,7 +52,12 @@ export function useFoodTruckSocket({
         autoConnect: true,
         transports: ['websocket'],
         withCredentials: true,
-        path: '/socket.io'
+        path: '/socket.io',
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 3000,
+        reconnectionDelayMax: 10000,
+        timeout: 20000 // Allow time for Render free tier to wake up
       });
       
       socketRef.current = socket;

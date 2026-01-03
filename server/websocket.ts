@@ -62,35 +62,24 @@ export function setupWebSocketServer(httpServer: Server): SocketIOServer {
     transports: ["websocket"],
   });
 
-  // Auth middleware for Socket.IO using Express session
-  io.use((socket: any, next) => {
-    sessionMiddleware(socket.request as any, {} as any, () => {
+  // Connection handling - no auth middleware (TradeScout Law: read-only realtime discovery allowed)
+  io.on("connection", async (socket: any) => {
+    incConnect();
+    
+    // Extract session data if available (non-blocking, best-effort)
+    sessionMiddleware(socket.request as any, {} as any, async () => {
       const session = (socket.request as any).session;
       const user = session?.passport?.user;
       
       if (user) {
-        // Authenticated user
         socket.userId = user;
         socket.sessionID = (socket.request as any).sessionID;
-      } else {
-        // Anonymous user (allowed for viewing trucks)
-        socket.userId = null;
-        socket.sessionID = (socket.request as any).sessionID || `anon_${Date.now()}_${Math.random()}`;
-      }
-      
-      next();
-    });
-  });
-
-  // Connection handling
-  io.on("connection", async (socket: AuthenticatedSocket) => {
-    incConnect();
-    console.log(`WebSocket connected: ${socket.id}, userId: ${socket.userId || 'anonymous'}`);
-
-    try {
-      // Load user data if authenticated
-      if (socket.userId) {
         socket.user = await storage.getUser(socket.userId);
+        console.log(`WebSocket connected: ${socket.id}, userId: ${socket.userId}`);
+      } else {
+        socket.userId = null;
+        socket.sessionID = `anon_${Date.now()}_${Math.random()}`;
+        console.log(`WebSocket connected: ${socket.id} (anonymous)`);
       }
 
       // Initialize user subscriptions tracking
@@ -206,11 +195,7 @@ export function setupWebSocketServer(httpServer: Server): SocketIOServer {
         // Clean up user subscriptions
         userSubscriptions.delete(userKey);
       });
-
-    } catch (error) {
-      console.error("Error setting up WebSocket connection:", error);
-      socket.disconnect();
-    }
+    });
   });
 
   console.log("Socket.IO server setup complete at default path");

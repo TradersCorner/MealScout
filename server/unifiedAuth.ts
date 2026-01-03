@@ -669,8 +669,7 @@ export async function setupUnifiedAuth(app: Express) {
       });
 
       // Generate reset URL
-      const baseUrl = process.env.PUBLIC_BASE_URL || 
-                     (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000');
+      const baseUrl = process.env.PUBLIC_BASE_URL || 'http://localhost:5000';
       const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
       // Send reset email

@@ -3829,8 +3829,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // OAuth configuration status check
   app.get('/api/admin/oauth/status', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const baseUrl = process.env.PUBLIC_BASE_URL || 
-                     (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000');
+      const baseUrl = process.env.PUBLIC_BASE_URL || 'http://localhost:5000';
       
       const status = {
         google: {

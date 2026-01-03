@@ -176,25 +176,6 @@ export default function DealCard({ deal }: DealCardProps) {
             <div className="absolute top-2 sm:top-4 right-2 sm:right-4 bg-gradient-to-r from-red-500 to-pink-500 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold shadow-xl">
               {formatDiscount()} off
             </div>
-            
-            {/* Action buttons */}
-            <div className="absolute top-2 sm:top-4 left-2 sm:left-4 flex space-x-1 sm:space-x-2">
-              {/* Save button */}
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600 sm:w-4 sm:h-4">
-                  <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
-                </svg>
-              </div>
-              
-              {/* Share button */}
-              <button
-                onClick={handleShare}
-                className="w-8 h-8 sm:w-10 sm:h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
-                data-testid={`button-share-${deal.id}`}
-              >
-                <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600" />
-              </button>
-            </div>
           </div>
 
           {/* Content */}

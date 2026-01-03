@@ -14,6 +14,9 @@ import mealScoutLogo from "@assets/ChatGPT Image Sep 14, 2025, 09_25_52 AM_17578
 import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
 import { getReverseGeocodedLocationName } from "@/utils/locationUtils";
 
+// Version marker for deployment verification
+console.log("MealScout Client Loaded - Build: " + new Date().toISOString());
+
 interface Deal {
   id: string;
   restaurantId: string;

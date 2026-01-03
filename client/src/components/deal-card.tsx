@@ -150,97 +150,82 @@ export default function DealCard({ deal }: DealCardProps) {
     <div onClick={handleCardClick}>
       <Card 
         ref={cardRef}
-        className="bg-white rounded-2xl sm:rounded-3xl hover:shadow-2xl sm:hover:scale-105 transition-all duration-300 cursor-pointer border-0 shadow-lg group" 
+        className="bg-white rounded-3xl hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 shadow-sm group overflow-hidden" 
         data-testid={`card-deal-${deal.id}`}
       >
         <CardContent className="p-0">
           {/* Restaurant Image */}
-          <div className="relative h-40 sm:h-48 md:h-56 bg-gray-100 overflow-hidden">
+          <div className="relative h-32 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden rounded-t-3xl">
             <img 
               src={deal.imageUrl || getDefaultImage(deal.restaurant?.cuisineType, deal.title)}
               alt={deal.title}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
-            
-            {/* AI-Generated Sample Badge */}
-            {deal.isAiGenerated && (
-              <div className="absolute top-2 sm:top-4 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-gray-900 px-2 sm:px-4 py-1 sm:py-2 rounded-full text-xs font-bold shadow-lg border-2 border-yellow-500 flex items-center gap-1">
-                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
-                </svg>
-                SAMPLE DEAL
-              </div>
-            )}
-            
-            {/* Deal badge */}
-            <div className="absolute top-2 sm:top-4 right-2 sm:right-4 bg-gradient-to-r from-red-500 to-pink-500 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold shadow-xl">
-              {formatDiscount()} off
-            </div>
           </div>
 
           {/* Content */}
-          <div className="p-3 sm:p-4 md:p-6">
+          <div className="p-5">
             {/* Restaurant name and rating */}
-            <div className="flex items-start justify-between mb-2 sm:mb-3">
-              <h3 className="font-bold text-gray-900 text-base sm:text-lg md:text-xl leading-tight" data-testid={`text-restaurant-name-${deal.id}`}>
+            <div className="flex items-start justify-between mb-3">
+              <h3 className="font-bold text-gray-900 text-lg leading-tight" data-testid={`text-restaurant-name-${deal.id}`}>
                 {deal.restaurant?.name || 'Restaurant Name'}
               </h3>
-              <div className="flex items-center space-x-1 ml-2 bg-green-100 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-green-600 sm:w-3.5 sm:h-3.5">
+              <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-green-500">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                 </svg>
-                <span className="text-xs sm:text-sm font-bold text-green-700">4.5</span>
+                <span className="text-sm font-semibold text-gray-900">4.5</span>
               </div>
             </div>
 
-            {/* Categories and location info */}
-            <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 mb-3 sm:mb-4">
-              <span className="bg-gray-100 text-gray-700 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-medium">{deal.restaurant?.cuisineType || 'American'}</span>
-              <span className="flex items-center space-x-1 bg-gray-100 text-gray-700 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-medium">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-gray-500 sm:w-3 sm:h-3">
+            {/* Meta info */}
+            <div className="space-y-2 mb-4">
+              <p className="text-gray-600 text-sm">{deal.restaurant?.cuisineType || 'American'}</p>
+              <div className="flex items-center text-gray-600 text-sm">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-gray-400 mr-1">
                   <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                 </svg>
                 <span>{deal.distance ? `${deal.distance.toFixed(1)} mi` : '0.5 mi'}</span>
+              </div>
+              <span className="inline-block bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
+                Pickup
               </span>
-              <span className="bg-blue-100 text-blue-700 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-medium">Pickup</span>
             </div>
 
             {/* Deal description */}
-            <p className="text-gray-600 text-sm sm:text-base mb-3 sm:mb-5 leading-relaxed line-clamp-2 sm:line-clamp-none" data-testid={`text-restaurant-info-${deal.id}`}>
+            <p className="text-gray-600 text-sm mb-4 leading-relaxed" data-testid={`text-restaurant-info-${deal.id}`}>
               {deal.description}
             </p>
 
             {/* Promo highlight */}
-            <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 mb-3 sm:mb-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 sm:space-x-3">
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-red-500 rounded-full flex items-center justify-center">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white sm:w-3.5 sm:h-3.5">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
+            <div className="bg-gradient-to-br from-red-50 to-pink-50 border border-red-100 rounded-2xl p-4 mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-red-600 font-bold text-xl">
+                    {formatDiscount()} <span className="text-base">off</span>
                   </div>
-                  <div>
-                    <span className="text-red-700 font-bold text-sm sm:text-base md:text-lg">
-                      {formatDiscount()} off
-                    </span>
-                    <p className="text-red-600 text-xs sm:text-sm">
-                      orders ${deal.minOrderAmount || '15'}+
-                    </p>
-                  </div>
+                  <p className="text-red-600 text-sm">
+                    orders ${deal.minOrderAmount || '8.00'}+
+                  </p>
                 </div>
               </div>
             </div>
 
             {/* Usage stats */}
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs sm:text-sm text-gray-600 font-medium">{deal.currentUses || 188} people saved</span>
-              <div className="bg-orange-100 text-orange-700 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-bold">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600 font-medium">{deal.currentUses || 188} people saved</span>
+              <span className="bg-orange-50 text-orange-600 px-3 py-1 rounded-full text-xs font-semibold">
                 2h 15m left
-              </div>
+              </span>
             </div>
 
             {/* Feedback section */}
-            <div className="pt-3 border-t border-gray-100">
+            <div className="mt-4 pt-4 border-t border-gray-100">
               <DealFeedback dealId={deal.id} compact={true} />
             </div>
           </div>

@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Share2 } from "lucide-react";
+import { Share2, Utensils } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import DealShareModal from "./deal-share-modal";
 import RestaurantDealsDrawer from "./restaurant-deals-drawer";
@@ -87,6 +87,7 @@ const getDefaultImage = (cuisineType?: string, title?: string) => {
 export default function DealCard({ deal }: DealCardProps) {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showDealsDrawer, setShowDealsDrawer] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const [hasTrackedView, setHasTrackedView] = useState(false);
 
@@ -142,6 +143,28 @@ export default function DealCard({ deal }: DealCardProps) {
     setShowShareModal(true);
   };
 
+  const handleSave = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    try {
+      // Toggle saved state
+      const newSavedState = !isSaved;
+      setIsSaved(newSavedState);
+      
+      // Track the save action
+      if (newSavedState) {
+        await apiRequest('POST', `/api/deals/${deal.id}/save`, {});
+      } else {
+        await apiRequest('DELETE', `/api/deals/${deal.id}/save`, {});
+      }
+    } catch (error) {
+      console.error('Failed to save deal:', error);
+      // Revert on error
+      setIsSaved(!isSaved);
+    }
+  };
+
   const handleCardClick = () => {
     setShowDealsDrawer(true);
   };
@@ -161,6 +184,21 @@ export default function DealCard({ deal }: DealCardProps) {
               alt={deal.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
+            
+            {/* Save Fork Icon */}
+            <button
+              onClick={handleSave}
+              className="absolute top-3 right-3 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-all duration-300 hover:scale-110"
+              title={isSaved ? "Saved!" : "Save deal"}
+            >
+              <Utensils 
+                className={`w-5 h-5 transition-all duration-300 ${
+                  isSaved 
+                    ? 'text-yellow-500 fill-yellow-500' 
+                    : 'text-gray-600'
+                }`}
+              />
+            </button>
           </div>
 
           {/* Content */}

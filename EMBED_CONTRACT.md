@@ -44,4 +44,35 @@ Guarantee a safe, deterministic integration when MealScout is embedded inside Tr
 - Non-/api/actions surfaces
 - Any ranking changes beyond documented rules
 
+---
+
+## 7. Affiliate Attribution (TradeScout-Governed)
+
+**Authority:** TradeScout owns all affiliate earnings, payouts, and reporting.
+
+**MealScout Role:**
+- Accepts `affiliate_id` parameter from TradeScout surfaces
+- Records affiliate events: views, clicks, conversions, signups
+- Stores event context: deal, restaurant, truck, timestamp
+- Provides read-only event query endpoint for TradeScout
+
+**MealScout Does NOT:**
+- Calculate commission amounts
+- Process payouts or withdrawals
+- Display earnings dashboards
+- Manage affiliate balances
+
+**Data Flow:**
+1. TradeScout passes `affiliate_id` + `source=tradescout` to MealScout
+2. MealScout logs attribution events to local DB
+3. TradeScout queries `/api/affiliate-events` (authenticated) to pull events
+4. TradeScout calculates earnings, manages payouts, displays reports
+
+**Governance:**
+- Affiliate attribution is read-only within MealScout
+- TradeScout is sole source of truth for affiliate economics
+- MealScout is instrumentation layer only
+
+---
+
 For questions or changes, raise a versioned proposal; do not alter this document without a new version.

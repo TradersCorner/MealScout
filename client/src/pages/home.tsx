@@ -510,34 +510,76 @@ export default function Home() {
         ) : (
           /* LOGGED IN - REAL FEATURES */
           <div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-6">
-              What's Open In Your Area (Live)
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              Browse by Category
             </h3>
-            <div className="grid grid-cols-1 gap-6">
-              <Link href="/favorites">
-                <div className="bg-gradient-to-br from-orange-50 to-red-50 p-6 rounded-lg border border-orange-200 hover:shadow-lg transition-shadow cursor-pointer">
-                  <Heart className="w-8 h-8 text-orange-600 mb-3" />
-                  <h4 className="text-lg font-semibold text-gray-900 mb-1">Your Neighborhood Favorites</h4>
-                  <p className="text-sm text-gray-600">Spots you return to</p>
-                </div>
-              </Link>
-              
-              <Link href="/map">
-                <div className="bg-gradient-to-br from-emerald-50 to-green-50 p-6 rounded-lg border border-emerald-200 hover:shadow-lg transition-shadow cursor-pointer">
-                  <Map className="w-8 h-8 text-emerald-600 mb-3" />
-                  <h4 className="text-lg font-semibold text-gray-900 mb-1">Food Trucks Nearby</h4>
-                  <p className="text-sm text-gray-600">Live locations in your city</p>
-                </div>
-              </Link>
-              
-              <Link href="/deals/featured">
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200 hover:shadow-lg transition-shadow cursor-pointer">
-                  <DollarSign className="w-8 h-8 text-blue-600 mb-3" />
-                  <h4 className="text-lg font-semibold text-gray-900 mb-1">Local Deals Active Now</h4>
-                  <p className="text-sm text-gray-600">Opportunities near you</p>
-                </div>
-              </Link>
-            </div>
+            
+            {/* Category Rows */}
+            {groupedFeaturedDeals && Object.keys(groupedFeaturedDeals).length > 0 ? (
+              <div className="space-y-6">
+                {Object.entries(
+                  Object.values(groupedFeaturedDeals).reduce((acc: Record<string, any[]>, bucket: any) => {
+                    const cuisine = bucket.restaurant?.cuisineType || "Other";
+                    if (!acc[cuisine]) acc[cuisine] = [];
+                    acc[cuisine].push(bucket);
+                    return acc;
+                  }, {})
+                ).map(([cuisine, buckets]) => (
+                  <div key={cuisine}>
+                    <div className="flex items-center justify-between mb-2 px-1">
+                      <h4 className="font-bold text-gray-900">{cuisine}</h4>
+                      <Link href={`/search?q=${encodeURIComponent(cuisine)}`}>
+                        <Button variant="link" size="sm" className="text-orange-600 h-auto p-0 text-xs">View all</Button>
+                      </Link>
+                    </div>
+                    <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
+                      {buckets.map((bucket: any) => {
+                        const restaurantName = bucket.restaurant?.name || "Restaurant";
+                        const distance = bucket.distance;
+                        const deals = bucket.deals.slice(0, 3); // Limit to 3 deals per card in horizontal view
+                        
+                        return (
+                          <div key={bucket.restaurant?.id || Math.random()} className="flex-shrink-0 w-[280px] rounded-xl border border-gray-200 bg-white shadow-sm p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <div>
+                                <h3 className="text-sm font-bold text-gray-900 leading-tight truncate max-w-[180px]">{restaurantName}</h3>
+                                <div className="text-[11px] text-gray-600 flex items-center gap-1">
+                                  {distance !== undefined && <span>{distance.toFixed(1)} mi</span>}
+                                </div>
+                              </div>
+                              <Link href={`/restaurant/${bucket.deals[0].restaurantId}`}>
+                                <Button size="sm" variant="secondary" className="px-2 py-1 text-[10px] h-6">Visit</Button>
+                              </Link>
+                            </div>
+                            <div className="divide-y divide-gray-100">
+                              {deals.map((deal: any) => (
+                                <div key={deal.id} className="py-2 flex items-start gap-2">
+                                  <div className="px-2 py-1 rounded-md bg-orange-50 text-orange-700 text-[10px] font-semibold leading-none whitespace-nowrap">
+                                    {deal.dealType === 'percentage' ? `${deal.discountValue}%` : deal.dealType === 'dollar' ? `$${deal.discountValue}` : deal.discountValue}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium text-gray-900 leading-tight truncate">{deal.title}</p>
+                                  </div>
+                                </div>
+                              ))}
+                              {bucket.deals.length > 3 && (
+                                <div className="pt-2 text-center">
+                                  <span className="text-[10px] text-gray-500">+{bucket.deals.length - 3} more deals</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                <p className="text-sm">No categories available yet.</p>
+              </div>
+            )}
           </div>
         )}
         </div>

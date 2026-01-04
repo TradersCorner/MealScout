@@ -455,6 +455,26 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Owner Section - MOVED UP FOR LOGGED OUT USERS */}
+      {!user && (
+        <div className="py-2 bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+          <div className="mx-auto max-w-[420px] w-full text-center">
+            <ChefHat className="w-6 h-6 mx-auto mb-1 text-orange-400" />
+            <h3 className="text-base font-bold mb-0.5">
+              Bring your restaurant to the neighborhood
+            </h3>
+            <p className="text-gray-300 mb-2 text-xs">
+              Post real-time deals, broadcast when you're open, reach people nearby
+            </p>
+            <Link href="/restaurant-signup">
+              <Button size="sm" variant="secondary" className="px-3 py-1 text-xs">
+                Claim & Go Live
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* AUTH-GATED SECTION - PROGRESSIVE DISCLOSURE */}
       <div className="py-2 bg-gradient-to-br from-gray-50 to-white">
         <div className="mx-auto max-w-[420px] w-full">
@@ -567,24 +587,6 @@ export default function Home() {
               </Button>
             </Link>
           </div>
-        </div>
-      </div>
-
-      {/* Owner Section - ORIGINAL STYLE */}
-      <div className="py-2 bg-gradient-to-br from-gray-900 to-gray-800 text-white">
-        <div className="mx-auto max-w-[420px] w-full text-center">
-          <ChefHat className="w-6 h-6 mx-auto mb-1 text-orange-400" />
-          <h3 className="text-base font-bold mb-0.5">
-            Bring your restaurant to the neighborhood
-          </h3>
-          <p className="text-gray-300 mb-2 text-xs">
-            Post real-time deals, broadcast when you're open, reach people nearby
-          </p>
-          <Link href="/restaurant-signup">
-            <Button size="sm" variant="secondary" className="px-3 py-1 text-xs">
-              Claim & Go Live
-            </Button>
-          </Link>
         </div>
       </div>
 

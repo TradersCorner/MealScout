@@ -281,8 +281,12 @@ export default function Home() {
       <div className="py-3 bg-gradient-to-br from-gray-50 via-white to-orange-50 border-b border-orange-100">
         <div className="mx-auto max-w-[420px] w-full">
           <div className="mb-3">
-            <h2 className="text-xl font-bold text-gray-900 mb-1">{firstName ? `Hey ${firstName}, what sounds good in ${shortLocation}?` : `What sounds good in ${shortLocation}?`}</h2>
-            <p className="text-sm text-gray-600">Fresh deals from spots near {shortLocation}. Quick filters to jump to what you’re craving.</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-1">
+              {firstName ? `Hey ${firstName}, hungry?` : "Hungry?"}
+            </h2>
+            <p className="text-sm text-gray-600">
+              See what's happening {shortLocation === 'Your Location' ? 'near you' : `in ${shortLocation}`}. Fresh deals and local favorites.
+            </p>
           </div>
           
           <SmartSearch
@@ -349,7 +353,7 @@ export default function Home() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Truck className="w-4 h-4 text-emerald-600" />
-              <h3 className="text-sm font-bold text-emerald-900">Trucks rolling near {shortLocation}</h3>
+              <h3 className="text-sm font-bold text-emerald-900">Live Trucks: {shortLocation === 'Your Location' ? 'Nearby' : shortLocation}</h3>
             </div>
             <Link href="/map">
               <Button variant="link" className="text-emerald-700 hover:text-emerald-800 p-0 h-auto text-xs">
@@ -389,7 +393,7 @@ export default function Home() {
           <div className="mb-3">
             <h2 className="text-base font-bold text-foreground flex items-center">
               <Sparkles className="w-4 h-4 text-orange-500 mr-1.5" />
-              Right now in {shortLocation}
+              Trending in {shortLocation === 'Your Location' ? 'Your Neighborhood' : shortLocation}
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">Fast-moving offers from spots around you</p>
             <Link href="/deals/featured">
@@ -455,7 +459,7 @@ export default function Home() {
               {/* Stay Connected Section */}
               <div>
                 <div className="text-center mb-6">
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">Stay close to {shortLocation}'s food scene</h3>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">Unlock the {shortLocation === 'Your Location' ? 'Local' : shortLocation} Scene</h3>
                   <p className="text-sm text-gray-600">Save go-tos, track trucks live, and get a heads-up when spots reopen</p>
                 </div>
                 
@@ -501,7 +505,7 @@ export default function Home() {
               {/* Community Building Section */}
               <div>
                 <div className="text-center mb-4">
-                  <h3 className="text-base font-bold text-gray-900 mb-1">Share the standouts in {shortLocation}</h3>
+                  <h3 className="text-base font-bold text-gray-900 mb-1">Promote {shortLocation === 'Your Location' ? 'Local' : shortLocation} Gems</h3>
                   <p className="text-xs text-gray-600">Pass along great spots and help them stay busy</p>
                 </div>
                 

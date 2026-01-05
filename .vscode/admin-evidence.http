@@ -1,0 +1,7 @@
+### Export Video Evidence PDF (admin only)
+GET http://localhost:5001/api/admin/export-evidence/:videoId
+Cookie: connect.sid=YOUR_ADMIN_SESSION_ID_HERE
+
+### Example with actual video ID
+GET http://localhost:5001/api/admin/export-evidence/550e8400-e29b-41d4-a716-446655440000
+Cookie: connect.sid=YOUR_ADMIN_SESSION_ID_HERE

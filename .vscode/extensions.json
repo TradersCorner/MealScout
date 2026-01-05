@@ -1,0 +1,17 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "pmneo.tsimporter",
+    "mattpocock.ts-error-translator",
+    "humao.rest-client",
+    "mtxr.sqltools",
+    "mikestead.dotenv",
+    "dsznajder.es7-react-js-snippets",
+    "moalamri.inline-fold",
+    "christian-kohler.path-intellisense",
+    "usernamehw.errorlens",
+    "eamodio.gitlens",
+    "gruntfuggly.todo-tree"
+  ]
+}

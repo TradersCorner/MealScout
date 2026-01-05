@@ -1,0 +1,26 @@
+### Create Location Request (authenticated)
+POST http://localhost:5001/api/location-requests
+Content-Type: application/json
+Cookie: connect.sid=YOUR_SESSION_ID_HERE
+
+{
+  "businessName": "Downtown Office Complex",
+  "address": "123 Main St, City, State 12345",
+  "locationType": "office",
+  "preferredDates": ["2026-01-15", "2026-01-16", "2026-01-17"],
+  "expectedFootTraffic": 150,
+  "notes": "Looking for lunch trucks near our office building"
+}
+
+### Get Location Request by ID
+GET http://localhost:5001/api/location-requests/:id
+Cookie: connect.sid=YOUR_SESSION_ID_HERE
+
+### Express Interest as Food Truck
+POST http://localhost:5001/api/location-requests/:id/interests
+Content-Type: application/json
+Cookie: connect.sid=YOUR_SESSION_ID_HERE
+
+{
+  "message": "We'd love to serve your office! Our specialty is authentic tacos and we can handle high volume."
+}

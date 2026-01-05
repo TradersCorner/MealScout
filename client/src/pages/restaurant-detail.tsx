@@ -194,6 +194,17 @@ export default function RestaurantDetailPage() {
               <Phone className="w-4 h-4 mr-2" />
               Call
             </Button>
+            <Link
+              href={`/parking-pass?hostId=${restaurantId ?? ""}&source=profile`}
+            >
+              <Button
+                variant="outline"
+                className="flex-1"
+                data-testid="button-parking-pass"
+              >
+                Parking Pass
+              </Button>
+            </Link>
           </div>
         </div>
 

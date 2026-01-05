@@ -53,7 +53,7 @@ export default function Sitemap() {
       icon: Building,
       color: "bg-orange-100 text-orange-600",
       pages: [
-        { title: "Restaurant Signup", href: "/restaurant-signup", description: "Join MealScout as a restaurant partner" },
+        { title: "Restaurant Signup", href: "/customer-signup?role=business", description: "Join MealScout as a restaurant partner" },
         { title: "Create Deals", href: "/deal-creation", description: "Restaurant dashboard for creating promotions" },
         { title: "Restaurant Dashboard", href: "/restaurant-owner-dashboard", description: "Manage your restaurant profile and deals" },
         { title: "Subscription Plans", href: "/subscribe", description: "Choose the right plan for your business" }

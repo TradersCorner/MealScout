@@ -186,6 +186,10 @@ export default function Home() {
     return acc;
   }, {});
 
+  const shortLocation = locationName?.split(',')[0] || 'your area';
+  const firstName = (user as any)?.firstName?.trim() || (user as any)?.name?.split?.(' ')?.[0] || '';
+  const welcomeName = firstName || 'there';
+
   return (
     <div className="w-full px-4 bg-background min-h-screen relative overflow-hidden">
       <Navigation />
@@ -226,7 +230,7 @@ export default function Home() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setNavigateTo('/restaurant-signup')}
+                  onClick={() => setNavigateTo('/customer-signup?role=business')}
                   className="text-gray-700 hover:text-red-600"
                   title="Restaurant/Bar/Food Truck Sign Up"
                 >
@@ -277,8 +281,8 @@ export default function Home() {
       <div className="py-3 bg-gradient-to-br from-gray-50 via-white to-orange-50 border-b border-orange-100">
         <div className="mx-auto max-w-[420px] w-full">
           <div className="mb-3">
-            <h2 className="text-xl font-bold text-gray-900 mb-1">Find Amazing Deals In Your Neighborhood</h2>
-            <p className="text-sm text-gray-600">Discover nearby restaurants & food trucks — support your local spots with exclusive offers</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-1">{firstName ? `Hey ${firstName}, what sounds good in ${shortLocation}?` : `What sounds good in ${shortLocation}?`}</h2>
+            <p className="text-sm text-gray-600">Fresh deals from spots near {shortLocation}. Quick filters to jump to what you’re craving.</p>
           </div>
           
           <SmartSearch
@@ -340,12 +344,12 @@ export default function Home() {
 
       {/* Food Trucks Nearby - Horizontal Scroll Row */}
       {/* TODO: Replace with actual food truck data */}
-      <div className="py-3 bg-gradient-to-r from-emerald-50 to-green-50 border-b border-emerald-100">
+      <div className="py-4 bg-gradient-to-r from-emerald-50 to-green-50 border-y border-emerald-100/50">
         <div className="mx-auto max-w-[420px] w-full">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Truck className="w-4 h-4 text-emerald-600" />
-              <h3 className="text-sm font-bold text-emerald-900">Food Trucks Nearby</h3>
+              <h3 className="text-sm font-bold text-emerald-900">Trucks rolling near {shortLocation}</h3>
             </div>
             <Link href="/map">
               <Button variant="link" className="text-emerald-700 hover:text-emerald-800 p-0 h-auto text-xs">
@@ -353,10 +357,10 @@ export default function Home() {
               </Button>
             </Link>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
             {/* Placeholder food truck cards - replace with actual data */}
             {[1, 2, 3].map(i => (
-              <div key={i} className="flex-shrink-0 w-64">
+              <div key={i} className="flex-shrink-0 w-56">
                 <DealCard deal={{
                 id: `truck-${i}`,
                 restaurantId: `truck-${i}`,
@@ -380,14 +384,14 @@ export default function Home() {
       </div>
 
       {/* Featured Deals Section - ORIGINAL LAYOUT */}
-      <div className="py-4 bg-white">
+      <div className="py-4 bg-gray-50 border-y border-gray-100">
         <div className="mx-auto max-w-[420px] w-full">
           <div className="mb-3">
             <h2 className="text-base font-bold text-foreground flex items-center">
               <Sparkles className="w-4 h-4 text-orange-500 mr-1.5" />
-              What's Happening Near You Right Now
+              Right now in {shortLocation}
             </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Time-sensitive offers from neighborhood restaurants</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Fast-moving offers from spots around you</p>
             <Link href="/deals/featured">
               <Button variant="link" className="text-orange-600 hover:text-orange-700 p-0 h-auto mt-1">
                 See all nearby deals →
@@ -396,51 +400,18 @@ export default function Home() {
           </div>
 
           {featuredLoading ? (
-            <div className="grid grid-cols-1 gap-3">
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
               {[1, 2, 3].map(i => (
-                <div key={i} className="bg-gray-100 rounded-lg h-48 animate-pulse" />
+                <div key={i} className="flex-shrink-0 w-56 bg-gray-100 rounded-lg h-48 animate-pulse" />
               ))}
             </div>
-          ) : groupedFeaturedDeals && Object.keys(groupedFeaturedDeals).length > 0 ? (
-            <div className="space-y-3">
-              {Object.entries(groupedFeaturedDeals).map(([restaurantId, bucket]) => {
-                const restaurantName = bucket.restaurant?.name || "Restaurant";
-                const cuisine = bucket.restaurant?.cuisineType;
-                const distance = bucket.distance;
-                const deals = bucket.deals.slice(0, 5);
-                return (
-                  <div key={restaurantId} className="rounded-xl border border-gray-200 bg-white shadow-sm p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <h3 className="text-sm font-bold text-gray-900 leading-tight">{restaurantName}</h3>
-                        <div className="text-[11px] text-gray-600 flex items-center gap-1">
-                          {cuisine && <span>{cuisine}</span>}
-                          {cuisine && distance !== undefined && <span>•</span>}
-                          {distance !== undefined && <span>{distance.toFixed(1)} mi</span>}
-                        </div>
-                      </div>
-                      <Link href={`/restaurant/${restaurantId}`}>
-                        <Button size="sm" variant="secondary" className="px-3 py-1 text-xs">View all deals</Button>
-                      </Link>
-                    </div>
-                    <div className="divide-y divide-gray-100">
-                      {deals.map((deal) => (
-                        <div key={deal.id} className="py-2 flex items-start gap-2">
-                          <div className="px-2 py-1 rounded-md bg-orange-50 text-orange-700 text-[11px] font-semibold leading-none">
-                            {deal.dealType === 'percentage' ? `${deal.discountValue}% off` : deal.dealType === 'dollar' ? `$${deal.discountValue} off` : deal.discountValue}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-gray-900 leading-tight truncate">{deal.title}</p>
-                            {deal.description && (
-                              <p className="text-[11px] text-gray-600 leading-snug line-clamp-2">{deal.description}</p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
+          ) : featuredDeals && featuredDeals.length > 0 ? (
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
+              {featuredDeals.map((deal: Deal) => (
+                <div key={deal.id} className="flex-shrink-0 w-56">
+                  <DealCard deal={deal} />
+                </div>
+              ))}
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
@@ -466,7 +437,7 @@ export default function Home() {
             <p className="text-gray-300 mb-2 text-xs">
               Post real-time deals, broadcast when you're open, reach people nearby
             </p>
-            <Link href="/restaurant-signup">
+            <Link href="/customer-signup?role=business">
               <Button size="sm" variant="secondary" className="px-3 py-1 text-xs">
                 Claim & Go Live
               </Button>
@@ -475,41 +446,107 @@ export default function Home() {
         </div>
       )}
 
-      {/* AUTH-GATED SECTION - PROGRESSIVE DISCLOSURE */}
-      <div className="py-2 bg-gradient-to-br from-gray-50 to-white">
-        <div className="mx-auto max-w-[420px] w-full">
+      {/* TWO-COLUMN SECTIONS - SIDE BY SIDE */}
+      <div className="py-6 bg-white border-y border-gray-100">
+        <div className="mx-auto max-w-[840px] w-full px-4">
           {!user ? (
-            /* LOGGED OUT - PREVIEW */
-            <div className="text-center">
-              <h3 className="text-base font-bold text-gray-900 mb-1">
-                Stay connected to your city's food scene
-              </h3>
-            <p className="text-gray-600 mb-2 text-xs">
-              Save favorites, track food trucks, and know when your go-to places are open
-            </p>
-            <div className="grid grid-cols-1 gap-2 mb-2">
-              <div className="bg-white p-2 rounded-lg border border-gray-200">
-                <Heart className="w-4 h-4 text-orange-600 mx-auto mb-0.5" />
-                <h4 className="font-semibold text-gray-900 text-xs">Save favorites</h4>
+            /* LOGGED OUT - TWO SECTIONS SIDE BY SIDE */
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Stay Connected Section */}
+              <div>
+                <div className="text-center mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">Stay close to {shortLocation}'s food scene</h3>
+                  <p className="text-sm text-gray-600">Save go-tos, track trucks live, and get a heads-up when spots reopen</p>
+                </div>
+                
+                <div className="space-y-2 mb-4">
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Heart className="w-4 h-4 text-orange-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 text-xs">Your neighborhood favorites</h4>
+                      <p className="text-[11px] text-gray-600">Keep your go-tos one tap away</p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Truck className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 text-xs">Food trucks nearby</h4>
+                      <p className="text-[11px] text-gray-600">Live locations around you</p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Bell className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 text-xs">Deals active right now</h4>
+                      <p className="text-[11px] text-gray-600">Quick wins close to you</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <Link href="/customer-signup">
+                  <Button className="w-full h-9 text-xs font-medium">
+                    Create free account
+                  </Button>
+                </Link>
               </div>
-              <div className="bg-white p-2 rounded-lg border border-gray-200">
-                <Truck className="w-4 h-4 text-emerald-600 mx-auto mb-0.5" />
-                <h4 className="font-semibold text-gray-900 text-xs">Track trucks</h4>
-              </div>
-              <div className="bg-white p-2 rounded-lg border border-gray-200">
-                <Bell className="w-4 h-4 text-blue-600 mx-auto mb-0.5" />
-                <h4 className="font-semibold text-gray-900 text-xs">Real-time alerts</h4>
+
+              {/* Community Building Section */}
+              <div>
+                <div className="text-center mb-4">
+                  <h3 className="text-base font-bold text-gray-900 mb-1">Share the standouts in {shortLocation}</h3>
+                  <p className="text-xs text-gray-600">Pass along great spots and help them stay busy</p>
+                </div>
+                
+                <div className="space-y-2 mb-4">
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-start gap-3">
+                    <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-orange-600 font-bold text-xs">1</span>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 text-xs mb-0.5">Share Your Link</h4>
+                      <p className="text-[11px] text-gray-600">Get a unique referral link to share with restaurants</p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-start gap-3">
+                    <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-orange-600 font-bold text-xs">2</span>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 text-xs mb-0.5">Restaurant Subscribes</h4>
+                      <p className="text-[11px] text-gray-600">When they join, you become their community partner</p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-start gap-3">
+                    <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-orange-600 font-bold text-xs">3</span>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 text-xs mb-0.5">Earn Recurring Income</h4>
+                      <p className="text-[11px] text-gray-600">Receive commission as long as they remain active</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <Link href={user ? "/affiliate-dashboard" : "/customer-signup"}>
+                  <Button className="w-full h-9 text-xs font-medium">
+                    {user ? 'Community Builder Dashboard' : 'Start Building'}
+                  </Button>
+                </Link>
               </div>
             </div>
-            <Link href="/customer-signup">
-              <Button size="sm" className="px-3 py-1 text-xs">
-                Create free account
-              </Button>
-            </Link>
-          </div>
-        ) : (
+          ) : (
           /* LOGGED IN - REAL FEATURES */
-          <div>
+          <div className="max-w-[420px] mx-auto">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               Browse by Category
             </h3>
@@ -585,80 +622,32 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Community Building Section */}
-      <div className="py-2 bg-gradient-to-br from-orange-50 via-red-50 to-orange-50">
-        <div className="mx-auto max-w-[420px] w-full">
-          <div className="text-center mb-2">
-            <h3 className="text-base font-bold text-gray-900 mb-0.5">Build Your Neighborhood Food Community</h3>
-            <p className="text-xs text-gray-600">Earn recurring income while strengthening your community</p>
-          </div>
-          
-          <div className="grid grid-cols-1 gap-2 mb-2">
-            <div className="bg-white p-2 rounded-xl border border-orange-200 shadow-sm">
-              <div className="flex items-center">
-                <span className="w-4 h-4 bg-orange-500 rounded flex items-center justify-center mr-1.5 text-xs">
-                  <span className="text-white font-bold text-[10px]">1</span>
-                </span>
-                <h4 className="font-bold text-gray-900 text-xs">Share Your Link</h4>
-              </div>
-            </div>
-            
-            <div className="bg-white p-2 rounded-xl border border-orange-200 shadow-sm">
-              <div className="flex items-center">
-                <span className="w-4 h-4 bg-orange-500 rounded flex items-center justify-center mr-1.5 text-xs">
-                  <span className="text-white font-bold text-[10px]">2</span>
-                </span>
-                <h4 className="font-bold text-gray-900 text-xs">Restaurant Subscribes</h4>
-              </div>
-            </div>
-            
-            <div className="bg-white p-2 rounded-xl border border-orange-200 shadow-sm">
-              <div className="flex items-center">
-                <span className="w-4 h-4 bg-orange-500 rounded flex items-center justify-center mr-1.5 text-xs">
-                  <span className="text-white font-bold text-[10px]">3</span>
-                </span>
-                <h4 className="font-bold text-gray-900 text-xs">Earn Recurring Income</h4>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center">
-            <Link href={user ? "/affiliate-dashboard" : "/customer-signup"}>
-              <Button size="sm" className="px-3 py-1 text-xs bg-orange-500 hover:bg-orange-600">
-                {user ? 'Community Builder Dashboard' : 'Start Building'}
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-
       {/* Footer */}
-      <footer className="py-8 bg-gray-50 border-t border-gray-200">
-        <div className="mx-auto max-w-[420px] w-full">
-          <div className="grid grid-cols-1 gap-6">
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-3">Product</h4>
-              <div className="space-y-2">
-                <Link href="/how-it-works" className="block text-gray-600 hover:text-orange-600">How It Works</Link>
-                <Link href="/faq" className="block text-gray-600 hover:text-orange-600">FAQ</Link>
-              </div>
+      <footer className="py-5 bg-gray-50 border-t border-gray-200">
+        <div className="mx-auto max-w-[420px] w-full px-4">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="space-y-2">
+              <h4 className="font-semibold text-gray-900">Product</h4>
+              <Link href="/how-it-works" className="block text-gray-600 hover:text-orange-600">How It Works</Link>
+              <Link href="/faq" className="block text-gray-600 hover:text-orange-600">FAQ</Link>
             </div>
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-3">Company</h4>
-              <div className="space-y-2">
-                <Link href="/about" className="block text-gray-600 hover:text-orange-600">About</Link>
-                <Link href="/contact" className="block text-gray-600 hover:text-orange-600">Contact</Link>
-              </div>
+            <div className="space-y-2">
+              <h4 className="font-semibold text-gray-900">Company</h4>
+              <Link href="/about" className="block text-gray-600 hover:text-orange-600">About</Link>
+              <Link href="/contact" className="block text-gray-600 hover:text-orange-600">Contact</Link>
             </div>
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-3">Legal</h4>
-              <div className="space-y-2">
-                <Link href="/privacy-policy" className="block text-gray-600 hover:text-orange-600">Privacy</Link>
-                <Link href="/terms-of-service" className="block text-gray-600 hover:text-orange-600">Terms</Link>
-              </div>
+            <div className="space-y-2">
+              <h4 className="font-semibold text-gray-900">Legal</h4>
+              <Link href="/privacy-policy" className="block text-gray-600 hover:text-orange-600">Privacy</Link>
+              <Link href="/terms-of-service" className="block text-gray-600 hover:text-orange-600">Terms</Link>
+            </div>
+            <div className="space-y-2">
+              <h4 className="font-semibold text-gray-900">Support</h4>
+              <Link href="/help" className="block text-gray-600 hover:text-orange-600">Help Center</Link>
+              <Link href="/status" className="block text-gray-600 hover:text-orange-600">Status</Link>
             </div>
           </div>
-          <div className="text-center text-sm text-gray-500 border-t border-gray-200 pt-6 mt-6">
+          <div className="text-center text-xs text-gray-500 border-t border-gray-200 pt-4 mt-5">
             <p>&copy; 2026 MealScout. A TradeScout Product.</p>
           </div>
         </div>

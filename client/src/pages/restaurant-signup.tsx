@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useReducer, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -20,39 +20,93 @@ import { BackHeader } from "@/components/back-header";
 import { Store } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
 import mealScoutLogo from "@assets/ChatGPT Image Sep 14, 2025, 09_25_52 AM_1757872111259.png";
+import { HOST_ONBOARDING_COPY as COPY } from "@/copy/hostOnboarding.copy";
+
+/**
+ * Host Onboarding v1  COPY LOCK
+ * User-facing strings must come from HOST_ONBOARDING_COPY.
+ * No inline labels, helper text, or validation messages.
+ */
 
 const restaurantSchema = z.object({
-  name: z.string().min(1, "Business name is required"),
-  address: z.string().min(1, "Address is required"),
-  phone: z.string().min(10, "Valid phone number is required"),
+  name: z.string().min(1, COPY.validation.restaurant.nameRequired),
+  address: z.string().min(1, COPY.validation.restaurant.addressRequired),
+  phone: z.string().min(10, COPY.validation.restaurant.phoneInvalid),
   businessType: z.enum(["restaurant", "bar", "food_truck"], {
-    required_error: "Please select your business type",
+    required_error: COPY.validation.restaurant.businessTypeRequired,
   }),
-  cuisineType: z.string().min(1, "Cuisine type is required"),
+  cuisineType: z.string().min(1, COPY.validation.restaurant.cuisineRequired),
+  description: z.string().max(500, "Description must be less than 500 characters").optional(),
+  websiteUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  instagramUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  facebookPageUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  hasParking: z.boolean().default(false),
+  hasWifi: z.boolean().default(false),
+  hasOutdoorSeating: z.boolean().default(false),
   promoCode: z.string().optional(),
-  acceptTerms: z.boolean().refine(val => val === true, "You must accept the terms"),
+  acceptTerms: z
+    .boolean()
+    .refine((val) => val === true, COPY.validation.restaurant.acceptTermsRequired),
 });
 
-const signupSchema = z.object({
-  email: z.string().email("Valid email is required"),
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  phone: z.string().min(10, "Valid phone number is required"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string().min(1, "Please confirm your password"),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+const signupSchema = z
+  .object({
+    email: z.string().email(COPY.validation.signup.emailInvalid),
+    firstName: z.string().min(1, COPY.validation.signup.firstNameRequired),
+    lastName: z.string().min(1, COPY.validation.signup.lastNameRequired),
+    phone: z.string().min(10, COPY.validation.signup.phoneInvalid),
+    password: z.string().min(6, COPY.validation.signup.passwordTooShort),
+    confirmPassword: z
+      .string()
+      .min(1, COPY.validation.signup.confirmPasswordRequired),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: COPY.validation.signup.passwordsMismatch,
+    path: ["confirmPassword"],
+  });
 
 const loginSchema = z.object({
-  email: z.string().email("Valid email is required"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().email(COPY.validation.login.emailInvalid),
+  password: z.string().min(1, COPY.validation.login.passwordRequired),
 });
 
 type RestaurantFormData = z.infer<typeof restaurantSchema>;
 type SignupFormData = z.infer<typeof signupSchema>;
 type LoginFormData = z.infer<typeof loginSchema>;
+
+type HostOnboardingStep = "restaurant" | "verification";
+
+interface HostOnboardingState {
+  step: HostOnboardingStep;
+}
+
+type HostOnboardingEvent =
+  | { type: "GO_TO_VERIFICATION" }
+  | { type: "BACK_TO_RESTAURANT" };
+
+function assertNever(x: never): never {
+  throw new Error(`Unhandled case: ${JSON.stringify(x)}`);
+}
+
+function hostOnboardingTransition(
+  state: HostOnboardingState,
+  event: HostOnboardingEvent
+): HostOnboardingState {
+  switch (state.step) {
+    case "restaurant":
+      if (event.type === "GO_TO_VERIFICATION") {
+        return { step: "verification" };
+      }
+      return state;
+    case "verification":
+      if (event.type === "BACK_TO_RESTAURANT") {
+        return { step: "restaurant" };
+      }
+      return state;
+    default:
+      return assertNever(state as never);
+  }
+}
 
 export default function RestaurantSignup() {
   const [, setLocation] = useLocation();
@@ -63,9 +117,12 @@ export default function RestaurantSignup() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
-  const [currentStep, setCurrentStep] = useState<'restaurant' | 'verification'>('restaurant');
+  const [onboardingState, dispatchOnboarding] = useReducer(hostOnboardingTransition, {
+    step: "restaurant",
+  } as HostOnboardingState);
   const [createdRestaurant, setCreatedRestaurant] = useState<any>(null);
   const [verificationDocuments, setVerificationDocuments] = useState<string[]>([]);
+  const currentStep: HostOnboardingStep = onboardingState.step;
 
   const form = useForm<RestaurantFormData>({
     resolver: zodResolver(restaurantSchema),
@@ -107,16 +164,16 @@ export default function RestaurantSignup() {
     },
     onSuccess: () => {
       toast({
-        title: "Success!",
-        description: "Account created successfully!",
+        title: COPY.notifications.signup.successTitle,
+        description: COPY.notifications.signup.successDescription,
       });
       // Reload to update auth state
       window.location.reload();
     },
     onError: (error) => {
       toast({
-        title: "Signup Failed",
-        description: error.message || "Failed to create account",
+        title: COPY.notifications.signup.errorTitle,
+        description: error.message || COPY.notifications.signup.errorDescription,
         variant: "destructive",
       });
     },
@@ -128,16 +185,16 @@ export default function RestaurantSignup() {
     },
     onSuccess: () => {
       toast({
-        title: "Success!",
-        description: "Logged in successfully!",
+        title: COPY.notifications.login.successTitle,
+        description: COPY.notifications.login.successDescription,
       });
       // Reload to update auth state
       window.location.reload();
     },
     onError: (error) => {
       toast({
-        title: "Login Failed",
-        description: error.message || "Invalid email or password",
+        title: COPY.notifications.login.errorTitle,
+        description: error.message || COPY.notifications.login.errorDescription,
         variant: "destructive",
       });
     },
@@ -162,6 +219,15 @@ export default function RestaurantSignup() {
             phone: data.phone,
             businessType: data.businessType,
             cuisineType: data.cuisineType,
+            description: data.description,
+            websiteUrl: data.websiteUrl,
+            instagramUrl: data.instagramUrl,
+            facebookPageUrl: data.facebookPageUrl,
+            amenities: {
+              parking: data.hasParking,
+              wifi: data.hasWifi,
+              outdoor_seating: data.hasOutdoorSeating
+            },
             promoCode: data.promoCode
           },
           subscriptionPlan: 'month'
@@ -185,6 +251,15 @@ export default function RestaurantSignup() {
             phone: data.phone,
             businessType: data.businessType,
             cuisineType: data.cuisineType,
+            description: data.description,
+            websiteUrl: data.websiteUrl,
+            instagramUrl: data.instagramUrl,
+            facebookPageUrl: data.facebookPageUrl,
+            amenities: {
+              parking: data.hasParking,
+              wifi: data.hasWifi,
+              outdoor_seating: data.hasOutdoorSeating
+            },
             promoCode: data.promoCode
           },
           subscriptionPlan: 'month'
@@ -194,17 +269,18 @@ export default function RestaurantSignup() {
     },
     onSuccess: (restaurant) => {
       setCreatedRestaurant(restaurant);
-      setCurrentStep('verification');
+      dispatchOnboarding({ type: "GO_TO_VERIFICATION" });
       toast({
-        title: "Restaurant Registered!",
-        description: "Now let's verify your business to build trust with customers.",
+        title: COPY.notifications.restaurant.successTitle,
+        description: COPY.notifications.restaurant.successDescription,
       });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: COPY.notifications.restaurant.unauthorizedTitle,
+          description:
+            error.message || COPY.notifications.restaurant.unauthorizedDescription,
           variant: "destructive",
         });
         setTimeout(() => {
@@ -213,8 +289,8 @@ export default function RestaurantSignup() {
         return;
       }
       toast({
-        title: "Error",
-        description: error.message || "Failed to register restaurant",
+        title: COPY.notifications.restaurant.errorTitle,
+        description: error.message || COPY.notifications.restaurant.errorDescription,
         variant: "destructive",
       });
     },
@@ -231,15 +307,15 @@ export default function RestaurantSignup() {
     },
     onSuccess: () => {
       toast({
-        title: "Verification Submitted!",
-        description: "Your documents have been submitted for review. You'll be notified of the decision.",
+        title: COPY.notifications.verification.successTitle,
+        description: COPY.notifications.verification.successDescription,
       });
       setLocation("/subscribe");
     },
     onError: (error) => {
       toast({
-        title: "Submission Failed",
-        description: error.message || "Failed to submit verification request",
+        title: COPY.notifications.verification.errorTitle,
+        description: error.message || COPY.notifications.verification.errorDescription,
         variant: "destructive",
       });
     },
@@ -264,8 +340,8 @@ export default function RestaurantSignup() {
         
         if (result.betaAccess) {
           toast({
-            title: "Beta Access Granted!",
-            description: "You can now create deals without payment during beta testing.",
+            title: COPY.notifications.betaAccess.title,
+            description: COPY.notifications.betaAccess.description,
           });
           setLocation("/deal-creation");
           return;
@@ -274,7 +350,7 @@ export default function RestaurantSignup() {
       
       // Normal flow continues to verification step
       setCreatedRestaurant(restaurant);
-      setCurrentStep('verification');
+      dispatchOnboarding({ type: "GO_TO_VERIFICATION" });
     } catch (error: any) {
       console.error("Error in restaurant signup:", error);
       // Error handling is already done in the mutation
@@ -284,8 +360,8 @@ export default function RestaurantSignup() {
   const handleVerificationSubmit = () => {
     if (verificationDocuments.length === 0) {
       toast({
-        title: "Documents Required",
-        description: "Please upload at least one business document for verification.",
+        title: COPY.notifications.verification.missingDocsTitle,
+        description: COPY.notifications.verification.missingDocsDescription,
         variant: "destructive",
       });
       return;
@@ -295,8 +371,8 @@ export default function RestaurantSignup() {
 
   const handleSkipVerification = () => {
     toast({
-      title: "Verification Skipped",
-      description: "You can submit verification documents later from your dashboard.",
+      title: COPY.notifications.verification.skippedTitle,
+      description: COPY.notifications.verification.skippedDescription,
     });
     setLocation("/subscribe");
   };
@@ -321,25 +397,24 @@ export default function RestaurantSignup() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
         <BackHeader
-          title="MealScout for Businesses"
+          title={COPY.unauth.headerTitle}
           fallbackHref="/"
           icon={Store}
           className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
         />
 
-        <div className="px-6 py-12 max-w-4xl mx-auto">
-          {/* Hero Section */}
-          <div className="text-center mb-16">
-            <div className="w-48 h-48 mb-8 flex items-center justify-center mx-auto">
-              <img 
-                src={mealScoutLogo} 
-                alt="MealScout Logo" 
-                className="w-full h-full object-contain drop-shadow-2xl"
-              />
+        <div className="px-4 py-4 max-w-4xl mx-auto">
+          {/* Hero Section - Step 2 of the same system */}
+          <div className="text-center mb-4">
+            <div className="inline-flex items-center justify-center px-2 py-1 mb-2 rounded-full bg-white/70 border border-orange-200 text-[10px] font-medium text-orange-700 uppercase tracking-wide">
+              {COPY.unauth.hero.badge}
             </div>
-            <h2 className="text-5xl font-bold text-gray-900 mb-6">Boost Your Business Revenue</h2>
-            <p className="text-gray-600 text-xl leading-relaxed max-w-3xl mx-auto mb-8">
-              Join MealScout's advertising platform and connect with hungry customers actively looking for deals in your neighborhood. Increase foot traffic, fill slow periods, and grow your business.
+            <div className="w-12 h-12 mb-2 flex items-center justify-center mx-auto rounded-2xl bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 shadow-md">
+              <Store className="w-6 h-6 text-white" />
+            </div>
+            <h2 className="text-lg font-bold text-gray-900 mb-1">{COPY.unauth.hero.title}</h2>
+            <p className="text-gray-700 text-xs leading-snug max-w-xl mx-auto mb-3">
+              {COPY.unauth.hero.subtitle}
             </p>
             {/* Authentication Section */}
             <div className="max-w-md mx-auto" data-signup-section>
@@ -355,7 +430,7 @@ export default function RestaurantSignup() {
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                     >
-                      Create Account
+                      {COPY.unauth.toggles.signup}
                     </button>
                     <button
                       data-testid="button-login-toggle"
@@ -366,7 +441,7 @@ export default function RestaurantSignup() {
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                     >
-                      Sign In
+                      {COPY.unauth.toggles.login}
                     </button>
                   </div>
 
@@ -382,13 +457,13 @@ export default function RestaurantSignup() {
                       <path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                       <path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                     </svg>
-                    <span>Continue with Google</span>
+                    <span>{COPY.unauth.oauth.button}</span>
                   </button>
 
                   <div className="relative mb-4">
                     <hr className="border-gray-200" />
                     <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-gray-500 text-sm">
-                      or
+                      {COPY.unauth.divider.or}
                     </span>
                   </div>
 
@@ -402,12 +477,12 @@ export default function RestaurantSignup() {
                             name="firstName"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>First Name</FormLabel>
+                                <FormLabel>{COPY.forms.signup.firstNameLabel}</FormLabel>
                                 <FormControl>
                                   <Input 
                                     data-testid="input-first-name"
                                     autoComplete="given-name"
-                                    placeholder="John" 
+                                    placeholder={COPY.forms.signup.firstNamePlaceholder}
                                     {...field} 
                                   />
                                 </FormControl>
@@ -420,12 +495,12 @@ export default function RestaurantSignup() {
                             name="lastName"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Last Name</FormLabel>
+                                <FormLabel>{COPY.forms.signup.lastNameLabel}</FormLabel>
                                 <FormControl>
                                   <Input 
                                     data-testid="input-last-name"
                                     autoComplete="family-name"
-                                    placeholder="Doe" 
+                                    placeholder={COPY.forms.signup.lastNamePlaceholder}
                                     {...field} 
                                   />
                                 </FormControl>
@@ -439,7 +514,7 @@ export default function RestaurantSignup() {
                           name="email"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Email</FormLabel>
+                              <FormLabel>{COPY.forms.signup.emailLabel}</FormLabel>
                               <FormControl>
                                 <div className="relative">
                                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -447,7 +522,7 @@ export default function RestaurantSignup() {
                                     data-testid="input-email"
                                     type="email" 
                                     autoComplete="email"
-                                    placeholder="john@restaurant.com" 
+                                    placeholder={COPY.forms.signup.emailPlaceholder}
                                     className="pl-10" 
                                     {...field} 
                                   />
@@ -462,13 +537,13 @@ export default function RestaurantSignup() {
                           name="phone"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Phone Number</FormLabel>
+                              <FormLabel>{COPY.forms.signup.phoneLabel}</FormLabel>
                               <FormControl>
                                 <Input 
                                   data-testid="input-phone"
                                   type="tel"
                                   autoComplete="tel"
-                                  placeholder="(555) 123-4567" 
+                                    placeholder={COPY.forms.signup.phonePlaceholder}
                                   {...field} 
                                 />
                               </FormControl>
@@ -481,14 +556,14 @@ export default function RestaurantSignup() {
                           name="password"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Password</FormLabel>
+                              <FormLabel>{COPY.forms.signup.passwordLabel}</FormLabel>
                               <FormControl>
                                 <div className="relative">
                                   <Input 
                                     data-testid="input-password"
                                     type={showPassword ? "text" : "password"} 
                                     autoComplete="new-password"
-                                    placeholder="At least 6 characters" 
+                                    placeholder={COPY.forms.signup.passwordPlaceholder}
                                     className="pr-10" 
                                     {...field} 
                                   />
@@ -511,14 +586,14 @@ export default function RestaurantSignup() {
                           name="confirmPassword"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Confirm Password</FormLabel>
+                              <FormLabel>{COPY.forms.signup.confirmPasswordLabel}</FormLabel>
                               <FormControl>
                                 <div className="relative">
                                   <Input 
                                     data-testid="input-confirm-password"
                                     type={showConfirmPassword ? "text" : "password"} 
                                     autoComplete="new-password"
-                                    placeholder="Confirm your password" 
+                                    placeholder={COPY.forms.signup.confirmPasswordPlaceholder}
                                     className="pr-10" 
                                     {...field} 
                                   />
@@ -542,7 +617,9 @@ export default function RestaurantSignup() {
                           className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
                           disabled={signupMutation.isPending}
                         >
-                          {signupMutation.isPending ? 'Creating Account...' : 'Create Restaurant Account'}
+                          {signupMutation.isPending
+                            ? COPY.unauth.signupCta.buttonPending
+                            : COPY.unauth.signupCta.buttonIdle}
                         </Button>
                       </form>
                     </Form>
@@ -554,7 +631,7 @@ export default function RestaurantSignup() {
                           name="email"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Email</FormLabel>
+                              <FormLabel>{COPY.forms.login.emailLabel}</FormLabel>
                               <FormControl>
                                 <div className="relative">
                                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -562,7 +639,7 @@ export default function RestaurantSignup() {
                                     data-testid="input-login-email"
                                     type="email" 
                                     autoComplete="username"
-                                    placeholder="john@restaurant.com" 
+                                    placeholder={COPY.forms.login.emailPlaceholder}
                                     className="pl-10" 
                                     {...field} 
                                   />
@@ -577,14 +654,14 @@ export default function RestaurantSignup() {
                           name="password"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Password</FormLabel>
+                              <FormLabel>{COPY.forms.login.passwordLabel}</FormLabel>
                               <FormControl>
                                 <div className="relative">
                                   <Input 
                                     data-testid="input-login-password"
                                     type={showLoginPassword ? "text" : "password"} 
                                     autoComplete="current-password"
-                                    placeholder="Your password" 
+                                    placeholder={COPY.forms.login.passwordPlaceholder}
                                     className="pr-10" 
                                     {...field} 
                                   />
@@ -608,12 +685,14 @@ export default function RestaurantSignup() {
                           className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
                           disabled={loginMutation.isPending}
                         >
-                          {loginMutation.isPending ? 'Signing In...' : 'Sign In to Restaurant Account'}
+                          {loginMutation.isPending
+                            ? COPY.unauth.loginCta.buttonPending
+                            : COPY.unauth.loginCta.buttonIdle}
                         </Button>
                         <div className="text-center mt-4">
                           <Link href="/forgot-password">
                             <span className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer text-sm" data-testid="link-forgot-password">
-                              Forgot your password?
+                              {COPY.unauth.forgotPassword}
                             </span>
                           </Link>
                         </div>
@@ -681,45 +760,49 @@ export default function RestaurantSignup() {
 
           {/* Pricing Card */}
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/50 rounded-3xl p-12 shadow-2xl text-center mb-16">
-            <h3 className="font-bold text-gray-900 text-3xl mb-6">Simple, Transparent Pricing</h3>
+            <h3 className="font-bold text-gray-900 text-3xl mb-6">{COPY.pricing.hero.title}</h3>
             
             {/* Single pricing tier */}
             <div className="max-w-2xl mx-auto">
               <div className="bg-white/70 rounded-2xl p-8 border border-blue-200/30 mb-8">
                 <div className="flex items-center justify-center mb-6">
-                  <span className="text-6xl font-bold text-blue-600">$50</span>
-                  <span className="text-gray-600 text-2xl ml-2">/month</span>
+                  <span className="text-6xl font-bold text-blue-600">{COPY.pricing.hero.monthlyPrice}</span>
+                  <span className="text-gray-600 text-2xl ml-2">{COPY.pricing.hero.monthlySuffix}</span>
                 </div>
                 <p className="text-gray-600 text-xl mb-6">
-                  Create unlimited deals and reach more customers
+                  {COPY.pricing.hero.coreLine}
                 </p>
                 
                 {/* Special offers */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
                   <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                    <p className="text-green-700 font-semibold">3 months for $100</p>
-                    <p className="text-green-600 text-sm">First-time users</p>
+                    <p className="text-green-700 font-semibold">{COPY.pricing.hero.offerThreeMonths}</p>
+                    <p className="text-green-600 text-sm">{COPY.pricing.hero.offerThreeMonthsNote}</p>
                   </div>
                   <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                    <p className="text-purple-700 font-semibold">$450/year</p>
-                    <p className="text-purple-600 text-sm">Save 25%</p>
+                    <p className="text-purple-700 font-semibold">{COPY.pricing.hero.yearlyPrice}</p>
+                    <p className="text-purple-600 text-sm">{COPY.pricing.hero.yearlyNote}</p>
                   </div>
                 </div>
               </div>
 
-              <h4 className="font-bold text-gray-900 text-xl mb-6">Everything included:</h4>
+              <h4 className="font-bold text-gray-900 text-xl mb-6">{COPY.pricing.hero.everythingIncludedTitle}</h4>
               <div className="grid md:grid-cols-2 gap-4 text-left">
                 <div className="space-y-3">
-                  <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Unlimited deals</span></div>
-                  <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Edit deals anytime</span></div>
-                  <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Performance analytics</span></div>
-                  <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Customer targeting</span></div>
+                  {COPY.pricing.hero.everythingIncludedBullets.slice(0, 4).map((item) => (
+                    <div key={item} className="flex items-center">
+                      <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>
+                      <span className="text-gray-700">{item}</span>
+                    </div>
+                  ))}
                 </div>
                 <div className="space-y-3">
-                  <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Real-time notifications</span></div>
-                  <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Location-based promotion</span></div>
-                  <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">24/7 support</span></div>
-                  <div className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg><span className="text-gray-700">Cancel anytime</span></div>
+                  {COPY.pricing.hero.everythingIncludedBullets.slice(4).map((item) => (
+                    <div key={item} className="flex items-center">
+                      <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>
+                      <span className="text-gray-700">{item}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -727,9 +810,9 @@ export default function RestaurantSignup() {
 
           {/* Final CTA */}
           <div className="text-center">
-            <h3 className="text-3xl font-bold text-gray-900 mb-4">Ready to Get Started?</h3>
+            <h3 className="text-3xl font-bold text-gray-900 mb-4">{COPY.unauth.finalCta.title}</h3>
             <p className="text-gray-600 text-lg mb-8 max-w-2xl mx-auto">
-              Join hundreds of restaurants already using MealScout to grow their business. Set up your first deal in minutes.
+              {COPY.unauth.finalCta.subtitle}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <button 
@@ -741,7 +824,7 @@ export default function RestaurantSignup() {
                 }}
                 className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-10 py-4 rounded-2xl font-bold text-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
               >
-                Create Restaurant Account
+                {COPY.unauth.finalCta.primaryButton}
               </button>
               <button 
                 onClick={() => {
@@ -754,7 +837,7 @@ export default function RestaurantSignup() {
                 }}
                 className="border-2 border-gray-300 hover:bg-gray-50 text-gray-700 hover:text-gray-800 px-10 py-4 rounded-2xl font-bold text-xl transition-all duration-200"
               >
-                Login to Existing Account
+                {COPY.unauth.finalCta.secondaryButton}
               </button>
             </div>
           </div>
@@ -766,13 +849,13 @@ export default function RestaurantSignup() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
       <SEOHead
-        title="Restaurant Sign Up - MealScout | Grow Your Business"
-        description="Join MealScout and reach more customers with targeted local deals. Restaurant owners can create promotional deals, attract new diners, and boost sales. Sign up for free today!"
-        keywords="restaurant signup, business registration, restaurant promotions, attract customers, boost restaurant sales, local marketing"
-        canonicalUrl="https://mealscout.us/restaurant-signup"
+        title={COPY.meta.title}
+        description={COPY.meta.description}
+        keywords={COPY.meta.keywords}
+        canonicalUrl={COPY.meta.canonicalUrl}
       />
       <BackHeader
-        title="Restaurant Registration"
+        title={COPY.main.backHeaderTitle}
         fallbackHref="/"
         icon={Store}
         className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
@@ -789,9 +872,9 @@ export default function RestaurantSignup() {
             <div className="absolute -top-2 -left-2 w-16 h-16 bg-white/20 rounded-full blur-xl"></div>
             <div className="absolute -bottom-3 -right-3 w-20 h-20 bg-white/20 rounded-full blur-xl"></div>
           </div>
-          <h2 className="text-4xl font-bold text-gray-900 mb-4" data-testid="text-hero-title">Grow Your Business</h2>
+          <h2 className="text-4xl font-bold text-gray-900 mb-4" data-testid="text-hero-title">{COPY.main.heroTitle}</h2>
           <p className="text-gray-600 text-xl leading-relaxed max-w-2xl mx-auto" data-testid="text-hero-subtitle">
-            Reach more customers and boost sales with targeted local deals
+            {COPY.main.heroSubtitle}
           </p>
         </div>
 
@@ -804,9 +887,9 @@ export default function RestaurantSignup() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
               </svg>
             </div>
-            <h3 className="font-bold text-gray-900 text-lg mb-2" data-testid="text-benefit-local-title">Hyper-Local Targeting</h3>
+            <h3 className="font-bold text-gray-900 text-lg mb-2" data-testid="text-benefit-local-title">{COPY.main.benefits.compact.local.title}</h3>
             <p className="text-gray-600 leading-relaxed" data-testid="text-benefit-local-desc">
-              Reach workers and customers within a few blocks of your restaurant
+              {COPY.main.benefits.compact.local.desc}
             </p>
           </div>
           
@@ -816,9 +899,9 @@ export default function RestaurantSignup() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
             </div>
-            <h3 className="font-bold text-gray-900 text-lg mb-2" data-testid="text-benefit-meals-title">All-Day Service</h3>
+            <h3 className="font-bold text-gray-900 text-lg mb-2" data-testid="text-benefit-meals-title">{COPY.main.benefits.compact.allDay.title}</h3>
             <p className="text-gray-600 leading-relaxed" data-testid="text-benefit-meals-desc">
-              Great deals throughout the day for busy customers
+              {COPY.main.benefits.compact.allDay.desc}
             </p>
           </div>
           
@@ -828,9 +911,9 @@ export default function RestaurantSignup() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
               </svg>
             </div>
-            <h3 className="font-bold text-gray-900 text-lg mb-2" data-testid="text-benefit-track-title">Track Performance</h3>
+            <h3 className="font-bold text-gray-900 text-lg mb-2" data-testid="text-benefit-track-title">{COPY.main.benefits.compact.track.title}</h3>
             <p className="text-gray-600 leading-relaxed" data-testid="text-benefit-track-desc">
-              See how your deals perform and optimize for better results
+              {COPY.main.benefits.compact.track.desc}
             </p>
           </div>
         </div>
@@ -842,14 +925,14 @@ export default function RestaurantSignup() {
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'restaurant' ? 'bg-red-100 border-2 border-red-600' : 'bg-green-100'}`}>
                 {currentStep === 'verification' ? <CheckCircle className="w-5 h-5" /> : <span className="font-bold">1</span>}
               </div>
-              <span className="font-medium">Business Details</span>
+              <span className="font-medium">{COPY.steps.businessDetails}</span>
             </div>
             <div className="w-16 h-0.5 bg-gray-300"></div>
             <div className={`flex items-center space-x-2 ${currentStep === 'verification' ? 'text-red-600' : 'text-gray-400'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'verification' ? 'bg-red-100 border-2 border-red-600' : 'bg-gray-100'}`}>
                 <span className="font-bold">2</span>
               </div>
-              <span className="font-medium">Business Verification</span>
+              <span className="font-medium">{COPY.steps.businessVerification}</span>
             </div>
           </div>
         </div>
@@ -864,10 +947,10 @@ export default function RestaurantSignup() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-business-name">Business Name</FormLabel>
+                    <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-business-name">{COPY.forms.restaurant.nameLabel}</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="Enter your business name" 
+                        placeholder={COPY.forms.restaurant.namePlaceholder}
                         {...field} 
                         className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
                         data-testid="input-business-name"
@@ -883,11 +966,11 @@ export default function RestaurantSignup() {
                 name="businessType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-business-type">Business Type</FormLabel>
+                    <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-business-type">{COPY.forms.restaurant.businessTypeLabel}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md" data-testid="select-business-type">
-                          <SelectValue placeholder="Select your business type..." />
+                          <SelectValue placeholder={COPY.forms.restaurant.businessTypePlaceholder} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -906,10 +989,10 @@ export default function RestaurantSignup() {
                 name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-address">Business Address</FormLabel>
+                    <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-address">{COPY.forms.restaurant.addressLabel}</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="123 Main Street, Chicago, IL" 
+                        placeholder={COPY.forms.restaurant.addressPlaceholder}
                         {...field} 
                         className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
                         data-testid="input-address"
@@ -926,11 +1009,11 @@ export default function RestaurantSignup() {
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-phone">Phone</FormLabel>
+                      <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-phone">{COPY.forms.restaurant.phoneLabel}</FormLabel>
                       <FormControl>
                         <Input 
                           type="tel" 
-                          placeholder="(555) 123-4567" 
+                          placeholder={COPY.forms.restaurant.phonePlaceholder}
                           {...field} 
                           className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
                           data-testid="input-phone"
@@ -945,11 +1028,11 @@ export default function RestaurantSignup() {
                   name="cuisineType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-cuisine">Cuisine Type</FormLabel>
+                      <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-cuisine">{COPY.forms.restaurant.cuisineLabel}</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md" data-testid="select-cuisine">
-                            <SelectValue placeholder="Select cuisine type..." />
+                            <SelectValue placeholder={COPY.forms.restaurant.cuisinePlaceholder} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -1036,62 +1119,188 @@ export default function RestaurantSignup() {
                 />
               </div>
 
+              {/* Business Profile Section */}
+              <div className="space-y-6 pt-6 border-t border-gray-200">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Business Profile</h3>
+                  <p className="text-sm text-gray-600">Help customers find you and understand what makes your business special</p>
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base font-semibold text-gray-900">About Your Business <span className="text-sm font-normal text-gray-500">(Optional)</span></FormLabel>
+                      <FormControl>
+                        <textarea
+                          placeholder="Tell customers what makes your restaurant unique..."
+                          {...field}
+                          rows={4}
+                          maxLength={500}
+                          className="w-full py-3 px-4 text-base border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200 resize-none"
+                        />
+                      </FormControl>
+                      <p className="text-xs text-gray-500">{field.value?.length || 0}/500 characters</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="websiteUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-semibold text-gray-900">Website <span className="text-sm font-normal text-gray-500">(Optional)</span></FormLabel>
+                        <FormControl>
+                          <Input
+                            type="url"
+                            placeholder="https://yourrestaurant.com"
+                            {...field}
+                            className="py-4 px-4 text-base border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="instagramUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-semibold text-gray-900">Instagram <span className="text-sm font-normal text-gray-500">(Optional)</span></FormLabel>
+                        <FormControl>
+                          <Input
+                            type="url"
+                            placeholder="https://instagram.com/yourrestaurant"
+                            {...field}
+                            className="py-4 px-4 text-base border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="facebookPageUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base font-semibold text-gray-900">Facebook Business Page <span className="text-sm font-normal text-gray-500">(Optional)</span></FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://facebook.com/yourrestaurant"
+                          {...field}
+                          className="py-4 px-4 text-base border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div>
+                  <h4 className="text-base font-semibold text-gray-900 mb-3">Amenities</h4>
+                  <p className="text-sm text-gray-600 mb-4">Select features available at your location</p>
+                  <div className="space-y-3">
+                    <FormField
+                      control={form.control}
+                      name="hasParking"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border border-gray-200 p-4 bg-white/50">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="flex-1">
+                            <FormLabel className="text-base font-medium text-gray-900 cursor-pointer">Parking Available</FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="hasWifi"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border border-gray-200 p-4 bg-white/50">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="flex-1">
+                            <FormLabel className="text-base font-medium text-gray-900 cursor-pointer">Free Wi-Fi</FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="hasOutdoorSeating"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border border-gray-200 p-4 bg-white/50">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="flex-1">
+                            <FormLabel className="text-base font-medium text-gray-900 cursor-pointer">Outdoor Seating</FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <p className="text-sm text-blue-900">
+                    <strong>Note for Food Trucks & Bars:</strong> You can set operating hours later in your dashboard. We know schedules can be flexible!
+                  </p>
+                </div>
+              </div>
+
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/50 rounded-2xl p-8 shadow-lg">
-                <h3 className="font-bold text-gray-900 text-xl mb-6" data-testid="text-pricing-title">Simple Pricing</h3>
+                <h3 className="font-bold text-gray-900 text-xl mb-6" data-testid="text-pricing-title">{COPY.pricing.formCard.title}</h3>
                 
                 {/* Single Plan */}
                 <div className="bg-white rounded-xl p-8 border-2 border-red-500 shadow-lg text-center mb-6 relative">
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-red-500 text-white text-sm font-bold px-4 py-1 rounded-full">
-                    Best Deal
+                    {COPY.pricing.formCard.badge}
                   </div>
-                  <div className="text-5xl font-bold text-red-600 mb-2">$49</div>
-                  <div className="text-lg text-gray-600 mb-4">/month</div>
-                  <div className="text-xl font-semibold text-gray-900 mb-4">Unlimited Deals</div>
+                  <div className="text-5xl font-bold text-red-600 mb-2">{COPY.pricing.formCard.monthlyPrice}</div>
+                  <div className="text-lg text-gray-600 mb-4">{COPY.pricing.formCard.monthlySuffix}</div>
+                  <div className="text-xl font-semibold text-gray-900 mb-4">{COPY.pricing.formCard.unlimitedTitle}</div>
                   <div className="text-gray-600 text-base">
-                    Post as many deals as you want - no limits!
+                    {COPY.pricing.formCard.unlimitedBody}
                   </div>
                 </div>
 
                 {/* Features List */}
                 <div className="bg-white/70 rounded-lg p-6 border border-gray-200/50">
-                  <h4 className="font-semibold text-gray-900 mb-4">Everything included:</h4>
+                  <h4 className="font-semibold text-gray-900 mb-4">{COPY.pricing.formCard.everythingIncludedTitle}</h4>
                   <div className="grid md:grid-cols-2 gap-3 text-sm text-gray-700">
-                    <div className="flex items-center">
+                  {COPY.pricing.formCard.features.map((item) => (
+                    <div key={item} className="flex items-center">
                       <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                       </svg>
-                      Unlimited active deals
+                      {item}
                     </div>
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
-                      </svg>
-                      Random deal display in feeds
-                    </div>
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
-                      </svg>
-                      Performance analytics
-                    </div>
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
-                      </svg>
-                      Location-based promotion
-                    </div>
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
-                      </svg>
-                      Real-time notifications
-                    </div>
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
-                      </svg>
-                      Cancel anytime
-                    </div>
+                  ))}
                   </div>
                 </div>
               </div>
@@ -1103,11 +1312,12 @@ export default function RestaurantSignup() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-lg font-semibold text-gray-900" data-testid="label-promo-code">
-                      Promo Code <span className="text-sm font-normal text-gray-500">(Optional)</span>
+                      {COPY.forms.restaurant.promoLabel} {" "}
+                      <span className="text-sm font-normal text-gray-500">{COPY.forms.restaurant.promoOptionalSuffix}</span>
                     </FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="Enter promo code for beta access..." 
+                        placeholder={COPY.promo.helperText}
                         {...field} 
                         className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200 uppercase"
                         data-testid="input-promo-code"
@@ -1115,7 +1325,7 @@ export default function RestaurantSignup() {
                       />
                     </FormControl>
                     <p className="text-sm text-gray-500 mt-1">
-                      Enter "BETA" for free access during beta testing period
+                      {COPY.promo.betaNote}
                     </p>
                     <FormMessage />
                   </FormItem>
@@ -1137,13 +1347,13 @@ export default function RestaurantSignup() {
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel className="text-gray-600 leading-relaxed text-base" data-testid="label-terms">
-                        I agree to the{" "}
+                        {COPY.terms.labelPrefix}{" "}
                         <Link href="/terms-of-service">
-                          <span className="text-red-600 font-medium underline hover:text-red-700 cursor-pointer">Terms of Service</span>
+                          <span className="text-red-600 font-medium underline hover:text-red-700 cursor-pointer">{COPY.terms.termsText}</span>
                         </Link>
-                        {" "}and{" "}
+                        {" "}{COPY.terms.andText}{" "}
                         <Link href="/privacy-policy">
-                          <span className="text-red-600 font-medium underline hover:text-red-700 cursor-pointer">Privacy Policy</span>
+                          <span className="text-red-600 font-medium underline hover:text-red-700 cursor-pointer">{COPY.terms.privacyText}</span>
                         </Link>
                       </FormLabel>
                       <FormMessage />
@@ -1158,7 +1368,9 @@ export default function RestaurantSignup() {
                 disabled={createRestaurantMutation.isPending}
                 data-testid="button-start-trial"
               >
-                {createRestaurantMutation.isPending ? "Creating..." : "Get Started"}
+                {createRestaurantMutation.isPending
+                  ? COPY.cta.restaurantSubmit.pending
+                  : COPY.cta.restaurantSubmit.idle}
               </Button>
               </form>
             </Form>
@@ -1173,25 +1385,22 @@ export default function RestaurantSignup() {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2 text-2xl">
                   <Upload className="w-7 h-7 text-red-600" />
-                  <span>Verify Your Business</span>
+                  <span>{COPY.verification.title}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <p className="text-lg text-gray-700">
-                    Build trust with customers by verifying your business. Upload documents like:
+                    {COPY.verification.intro}
                   </p>
                   <ul className="list-disc list-inside space-y-2 text-gray-600 ml-4">
-                    <li>Business license or permit</li>
-                    <li>Restaurant operating license</li>
-                    <li>Tax registration documents</li>
-                    <li>Health department certificates</li>
-                    <li>Any other official business documents</li>
+                    {COPY.verification.bullets.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
                   </ul>
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
                     <p className="text-blue-800 text-sm">
-                      <strong>Why verify?</strong> Verified restaurants get a trust badge, appear higher in search results, 
-                      and customers are more likely to choose verified businesses.
+                      {COPY.verification.whyVerify}
                     </p>
                   </div>
                 </div>
@@ -1211,12 +1420,12 @@ export default function RestaurantSignup() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setCurrentStep('restaurant')}
+                onClick={() => dispatchOnboarding({ type: "BACK_TO_RESTAURANT" })}
                 className="flex items-center space-x-2"
                 data-testid="button-back-to-restaurant"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span>Back to Restaurant Details</span>
+                <span>{COPY.verification.backButton}</span>
               </Button>
 
               <div className="flex flex-col sm:flex-row gap-3">
@@ -1227,7 +1436,7 @@ export default function RestaurantSignup() {
                   className="text-gray-600 hover:text-gray-800"
                   data-testid="button-skip-verification"
                 >
-                  Skip for Now
+                  {COPY.verification.skipButton}
                 </Button>
                 <Button
                   onClick={handleVerificationSubmit}
@@ -1241,7 +1450,9 @@ export default function RestaurantSignup() {
                     <ArrowRight className="w-4 h-4" />
                   )}
                   <span>
-                    {createVerificationRequestMutation.isPending ? 'Submitting...' : 'Submit for Review'}
+                    {createVerificationRequestMutation.isPending
+                      ? COPY.verification.submitPending
+                      : COPY.verification.submitIdle}
                   </span>
                 </Button>
               </div>

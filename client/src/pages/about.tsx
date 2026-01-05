@@ -126,7 +126,7 @@ export default function About() {
                 By focusing on hyper-local discovery and time-based promotions, we create meaningful 
                 connections between diners and restaurants in their immediate vicinity.
               </p>
-              <Link href="/restaurant-signup">
+              <Link href="/customer-signup?role=business">
                 <Button className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold px-6 py-3">
                   Partner With Us
                 </Button>

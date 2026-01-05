@@ -88,71 +88,26 @@ export default function Login() {
         noIndex={true}
       />
       <BackHeader
-        title="Join MealScout"
+        title="Log In"
         fallbackHref="/"
         icon={UserCheck}
         className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
       />
 
-      <div className="px-6 py-12 max-w-md mx-auto">
+      <div className="px-6 py-8 max-w-md mx-auto">
         {/* Welcome Section */}
-        <div className="text-center mb-12">
-          <div className="w-20 h-20 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 rounded-3xl mb-8 flex items-center justify-center mx-auto shadow-2xl">
-            <svg className="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Welcome to MealScout!</h2>
-          <p className="text-gray-600 text-lg leading-relaxed">
-            Join thousands of food lovers discovering amazing deals near them every day.
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h2>
+          <p className="text-gray-600 text-sm">
+            Log in to access your saved deals and favorites
           </p>
         </div>
 
-        {/* Benefits */}
-        <div className="space-y-4 mb-10">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Save Your Favorite Deals</h3>
-              <p className="text-gray-600 text-sm">Never lose track of the best offers</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-5 5v-5z"/>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10a3 3 0 106 0v5a3 3 0 11-6 0v-5z"/>
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Get Personalized Recommendations</h3>
-              <p className="text-gray-600 text-sm">Discover deals tailored to your taste</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-              <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-5 5v-5zM4 5h16a1 1 0 010 2H4a1 1 0 110-2zM4 9h16a1 1 0 010 2H4a1 1 0 110-2zM4 13h8a1 1 0 010 2H4a1 1 0 110-2z"/>
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Never Miss New Deals</h3>
-              <p className="text-gray-600 text-sm">Get notified when your favorites post offers</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Login/Signup Card */}
+        {/* Login Card */}
         <div className="bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-xl p-8">
           <div className="text-center mb-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Sign In or Sign Up</h3>
-            <p className="text-gray-600 text-sm">Choose your preferred method to continue</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Sign In</h3>
+            <p className="text-gray-600 text-sm">Choose your preferred method</p>
           </div>
 
           {/* Google Login */}
@@ -216,9 +171,9 @@ export default function Login() {
               <Link href="/customer-signup">
                 <button 
                   data-testid="button-customer-signup"
-                  className="w-full py-4 px-6 font-semibold text-lg rounded-xl border-2 border-red-400 text-red-600 hover:bg-red-50 hover:border-red-500 transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg"
+                  className="w-full py-3 px-4 font-medium text-sm rounded-lg border-2 border-red-400 text-red-600 hover:bg-red-50 hover:border-red-500 transition-all duration-200 flex items-center justify-center"
                 >
-                  Create Account with Email →
+                  CREATE ACCOUNT
                 </button>
               </Link>
             </div>
@@ -314,7 +269,7 @@ export default function Login() {
         {/* Business Link */}
         <div className="mt-8 text-center">
           <p className="text-gray-600 text-sm mb-3">Looking to promote your business?</p>
-          <Link href="/restaurant-signup">
+          <Link href="/customer-signup?role=business">
             <button className="py-2 px-4 font-medium text-blue-600 border-2 border-blue-300 hover:bg-blue-50 hover:border-blue-400 rounded-lg transition-all duration-200" data-testid="link-business-signup">
               Business Sign Up →
             </button>

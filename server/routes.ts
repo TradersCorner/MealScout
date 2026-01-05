@@ -4339,6 +4339,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const adminRoutes = (await import('./adminRoutes')).default;
   app.use('/api/admin', adminRoutes);
 
+  // Register evidence export routes (admin-only)
+  const evidenceExportRoutes = (await import('./evidenceExportRoutes')).default;
+  app.use('/api/admin', evidenceExportRoutes);
+
   // Register affiliate system routes
   const affiliateRoutes = (await import('./affiliateRoutes')).default;
   app.use('/api/affiliate', affiliateRoutes);

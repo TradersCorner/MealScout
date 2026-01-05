@@ -141,6 +141,12 @@ export const restaurants = pgTable("restaurants", {
   // Image uploads
   logoUrl: varchar("logo_url"),
   coverImageUrl: varchar("cover_image_url"),
+  // Business profile information (for customer-facing display and LLM crawling)
+  description: text("description"), // About the business
+  websiteUrl: varchar("website_url"), // Business website
+  instagramUrl: varchar("instagram_url"), // Instagram profile
+  facebookPageUrl: varchar("facebook_page_url"), // Facebook business page
+  amenities: jsonb("amenities"), // { parking: boolean, wifi: boolean, outdoor_seating: boolean, etc }
   // Golden Plate Award for top-performing restaurants (awarded every 90 days)
   hasGoldenPlate: boolean("has_golden_plate").default(false),
   goldenPlateEarnedAt: timestamp("golden_plate_earned_at"),
@@ -852,6 +858,15 @@ export const insertRestaurantSchema = createInsertSchema(restaurants).omit({
   updatedAt: true,
 }).extend({
   operatingHours: operatingHoursSchema.optional(),
+  description: z.string().max(500).optional().nullable(),
+  websiteUrl: z.string().url().optional().nullable().or(z.literal('')),
+  instagramUrl: z.string().url().optional().nullable().or(z.literal('')),
+  facebookPageUrl: z.string().url().optional().nullable().or(z.literal('')),
+  amenities: z.object({
+    parking: z.boolean().optional(),
+    wifi: z.boolean().optional(),
+    outdoor_seating: z.boolean().optional(),
+  }).optional().nullable(),
 });
 
 export const insertDealSchema = createInsertSchema(deals).omit({

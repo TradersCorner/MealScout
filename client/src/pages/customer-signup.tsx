@@ -37,6 +37,11 @@ export default function CustomerSignup() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const searchParams = new URLSearchParams(window.location.search);
+  const initialAccountType: "diner" | "business" =
+    searchParams.get("role") === "business" ? "business" : "diner";
+  const [accountType, setAccountType] = useState<"diner" | "business">(initialAccountType);
+
   const form = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
@@ -49,7 +54,7 @@ export default function CustomerSignup() {
     },
   });
 
-  const signupMutation = useMutation({
+  const customerSignupMutation = useMutation({
     mutationFn: async (data: SignupFormData) => {
       const { confirmPassword, ...signupData } = data;
       // Remove phone if empty
@@ -63,7 +68,6 @@ export default function CustomerSignup() {
         title: "Welcome to MealScout!",
         description: "Account created successfully. You're now logged in!",
       });
-      // Redirect to home page
       setLocation("/");
     },
     onError: (error) => {
@@ -75,12 +79,47 @@ export default function CustomerSignup() {
     },
   });
 
+  const businessSignupMutation = useMutation({
+    mutationFn: async (data: SignupFormData) => {
+      const { confirmPassword, ...signupData } = data;
+      return await apiRequest("POST", "/api/auth/restaurant/register", signupData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Welcome to MealScout for Business!",
+        description: "Account created successfully. Let's finish setting up your restaurant.",
+      });
+      setLocation("/restaurant-signup");
+    },
+    onError: (error) => {
+      toast({
+        title: "Business signup failed",
+        description: error.message || "Failed to create business account",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: SignupFormData) => {
-    signupMutation.mutate(data);
+    if (accountType === "business") {
+      const digitsOnly = (data.phone || "").replace(/\D/g, "");
+      if (!digitsOnly || digitsOnly.length < 10) {
+        form.setError("phone", {
+          type: "manual",
+          message: "Valid phone number is required for business accounts",
+        });
+        return;
+      }
+      businessSignupMutation.mutate(data);
+    } else {
+      customerSignupMutation.mutate(data);
+    }
   };
 
+  const isSubmitting = customerSignupMutation.isPending || businessSignupMutation.isPending;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 flex flex-col">
       <SEOHead
         title="Sign Up - MealScout | Create Free Account"
         description="Join MealScout for free and start discovering exclusive food deals from local restaurants. Save your favorites, track deals, and never miss amazing dining discounts."
@@ -90,73 +129,61 @@ export default function CustomerSignup() {
       />
       <BackHeader
         title="Create Account"
-        fallbackHref="/login"
+        fallbackHref="/"
         icon={UserPlus}
         className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
       />
 
-      <div className="px-6 py-12 max-w-md mx-auto">
-        {/* Welcome Section */}
-        <div className="text-center mb-12">
-          <div className="w-20 h-20 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 rounded-3xl mb-8 flex items-center justify-center mx-auto shadow-2xl">
-            <UserPlus className="w-10 h-10 text-white" />
+      <main className="flex-1 px-4 py-2 max-w-md mx-auto flex flex-col justify-between">
+        {/* Top: hero + form */}
+        <div>
+          {/* Welcome Section (highly compressed) */}
+          <div className="text-center mb-2">
+          <div className="inline-flex mb-2 rounded-full bg-white/80 border border-gray-200 shadow-sm text-[11px] font-medium text-gray-700 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setAccountType("diner")}
+              className={`px-3 py-1 transition-colors ${
+                accountType === "diner" ? "bg-red-500 text-white" : "bg-transparent text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              Diner
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccountType("business")}
+              className={`px-3 py-1 border-l border-gray-200 transition-colors ${
+                accountType === "business" ? "bg-red-500 text-white" : "bg-transparent text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              Restaurant / Food Truck
+            </button>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Create Your Account</h2>
-          <p className="text-gray-600 text-lg leading-relaxed">
-            Join thousands of food lovers discovering amazing deals near them every day.
+          <div className="w-10 h-10 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 rounded-2xl mb-1 flex items-center justify-center mx-auto shadow-md ring-2 ring-white/70">
+            <UserPlus className="w-5 h-5 text-white drop-shadow" />
+          </div>
+          <h2 className="text-lg font-bold text-gray-900 mb-1 tracking-tight">Create Your MealScout Account</h2>
+          <p className="text-gray-600 text-xs leading-snug max-w-sm mx-auto">
+            {accountType === "business"
+              ? "Create your login so we can connect your restaurant or truck, list your deals, and pass savings directly to your regulars."
+              : "Save favorite deals and never miss new drops from local spots."}
           </p>
         </div>
 
-        {/* Benefits */}
-        <div className="space-y-4 mb-10">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
-              </svg>
+          {/* Signup Form */}
+          <div className="bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-xl p-4">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900 mb-1">Sign Up with Email</h3>
+              <p className="text-gray-600 text-xs">
+                {accountType === "business"
+                  ? "This login powers your business dashboard. Pricing stays transparent and your discounts go straight to your guests."
+                  : "Create your account to get started with local food deals."}
+              </p>
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Save Your Favorite Deals</h3>
-              <p className="text-gray-600 text-sm">Never lose track of the best offers</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-5 5v-5z"/>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10a3 3 0 106 0v5a3 3 0 11-6 0v-5z"/>
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Get Personalized Recommendations</h3>
-              <p className="text-gray-600 text-sm">Discover deals tailored to your taste</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-              <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-5 5v-5zM4 5h16a1 1 0 010 2H4a1 1 0 110-2zM4 9h16a1 1 0 010 2H4a1 1 0 110-2zM4 13h8a1 1 0 010 2H4a1 1 0 110-2z"/>
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Never Miss New Deals</h3>
-              <p className="text-gray-600 text-sm">Get notified when your favorites post offers</p>
-            </div>
-          </div>
-        </div>
 
-        {/* Signup Form */}
-        <div className="bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-xl p-8">
-          <div className="text-center mb-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Sign Up with Email</h3>
-            <p className="text-gray-600 text-sm">Create your account to get started</p>
-          </div>
-
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 <FormField
                   control={form.control}
                   name="firstName"
@@ -302,76 +329,75 @@ export default function CustomerSignup() {
               <Button 
                 data-testid="button-create-account"
                 type="submit" 
-                disabled={signupMutation.isPending}
-                className="w-full py-4 font-bold text-lg rounded-2xl bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white border-0 shadow-xl hover:shadow-2xl transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                disabled={isSubmitting}
+                className="w-full py-3 font-semibold text-base rounded-2xl bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white border-0 shadow-lg hover:shadow-xl transform hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
-                {signupMutation.isPending ? (
+                {isSubmitting ? (
                   <div className="animate-spin w-5 h-5 mr-3 border-2 border-white border-t-transparent rounded-full" />
                 ) : null}
                 Create Account
               </Button>
-            </form>
-          </Form>
+              </form>
+            </Form>
 
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+            {/* Divider + Login Link (compressed) */}
+            <div className="mt-3 flex items-center justify-between text-xs text-gray-600">
+              <span>Already have an account?</span>
+              <Link href="/login">
+                <button
+                  type="button"
+                  className="text-blue-600 underline hover:text-blue-700"
+                  data-testid="button-sign-in"
+                >
+                  Sign in
+                </button>
+              </Link>
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-4 text-gray-500">Already have an account?</span>
-            </div>
-          </div>
 
-          {/* Login Link */}
-          <Link href="/login">
-            <Button 
-              data-testid="button-sign-in"
-              variant="outline" 
-              className="w-full py-4 font-semibold text-lg rounded-2xl border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-all duration-200"
-            >
-              Sign In Instead
-            </Button>
-          </Link>
-
-          {/* Trust indicators */}
-          <div className="pt-4 border-t border-gray-200 mt-6">
-            <div className="flex items-center justify-center space-x-6 text-xs text-gray-500">
+            {/* Trust indicators (compressed) */}
+            <div className="mt-3 border-t border-gray-200 pt-2 flex items-center justify-center gap-4 text-[11px] leading-tight text-gray-500">
               <div className="flex items-center space-x-1">
                 <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                 </svg>
-                <span>100% Free</span>
+                <span>
+                  {accountType === "business" ? "Transparent pricing" : "Local restaurants & trucks"}
+                </span>
               </div>
               <div className="flex items-center space-x-1">
                 <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                 </svg>
-                <span>Secure</span>
+                <span>
+                  {accountType === "business" ? "You control every discount" : "Secure"}
+                </span>
               </div>
               <div className="flex items-center space-x-1">
                 <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                 </svg>
-                <span>Instant Access</span>
+                <span>
+                  {accountType === "business" ? "Local diners get the savings" : "Instant Access"}
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Legal Links */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-gray-500">
+        {/* Bottom: Legal Links */}
+        <div className="mt-2 text-center">
+          <p className="text-[11px] text-gray-500">
             By creating an account, you agree to our{" "}
             <Link href="/terms-of-service">
               <span className="text-blue-600 underline hover:text-blue-700 cursor-pointer">Terms of Service</span>
-            </Link> and{" "}
+            </Link>{" "}
+            and{" "}
             <Link href="/privacy-policy">
               <span className="text-blue-600 underline hover:text-blue-700 cursor-pointer">Privacy Policy</span>
             </Link>
           </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

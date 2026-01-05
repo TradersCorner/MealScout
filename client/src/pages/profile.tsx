@@ -153,7 +153,7 @@ export default function ProfilePage() {
         {user?.userType === 'customer' && (
           <Card className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 transition-all cursor-pointer border-0 shadow-lg mb-6">
             <CardContent className="p-0">
-              <Link href="/restaurant-signup">
+              <Link href="/customer-signup?role=business">
                 <div className="p-5" data-testid="card-become-restaurant-owner">
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">

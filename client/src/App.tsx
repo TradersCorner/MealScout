@@ -26,6 +26,9 @@ import AdminIncidents from "@/pages/AdminIncidents";
 import AdminControlCenter from "@/pages/AdminControlCenter";
 import AdminSupportTickets from "@/pages/AdminSupportTickets";
 import AdminModerationEvents from "@/pages/AdminModerationEvents";
+import AdminModerationVideos from "@/pages/admin-moderation-videos";
+import AdminModerationMetrics from "@/pages/admin-moderation-metrics";
+import AdminModerationAppeals from "@/pages/admin-moderation-appeals";
 import AdminAuditLogs from "@/pages/AdminAuditLogs";
 import AffiliateEarnings from "@/pages/AffiliateEarnings";
 import EmptyCountyExperience from "@/pages/EmptyCountyExperience";
@@ -52,6 +55,7 @@ import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
 import OAuthSetupGuide from "@/pages/oauth-setup-guide";
 import GoldenPlateWinners from "@/pages/golden-plate-winners";
+import ParkingPassPage from "@/pages/parking-pass";
 import { BetaDisclaimer } from "@/components/beta-disclaimer";
 import { BugReportButton } from "@/components/bug-report-button";
 
@@ -100,6 +104,7 @@ function Router() {
           <Route path="/contact" component={Contact} />
           <Route path="/sitemap" component={Sitemap} />
           <Route path="/golden-plate-winners" component={GoldenPlateWinners} />
+          <Route path="/parking-pass" component={ParkingPassPage} />
           <Route path="/forgot-password" component={ForgotPassword} />
           <Route path="/reset-password" component={ResetPassword} />
           <Route path="/admin" component={AdminLogin} />
@@ -132,6 +137,9 @@ function Router() {
           <Route path="/admin/control-center" component={AdminControlCenter} />
           <Route path="/admin/tickets" component={AdminSupportTickets} />
           <Route path="/admin/moderation" component={AdminModerationEvents} />
+          <Route path="/admin/moderation/videos" component={AdminModerationVideos} />
+          <Route path="/admin/moderation/metrics" component={AdminModerationMetrics} />
+          <Route path="/admin/moderation/appeals" component={AdminModerationAppeals} />
           <Route path="/admin/audit-logs" component={AdminAuditLogs} />
           <Route path="/admin/switcher" component={DashboardSwitcherPage} />
           <Route path="/category/:category" component={CategoryPage} />
@@ -157,6 +165,7 @@ function Router() {
           <Route path="/profile/payment" component={PaymentMethodsPage} />
           <Route path="/profile/help" component={HelpSupportPage} />
           <Route path="/restaurant/:restaurantId/reviews" component={ReviewsPage} />
+          <Route path="/parking-pass" component={ParkingPassPage} />
         </>
       )}
       <Route component={NotFound} />

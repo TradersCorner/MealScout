@@ -10,6 +10,8 @@ import {
   foodTruckLocations,
   restaurantFavorites,
   restaurantRecommendations,
+  locationRequests,
+  truckInterests,
   userAddresses,
   passwordResetTokens,
   dealFeedback,
@@ -37,6 +39,9 @@ import {
   type InsertRestaurantFavorite,
   type RestaurantRecommendation,
   type InsertRestaurantRecommendation,
+  type LocationRequest,
+  type InsertLocationRequest,
+  type InsertTruckInterest,
   type UserAddress,
   type InsertUserAddress,
   type PasswordResetToken,
@@ -202,6 +207,11 @@ export interface IStorage {
     recommendationsByType: Array<{ type: string; count: number; clicks: number }>;
     recommendationsTrend: Array<{ date: string; count: number; clicks: number }>;
   }>;
+  // Host location requests / truck interest
+  createLocationRequest(request: InsertLocationRequest): Promise<LocationRequest>;
+  getLocationRequestById(id: string): Promise<LocationRequest | undefined>;
+  expireStaleLocationRequests(): Promise<number>;
+  createTruckInterest(interest: InsertTruckInterest): Promise<{ interestId: string; locationRequest: LocationRequest }>;
 
   // User address operations
   createUserAddress(address: InsertUserAddress): Promise<UserAddress>;
@@ -3130,6 +3140,63 @@ export class DatabaseStorage implements IStorage {
       recommendationsByType,
       recommendationsTrend,
     };
+  }
+
+  // Host location request operations
+  async createLocationRequest(request: InsertLocationRequest): Promise<LocationRequest> {
+    const payload = {
+      ...request,
+      status: 'open',
+      notes: request.notes?.trim() || null,
+    };
+
+    await this.expireStaleLocationRequests();
+
+    const [created] = await db
+      .insert(locationRequests)
+      .values(payload)
+      .returning();
+
+    return created;
+  }
+
+  async getLocationRequestById(id: string): Promise<LocationRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(locationRequests)
+      .where(eq(locationRequests.id, id));
+    return request;
+  }
+
+  async expireStaleLocationRequests(): Promise<number> {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const result = await db
+      .update(locationRequests)
+      .set({ status: 'expired' })
+      .where(and(eq(locationRequests.status, 'open'), lte(locationRequests.createdAt, cutoff)));
+    return result.rowCount || 0;
+  }
+
+  async createTruckInterest(interest: InsertTruckInterest): Promise<{ interestId: string; locationRequest: LocationRequest }> {
+    await this.expireStaleLocationRequests();
+
+    const locationRequest = await this.getLocationRequestById(interest.locationRequestId);
+    if (!locationRequest) {
+      throw new Error('Location request not found');
+    }
+    if (locationRequest.status !== 'open') {
+      throw new Error('Location request is not open');
+    }
+
+    const [created] = await db
+      .insert(truckInterests)
+      .values({
+        ...interest,
+        message: interest.message?.trim() || null,
+      })
+      .returning({ id: truckInterests.id });
+
+    return { interestId: created.id, locationRequest };
   }
 
   // User address operations

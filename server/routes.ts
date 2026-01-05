@@ -4,7 +4,7 @@ import Stripe from "stripe";
 import { storage } from "./storage";
 import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner, isRestaurantOwnerOrAdmin, isAdmin, verifyResourceOwnership } from "./unifiedAuth";
 import { emailService } from "./emailService";
-import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema, updateRestaurantLocationSchema, updateRestaurantOperatingHoursSchema, insertDealFeedbackSchema, type User, deals, insertImageUploadSchema, insertAwardHistorySchema, imageUploads, passwordResetTokens, users, restaurants, awardHistory } from "@shared/schema";
+import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema, updateRestaurantLocationSchema, updateRestaurantOperatingHoursSchema, insertDealFeedbackSchema, insertLocationRequestSchema, insertTruckInterestSchema, type User, deals, insertImageUploadSchema, insertAwardHistorySchema, imageUploads, passwordResetTokens, users, restaurants, awardHistory } from "@shared/schema";
 import { z } from "zod";
 import { validateDocuments, checkRateLimit } from "./documentValidation";
 import { randomBytes, timingSafeEqual, createHash } from "crypto";
@@ -21,7 +21,8 @@ import {
   sendGoldenForkAwardEmail,
   sendGoldenPlateAwardEmail,
   sendDealClaimedNotification,
-  sendWelcomeEmail
+  sendWelcomeEmail,
+  sendTruckInterestNotification
 } from "./emailNotifications";
 
 // SECURITY AUDIT STATUS
@@ -1069,6 +1070,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error setting default address:", error);
       res.status(500).json({ message: "Failed to set default address" });
+    }
+  });
+
+  // Host location request routes
+  app.post('/api/location-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const parsed = insertLocationRequestSchema.parse({
+        ...req.body,
+        postedByUserId: userId,
+      });
+
+      const created = await storage.createLocationRequest(parsed);
+      res.status(201).json({ message: 'Location request submitted', request: created });
+    } catch (error: any) {
+      console.error('Error creating location request:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Invalid location request data', errors: error.errors });
+      }
+      res.status(400).json({ message: error.message || 'Failed to create location request' });
+    }
+  });
+
+  app.post('/api/location-requests/:id/interests', isRestaurantOwner, async (req: any, res) => {
+    try {
+      const { id: locationRequestId } = req.params;
+      const { restaurantId, message } = req.body;
+
+      if (!restaurantId) {
+        return res.status(400).json({ message: 'Restaurant ID is required' });
+      }
+
+      const ownsRestaurant = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
+      if (!ownsRestaurant) {
+        return res.status(403).json({ message: 'You can only respond for restaurants you own' });
+      }
+
+      const parsed = insertTruckInterestSchema.parse({
+        locationRequestId,
+        restaurantId,
+        message,
+      });
+
+      const result = await storage.createTruckInterest(parsed);
+      await sendTruckInterestNotification(result.locationRequest, restaurantId, message);
+
+      res.status(201).json({ message: 'Interest sent to host', interestId: result.interestId });
+    } catch (error: any) {
+      console.error('Error expressing truck interest:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Invalid truck interest data', errors: error.errors });
+      }
+
+      if (error.message === 'Location request not found') {
+        return res.status(404).json({ message: 'Location request not found' });
+      }
+      if (error.message === 'Location request is not open') {
+        return res.status(400).json({ message: 'Location request is not accepting new interest' });
+      }
+
+      res.status(500).json({ message: 'Failed to submit interest' });
     }
   });
 

@@ -56,6 +56,7 @@ import ResetPassword from "@/pages/reset-password";
 import OAuthSetupGuide from "@/pages/oauth-setup-guide";
 import GoldenPlateWinners from "@/pages/golden-plate-winners";
 import ParkingPassPage from "@/pages/parking-pass";
+import HostSignup from "@/pages/host-signup";
 import { BetaDisclaimer } from "@/components/beta-disclaimer";
 import { BugReportButton } from "@/components/bug-report-button";
 
@@ -102,6 +103,7 @@ function Router() {
           <Route path="/faq" component={FAQ} />
           <Route path="/how-it-works" component={HowItWorks} />
           <Route path="/contact" component={Contact} />
+          <Route path="/host-signup" component={HostSignup} />
           <Route path="/sitemap" component={Sitemap} />
           <Route path="/golden-plate-winners" component={GoldenPlateWinners} />
           <Route path="/parking-pass" component={ParkingPassPage} />
@@ -153,6 +155,7 @@ function Router() {
           <Route path="/faq" component={FAQ} />
           <Route path="/how-it-works" component={HowItWorks} />
           <Route path="/contact" component={Contact} />
+          <Route path="/host-signup" component={HostSignup} />
           <Route path="/sitemap" component={Sitemap} />
           <Route path="/forgot-password" component={ForgotPassword} />
           <Route path="/reset-password" component={ResetPassword} />

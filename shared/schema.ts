@@ -1292,6 +1292,45 @@ export const affiliateWithdrawals = pgTable(
   ]
 );
 
+// Location Requests: businesses hosting food trucks
+export const locationRequests = pgTable(
+  'location_requests',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    postedByUserId: varchar('posted_by_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    businessName: varchar('business_name').notNull(),
+    address: text('address').notNull(),
+    locationType: varchar('location_type').notNull(), // 'office' | 'bar' | 'brewery' | 'other'
+    preferredDates: jsonb('preferred_dates').notNull(), // string[] of ISO dates
+    expectedFootTraffic: integer('expected_foot_traffic').notNull(),
+    notes: text('notes'),
+    status: varchar('status').notNull().default('open'), // 'open' | 'fulfilled' | 'expired'
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_location_requests_user').on(table.postedByUserId),
+    index('idx_location_requests_status').on(table.status),
+    index('idx_location_requests_created').on(table.createdAt),
+  ]
+);
+
+// Truck Interest: food trucks expressing interest in a location request
+export const truckInterests = pgTable(
+  'truck_interests',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    locationRequestId: varchar('location_request_id').notNull().references(() => locationRequests.id, { onDelete: 'cascade' }),
+    restaurantId: varchar('restaurant_id').notNull().references(() => restaurants.id, { onDelete: 'cascade' }),
+    message: text('message'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_truck_interests_request').on(table.locationRequestId),
+    index('idx_truck_interests_restaurant').on(table.restaurantId),
+    index('idx_truck_interests_created').on(table.createdAt),
+  ]
+);
+
 // PHASE 1: Referral tracking - "who brought who"
 export const referrals = pgTable(
   'referrals',
@@ -1678,6 +1717,25 @@ export const affiliateWithdrawalsRelations = relations(affiliateWithdrawals, ({ 
   }),
 }));
 
+export const locationRequestsRelations = relations(locationRequests, ({ one, many }) => ({
+  postedBy: one(users, {
+    fields: [locationRequests.postedByUserId],
+    references: [users.id],
+  }),
+  interests: many(truckInterests),
+}));
+
+export const truckInterestsRelations = relations(truckInterests, ({ one }) => ({
+  locationRequest: one(locationRequests, {
+    fields: [truckInterests.locationRequestId],
+    references: [locationRequests.id],
+  }),
+  restaurant: one(restaurants, {
+    fields: [truckInterests.restaurantId],
+    references: [restaurants.id],
+  }),
+}));
+
 export const referralsRelations = relations(referrals, ({ one }) => ({
   affiliateUser: one(users, {
     fields: [referrals.affiliateUserId],
@@ -1747,6 +1805,11 @@ export const restaurantCreditRedemptionsRelations = relations(restaurantCreditRe
   }),
 }));
 
+export type LocationRequest = typeof locationRequests.$inferSelect;
+export type InsertLocationRequest = z.infer<typeof insertLocationRequestSchema>;
+export type TruckInterest = typeof truckInterests.$inferSelect;
+export type InsertTruckInterest = z.infer<typeof insertTruckInterestSchema>;
+
 export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
 export type SupportTicket = typeof supportTickets.$inferSelect;
 
@@ -1795,6 +1858,47 @@ export type UpdateRestaurantLocation = z.infer<typeof updateRestaurantLocationSc
 export type UpdateRestaurantOperatingHours = z.infer<typeof updateRestaurantOperatingHoursSchema>;
 
 // Schemas for support tickets
+export const insertLocationRequestSchema = createInsertSchema(locationRequests, {
+  preferredDates: z.array(z.string()),
+  expectedFootTraffic: z.number().int(),
+  notes: z.string().max(200).optional(),
+}).omit({
+  id: true,
+  status: true,
+  createdAt: true,
+}).superRefine((val, ctx) => {
+  const dates = val.preferredDates ?? [];
+  if (dates.length === 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Select at least one preferred date', path: ['preferredDates'] });
+  }
+  if (dates.length > 3) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'You can only pick up to 3 dates', path: ['preferredDates'] });
+  }
+
+  const now = new Date();
+  dates.forEach((dateStr, idx) => {
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Preferred dates must be valid dates', path: ['preferredDates', idx] });
+      return;
+    }
+    if (date < now) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Dates must be in the future', path: ['preferredDates', idx] });
+    }
+  });
+
+  if (val.expectedFootTraffic < 1 || val.expectedFootTraffic > 10000) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Expected foot traffic must be between 1 and 10,000', path: ['expectedFootTraffic'] });
+  }
+});
+
+export const insertTruckInterestSchema = createInsertSchema(truckInterests, {
+  message: z.string().max(500).optional(),
+}).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({
   id: true,
   createdAt: true,

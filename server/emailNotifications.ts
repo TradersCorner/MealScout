@@ -1,3 +1,4 @@
+import { LocationRequest } from '@shared/schema';
 import { emailService } from './emailService';
 import { storage } from './storage';
 
@@ -288,4 +289,70 @@ export async function sendWelcomeEmail(userId: string) {
   `;
 
   await emailService.sendBasicEmail(user.email, subject, html);
+}
+
+export async function sendTruckInterestNotification(locationRequest: LocationRequest, restaurantId: string, message?: string) {
+  const host = await storage.getUser(locationRequest.postedByUserId);
+  if (!host?.email) return;
+
+  const restaurant = await storage.getRestaurant(restaurantId);
+  if (!restaurant) return;
+
+  const owner = await storage.getUser(restaurant.ownerId);
+
+  const subject = `${restaurant.name} wants to bring their truck to ${locationRequest.businessName}`;
+  const preferredDates = Array.isArray(locationRequest.preferredDates)
+    ? locationRequest.preferredDates.join(', ')
+    : '';
+
+  const hostMessage = message?.trim() ? `<p style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e5e7eb;"><strong>Message from the truck:</strong><br>${message.trim()}</p>` : '';
+
+  const contactLine = owner?.email
+    ? `<p style="margin:12px 0 0 0;"><strong>Contact:</strong> ${owner.email}</p>`
+    : '';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #111827; }
+        .container { max-width: 640px; margin: 0 auto; padding: 20px; }
+        .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; background: #ffffff; }
+        .badge { display: inline-block; background: #fee2e2; color: #b91c1c; padding: 6px 10px; border-radius: 9999px; font-weight: 600; font-size: 12px; }
+        .meta { display: grid; gap: 8px; margin: 16px 0; }
+        .meta div { display: flex; justify-content: space-between; }
+        .label { color: #6b7280; font-size: 14px; }
+        .value { font-weight: 600; color: #111827; }
+        .footnote { color: #6b7280; font-size: 12px; margin-top: 16px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="badge">New truck interest</span>
+          </div>
+          <h2 style="margin:16px 0 8px 0;">${restaurant.name} wants to park at ${locationRequest.businessName}</h2>
+          <p style="margin:0 0 12px 0;">You received this because you posted a spot for food trucks on MealScout.</p>
+
+          <div class="meta">
+            <div><span class="label">Location type</span><span class="value">${locationRequest.locationType}</span></div>
+            <div><span class="label">Address</span><span class="value">${locationRequest.address}</span></div>
+            <div><span class="label">Preferred dates</span><span class="value">${preferredDates || 'No dates specified'}</span></div>
+            <div><span class="label">Expected foot traffic</span><span class="value">${locationRequest.expectedFootTraffic}</span></div>
+          </div>
+
+          ${hostMessage}
+          <p style="margin:12px 0 0 0;"><strong>Truck:</strong> ${restaurant.name}</p>
+          ${contactLine}
+
+          <p class="footnote">MealScout does not broker or guarantee bookings. Coordinate directly with the truck to confirm details.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await emailService.sendBasicEmail(host.email, subject, html);
 }

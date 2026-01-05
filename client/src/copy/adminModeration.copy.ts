@@ -117,6 +117,19 @@ export const ADMIN_MODERATION_COPY = {
     minSelection: 'Select at least one item',
     allReasonsRequired: 'All items must have assigned reasons',
   },
+
+  export: {
+    button: 'Export evidence (PDF)',
+    confirmTitle: 'Export evidence snapshot?',
+    confirmDescription: 'This will generate an immutable PDF snapshot of the current decision and evidence. Exported PDFs do not alter moderation outcomes.',
+    confirmExport: 'Export PDF',
+    confirmCancel: 'Cancel',
+    downloading: 'Generating PDF...',
+    success: 'Evidence exported successfully',
+    error: 'Failed to export evidence',
+    singleItemOnly: 'Export is single-item only',
+    snapshotLabel: 'Immutable snapshot',
+  },
 } as const;
 
 export type AdminModerationCopy = typeof ADMIN_MODERATION_COPY;
@@ -138,4 +151,6 @@ export type CriticalModerationKeys =
   | 'batch.batchRestore'
   | 'batch.noRemove'
   | 'batch.perItemReasonDescription'
-  | 'batch.allReasonsRequired';
+  | 'batch.allReasonsRequired'
+  | 'export.confirmDescription'
+  | 'export.singleItemOnly';

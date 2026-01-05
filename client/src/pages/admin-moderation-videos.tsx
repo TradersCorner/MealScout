@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, AlertCircle, CheckSquare } from 'lucide-react';
+import { Shield, AlertCircle, CheckSquare, FileDown } from 'lucide-react';
 
 // ============================================================================
 // FSM Types & Reducer
@@ -538,11 +538,12 @@ interface ModerationActionsProps {
   onHide: () => void;
   onRestore: () => void;
   onRemove: () => void;
+  onExport: () => void;
 }
 
-function ModerationActions({ status, disabled, onHide, onRestore, onRemove }: ModerationActionsProps) {
+function ModerationActions({ status, disabled, onHide, onRestore, onRemove, onExport }: ModerationActionsProps) {
   return (
-    <div className="flex gap-2 mt-3">
+    <div className="flex gap-2 mt-3 flex-wrap">
       {status === 'visible' && (
         <Button size="sm" variant="outline" onClick={onHide} disabled={disabled}>
           {COPY.actions.hide}
@@ -555,6 +556,10 @@ function ModerationActions({ status, disabled, onHide, onRestore, onRemove }: Mo
       )}
       <Button size="sm" variant="destructive" onClick={onRemove} disabled={disabled}>
         {COPY.actions.remove}
+      </Button>
+      <Button size="sm" variant="outline" onClick={onExport} disabled={disabled}>
+        <FileDown className="w-4 h-4 mr-2" />
+        {COPY.export.button}
       </Button>
     </div>
   );
@@ -740,6 +745,46 @@ function PerItemReasonModal({ open, items, onComplete, onCancel }: PerItemReason
   );
 }
 
+/**
+ * Evidence Export Confirmation
+ * Exported PDFs are immutable snapshots and do not alter outcomes.
+ */
+interface ExportConfirmModalProps {
+  open: boolean;
+  videoId: string | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function ExportConfirmModal({ open, videoId, onConfirm, onCancel }: ExportConfirmModalProps) {
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{COPY.export.confirmTitle}</DialogTitle>
+          <DialogDescription>{COPY.export.confirmDescription}</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2">
+          <div className="text-sm text-muted-foreground">
+            <span className="font-medium">{COPY.export.snapshotLabel}:</span> Video ID {videoId}
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>
+            {COPY.export.confirmCancel}
+          </Button>
+          <Button onClick={onConfirm}>
+            <FileDown className="w-4 h-4 mr-2" />
+            {COPY.export.confirmExport}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 interface UserVideoModerationCardProps {
   item: Extract<ModerationItem, { kind: 'user' }>;
   disabled: boolean;
@@ -749,9 +794,10 @@ interface UserVideoModerationCardProps {
   onHide: () => void;
   onRestore: () => void;
   onRemove: () => void;
+  onExport: () => void;
 }
 
-function UserVideoModerationCard({ item, disabled, selectionMode, selected, onToggleSelect, onHide, onRestore, onRemove }: UserVideoModerationCardProps) {
+function UserVideoModerationCard({ item, disabled, selectionMode, selected, onToggleSelect, onHide, onRestore, onRemove, onExport }: UserVideoModerationCardProps) {
   const statusColor = item.status === 'visible' ? 'bg-green-100 text-green-800' : item.status === 'hidden' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
 
   return (
@@ -802,6 +848,7 @@ function UserVideoModerationCard({ item, disabled, selectionMode, selected, onTo
               onHide={onHide}
               onRestore={onRestore}
               onRemove={onRemove}
+              onExport={onExport}
             />
 
             <ModerationEvidencePane videoId={item.videoId} disabled={disabled} />
@@ -821,9 +868,10 @@ interface RestaurantAdModerationCardProps {
   onHide: () => void;
   onRestore: () => void;
   onRemove: () => void;
+  onExport: () => void;
 }
 
-function RestaurantAdModerationCard({ item, disabled, selectionMode, selected, onToggleSelect, onHide, onRestore, onRemove }: RestaurantAdModerationCardProps) {
+function RestaurantAdModerationCard({ item, disabled, selectionMode, selected, onToggleSelect, onHide, onRestore, onRemove, onExport }: RestaurantAdModerationCardProps) {
   const statusColor = item.status === 'visible' ? 'bg-green-100 text-green-800' : item.status === 'hidden' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
 
   return (
@@ -871,6 +919,7 @@ function RestaurantAdModerationCard({ item, disabled, selectionMode, selected, o
               onHide={onHide}
               onRestore={onRestore}
               onRemove={onRemove}
+              onExport={onExport}
             />
 
             <ModerationEvidencePane videoId={item.videoId} disabled={disabled} />
@@ -890,9 +939,10 @@ interface ModerationItemCardProps {
   onHide: (id: string) => void;
   onRestore: (id: string) => void;
   onRemove: (id: string) => void;
+  onExport: (id: string) => void;
 }
 
-function ModerationItemCard({ item, disabled, selectionMode, selected, onToggleSelect, onHide, onRestore, onRemove }: ModerationItemCardProps) {
+function ModerationItemCard({ item, disabled, selectionMode, selected, onToggleSelect, onHide, onRestore, onRemove, onExport }: ModerationItemCardProps) {
   if (item.kind === 'user') {
     return (
       <UserVideoModerationCard
@@ -904,6 +954,7 @@ function ModerationItemCard({ item, disabled, selectionMode, selected, onToggleS
         onHide={() => onHide(item.videoId)}
         onRestore={() => onRestore(item.videoId)}
         onRemove={() => onRemove(item.videoId)}
+        onExport={() => onExport(item.videoId)}
       />
     );
   }
@@ -919,6 +970,7 @@ function ModerationItemCard({ item, disabled, selectionMode, selected, onToggleS
         onHide={() => onHide(item.videoId)}
         onRestore={() => onRestore(item.videoId)}
         onRemove={() => onRemove(item.videoId)}
+        onExport={() => onExport(item.videoId)}
       />
     );
   }
@@ -935,9 +987,10 @@ interface ModerationFeedProps {
   onHide: (id: string) => void;
   onRestore: (id: string) => void;
   onRemove: (id: string) => void;
+  onExport: (id: string) => void;
 }
 
-function ModerationFeed({ items, uiState, selectionMode, selectedIds, onToggleSelect, onHide, onRestore, onRemove }: ModerationFeedProps) {
+function ModerationFeed({ items, uiState, selectionMode, selectedIds, onToggleSelect, onHide, onRestore, onRemove, onExport }: ModerationFeedProps) {
   const actionsDisabled = uiState.state === 'actionPending' || uiState.state === 'batchActionPending';
 
   return (
@@ -953,6 +1006,7 @@ function ModerationFeed({ items, uiState, selectionMode, selectedIds, onToggleSe
           onHide={onHide}
           onRestore={onRestore}
           onRemove={onRemove}
+          onExport={onExport}
         />
       ))}
     </div>
@@ -1003,6 +1057,10 @@ export default function AdminModerationVideosPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchReasonModalOpen, setBatchReasonModalOpen] = useState(false);
   const [batchAction, setBatchAction] = useState<'hide' | 'restore' | null>(null);
+
+  // Evidence export state
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportVideoId, setExportVideoId] = useState<string | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1218,6 +1276,59 @@ export default function AdminModerationVideosPage() {
     queryClient.invalidateQueries({ queryKey: ['/api/admin/reported-videos'] });
   };
 
+  // Export handler
+  const handleExport = (id: string) => {
+    setExportVideoId(id);
+    setExportModalOpen(true);
+  };
+
+  const handleConfirmExport = async () => {
+    if (!exportVideoId) return;
+
+    try {
+      toast({ title: COPY.export.downloading });
+      setExportModalOpen(false);
+
+      /**
+       * Evidence Export v1 — Server Contract (stub)
+       * 
+       * Endpoint: GET /api/admin/export-evidence/:videoId
+       * 
+       * Returns:
+       * - Content-Type: application/pdf
+       * - Content-Disposition: attachment; filename="evidence-{videoId}-{timestamp}.pdf"
+       * 
+       * PDF includes:
+       * - Video ID, type (user/restaurant)
+       * - Current moderation decision (action, reason, timestamp)
+       * - Evidence Pane data (reports, redacted IDs, prior actions)
+       * - Video metadata (age, views/likes if present)
+       * - Appeal references (IDs only, if any)
+       * 
+       * Guard: Single-item only, admin-only, read-only snapshot.
+       */
+      const res = await fetch(`/api/admin/export-evidence/${exportVideoId}`);
+      if (!res.ok) throw new Error('Export failed');
+
+      // Trigger download
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `evidence-${exportVideoId}-${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({ title: COPY.export.success });
+    } catch (error) {
+      toast({ title: COPY.export.error, variant: 'destructive' });
+    } finally {
+      setExportVideoId(null);
+    }
+  };
+
   const selectedItems = moderationItems.filter((item) => selectedIds.has(item.videoId));
 
   return (
@@ -1266,6 +1377,7 @@ export default function AdminModerationVideosPage() {
               onHide={handleHide}
               onRestore={handleRestore}
               onRemove={handleRemove}
+              onExport={handleExport}
             />
           )}
         </>
@@ -1287,6 +1399,16 @@ export default function AdminModerationVideosPage() {
         onCancel={() => {
           setBatchReasonModalOpen(false);
           setBatchAction(null);
+        }}
+      />
+
+      <ExportConfirmModal
+        open={exportModalOpen}
+        videoId={exportVideoId}
+        onConfirm={handleConfirmExport}
+        onCancel={() => {
+          setExportModalOpen(false);
+          setExportVideoId(null);
         }}
       />
     </div>

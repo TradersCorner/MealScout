@@ -401,7 +401,7 @@ export default function DealCard({ deal }: DealCardProps) {
                 className="flex-1 h-7 text-[10px] px-1"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleShare(e);
+                  setShowShareModal(true);
                 }}
               >
                 Share

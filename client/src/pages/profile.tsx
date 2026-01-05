@@ -17,16 +17,21 @@ import {
   ChevronRight,
   Star,
   MapPin,
-  Store
+  Store,
+  Building2,
+  PartyPopper,
+  Calendar
 } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
 
 export default function ProfilePage() {
   const { user, isAuthenticated } = useAuth();
+
+  // TODO: Fetch real stats from API
   const [userStats] = useState({
-    totalSaved: 156.50,
-    dealsUsed: 23,
-    favoriteRestaurants: 8,
+    dealsRedeemed: 0, // Real count from backend
+    joinedDate: user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : null,
+    lastActivity: null, // Real last activity date
   });
 
   if (!isAuthenticated || !user) {
@@ -56,14 +61,14 @@ export default function ProfilePage() {
   }
 
   const menuItems = [
-    { icon: Receipt, label: "Deal History", badge: userStats.dealsUsed.toString(), href: "/orders" },
-    { icon: Heart, label: "Favorites", badge: userStats.favoriteRestaurants.toString(), href: "/favorites" },
+    { icon: Receipt, label: "Deal History", badge: null, href: "/orders" },
+    { icon: Heart, label: "Favorites", badge: null, href: "/favorites" },
     { icon: Bell, label: "Notifications", badge: null, href: "/profile/notifications" },
+    { icon: MapPin, label: "Addresses", badge: null, href: "/profile/addresses" },
     // Only show Payment Methods for restaurant owners who need subscription billing
     ...(user?.userType === 'restaurant_owner' ? [
       { icon: CreditCard, label: "Payment Methods", badge: null, href: "/profile/payment" }
     ] : []),
-    { icon: MapPin, label: "Addresses", badge: null, href: "/profile/addresses" },
     { icon: Settings, label: "Settings", badge: null, href: "/profile/settings" },
     { icon: HelpCircle, label: "Help & Support", badge: null, href: "/profile/help" },
   ];
@@ -122,56 +127,79 @@ export default function ProfilePage() {
         </Card>
       </header>
 
-      {/* Stats Section */}
+      {/* Stats Section - Removed mock data */}
       <div className="px-6 py-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Your Stats</h3>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white rounded-2xl p-4 text-center shadow-md">
-            <div className="text-2xl font-bold text-green-600" data-testid="text-total-saved">
-              ${userStats.totalSaved}
+        <Card className="border border-gray-200">
+          <CardContent className="p-6">
+            <div className="space-y-3 text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                <span>Joined {userStats.joinedDate}</span>
+              </div>
+              {userStats.dealsRedeemed > 0 && (
+                <div className="flex items-center gap-2">
+                  <Receipt className="w-4 h-4" />
+                  <span>{userStats.dealsRedeemed} deals redeemed</span>
+                </div>
+              )}
             </div>
-            <div className="text-xs text-muted-foreground">Total Saved</div>
-          </div>
-          <div className="bg-white rounded-2xl p-4 text-center shadow-md">
-            <div className="text-2xl font-bold text-primary" data-testid="text-deals-used">
-              {userStats.dealsUsed}
-            </div>
-            <div className="text-xs text-muted-foreground">Deals Used</div>
-          </div>
-          <div className="bg-white rounded-2xl p-4 text-center shadow-md">
-            <div className="text-2xl font-bold text-orange-600" data-testid="text-favorite-restaurants">
-              {userStats.favoriteRestaurants}
-            </div>
-            <div className="text-xs text-muted-foreground">Favorites</div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Menu Items */}
       <div className="px-6 pb-6">
-        {/* Become a Restaurant Owner CTA (Only for customers) */}
+        {/* Business Opportunities Section (Only for customers) */}
         {user?.userType === 'customer' && (
-          <Card className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 transition-all cursor-pointer border-0 shadow-lg mb-6">
-            <CardContent className="p-0">
-              <Link href="/customer-signup?role=business">
-                <div className="p-5" data-testid="card-become-restaurant-owner">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                      <Store className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-white font-bold text-lg mb-1">
-                        Own a Restaurant?
-                      </h3>
-                      <p className="text-white/90 text-sm">
-                        List your business and start posting deals →
-                      </p>
+          <div className="mb-6 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Business Opportunities</h3>
+            
+            {/* Business Location Host CTA */}
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 transition-all cursor-pointer border border-blue-200">
+              <CardContent className="p-0">
+                <Link href="/host-signup">
+                  <div className="p-5">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-blue-500/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                        <Building2 className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-gray-900 font-bold text-base mb-1">
+                          Host Food Trucks at Your Location
+                        </h3>
+                        <p className="text-gray-600 text-sm">
+                          Offices, bars, breweries — bring lunch to your people →
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            </CardContent>
-          </Card>
+                </Link>
+              </CardContent>
+            </Card>
+
+            {/* Event Organizer CTA */}
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 transition-all cursor-pointer border border-purple-200">
+              <CardContent className="p-0">
+                <Link href="/event-signup">
+                  <div className="p-5">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-purple-500/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                        <PartyPopper className="w-6 h-6 text-purple-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-gray-900 font-bold text-base mb-1">
+                          Book Trucks for Your Event
+                        </h3>
+                        <p className="text-gray-600 text-sm">
+                          Festivals, concerts, markets — connect with vendors →
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         <div className="space-y-2">
@@ -197,6 +225,23 @@ export default function ProfilePage() {
               </Card>
             </Link>
           ))}
+          
+          {/* Restaurant Owner Option (de-emphasized in menu) */}
+          {user?.userType === 'customer' && (
+            <Link href="/customer-signup?role=business">
+              <Card className="bg-white hover:bg-gray-50 transition-colors cursor-pointer border-0 shadow-md">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <Store className="w-5 h-5 text-muted-foreground" />
+                      <span className="font-medium text-foreground">List Your Restaurant</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          )}
         </div>
 
         {/* Logout Button */}

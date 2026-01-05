@@ -343,6 +343,17 @@ ${url}`,
     submissionReceived: 'Thanks! We\'ll review and reach out to the restaurant.',
     alreadySubmitted: 'This restaurant has already been submitted.',
   },
+
+  // ===== DEVELOPMENT PLACEHOLDERS =====
+  dev: {
+    placeholders: {
+      locationMap: 'Map of parking hosts in your area (coming soon)',
+      dateCalendar: 'Calendar for date selection (coming soon)',
+      slotList: 'Available time slots (coming soon)',
+      statusUpcomingCountdown: 'Countdown to your parking slot',
+      statusActiveGpsDetail: 'GPS directions to parking spot',
+    },
+  },
 };
 
 export default COPY;

@@ -4,6 +4,13 @@ import cron from "node-cron";
 import { DigestService } from "./digestService";
 import Stripe from "stripe";
 import { storage } from "./storage";
+import { getHostByUserId, getEventAndHostForUser, getInterestEventAndHostForUser, hostOwnsEvent } from "./services/hostOwnership";
+import { assertMaxSpan180Days, generateOccurrences, filterFutureOccurrences } from "./services/openCallSeries";
+import { computeAcceptedCount, shouldBlockAcceptance, buildCapacityFullError, computeFillRate } from "./services/interestDecision";
+import { registerHostRoutes } from "./routes/hostRoutes";
+import { registerOpenCallSeriesRoutes } from "./routes/openCallSeriesRoutes";
+import { registerEventRoutes } from "./routes/eventRoutes";
+import { registerAdminManagementRoutes } from "./routes/adminManagementRoutes";
 import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner, isRestaurantOwnerOrAdmin, isAdmin, verifyResourceOwnership } from "./unifiedAuth";
 import { emailService } from "./emailService";
 import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema, updateRestaurantLocationSchema, updateRestaurantOperatingHoursSchema, insertDealFeedbackSchema, insertLocationRequestSchema, insertTruckInterestSchema, insertHostSchema, insertEventSchema, insertEventSeriesSchema, insertEventInterestSchema, type User, type InsertEvent, deals, events, eventSeries, insertImageUploadSchema, insertAwardHistorySchema, imageUploads, passwordResetTokens, users, restaurants, awardHistory } from "@shared/schema";
@@ -1137,619 +1144,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Host Profile & Events
-  app.post('/api/hosts', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      // Check if host profile already exists
-      const existing = await storage.getHostByUserId(userId);
-      if (existing) {
-        return res.status(400).json({ message: 'Host profile already exists' });
-      }
-
-      const parsed = insertHostSchema.parse({
-        ...req.body,
-        userId,
-      });
-
-      const host = await storage.createHost(parsed);
-
-      // Upgrade user type to restaurant_owner for host accounts
-      if (req.user.userType === 'customer') {
-        await storage.updateUserType(userId, 'restaurant_owner');
-      }
-
-      res.status(201).json(host);
-    } catch (error: any) {
-      console.error('Error creating host:', error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: 'Invalid host data', errors: error.errors });
-      }
-      res.status(400).json({ message: error.message || 'Failed to create host profile' });
-    }
-  });
-
-  app.get('/api/hosts/me', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const host = await storage.getHostByUserId(userId);
-      if (!host) {
-        return res.status(404).json({ message: 'Host profile not found' });
-      }
-      res.json(host);
-    } catch (error: any) {
-      console.error('Error fetching host profile:', error);
-      res.status(500).json({ message: 'Failed to fetch host profile' });
-    }
-  });
-
-  app.post('/api/hosts/events', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const host = await storage.getHostByUserId(userId);
-      if (!host) {
-        return res.status(404).json({ message: 'Host profile not found' });
-      }
-
-      const parsed = insertEventSchema.parse({
-        ...req.body,
-        hostId: host.id,
-      });
-
-      // Validation: Future dates only
-      const eventDate = new Date(parsed.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (eventDate < today) {
-        return res.status(400).json({ message: 'Event date must be in the future' });
-      }
-
-      // Validation: End time > Start time
-      const [startHour, startMinute] = parsed.startTime.split(':').map(Number);
-      const [endHour, endMinute] = parsed.endTime.split(':').map(Number);
-      const startMinutes = startHour * 60 + startMinute;
-      const endMinutes = endHour * 60 + endMinute;
-      
-      if (endMinutes <= startMinutes) {
-        return res.status(400).json({ message: 'End time must be after start time' });
-      }
-
-      // Validation: Capacity >= 1
-      if (parsed.maxTrucks !== undefined && parsed.maxTrucks < 1) {
-        return res.status(400).json({ message: 'Max trucks must be at least 1' });
-      }
-
-      const event = await storage.createEvent(parsed);
-      res.status(201).json(event);
-    } catch (error: any) {
-      console.error('Error creating event:', error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: 'Invalid event data', errors: error.errors });
-      }
-      res.status(400).json({ message: error.message || 'Failed to create event' });
-    }
-  });
-
-  app.get('/api/hosts/events', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const host = await storage.getHostByUserId(userId);
-      if (!host) {
-        return res.status(404).json({ message: 'Host profile not found' });
-      }
-
-      const events = await storage.getEventsByHost(host.id);
-      res.json(events);
-    } catch (error: any) {
-      console.error('Error fetching host events:', error);
-      res.status(500).json({ message: 'Failed to fetch events' });
-    }
-  });
-
-  // PATCH: Override a single event occurrence (time window, capacity, hard cap)
-  app.patch('/api/hosts/events/:eventId', isAuthenticated, async (req: any, res) => {
-    try {
-      const { eventId } = req.params;
-      const userId = req.user.id;
-
-      // Verify event exists
-      const event = await storage.getEvent(eventId);
-      if (!event) {
-        return res.status(404).json({ message: 'Event not found' });
-      }
-
-      // Verify host owns the event
-      const host = await storage.getHostByUserId(userId);
-      if (!host || host.id !== event.hostId) {
-        return res.status(403).json({ message: 'Not authorized to edit this event' });
-      }
-
-      // Don't allow editing past events
-      const eventDate = new Date(event.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (eventDate < today) {
-        return res.status(400).json({ message: 'Cannot edit past events' });
-      }
-
-      const { startTime, endTime, maxTrucks, hardCapEnabled } = req.body;
-
-      // Build updates object (only include provided fields)
-      const updates: any = {};
-      if (startTime !== undefined) updates.startTime = startTime;
-      if (endTime !== undefined) updates.endTime = endTime;
-      if (maxTrucks !== undefined) updates.maxTrucks = maxTrucks;
-      if (hardCapEnabled !== undefined) updates.hardCapEnabled = hardCapEnabled;
-
-      // Validation: End time > Start time (if both provided)
-      const finalStartTime = updates.startTime || event.startTime;
-      const finalEndTime = updates.endTime || event.endTime;
-      
-      const [startHour, startMinute] = finalStartTime.split(':').map(Number);
-      const [endHour, endMinute] = finalEndTime.split(':').map(Number);
-      const startMinutes = startHour * 60 + startMinute;
-      const endMinutes = endHour * 60 + endMinute;
-      
-      if (endMinutes <= startMinutes) {
-        return res.status(400).json({ message: 'End time must be after start time' });
-      }
-
-      // Validation: Capacity >= 1
-      const finalMaxTrucks = updates.maxTrucks !== undefined ? updates.maxTrucks : event.maxTrucks;
-      if (finalMaxTrucks < 1) {
-        return res.status(400).json({ message: 'Max trucks must be at least 1' });
-      }
-
-      // Store before state for telemetry
-      const beforeState = {
-        startTime: event.startTime,
-        endTime: event.endTime,
-        maxTrucks: event.maxTrucks,
-        hardCapEnabled: event.hardCapEnabled,
-      };
-
-      // Apply updates
-      updates.updatedAt = new Date();
-      const [updatedEvent] = await db.update(events)
-        .set(updates)
-        .where(eq(events.id, eventId))
-        .returning();
-
-      // Telemetry
-      await storage.createTelemetryEvent({
-        eventName: 'occurrence_overridden',
-        userId: req.user.id,
-        properties: {
-          eventId,
-          seriesId: event.seriesId,
-          before: beforeState,
-          after: {
-            startTime: updatedEvent.startTime,
-            endTime: updatedEvent.endTime,
-            maxTrucks: updatedEvent.maxTrucks,
-            hardCapEnabled: updatedEvent.hardCapEnabled,
-          },
-          changedFields: Object.keys(updates).filter(k => k !== 'updatedAt'),
-        }
-      });
-
-      res.json(updatedEvent);
-    } catch (error: any) {
-      console.error('Error updating event:', error);
-      res.status(500).json({ message: 'Failed to update event' });
-    }
-  });
+  registerHostRoutes(app);
 
   // =====================================================================
   // EVENT SERIES (OPEN CALLS) ENDPOINTS
   // =====================================================================
-
-  // Create a new event series (draft)
-  app.post('/api/hosts/event-series', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const host = await storage.getHostByUserId(userId);
-      if (!host) {
-        return res.status(404).json({ message: 'Host profile not found' });
-      }
-
-      const parsed = insertEventSeriesSchema.parse({
-        ...req.body,
-        hostId: host.id,
-      });
-
-      // Validation: End date must be after start date
-      if (new Date(parsed.endDate) <= new Date(parsed.startDate)) {
-        return res.status(400).json({ message: 'End date must be after start date' });
-      }
-
-      // Validation: Max 180 days recurrence span
-      const daysDiff = Math.floor(
-        (new Date(parsed.endDate).getTime() - new Date(parsed.startDate).getTime()) / (1000 * 60 * 60 * 24)
-      );
-      if (daysDiff > 180) {
-        return res.status(400).json({ message: 'Event series cannot span more than 180 days' });
-      }
-
-      // Validation: End time > Start time
-      const [startHour, startMinute] = parsed.defaultStartTime.split(':').map(Number);
-      const [endHour, endMinute] = parsed.defaultEndTime.split(':').map(Number);
-      const startMinutes = startHour * 60 + startMinute;
-      const endMinutes = endHour * 60 + endMinute;
-      
-      if (endMinutes <= startMinutes) {
-        return res.status(400).json({ message: 'End time must be after start time' });
-      }
-
-      const series = await storage.createEventSeries(parsed);
-
-      // Telemetry
-      await storage.createTelemetryEvent({
-        eventName: 'event_series_created',
-        userId: req.user.id,
-        properties: {
-          seriesId: series.id,
-          startDate: series.startDate,
-          endDate: series.endDate,
-          recurrenceRule: series.recurrenceRule,
-        }
-      });
-
-      res.status(201).json(series);
-    } catch (error: any) {
-      console.error('Error creating event series:', error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: 'Invalid series data', errors: error.errors });
-      }
-      res.status(400).json({ message: error.message || 'Failed to create event series' });
-    }
-  });
-
-  // Publish an event series (generate occurrences)
-  app.post('/api/hosts/event-series/:seriesId/publish', isAuthenticated, async (req: any, res) => {
-    try {
-      const { seriesId } = req.params;
-      const userId = req.user.id;
-
-      const series = await storage.getEventSeries(seriesId);
-      if (!series) {
-        return res.status(404).json({ message: 'Event series not found' });
-      }
-
-      const host = await storage.getHostByUserId(userId);
-      if (!host || host.id !== series.hostId) {
-        return res.status(403).json({ message: 'Not authorized to publish this series' });
-      }
-
-      if (series.status === 'published') {
-        return res.status(400).json({ message: 'Series is already published' });
-      }
-
-      // Generate occurrence events based on recurrence rule
-      // For MVP: Support simple weekly recurrence
-      const occurrences: InsertEvent[] = [];
-      const startDate = new Date(series.startDate);
-      const endDate = new Date(series.endDate);
-
-      // Parse recurrenceRule (simplified for MVP: "WEEKLY:MO,WE,FR" format)
-      if (series.recurrenceRule && series.recurrenceRule.startsWith('WEEKLY:')) {
-        const daysStr = series.recurrenceRule.split(':')[1];
-        const dayMap: { [key: string]: number } = {
-          'SU': 0, 'MO': 1, 'TU': 2, 'WE': 3, 'TH': 4, 'FR': 5, 'SA': 6
-        };
-        const selectedDays = daysStr.split(',').map(d => dayMap[d]).filter(d => d !== undefined);
-
-        let currentDate = new Date(startDate);
-        while (currentDate <= endDate) {
-          if (selectedDays.includes(currentDate.getDay())) {
-            occurrences.push({
-              hostId: series.hostId,
-              seriesId: series.id,
-              name: series.name,
-              description: series.description,
-              date: new Date(currentDate),
-              startTime: series.defaultStartTime,
-              endTime: series.defaultEndTime,
-              maxTrucks: series.defaultMaxTrucks,
-              hardCapEnabled: series.defaultHardCapEnabled,
-            });
-          }
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
-      } else {
-        // No recurrence: single occurrence on startDate
-        occurrences.push({
-          hostId: series.hostId,
-          seriesId: series.id,
-          name: series.name,
-          description: series.description,
-          date: startDate,
-          startTime: series.defaultStartTime,
-          endTime: series.defaultEndTime,
-          maxTrucks: series.defaultMaxTrucks,
-          hardCapEnabled: series.defaultHardCapEnabled,
-        });
-      }
-
-      // Batch insert occurrences
-      for (const occurrence of occurrences) {
-        await storage.createEvent(occurrence);
-      }
-
-      // Mark series as published
-      const publishedSeries = await storage.publishEventSeries(seriesId);
-
-      // Telemetry
-      await storage.createTelemetryEvent({
-        eventName: 'event_series_published',
-        userId: req.user.id,
-        properties: {
-          seriesId: publishedSeries.id,
-          occurrencesGenerated: occurrences.length,
-        }
-      });
-
-      res.json({
-        series: publishedSeries,
-        occurrencesGenerated: occurrences.length,
-      });
-    } catch (error: any) {
-      console.error('Error publishing event series:', error);
-      res.status(500).json({ message: 'Failed to publish event series' });
-    }
-  });
-
-  // List all event series for a host
-  app.get('/api/hosts/event-series', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const host = await storage.getHostByUserId(userId);
-      if (!host) {
-        return res.status(404).json({ message: 'Host profile not found' });
-      }
-
-      const series = await storage.getEventSeriesByHost(host.id);
-      res.json(series);
-    } catch (error: any) {
-      console.error('Error fetching event series:', error);
-      res.status(500).json({ message: 'Failed to fetch event series' });
-    }
-  });
-
-  // Get occurrences for a specific series
-  app.get('/api/hosts/event-series/:seriesId/occurrences', isAuthenticated, async (req: any, res) => {
-    try {
-      const { seriesId } = req.params;
-      const userId = req.user.id;
-
-      const series = await storage.getEventSeries(seriesId);
-      if (!series) {
-        return res.status(404).json({ message: 'Event series not found' });
-      }
-
-      const host = await storage.getHostByUserId(userId);
-      if (!host || host.id !== series.hostId) {
-        return res.status(403).json({ message: 'Not authorized to view this series' });
-      }
-
-      const occurrences = await storage.getEventsBySeriesId(seriesId);
-      res.json(occurrences);
-    } catch (error: any) {
-      console.error('Error fetching series occurrences:', error);
-      res.status(500).json({ message: 'Failed to fetch occurrences' });
-      // Cancel an event series (soft-close future occurrences)
-      app.post('/api/hosts/event-series/:seriesId/cancel', isAuthenticated, async (req: any, res) => {
-        try {
-          const { seriesId } = req.params;
-          const userId = req.user.id;
-
-          const series = await storage.getEventSeries(seriesId);
-          if (!series) {
-            return res.status(404).json({ message: 'Event series not found' });
-          }
-
-          const host = await storage.getHostByUserId(userId);
-          if (!host || host.id !== series.hostId) {
-            return res.status(403).json({ message: 'Not authorized to cancel this series' });
-          }
-
-          if (series.status === 'closed') {
-            return res.status(400).json({ message: 'Series is already cancelled' });
-          }
-
-          // Get all occurrences for this series
-          const allOccurrences = await storage.getEventsBySeriesId(seriesId);
-      
-          // Filter to future occurrences only
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const futureOccurrences = allOccurrences.filter(occ => new Date(occ.date) >= today);
-
-          if (futureOccurrences.length === 0) {
-            return res.status(400).json({ message: 'No future occurrences to cancel' });
-          }
-
-          // Collect all affected trucks (interested + accepted)
-          const affectedTrucks = new Map<string, { truckId: string; dates: string[] }>();
-      
-          for (const occurrence of futureOccurrences) {
-            const interests = await storage.getEventInterestsByEventId(occurrence.id);
-        
-            for (const interest of interests) {
-              if (interest.status === 'pending' || interest.status === 'accepted') {
-                const key = interest.truckId;
-                if (!affectedTrucks.has(key)) {
-                  affectedTrucks.set(key, { 
-                    truckId: interest.truckId, 
-                    dates: [] 
-                  });
-                }
-                affectedTrucks.get(key)!.dates.push(occurrence.date.toISOString().split('T')[0]);
-              }
-            }
-          }
-
-          // Cancel all future occurrences
-          for (const occurrence of futureOccurrences) {
-            await db.update(events)
-              .set({ status: 'cancelled', updatedAt: new Date() })
-              .where(eq(events.id, occurrence.id));
-          }
-
-          // Mark series as closed
-          await db.update(eventSeries)
-            .set({ status: 'closed', updatedAt: new Date() })
-            .where(eq(eventSeries.id, seriesId));
-
-          // Send notifications (fire and forget)
-          (async () => {
-            try {
-              for (const [, { truckId, dates }] of Array.from(affectedTrucks)) {
-                const truck = await storage.getRestaurant(truckId);
-                if (truck) {
-                  const owner = await storage.getUser(truck.ownerId);
-                  if (owner && owner.email) {
-                    await emailService.sendSeriesCancellationNotification(
-                      owner.email,
-                      truck.name,
-                      series.name,
-                      dates
-                    );
-                  }
-                }
-              }
-            } catch (err) {
-              console.error('Failed to send cancellation notifications:', err);
-            }
-          })();
-
-          // Telemetry
-          await storage.createTelemetryEvent({
-            eventName: 'series_cancelled',
-            userId: req.user.id,
-            properties: {
-              seriesId,
-              futureOccurrencesCancelled: futureOccurrences.length,
-              trucksNotified: affectedTrucks.size,
-            }
-          });
-
-          res.json({
-            message: 'Series cancelled successfully',
-            futureOccurrencesCancelled: futureOccurrences.length,
-            trucksNotified: affectedTrucks.size,
-          });
-        } catch (error: any) {
-          console.error('Error cancelling series:', error);
-          res.status(500).json({ message: 'Failed to cancel series' });
-        }
-      });
-
-    }
-  });
+  registerOpenCallSeriesRoutes(app);
 
   // =====================================================================
   // END EVENT SERIES ENDPOINTS
   // ====================================================================
 
   // Truck Discovery
-  app.get('/api/events', isAuthenticated, async (req: any, res) => {
-    try {
-      // Optional: Filter by location (lat/lng/radius) in the future
-      const events = await storage.getAllUpcomingEvents();
-      res.json(events);
-    } catch (error: any) {
-      console.error('Error fetching all events:', error);
-      res.status(500).json({ message: 'Failed to fetch events' });
-    }
-  });
-
-  app.post('/api/events/:eventId/interests', isRestaurantOwner, async (req: any, res) => {
-    try {
-      const { eventId } = req.params;
-      const { restaurantId, message } = req.body;
-
-      if (!restaurantId) {
-        return res.status(400).json({ message: 'Restaurant ID is required' });
-      }
-
-      // Verify ownership
-      const ownsRestaurant = await storage.verifyRestaurantOwnership(restaurantId, req.user.id);
-      if (!ownsRestaurant) {
-        return res.status(403).json({ message: 'You can only express interest for restaurants you own' });
-      }
-
-      // Check event expiry
-      const event = await storage.getEvent(eventId);
-      if (!event) {
-        return res.status(404).json({ message: 'Event not found' });
-      }
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (new Date(event.date) < today) {
-        return res.status(400).json({ message: 'Cannot express interest in past events' });
-      }
-
-      // Check idempotency
-      const existing = await storage.getEventInterestByTruckId(eventId, restaurantId);
-      if (existing) {
-        return res.status(200).json({ message: 'Interest already expressed', interest: existing });
-      }
-
-      const parsed = insertEventInterestSchema.parse({
-        eventId,
-        truckId: restaurantId,
-        message,
-      });
-
-      const interest = await storage.createEventInterest(parsed);
-
-      // Send notification to host (fire and forget)
-      (async () => {
-        try {
-          const event = await storage.getEvent(eventId);
-          if (event) {
-            // Telemetry: Interest Created
-            await storage.createTelemetryEvent({
-              eventName: 'interest_created',
-              userId: req.user.id,
-              properties: {
-                eventId,
-                truckId: restaurantId,
-                eventDate: event.date,
-              }
-            });
-
-            const host = await storage.getHost(event.hostId);
-            const truck = await storage.getRestaurant(restaurantId);
-            
-            if (host && truck) {
-              // Get host's user email
-              const hostUser = await storage.getUser(host.userId);
-              if (hostUser && hostUser.email) {
-                await emailService.sendInterestNotification(
-                  hostUser.email,
-                  host.businessName,
-                  truck.name,
-                  new Date(event.date).toLocaleDateString()
-                );
-              }
-            }
-          }
-        } catch (err) {
-          console.error('Failed to send interest notification:', err);
-        }
-      })();
-
-      res.status(201).json({ message: 'Interest sent', interest });
-    } catch (error: any) {
-      console.error('Error creating event interest:', error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: 'Invalid data', errors: error.errors });
-      }
-      res.status(500).json({ message: 'Failed to submit interest' });
-    }
-  });
+  registerEventRoutes(app);
 
   app.patch('/api/hosts/interests/:interestId/status', isAuthenticated, async (req: any, res) => {
     try {
@@ -1762,18 +1169,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify host owns the event associated with this interest
-      const interest = await storage.getEventInterest(interestId);
+      const { interest, event, host } = await getInterestEventAndHostForUser(interestId, userId);
+
       if (!interest) {
         return res.status(404).json({ message: 'Interest not found' });
       }
 
-      const event = await storage.getEvent(interest.eventId);
       if (!event) {
         return res.status(404).json({ message: 'Event not found' });
       }
 
-      const host = await storage.getHostByUserId(userId);
-      if (!host || host.id !== event.hostId) {
+      if (!hostOwnsEvent(host, event)) {
         return res.status(403).json({ message: 'Not authorized to manage this event' });
       }
 
@@ -1787,9 +1193,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (status === 'accepted' && event.hardCapEnabled) {
         const currentInterests = await storage.getEventInterestsByEventId(event.id);
         // Note: interest.status is definitely NOT 'accepted' here due to idempotency check above
-        const acceptedCount = currentInterests.filter(i => i.status === 'accepted').length;
-        
-        if (acceptedCount >= event.maxTrucks) {
+        const acceptedCount = computeAcceptedCount(currentInterests);
+
+        if (shouldBlockAcceptance({
+          hardCapEnabled: event.hardCapEnabled,
+          acceptedCount,
+          maxTrucks: event.maxTrucks,
+        })) {
           // Telemetry: Blocked Attempt
           await storage.createTelemetryEvent({
             eventName: 'interest_accept_blocked',
@@ -1803,10 +1213,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           });
 
-          return res.status(400).json({ 
-            message: 'Event is full (Capacity Guard Enabled). Cannot accept more trucks.',
-            code: 'CAPACITY_REACHED' 
-          });
+          const capacityError = buildCapacityFullError();
+
+          return res.status(400).json(capacityError);
         }
       }
 
@@ -1817,7 +1226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           // Telemetry: Interest Status Changed
           const allInterests = await storage.getEventInterestsByEventId(event.id);
-          const acceptedCount = allInterests.filter(i => i.status === 'accepted').length;
+          const acceptedCount = computeAcceptedCount(allInterests);
           const isOverCap = acceptedCount >= event.maxTrucks;
 
           await storage.createTelemetryEvent({
@@ -1826,7 +1235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             properties: {
               eventId: event.id,
               truckId: interest.truckId,
-              fillRate: acceptedCount / event.maxTrucks,
+              fillRate: computeFillRate({ acceptedCount, maxTrucks: event.maxTrucks }),
               acceptedCount,
               maxTrucks: event.maxTrucks,
               isOverCap
@@ -1843,7 +1252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               await emailService.sendInterestStatusUpdate(
                 owner.email,
                 truck.name,
-                host.businessName,
+                host!.businessName,
                 new Date(event.date).toLocaleDateString(),
                 status as 'accepted' | 'declined'
               );
@@ -1867,13 +1276,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       
       // Verify host owns this event (indirectly via host profile)
-      const host = await storage.getHostByUserId(userId);
+      const host = await getHostByUserId(userId);
       if (!host) {
         return res.status(403).json({ message: 'Not a host' });
       }
 
-      const event = await storage.getEvent(eventId);
-      if (!event || event.hostId !== host.id) {
+      const { event } = await getEventAndHostForUser(eventId, userId);
+      if (!event || !hostOwnsEvent(host, event)) {
         return res.status(404).json({ message: 'Event not found' });
       }
       
@@ -4268,313 +3677,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin API endpoints
-  app.get('/api/auth/admin/verify', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user;
-      if (user.userType === 'admin') {
-        res.json(user);
-      } else {
-        res.status(403).json({ message: "Admin access required" });
-      }
-    } catch (error) {
-      res.status(500).json({ message: "Failed to verify admin" });
-    }
-  });
-
-  app.get('/api/admin/stats', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-
-      const stats = await storage.getAdminStats();
-      res.json(stats);
-    } catch (error) {
-      console.error("Error fetching admin stats:", error);
-      res.status(500).json({ message: "Failed to fetch stats" });
-    }
-  });
-
-  // Admin endpoint to sync subscriptions from Stripe to database
-  app.post('/api/admin/subscriptions/sync', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-
-      if (!stripe) {
-        return res.status(500).json({ message: "Stripe not configured" });
-      }
-
-      const results = {
-        synced: 0,
-        skipped: 0,
-        errors: 0,
-        details: [] as any[]
-      };
-
-      // Get all users with Stripe customer IDs
-      const allUsers = await storage.getAllUsers();
-      const usersWithStripe = allUsers.filter(u => u.stripeCustomerId);
-
-      console.log(`[ADMIN SYNC] Found ${usersWithStripe.length} users with Stripe customer IDs`);
-
-      for (const user of usersWithStripe) {
-        try {
-          // Skip if user already has subscription ID
-          if (user.stripeSubscriptionId) {
-            results.skipped++;
-            continue;
-          }
-
-          // Check Stripe for active subscriptions
-          const subscriptions = await stripe.subscriptions.list({
-            customer: user.stripeCustomerId!,
-            status: 'active',
-            limit: 1,
-          });
-
-          if (subscriptions.data.length > 0) {
-            const subscription = subscriptions.data[0];
-            const interval = subscription.items.data[0]?.price?.recurring?.interval;
-            const intervalCount = subscription.items.data[0]?.price?.recurring?.interval_count || 1;
-
-            let billingInterval = 'month';
-            if (interval === 'month' && intervalCount === 3) {
-              billingInterval = 'quarter';
-            } else if (interval === 'year') {
-              billingInterval = 'year';
-            }
-
-            await storage.updateUserStripeInfo(
-              user.id,
-              user.stripeCustomerId!,
-              subscription.id,
-              `standard-${billingInterval}`
-            );
-
-            results.synced++;
-            results.details.push({
-              userId: user.id,
-              email: user.email,
-              subscriptionId: subscription.id,
-              billingInterval: `standard-${billingInterval}`,
-              status: 'synced'
-            });
-
-            console.log(`[ADMIN SYNC] ✅ Synced subscription ${subscription.id} for user ${user.email}`);
-          } else {
-            results.skipped++;
-          }
-        } catch (error: any) {
-          results.errors++;
-          results.details.push({
-            userId: user.id,
-            email: user.email,
-            error: error.message,
-            status: 'error'
-          });
-          console.error(`[ADMIN SYNC] ❌ Error syncing user ${user.email}:`, error);
-        }
-      }
-
-      console.log(`[ADMIN SYNC] Complete: ${results.synced} synced, ${results.skipped} skipped, ${results.errors} errors`);
-      res.json(results);
-    } catch (error) {
-      console.error("Error syncing subscriptions:", error);
-      res.status(500).json({ message: "Failed to sync subscriptions" });
-    }
-  });
-
-  app.get('/api/admin/restaurants/pending', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      const restaurants = await storage.getPendingRestaurants();
-      res.json(restaurants);
-    } catch (error) {
-      console.error("Error fetching pending restaurants:", error);
-      res.status(500).json({ message: "Failed to fetch pending restaurants" });
-    }
-  });
-
-  app.post('/api/admin/restaurants/:id/approve', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      await storage.approveRestaurant(req.params.id);
-      res.json({ message: "Restaurant approved successfully" });
-    } catch (error) {
-      console.error("Error approving restaurant:", error);
-      res.status(500).json({ message: "Failed to approve restaurant" });
-    }
-  });
-
-  app.delete('/api/admin/restaurants/:id', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      await storage.deleteRestaurant(req.params.id);
-      res.json({ message: "Restaurant deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting restaurant:", error);
-      res.status(500).json({ message: "Failed to delete restaurant" });
-    }
-  });
-
-  app.get('/api/admin/users', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      const users = await storage.getAllUsers();
-      res.json(users);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      res.status(500).json({ message: "Failed to fetch users" });
-    }
-  });
-
-  app.patch('/api/admin/users/:id/status', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      const { isActive } = req.body;
-      await storage.updateUserStatus(req.params.id, isActive);
-      res.json({ message: "User status updated successfully" });
-    } catch (error) {
-      console.error("Error updating user status:", error);
-      res.status(500).json({ message: "Failed to update user status" });
-    }
-  });
-
-  app.get('/api/admin/users/:userId/addresses', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      const addresses = await storage.getUserAddresses(req.params.userId);
-      res.json(addresses);
-    } catch (error) {
-      console.error("Error fetching user addresses:", error);
-      res.status(500).json({ message: "Failed to fetch user addresses" });
-    }
-  });
-
-  app.get('/api/admin/deals', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      const deals = await storage.getAllDealsWithRestaurants();
-      res.json(deals);
-    } catch (error) {
-      console.error("Error fetching deals:", error);
-      res.status(500).json({ message: "Failed to fetch deals" });
-    }
-  });
-
-  app.get('/api/admin/deals/:dealId/stats', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      const dealId = req.params.dealId;
-      const [viewsCount, claimsCount, feedbackStats] = await Promise.all([
-        storage.getDealViewsCount(dealId),
-        storage.getDealClaimsCount(dealId),
-        storage.getDealFeedbackStats(dealId),
-      ]);
-
-      res.json({
-        views: viewsCount,
-        claims: claimsCount,
-        averageRating: feedbackStats.averageRating,
-        totalFeedback: feedbackStats.totalFeedback,
-        ratingDistribution: feedbackStats.ratingDistribution,
-      });
-    } catch (error) {
-      console.error("Error fetching deal stats:", error);
-      res.status(500).json({ message: "Failed to fetch deal statistics" });
-    }
-  });
-
-  app.delete('/api/admin/deals/:dealId', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      await storage.deleteDeal(req.params.dealId);
-      res.json({ message: "Deal deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting deal:", error);
-      res.status(500).json({ message: "Failed to delete deal" });
-    }
-  });
-
-  app.post('/api/admin/deals/:dealId/clone', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      const clonedDeal = await storage.duplicateDeal(req.params.dealId);
-      res.json(clonedDeal);
-    } catch (error) {
-      console.error("Error cloning deal:", error);
-      res.status(500).json({ message: "Failed to clone deal" });
-    }
-  });
-
-  app.patch('/api/admin/deals/:dealId/status', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      const { isActive } = req.body;
-      await storage.updateDeal(req.params.dealId, { isActive });
-      res.json({ message: "Deal status updated successfully" });
-    } catch (error) {
-      console.error("Error updating deal status:", error);
-      res.status(500).json({ message: "Failed to update deal status" });
-    }
-  });
-
-  app.patch('/api/admin/deals/:dealId/extend', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      const { days } = req.body;
-      if (!days || days < 1) {
-        return res.status(400).json({ message: "Invalid number of days" });
-      }
-
-      const deal = await storage.getDeal(req.params.dealId);
-      if (!deal) {
-        return res.status(404).json({ message: "Deal not found" });
-      }
-
-      const newEndDate = new Date(deal.endDate);
-      newEndDate.setDate(newEndDate.getDate() + days);
-
-      await storage.updateDeal(req.params.dealId, { endDate: newEndDate });
-      res.json({ message: `Deal extended by ${days} days`, newEndDate });
-    } catch (error) {
-      console.error("Error extending deal:", error);
-      res.status(500).json({ message: "Failed to extend deal" });
-    }
-  });
-
-
-  // Admin verification routes
-  app.get('/api/admin/verifications', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      const { status } = req.query;
-      let verifications = await storage.getVerificationRequests();
-      
-      // Filter by status if provided
-      if (status && ['pending', 'approved', 'rejected'].includes(status as string)) {
-        verifications = verifications.filter(v => v.status === status);
-      }
-      
-      res.json(verifications);
-    } catch (error) {
-      console.error("Error fetching verification requests:", error);
-      res.status(500).json({ message: "Failed to fetch verification requests" });
-    }
-  });
-
-  app.post('/api/admin/verifications/:id/approve', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      const user = req.user;
-      const { id } = req.params;
-      await storage.approveVerificationRequest(id, user.id);
-      res.json({ success: true, message: "Verification request approved" });
-    } catch (error) {
-      console.error("Error approving verification request:", error);
-      res.status(500).json({ message: "Failed to approve verification request" });
-    }
-  });
-
-  app.post('/api/admin/verifications/:id/reject', isAuthenticated, isAdmin, async (req: any, res) => {
-    try {
-      const user = req.user;
-      const { id } = req.params;
-      const { reason } = req.body;
-      
-      if (!reason || reason.trim().length === 0) {
-        return res.status(400).json({ message: "Rejection reason is required" });
-      }
-      
-      await storage.rejectVerificationRequest(id, user.id, reason);
-      res.json({ success: true, message: "Verification request rejected" });
-    } catch (error) {
-      console.error("Error rejecting verification request:", error);
-      res.status(500).json({ message: "Failed to reject verification request" });
-    }
-  });
+  registerAdminManagementRoutes(app);
 
   // Bug report endpoint
   app.post('/api/bug-report', async (req, res) => {

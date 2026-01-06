@@ -35,7 +35,24 @@ export function useFoodTruckSocket({
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  const socketRef = useRef<Socket | null>(null);
+  type ClientToServerEvents = {
+    subscribe_nearby: (data: { latitude: number; longitude: number; radiusKm?: number }) => void;
+    subscribe_restaurant: (data: { restaurantId: string }) => void;
+    auth: (data: { userId: string }) => void;
+  };
+
+  type ServerToClientEvents = {
+    location_update: (payload: { type: 'location_update'; restaurantId: string; location: Record<string, unknown>; timestamp: string }) => void;
+    truck_location_update: (payload: { type: 'truck_location_update'; restaurantId: string; location: Record<string, unknown>; timestamp: string }) => void;
+    status_update: (payload: { restaurantId: string; status: { isOnline: boolean; mobileOnline?: boolean } }) => void;
+    nearby_trucks: (payload: { trucks: unknown[] }) => void;
+    error: (payload: { message: string }) => void;
+    pong: (payload: Record<string, never>) => void;
+    subscribed: (payload: { restaurantId: string; room: string }) => void;
+    unsubscribed: (payload: { room: string }) => void;
+  };
+
+  const socketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const subscriptionQueueRef = useRef<string[]>([]);
   
@@ -45,13 +62,10 @@ export function useFoodTruckSocket({
   const connect = useCallback(() => {
     if (socketRef.current?.connected) return;
 
-    // In prod, allow overriding the socket origin (e.g., Render API host) to avoid 404s on static fronts
-    const socketUrl = import.meta.env.VITE_SOCKET_URL?.replace(/\/$/, '') || undefined;
-
     try {
       // Create Socket.IO connection via same-origin proxy (no explicit URL)
       // Allow polling first for dev compatibility, then upgrade to websocket
-      const socket = io(socketUrl, {
+      const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
         autoConnect: true,
         transports: ['polling', 'websocket'],
         withCredentials: true,
@@ -98,12 +112,39 @@ export function useFoodTruckSocket({
 
       // Handle location updates
       socket.on('location_update', (data) => {
-        onLocationUpdate?.(data);
+        const locData = data.location || {};
+        const toNumber = (v: unknown): number | undefined => {
+          if (typeof v === 'number') return v;
+          if (typeof v === 'string') {
+            const n = Number(v);
+            return Number.isNaN(n) ? undefined : n;
+          }
+          return undefined;
+        };
+
+        const mapped: FoodTruckLocation = {
+          restaurantId: data.restaurantId,
+          latitude: toNumber((locData as any).latitude) ?? 0,
+          longitude: toNumber((locData as any).longitude) ?? 0,
+          heading: toNumber((locData as any).heading),
+          speed: toNumber((locData as any).speed),
+          accuracy: toNumber((locData as any).accuracy),
+          timestamp: data.timestamp,
+          sessionId: (locData as any).sessionId ?? ''
+        };
+
+        onLocationUpdate?.(mapped);
       });
 
       // Handle status updates
       socket.on('status_update', (data) => {
-        onStatusUpdate?.(data);
+        const mapped: FoodTruckStatus = {
+          restaurantId: data.restaurantId,
+          isOnline: !!data.status?.isOnline,
+          lastSeen: new Date().toISOString(),
+          sessionId: undefined,
+        };
+        onStatusUpdate?.(mapped);
       });
 
       // Handle nearby trucks data
@@ -118,7 +159,7 @@ export function useFoodTruckSocket({
         setConnectionError(error.message || 'Server error');
       });
 
-      socket.on('disconnect', (reason) => {
+      socket.on('disconnect', (reason: Socket.DisconnectReason) => {
         console.log('Food truck Socket.IO disconnected:', reason);
         setIsConnected(false);
         socketRef.current = null;

@@ -3,7 +3,6 @@
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
     "pmneo.tsimporter",
-    "mattpocock.ts-error-translator",
     "humao.rest-client",
     "mtxr.sqltools",
     "mikestead.dotenv",
@@ -13,5 +12,8 @@
     "usernamehw.errorlens",
     "eamodio.gitlens",
     "gruntfuggly.todo-tree"
+  ],
+  "unwantedRecommendations": [
+    "mattpocock.ts-error-translator"
   ]
 }

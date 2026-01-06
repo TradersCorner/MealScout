@@ -32,10 +32,9 @@ function validateEnvironment() {
     },
     email: {
       name: 'Email Notifications',
-      configured: !!(process.env.SENDGRID_API_KEY || process.env.SMTP_HOST),
+      configured: !!process.env.BREVO_API_KEY,
       required: false,
-      value: process.env.SENDGRID_API_KEY ? '✓ SendGrid configured' :
-             process.env.SMTP_HOST ? '✓ SMTP configured' : '✗ Not configured',
+      value: process.env.BREVO_API_KEY ? '✓ Brevo configured' : '✗ Not configured',
       recipients: process.env.INCIDENT_EMAIL_RECIPIENTS || 'Not set',
     },
     slack: {

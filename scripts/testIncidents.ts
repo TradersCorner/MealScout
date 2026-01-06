@@ -180,7 +180,7 @@ async function validateNotificationChannels() {
   console.log('─'.repeat(60));
 
   const checks = {
-    email: !!process.env.SENDGRID_API_KEY || !!process.env.SMTP_HOST,
+    email: !!process.env.BREVO_API_KEY,
     slack: !!process.env.SLACK_WEBHOOK_URL,
     sms: !!process.env.TWILIO_ACCOUNT_SID && !!process.env.TWILIO_AUTH_TOKEN,
     incidentSecret: !!process.env.INCIDENT_SIGNATURE_SECRET,

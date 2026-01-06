@@ -1,24 +1,65 @@
 import { Server as SocketIOServer } from "socket.io";
-import type { Server } from "http";
+import type { Server, IncomingMessage } from "http";
 import { storage } from "./storage";
 import session from "express-session";
+import type { Request, Response } from "express";
+import type { Session } from "express-session";
 import connectPg from "connect-pg-simple";
+import type { Socket } from "socket.io";
+import type { InsertFoodTruckLocation } from "@shared/schema";
 import { incConnect, incDisconnect, incSubscribeNearby, maybeWarnIfChurn } from "./utils/realtimeMetrics";
 
 const PgSession = connectPg(session);
 
-// Interface for authenticated socket
-interface AuthenticatedSocket {
-  id: string;
-  user?: any;
+type ClientToServerEvents = {
+  subscribe_nearby: (data: { latitude: number; longitude: number; radiusKm?: number }) => void;
+  subscribe_restaurant: (data: { restaurantId: string }) => void;
+  unsubscribe: (data: { room?: string }) => void;
+  ping: () => void;
+};
+
+type NearbyTruck = Awaited<ReturnType<typeof storage.getLiveTrucksNearby>>[number];
+
+type BroadcastLocation = {
+  latitude: number | string;
+  longitude: number | string;
+  timestamp?: string;
+  accuracy?: number | string | null;
+  speed?: number | string | null;
+  heading?: number | string | null;
+  altitude?: number | string | null;
+  [key: string]: unknown;
+};
+
+type ServerToClientEvents = {
+  nearby_trucks: (payload: { trucks: NearbyTruck[] }) => void;
+  error: (payload: { message: string }) => void;
+  subscribed: (payload: { restaurantId: string; room: string }) => void;
+  unsubscribed: (payload: { room: string }) => void;
+  pong: (payload: Record<string, never>) => void;
+  location_update: (payload: { type: "location_update"; restaurantId: string; location: BroadcastLocation; timestamp: string }) => void;
+  truck_location_update: (payload: { type: "truck_location_update"; restaurantId: string; location: BroadcastLocation; timestamp: string }) => void;
+  status_update: (payload: { restaurantId: string; status: { isOnline: boolean; mobileOnline?: boolean } }) => void;
+};
+
+type InterServerEvents = Record<string, never>;
+
+type SocketData = {
   userId?: string | null;
   sessionID?: string;
-  join: (room: string) => void;
-  leave: (room: string) => void;
-  emit: (event: string, ...args: any[]) => void;
-  on: (event: string, callback: (data: any) => void) => void;
-  disconnect: () => void;
-}
+  user?: Awaited<ReturnType<typeof storage.getUser>> | null;
+};
+
+type RealtimeSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData> & {
+  userId?: string | null;
+  sessionID?: string;
+  user?: Awaited<ReturnType<typeof storage.getUser>> | null;
+};
+
+type SessionRequest = IncomingMessage & {
+  session?: Session & { passport?: { user?: string } };
+  sessionID?: string;
+};
 
 // Global WebSocket server instance
 let io: SocketIOServer | null = null;
@@ -45,9 +86,10 @@ export function setupWebSocketServer(httpServer: Server): SocketIOServer {
   });
 
   // Create Socket.IO server with restricted CORS
-  const defaultOrigins = 'http://localhost:5000,http://localhost:5173,http://127.0.0.1:5173,https://meal-scout.vercel.app,https://mealscout.us,https://www.mealscout.us,https://mealscout.onrender.com';
+  const defaultOrigins = 'http://localhost:5000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,https://meal-scout.vercel.app,https://mealscout.us,https://www.mealscout.us,https://mealscout.onrender.com';
   const allowedOrigins = (process.env.ALLOWED_ORIGINS || defaultOrigins).split(',').map(o => o.trim());
-  io = new SocketIOServer(httpServer, {
+  io = new SocketIOServer<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {
+    path: "/socket.io",
     cors: {
       origin: function(origin, callback) {
         if (!origin || allowedOrigins.includes(origin)) {
@@ -59,21 +101,24 @@ export function setupWebSocketServer(httpServer: Server): SocketIOServer {
       methods: ["GET", "POST"],
       credentials: true,
     },
-    transports: ["websocket"],
+    transports: ["polling", "websocket"],
   });
 
   // Connection handling - no auth middleware (TradeScout Law: read-only realtime discovery allowed)
-  io.on("connection", async (socket: any) => {
+  io.on("connection", async (socket: RealtimeSocket) => {
     incConnect();
+    socket.userId = null;
+    socket.sessionID = undefined;
+    socket.user = null;
     
     // Extract session data if available (non-blocking, best-effort)
-    sessionMiddleware(socket.request as any, {} as any, async () => {
-      const session = (socket.request as any).session;
+    sessionMiddleware(socket.request as unknown as Request, {} as unknown as Response, async () => {
+      const session = (socket.request as SessionRequest).session;
       const user = session?.passport?.user;
       
       if (user) {
         socket.userId = user;
-        socket.sessionID = (socket.request as any).sessionID;
+        socket.sessionID = (socket.request as SessionRequest).sessionID;
         socket.user = await storage.getUser(socket.userId);
         console.log(`WebSocket connected: ${socket.id}, userId: ${socket.userId}`);
       } else {
@@ -134,7 +179,7 @@ export function setupWebSocketServer(httpServer: Server): SocketIOServer {
       });
 
       // Handle subscription to specific restaurant updates (for owners)
-      socket.on("subscribe_restaurant", async (data: { restaurantId: string }) => {
+      socket.on("subscribe_restaurant", async (data) => {
         try {
           const { restaurantId } = data;
           
@@ -163,7 +208,7 @@ export function setupWebSocketServer(httpServer: Server): SocketIOServer {
       });
 
       // Handle unsubscribe
-      socket.on("unsubscribe", (data: { room?: string }) => {
+      socket.on("unsubscribe", (data) => {
         try {
           const userSubs = userSubscriptions.get(userKey);
           if (data.room && userSubs?.has(data.room)) {
@@ -203,7 +248,7 @@ export function setupWebSocketServer(httpServer: Server): SocketIOServer {
 }
 
 // Broadcast location update to subscribers
-export function broadcastLocationUpdate(restaurantId: string, locationData: any) {
+export function broadcastLocationUpdate(restaurantId: string, locationData: BroadcastLocation) {
   if (!io) {
     console.warn("WebSocket server not initialized");
     return;
@@ -222,8 +267,16 @@ export function broadcastLocationUpdate(restaurantId: string, locationData: any)
     // Broadcast to geographic grid rooms (for nearby customers)
     if (locationData.latitude && locationData.longitude) {
       const gridSize = 0.1;
-      const gridLat = Math.floor(locationData.latitude / gridSize) * gridSize;
-      const gridLng = Math.floor(locationData.longitude / gridSize) * gridSize;
+      const latNum = typeof locationData.latitude === 'string' ? Number(locationData.latitude) : locationData.latitude;
+      const lngNum = typeof locationData.longitude === 'string' ? Number(locationData.longitude) : locationData.longitude;
+
+      if (Number.isNaN(latNum) || Number.isNaN(lngNum)) {
+        console.warn("Skipping broadcast: invalid coordinates", locationData);
+        return;
+      }
+
+      const gridLat = Math.floor(latNum / gridSize) * gridSize;
+      const gridLng = Math.floor(lngNum / gridSize) * gridSize;
       
       // Broadcast to current grid and adjacent grids for seamless coverage
       for (let latOffset = -1; latOffset <= 1; latOffset++) {

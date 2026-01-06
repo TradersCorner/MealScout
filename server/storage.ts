@@ -70,7 +70,7 @@ import {
   type InsertTelemetryEvent,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, gte, lte, sql, desc, asc, inArray, isNull, isNotNull, not } from "drizzle-orm";
+import { eq, and, or, gte, lte, sql, desc, asc, inArray, isNull, isNotNull, not, ne } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 // Interface for storage operations

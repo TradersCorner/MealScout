@@ -887,9 +887,9 @@ export default function RestaurantSignup() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
               </svg>
             </div>
-            <h3 className="font-bold text-gray-900 text-lg mb-2" data-testid="text-benefit-local-title">{COPY.main.benefits.compact.local.title}</h3>
+            <h3 className="font-bold text-gray-900 text-lg mb-2" data-testid="text-benefit-local-title">{COPY.benefits.compact.local.title}</h3>
             <p className="text-gray-600 leading-relaxed" data-testid="text-benefit-local-desc">
-              {COPY.main.benefits.compact.local.desc}
+              {COPY.benefits.compact.local.desc}
             </p>
           </div>
           
@@ -899,9 +899,9 @@ export default function RestaurantSignup() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
             </div>
-            <h3 className="font-bold text-gray-900 text-lg mb-2" data-testid="text-benefit-meals-title">{COPY.main.benefits.compact.allDay.title}</h3>
+            <h3 className="font-bold text-gray-900 text-lg mb-2" data-testid="text-benefit-meals-title">{COPY.benefits.compact.allDay.title}</h3>
             <p className="text-gray-600 leading-relaxed" data-testid="text-benefit-meals-desc">
-              {COPY.main.benefits.compact.allDay.desc}
+              {COPY.benefits.compact.allDay.desc}
             </p>
           </div>
           
@@ -911,9 +911,9 @@ export default function RestaurantSignup() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
               </svg>
             </div>
-            <h3 className="font-bold text-gray-900 text-lg mb-2" data-testid="text-benefit-track-title">{COPY.main.benefits.compact.track.title}</h3>
+            <h3 className="font-bold text-gray-900 text-lg mb-2" data-testid="text-benefit-track-title">{COPY.benefits.compact.track.title}</h3>
             <p className="text-gray-600 leading-relaxed" data-testid="text-benefit-track-desc">
-              {COPY.main.benefits.compact.track.desc}
+              {COPY.benefits.compact.track.desc}
             </p>
           </div>
         </div>

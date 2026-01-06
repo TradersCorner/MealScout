@@ -16,6 +16,7 @@
     "validate:config": "tsx scripts/validateConfig.ts",
     "stress-test": "tsx scripts/stressTest.ts",
     "test:flows": "tsx scripts/userFlows.ts",
+    "test:flows:with-server": "node scripts/testFlowsWithServer.mjs",
     "test:all": "npm run check && npm run test:flows && npm run stress-test",
     "monitor": "tsx scripts/monitorPerformance.ts"
   },

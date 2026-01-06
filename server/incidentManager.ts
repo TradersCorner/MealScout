@@ -3,6 +3,7 @@ import { db } from './db';
 import { incidents, oncallRotation } from '../shared/schema';
 import { eq, and, gte, lte, desc } from 'drizzle-orm';
 import auditLogger, { logAudit } from './auditLogger';
+import { emailService, isEmailConfigured } from './emailService';
 
 // Environment variables for escalation timing
 const ESCALATION_MINUTES = {
@@ -15,8 +16,9 @@ const ESCALATION_MINUTES = {
 
 // Notification channels configuration
 const NOTIFICATION_CONFIG = {
+  // Email is a required channel for incidents in production.
   email: {
-    enabled: !!process.env.SENDGRID_API_KEY || !!process.env.SMTP_HOST,
+    enabled: isEmailConfigured(),
     recipients: (process.env.INCIDENT_EMAIL_RECIPIENTS || '').split(',').filter(Boolean),
   },
   slack: {
@@ -160,8 +162,52 @@ async function notifyIncident(incident: any, eventType: 'created' | 'acknowledge
   const message = `[${incident.severity.toUpperCase()}] ${rule?.name || 'Incident'} - ${eventType}`;
 
   // Email notification
+  if (NOTIFICATION_CONFIG.email.recipients.length === 0) {
+    const error = new Error(
+      'Incident email notification failed: INCIDENT_EMAIL_RECIPIENTS is not configured.',
+    );
+    auditLogger.error(error.message, { incidentId: incident.id, eventType });
+    throw error;
+  }
+
+  if (!NOTIFICATION_CONFIG.email.enabled) {
+    const error = new Error(
+      'Incident email notification failed: email provider is not configured (BREVO_API_KEY missing or invalid).',
+    );
+    auditLogger.error(error.message, { incidentId: incident.id, eventType });
+    throw error;
+  }
+
   if (NOTIFICATION_CONFIG.email.enabled && NOTIFICATION_CONFIG.email.recipients.length > 0) {
-    // TODO: Implement email sending via nodemailer/SendGrid
+    const subject = `[${incident.severity.toUpperCase()}] ${rule?.name || 'Incident'} - ${eventType}`;
+    const html = `
+      <h2>MealScout Incident Notification</h2>
+      <p><strong>Event:</strong> ${eventType}</p>
+      <p><strong>Rule:</strong> ${rule?.name || incident.ruleId}</p>
+      <p><strong>Severity:</strong> ${incident.severity}</p>
+      <p><strong>Incident ID:</strong> ${incident.id}</p>
+      <pre style="background:#f3f4f6;padding:12px;border-radius:4px;white-space:pre-wrap;word-break:break-word;">
+${JSON.stringify(incident.metadata || {}, null, 2)}
+      </pre>
+    `;
+
+    const failures: string[] = [];
+
+    for (const recipient of NOTIFICATION_CONFIG.email.recipients) {
+      const ok = await emailService.sendBasicEmail(recipient, subject, html);
+      if (!ok) {
+        failures.push(recipient);
+      }
+    }
+
+    if (failures.length > 0) {
+      const error = new Error(
+        `Incident email notification failed for recipients: ${failures.join(', ')}`,
+      );
+      auditLogger.error(error.message, { incidentId: incident.id, eventType });
+      throw error;
+    }
+
     auditLogger.info('Email notification sent', { incidentId: incident.id, eventType });
   }
 
@@ -191,8 +237,11 @@ async function notifyIncident(incident: any, eventType: 'created' | 'acknowledge
 
   // SMS notification (SEV1 only - critical)
   if (NOTIFICATION_CONFIG.sms.enabled && incident.severity === 'critical' && NOTIFICATION_CONFIG.sms.recipients.length > 0) {
-    // TODO: Implement SMS via Twilio
-    auditLogger.info('SMS notification sent', { incidentId: incident.id, eventType });
+    // SMS notifications are currently not implemented. Do not log false success.
+    auditLogger.warn(
+      'SMS incident notification requested but Twilio integration is not implemented; no SMS was sent.',
+      { incidentId: incident.id, eventType },
+    );
   }
 }
 

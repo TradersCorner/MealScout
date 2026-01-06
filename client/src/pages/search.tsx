@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Filter, MapPin, Clock, X, SlidersHorizontal, Utensils, Pizza, Sandwich, Soup, UtensilsCrossed, Salad, Coffee, Fish, Cake, Croissant } from "lucide-react";
+import { Search, Filter, MapPin, Clock, X, SlidersHorizontal, Utensils, Pizza, Sandwich, Soup, UtensilsCrossed, Salad, Coffee, Fish, Cake, Croissant, Beef, ChefHat, Crown } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
 
 // Category configuration mapping (from category.tsx)

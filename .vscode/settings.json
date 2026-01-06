@@ -6,6 +6,11 @@
   },
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.tsc.autoDetect": "off",
+  // Keep VS Code focused on real TS/JS diagnostics, not experimental project-wide analysis
+  "typescript.tsserver.experimental.enableProjectDiagnostics": false,
+  // Rely on TypeScript/JS + explicit tooling, avoid extra built-in JS validation noise
+  "javascript.validate.enable": true,
   "eslint.validate": [
     "javascript",
     "javascriptreact",
@@ -15,6 +20,20 @@
   "files.eol": "\n",
   "files.insertFinalNewline": true,
   "files.trimTrailingWhitespace": true,
+  "files.exclude": {
+    "**/.git": true,
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.vercel": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.vercel": true
+  },
+  // Prevent additional tools from surfacing thousands of non-blocking hints as core Problems
+  "eslint.enable": false,
+  "typescript.validate.enable": true,
   "[markdown]": {
     "files.trimTrailingWhitespace": false
   }

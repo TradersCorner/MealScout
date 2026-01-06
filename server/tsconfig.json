@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "module": "ESNext",
+    "target": "ES2022",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["../shared/*"]
+    }
+  },
+  "include": ["**/*.ts"],
+  "exclude": [
+    "../client/**",
+    "../scripts/**",
+    "../dist/**",
+    "../node_modules/**",
+    "vite.ts",
+    "../vite.config.ts"
+  ]
+}

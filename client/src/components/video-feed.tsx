@@ -360,7 +360,7 @@ export function VideoFeed({ onUploadClick }: VideoFeedProps) {
           onClick={() => {
             dispatch({ type: 'RETRY' });
             // Let react-query refetch using its existing behavior
-            void fetchNextPage({ pageParam: 0 });
+            void fetchNextPage();
           }}
           className="inline-flex items-center px-4 py-2 rounded-md bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition"
         >
@@ -372,46 +372,48 @@ export function VideoFeed({ onUploadClick }: VideoFeedProps) {
 
   const stories: ApiStory[] = data?.pages.flatMap((page: any) => page.stories as ApiStory[]) || [];
 
-  const feedItems: FeedVideoItem[] = stories
-    .map((item) => {
-      if (!item) return null;
-      if (item.__type === 'ad' && item.targetUrl) {
-        return {
-          kind: 'restaurant' as const,
-          videoId: item.id,
-          campaignId: item.id,
-          title: item.title,
-          mediaUrl: item.mediaUrl,
-          targetUrl: item.targetUrl,
-          ctaText: item.ctaText || COPY.restaurantAd.ctaDefault,
-          isHouseAd: item.isHouseAd,
-          isAffiliate: item.isAffiliate,
-          affiliateName: item.affiliateName ?? undefined,
-        } satisfies RestaurantAdVideo;
-      }
+  const feedItems: FeedVideoItem[] = stories.reduce<FeedVideoItem[]>((acc, item) => {
+    if (!item) return acc;
 
-      if (item.videoUrl) {
-        return {
-          kind: 'user' as const,
-          videoId: item.id,
-          restaurantId: item.restaurantId,
-          title: item.title,
-          description: item.description,
-          duration: item.duration,
-          videoUrl: item.videoUrl,
-          thumbnailUrl: item.thumbnailUrl,
-          viewCount: item.viewCount ?? 0,
-          likeCount: item.likeCount ?? 0,
-          commentCount: item.commentCount ?? 0,
-          createdAt: item.createdAt,
-          userLiked: item.userLiked,
-          expiresAt: item.expiresAt,
-        } satisfies UserRecommendationVideo;
-      }
+    if (item.__type === 'ad' && item.targetUrl) {
+      const adVideo: RestaurantAdVideo = {
+        kind: 'restaurant',
+        videoId: item.id,
+        campaignId: item.id,
+        title: item.title,
+        mediaUrl: item.mediaUrl,
+        targetUrl: item.targetUrl,
+        ctaText: item.ctaText || COPY.restaurantAd.ctaDefault,
+        isHouseAd: item.isHouseAd,
+        isAffiliate: item.isAffiliate,
+        affiliateName: item.affiliateName ?? undefined,
+      };
+      acc.push(adVideo);
+      return acc;
+    }
 
-      return null;
-    })
-    .filter((item): item is FeedVideoItem => item !== null);
+    if (item.videoUrl) {
+      const userVideo: UserRecommendationVideo = {
+        kind: 'user',
+        videoId: item.id,
+        restaurantId: item.restaurantId,
+        title: item.title,
+        description: item.description,
+        duration: item.duration,
+        videoUrl: item.videoUrl,
+        thumbnailUrl: item.thumbnailUrl,
+        viewCount: item.viewCount ?? 0,
+        likeCount: item.likeCount ?? 0,
+        commentCount: item.commentCount ?? 0,
+        createdAt: item.createdAt,
+        userLiked: item.userLiked,
+        expiresAt: item.expiresAt,
+      };
+      acc.push(userVideo);
+    }
+
+    return acc;
+  }, []);
 
   if (feedItems.length === 0) {
     return (

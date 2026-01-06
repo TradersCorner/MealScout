@@ -3,11 +3,11 @@
  * Usage: npx tsx scripts/raceConditionTest.ts
  */
 
-const BASE_URL = process.env.TEST_URL || 'http://localhost:5200';
+const RACE_TEST_URL = process.env.TEST_URL || 'http://localhost:5200';
 let authToken: string | null = null;
 
 async function createTestUser(email: string): Promise<string> {
-  const response = await fetch(`${BASE_URL}/api/auth/signup`, {
+  const response = await fetch(`${RACE_TEST_URL}/api/auth/signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -20,7 +20,7 @@ async function createTestUser(email: string): Promise<string> {
   
   if (!response.ok) {
     // User might already exist, try login
-    const loginRes = await fetch(`${BASE_URL}/api/auth/login`, {
+    const loginRes = await fetch(`${RACE_TEST_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password: 'TestPass123!' }),
@@ -35,7 +35,7 @@ async function createTestUser(email: string): Promise<string> {
 }
 
 async function claimDeal(dealId: string, userId: number): Promise<boolean> {
-  const response = await fetch(`${BASE_URL}/api/deals/${dealId}/claim`, {
+  const response = await fetch(`${RACE_TEST_URL}/api/deals/${dealId}/claim`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -51,7 +51,7 @@ async function testDealClaimRace() {
   console.log('\n🏁 Testing deal claim race conditions...\n');
   
   // Get a deal with limited uses
-  const dealsRes = await fetch(`${BASE_URL}/api/deals/active`);
+  const dealsRes = await fetch(`${RACE_TEST_URL}/api/deals/active`);
   const deals = await dealsRes.json();
   
   if (!deals || deals.length === 0) {

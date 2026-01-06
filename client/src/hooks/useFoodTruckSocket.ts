@@ -47,9 +47,10 @@ export function useFoodTruckSocket({
 
     try {
       // Create Socket.IO connection via same-origin proxy (no explicit URL)
+      // Allow polling first for dev compatibility, then upgrade to websocket
       const socket = io({
         autoConnect: true,
-        transports: ['websocket'],
+        transports: ['polling', 'websocket'],
         withCredentials: true,
         path: '/socket.io',
         reconnection: true,

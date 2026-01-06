@@ -3,7 +3,7 @@
  * Usage: npx tsx scripts/quickLoadTest.ts
  */
 
-const BASE_URL = process.env.TEST_URL || 'https://mealscout.onrender.com';
+const LOAD_TEST_URL = process.env.TEST_URL || 'https://mealscout.onrender.com';
 
 interface TestResult {
   name: string;
@@ -45,7 +45,7 @@ async function concurrentRequests(url: string, count: number): Promise<TestResul
 }
 
 async function testEndpoint(path: string, concurrentUsers: number): Promise<TestResult> {
-  return await concurrentRequests(`${BASE_URL}${path}`, concurrentUsers);
+  return await concurrentRequests(`${LOAD_TEST_URL}${path}`, concurrentUsers);
 }
 
 async function runLoadTest() {

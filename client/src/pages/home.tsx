@@ -48,13 +48,24 @@ export default function Home() {
 
   const { isConnected, subscribeToNearby, connect: connectWS } = useFoodTruckSocket();
 
-  // Show welcome modal on initial session visit
+  // Show welcome modal only for anonymous users; auto-detect for logged-in users
   useEffect(() => {
     const hasSeenWelcome = sessionStorage.getItem('mealscout_welcome_seen');
+
+    if (user) {
+      // Logged-in: skip welcome modal and auto-detect location silently
+      setShowWelcomeModal(false);
+      if (!location) {
+        setIsLoadingLocation(true);
+        handleLocationDetection();
+      }
+      return;
+    }
+
     if (!hasSeenWelcome && !location) {
       setShowWelcomeModal(true);
     }
-  }, []);
+  }, [user, location]);
 
   const handleLocationDetection = async () => {
     if (navigator.geolocation) {

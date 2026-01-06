@@ -45,7 +45,7 @@ export function setupWebSocketServer(httpServer: Server): SocketIOServer {
   });
 
   // Create Socket.IO server with restricted CORS
-  const defaultOrigins = 'http://localhost:5000,http://localhost:5173,http://127.0.0.1:5173,https://meal-scout.vercel.app,https://mealscout.us,https://www.mealscout.us';
+  const defaultOrigins = 'http://localhost:5000,http://localhost:5173,http://127.0.0.1:5173,https://meal-scout.vercel.app,https://mealscout.us,https://www.mealscout.us,https://mealscout.onrender.com';
   const allowedOrigins = (process.env.ALLOWED_ORIGINS || defaultOrigins).split(',').map(o => o.trim());
   io = new SocketIOServer(httpServer, {
     cors: {

@@ -46,9 +46,8 @@ export function useFoodTruckSocket({
     if (socketRef.current?.connected) return;
 
     try {
-      // Create Socket.IO connection directly to backend (WebSocket-only, no polling)
-      const backendUrl = import.meta.env.VITE_API_BASE_URL || '';
-      const socket = io(backendUrl, {
+      // Create Socket.IO connection via same-origin proxy (no explicit URL)
+      const socket = io({
         autoConnect: true,
         transports: ['websocket'],
         withCredentials: true,

@@ -1152,6 +1152,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const host = await storage.createHost(parsed);
+
+      // Upgrade user type to restaurant_owner for host accounts
+      if (req.user.userType === 'customer') {
+        await storage.updateUserType(userId, 'restaurant_owner');
+      }
+
       res.status(201).json(host);
     } catch (error: any) {
       console.error('Error creating host:', error);
@@ -2046,6 +2052,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { dealId } = req.params;
       const userId = req.user?.id; // Optional for anonymous views
       const sessionId = req.sessionID;
+
+      // Skip tracking if the deal does not exist (prevents noisy 500s on stale IDs)
+      const deal = await storage.getDeal(dealId);
+      if (!deal) {
+        console.warn(`[deals:view] deal not found for id ${dealId} - skipping view tracking`);
+        return res.json({ success: true, message: "Deal not found; view skipped" });
+      }
       
       // Proper per-identity rate limiting: check if this specific user/session has already viewed this deal recently
       const hasRecentView = await storage.hasRecentDealView(dealId, userId, sessionId, 3600000); // 1 hour window

@@ -1,8 +1,10 @@
 /**
  * API base URL configuration
- * Uses VITE_API_BASE_URL env var in production, defaults to relative path in dev
+ * In development, force same-origin (relative paths only).
+ * In production, allow optional VITE_API_BASE_URL; otherwise same-origin.
  */
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const IS_DEV = import.meta.env.DEV;
+export const API_BASE_URL = IS_DEV ? '' : (import.meta.env.VITE_API_BASE_URL || '');
 
 /**
  * Build API URL with base path

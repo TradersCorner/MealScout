@@ -4585,13 +4585,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         screenshotUrl: screenshot || undefined,
       };
 
+      // Log bug report to console if email service not configured
+      console.log('🐛 Bug Report Received:');
+      console.log('   User:', userName || 'Anonymous');
+      console.log('   Email:', userEmail || 'N/A');
+      console.log('   URL:', currentUrl);
+      console.log('   User Agent:', userAgent);
+      console.log('   Time:', bugReportData.timestamp);
+      console.log('   Screenshot:', screenshot ? `${screenshot.substring(0, 50)}...` : 'None');
+
       const success = await emailService.sendBugReport(bugReportData);
 
-      if (success) {
-        res.json({ success: true, message: "Bug report sent successfully" });
-      } else {
-        res.status(500).json({ message: "Failed to send bug report. Email service may not be configured." });
-      }
+      // Always return success even if email fails (logged to console)
+      res.json({ 
+        success: true, 
+        message: success ? "Bug report sent successfully" : "Bug report logged (email service not configured)" 
+      });
     } catch (error) {
       console.error("Error submitting bug report:", error);
       res.status(500).json({ message: "Failed to submit bug report" });

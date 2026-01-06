@@ -19,13 +19,14 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    port: 5200,
     proxy: {
       "/api": {
-        target: "http://localhost:4000",
+        target: "http://localhost:5200",
         changeOrigin: true,
       },
       "/socket.io": {
-        target: "http://localhost:4000",
+        target: "http://localhost:5200",
         changeOrigin: true,
         ws: true,
       },

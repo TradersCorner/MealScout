@@ -9,6 +9,7 @@ import {
   decimal,
   integer,
   boolean,
+  unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -1331,6 +1332,105 @@ export const truckInterests = pgTable(
   ]
 );
 
+// Hosts: Persistent profiles for businesses hosting food trucks
+export const hosts = pgTable(
+  'hosts',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    businessName: varchar('business_name').notNull(),
+    address: text('address').notNull(),
+    locationType: varchar('location_type').notNull(), // 'office' | 'bar' | 'brewery' | 'other'
+    expectedFootTraffic: integer('expected_foot_traffic'),
+    amenities: jsonb('amenities'), // { power: boolean, wifi: boolean, seating: boolean, etc }
+    contactPhone: varchar('contact_phone'),
+    notes: text('notes'),
+    isVerified: boolean('is_verified').default(false),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_hosts_user').on(table.userId),
+    index('idx_hosts_verified').on(table.isVerified),
+  ]
+);
+
+// Events: Specific slots created by hosts for food trucks
+// Event Series: Multi-day or recurring event configurations (Open Calls)
+export const eventSeries = pgTable(
+  'event_series',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    hostId: varchar('host_id').notNull().references(() => hosts.id, { onDelete: 'cascade' }),
+    name: varchar('name').notNull(), // e.g. "Summer Market Series"
+    description: text('description'),
+    timezone: varchar('timezone').notNull().default('America/New_York'), // IANA timezone
+    recurrenceRule: text('recurrence_rule'), // RFC5545 RRULE or simplified pattern
+    startDate: timestamp('start_date').notNull(),
+    endDate: timestamp('end_date').notNull(),
+    // Defaults applied to generated occurrences
+    defaultStartTime: varchar('default_start_time').notNull(), // HH:MM
+    defaultEndTime: varchar('default_end_time').notNull(), // HH:MM
+    defaultMaxTrucks: integer('default_max_trucks').notNull().default(1),
+    defaultHardCapEnabled: boolean('default_hard_cap_enabled').default(false),
+    status: varchar('status').notNull().default('draft'), // 'draft' | 'published' | 'closed'
+    publishedAt: timestamp('published_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_event_series_host').on(table.hostId),
+    index('idx_event_series_status').on(table.status),
+    index('idx_event_series_dates').on(table.startDate, table.endDate),
+  ]
+);
+
+export const events = pgTable(
+  'events',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    hostId: varchar('host_id').notNull().references(() => hosts.id, { onDelete: 'cascade' }),
+    seriesId: varchar('series_id').references(() => eventSeries.id, { onDelete: 'set null' }), // Open Calls: FK to parent series
+    name: varchar('name'), // e.g. "Friday Lunch"
+    description: text('description'),
+    date: timestamp('date').notNull(),
+    startTime: varchar('start_time').notNull(), // HH:MM
+    endTime: varchar('end_time').notNull(), // HH:MM
+    maxTrucks: integer('max_trucks').notNull().default(1),
+    status: varchar('status').notNull().default('open'), // 'open' | 'booked' | 'cancelled' | 'completed'
+    bookedRestaurantId: varchar('booked_restaurant_id').references(() => restaurants.id, { onDelete: 'set null' }),
+    // Capacity Guard v2.2
+    hardCapEnabled: boolean('hard_cap_enabled').default(false),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_events_host').on(table.hostId),
+    index('idx_events_series').on(table.seriesId),
+    index('idx_events_date').on(table.date),
+    index('idx_events_status').on(table.status),
+    index('idx_events_booked_restaurant').on(table.bookedRestaurantId),
+  ]
+);
+
+// Event Interests: Trucks expressing interest in specific events
+export const eventInterests = pgTable(
+  'event_interests',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    eventId: varchar('event_id').notNull().references(() => events.id, { onDelete: 'cascade' }),
+    truckId: varchar('truck_id').notNull().references(() => restaurants.id, { onDelete: 'cascade' }),
+    message: varchar('message', { length: 200 }), // Optional intro
+    status: varchar('status').notNull().default('pending'), // 'pending' | 'accepted' | 'declined'
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_event_interests_event').on(table.eventId),
+    index('idx_event_interests_truck').on(table.truckId),
+    unique('uq_event_interests_event_truck').on(table.eventId, table.truckId),
+  ]
+);
+
 // PHASE 1: Referral tracking - "who brought who"
 export const referrals = pgTable(
   'referrals',
@@ -1736,6 +1836,37 @@ export const truckInterestsRelations = relations(truckInterests, ({ one }) => ({
   }),
 }));
 
+export const hostsRelations = relations(hosts, ({ one, many }) => ({
+  user: one(users, {
+    fields: [hosts.userId],
+    references: [users.id],
+  }),
+  events: many(events),
+}));
+
+export const eventInterestsRelations = relations(eventInterests, ({ one }) => ({
+  event: one(events, {
+    fields: [eventInterests.eventId],
+    references: [events.id],
+  }),
+  truck: one(restaurants, {
+    fields: [eventInterests.truckId],
+    references: [restaurants.id],
+  }),
+}));
+
+export const eventsRelations = relations(events, ({ one, many }) => ({
+  host: one(hosts, {
+    fields: [events.hostId],
+    references: [hosts.id],
+  }),
+  bookedRestaurant: one(restaurants, {
+    fields: [events.bookedRestaurantId],
+    references: [restaurants.id],
+  }),
+  interests: many(eventInterests),
+}));
+
 export const referralsRelations = relations(referrals, ({ one }) => ({
   affiliateUser: one(users, {
     fields: [referrals.affiliateUserId],
@@ -1996,4 +2127,59 @@ export const insertFeedAdSchema = createInsertSchema(feedAds).omit({
 
 export type FeedAd = typeof feedAds.$inferSelect;
 export type InsertFeedAd = z.infer<typeof insertFeedAdSchema>;
+
+export const insertHostSchema = createInsertSchema(hosts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  isVerified: true,
+});
+
+export type Host = typeof hosts.$inferSelect;
+export type InsertHost = z.infer<typeof insertHostSchema>;
+
+export const insertEventSeriesSchema = createInsertSchema(eventSeries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  status: true,
+  publishedAt: true,
+});
+
+export type EventSeries = typeof eventSeries.$inferSelect;
+export type InsertEventSeries = z.infer<typeof insertEventSeriesSchema>;
+
+export const insertEventSchema = createInsertSchema(events).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  status: true,
+  bookedRestaurantId: true,
+});
+
+export type Event = typeof events.$inferSelect;
+export type InsertEvent = z.infer<typeof insertEventSchema>;
+
+export const insertEventInterestSchema = createInsertSchema(eventInterests).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type EventInterest = typeof eventInterests.$inferSelect;
+export type InsertEventInterest = z.infer<typeof insertEventInterestSchema>;
+
+// Telemetry: Generic event tracking for analytics
+export const telemetryEvents = pgTable('telemetry_events', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  eventName: varchar('event_name').notNull(),
+  userId: varchar('user_id'),
+  properties: jsonb('properties'),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('idx_telemetry_name').on(table.eventName),
+  index('idx_telemetry_created').on(table.createdAt),
+]);
+
+export type TelemetryEvent = typeof telemetryEvents.$inferSelect;
+export type InsertTelemetryEvent = typeof telemetryEvents.$inferInsert;
 

@@ -30,6 +30,7 @@ import AdminModerationVideos from "@/pages/admin-moderation-videos";
 import AdminModerationMetrics from "@/pages/admin-moderation-metrics";
 import AdminModerationAppeals from "@/pages/admin-moderation-appeals";
 import AdminAuditLogs from "@/pages/AdminAuditLogs";
+import AdminTelemetry from "@/pages/admin-telemetry";
 import AffiliateEarnings from "@/pages/AffiliateEarnings";
 import EmptyCountyExperience from "@/pages/EmptyCountyExperience";
 import CategoryPage from "@/pages/category";
@@ -57,6 +58,8 @@ import OAuthSetupGuide from "@/pages/oauth-setup-guide";
 import GoldenPlateWinners from "@/pages/golden-plate-winners";
 import ParkingPassPage from "@/pages/parking-pass";
 import HostSignup from "@/pages/host-signup";
+import HostDashboard from "@/pages/host-dashboard";
+import TruckDiscovery from "@/pages/truck-discovery";
 import { BetaDisclaimer } from "@/components/beta-disclaimer";
 import { BugReportButton } from "@/components/bug-report-button";
 
@@ -127,6 +130,8 @@ function Router() {
           <Route path="/restaurant-owner-dashboard" component={RestaurantOwnerDashboard} />
           <Route path="/restaurant/dashboard" component={RestaurantOwnerDashboard} />
           <Route path="/user-dashboard" component={UserDashboard} />
+          <Route path="/host/dashboard" component={HostDashboard} />
+          <Route path="/truck-discovery" component={TruckDiscovery} />
           <Route path="/search" component={Search} />
           <Route path="/map" component={MapPage} />
           <Route path="/favorites" component={Favorites} />
@@ -143,6 +148,7 @@ function Router() {
           <Route path="/admin/moderation/metrics" component={AdminModerationMetrics} />
           <Route path="/admin/moderation/appeals" component={AdminModerationAppeals} />
           <Route path="/admin/audit-logs" component={AdminAuditLogs} />
+          <Route path="/admin/telemetry" component={AdminTelemetry} />
           <Route path="/admin/switcher" component={DashboardSwitcherPage} />
           <Route path="/category/:category" component={CategoryPage} />
           <Route path="/deals" component={FeaturedDealsPage} />

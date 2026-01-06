@@ -54,6 +54,20 @@ import {
   type TradeScoutUserData,
   type UpdateRestaurantLocation,
   type OperatingHours,
+  hosts,
+  events,
+  eventSeries,
+  type Host,
+  type InsertHost,
+  type Event,
+  type InsertEvent,
+  type EventSeries,
+  type InsertEventSeries,
+  eventInterests,
+  type EventInterest,
+  type InsertEventInterest,
+  telemetryEvents,
+  type InsertTelemetryEvent,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, sql, desc, asc, inArray, isNull, isNotNull, not } from "drizzle-orm";
@@ -61,6 +75,30 @@ import bcrypt from "bcryptjs";
 
 // Interface for storage operations
 export interface IStorage {
+  // Host operations
+  createHost(host: InsertHost): Promise<Host>;
+  getHost(id: string): Promise<Host | undefined>;
+  getHostByUserId(userId: string): Promise<Host | undefined>;
+  createEvent(event: InsertEvent): Promise<Event>;
+  getEvent(id: string): Promise<Event | undefined>;
+  getEventsByHost(hostId: string): Promise<(Event & { interests: EventInterest[] })[]>;
+  createEventInterest(interest: InsertEventInterest): Promise<EventInterest>;
+  updateEventInterestStatus(id: string, status: string): Promise<EventInterest>;
+  getEventInterest(id: string): Promise<EventInterest | undefined>;
+  getEventInterestByTruckId(eventId: string, truckId: string): Promise<EventInterest | undefined>;
+  getEventInterestsByEventId(eventId: string): Promise<(EventInterest & { truck: any })[]>;
+  
+  // Event Series (Open Calls)
+  createEventSeries(series: InsertEventSeries): Promise<EventSeries>;
+  getEventSeries(id: string): Promise<EventSeries | undefined>;
+  getEventSeriesByHost(hostId: string): Promise<EventSeries[]>;
+  updateEventSeries(id: string, updates: Partial<InsertEventSeries>): Promise<EventSeries>;
+  publishEventSeries(id: string): Promise<EventSeries>;
+  getEventsBySeriesId(seriesId: string): Promise<Event[]>;
+  
+  // Telemetry
+  createTelemetryEvent(event: InsertTelemetryEvent): Promise<void>;
+
   // User operations
   // (IMPORTANT) these user operations are mandatory for authentication.
   getUser(id: string): Promise<User | undefined>;
@@ -250,9 +288,153 @@ export interface IStorage {
   
   // Admin user operations
   getAllUsers(): Promise<User[]>;
+
+  // Host operations
+  createHost(host: InsertHost): Promise<Host>;
+  getHost(id: string): Promise<Host | undefined>;
+  getHostByUserId(userId: string): Promise<Host | undefined>;
+  createEvent(event: InsertEvent): Promise<Event>;
+  getEventsByHost(hostId: string): Promise<(Event & { interests: EventInterest[] })[]>;
+  getAllUpcomingEvents(): Promise<(Event & { host: Host })[]>;
+  createEventInterest(interest: InsertEventInterest): Promise<EventInterest>;
+  getEventInterestByTruckId(eventId: string, truckId: string): Promise<EventInterest | undefined>;
+  getEventInterestsByEventId(eventId: string): Promise<(EventInterest & { truck: any })[]>;
 }
 
 export class DatabaseStorage implements IStorage {
+  // Host operations
+  async createHost(host: InsertHost): Promise<Host> {
+    const [newHost] = await db.insert(hosts).values(host).returning();
+    return newHost;
+  }
+
+  async getHost(id: string): Promise<Host | undefined> {
+    const [host] = await db.select().from(hosts).where(eq(hosts.id, id));
+    return host;
+  }
+
+  async getHostByUserId(userId: string): Promise<Host | undefined> {
+    const [host] = await db.select().from(hosts).where(eq(hosts.userId, userId));
+    return host;
+  }
+
+  async createEvent(event: InsertEvent): Promise<Event> {
+    const [newEvent] = await db.insert(events).values(event).returning();
+    return newEvent;
+  }
+
+  async getEvent(id: string): Promise<Event | undefined> {
+    const [event] = await db.select().from(events).where(eq(events.id, id));
+    return event;
+  }
+
+  async getEventsByHost(hostId: string): Promise<(Event & { interests: EventInterest[] })[]> {
+    return await db.query.events.findMany({
+      where: eq(events.hostId, hostId),
+      orderBy: asc(events.date),
+      with: {
+        interests: true
+      }
+    });
+  }
+
+  async getAllUpcomingEvents(): Promise<(Event & { host: Host })[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return await db.query.events.findMany({
+      where: gte(events.date, today),
+      orderBy: asc(events.date),
+      with: {
+        host: true
+      }
+    });
+  }
+
+  async createEventInterest(interest: InsertEventInterest): Promise<EventInterest> {
+    const [newInterest] = await db.insert(eventInterests).values(interest).returning();
+    return newInterest;
+  }
+
+  async updateEventInterestStatus(id: string, status: string): Promise<EventInterest> {
+    const [updated] = await db
+      .update(eventInterests)
+      .set({ status })
+      .where(eq(eventInterests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getEventInterest(id: string): Promise<EventInterest | undefined> {
+    const [interest] = await db.select().from(eventInterests).where(eq(eventInterests.id, id));
+    return interest;
+  }
+
+  async getEventInterestByTruckId(eventId: string, truckId: string): Promise<EventInterest | undefined> {
+    const [interest] = await db
+      .select()
+      .from(eventInterests)
+      .where(and(eq(eventInterests.eventId, eventId), eq(eventInterests.truckId, truckId)));
+    return interest;
+  }
+
+  async getEventInterestsByEventId(eventId: string): Promise<(EventInterest & { truck: any })[]> {
+    return await db.query.eventInterests.findMany({
+      where: eq(eventInterests.eventId, eventId),
+      with: {
+        truck: true
+      },
+      orderBy: desc(eventInterests.createdAt)
+    });
+  }
+
+  // Event Series (Open Calls)
+  async createEventSeries(series: InsertEventSeries): Promise<EventSeries> {
+    const [newSeries] = await db.insert(eventSeries).values(series).returning();
+    return newSeries;
+  }
+
+  async getEventSeries(id: string): Promise<EventSeries | undefined> {
+    const [series] = await db.select().from(eventSeries).where(eq(eventSeries.id, id));
+    return series;
+  }
+
+  async getEventSeriesByHost(hostId: string): Promise<EventSeries[]> {
+    return await db.select().from(eventSeries)
+      .where(eq(eventSeries.hostId, hostId))
+      .orderBy(desc(eventSeries.createdAt));
+  }
+
+  async updateEventSeries(id: string, updates: Partial<InsertEventSeries>): Promise<EventSeries> {
+    const [updated] = await db.update(eventSeries)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(eventSeries.id, id))
+      .returning();
+    return updated;
+  }
+
+  async publishEventSeries(id: string): Promise<EventSeries> {
+    const [published] = await db.update(eventSeries)
+      .set({ 
+        status: 'published', 
+        publishedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(eventSeries.id, id))
+      .returning();
+    return published;
+  }
+
+  async getEventsBySeriesId(seriesId: string): Promise<Event[]> {
+    return await db.select().from(events)
+      .where(eq(events.seriesId, seriesId))
+      .orderBy(asc(events.date));
+  }
+
+  async createTelemetryEvent(event: InsertTelemetryEvent): Promise<void> {
+    await db.insert(telemetryEvents).values(event);
+  }
+
   // Stripe helpers
   async updateUserStripeCustomerId(userId: string, customerId: string): Promise<void> {
     await db

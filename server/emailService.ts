@@ -42,7 +42,7 @@ interface BaseEmailParams {
 
 // Email templates
 class EmailTemplates {
-  private static getBaseTemplate(title: string, content: string): string {
+  public static getBaseTemplate(title: string, content: string): string {
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -986,13 +986,228 @@ export class EmailService {
     return await this.sendEmail(emailParams);
   }
 
+  // Send interest notification to host
+  async sendInterestNotification(
+    hostEmail: string, 
+    hostName: string, 
+    truckName: string, 
+    eventDate: string
+  ): Promise<boolean> {
+    const title = `New Interest from ${truckName}!`;
+    const content = `
+      <p>Hi ${hostName},</p>
+      <p>Good news! <strong>${truckName}</strong> is interested in your event on <strong>${eventDate}</strong>.</p>
+      <p>Log in to your Host Dashboard to view their profile and manage your event.</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://mealscout.io/host/dashboard" style="background-color: #e11d48; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Dashboard</a>
+      </div>
+    `;
+    
+    const html = EmailTemplates.getBaseTemplate(title, content);
+    const text = `Hi ${hostName}, ${truckName} is interested in your event on ${eventDate}. Log in to view details: https://mealscout.io/host/dashboard`;
+
+    return await this.sendEmail({
+      to: hostEmail,
+      subject: `🚚 New Interest: ${truckName} wants to join your event!`,
+      html,
+      text
+    });
+  }
+
+  // Send status update notification to truck
+  async sendInterestStatusUpdate(
+    truckEmail: string,
+    truckName: string,
+    hostName: string,
+    eventDate: string,
+    status: 'accepted' | 'declined'
+  ): Promise<boolean> {
+    const isAccepted = status === 'accepted';
+    const title = isAccepted ? `You're In! ${hostName} Accepted Your Request` : `Update on your request for ${hostName}`;
+    
+    const content = isAccepted 
+      ? `
+        <p>Hi ${truckName},</p>
+        <p>Great news! <strong>${hostName}</strong> has accepted your request to join their event on <strong>${eventDate}</strong>.</p>
+        <p>Please contact the host directly if you need to coordinate arrival details.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="https://mealscout.io/truck/discovery" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Event</a>
+        </div>
+      `
+      : `
+        <p>Hi ${truckName},</p>
+        <p>Thank you for your interest in the event at <strong>${hostName}</strong> on <strong>${eventDate}</strong>.</p>
+        <p>The host has declined your request at this time. Don't worry, there are plenty of other locations looking for great food trucks!</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="https://mealscout.io/truck/discovery" style="background-color: #e11d48; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Find More Events</a>
+        </div>
+      `;
+    
+    const html = EmailTemplates.getBaseTemplate(title, content);
+    const text = isAccepted
+      ? `Hi ${truckName}, ${hostName} has accepted your request for ${eventDate}!`
+      : `Hi ${truckName}, ${hostName} has declined your request for ${eventDate}.`;
+
+    return await this.sendEmail({
+      to: truckEmail,
+      subject: isAccepted ? `🎉 You're In! ${hostName} Accepted Your Request` : `Update on your request for ${hostName}`,
+      html,
+      text
+    });
+  }
+
+  // Send weekly digest to host
+  async sendWeeklyDigest(
+    hostEmail: string,
+    data: {
+      hostName: string;
+      weekStart: string;
+      weekEnd: string;
+      events: { name: string; date: string; accepted: number; max: number }[];
+      pendingCount: number;
+      capacityAlerts: { eventName: string; date: string; accepted: number; max: number }[];
+    }
+  ): Promise<boolean> {
+    const title = `Your MealScout Week at a Glance`;
+    
+    let eventsHtml = '';
+    if (data.events.length > 0) {
+      eventsHtml = `
+        <h3 style="color: #1e293b; margin-top: 20px;">📅 Upcoming Events</h3>
+        <ul style="padding-left: 0; list-style: none;">
+          ${data.events.map(e => `
+            <li style="margin-bottom: 12px; padding: 12px; background-color: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
+              <div style="font-weight: bold; color: #0f172a;">${e.date} - ${e.name}</div>
+              <div style="font-size: 14px; color: #64748b; margin-top: 4px;">
+                Capacity: ${e.accepted} / ${e.max} trucks
+              </div>
+            </li>
+          `).join('')}
+        </ul>
+      `;
+    }
+
+    let alertsHtml = '';
+    if (data.capacityAlerts.length > 0) {
+      alertsHtml = `
+        <div style="margin-top: 20px; padding: 16px; background-color: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px;">
+          <h3 style="color: #92400e; margin-top: 0; font-size: 16px;">⚠️ Capacity Alerts</h3>
+          <p style="color: #b45309; font-size: 14px; margin-bottom: 8px;">The following events are at or over capacity:</p>
+          <ul style="padding-left: 20px; margin-bottom: 0; color: #92400e;">
+            ${data.capacityAlerts.map(a => `<li>${a.date}: ${a.eventName} (${a.accepted}/${a.max})</li>`).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
+    const content = `
+      <p>Hi ${data.hostName},</p>
+      <p>Here is your summary for the week of <strong>${data.weekStart}</strong> to <strong>${data.weekEnd}</strong>.</p>
+      
+      ${data.pendingCount > 0 ? `
+        <div style="margin: 20px 0; padding: 16px; background-color: #eff6ff; border-radius: 6px; border-left: 4px solid #3b82f6;">
+          <div style="font-size: 18px; font-weight: bold; color: #1e40af;">${data.pendingCount} Pending Interest${data.pendingCount !== 1 ? 's' : ''}</div>
+          <div style="color: #1e3a8a;">Trucks are waiting for your response.</div>
+        </div>
+      ` : ''}
+
+      ${alertsHtml}
+      ${eventsHtml}
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://mealscout.io/host/dashboard" style="background-color: #e11d48; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Go to Dashboard</a>
+      </div>
+      
+      <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-top: 30px;">
+        This is an informational summary. Actions available in your dashboard.
+      </p>
+    `;
+
+    const html = EmailTemplates.getBaseTemplate(title, content);
+    const text = `Hi ${data.hostName}, here is your weekly summary. You have ${data.pendingCount} pending interests. Log in to view details: https://mealscout.io/host/dashboard`;
+
+    return await this.sendEmail({
+      to: hostEmail,
+      subject: title,
+      html,
+      text
+    });
+  }
+
   // Utility method to check if email service is available
   isAvailable(): boolean {
     return this.isConfigured;
   }
-}
 
-// Convenience functions for rendering email content
+  /**
+   * Send notification to a truck owner when a series they're interested in gets cancelled
+   * @param truckEmail - Email of the truck owner
+   * @param truckName - Name of the food truck
+   * @param seriesName - Name of the event series
+   * @param affectedDates - Array of date strings for cancelled occurrences
+   */
+  async sendSeriesCancellationNotification(
+    truckEmail: string,
+    truckName: string,
+    seriesName: string,
+    affectedDates: string[]
+  ): Promise<boolean> {
+    if (!this.isConfigured) {
+      console.warn('Email service not configured. Skipping series cancellation notification.');
+      return false;
+    }
+
+    const dateList = affectedDates.length <= 5 
+      ? affectedDates.map(d => `<li>${d}</li>`).join('')
+      : `<li>${affectedDates[0]}</li><li>${affectedDates[1]}</li><li>${affectedDates[2]}</li><li>... and ${affectedDates.length - 3} more dates</li>`;
+
+    const title = `Event Series Cancelled: ${seriesName}`;
+    const content = `
+      <p>Hi ${truckName} Team,</p>
+    
+      <p>We wanted to let you know that the event series <strong>"${seriesName}"</strong> has been cancelled by the host.</p>
+    
+      <div style="margin: 20px 0; padding: 16px; background-color: #fef2f2; border-radius: 6px; border-left: 4px solid #ef4444;">
+        <div style="font-size: 18px; font-weight: bold; color: #991b1b;">Series Cancelled</div>
+        <div style="color: #7f1d1d; margin-top: 8px;">The following dates are affected:</div>
+        <ul style="color: #7f1d1d; margin: 10px 0;">
+          ${dateList}
+        </ul>
+      </div>
+    
+      <p>If you had marked interest or accepted any of these events, they have been automatically removed from your schedule.</p>
+    
+      <p>We appreciate your understanding and look forward to connecting you with other great hosting opportunities!</p>
+    
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://mealscout.io/truck/dashboard" style="background-color: #e11d48; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Available Events</a>
+      </div>
+    
+      <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-top: 30px;">
+        Questions? Reply to this email or contact support@mealscout.io
+      </p>
+    `;
+
+    const html = EmailTemplates.getBaseTemplate(title, content);
+    const text = `Hi ${truckName} Team,
+
+The event series "${seriesName}" has been cancelled by the host.
+
+Affected dates:
+${affectedDates.join('\n')}
+
+If you had marked interest or accepted any of these events, they have been removed from your schedule.
+
+View other available events: https://mealscout.io/truck/dashboard`;
+
+    return await this.sendEmail({
+      to: truckEmail,
+      subject: title,
+      html,
+      text
+    });
+     * Send notification to a truck owner when a series they're interested in gets cancelled
+}
 export function renderAdminSignupEmail(user: User, context?: { signupMethod?: string; restaurant?: Restaurant }): { html: string; text: string } {
   return EmailTemplates.getAdminSignupNotificationTemplate(user, context);
 }

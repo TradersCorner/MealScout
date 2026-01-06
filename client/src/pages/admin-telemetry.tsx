@@ -1,0 +1,170 @@
+
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area } from "recharts";
+import { Loader2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+export default function AdminTelemetry() {
+  // 1. Interest Velocity Query
+  const { data: velocity, isLoading: loadingVelocity } = useQuery({
+    queryKey: ['/api/admin/telemetry/velocity'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/telemetry/velocity?days=30');
+      if (!res.ok) throw new Error('Failed to fetch velocity');
+      return res.json();
+    }
+  });
+
+  // 2. Fill Rates Query
+  const { data: fillRates, isLoading: loadingFillRates } = useQuery({
+    queryKey: ['/api/admin/telemetry/fill-rates'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/telemetry/fill-rates');
+      if (!res.ok) throw new Error('Failed to fetch fill rates');
+      return res.json();
+    }
+  });
+
+  // 3. Digest Coverage Query
+  const { data: coverage, isLoading: loadingCoverage } = useQuery({
+    queryKey: ['/api/admin/telemetry/digest-coverage'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/telemetry/digest-coverage');
+      if (!res.ok) throw new Error('Failed to fetch coverage');
+      return res.json();
+    }
+  });
+
+  if (loadingVelocity || loadingFillRates || loadingCoverage) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto py-8 space-y-8">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Telemetry Viewer</h1>
+          <p className="text-muted-foreground">Operational insights from system events (Read-Only)</p>
+        </div>
+      </div>
+
+      {/* Top Row: Key Metrics */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Events Tracked</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{fillRates?.totalEvents || 0}</div>
+            <p className="text-xs text-muted-foreground">Active events in system</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Over Capacity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-600">
+              {fillRates?.overCapacityPercentage?.toFixed(1)}%
+            </div>
+            <p className="text-xs text-muted-foreground">Events with &gt;100% fill rate</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Digest Coverage</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {coverage?.history?.[0]?.coverage || 0}%
+            </div>
+            <p className="text-xs text-muted-foreground">Last week's eligible hosts reached</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Middle Row: Charts */}
+      <div className="grid gap-4 md:grid-cols-2">
+        
+        {/* Interest Velocity */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Interest Velocity (30 Days)</CardTitle>
+            <CardDescription>Daily volume of new truck interests</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={velocity}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis 
+                  dataKey="date" 
+                  tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  fontSize={12}
+                />
+                <YAxis fontSize={12} />
+                <Tooltip 
+                  labelFormatter={(str) => new Date(str).toLocaleDateString()}
+                />
+                <Area type="monotone" dataKey="count" stroke="#2563eb" fill="#3b82f6" fillOpacity={0.2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Fill Rate Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Fill Rate Distribution</CardTitle>
+            <CardDescription>How full are our events?</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={fillRates?.buckets}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="range" fontSize={12} />
+                <YAxis fontSize={12} />
+                <Tooltip />
+                <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Bottom Row: Digest History */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Weekly Digest History</CardTitle>
+          <CardDescription>Email delivery performance over time</CardDescription>
+        </CardHeader>
+        <CardContent className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={coverage?.history}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="week" fontSize={12} />
+              <YAxis yAxisId="left" orientation="left" stroke="#8884d8" fontSize={12} />
+              <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" unit="%" fontSize={12} />
+              <Tooltip />
+              <Bar yAxisId="left" dataKey="sent" name="Sent Emails" fill="#8884d8" radius={[4, 4, 0, 0]} />
+              <Line yAxisId="right" type="monotone" dataKey="coverage" name="Coverage %" stroke="#82ca9d" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Data Note</AlertTitle>
+        <AlertDescription>
+          Time-to-Decision metrics are currently unavailable. Requires schema update to track `decidedAt` timestamp.
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
+}

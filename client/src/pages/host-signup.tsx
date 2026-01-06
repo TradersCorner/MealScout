@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
+import { Loader2 } from "lucide-react";
 
 const locationTypeOptions = [
   { value: "office", label: "Office / Corporate" },
@@ -16,132 +18,102 @@ const locationTypeOptions = [
 
 function HostSignup() {
   const { isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Form State
   const [businessName, setBusinessName] = useState("");
   const [address, setAddress] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [locationType, setLocationType] = useState("");
-  const [expectedFootTraffic, setExpectedFootTraffic] = useState("");
-  const [preferredDates, setPreferredDates] = useState<string[]>([""]);
-  const [notes, setNotes] = useState("");
+  const [description, setDescription] = useState("");
+  
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submittedRequestId, setSubmittedRequestId] = useState<string | null>(null);
 
-  const todayIso = new Date().toISOString().split("T")[0];
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      return;
+    }
 
-  const updateDate = (index: number, value: string) => {
-    const next = [...preferredDates];
-    next[index] = value;
-    setPreferredDates(next);
-  };
-
-  const addDate = () => {
-    if (preferredDates.length >= 3) return;
-    setPreferredDates([...preferredDates, ""]);
-  };
-
-  const removeDate = (index: number) => {
-    const next = preferredDates.filter((_, i) => i !== index);
-    setPreferredDates(next.length ? next : [""]);
-  };
+    // Check if already a host
+    fetch("/api/hosts/me")
+      .then((res) => {
+        if (res.ok) {
+          // Already a host, redirect to dashboard
+          setLocation("/host/dashboard");
+        } else {
+          setIsLoading(false);
+        }
+      })
+      .catch(() => setIsLoading(false));
+  }, [isAuthenticated, setLocation]);
 
   const validate = () => {
     const validationErrors: Record<string, string> = {};
 
-    if (!businessName.trim()) {
-      validationErrors.businessName = "Business name is required";
-    }
-    if (!address.trim()) {
-      validationErrors.address = "Address is required";
-    }
-    if (!locationType) {
-      validationErrors.locationType = "Select a location type";
-    }
-
-    const traffic = Number(expectedFootTraffic);
-    if (Number.isNaN(traffic)) {
-      validationErrors.expectedFootTraffic = "Enter expected foot traffic";
-    } else if (traffic < 1 || traffic > 10000) {
-      validationErrors.expectedFootTraffic = "Foot traffic must be between 1 and 10,000";
-    }
-
-    const cleanedDates = preferredDates.map((d) => d.trim()).filter(Boolean);
-    if (!cleanedDates.length) {
-      validationErrors.preferredDates = "Add at least one preferred date";
-    } else if (cleanedDates.length > 3) {
-      validationErrors.preferredDates = "You can only add up to 3 dates";
-    } else {
-      cleanedDates.forEach((date, idx) => {
-        const parsed = new Date(`${date}T00:00:00`);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (Number.isNaN(parsed.getTime())) {
-          validationErrors.preferredDates = "Dates must be valid";
-        } else if (parsed <= today) {
-          validationErrors.preferredDates = "Dates must be in the future";
-        }
-        if (validationErrors.preferredDates && idx === 0) return;
-      });
-    }
-
-    if (notes.length > 200) {
-      validationErrors.notes = "Notes must be 200 characters or less";
-    }
+    if (!businessName.trim()) validationErrors.businessName = "Business name is required";
+    if (!address.trim()) validationErrors.address = "Address is required";
+    if (!contactName.trim()) validationErrors.contactName = "Contact name is required";
+    if (!contactEmail.trim()) validationErrors.contactEmail = "Contact email is required";
+    if (!contactPhone.trim()) validationErrors.contactPhone = "Contact phone is required";
+    if (!locationType) validationErrors.locationType = "Select a location type";
 
     setErrors(validationErrors);
-    return validationErrors;
+    return Object.keys(validationErrors).length === 0;
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const validationErrors = validate();
-    if (Object.keys(validationErrors).length > 0) return;
-
-    if (!isAuthenticated) {
-      setErrors({ auth: "Please log in to submit" });
-      return;
-    }
+    if (!validate()) return;
 
     setIsSubmitting(true);
-    setErrors({});
     try {
-      const response = await fetch("/api/location-requests", {
+      const response = await fetch("/api/hosts", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          businessName: businessName.trim(),
-          address: address.trim(),
+          businessName,
+          address,
+          contactName,
+          contactEmail,
+          contactPhone,
           locationType,
-          expectedFootTraffic: Number(expectedFootTraffic),
-          preferredDates: preferredDates.map((d) => d.trim()).filter(Boolean),
-          notes: notes.trim() || undefined,
+          description,
         }),
       });
 
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || "Unable to submit request");
+        const data = await response.json();
+        throw new Error(data.message || "Failed to create host profile");
       }
 
-      const data = await response.json();
-      setSubmittedRequestId(data.request?.id || null);
+      setLocation("/host/dashboard");
     } catch (error: any) {
-      setErrors({ submit: error.message || "Unable to submit request" });
+      setErrors({ submit: error.message });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-rose-600" />
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-12">
-        <div className="bg-white shadow-sm rounded-xl p-8 border border-slate-200">
-          <p className="text-sm font-semibold text-rose-600 mb-2">Host trucks</p>
-          <h1 className="text-3xl font-bold text-slate-900 mb-3">Sign in to host food trucks</h1>
-          <p className="text-slate-600 mb-6">Create your host profile to let nearby trucks know when they can park at your location.</p>
-          <Button asChild>
+        <div className="bg-white shadow-sm rounded-xl p-8 border border-slate-200 text-center">
+          <h1 className="text-3xl font-bold text-slate-900 mb-4">Become a MealScout Host</h1>
+          <p className="text-slate-600 mb-8">Sign in to create your host profile and start managing food truck events.</p>
+          <Button asChild size="lg">
             <a href="/login?redirect=/host-signup">Sign in to continue</a>
           </Button>
         </div>
@@ -149,166 +121,128 @@ function HostSignup() {
     );
   }
 
-  if (submittedRequestId) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 py-12">
-        <div className="bg-white shadow-sm rounded-xl p-8 border border-emerald-100">
-          <p className="text-sm font-semibold text-emerald-600 mb-2">Request received</p>
-          <h1 className="text-3xl font-bold text-slate-900 mb-3">Thanks for hosting trucks</h1>
-          <p className="text-slate-700 mb-4">We shared your availability with nearby food trucks. You will get an email when a truck expresses interest. MealScout does not broker or guarantee bookings.</p>
-          <div className="grid gap-3 text-sm text-slate-700">
-            <div className="flex justify-between"><span className="text-slate-500">Request ID</span><span className="font-semibold">{submittedRequestId}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Auto-expiry</span><span className="font-semibold">30 days after posting</span></div>
-          </div>
-          <Button className="mt-6" asChild>
-            <a href="/">Return home</a>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
-      <div className="flex flex-col gap-3 mb-8">
-        <p className="text-sm font-semibold text-rose-600">Host food trucks</p>
-        <h1 className="text-4xl font-bold text-slate-900">Share your space, bring in great trucks</h1>
-        <p className="text-lg text-slate-700 max-w-3xl">
-          Tell nearby trucks when they can park at your property. No pay-to-play, no brokering. We notify trucks and pass their interest to you directly.
-        </p>
-        <div className="flex items-center gap-4 text-sm text-slate-600">
-          <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-500" />Real-time availability</span>
-          <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-blue-500" />Intent-gated outreach</span>
-          <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-amber-500" />Expires after 30 days</span>
-        </div>
+    <div className="max-w-3xl mx-auto px-4 py-12">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">Create Host Profile</h1>
+        <p className="text-slate-600">Tell us about your location to start hosting food trucks.</p>
       </div>
 
-      <form className="bg-white shadow-sm rounded-xl border border-slate-200 p-8 grid gap-6" onSubmit={handleSubmit}>
-        {errors.auth && <p className="text-sm text-rose-600">{errors.auth}</p>}
-        {errors.submit && <p className="text-sm text-rose-600">{errors.submit}</p>}
+      <form onSubmit={handleSubmit} className="bg-white shadow-sm rounded-xl border border-slate-200 p-8 space-y-6">
+        {errors.submit && (
+          <div className="p-4 bg-rose-50 text-rose-700 rounded-lg text-sm">
+            {errors.submit}
+          </div>
+        )}
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900">Business Details</h2>
+          
           <div className="grid gap-2">
-            <Label htmlFor="businessName">Business name</Label>
+            <Label htmlFor="businessName">Business Name</Label>
             <Input
               id="businessName"
               value={businessName}
               onChange={(e) => setBusinessName(e.target.value)}
-              placeholder="Acme HQ"
-              aria-invalid={Boolean(errors.businessName)}
-              required
+              placeholder="e.g. Tech Park Plaza"
             />
             {errors.businessName && <p className="text-sm text-rose-600">{errors.businessName}</p>}
           </div>
+
           <div className="grid gap-2">
-            <Label htmlFor="locationType">Location type</Label>
+            <Label htmlFor="address">Address</Label>
+            <Input
+              id="address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="123 Main St, City, State"
+            />
+            {errors.address && <p className="text-sm text-rose-600">{errors.address}</p>}
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="locationType">Location Type</Label>
             <select
               id="locationType"
               value={locationType}
               onChange={(e) => setLocationType(e.target.value)}
-              className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
-              aria-invalid={Boolean(errors.locationType)}
-              required
+              className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <option value="" disabled>Select a type</option>
-              {locationTypeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
+              <option value="">Select a type...</option>
+              {locationTypeOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
             {errors.locationType && <p className="text-sm text-rose-600">{errors.locationType}</p>}
           </div>
         </div>
 
-        <div className="grid gap-2">
-          <Label htmlFor="address">Address where trucks can park</Label>
-          <Input
-            id="address"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="123 Market St, Springfield"
-            aria-invalid={Boolean(errors.address)}
-            required
-          />
-          {errors.address && <p className="text-sm text-rose-600">{errors.address}</p>}
-        </div>
-
-        <div className="grid gap-2 md:grid-cols-2">
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900">Contact Information</h2>
+          
           <div className="grid gap-2">
-            <Label htmlFor="expectedFootTraffic">Expected foot traffic per day</Label>
+            <Label htmlFor="contactName">Contact Name</Label>
             <Input
-              id="expectedFootTraffic"
-              type="number"
-              min={1}
-              max={10000}
-              value={expectedFootTraffic}
-              onChange={(e) => setExpectedFootTraffic(e.target.value)}
-              aria-invalid={Boolean(errors.expectedFootTraffic)}
-              required
+              id="contactName"
+              value={contactName}
+              onChange={(e) => setContactName(e.target.value)}
+              placeholder="Jane Doe"
             />
-            <p className="text-xs text-slate-500">Range: 1 to 10,000 people</p>
-            {errors.expectedFootTraffic && <p className="text-sm text-rose-600">{errors.expectedFootTraffic}</p>}
+            {errors.contactName && <p className="text-sm text-rose-600">{errors.contactName}</p>}
           </div>
 
-          <div className="grid gap-2">
-            <Label>Preferred dates (max 3)</Label>
-            <div className="grid gap-3">
-              {preferredDates.map((date, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <Input
-                    type="date"
-                    min={todayIso}
-                    value={date}
-                    onChange={(e) => updateDate(index, e.target.value)}
-                    aria-invalid={Boolean(errors.preferredDates)}
-                  />
-                  <Button type="button" variant="ghost" className="text-slate-600" onClick={() => removeDate(index)}>
-                    Remove
-                  </Button>
-                </div>
-              ))}
-              <div className="flex items-center justify-between">
-                <Button type="button" variant="outline" onClick={addDate} disabled={preferredDates.length >= 3}>
-                  Add another date
-                </Button>
-                <p className="text-xs text-slate-500">Must be future dates; auto-expires in 30 days</p>
-              </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="contactEmail">Email</Label>
+              <Input
+                id="contactEmail"
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="jane@example.com"
+              />
+              {errors.contactEmail && <p className="text-sm text-rose-600">{errors.contactEmail}</p>}
             </div>
-            {errors.preferredDates && <p className="text-sm text-rose-600">{errors.preferredDates}</p>}
+
+            <div className="grid gap-2">
+              <Label htmlFor="contactPhone">Phone</Label>
+              <Input
+                id="contactPhone"
+                type="tel"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                placeholder="(555) 123-4567"
+              />
+              {errors.contactPhone && <p className="text-sm text-rose-600">{errors.contactPhone}</p>}
+            </div>
           </div>
         </div>
 
-        <div className="grid gap-2">
-          <Label htmlFor="notes">Notes for trucks (optional)</Label>
-          <Textarea
-            id="notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            maxLength={200}
-            placeholder="Loading zone instructions, timing windows, power access..."
-            aria-invalid={Boolean(errors.notes)}
-          />
-          <div className="flex justify-between text-xs text-slate-500">
-            <span>Keep it concise (200 characters)</span>
-            <span>{notes.length}/200</span>
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900">Additional Details</h2>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="description">Description / Notes</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Tell trucks about parking, power availability, or specific rules..."
+              className="h-32"
+            />
           </div>
-          {errors.notes && <p className="text-sm text-rose-600">{errors.notes}</p>}
         </div>
 
-        <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 text-sm text-slate-700">
-          <p className="font-semibold mb-1">How it works</p>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>We notify nearby food trucks when you post.</li>
-            <li>They express interest with a short note; we email you their details.</li>
-            <li>MealScout does not broker or guarantee bookings. Coordinate directly.</li>
-          </ul>
-        </div>
-
-        <div className="flex items-center justify-between gap-4">
-          <div className="text-xs text-slate-500">Your request expires after 30 days to keep availability fresh.</div>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Submitting..." : "Submit host request"}
+        <div className="pt-4">
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating Profile...
+              </>
+            ) : (
+              "Create Host Profile"
+            )}
           </Button>
         </div>
       </form>

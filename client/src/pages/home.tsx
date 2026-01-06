@@ -469,7 +469,7 @@ export default function Home() {
                       <Heart className="w-4 h-4 text-orange-600" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 text-xs">Your neighborhood favorites</h4>
+                      <h4 className="font-semibold text-gray-900 text-xs">{shortLocation === 'Your Location' ? 'Neighborhood' : shortLocation} favorites</h4>
                       <p className="text-[11px] text-gray-600">Keep your go-tos one tap away</p>
                     </div>
                   </div>
@@ -479,7 +479,7 @@ export default function Home() {
                       <Truck className="w-4 h-4 text-emerald-600" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 text-xs">Food trucks nearby</h4>
+                      <h4 className="font-semibold text-gray-900 text-xs">Food trucks {shortLocation === 'Your Location' ? 'nearby' : `in ${shortLocation}`}</h4>
                       <p className="text-[11px] text-gray-600">Live locations around you</p>
                     </div>
                   </div>
@@ -489,7 +489,7 @@ export default function Home() {
                       <Bell className="w-4 h-4 text-blue-600" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 text-xs">Deals active right now</h4>
+                      <h4 className="font-semibold text-gray-900 text-xs">Deals {shortLocation === 'Your Location' ? 'nearby' : `in ${shortLocation}`}</h4>
                       <p className="text-[11px] text-gray-600">Quick wins close to you</p>
                     </div>
                   </div>

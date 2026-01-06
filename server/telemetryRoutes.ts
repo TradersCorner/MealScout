@@ -58,7 +58,7 @@ router.get('/fill-rates', isAdmin, async (req, res) => {
     let totalEvents = 0;
 
     for (const event of allEvents) {
-      const acceptedCount = event.interests.filter(i => i.status === 'accepted').length;
+      const acceptedCount = event.interests.filter((i: any) => i.status === 'accepted').length;
       const max = event.maxTrucks || 1; // Avoid division by zero
       
       if (max > 0) {
@@ -180,7 +180,7 @@ router.get('/digest-coverage', isAdmin, async (req, res) => {
     const eligibleCount = totalHosts[0].count;
 
     res.json({
-      history: sentCounts.map(row => ({
+      history: sentCounts.map((row: any) => ({
         week: row.week,
         sent: Number(row.count),
         eligible: Number(eligibleCount), // simplified: assuming constant host count for history

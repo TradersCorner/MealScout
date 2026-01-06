@@ -1206,8 +1206,9 @@ View other available events: https://mealscout.io/truck/dashboard`;
       html,
       text
     });
-     * Send notification to a truck owner when a series they're interested in gets cancelled
+  }
 }
+
 export function renderAdminSignupEmail(user: User, context?: { signupMethod?: string; restaurant?: Restaurant }): { html: string; text: string } {
   return EmailTemplates.getAdminSignupNotificationTemplate(user, context);
 }

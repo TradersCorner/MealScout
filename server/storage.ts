@@ -295,7 +295,7 @@ export interface IStorage {
   getHostByUserId(userId: string): Promise<Host | undefined>;
   createEvent(event: InsertEvent): Promise<Event>;
   getEventsByHost(hostId: string): Promise<(Event & { interests: EventInterest[] })[]>;
-  getAllUpcomingEvents(): Promise<(Event & { host: Host })[]>;
+  getAllUpcomingEvents(): Promise<(Event & { host: Host; series?: EventSeries | null })[]>;
   createEventInterest(interest: InsertEventInterest): Promise<EventInterest>;
   getEventInterestByTruckId(eventId: string, truckId: string): Promise<EventInterest | undefined>;
   getEventInterestsByEventId(eventId: string): Promise<(EventInterest & { truck: any })[]>;
@@ -338,15 +338,19 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getAllUpcomingEvents(): Promise<(Event & { host: Host })[]> {
+  async getAllUpcomingEvents(): Promise<(Event & { host: Host; series?: EventSeries | null })[]> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     return await db.query.events.findMany({
-      where: gte(events.date, today),
+      where: and(
+        gte(events.date, today),
+        ne(events.status, 'cancelled')
+      ),
       orderBy: asc(events.date),
       with: {
-        host: true
+        host: true,
+        series: true
       }
     });
   }

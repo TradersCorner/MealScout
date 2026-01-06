@@ -67,7 +67,7 @@ export class DigestService {
           with: {
             interests: true
           },
-          orderBy: (events, { asc }) => [asc(events.date)]
+          orderBy: (events: any, { asc }: any) => [asc(events.date)]
         });
 
         // Skip if no events (per spec: "Empty digest behavior: skip send")
@@ -83,8 +83,8 @@ export class DigestService {
 
         for (const event of upcomingEvents) {
           const interests = event.interests || [];
-          const pending = interests.filter(i => i.status === 'pending').length;
-          const accepted = interests.filter(i => i.status === 'accepted').length;
+          const pending = interests.filter((i: any) => i.status === 'pending').length;
+          const accepted = interests.filter((i: any) => i.status === 'accepted').length;
           
           pendingInterestCount += pending;
 

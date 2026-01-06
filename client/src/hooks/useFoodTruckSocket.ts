@@ -45,10 +45,13 @@ export function useFoodTruckSocket({
   const connect = useCallback(() => {
     if (socketRef.current?.connected) return;
 
+    // In prod, allow overriding the socket origin (e.g., Render API host) to avoid 404s on static fronts
+    const socketUrl = import.meta.env.VITE_SOCKET_URL?.replace(/\/$/, '') || undefined;
+
     try {
       // Create Socket.IO connection via same-origin proxy (no explicit URL)
       // Allow polling first for dev compatibility, then upgrade to websocket
-      const socket = io({
+      const socket = io(socketUrl, {
         autoConnect: true,
         transports: ['polling', 'websocket'],
         withCredentials: true,

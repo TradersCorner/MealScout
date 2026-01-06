@@ -50,7 +50,7 @@ async function testEndpoint(path: string, concurrentUsers: number): Promise<Test
 
 async function runLoadTest() {
   console.log('\n🚀 MealScout Quick Load Test\n');
-  console.log(`Target: ${BASE_URL}`);
+    console.log(`Target: ${LOAD_TEST_URL}`);
   console.log(`Started: ${new Date().toISOString()}\n`);
   
   const tests: Promise<TestResult>[] = [

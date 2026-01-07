@@ -10,7 +10,8 @@ import { eq } from 'drizzle-orm';
 import { 
   checkGoldenForkEligibility, 
   awardGoldenFork,
-  calculateUserInfluenceScore 
+  calculateUserInfluenceScore,
+  getUserRecommendationCount,
 } from '../server/awardCalculations';
 import { sendGoldenForkAwardEmail } from '../server/emailNotifications';
 
@@ -35,9 +36,10 @@ async function runDailyGoldenForkAwards() {
       
       // Update influence score
       const influenceScore = await calculateUserInfluenceScore(user.id);
+      const recommendationCount = await getUserRecommendationCount(user.id);
       await db
         .update(users)
-        .set({ influenceScore })
+        .set({ influenceScore, recommendationCount })
         .where(eq(users.id, user.id));
 
       // Check eligibility

@@ -60,6 +60,7 @@ interface ApiStory {
   createdAt?: string;
   expiresAt?: string;
   userLiked?: boolean;
+  isRecommendation?: boolean;
   __type?: 'ad';
   mediaUrl?: string;
   targetUrl?: string;
@@ -73,6 +74,7 @@ type UserRecommendationVideo = {
   kind: 'user';
   videoId: string;
   restaurantId?: string;
+  isRecommendation: boolean;
   title: string;
   description?: string;
   duration?: number;
@@ -188,11 +190,13 @@ function UserVideoCard({ video, isVisible }: UserVideoCardProps) {
 
       {/* Story Info */}
       <div className="p-4">
-        <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide">
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-300 border border-yellow-500/40">
-            {COPY.userVideo.badge}
-          </span>
-        </div>
+        {video.isRecommendation && (
+          <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-300 border border-yellow-500/40">
+              {COPY.userVideo.badge}
+            </span>
+          </div>
+        )}
         <h3 className="font-semibold text-lg mb-1">{video.title}</h3>
         {video.description && (
           <p className="text-gray-300 text-sm mb-3 line-clamp-2">
@@ -397,6 +401,7 @@ export function VideoFeed({ onUploadClick }: VideoFeedProps) {
         kind: 'user',
         videoId: item.id,
         restaurantId: item.restaurantId,
+        isRecommendation: item.isRecommendation ?? false,
         title: item.title,
         description: item.description,
         duration: item.duration,

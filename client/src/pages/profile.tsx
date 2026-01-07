@@ -23,6 +23,7 @@ import {
   Calendar
 } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
+import { apiUrl } from "@/lib/api";
 
 export default function ProfilePage() {
   const { user, isAuthenticated } = useAuth();
@@ -250,7 +251,7 @@ export default function ProfilePage() {
             <button
               onClick={async () => {
                 try {
-                  const response = await fetch('/api/auth/logout', {
+                  const response = await fetch(apiUrl('/api/auth/logout'), {
                     method: 'POST',
                     credentials: 'include'
                   });

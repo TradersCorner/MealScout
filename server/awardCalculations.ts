@@ -1,7 +1,7 @@
 import { storage } from './storage';
 import { db } from './db';
-import { users, restaurants, awardHistory } from '@shared/schema';
-import { eq, and, or, like, sql } from 'drizzle-orm';
+import { users, restaurants, awardHistory, videoStories } from '@shared/schema';
+import { eq, and, or, like, sql, isNotNull } from 'drizzle-orm';
 
 // Golden Fork Award Criteria
 const GOLDEN_FORK_CRITERIA = {
@@ -17,6 +17,25 @@ const GOLDEN_PLATE_CRITERIA = {
 };
 
 /**
+ * Get authoritative recommendation count for a user based on video stories.
+ * A recommendation credit is earned per distinct restaurantId the user has
+ * ever tagged in a story (restaurantId IS NOT NULL), regardless of story status.
+ */
+export async function getUserRecommendationCount(userId: string): Promise<number> {
+  const result = await db
+    .select({ count: sql<number>`COUNT(DISTINCT ${videoStories.restaurantId})`.mapWith(Number) })
+    .from(videoStories)
+    .where(
+      and(
+        eq(videoStories.userId, userId),
+        isNotNull(videoStories.restaurantId),
+      ),
+    );
+
+  return result[0]?.count ?? 0;
+}
+
+/**
  * Calculate influence score for a user
  * Formula: (reviewCount * 10) + (recommendationCount * 15) + (favoritesCount * 5)
  */
@@ -28,9 +47,11 @@ export async function calculateUserInfluenceScore(userId: string): Promise<numbe
   const favorites = await storage.getUserRestaurantFavorites(userId);
   const favoritesCount = favorites.length;
 
+  const recommendationCount = await getUserRecommendationCount(userId);
+
   const influenceScore =
     (user.reviewCount || 0) * 10 +
-    (user.recommendationCount || 0) * 15 +
+    recommendationCount * 15 +
     favoritesCount * 5;
 
   return influenceScore;
@@ -59,7 +80,7 @@ export async function checkGoldenForkEligibility(userId: string): Promise<{
 
   const influenceScore = await calculateUserInfluenceScore(userId);
   const reviewCount = user.reviewCount || 0;
-  const recommendationCount = user.recommendationCount || 0;
+  const recommendationCount = await getUserRecommendationCount(userId);
 
   const stats = { reviewCount, recommendationCount, influenceScore };
 

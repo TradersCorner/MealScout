@@ -24,7 +24,8 @@ import {
   awardGoldenFork,
   calculateRestaurantRankingScore,
   awardGoldenPlatesForArea,
-  getAreaLeaderboard
+  getAreaLeaderboard,
+  getUserRecommendationCount,
 } from "./awardCalculations";
 import { 
   sendGoldenForkAwardEmail,
@@ -4112,12 +4113,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           profileImageUrl: users.profileImageUrl,
           influenceScore: users.influenceScore,
           reviewCount: users.reviewCount,
-          recommendationCount: users.recommendationCount,
           goldenForkEarnedAt: users.goldenForkEarnedAt,
         })
         .from(users)
         .where(eq(users.hasGoldenFork, true));
-      res.json(holders);
+      const holdersWithRecommendations = await Promise.all(
+        holders.map(async (holder: (typeof holders)[number]) => {
+          const recommendationCount = await getUserRecommendationCount(holder.id);
+          return { ...holder, recommendationCount };
+        }),
+      );
+
+      res.json(holdersWithRecommendations);
     } catch (error) {
       console.error('Error fetching Golden Fork holders:', error);
       res.status(500).json({ message: 'Failed to fetch holders' });
@@ -4134,13 +4141,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const influenceScore = await calculateUserInfluenceScore(userId);
+      const recommendationCount = await getUserRecommendationCount(userId);
       
       res.json({
         userId: user.id,
         hasGoldenFork: user.hasGoldenFork,
         goldenForkEarnedAt: user.goldenForkEarnedAt,
         reviewCount: user.reviewCount || 0,
-        recommendationCount: user.recommendationCount || 0,
+        recommendationCount,
         influenceScore,
       });
     } catch (error) {

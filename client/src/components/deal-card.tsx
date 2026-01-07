@@ -87,7 +87,7 @@ const getDefaultImage = (cuisineType?: string, title?: string) => {
 };
 
 export default function DealCard({ deal }: DealCardProps) {
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const [showShareModal, setShowShareModal] = useState(false);
   const [showDealsDrawer, setShowDealsDrawer] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -180,6 +180,11 @@ export default function DealCard({ deal }: DealCardProps) {
   const handleSave = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (isGuest) {
+      window.location.href = "/login";
+      return;
+    }
     
     try {
       // Toggle saved state

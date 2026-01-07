@@ -2,6 +2,8 @@ import { db } from './db';
 import { videoStories, storyLikes, storyComments, storyViews, storyAwards } from '@shared/schema';
 import { eq, lte, sql, and, isNull, isNotNull } from 'drizzle-orm';
 import { deleteFromCloudinary } from './imageUpload';
+import auditLogger from './auditLogger';
+import { detectReviewerLevelDrift } from './reviewerLevelDriftDetector';
 
 /**
  * Cleanup expired video stories
@@ -25,14 +27,15 @@ export async function cleanupExpiredStories(): Promise<{
   try {
     console.log('[Cron] Starting story cleanup...');
 
-    // 1. Soft delete - mark stories as expired (past expiresAt)
+    // 1. Soft delete - mark non-featured stories as expired (past expiresAt)
     const expiredStories = await db
       .select()
       .from(videoStories)
       .where(
         and(
           lte(videoStories.expiresAt, sql`NOW()`),
-          isNull(videoStories.deletedAt)
+          isNull(videoStories.deletedAt),
+          eq(videoStories.isFeatured, false)
         )
       );
 
@@ -46,7 +49,8 @@ export async function cleanupExpiredStories(): Promise<{
         .where(
           and(
             lte(videoStories.expiresAt, sql`NOW()`),
-            isNull(videoStories.deletedAt)
+            isNull(videoStories.deletedAt),
+            eq(videoStories.isFeatured, false)
           )
         );
 
@@ -126,11 +130,11 @@ export async function recalculateReviewerLevels(): Promise<{
   try {
     console.log('[Cron] Starting reviewer level recalculation...');
 
-    // Get all users with stories
+    // Get all users who have ever posted stories (any status)
     const usersWithStories = await db
       .selectDistinct({ userId: videoStories.userId })
       .from(videoStories)
-      .where(eq(videoStories.status, 'ready'));
+      .where(isNotNull(videoStories.restaurantId));
 
     for (const { userId } of usersWithStories) {
       // Calculate total favorites
@@ -143,7 +147,13 @@ export async function recalculateReviewerLevels(): Promise<{
           videoStories,
           eq(storyLikes.storyId, videoStories.id)
         )
-        .where(eq(videoStories.userId, userId));
+        .where(
+          and(
+            eq(videoStories.userId, userId),
+            eq(videoStories.status, 'ready'),
+            isNotNull(videoStories.restaurantId)
+          )
+        );
 
       const totalFavorites = likeData[0]?.totalFavorites || 0;
 
@@ -155,14 +165,14 @@ export async function recalculateReviewerLevels(): Promise<{
       else if (totalFavorites >= 500) level = 3;
       else if (totalFavorites >= 100) level = 2;
 
-      // Count stories
+      // Count distinct recommended restaurants (stories with a restaurantId)
       const storyCount = await db
-        .select({ count: sql<number>`COUNT(${videoStories.id})`.mapWith(Number) })
+        .select({ count: sql<number>`COUNT(DISTINCT ${videoStories.restaurantId})`.mapWith(Number) })
         .from(videoStories)
         .where(
           and(
             eq(videoStories.userId, userId),
-            eq(videoStories.status, 'ready')
+            isNotNull(videoStories.restaurantId)
           )
         );
 
@@ -173,7 +183,8 @@ export async function recalculateReviewerLevels(): Promise<{
         .where(
           and(
             eq(videoStories.userId, userId),
-            eq(videoStories.status, 'ready')
+            eq(videoStories.status, 'ready'),
+            isNotNull(videoStories.restaurantId)
           )
         )
         .orderBy(desc(videoStories.likeCount))
@@ -246,6 +257,14 @@ export function registerStoryCronJobs(app: any) {
       }
 
       const stats = await recalculateReviewerLevels();
+
+      // Run drift detector to ensure reviewer levels stay aligned with durable semantics
+      await detectReviewerLevelDrift(
+        db,
+        auditLogger,
+        { videoStories, userReviewerLevels },
+        { limit: 200, includeZeroCases: false },
+      );
       res.json({
         success: true,
         message: 'Reviewer levels recalculated',

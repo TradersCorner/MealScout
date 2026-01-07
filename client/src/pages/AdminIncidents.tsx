@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { apiUrl } from "@/lib/api";
 import { AlertCircle, CheckCircle, Clock, X, Download, Shield, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -125,7 +126,7 @@ export default function AdminIncidents() {
   const { data: incidents = [], isLoading, refetch } = useQuery<Incident[]>({
     queryKey: ['incidents'],
     queryFn: async () => {
-      const res = await fetch('/api/incidents');
+      const res = await fetch(apiUrl('/api/incidents'), { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch incidents');
       return res.json();
     },
@@ -167,7 +168,7 @@ export default function AdminIncidents() {
   const handleViewDetails = async (incident: Incident) => {
     setSelectedIncident(incident);
     try {
-      const res = await fetch(`/api/incidents/${incident.id}/audit-logs`);
+      const res = await fetch(apiUrl(`/api/incidents/${incident.id}/audit-logs`), { credentials: 'include' });
       if (res.ok) {
         const logs = await res.json();
         setAuditLogs(logs);
@@ -179,10 +180,11 @@ export default function AdminIncidents() {
 
   const handleStatusChange = async (incidentId: string, newStatus: IncidentStatus) => {
     try {
-      const res = await fetch(`/api/incidents/${incidentId}/status`, {
+      const res = await fetch(apiUrl(`/api/incidents/${incidentId}/status`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
+        credentials: 'include',
       });
       if (res.ok) {
         refetch();
@@ -195,7 +197,7 @@ export default function AdminIncidents() {
 
   const handleDownloadReport = async (incidentId: string) => {
     try {
-      const res = await fetch(`/api/incidents/${incidentId}/report`);
+      const res = await fetch(apiUrl(`/api/incidents/${incidentId}/report`), { credentials: 'include' });
       if (res.ok) {
         const blob = await res.blob();
         const url = window.URL.createObjectURL(blob);

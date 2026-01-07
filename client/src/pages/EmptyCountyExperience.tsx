@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { AlertCircle, Heart, MapPin, MessageSquare } from 'lucide-react';
+import { apiUrl } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,10 +42,11 @@ export default function EmptyCountyExperience({ county, state }: EmptyCountyProp
 
   const submitMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const res = await fetch('/api/affiliate/submit-restaurant', {
+      const res = await fetch(apiUrl('/api/affiliate/submit-restaurant'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...data, county, state }),
+        credentials: 'include',
       });
       if (!res.ok) throw new Error('Failed to submit');
       return res.json();

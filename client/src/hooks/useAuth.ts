@@ -3,6 +3,8 @@ import { getQueryFn } from "@/lib/queryClient";
 import type { User } from "@shared/schema";
 import { useEffect } from "react";
 
+export type AuthState = "loading" | "authenticated" | "guest";
+
 export function useAuth() {
   const { data: user, isLoading, isError, error, refetch } = useQuery<User>({
     queryKey: ["/api/auth/user"],
@@ -11,6 +13,8 @@ export function useAuth() {
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   });
+
+  const authState: AuthState = isLoading ? "loading" : user ? "authenticated" : "guest";
 
   // Check for OAuth redirect completion and refresh auth state
   useEffect(() => {
@@ -34,7 +38,9 @@ export function useAuth() {
     isLoading,
     isError,
     error,
-    isAuthenticated: !!user,
+    authState,
+    isAuthenticated: authState === "authenticated",
+    isGuest: authState === "guest",
     refetch,
   };
 }

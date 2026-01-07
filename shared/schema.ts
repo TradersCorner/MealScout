@@ -459,7 +459,7 @@ export const videoStories = pgTable(
     cuisine: varchar("cuisine"), // inherited from restaurant
     // Expiration & featured
     createdAt: timestamp("created_at").defaultNow(),
-    expiresAt: timestamp("expires_at").default(sql`NOW() + INTERVAL '3 days'`), // 3-day expiration
+    expiresAt: timestamp("expires_at").default(sql`NOW() + INTERVAL '7 days'`), // 7-day expiration
     deletedAt: timestamp("deleted_at"), // soft delete
     // Featured video system
     isFeatured: boolean("is_featured").default(false), // Currently in restaurant's featured slot

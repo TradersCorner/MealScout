@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { apiUrl } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { BackHeader } from "@/components/back-header";
 import { UserCheck, Eye, EyeOff } from "lucide-react";
@@ -39,10 +40,11 @@ export default function Login() {
 
     setIsLoggingIn(true);
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(apiUrl('/api/auth/login'), {
         method: 'POST',
         body: JSON.stringify({ email, password }),
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       });
       
       if (!response.ok) {

@@ -21,7 +21,7 @@ import {
   restaurants,
   users,
 } from '@shared/schema';
-import { eq, desc, and, lte, sql, count, gte, like, or, isNull } from 'drizzle-orm';
+import { eq, desc, and, lte, sql, count, gte, like, or, isNull, isNotNull } from 'drizzle-orm';
 import { uploadToCloudinary, deleteFromCloudinary } from './imageUpload';
 import { upload } from './imageUpload';
 import multer from 'multer';
@@ -69,6 +69,8 @@ export default function setupStoriesRoutes(app: Express) {
           hashtags: req.body.hashtags ? JSON.parse(req.body.hashtags) : [],
           cuisine: req.body.cuisine || null,
         };
+
+        const hasRestaurant = Boolean(bodyData.restaurantId);
 
         // Check if this is a restaurant video and verify subscription (paid or lifetime)
         if (bodyData.restaurantId) {
@@ -136,12 +138,12 @@ export default function setupStoriesRoutes(app: Express) {
             and(
               eq(videoStories.userId, userId),
               gte(videoStories.createdAt, oneDayAgo)
-            )
+            ),
           );
 
-        // Limit: 10 uploads per user per day, with 6h cooldown message
-        if ((dayCount || 0) >= 10) {
-          return res.status(429).json({ message: 'Upload limit reached: max 10 videos per day. Please wait ~6 hours before uploading again.' });
+        // Limit: 3 uploads per user per rolling 24 hours
+        if ((dayCount || 0) >= 3) {
+          return res.status(429).json({ message: 'Upload limit reached: max 3 videos per 24 hours. Please try again later.' });
         }
 
         // Additional restaurant-level cap (if restaurantId provided)
@@ -207,18 +209,30 @@ export default function setupStoriesRoutes(app: Express) {
           .where(eq(userReviewerLevels.userId, userId))
           .limit(1);
 
+        // Recalculate distinct recommended restaurants for durability
+        const [{ count: distinctRestaurants }] = await db
+          .select({ count: sql<number>`COUNT(DISTINCT ${videoStories.restaurantId})`.mapWith(Number) })
+          .from(videoStories)
+          .where(
+            and(
+              eq(videoStories.userId, userId),
+              isNotNull(videoStories.restaurantId),
+            ),
+          );
+
         if (existingLevel.length === 0) {
           await db.insert(userReviewerLevels).values({
             userId,
             level: 1,
-            totalStories: 1,
+            // totalStories = distinct restaurants ever recommended (durable)
+            totalStories: distinctRestaurants,
           });
         } else {
-          // Increment total stories count
+          // Keep totalStories in sync with durable distinct restaurant recommendations
           await db
             .update(userReviewerLevels)
             .set({
-              totalStories: sql`${userReviewerLevels.totalStories} + 1`,
+              totalStories: distinctRestaurants,
             })
             .where(eq(userReviewerLevels.userId, userId));
         }
@@ -233,6 +247,42 @@ export default function setupStoriesRoutes(app: Express) {
       }
     }
   );
+
+  // GET - Recommendation status (read-only, durable semantics)
+  // Returns whether the user has ever recommended this restaurant via a tagged video.
+  app.get('/api/stories/recommendation-status', isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      const restaurantId = req.query.restaurantId as string | undefined;
+
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      if (!restaurantId) {
+        return res.status(400).json({ message: 'restaurantId is required' });
+      }
+
+      // Durable rule: a restaurant is "already recommended" if the user has
+      // ever uploaded at least one story tagged with this restaurantId.
+      const [{ count: existingCount }] = await db
+        .select({ count: sql<number>`COUNT(*)`.mapWith(Number) })
+        .from(videoStories)
+        .where(
+          and(
+            eq(videoStories.userId, userId),
+            eq(videoStories.restaurantId, restaurantId),
+          ),
+        );
+
+      const alreadyRecommended = (existingCount || 0) > 0;
+
+      return res.json({ alreadyRecommended });
+    } catch (error) {
+      console.error('Error checking recommendation status:', error);
+      return res.status(500).json({ message: 'Failed to check recommendation status' });
+    }
+  });
 
   // GET - Feed (infinite scroll)
   // Feed algorithm: 30% community (recent), 20% featured (sponsored), 20% trending, 20% nearby, 10% discovery
@@ -275,7 +325,6 @@ export default function setupStoriesRoutes(app: Express) {
             )
           )
         )
-        .orderBy(desc(feedAds.priority))
         .limit(5); // fetch a handful of ads to rotate
 
       // Get community stories (recent uploads)

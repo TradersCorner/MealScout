@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface VideoUploadModalProps {
@@ -21,9 +21,46 @@ export function VideoUploadModal({
   const [error, setError] = useState('');
   const [duration, setDuration] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [alreadyRecommended, setAlreadyRecommended] = useState<boolean | null>(null);
   const queryClient = useQueryClient();
 
   if (!isOpen) return null;
+
+  useEffect(() => {
+    if (!isOpen || !restaurantId) {
+      setAlreadyRecommended(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const checkRecommendationStatus = async () => {
+      try {
+        const response = await fetch(
+          `/api/stories/recommendation-status?restaurantId=${encodeURIComponent(restaurantId)}`
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+        if (!cancelled) {
+          setAlreadyRecommended(Boolean(data.alreadyRecommended));
+        }
+      } catch {
+        if (!cancelled) {
+          setAlreadyRecommended(null);
+        }
+      }
+    };
+
+    checkRecommendationStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, restaurantId]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -132,6 +169,25 @@ export function VideoUploadModal({
             <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
               {error}
             </div>
+          )}
+
+          {/* Lifetime info */}
+          <p className="text-xs text-gray-500">
+            Videos appear in MealScout for 7 days.
+          </p>
+
+          {/* Duplicate recommendation notice (non-blocking) */}
+          {restaurantId && alreadyRecommended && (
+            <p className="text-xs text-amber-600">
+              Already recommended — still OK to post, but it won&apos;t increase your recommendation count.
+            </p>
+          )}
+
+          {/* Recommendation hint (soft, non-blocking) */}
+          {!restaurantId && (
+            <p className="text-xs text-gray-500">
+              Tag a restaurant so this counts as a recommendation. You can recommend each restaurant once.
+            </p>
           )}
 
           {/* Video Upload */}

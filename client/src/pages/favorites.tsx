@@ -11,12 +11,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { SEOHead } from "@/components/seo-head";
 
 export default function FavoritesPage() {
-  const { user } = useAuth();
+  const { user, authState, isAuthenticated } = useAuth();
 
   // Fetch user's restaurant favorites
   const { data: restaurantFavorites = [], isLoading: loadingFavorites } = useQuery<any[]>({
     queryKey: ["/api/favorites/restaurants"],
-    enabled: !!user,
+    enabled: isAuthenticated,
   });
 
   // Also fetch featured deals for the legacy favorites display
@@ -27,6 +27,47 @@ export default function FavoritesPage() {
 
   const allDeals = Array.isArray(featuredDeals) ? featuredDeals : [];
   const favoriteDeals = allDeals.slice(0, 2); // Show first 2 as favorites for demo (legacy)
+
+  if (authState === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="max-w-md mx-auto bg-background min-h-screen flex flex-col items-center justify-center px-6 text-center">
+        <SEOHead
+          title="My Favorites - MealScout | Saved Deals & Restaurants"
+          description="Sign in to save your favorite restaurants and deals so you can get back to them quickly."
+          keywords="favorites, saved deals, favorite restaurants, saved restaurants, bookmarked deals"
+          canonicalUrl="https://mealscout.us/favorites"
+          noIndex={true}
+        />
+        <div className="w-16 h-16 bg-orange-50 dark:bg-orange-900/30 rounded-2xl flex items-center justify-center mb-4">
+          <Heart className="w-8 h-8 text-orange-500" />
+        </div>
+        <h1 className="text-2xl font-bold text-foreground mb-2">Save deals you care about</h1>
+        <p className="text-muted-foreground mb-6">
+          Sign in to bookmark restaurants and deals and come back to them anytime. No ordering required — just keep track of what looks good.
+        </p>
+        <div className="flex flex-col gap-3 w-full max-w-sm">
+          <Link href="/login">
+            <Button className="w-full" variant="default">
+              Sign in to view favorites
+            </Button>
+          </Link>
+          <Link href="/customer-signup">
+            <Button className="w-full" variant="outline">
+              Create a free account
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">

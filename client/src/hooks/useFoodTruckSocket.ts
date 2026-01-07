@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import { io, Socket } from 'socket.io-client';
+import { API_BASE_URL } from "@/lib/api";
+
+const ENABLE_SOCKETS = import.meta.env.VITE_ENABLE_SOCKETS === "true";
 
 interface FoodTruckLocation {
   restaurantId: string;
@@ -60,12 +63,17 @@ export function useFoodTruckSocket({
   const baseReconnectDelay = 3000; // 3 seconds to allow backend spin-up
 
   const connect = useCallback(() => {
+    if (!ENABLE_SOCKETS) {
+      return;
+    }
+
     if (socketRef.current?.connected) return;
 
     try {
       // Create Socket.IO connection via same-origin proxy (no explicit URL)
       // Allow polling first for dev compatibility, then upgrade to websocket
-      const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
+      const socketUrl = import.meta.env.DEV ? undefined : (API_BASE_URL || undefined);
+      const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(socketUrl, {
         autoConnect: true,
         transports: ['polling', 'websocket'],
         withCredentials: true,
@@ -230,7 +238,7 @@ export function useFoodTruckSocket({
 
   // Auto-connect on mount if enabled
   useEffect(() => {
-    if (autoConnect) {
+    if (autoConnect && ENABLE_SOCKETS) {
       connect();
     }
   }, [connect, autoConnect]);
@@ -266,7 +274,9 @@ export function useFoodTruckPolling(interval: number = 30000) {
   const fetchFoodTrucks = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/trucks/live');
+      const response = await fetch(API_BASE_URL ? `${API_BASE_URL}/api/trucks/live` : '/api/trucks/live', {
+        credentials: 'include',
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch food trucks');
       }

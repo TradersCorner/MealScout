@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Search, Heart, Receipt, User, MapPin, Store, Plus, BarChart3, UserPlus } from "lucide-react";
+import { Home, Search, Heart, Receipt, User, MapPin, Store, Plus, BarChart3, UserPlus, Clapperboard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function Navigation() {
@@ -13,6 +13,7 @@ export default function Navigation() {
     { path: "/", icon: Home, label: "Home" },
     { path: "/search", icon: Search, label: "Search" },
     { path: "/map", icon: MapPin, label: "Map" },
+    { path: "/video", icon: Clapperboard, label: "Video" },
     { path: "/favorites", icon: Heart, label: "Favorites" },
     { path: "/profile", icon: User, label: "Profile" },
   ];
@@ -21,6 +22,7 @@ export default function Navigation() {
     { path: "/", icon: Home, label: "Home" },
     { path: "/search", icon: Search, label: "Search" },
     { path: "/map", icon: MapPin, label: "Map" },
+    { path: "/video", icon: Clapperboard, label: "Video" },
     { path: "/customer-signup", icon: UserPlus, label: "Create Account" },
   ];
 

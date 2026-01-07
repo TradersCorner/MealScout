@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import { apiUrl } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,7 +47,7 @@ export default function Home() {
   const [, setNavigateTo] = useLocation();
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
-  const { isConnected, subscribeToNearby, connect: connectWS } = useFoodTruckSocket();
+  const { isConnected, subscribeToNearby } = useFoodTruckSocket();
 
   // Show welcome modal only for anonymous users; auto-detect for logged-in users
   useEffect(() => {
@@ -177,9 +178,9 @@ export default function Home() {
     setShowWelcomeModal(false);
   };
 
-  const { data: featuredDeals, isLoading: featuredLoading } = useQuery({
+  const { data: featuredDeals, isLoading: featuredLoading, isError: featuredError } = useQuery({
     queryKey: ["/api/deals/featured"],
-    queryFn: () => fetch('/api/deals/featured').then(res => res.json()),
+    queryFn: () => fetch(apiUrl('/api/deals/featured'), { credentials: 'include' }).then(res => res.json()),
   });
 
   const groupedFeaturedDeals = featuredDeals?.reduce((acc: Record<string, { restaurant?: Deal['restaurant']; deals: Deal[]; distance?: number }>, deal: Deal) => {
@@ -419,6 +420,10 @@ export default function Home() {
               {[1, 2, 3].map(i => (
                 <div key={i} className="flex-shrink-0 w-56 bg-gray-100 rounded-lg h-48 animate-pulse" />
               ))}
+            </div>
+          ) : featuredError ? (
+            <div className="text-center py-8 text-red-500 text-sm">
+              We couldnt load deals right now. Try again in a bit.
             </div>
           ) : featuredDeals && featuredDeals.length > 0 ? (
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">

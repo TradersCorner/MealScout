@@ -13,6 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { apiUrl } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Stats {
   wallet: {
@@ -33,6 +35,7 @@ interface Stats {
 }
 
 export default function AffiliateEarnings() {
+  const { isAuthenticated, authState } = useAuth();
   const [withdrawalDialog, setWithdrawalDialog] = useState(false);
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
   const [withdrawalMethod, setWithdrawalMethod] = useState('bank_transfer');
@@ -40,10 +43,11 @@ export default function AffiliateEarnings() {
   const { data: stats } = useQuery<Stats>({
     queryKey: ['affiliate-stats'],
     queryFn: async () => {
-      const res = await fetch('/api/affiliate/stats');
+      const res = await fetch(apiUrl('/api/affiliate/stats'), { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch stats');
       return res.json();
     },
+    enabled: isAuthenticated,
     refetchInterval: 30000,
   });
 
@@ -58,6 +62,33 @@ export default function AffiliateEarnings() {
       currency: 'USD',
     }).format(num || 0);
   };
+
+  if (authState === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
+        <h1 className="text-2xl font-bold mb-2">Sign in to view your affiliate earnings</h1>
+        <p className="text-gray-600 mb-4 max-w-md">
+          Create a free MealScout account or sign in to access your affiliate dashboard, track earnings, and manage your links.
+        </p>
+        <div className="flex gap-3">
+          <a href="/login" className="inline-flex items-center px-4 py-2 rounded-md bg-red-600 text-white text-sm font-medium hover:bg-red-700">
+            Sign In
+          </a>
+          <a href="/customer-signup?role=affiliate" className="inline-flex items-center px-4 py-2 rounded-md border border-gray-300 text-sm font-medium hover:bg-gray-50">
+            Create Affiliate Account
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -229,7 +229,13 @@ export default function SearchPage() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Search Deals</h1>
             <p className="text-sm text-muted-foreground">
-              {isLocating ? "Finding your location..." : userLocation ? "Popular deals near you" : "Find your perfect meal"}
+              {isLocating
+                ? "Finding your location..."
+                : userLocation
+                ? "Popular deals near you"
+                : filteredDeals.length > 0
+                ? "Showing deals that match your search"
+                : "Set your location to see what's nearby"}
             </p>
           </div>
           <Button 
@@ -315,7 +321,7 @@ export default function SearchPage() {
               {/* Clear Filters */}
               <div className="flex justify-between items-center pt-2">
                 <span className="text-sm text-muted-foreground">
-                  {filteredDeals.length} deals found
+                  {filteredDeals.length} deal{filteredDeals.length === 1 ? '' : 's'} found
                 </span>
                 <Button
                   variant="outline"

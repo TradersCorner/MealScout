@@ -202,6 +202,9 @@ export default function MapPage() {
     setZoomLevel(prev => Math.max(prev - 1, 1));
   };
 
+  const hasLocation = !!userLocation;
+  const hasDeals = deals.length > 0;
+
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
       <SEOHead
@@ -216,7 +219,13 @@ export default function MapPage() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Map View</h1>
             <p className="text-sm text-muted-foreground">
-              {isLocating ? "Finding your location..." : "Deals near you"}
+              {isLocating
+                ? "Finding nearby food trucks..."
+                : hasLocation && hasDeals
+                ? "Food trucks near you"
+                : hasLocation && !hasDeals
+                ? "No food trucks nearby right now"
+                : "Set your location to see trucks nearby"}
             </p>
           </div>
           <div className="flex space-x-2">
@@ -240,7 +249,7 @@ export default function MapPage() {
         {userLocation && (
           <div className="text-xs text-muted-foreground mb-4">
             📍 Located: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
-            {deals.length > 0 && ` • ${deals.length} deals nearby`}
+            {deals.length > 0 && ` • ${deals.length} truck${deals.length === 1 ? "" : "s"} nearby`}
           </div>
         )}
       </header>
@@ -317,6 +326,24 @@ export default function MapPage() {
                 zoomLevel={zoomLevel}
               />
             </MapContainer>
+          )}
+
+          {/* Empty map overlay messaging */}
+          {!isLoading && !isLocating && deals.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="bg-background/90 rounded-xl px-4 py-3 text-center shadow-sm max-w-xs">
+                <p className="text-sm font-medium text-foreground mb-1">
+                  {hasLocation
+                    ? "No trucks nearby right now"
+                    : "Set your location to see trucks nearby"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {hasLocation
+                    ? "Try moving the map or check back later."
+                    : "Use your location or move the map to explore different areas."}
+                </p>
+              </div>
+            </div>
           )}
         </div>
 

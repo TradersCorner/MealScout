@@ -76,6 +76,7 @@ validateRequiredEnv();
 import bcrypt from "bcryptjs";
 import auditLogger, { logAudit } from "./auditLogger";
 import incidentManager, { createIncident, ANOMALY_RULES } from "./incidentManager";
+import { vacEvaluateRestaurantSignup } from "./vacLite";
 import { broadcastLocationUpdate, broadcastStatusUpdate } from "./websocket";
 import { db } from "./db";
 import { and, inArray, eq, sql, gte, desc, like } from "drizzle-orm";
@@ -2071,8 +2072,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerId: user.id,
       });
 
+      // VAC-lite auto-verify (with fallback to manual verification request)
+      try {
+        const enabled = String(process.env.VAC_AUTO_VERIFY_ENABLED || "true").toLowerCase() !== "false";
+        if (enabled) {
+          const vac = await vacEvaluateRestaurantSignup({ user, restaurant, req });
+          console.log('🔍 VAC-lite evaluation:', {
+            restaurantId: restaurant.id,
+            restaurantName: (restaurant as any).name,
+            score: vac.score,
+            threshold: vac.threshold,
+            shouldAutoVerify: vac.shouldAutoVerify,
+            signals: vac.signals
+          });
+
+          if (vac.shouldAutoVerify) {
+            console.log('✅ Auto-verifying restaurant:', restaurant.id);
+            await storage.setRestaurantVerified(restaurant.id, true);
+            (restaurant as any).isVerified = true;
+          } else {
+            console.log('⚠️  Creating manual verification request for:', restaurant.id);
+            const hasPending = await storage.hasPendingVerificationRequest(restaurant.id);
+            if (!hasPending) {
+              await storage.createVerificationRequest({
+                restaurantId: restaurant.id,
+                documents: []
+              });
+            } else {
+              console.log('ℹ️  Pending verification request already exists');
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("VAC-lite failed", e);
+        // Never block signup due to VAC issues
+      }
+
       // PHASE 2: Attach referral if present in request
-      const referralId = req.body.referralId || req.query.referralId || req.cookies.referralId;
+      const referralId = req.body?.referralId || req.query?.referralId || req.cookies?.referralId;
       if (referralId) {
         try {
           const { attachReferralToSignup } = await import('./referralService');
@@ -2107,6 +2144,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const restaurant = await storage.createRestaurant(restaurantData);
+
+      // VAC-lite auto-verify (with fallback to manual verification request)
+      try {
+        const enabled = String(process.env.VAC_AUTO_VERIFY_ENABLED || "true").toLowerCase() !== "false";
+        if (enabled) {
+          const vac = await vacEvaluateRestaurantSignup({ user: req.user, restaurant, req });
+          console.log('🔍 VAC-lite evaluation:', {
+            restaurantId: restaurant.id,
+            restaurantName: (restaurant as any).name,
+            score: vac.score,
+            threshold: vac.threshold,
+            shouldAutoVerify: vac.shouldAutoVerify,
+            signals: vac.signals
+          });
+
+          if (vac.shouldAutoVerify) {
+            console.log('✅ Auto-verifying restaurant:', restaurant.id);
+            await storage.setRestaurantVerified(restaurant.id, true);
+            (restaurant as any).isVerified = true;
+          } else {
+            console.log('⚠️  Creating manual verification request for:', restaurant.id);
+            const hasPending = await storage.hasPendingVerificationRequest(restaurant.id);
+            if (!hasPending) {
+              await storage.createVerificationRequest({
+                restaurantId: restaurant.id,
+                documents: []
+              });
+            } else {
+              console.log('ℹ️  Pending verification request already exists');
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("VAC-lite failed", e);
+        // Never block creation due to VAC issues
+      }
+
       res.json(restaurant);
     } catch (error: any) {
       console.error("Error creating restaurant:", error);
@@ -2428,6 +2502,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Deal routes
   app.post('/api/deals', isAuthenticated, async (req: any, res) => {
     try {
+      console.log('🟢 POST /api/deals - incoming request', {
+        userId: req.user?.id,
+        ip: req.ip,
+        ua: req.headers['user-agent'],
+      });
       await logAudit(
         req.user.id,
         'deal_create',
@@ -2438,16 +2517,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.body
       );
       const userId = req.user.id;
-      const dealData = insertDealSchema.parse(req.body);
-      
+
+      // Normalize incoming payload to expected types to avoid Zod parse hangs
+      const raw = req.body || {};
+      const normalized = {
+        ...raw,
+        // discountValue should remain as string for decimal type
+        discountValue:
+          typeof raw.discountValue === 'number'
+            ? raw.discountValue.toString()
+            : raw.discountValue,
+        minOrderAmount:
+          raw.minOrderAmount === '' || raw.minOrderAmount == null
+            ? null
+            : typeof raw.minOrderAmount === 'number'
+              ? raw.minOrderAmount.toString()
+              : raw.minOrderAmount,
+        totalUsesLimit:
+          raw.totalUsesLimit === '' || raw.totalUsesLimit == null
+            ? null
+            : typeof raw.totalUsesLimit === 'string'
+              ? parseInt(raw.totalUsesLimit)
+              : raw.totalUsesLimit,
+        perCustomerLimit:
+          raw.perCustomerLimit === '' || raw.perCustomerLimit == null
+            ? 1
+            : typeof raw.perCustomerLimit === 'string'
+              ? parseInt(raw.perCustomerLimit)
+              : raw.perCustomerLimit,
+        // Convert date strings to Date objects
+        startDate:
+          typeof raw.startDate === 'string'
+            ? new Date(raw.startDate)
+            : raw.startDate,
+        endDate:
+          raw.isOngoing || raw.endDate === '' || raw.endDate == null
+            ? null
+            : typeof raw.endDate === 'string'
+              ? new Date(raw.endDate)
+              : raw.endDate,
+        // Times nullable if business hours
+        startTime: raw.availableDuringBusinessHours ? null : raw.startTime,
+        endTime: raw.availableDuringBusinessHours ? null : raw.endTime,
+      };
+
+      console.log('🧭 Normalized deal payload', {
+        restaurantId: normalized.restaurantId,
+        title: normalized.title,
+        dealType: normalized.dealType,
+        discountValue: normalized.discountValue,
+        startDate: normalized.startDate,
+        endDate: normalized.endDate,
+      });
+
+      const dealData = insertDealSchema.parse(normalized);
+
       // Verify restaurant ownership
       const restaurant = await storage.getRestaurant(dealData.restaurantId);
       if (!restaurant || restaurant.ownerId !== userId) {
+        console.warn('🚫 Deal creation rejected - unauthorized restaurant ownership', {
+          userId,
+          restaurantId: dealData.restaurantId,
+          ownerId: restaurant?.ownerId,
+        });
         return res.status(403).json({ message: "Unauthorized" });
       }
       
       // Validate subscription limits
       const subscriptionValidation = await validateSubscriptionLimits(userId);
+      console.log('📊 Subscription validation', subscriptionValidation);
       if (!subscriptionValidation.isValid) {
         return res.status(402).json({ 
           message: subscriptionValidation.error,
@@ -2457,10 +2595,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const deal = await storage.createDeal(dealData);
+      console.log('✅ Deal created', { id: deal.id, restaurantId: deal.restaurantId, title: deal.title });
       res.json(deal);
     } catch (error: any) {
-      console.error("Error creating deal:", error);
-      res.status(400).json({ message: error.message });
+      console.error("❌ Error creating deal:", error?.message || error);
+      if (error?.stack) {
+        console.error(error.stack);
+      }
+      res.status(400).json({ message: error?.message || "Failed to create deal" });
     }
   });
 

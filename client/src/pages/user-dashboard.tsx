@@ -318,7 +318,11 @@ export default function UserDashboard() {
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
-                              {formatTime(deal.startTime)} - {formatTime(deal.endTime)}
+                              {deal.availableDuringBusinessHours 
+                                ? "During business hours" 
+                                : deal.startTime && deal.endTime 
+                                  ? `${formatTime(deal.startTime)} - ${formatTime(deal.endTime)}` 
+                                  : "All day"}
                             </span>
                             <span className="flex items-center gap-1">
                               <DollarSign className="h-3 w-3" />
@@ -431,7 +435,11 @@ export default function UserDashboard() {
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
-                              {formatTime(deal.startTime)} - {formatTime(deal.endTime)}
+                              {deal.availableDuringBusinessHours 
+                                ? "During business hours" 
+                                : deal.startTime && deal.endTime 
+                                  ? `${formatTime(deal.startTime)} - ${formatTime(deal.endTime)}` 
+                                  : "All day"}
                             </span>
                             <span className="flex items-center gap-1">
                               <DollarSign className="h-3 w-3" />

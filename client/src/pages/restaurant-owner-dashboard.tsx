@@ -911,7 +911,13 @@ export default function RestaurantOwnerDashboard() {
                         </div>
                         <div className="flex items-center gap-1">
                           <Clock className="h-4 w-4" />
-                          <span>{formatTime(deal.startTime)} - {formatTime(deal.endTime)}</span>
+                          <span>
+                            {deal.availableDuringBusinessHours 
+                              ? "During business hours" 
+                              : deal.startTime && deal.endTime 
+                                ? `${formatTime(deal.startTime)} - ${formatTime(deal.endTime)}` 
+                                : "All day"}
+                          </span>
                         </div>
                         {deal.totalUsesLimit && (
                           <div className="flex items-center gap-1">

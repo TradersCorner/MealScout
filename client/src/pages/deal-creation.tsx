@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -26,14 +27,35 @@ const dealSchema = z.object({
   dealType: z.enum(["percentage", "fixed"]),
   discountValue: z.string().min(1, "Discount value is required"),
   minOrderAmount: z.string().optional(),
+  imageUrl: z.string().min(1, "Deal image is required"),
   startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().min(1, "End date is required"),
-  startTime: z.string().min(1, "Start time is required"),
-  endTime: z.string().min(1, "End time is required"),
+  endDate: z.string().optional(),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
+  availableDuringBusinessHours: z.boolean().default(false),
+  isOngoing: z.boolean().default(false),
   totalUsesLimit: z.string().optional(),
   perCustomerLimit: z.string().optional(),
   facebookPageUrl: z.string().optional(),
-});
+}).refine(
+  (data) => {
+    // If not ongoing, endDate is required
+    if (!data.isOngoing && !data.endDate) {
+      return false;
+    }
+    return true;
+  },
+  { message: "End date is required for non-ongoing deals", path: ["endDate"] }
+).refine(
+  (data) => {
+    // If not available during business hours, times are required
+    if (!data.availableDuringBusinessHours && (!data.startTime || !data.endTime)) {
+      return false;
+    }
+    return true;
+  },
+  { message: "Times are required unless available during business hours", path: ["startTime"] }
+);
 
 type DealFormData = z.infer<typeof dealSchema>;
 
@@ -74,10 +96,13 @@ export default function DealCreation() {
       dealType: "percentage",
       discountValue: "",
       minOrderAmount: "",
+      imageUrl: "",
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       startTime: "11:00",
       endTime: "15:00",
+      availableDuringBusinessHours: false,
+      isOngoing: false,
       totalUsesLimit: "",
       perCustomerLimit: "1",
       facebookPageUrl: "",
@@ -98,7 +123,11 @@ export default function DealCreation() {
         totalUsesLimit: data.totalUsesLimit ? parseInt(data.totalUsesLimit) : null,
         perCustomerLimit: data.perCustomerLimit ? parseInt(data.perCustomerLimit) : 1,
         startDate: new Date(data.startDate),
-        endDate: new Date(data.endDate),
+        endDate: data.isOngoing ? null : new Date(data.endDate!),
+        startTime: data.availableDuringBusinessHours ? null : data.startTime,
+        endTime: data.availableDuringBusinessHours ? null : data.endTime,
+        availableDuringBusinessHours: data.availableDuringBusinessHours,
+        isOngoing: data.isOngoing,
       };
 
       return await apiRequest("POST", "/api/deals", dealData);
@@ -175,7 +204,9 @@ export default function DealCreation() {
 
       const reader = new FileReader();
       reader.onload = (e) => {
-        setSelectedImage(e.target?.result as string);
+        const imageData = e.target?.result as string;
+        setSelectedImage(imageData);
+        form.setValue("imageUrl", imageData); // Set form value for validation
       };
       reader.readAsDataURL(file);
     }
@@ -183,6 +214,7 @@ export default function DealCreation() {
 
   const removeImage = () => {
     setSelectedImage(null);
+    form.setValue("imageUrl", ""); // Clear form value
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -359,11 +391,18 @@ export default function DealCreation() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Deal Image */}
-            <div>
-              <Label className="block text-sm font-medium text-foreground mb-2" data-testid="label-deal-photo">Deal Photo</Label>
-              
-              {selectedImage ? (
+            {/* Deal Image - REQUIRED */}
+            <FormField
+              control={form.control}
+              name="imageUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium">
+                    Deal Photo <span className="text-destructive">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <div>
+                      {selectedImage ? (
                 <div className="relative rounded-lg overflow-hidden">
                   <img 
                     src={selectedImage} 
@@ -398,11 +437,13 @@ export default function DealCreation() {
               ) : (
                 <div 
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-input rounded-lg p-8 text-center bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors"
+                  className="border-2 border-dashed border-destructive/50 rounded-lg p-8 text-center bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors"
                 >
                   <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground mb-2" data-testid="text-photo-prompt">Add a mouth-watering photo of your deal</p>
-                  <p className="text-xs text-muted-foreground mb-3">JPG, PNG up to 5MB</p>
+                  <p className="text-sm font-semibold text-foreground mb-1" data-testid="text-photo-prompt">
+                    Add a mouth-watering photo of your deal <span className="text-destructive">*</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-3">JPG, PNG up to 5MB (Required)</p>
                   <Button type="button" variant="default" size="sm" data-testid="button-upload-photo">
                     Upload Photo
                   </Button>
@@ -417,7 +458,12 @@ export default function DealCreation() {
                 className="hidden"
                 data-testid="input-file-upload"
               />
-            </div>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Quick Templates */}
             <div>
@@ -610,6 +656,60 @@ export default function DealCreation() {
               <Label className="block text-sm font-medium text-foreground mb-3" data-testid="label-availability">
                 When is this deal available?
               </Label>
+              
+              {/* Checkboxes for business hours and ongoing */}
+              <div className="space-y-3 mb-4">
+                <FormField
+                  control={form.control}
+                  name="isOngoing"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center space-x-2">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="checkbox-ongoing"
+                        />
+                      </FormControl>
+                      <FormLabel className="!mt-0 cursor-pointer">
+                        Ongoing deal (no expiration date)
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="availableDuringBusinessHours"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center space-x-2">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={(checked) => {
+                            const isChecked = checked === true; // Checkbox can return boolean | "indeterminate"
+                            field.onChange(isChecked);
+
+                            if (isChecked) {
+                              // Clear time fields when business hours is enabled
+                              form.setValue("startTime", "", { shouldDirty: true, shouldValidate: true });
+                              form.setValue("endTime", "", { shouldDirty: true, shouldValidate: true });
+                            } else {
+                              // Restore defaults when unchecked
+                              form.setValue("startTime", "11:00", { shouldDirty: true });
+                              form.setValue("endTime", "15:00", { shouldDirty: true });
+                            }
+                          }}
+                          data-testid="checkbox-business-hours"
+                        />
+                      </FormControl>
+                      <FormLabel className="!mt-0 cursor-pointer">
+                        Available anytime during business hours
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
@@ -630,9 +730,16 @@ export default function DealCreation() {
                     name="endDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs text-muted-foreground" data-testid="label-end-date">End Date</FormLabel>
+                        <FormLabel className="text-xs text-muted-foreground" data-testid="label-end-date">
+                          End Date {!form.watch("isOngoing") && <span className="text-destructive">*</span>}
+                        </FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} data-testid="input-end-date" />
+                          <Input 
+                            type="date" 
+                            {...field} 
+                            disabled={form.watch("isOngoing")}
+                            data-testid="input-end-date" 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -645,9 +752,16 @@ export default function DealCreation() {
                     name="startTime"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs text-muted-foreground" data-testid="label-start-time">Available From</FormLabel>
+                        <FormLabel className="text-xs text-muted-foreground" data-testid="label-start-time">
+                          Available From {!form.watch("availableDuringBusinessHours") && <span className="text-destructive">*</span>}
+                        </FormLabel>
                         <FormControl>
-                          <Input type="time" {...field} data-testid="input-start-time" />
+                          <Input 
+                            type="time" 
+                            {...field} 
+                            disabled={form.watch("availableDuringBusinessHours")}
+                            data-testid="input-start-time" 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -658,9 +772,16 @@ export default function DealCreation() {
                     name="endTime"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs text-muted-foreground" data-testid="label-end-time">Available Until</FormLabel>
+                        <FormLabel className="text-xs text-muted-foreground" data-testid="label-end-time">
+                          Available Until {!form.watch("availableDuringBusinessHours") && <span className="text-destructive">*</span>}
+                        </FormLabel>
                         <FormControl>
-                          <Input type="time" {...field} data-testid="input-end-time" />
+                          <Input 
+                            type="time" 
+                            {...field} 
+                            disabled={form.watch("availableDuringBusinessHours")}
+                            data-testid="input-end-time" 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

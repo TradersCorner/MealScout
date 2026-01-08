@@ -258,6 +258,10 @@ export function registerAdminManagementRoutes(app: Express) {
         return res.status(404).json({ message: "Deal not found" });
       }
 
+      if (!deal.endDate) {
+        return res.status(400).json({ message: "Cannot extend ongoing deals (no end date)" });
+      }
+
       const newEndDate = new Date(deal.endDate);
       newEndDate.setDate(newEndDate.getDate() + days);
 

@@ -165,11 +165,13 @@ export const deals = pgTable("deals", {
   dealType: varchar("deal_type").notNull(), // 'percentage' or 'fixed'
   discountValue: decimal("discount_value", { precision: 5, scale: 2 }).notNull(),
   minOrderAmount: decimal("min_order_amount", { precision: 8, scale: 2 }),
-  imageUrl: varchar("image_url"),
+  imageUrl: varchar("image_url").notNull(), // Required image for all deals
   startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date").notNull(),
-  startTime: varchar("start_time").notNull(), // Format: "HH:MM"
-  endTime: varchar("end_time").notNull(), // Format: "HH:MM"
+  endDate: timestamp("end_date"), // Nullable for ongoing deals
+  startTime: varchar("start_time"), // Nullable if available during business hours
+  endTime: varchar("end_time"), // Nullable if available during business hours
+  availableDuringBusinessHours: boolean("available_during_business_hours").default(false), // Use restaurant operating hours
+  isOngoing: boolean("is_ongoing").default(false), // No expiration date
   totalUsesLimit: integer("total_uses_limit"),
   perCustomerLimit: integer("per_customer_limit").default(1),
   currentUses: integer("current_uses").default(0),
@@ -870,12 +872,42 @@ export const insertRestaurantSchema = createInsertSchema(restaurants).omit({
   }).optional().nullable(),
 });
 
-export const insertDealSchema = createInsertSchema(deals).omit({
-  id: true,
-  currentUses: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertDealSchema = createInsertSchema(deals)
+  .omit({
+    id: true,
+    currentUses: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    imageUrl: z.string().min(1, "Deal image is required"),
+    endDate: z.date().optional().nullable(),
+    startTime: z.string().optional().nullable(),
+    endTime: z.string().optional().nullable(),
+  })
+  .refine(
+    (data) => {
+      // If not ongoing, endDate is required
+      if (!data.isOngoing && !data.endDate) {
+        return false;
+      }
+      return true;
+    },
+    { message: "End date is required for non-ongoing deals", path: ["endDate"] }
+  )
+  .refine(
+    (data) => {
+      // If not available during business hours, times are required
+      if (!data.availableDuringBusinessHours && (!data.startTime || !data.endTime)) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Start and end times are required unless available during business hours",
+      path: ["startTime"],
+    }
+  );
 
 export const insertDealClaimSchema = createInsertSchema(dealClaims).omit({
   id: true,

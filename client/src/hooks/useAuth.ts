@@ -10,8 +10,9 @@ export function useAuth() {
     queryKey: ["/api/auth/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     retry: false,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    staleTime: 60_000, // Consider user data fresh for 1 minute
   });
 
   const authState: AuthState = isLoading ? "loading" : user ? "authenticated" : "guest";

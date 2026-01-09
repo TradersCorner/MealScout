@@ -21,6 +21,37 @@ validateEnv();
 
 const app = express();
 
+// ---- CORS (required for www.mealscout.us -> mealscout.onrender.com) ----
+const defaultOrigins = [
+  "https://www.mealscout.us",
+  "https://mealscout.us",
+  "http://localhost:5174",
+  "http://localhost:5200",
+];
+
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || defaultOrigins.join(","))
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin as string | undefined;
+
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,PUT,DELETE,OPTIONS");
+  }
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
 // Enhanced global error handlers to prevent server crashes during deployment
 process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught Exception:', error);
@@ -208,8 +239,18 @@ const viewLimiter = createRateLimiter({
 const updateLimiter = createRateLimiter({
   windowMs: 60 * 60 * 1000, // 1 hour
   maxRequests: 10, // 10 edits per hour
-  keyGenerator: (req) => `${req.user?.id}:${req.path}` // Per-user limit
+  keyGenerator: (req) => (req.user?.id ? `${req.user.id}:${req.path}` : `${req.ip}:${req.path}`) // Per-user limit with IP fallback for anonymous traffic
 });
+
+// Wrap a limiter so it only applies to mutation methods
+function onlyMutations(limiter: any) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") {
+      return next();
+    }
+    return limiter(req, res, next);
+  };
+}
 
 // 6. General API (moderate baseline)
 const apiLimiter = createRateLimiter({
@@ -296,7 +337,7 @@ app.use((req, res, next) => {
   app.use('/api/restaurants/:restaurantId/locations', viewLimiter);
   
   // ✏️  STRICT - Content updates (prevent spam editing)
-  app.use('/api/deals', updateLimiter);
+  app.use('/api/deals', onlyMutations(updateLimiter));
   app.use('/api/restaurants/:restaurantId/location', updateLimiter);
   app.use('/api/restaurants/:restaurantId/operating-hours', updateLimiter);
   app.use('/api/restaurants/:restaurantId/mobile-settings', updateLimiter);

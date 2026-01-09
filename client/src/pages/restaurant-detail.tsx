@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { BackHeader } from "@/components/back-header";
 import { MapPin, Phone, Star, Clock, Navigation as DirectionsIcon, Heart, CheckCircle, Store } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
+import { MinimalFAQ } from "@/components/seo-faq";
+import { generateRestaurantSchema } from "@/lib/schema-helpers";
 
 export default function RestaurantDetailPage() {
   const { id: restaurantId } = useParams();
@@ -278,6 +280,31 @@ export default function RestaurantDetailPage() {
               </CardContent>
             </Card>
           )}
+        </div>
+
+        {/* FAQ Section - SEO optimized, minimal UI */}
+        <div className="mt-12 pt-8 border-t border-gray-200">
+          <MinimalFAQ
+            items={[
+              {
+                question: `Does ${restaurantName} offer delivery?`,
+                answer: `Contact ${restaurantName} directly at ${(restaurant as any)?.phone || 'their phone number'} to inquire about delivery options and availability in your area.`
+              },
+              {
+                question: `What are the current deals at ${restaurantName}?`,
+                answer: `${restaurantName} has ${restaurantDeals.length} active deals available on MealScout. View all current deals and claim offers directly from this page.`
+              },
+              {
+                question: `What type of cuisine does ${restaurantName} serve?`,
+                answer: `${restaurantName} specializes in ${cuisineType} cuisine. Check the menu and reviews above for specific dishes and customer favorites.`
+              },
+              {
+                question: `How do I get directions to ${restaurantName}?`,
+                answer: `${restaurantName} is located at ${address}. Click the Directions button above to open navigation in your maps app.`
+              }
+            ]}
+            className="mt-6"
+          />
         </div>
       </div>
 

@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import cron from "node-cron";
 import { DigestService } from "./digestService";
+import { notifyUnbookedEvents } from "./eventNotificationCron";
 import Stripe from "stripe";
 import { storage } from "./storage";
 import { getHostByUserId, getEventAndHostForUser, getInterestEventAndHostForUser, hostOwnsEvent } from "./services/hostOwnership";
@@ -11,6 +12,7 @@ import { registerHostRoutes } from "./routes/hostRoutes";
 import { registerOpenCallSeriesRoutes } from "./routes/openCallSeriesRoutes";
 import { registerEventRoutes } from "./routes/eventRoutes";
 import { registerAdminManagementRoutes } from "./routes/adminManagementRoutes";
+import { registerStaffRoutes } from "./staffRoutes";
 import { setupUnifiedAuth, isAuthenticated, isRestaurantOwner, isRestaurantOwnerOrAdmin, isAdmin, verifyResourceOwnership } from "./unifiedAuth";
 import { emailService } from "./emailService";
 import { insertRestaurantSchema, insertDealSchema, insertReviewSchema, insertVerificationRequestSchema, insertDealViewSchema, insertFoodTruckLocationSchema, updateRestaurantMobileSettingsSchema, insertFoodTruckSessionSchema, insertRestaurantFavoriteSchema, insertRestaurantRecommendationSchema, insertUserAddressSchema, insertPasswordResetTokenSchema, updateRestaurantLocationSchema, updateRestaurantOperatingHoursSchema, insertDealFeedbackSchema, insertLocationRequestSchema, insertTruckInterestSchema, insertHostSchema, insertEventSchema, insertEventSeriesSchema, insertEventInterestSchema, type User, type InsertEvent, deals, events, eventSeries, insertImageUploadSchema, insertAwardHistorySchema, imageUploads, passwordResetTokens, users, restaurants, awardHistory } from "@shared/schema";
@@ -97,6 +99,28 @@ console.log('🎯 process.env.BETA_MODE =', process.env.BETA_MODE);
 // Production safety check: warn if beta mode is enabled in production
 if (process.env.NODE_ENV === 'production' && BETA_MODE) {
   console.warn('⚠️  WARNING: BETA_MODE is enabled in production environment! All users will have free access to premium features.');
+}
+
+// Pricing helpers: lock-in logic + Stripe Price IDs
+const PROMO_DEADLINE = new Date('2026-03-01T00:00:00Z');
+
+async function getLockedPriceForUser(userId: string): Promise<{
+  locked: boolean;
+  priceId: string;
+  label: string;
+}> {
+  const price25 = process.env.PRICE_MONTHLY_25;
+  const price50 = process.env.PRICE_MONTHLY_50;
+  if (!price25 || !price50) {
+    throw new Error('Stripe Price IDs not configured (PRICE_MONTHLY_25 / PRICE_MONTHLY_50)');
+  }
+
+  const user = await storage.getUser(userId);
+  const signupDate = user?.subscriptionSignupDate || null;
+  const locked = !!(signupDate && signupDate < PROMO_DEADLINE);
+  const priceId = locked ? price25 : price50;
+  const label = locked ? 'locked-in $25' : 'standard $50';
+  return { locked, priceId, label };
 }
 
 // Password reset rate limiting - database-backed for persistence across server restarts
@@ -212,27 +236,10 @@ async function validateAnalyticsAccess(userId: string): Promise<{
       };
     }
 
-    // Return subscription tier for different feature access
-    // Handle both new format (standard-month) and legacy formats
-    const billingInterval = user.subscriptionBillingInterval || '';
-    let tier = 'monthly'; // default
-    
-    if (billingInterval.startsWith('standard-')) {
-      const interval = billingInterval.replace('standard-', '');
-      tier = interval === 'year' ? 'yearly' : interval === 'quarter' ? 'quarterly' : 'monthly';
-    } else if (billingInterval === 'multiple-deals' || billingInterval.includes('multiple-deals')) {
-      tier = 'multiple-deals';
-    } else if (billingInterval === 'single-deal' || billingInterval.includes('single-deal')) {
-      tier = 'single-deal';
-    } else if (billingInterval === 'year' || billingInterval.includes('year')) {
-      tier = 'yearly';
-    } else if (billingInterval === '3-month' || billingInterval === 'quarter' || billingInterval.includes('quarter')) {
-      tier = 'quarterly';
-    }
-
+    // Return subscription tier (monthly only)
     return { 
       hasAccess: true, 
-      subscriptionTier: tier
+      subscriptionTier: 'monthly'
     };
   } catch (error) {
     console.error("Analytics access validation error:", error);
@@ -282,49 +289,12 @@ async function validateSubscriptionLimits(userId: string, excludeDealId?: string
       };
     }
 
-    let subscriptionId = user.stripeSubscriptionId;
+    const subscriptionId = user.stripeSubscriptionId || user.stripeCustomerId;
     
-    // Fallback: If subscription ID is missing but customer ID exists, check Stripe for active subscriptions
-    if (!subscriptionId && user.stripeCustomerId) {
-      try {
-        const subscriptions = await stripe.subscriptions.list({
-          customer: user.stripeCustomerId,
-          status: 'active',
-          limit: 1,
-        });
-        
-        if (subscriptions.data.length > 0) {
-          const activeSubscription = subscriptions.data[0];
-          subscriptionId = activeSubscription.id;
-          
-          // Auto-sync the subscription to database for future checks
-          const intervalMap: { [key: string]: string } = {
-            'month': 'month',
-            'year': 'year',
-          };
-          const interval = activeSubscription.items.data[0]?.price?.recurring?.interval;
-          const intervalCount = activeSubscription.items.data[0]?.price?.recurring?.interval_count || 1;
-          
-          let billingInterval = 'month';
-          if (interval === 'month' && intervalCount === 3) {
-            billingInterval = 'quarter';
-          } else if (interval === 'year') {
-            billingInterval = 'year';
-          }
-          
-          await storage.updateUserStripeInfo(
-            user.id, 
-            user.stripeCustomerId, 
-            subscriptionId, 
-            `standard-${billingInterval}`
-          );
-          
-          console.log(`✅ Auto-synced subscription ${subscriptionId} for user ${user.id}`);
-        }
-      } catch (error) {
-        console.error('Error checking Stripe for active subscriptions:', error);
-      }
-    }
+    // Removed legacy billing interval checks
+    // Only monthly billing supported
+    const validIntervals = ['month'];
+    const intervalCount = 1;
     
     if (!subscriptionId) {
       return { 
@@ -1496,14 +1466,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/deal-claims/:claimId/use', isAuthenticated, async (req: any, res) => {
     try {
       const { claimId } = req.params;
-      const { orderAmount } = req.body;
       
-      // Validate order amount
+      // Validate optional order amount
       const amountSchema = z.object({
-        orderAmount: z.number().positive().min(0.01).max(10000),
+        orderAmount: z.number().positive().min(0.01).max(10000).optional(),
       });
       
-      const { orderAmount: validatedAmount } = amountSchema.parse({ orderAmount });
+      const { orderAmount } = amountSchema.parse(req.body ?? {});
       
       // Verify that the user owns the restaurant associated with this claim
       const isAuthorized = await storage.verifyRestaurantOwnershipByClaim(claimId, req.user.id);
@@ -1511,7 +1480,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Unauthorized: You can only mark claims as used for your own restaurants" });
       }
       
-      const updatedClaim = await storage.markClaimAsUsed(claimId, validatedAmount);
+      const updatedClaim = await storage.markClaimAsUsed(claimId, orderAmount ?? null);
+      if (!updatedClaim) {
+        return res.status(400).json({ message: "Claim not found or already used" });
+      }
       res.json({ success: true, claim: updatedClaim });
     } catch (error) {
       console.error("Error marking claim as used:", error);
@@ -2840,7 +2812,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // New idempotent subscription initialization endpoint
+  // New idempotent subscription initialization endpoint (read-only: no Stripe mutation)
   app.post('/api/subscriptions/initialize', isAuthenticated, async (req: any, res) => {
     const user = req.user;
     const { hasMultipleDealsAddon = false, billingInterval = 'month', promoCode = '' } = req.body;
@@ -2886,253 +2858,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(503).json({ error: { message: 'Payment processing is not configured' } });
     }
 
-    // Check for TEST1 promo code (charges $1 for testing)
+    // TEST1: read-only preview; actual subscription created in /api/create-subscription
     if (promoCode.toUpperCase() === 'TEST1') {
       if (!user.email) {
         return res.status(400).json({ error: { message: 'No user email on file' } });
       }
-
-      try {
-        let customerId = user.stripeCustomerId;
-        
-        if (!customerId) {
-          const customer = await stripe.customers.create({
-            email: user.email,
-            name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email,
-          });
-          customerId = customer.id;
-        }
-
-        const testProductName = `MealScout Test Plan - $1 Test`;
-
-        const product = await stripe.products.create({
-          name: testProductName,
-          metadata: {
-            type: 'test',
-            interval: interval
-          }
-        });
-
-        const subscription = await stripe.subscriptions.create({
-          customer: customerId,
-          items: [{
-            price_data: {
-              currency: 'usd',
-              product: product.id,
-              unit_amount: 100, // $1.00 in cents
-              recurring: {
-                interval: 'month',
-                interval_count: 1,
-              },
-            },
-          }],
-          payment_behavior: 'default_incomplete',
-          payment_settings: { 
-            save_default_payment_method: 'on_subscription'
-          },
-          expand: ['latest_invoice.payment_intent'],
-        });
-
-        await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `standard-${interval}`);
-    
-        const latestInvoice = subscription.latest_invoice;
-        const paymentIntent = typeof latestInvoice === 'object' && latestInvoice ? (latestInvoice as any).payment_intent : null;
-        
-        return res.send({
-          status: 'requires_payment',
-          subscriptionId: subscription.id,
-          clientSecret: typeof paymentIntent === 'object' && paymentIntent ? paymentIntent.client_secret : null,
-          intentType: 'payment',
-          testPricing: true,
-          message: "Test pricing applied - $1 charge"
-        });
-      } catch (error: any) {
-        console.error("Error creating test subscription:", error);
-        return res.status(400).send({ error: { message: error.message } });
-      }
+      return res.send({
+        status: 'quote',
+        promo: 'TEST1',
+        testPricing: true,
+        label: '$1 test plan',
+        billingInterval: 'month'
+      });
     }
 
     if (!user.email) {
       return res.status(400).json({ error: { message: 'No user email on file' } });
     }
 
-    // Check if user already has a subscription
-    if (user.stripeSubscriptionId) {
-      try {
-        const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId, {
-          expand: ['latest_invoice.payment_intent']
-        });
-        
-        if (subscription.status === 'active') {
-          return res.send({
-            status: 'active',
-            subscriptionId: subscription.id
-          });
-        }
-        
-        if (subscription.status === 'incomplete' || subscription.status === 'incomplete_expired') {
-          console.log(`Canceling incomplete subscription ${subscription.id} to create new one`);
-          await stripe.subscriptions.cancel(subscription.id);
-          await storage.updateUser(user.id, { stripeSubscriptionId: null });
-        } else if (subscription.status === 'past_due') {
-          // Return existing requires_payment subscription
-          const latestInvoice = subscription.latest_invoice;
-          const paymentIntent = typeof latestInvoice === 'object' && latestInvoice ? (latestInvoice as any).payment_intent : null;
-          
-          return res.send({
-            status: 'past_due',
-            subscriptionId: subscription.id,
-            clientSecret: typeof paymentIntent === 'object' && paymentIntent ? paymentIntent.client_secret : null,
-          });
-        }
-      } catch (error) {
-        console.error("Error retrieving subscription:", error);
-        // Continue to create new subscription
-      }
-    }
-
+    // Read-only quote: select Price ID by stored signup date (no mutation)
     try {
-      let customerId = user.stripeCustomerId;
-      
-      if (!customerId) {
-        const customer = await stripe.customers.create({
-          email: user.email,
-          name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email,
-        });
-        customerId = customer.id;
-      }
-
-      // Calculate pricing based on billing interval
-      // Standard pricing: $50/month, $100 for 3 months (first-time users), $450/year
-      const getPricing = (interval: string) => {
-        switch (interval) {
-          case 'quarter':
-            return 10000; // $100 for 3 months (first-time user special)
-          case 'year':
-            return 45000; // $450 for 12 months
-          default:
-            return 5000; // $50 monthly
-        }
-      };
-      
-      const getBillingLabel = (interval: string) => {
-        switch (interval) {
-          case 'quarter': return 'Quarterly';
-          case 'year': return 'Yearly';
-          default: return 'Monthly';
-        }
-      };
-      
-      const getIntervalCount = (interval: string) => {
-        switch (interval) {
-          case 'quarter': return 3;
-          case 'year': return 12;
-          default: return 1;
-        }
-      };
-      
-      const unitAmount = getPricing(interval);
-      let productName;
-      if (interval === 'quarter') {
-        productName = `MealScout Restaurant Plan - Special 3-Month Offer`;
-      } else {
-        productName = `MealScout Restaurant Plan - ${getBillingLabel(interval)}`;
-      }
-      
-      // Create the product first
-      const product = await stripe.products.create({
-        name: productName,
-        metadata: {
-          type: 'subscription',
-          interval: interval,
-          specialOffer: interval === 'quarter' ? 'new-user-3-month' : 'none'
-        }
-      });
-
-      // Create subscription with incomplete payment behavior
-      const subscription = await stripe.subscriptions.create({
-        customer: customerId,
-        items: [{
-          price_data: {
-            currency: 'usd',
-            product: product.id,
-            unit_amount: unitAmount,
-            recurring: {
-              interval: interval === 'quarter' || interval === 'year' ? 'month' : interval as 'month' | 'year',
-              interval_count: getIntervalCount(interval),
-            },
-          },
-        }],
-        payment_behavior: 'default_incomplete',
-        payment_settings: { 
-          save_default_payment_method: 'on_subscription'
-        },
-        expand: ['latest_invoice.payment_intent'],
-      });
-
-      // Store the actual subscription ID immediately
-      await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `standard-${interval}`);
-
-      // Get client secret from the subscription's invoice
-      const invoice = subscription.latest_invoice;
-      let clientSecret = null;
-      
-      if (typeof invoice === 'object' && invoice) {
-        const paymentIntent = (invoice as any).payment_intent;
-        if (typeof paymentIntent === 'object' && paymentIntent) {
-          clientSecret = paymentIntent.client_secret;
-        }
-      }
-
-      // If no payment intent exists, create one manually for the invoice
-      if (!clientSecret && typeof invoice === 'object' && invoice) {
-        try {
-          const invoiceId = typeof invoice === 'string' ? invoice : (invoice as any).id;
-          if (invoiceId) {
-            // Create payment intent for the invoice amount
-            const paymentIntent = await stripe.paymentIntents.create({
-              amount: unitAmount,
-              currency: 'usd',
-              customer: customerId,
-              metadata: {
-                subscription_id: subscription.id,
-                invoice_id: invoiceId
-              },
-              setup_future_usage: 'off_session'
-            });
-            
-            clientSecret = paymentIntent.client_secret;
-          }
-        } catch (intentError) {
-          console.error('Error creating payment intent:', intentError);
-          // Still try to proceed with the subscription setup intent approach
-        }
-      }
-
-      // Send confirmation email
-      try {
-        if (user.email) {
-          await emailService.sendPaymentConfirmation(user, unitAmount, interval, subscription.id);
-        }
-      } catch (emailError) {
-        console.error('Failed to send subscription confirmation email:', emailError);
-        // Don't fail the subscription creation if email fails
-      }
-
-      if (!clientSecret) {
-        console.error('Error: Unable to extract payment intent from subscription');
-        throw new Error('Unable to create payment intent for subscription');
-      }
-
-      res.send({
-        status: 'requires_payment',
-        subscriptionId: subscription.id,
-        clientSecret: clientSecret,
-        intentType: 'payment',
+      const { locked, priceId, label } = await getLockedPriceForUser(user.id);
+      return res.send({
+        status: 'quote',
+        priceId,
+        locked,
+        label,
+        billingInterval: 'month'
       });
     } catch (error: any) {
-      console.error("Error creating subscription:", error);
-      res.status(400).send({ error: { message: error.message } });
+      console.error('Initialize quote error:', error);
+      return res.status(503).json({ error: { message: error.message || 'Unable to provide pricing quote' } });
     }
   });
 
@@ -3182,28 +2938,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           customerId = customer.id;
         }
 
-        const testProductName = `MealScout Test Plan - ${hasMultipleDealsAddon ? 'Multiple' : 'Single'} Deal(s) - $1 Test`;
-
-        // Create or get existing product
-        const product = await stripe.products.create({
-          name: testProductName,
-          metadata: {
-            type: 'test',
-            deals: hasMultipleDealsAddon ? 'multiple' : 'single'
-          }
-        });
-
+        // Create a $1 test subscription directly
         const subscription = await stripe.subscriptions.create({
           customer: customerId,
           items: [{
             price_data: {
               currency: 'usd',
-              product: product.id,
-              unit_amount: 100, // $1.00 in cents
-              recurring: {
-                interval: 'month',
-                interval_count: 1,
-              },
+              product: (await stripe.products.create({ name: 'MealScout Test $1' })).id,
+              unit_amount: 100,
+              recurring: { interval: 'month', interval_count: 1 },
             },
           }],
           payment_behavior: 'default_incomplete',
@@ -3277,82 +3020,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerId = customer.id;
       }
 
-      // Calculate pricing based on billing interval
-      // Standard pricing: $50/month, $100 for 3 months (first-time users), $450/year
-      const getPricing = (interval: string) => {
-        switch (interval) {
-          case 'quarter':
-            return 10000; // $100 for 3 months (first-time user special)
-          case 'year':
-            return 45000; // $450 for 12 months
-          default:
-            return 5000; // $50 monthly
-        }
-      };
-      
-      const getBillingLabel = (interval: string) => {
-        switch (interval) {
-          case 'quarter': return 'Quarterly';
-          case 'year': return 'Yearly';
-          default: return 'Monthly';
-        }
-      };
-      
-      const getIntervalCount = (interval: string) => {
-        switch (interval) {
-          case 'quarter': return 3;
-          case 'year': return 12;
-          default: return 1;
-        }
-      };
-      
-      const unitAmount = getPricing(interval);
-      const productName = interval === 'quarter' 
-        ? `MealScout Restaurant Plan - Special 3-Month Offer`
-        : `MealScout Restaurant Plan - ${getBillingLabel(interval)}`;
-      const intervalCount = getIntervalCount(interval);
+      // Record signup date at first actual subscription creation
+      if (!user.subscriptionSignupDate) {
+        await storage.updateUser(user.id, { subscriptionSignupDate: new Date() });
+      }
 
-      // Create or get existing product
-      const product = await stripe.products.create({
-        name: productName,
-        metadata: {
-          type: 'subscription',
-          interval: interval,
-          specialOffer: interval === 'quarter' ? 'new-user-3-month' : 'none'
-        }
-      });
+      // Select Stripe Price by stored signup date
+      const { locked, priceId, label } = await getLockedPriceForUser(user.id);
+      const amount = locked ? 2500 : 5000; // for email display only
 
       const subscription = await stripe.subscriptions.create({
         customer: customerId,
-        items: [{
-          price_data: {
-            currency: 'usd',
-            product: product.id,
-            unit_amount: unitAmount,
-            recurring: {
-              interval: (interval === 'quarter' || interval === 'year') ? 'month' : interval as 'month' | 'year',
-              interval_count: intervalCount,
-            },
-          },
-        }],
+        items: [{ price: priceId }],
         payment_behavior: 'default_incomplete',
         expand: ['latest_invoice.payment_intent'],
       });
 
       await storage.updateUserStripeInfo(user.id, customerId, subscription.id, `standard-${interval}`);
-  
+
       // Send payment confirmation email asynchronously
-      const amount = unitAmount; // Use calculated amount based on plan and billing
       const planType = `standard-${interval}`;
       emailService.sendPaymentConfirmation(user, amount, planType, subscription.id).catch(err => 
         console.error('Failed to send payment confirmation email:', err)
       );
-  
+
       const latestInvoice = subscription.latest_invoice;
       const paymentIntent = typeof latestInvoice === 'object' && latestInvoice ? (latestInvoice as any).payment_intent : null;
       res.send({
         subscriptionId: subscription.id,
         clientSecret: typeof paymentIntent === 'object' && paymentIntent ? paymentIntent.client_secret : null,
+        priceId,
+        locked,
+        label
       });
     } catch (error: any) {
       console.error("Error creating subscription:", error);
@@ -3679,36 +3378,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Deal is no longer available" });
       }
       
-      // Create the deal claim
-      await storage.claimDeal({
+      // Create the deal claim and capture the identifier so the client can show/QR it
+      const claim = await storage.claimDeal({
         dealId,
         userId,
       });
       
-      // Increment deal uses
+      // Increment deal uses after successful claim write
       await storage.incrementDealUses(dealId);
       
-      // Send notification to restaurant owner
+      // Send notification to restaurant owner (best effort)
       try {
         await sendDealClaimedNotification(dealId, userId);
       } catch (emailError) {
         console.error('Failed to send deal claimed notification:', emailError);
-        // Don't fail the request if email fails
       }
       
-      // Return Facebook post data
       res.json({
         success: true,
+        claimId: claim.id,
         dealTitle: deal.title,
         restaurantName: restaurant.name,
-        restaurantAddress: restaurant.address,
-        facebookPostData: {
-          message: `Just claimed this amazing deal at ${restaurant.name}! 🍽️\n\n${deal.title}\n\nFound this through MealScout - check it out! #MealScout #FoodDeals`,
-          place: restaurant.name,
-          link: `${req.protocol}://${req.get('host')}/deal/${dealId}`,
-          name: deal.title,
-          description: `${deal.description} - Available at ${restaurant.name}`,
-        }
+        restaurantAddress: restaurant.address
       });
     } catch (error: any) {
       console.error("Error claiming deal:", error);
@@ -3821,6 +3512,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Admin API endpoints
   registerAdminManagementRoutes(app);
+
+  // Staff management and user creation endpoints
+  registerStaffRoutes(app);
 
   // Bug report endpoint
   app.post('/api/bug-report', async (req, res) => {
@@ -4421,6 +4115,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('✅ Weekly Digest Cron Job Completed');
     } catch (error) {
       console.error('❌ Weekly Digest Cron Job Failed:', error);
+    }
+  });
+
+  // Schedule Unbooked Event Notifications (Every hour)
+  cron.schedule('0 * * * *', async () => {
+    console.log('⏰ Triggering Unbooked Event Notification Check');
+    try {
+      const stats = await notifyUnbookedEvents();
+      console.log('✅ Unbooked Event Notification Check Completed:', stats);
+    } catch (error) {
+      console.error('❌ Unbooked Event Notification Check Failed:', error);
     }
   });
 

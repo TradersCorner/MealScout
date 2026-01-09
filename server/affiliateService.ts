@@ -178,10 +178,10 @@ export async function attributeSignupToAffiliate(
 
 /**
  * Calculate and create commission when restaurant becomes a paid subscriber
- * Commission tiers:
- * - Monthly: 10% of monthly subscription ($10/month = $1 commission)
- * - 3-month: 10% of total paid upfront ($30 = $3 commission/month for 3 months)
- * - Yearly: 10% of total paid upfront ($120 = $10 commission/month for 12 months)
+ * Commission policy (updated):
+ * - Signup bonus: 20% of the first paid subscription (one-time)
+ * - Recurring: 5% per paid month thereafter
+ * - Only monthly billing is supported; any non-month cycle is treated as monthly
  */
 export async function createCommission(
   affiliateUserId: string,
@@ -190,55 +190,63 @@ export async function createCommission(
   billingCycle: 'month' | '3-month' | 'year',
   affiliateLinkId?: string,
 ) {
-  const commissionPercent = 10; // 10% recurring
   const value = parseFloat(subscriptionValue);
 
-  // Calculate commission amount based on billing cycle
-  let monthlyCommission: number;
-  let monthsOfCommission: number;
+  // Determine if this is the first commission for this affiliate-restaurant pair (signup bonus applies)
+  const existing = await db
+    .select({ id: affiliateCommissions.id })
+    .from(affiliateCommissions)
+    .where(and(eq(affiliateCommissions.affiliateUserId, affiliateUserId), eq(affiliateCommissions.restaurantUserId, restaurantUserId)))
+    .limit(1);
 
-  if (billingCycle === 'month') {
-    monthlyCommission = value * (commissionPercent / 100);
-    monthsOfCommission = 1;
-  } else if (billingCycle === '3-month') {
-    // $30 paid upfront = $1 commission per month for 3 months
-    monthlyCommission = (value / 3) * (commissionPercent / 100);
-    monthsOfCommission = 3;
-  } else {
-    // $120 paid upfront = $10 commission per month for 12 months
-    monthlyCommission = (value / 12) * (commissionPercent / 100);
-    monthsOfCommission = 12;
-  }
+  const isFirstCommission = existing.length === 0;
 
-  const currentDate = new Date();
-  const commissions_result: typeof affiliateCommissions.$inferSelect[] = [];
+  // Force monthly handling; ignore non-month cycles
+  const effectiveBilling: 'month' = 'month';
 
-  for (let month = 0; month < monthsOfCommission; month++) {
-    const commissionDate = new Date(currentDate);
-    commissionDate.setMonth(commissionDate.getMonth() + month);
-    const forMonth = commissionDate.toISOString().slice(0, 7); // YYYY-MM
+  const results: typeof affiliateCommissions.$inferSelect[] = [];
+  const now = new Date();
+  const forMonth = now.toISOString().slice(0, 7); // YYYY-MM
 
-    const commission = await db.insert(affiliateCommissions).values({
+  if (isFirstCommission) {
+    // 20% signup bonus, one-time
+    const percent = 20;
+    const amount = +(value * (percent / 100)).toFixed(2);
+    const signupRow = await db.insert(affiliateCommissions).values({
       affiliateUserId,
       restaurantUserId,
       affiliateLinkId: affiliateLinkId || undefined,
-      commissionAmount: monthlyCommission.toString(),
-      commissionPercent,
+      commissionAmount: amount.toString(),
+      commissionPercent: percent,
       basedOn: 'subscription_value',
       subscriptionValue,
-      billingCycle,
+      billingCycle: effectiveBilling,
       forMonth,
     }).returning();
+    results.push(signupRow[0]);
 
-    commissions_result.push(commission[0]);
+    await updateAffiliateWallet(affiliateUserId, { pendingCommissions: amount });
+  } else {
+    // Recurring month: 10%
+    const percent = 10;
+    const amount = +(value * (percent / 100)).toFixed(2);
+    const monthRow = await db.insert(affiliateCommissions).values({
+      affiliateUserId,
+      restaurantUserId,
+      affiliateLinkId: affiliateLinkId || undefined,
+      commissionAmount: amount.toString(),
+      commissionPercent: percent,
+      basedOn: 'subscription_value',
+      subscriptionValue,
+      billingCycle: effectiveBilling,
+      forMonth,
+    }).returning();
+    results.push(monthRow[0]);
 
-    // Update wallet with pending commission
-    await updateAffiliateWallet(affiliateUserId, {
-      pendingCommissions: monthlyCommission,
-    });
+    await updateAffiliateWallet(affiliateUserId, { pendingCommissions: amount });
   }
 
-  return commissions_result;
+  return results;
 }
 
 /**

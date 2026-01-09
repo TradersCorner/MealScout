@@ -96,7 +96,7 @@ export default function setupStoriesRoutes(app: Express) {
               hasDealScheduling: false,
             });
             return res.status(403).json({
-              message: 'A paid plan is required to post restaurant videos. Plans: $50/mo, $100/quarter, $499/year.',
+              message: 'A paid plan is required to post restaurant videos. Current plan: $25/mo limited-time (normally $50).',
             });
           }
 
@@ -106,7 +106,7 @@ export default function setupStoriesRoutes(app: Express) {
 
           if (!hasLifetime && !isPaidTier) {
             return res.status(403).json({
-              message: 'Restaurant subscription does not allow video posts. Upgrade to monthly ($50), quarterly ($100), or yearly ($499).',
+              message: 'Restaurant subscription does not allow video posts. Upgrade to Monthly ($25 limited-time, normally $50).',
             });
           }
 
@@ -120,7 +120,7 @@ export default function setupStoriesRoutes(app: Express) {
                 canUseFeaturedSlots: true,
                 maxFeaturedSlots: 3,
                 hasAnalytics: true,
-                hasDealScheduling: sub.billingInterval === 'yearly' || sub.billingInterval === 'quarterly',
+                hasDealScheduling: false,
                 updatedAt: new Date(),
               })
               .where(eq(restaurantSubscriptions.id, sub.id));

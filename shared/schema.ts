@@ -30,7 +30,7 @@ export const sessions = pgTable(
 // User storage table supporting multiple authentication methods
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userType: varchar("user_type").notNull().default("customer"), // 'customer' | 'restaurant_owner' | 'admin'
+  userType: varchar("user_type").notNull().default("customer"), // 'customer' | 'restaurant_owner' | 'staff' | 'admin'
   // TradeScout SSO linkage (for unified accounts between TradeScout and MealScout)
   tradescoutId: varchar("tradescout_id").unique(),
   // Facebook authentication (for regular users)
@@ -42,6 +42,9 @@ export const users = pgTable("users", {
   // Email/password authentication (for all users)
   passwordHash: text("password_hash"),
   emailVerified: boolean("email_verified").default(false),
+  // Staff-created account flags
+  mustResetPassword: boolean("must_reset_password").default(false),
+  isDisabled: boolean("is_disabled").default(false),
   // Common fields
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
@@ -51,6 +54,7 @@ export const users = pgTable("users", {
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   subscriptionBillingInterval: varchar("subscription_billing_interval"), // 'month' | '3-month' | 'year'
+  subscriptionSignupDate: timestamp("subscription_signup_date"), // Track when user first subscribed for price lock-in
   // Optional demographics for aggregated analytics insights (privacy-conscious)
   birthYear: integer("birth_year"),
   gender: varchar("gender"), // 'male' | 'female' | 'other' | 'prefer_not_to_say'
@@ -1712,7 +1716,7 @@ export const restaurantSubscriptions = pgTable(
     id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
     restaurantId: varchar('restaurant_id').notNull().references(() => restaurants.id, { onDelete: 'cascade' }),
     tier: varchar('tier').notNull().default('free'), // 'free' | 'monthly' | 'quarterly' | 'yearly'
-    // Pricing (USD): monthly $50, quarterly $100, yearly $499
+    // Pricing (USD): Monthly only — $25/mo for signups before 2026-03-01 (locked in for life), $50/mo for signups after
     status: varchar('status').notNull().default('active'), // 'active' | 'canceled' | 'past_due'
     priceCents: integer('price_cents').default(0),
     billingInterval: varchar('billing_interval').default('monthly'), // 'monthly' | 'quarterly' | 'yearly'

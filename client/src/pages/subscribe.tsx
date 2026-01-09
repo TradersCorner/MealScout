@@ -588,6 +588,28 @@ export default function Subscribe() {
           clientSecret: data.clientSecret,
           intentType: data.intentType || 'payment'
         });
+      } else if (data && data.status === 'quote') {
+        // Read-only initialize: now create the actual subscription
+        console.log("Received quote; creating subscription with server-selected Price ID");
+        const createResp = await apiRequest("POST", "/api/create-subscription", {
+          billingInterval,
+          promoCode: promoCode || undefined,
+        });
+        const createData = await createResp.json();
+        if (createResp.ok && createData && createData.subscriptionId && createData.clientSecret) {
+          setSubscriptionState({
+            status: 'requires_payment',
+            subscriptionId: createData.subscriptionId,
+            clientSecret: createData.clientSecret,
+            intentType: 'payment'
+          });
+        } else {
+          console.error('Create subscription failed:', createData);
+          setSubscriptionState({
+            status: 'error',
+            error: createData?.error?.message || 'Failed to create subscription after quote.'
+          });
+        }
       } else {
         console.error("Unexpected response:", data);
         setSubscriptionState({

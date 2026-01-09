@@ -11,7 +11,7 @@ import Navigation from "@/components/navigation";
 import { 
   Shield, Users, Store, TrendingUp, DollarSign, 
   AlertCircle, CheckCircle, XCircle, Clock,
-  BarChart3, Activity, Package, Settings, Eye, MapPin, Phone, Mail, Calendar, CreditCard
+  BarChart3, Activity, Package, Settings, Eye, MapPin, Phone, Mail, Calendar, CreditCard, UserMinus
 } from "lucide-react";
 import { Link } from "wouter";
 import { QuickDashboardAccess } from "@/components/dashboard-switcher";
@@ -41,6 +41,147 @@ interface PendingRestaurant {
   cuisineType: string;
   createdAt: string;
   isActive: boolean;
+}
+
+// Staff Management Tab Component
+function StaffManagementTab() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedUserId, setSelectedUserId] = useState("");
+
+  const { data: staffMembers = [], isLoading: loadingStaff } = useQuery<any[]>({
+    queryKey: ["/api/admin/staff"],
+  });
+
+  const { data: allUsers = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/users"],
+  });
+
+  const promoteToStaff = useMutation({
+    mutationFn: async (userId: string) => {
+      return await apiRequest("POST", `/api/admin/staff/${userId}/promote`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/staff"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setSelectedUserId("");
+      toast({
+        title: "Staff Promoted",
+        description: "User has been promoted to staff role.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to promote user to staff.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const demoteStaff = useMutation({
+    mutationFn: async (userId: string) => {
+      return await apiRequest("POST", `/api/admin/staff/${userId}/demote`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/staff"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({
+        title: "Staff Demoted",
+        description: "Staff member has been demoted to customer role.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to demote staff member.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const eligibleUsers = allUsers.filter(
+    (user) => user.userType !== "admin" && user.userType !== "staff"
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Current Staff */}
+      <div>
+        <h3 className="font-semibold mb-3">Current Staff Members</h3>
+        {loadingStaff ? (
+          <p className="text-muted-foreground">Loading...</p>
+        ) : staffMembers.length === 0 ? (
+          <p className="text-muted-foreground">No staff members yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {staffMembers.map((staff) => (
+              <div
+                key={staff.id}
+                className="flex items-center justify-between p-3 border rounded-lg"
+              >
+                <div>
+                  <div className="font-medium">
+                    {staff.firstName} {staff.lastName}
+                  </div>
+                  <div className="text-sm text-muted-foreground">{staff.email}</div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => {
+                    if (window.confirm(`Remove ${staff.email} from staff role?`)) {
+                      demoteStaff.mutate(staff.id);
+                    }
+                  }}
+                  disabled={demoteStaff.isPending}
+                >
+                  <UserMinus className="w-4 h-4 mr-1" />
+                  Remove Staff
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Promote User */}
+      <div>
+        <h3 className="font-semibold mb-3">Promote User to Staff</h3>
+        <div className="flex gap-3">
+          <select
+            className="flex-1 px-3 py-2 border rounded-md bg-background"
+            value={selectedUserId}
+            onChange={(e) => setSelectedUserId(e.target.value)}
+          >
+            <option value="">Select user...</option>
+            {eligibleUsers.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.email} ({user.firstName} {user.lastName}) - {user.userType}
+              </option>
+            ))}
+          </select>
+          <Button
+            onClick={() => {
+              if (selectedUserId) {
+                promoteToStaff.mutate(selectedUserId);
+              }
+            }}
+            disabled={!selectedUserId || promoteToStaff.isPending}
+          >
+            Promote to Staff
+          </Button>
+        </div>
+      </div>
+
+      {/* Quick Link */}
+      <div className="pt-4 border-t">
+        <Link href="/staff">
+          <Button variant="outline">Go to Staff Dashboard →</Button>
+        </Link>
+      </div>
+    </div>
+  );
 }
 
 export default function AdminDashboard() {
@@ -403,10 +544,11 @@ export default function AdminDashboard() {
 
         {/* Main Content Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
             <TabsTrigger value="restaurants" data-testid="tab-restaurants">Restaurants</TabsTrigger>
             <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
+            <TabsTrigger value="staff" data-testid="tab-staff">Staff</TabsTrigger>
             <TabsTrigger value="deals" data-testid="tab-deals">Deals</TabsTrigger>
             <TabsTrigger value="verifications" data-testid="tab-verifications">Verifications</TabsTrigger>
           </TabsList>
@@ -551,6 +693,19 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Staff Tab (Admin Only) */}
+          <TabsContent value="staff" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Staff Management</CardTitle>
+                <CardDescription>Promote users to staff role or remove staff access</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <StaffManagementTab />
               </CardContent>
             </Card>
           </TabsContent>

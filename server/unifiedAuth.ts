@@ -786,11 +786,16 @@ export const isRestaurantOwner = (req: any, res: any, next: any) => {
 };
 
 // Role-based access control middleware
-type UserRole = 'customer' | 'restaurant_owner' | 'admin' | 'super_admin';
+type UserRole = 'customer' | 'restaurant_owner' | 'staff' | 'admin' | 'super_admin';
 
 export const requireRole = (allowedRoles: UserRole[]) => (req: any, res: any, next: any) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Authentication required" });
+  }
+
+  // Block disabled accounts
+  if (req.user?.isDisabled) {
+    return res.status(403).json({ error: "Account disabled" });
   }
 
   const userRole = req.user?.userType as UserRole;
@@ -810,6 +815,9 @@ export const isAdmin = requireRole(['admin', 'super_admin']);
 
 // Convenience middleware for super admin only
 export const isSuperAdmin = requireRole(['super_admin']);
+
+// Convenience middleware for staff or admin
+export const isStaffOrAdmin = requireRole(['staff', 'admin', 'super_admin']);
 
 // Convenience middleware for restaurant owner or admin
 export const isRestaurantOwnerOrAdmin = requireRole(['restaurant_owner', 'admin', 'super_admin']);

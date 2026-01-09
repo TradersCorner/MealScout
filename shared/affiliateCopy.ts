@@ -53,13 +53,13 @@ export const COPY = {
     deal: {
       title: '💰 Share this deal',
       subtitle: 'Earn recurring commission every time someone signs up through your link',
-      info: 'First-click attribution: You earn 10% of their subscription value every month',
+      info: 'First-click attribution: Earn 20% at signup, then 10% every month',
     },
 
     restaurant: {
       title: '🍽️ Recommend this restaurant',
       subtitle: 'Get paid when they become an MealScout partner',
-      info: 'Share your unique affiliate link and earn 10% monthly commission',
+      info: 'Share your unique affiliate link: 20% at signup + 10% monthly',
     },
 
     page: {
@@ -71,7 +71,7 @@ export const COPY = {
     collection: {
       title: '⭐ Share this collection',
       subtitle: 'Earn affiliate commissions on all recommendations',
-      info: 'Get paid 10% of subscription fees from restaurants in this collection',
+      info: 'Get paid 20% at signup, then 10% monthly from restaurants in this collection',
     },
 
     search: {
@@ -131,7 +131,7 @@ export const COPY = {
       step3: {
         icon: '💵',
         title: 'Earn Recurring Commissions',
-        description: 'Get 10% of their subscription value every month they stay active',
+        description: 'Get 20% at signup, then 10% every paid month they stay active',
       },
     },
 
@@ -151,9 +151,7 @@ export const COPY = {
     },
 
     commissionTiers: {
-      monthly: '10% of monthly payment',
-      threeMonth: '10% of total, paid over 3 months',
-      yearly: '10% of total, paid over 12 months',
+      monthly: '10% of each paid month (recurring) + 20% signup bonus',
     },
   },
 
@@ -244,18 +242,14 @@ ${url}`,
     intro: 'When a restaurant you refer becomes a paid MealScout partner, you earn recurring commissions.',
 
     structure: {
-      title: 'Commission Tiers',
+      title: 'Commission Structure',
       monthly: {
-        label: 'Monthly subscription ($10/month)',
-        commission: '$1 commission per month',
-      },
-      threeMonth: {
-        label: '3-month subscription ($30 paid upfront)',
-        commission: '$1/month for 3 months = $3 total',
+        label: 'Signup bonus',
+        commission: '20% of the first paid subscription',
       },
       yearly: {
-        label: 'Yearly subscription ($120 paid upfront)',
-        commission: '$10/month for 12 months = $120 total',
+        label: 'Recurring monthly',
+        commission: '10% of each paid month thereafter',
       },
     },
 
@@ -270,7 +264,7 @@ ${url}`,
     example: {
       title: 'Example',
       scenario:
-        'You recommend Joe\'s Pizza. They sign up for a 3-month subscription ($30). You earn $1/month for 3 months. Then, you earn $1/month every month they stay subscribed.',
+        'You recommend Joe\'s Pizza. They subscribe for $25 this month (limited-time price). You earn 20% ($5) for signup, then 10% ($2.50) for each month they stay subscribed. After March 1, the monthly price is $50 and your 10% becomes $5.00 per month.',
     },
   },
 
@@ -290,7 +284,7 @@ ${url}`,
       {
         icon: '💰',
         title: 'Earn commissions',
-        description: 'Get 10% of subscription fees when they sign up through your link',
+        description: 'Earn 20% at signup + 10% every month from restaurant subscriptions',
       },
       {
         icon: '📈',

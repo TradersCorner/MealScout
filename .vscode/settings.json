@@ -36,5 +36,7 @@
   "typescript.validate.enable": true,
   "[markdown]": {
     "files.trimTrailingWhitespace": false
-  }
+  },
+  // Disable MSSQL IntelliSense to avoid false errors on PostgreSQL migrations
+  "mssql.enableIntelliSense": false
 }

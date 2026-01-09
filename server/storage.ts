@@ -106,7 +106,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   upsertUserByAuth(authType: 'google' | 'email' | 'facebook' | 'tradescout', userData: GoogleUserData | EmailUserData | FacebookUserData | TradeScoutUserData, userType?: 'customer' | 'restaurant_owner' | 'admin'): Promise<User>;
   updateUserStripeInfo(id: string, stripeCustomerId: string, stripeSubscriptionId: string, subscriptionBillingInterval?: string): Promise<User>;
-  updateUser(id: string, updates: Partial<Pick<User, 'subscriptionBillingInterval' | 'stripeCustomerId' | 'stripeSubscriptionId'>>): Promise<User>;
+  updateUser(id: string, updates: Partial<Pick<User, 'subscriptionBillingInterval' | 'stripeCustomerId' | 'stripeSubscriptionId' | 'subscriptionSignupDate'>>): Promise<User>;
   
   // Restaurant operations
   createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant>;
@@ -170,7 +170,7 @@ export interface IStorage {
   hasRecentDealView(dealId: string, userId?: string, sessionId?: string, timeWindowMs?: number): Promise<boolean>;
   
   // Deal claim revenue operations
-  markClaimAsUsed(claimId: string, orderAmount: number): Promise<DealClaim>;
+  markClaimAsUsed(claimId: string, orderAmount?: number | null): Promise<DealClaim | null>;
   
   // Advanced analytics operations
   getRestaurantAnalyticsSummary(restaurantId: string, dateRange?: { start: Date; end: Date }): Promise<{
@@ -461,7 +461,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUser(id: string, updates: Partial<Pick<User, 'subscriptionBillingInterval' | 'stripeCustomerId' | 'stripeSubscriptionId' | 'passwordHash'>>): Promise<User> {
+  async updateUser(id: string, updates: Partial<Pick<User, 'subscriptionBillingInterval' | 'stripeCustomerId' | 'stripeSubscriptionId' | 'passwordHash' | 'subscriptionSignupDate'>>): Promise<User> {
     const [user] = await db
       .update(users)
       .set({
@@ -506,7 +506,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUserType(id: string, userType: 'customer' | 'restaurant_owner' | 'admin'): Promise<User> {
+  async updateUserType(id: string, userType: 'customer' | 'restaurant_owner' | 'staff' | 'admin'): Promise<User> {
     const [user] = await db
       .update(users)
       .set({ userType, updatedAt: new Date() })
@@ -2471,17 +2471,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Deal claim revenue operations
-  async markClaimAsUsed(claimId: string, orderAmount: number): Promise<DealClaim> {
+  async markClaimAsUsed(claimId: string, orderAmount?: number | null): Promise<DealClaim | null> {
     const [claim] = await db
       .update(dealClaims)
       .set({
         isUsed: true,
         usedAt: new Date(),
-        orderAmount: orderAmount.toString(),
+        orderAmount: orderAmount == null ? null : orderAmount.toString(),
       })
-      .where(eq(dealClaims.id, claimId))
+      .where(and(eq(dealClaims.id, claimId), eq(dealClaims.isUsed, false)))
       .returning();
-    return claim;
+    return claim || null;
   }
 
   async verifyRestaurantOwnershipByClaim(claimId: string, userId: string): Promise<boolean> {
@@ -3620,6 +3620,75 @@ export class DatabaseStorage implements IStorage {
       totalFeedback,
       ratingDistribution,
     };
+  }
+
+  // ============================================
+  // Staff Management Functions
+  // ============================================
+
+  async getUsersByRole(role: string): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(eq(users.userType, role))
+      .orderBy(desc(users.createdAt));
+  }
+
+  async createUserWithPassword(data: {
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    phone: string | null;
+    userType: 'customer' | 'restaurant_owner';
+    passwordHash: string;
+    mustResetPassword: boolean;
+  }): Promise<{ userId: string }> {
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        userType: data.userType,
+        passwordHash: data.passwordHash,
+        mustResetPassword: data.mustResetPassword,
+        emailVerified: false,
+      })
+      .returning();
+    
+    return { userId: user.id };
+  }
+
+  async updateUserPassword(userId: string, passwordHash: string, mustResetPassword: boolean): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        passwordHash, 
+        mustResetPassword,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async disableUser(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        isDisabled: true,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async enableUser(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        isDisabled: false,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId));
   }
 }
 

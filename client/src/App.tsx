@@ -22,6 +22,7 @@ import Orders from "@/pages/orders";
 import Profile from "@/pages/profile";
 import AdminLogin from "@/pages/admin-login";
 import AdminDashboard from "@/pages/admin-dashboard";
+import StaffDashboard from "@/pages/staff-dashboard";
 import AdminIncidents from "@/pages/AdminIncidents";
 import AdminControlCenter from "@/pages/AdminControlCenter";
 import AdminSupportTickets from "@/pages/AdminSupportTickets";
@@ -61,7 +62,6 @@ import HostSignup from "@/pages/host-signup";
 import HostDashboard from "@/pages/host-dashboard";
 import TruckDiscovery from "@/pages/truck-discovery";
 import { BetaDisclaimer } from "@/components/beta-disclaimer";
-import { BugReportButton } from "@/components/bug-report-button";
 import VideoPage from "@/pages/video";
 
 // Wrapper component to handle route props
@@ -141,6 +141,7 @@ function Router() {
           <Route path="/orders" component={Orders} />
           <Route path="/profile" component={Profile} />
           <Route path="/affiliate/earnings" component={AffiliateEarnings} />
+          <Route path="/staff" component={StaffDashboard} />
           <Route path="/admin" component={AdminLogin} />
           <Route path="/admin/dashboard" component={AdminDashboard} />
           <Route path="/admin/incidents" component={AdminIncidents} />
@@ -191,7 +192,6 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <BetaDisclaimer />
-        <BugReportButton />
         <Router />
       </TooltipProvider>
     </QueryClientProvider>

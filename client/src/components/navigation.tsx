@@ -1,15 +1,66 @@
+import { useState, type ComponentType } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, Search, Heart, Receipt, User, MapPin, Store, Plus, BarChart3, UserPlus, Clapperboard } from "lucide-react";
+import { Home, Search, Heart, Receipt, User, MapPin, Store, Plus, BarChart3, UserPlus, Clapperboard, Bug } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import html2canvas from "html2canvas";
+
+type NavItem = {
+  path?: string;
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  onClick?: () => void;
+  isBug?: boolean;
+};
 
 export default function Navigation() {
   const [location] = useLocation();
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [isReporting, setIsReporting] = useState(false);
+
+  const handleBugReport = async () => {
+    if (isReporting) return;
+    setIsReporting(true);
+    try {
+      const canvas = await html2canvas(document.body, {
+        useCORS: true,
+        allowTaint: true,
+        scale: 0.5,
+        logging: false,
+      });
+
+      const screenshot = canvas.toDataURL("image/png");
+      const currentUrl = window.location.href;
+      const userAgent = navigator.userAgent;
+
+      await apiRequest("POST", "/api/bug-report", {
+        screenshot,
+        currentUrl,
+        userAgent,
+      });
+
+      toast({
+        title: "Bug report sent!",
+        description: "Thank you for helping us improve MealScout.",
+      });
+    } catch (error) {
+      console.error("Failed to submit bug report:", error);
+      toast({
+        title: "Failed to send report",
+        description: "Please try again or contact support.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsReporting(false);
+    }
+  };
 
   // Check if user is a restaurant owner
   const isRestaurantOwner = user && user.userType === 'restaurant_owner';
 
-  const customerNavItems = [
+  const customerNavItems: NavItem[] = [
     { path: "/", icon: Home, label: "Home" },
     { path: "/search", icon: Search, label: "Search" },
     { path: "/map", icon: MapPin, label: "Map" },
@@ -18,7 +69,7 @@ export default function Navigation() {
     { path: "/profile", icon: User, label: "Profile" },
   ];
 
-  const unauthenticatedNavItems = [
+  const unauthenticatedNavItems: NavItem[] = [
     { path: "/", icon: Home, label: "Home" },
     { path: "/search", icon: Search, label: "Search" },
     { path: "/map", icon: MapPin, label: "Map" },
@@ -26,7 +77,7 @@ export default function Navigation() {
     { path: "/customer-signup", icon: UserPlus, label: "Create Account" },
   ];
 
-  const restaurantOwnerNavItems = [
+  const restaurantOwnerNavItems: NavItem[] = [
     { path: "/", icon: Home, label: "Home" },
     { path: "/restaurant-owner-dashboard", icon: Store, label: "Dashboard" },
     { path: "/deal-creation", icon: Plus, label: "Create Deal" },
@@ -34,29 +85,58 @@ export default function Navigation() {
     { path: "/profile", icon: User, label: "Profile" },
   ];
 
+  const bugNavItem: NavItem = {
+    label: "Report",
+    icon: Bug,
+    onClick: handleBugReport,
+    isBug: true,
+  };
+
   const navItems = !user 
-    ? unauthenticatedNavItems 
+    ? [...unauthenticatedNavItems, bugNavItem]
     : isRestaurantOwner 
-      ? restaurantOwnerNavItems 
-      : customerNavItems;
+      ? [...restaurantOwnerNavItems, bugNavItem]
+      : [...customerNavItems, bugNavItem];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 w-full bg-white border-t border-gray-200 px-4 py-2 z-50 shadow-lg">
       <div className="flex items-center justify-around max-w-md mx-auto">
         {navItems.map((item) => (
-          <Link key={item.path} href={item.path}>
-            <button 
+          item.path ? (
+            <Link key={item.path} href={item.path}>
+              <button 
+                className={`flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
+                  location === item.path 
+                    ? "text-red-600 bg-red-50" 
+                    : "text-gray-600 hover:text-red-600 hover:bg-red-50"
+                }`}
+                data-testid={`nav-${item.label.toLowerCase()}`}
+              >
+                <item.icon className="w-5 h-5" />
+                <span className="text-xs font-medium">{item.label}</span>
+              </button>
+            </Link>
+          ) : (
+            <button
+              key={item.label}
+              onClick={item.onClick}
+              disabled={isReporting}
               className={`flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
-                location === item.path 
-                  ? "text-red-600 bg-red-50" 
+                item.isBug
+                  ? "text-white bg-orange-500 hover:bg-orange-600 shadow-md"
                   : "text-gray-600 hover:text-red-600 hover:bg-red-50"
-              }`}
+              } ${isReporting ? "opacity-80 cursor-not-allowed" : ""}`}
               data-testid={`nav-${item.label.toLowerCase()}`}
+              aria-label={item.label}
             >
-              <item.icon className="w-5 h-5" />
+              {isReporting ? (
+                <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <item.icon className="w-5 h-5" />
+              )}
               <span className="text-xs font-medium">{item.label}</span>
             </button>
-          </Link>
+          )
         ))}
       </div>
     </nav>

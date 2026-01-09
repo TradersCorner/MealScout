@@ -1,0 +1,406 @@
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { UserPlus, Store, Copy, CheckCircle2, AlertCircle } from "lucide-react";
+import Navigation from "@/components/navigation";
+import { Link } from "wouter";
+
+interface CreatedAccount {
+  userId: string;
+  email: string;
+  tempPassword: string;
+  restaurantId?: string;
+}
+
+export default function StaffDashboard() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Customer creation form
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerFirstName, setCustomerFirstName] = useState("");
+  const [customerLastName, setCustomerLastName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+
+  // Restaurant owner creation form
+  const [ownerEmail, setOwnerEmail] = useState("");
+  const [ownerFirstName, setOwnerFirstName] = useState("");
+  const [ownerLastName, setOwnerLastName] = useState("");
+  const [ownerPhone, setOwnerPhone] = useState("");
+  const [restaurantName, setRestaurantName] = useState("");
+  const [restaurantAddress, setRestaurantAddress] = useState("");
+  const [restaurantPhone, setRestaurantPhone] = useState("");
+
+  // Created account state
+  const [createdAccount, setCreatedAccount] = useState<CreatedAccount | null>(null);
+
+  // Verify staff access
+  const { data: staffCheck, isLoading: checkingAccess } = useQuery({
+    queryKey: ["/api/auth/admin/verify"],
+    retry: false,
+  });
+
+  const createCustomer = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/staff/users", data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setCreatedAccount({
+        userId: data.userId,
+        email: data.email,
+        tempPassword: data.tempPassword,
+      });
+      toast({
+        title: "Customer Created",
+        description: `Account created for ${data.email}`,
+      });
+      // Reset form
+      setCustomerEmail("");
+      setCustomerFirstName("");
+      setCustomerLastName("");
+      setCustomerPhone("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create customer account",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createRestaurantOwner = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/staff/restaurant-owners", data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setCreatedAccount({
+        userId: data.userId,
+        email: data.email,
+        tempPassword: data.tempPassword,
+        restaurantId: data.restaurantId,
+      });
+      toast({
+        title: "Restaurant Owner Created",
+        description: data.restaurantId
+          ? `Account and restaurant created for ${data.email}`
+          : `Account created for ${data.email}`,
+      });
+      // Reset form
+      setOwnerEmail("");
+      setOwnerFirstName("");
+      setOwnerLastName("");
+      setOwnerPhone("");
+      setRestaurantName("");
+      setRestaurantAddress("");
+      setRestaurantPhone("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create restaurant owner account",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied",
+      description: "Password copied to clipboard",
+    });
+  };
+
+  if (checkingAccess) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!staffCheck || (user?.userType !== "staff" && user?.userType !== "admin")) {
+    return (
+      <div className="max-w-md mx-auto mt-20 p-6 text-center">
+        <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+        <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
+        <p className="text-muted-foreground mb-6">
+          This dashboard is only accessible to staff members and administrators.
+        </p>
+        <Link href="/">
+          <Button>Back to Home</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background pb-20">
+      <Navigation />
+      
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-2">Staff Dashboard</h1>
+          <p className="text-muted-foreground">
+            Create customer and restaurant owner accounts on the spot
+          </p>
+        </div>
+
+        {/* Created Account Display */}
+        {createdAccount && (
+          <Card className="mb-8 border-green-500 bg-green-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-green-700">
+                <CheckCircle2 className="w-5 h-5" />
+                Account Created Successfully
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <span className="font-semibold">Email:</span> {createdAccount.email}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">Temp Password:</span>
+                <code className="bg-white px-3 py-1 rounded border text-sm">
+                  {createdAccount.tempPassword}
+                </code>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => copyToClipboard(createdAccount.tempPassword)}
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+              {createdAccount.restaurantId && (
+                <div>
+                  <span className="font-semibold">Restaurant ID:</span> {createdAccount.restaurantId}
+                </div>
+              )}
+              <p className="text-sm text-muted-foreground mt-2">
+                ⚠️ User must reset password on first login. Copy this password and share it with the user.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCreatedAccount(null)}
+              >
+                Dismiss
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="grid md:grid-cols-2 gap-8">
+          {/* Create Customer */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserPlus className="w-5 h-5" />
+                Create Customer Account
+              </CardTitle>
+              <CardDescription>
+                Create a diner/customer account with temporary password
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  createCustomer.mutate({
+                    email: customerEmail,
+                    firstName: customerFirstName || undefined,
+                    lastName: customerLastName || undefined,
+                    phone: customerPhone || undefined,
+                  });
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <Label htmlFor="customer-email">Email *</Label>
+                  <Input
+                    id="customer-email"
+                    type="email"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="customer-first-name">First Name</Label>
+                  <Input
+                    id="customer-first-name"
+                    type="text"
+                    value={customerFirstName}
+                    onChange={(e) => setCustomerFirstName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="customer-last-name">Last Name</Label>
+                  <Input
+                    id="customer-last-name"
+                    type="text"
+                    value={customerLastName}
+                    onChange={(e) => setCustomerLastName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="customer-phone">Phone</Label>
+                  <Input
+                    id="customer-phone"
+                    type="tel"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={createCustomer.isPending || !customerEmail}
+                >
+                  {createCustomer.isPending ? "Creating..." : "Create Customer"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Create Restaurant Owner */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Store className="w-5 h-5" />
+                Create Restaurant Owner
+              </CardTitle>
+              <CardDescription>
+                Create restaurant owner account with optional restaurant shell
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  createRestaurantOwner.mutate({
+                    email: ownerEmail,
+                    firstName: ownerFirstName || undefined,
+                    lastName: ownerLastName || undefined,
+                    phone: ownerPhone || undefined,
+                    restaurantName: restaurantName || undefined,
+                    restaurantAddress: restaurantAddress || undefined,
+                    restaurantPhone: restaurantPhone || undefined,
+                  });
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <Label htmlFor="owner-email">Email *</Label>
+                  <Input
+                    id="owner-email"
+                    type="email"
+                    value={ownerEmail}
+                    onChange={(e) => setOwnerEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="owner-first-name">First Name</Label>
+                  <Input
+                    id="owner-first-name"
+                    type="text"
+                    value={ownerFirstName}
+                    onChange={(e) => setOwnerFirstName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="owner-last-name">Last Name</Label>
+                  <Input
+                    id="owner-last-name"
+                    type="text"
+                    value={ownerLastName}
+                    onChange={(e) => setOwnerLastName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="owner-phone">Phone</Label>
+                  <Input
+                    id="owner-phone"
+                    type="tel"
+                    value={ownerPhone}
+                    onChange={(e) => setOwnerPhone(e.target.value)}
+                  />
+                </div>
+                
+                <div className="border-t pt-4 mt-4">
+                  <p className="text-sm font-semibold mb-3 text-muted-foreground">
+                    Optional Restaurant Details
+                  </p>
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="restaurant-name">Restaurant Name</Label>
+                      <Input
+                        id="restaurant-name"
+                        type="text"
+                        value={restaurantName}
+                        onChange={(e) => setRestaurantName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="restaurant-address">Address</Label>
+                      <Input
+                        id="restaurant-address"
+                        type="text"
+                        value={restaurantAddress}
+                        onChange={(e) => setRestaurantAddress(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="restaurant-phone">Phone</Label>
+                      <Input
+                        id="restaurant-phone"
+                        type="tel"
+                        value={restaurantPhone}
+                        onChange={(e) => setRestaurantPhone(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={createRestaurantOwner.isPending || !ownerEmail}
+                >
+                  {createRestaurantOwner.isPending ? "Creating..." : "Create Restaurant Owner"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Links */}
+        {user?.userType === "admin" && (
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle>Admin Quick Links</CardTitle>
+            </CardHeader>
+            <CardContent className="flex gap-3">
+              <Link href="/admin/dashboard">
+                <Button variant="outline">Admin Dashboard</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}

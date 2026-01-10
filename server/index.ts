@@ -16,6 +16,8 @@ import fs from "fs";
 import path from "path";
 import { validateEnv } from "./utils/env";
 import { healthRouter } from "./routes/health";
+import { videoStories, restaurants } from "@shared/schema";
+import { and, eq } from "drizzle-orm";
 
 validateEnv();
 
@@ -513,6 +515,117 @@ app.use((req, res, next) => {
 </body>
 </html>
     `);
+  });
+
+  // Crawler-friendly SSR route for video transcripts
+  // Serves initial HTML with transcript and VideoObject JSON-LD for /video/:id
+  app.get('/video/:storyId', async (req, res) => {
+    try {
+      // Minimal HTML escaping helper scoped to this handler
+      const escapeHtml = (input: string) => input
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+
+      const { storyId } = req.params as { storyId: string };
+
+      const storyRows = await db
+        .select()
+        .from(videoStories)
+        .where(eq(videoStories.id, storyId))
+        .limit(1);
+
+      if (!storyRows.length) {
+        res.status(404).set('Content-Type', 'text/html; charset=utf-8').send(`
+          <!DOCTYPE html>
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Video Not Found | MealScout</title>
+              <link rel="canonical" href="https://mealscout.us/video/${storyId}">
+            </head>
+            <body>
+              <h1>Video Not Found</h1>
+              <p>The requested video could not be found.</p>
+            </body>
+          </html>
+        `);
+        return;
+      }
+
+      const story = storyRows[0] as any;
+
+      const restaurantRows = story.restaurantId
+        ? await db.select().from(restaurants).where(eq(restaurants.id, story.restaurantId)).limit(1)
+        : [];
+      const restaurant = restaurantRows[0] as any;
+
+      const title = story.title || 'Food Recommendation';
+      const description = story.description || `Watch ${title} - a local food recommendation on MealScout`;
+      const canonical = `https://mealscout.us/video/${storyId}`;
+
+      const schema = {
+        "@context": "https://schema.org",
+        "@type": "VideoObject",
+        name: title,
+        description,
+        contentUrl: story.videoUrl || undefined,
+        uploadDate: story.createdAt ? new Date(story.createdAt).toISOString() : undefined,
+        transcript: story.transcript || undefined,
+      };
+
+      const transcriptHtml = story.transcript
+        ? `<details open>
+             <summary>Transcript</summary>
+             <div class="transcript">${escapeHtml(String(story.transcript))}</div>
+           </details>`
+        : '';
+
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(`
+        <!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>${escapeHtml(title)} ${restaurant?.name ? `at ${escapeHtml(restaurant.name)}` : ''} - Video | MealScout</title>
+            <meta name="description" content="${escapeHtml(description)}">
+            <link rel="canonical" href="${canonical}">
+            <script type="application/ld+json">${JSON.stringify(schema)}</script>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 16px; }
+              .player { background: #000; aspect-ratio: 9/16; width: 100%; }
+              .transcript { white-space: pre-wrap; line-height: 1.6; margin-top: 8px; }
+            </style>
+          </head>
+          <body>
+            <h1>${escapeHtml(title)}</h1>
+            ${description ? `<p>${escapeHtml(description)}</p>` : ''}
+            <div class="player"></div>
+            ${transcriptHtml}
+          </body>
+        </html>
+      `);
+    } catch (err) {
+      console.error('Error rendering video SSR route:', err);
+      res.status(500).set('Content-Type', 'text/html; charset=utf-8').send(`
+        <!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Server Error | MealScout</title>
+          </head>
+          <body>
+            <h1>Server Error</h1>
+            <p>Unable to render video page.</p>
+          </body>
+        </html>
+      `);
+    }
   });
 
   app.get('/data-deletion', (_req, res) => {

@@ -463,6 +463,10 @@ export const videoStories = pgTable(
     // Tags & search
     hashtags: text("hashtags").array().default([]), // ['#pizza', '#foodie']
     cuisine: varchar("cuisine"), // inherited from restaurant
+    // Transcript for SEO/LLMO
+    transcript: text("transcript"), // Full text transcript of video (auto-generated or manual)
+    transcriptLanguage: varchar("transcript_language").default("en"), // Language code
+    transcriptSource: varchar("transcript_source"), // 'auto' | 'manual' | 'edited'
     // Expiration & featured
     createdAt: timestamp("created_at").defaultNow(),
     expiresAt: timestamp("expires_at").default(sql`NOW() + INTERVAL '7 days'`), // 7-day expiration

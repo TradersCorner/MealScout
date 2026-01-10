@@ -25,7 +25,7 @@ export function antiScrape(req: Request, res: Response, next: NextFunction) {
     return res.status(403).send('Scraping is not permitted.');
   }
 
-  // Lightweight rate guard for HTML pages
-  res.setHeader('X-Robots-Tag', 'noindex, noarchive, nosnippet');
+  // Allow indexing for legitimate browsers and bots; do not set noindex
+  // Keep middleware as a guard without blocking search engines
   return next();
 }

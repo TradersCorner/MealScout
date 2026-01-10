@@ -63,6 +63,7 @@ import HostDashboard from "@/pages/host-dashboard";
 import TruckDiscovery from "@/pages/truck-discovery";
 import { BetaDisclaimer } from "@/components/beta-disclaimer";
 import VideoPage from "@/pages/video";
+import VideoDetailPage from "@/pages/video-detail";
 
 // Wrapper component to handle route props
 function DashboardSwitcherPage() {
@@ -97,6 +98,7 @@ function Router() {
           <Route path="/search" component={Search} />
           <Route path="/map" component={MapPage} />
           <Route path="/video" component={VideoPage} />
+          <Route path="/video/:id" component={VideoDetailPage} />
           <Route path="/category/:category" component={CategoryPage} />
           <Route path="/deals" component={FeaturedDealsPage} />
           <Route path="/deals/featured" component={FeaturedDealsPage} />

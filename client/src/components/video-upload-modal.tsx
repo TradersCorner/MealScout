@@ -74,8 +74,8 @@ export function VideoUploadModal({
       // Check video duration
       const video = document.createElement('video');
       video.onloadedmetadata = () => {
-        if (video.duration < 10 || video.duration > 15) {
-          setError('Video must be between 10 and 15 seconds');
+        if (video.duration > 30) {
+          setError('Video must be 30 seconds or less');
           return;
         }
         setDuration(Math.round(video.duration));
@@ -193,7 +193,7 @@ export function VideoUploadModal({
           {/* Video Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Video (10-15 seconds, max 50MB)
+              Video (max 30 seconds, max 50MB)
             </label>
             <input
               type="file"

@@ -70,6 +70,11 @@ export default function setupStoriesRoutes(app: Express) {
           cuisine: req.body.cuisine || null,
         };
 
+        // Enforce 30-second maximum duration
+        if (bodyData.duration > 30) {
+          return res.status(400).json({ message: 'Video duration must be 30 seconds or less' });
+        }
+
         const hasRestaurant = Boolean(bodyData.restaurantId);
 
         // Check if this is a restaurant video and verify subscription (paid or lifetime)

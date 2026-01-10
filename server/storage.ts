@@ -68,6 +68,11 @@ import {
   type InsertEventInterest,
   telemetryEvents,
   type InsertTelemetryEvent,
+  lisaClaims,
+  type LisaClaim,
+  type InsertLisaClaim,
+  type LisaClaimType,
+  type LisaClaimSource,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, sql, desc, asc, inArray, isNull, isNotNull, not, ne } from "drizzle-orm";
@@ -99,12 +104,37 @@ export interface IStorage {
   // Telemetry
   createTelemetryEvent(event: InsertTelemetryEvent): Promise<void>;
 
+  // LISA Phase 4A: Claim Persistence (write-only fact recording)
+  emitClaim(claim: {
+    subjectType: string;
+    subjectId: string;
+    actorType?: string;
+    actorId?: string;
+    app: 'mealscout' | 'tradescout';
+    claimType: LisaClaimType | string;
+    claimValue: Record<string, any>;
+    source: LisaClaimSource | string;
+    confidence?: number;
+  }): Promise<void>;
+  
+  getClaims(filters: {
+    subjectType?: string;
+    subjectId?: string;
+    actorType?: string;
+    actorId?: string;
+    app?: 'mealscout' | 'tradescout';
+    claimType?: LisaClaimType | string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+  }): Promise<LisaClaim[]>;
+
   // User operations
   // (IMPORTANT) these user operations are mandatory for authentication.
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
-  upsertUserByAuth(authType: 'google' | 'email' | 'facebook' | 'tradescout', userData: GoogleUserData | EmailUserData | FacebookUserData | TradeScoutUserData, userType?: 'customer' | 'restaurant_owner' | 'admin'): Promise<User>;
+  upsertUserByAuth(authType: 'google' | 'email' | 'facebook' | 'tradescout', userData: GoogleUserData | EmailUserData | FacebookUserData | TradeScoutUserData, userType?: 'customer' | 'restaurant_owner' | 'admin', appContext?: 'mealscout' | 'tradescout'): Promise<User>;
   updateUserStripeInfo(id: string, stripeCustomerId: string, stripeSubscriptionId: string, subscriptionBillingInterval?: string): Promise<User>;
   updateUser(id: string, updates: Partial<Pick<User, 'subscriptionBillingInterval' | 'stripeCustomerId' | 'stripeSubscriptionId' | 'subscriptionSignupDate'>>): Promise<User>;
   
@@ -525,11 +555,11 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async upsertUserByAuth(authType: 'google' | 'email' | 'facebook' | 'tradescout', userData: GoogleUserData | EmailUserData | FacebookUserData | TradeScoutUserData, userType: 'customer' | 'restaurant_owner' | 'admin' = 'customer'): Promise<User> {
+  async upsertUserByAuth(authType: 'google' | 'email' | 'facebook' | 'tradescout', userData: GoogleUserData | EmailUserData | FacebookUserData | TradeScoutUserData, userType: 'customer' | 'restaurant_owner' | 'admin' = 'customer', appContext: 'mealscout' | 'tradescout' = 'mealscout'): Promise<User> {
     try {
       if (authType === 'tradescout') {
         const tsData = userData as TradeScoutUserData;
-        console.log('🔍 upsertUserByAuth - TradeScout:', { tradescoutId: tsData.tradescoutId, email: tsData.email, userType });
+        console.log('🔍 upsertUserByAuth - TradeScout:', { tradescoutId: tsData.tradescoutId, email: tsData.email, userType, appContext });
 
         // Step 1: Try to find existing user by TradeScout ID
         let existingUser = await db
@@ -541,12 +571,17 @@ export class DatabaseStorage implements IStorage {
         if (existingUser.length > 0) {
           console.log('✅ Found existing user by TradeScout ID, updating...');
           const current = existingUser[0];
+          
+          // Merge app contexts: if user previously used mealscout, now using tradescout → set to 'both'
+          const newAppContext = current.appContext && current.appContext !== appContext ? 'both' : appContext;
+          
           const [user] = await db
             .update(users)
             .set({
               email: tsData.email ?? current.email,
               firstName: tsData.firstName ?? current.firstName,
               lastName: tsData.lastName ?? current.lastName,
+              appContext: newAppContext,
               updatedAt: new Date(),
             })
             .where(eq(users.id, current.id))
@@ -566,12 +601,16 @@ export class DatabaseStorage implements IStorage {
             console.log('✅ Found existing user by email, linking TradeScout account...');
             console.log('⚠️  Preserving existing userType:', existingUser[0].userType);
             const current = existingUser[0];
+            
+            const newAppContext = current.appContext && current.appContext !== appContext ? 'both' : appContext;
+            
             const [user] = await db
               .update(users)
               .set({
                 tradescoutId: tsData.tradescoutId,
                 firstName: tsData.firstName ?? current.firstName,
                 lastName: tsData.lastName ?? current.lastName,
+                appContext: newAppContext,
                 updatedAt: new Date(),
               })
               .where(eq(users.id, current.id))
@@ -590,14 +629,15 @@ export class DatabaseStorage implements IStorage {
             email: tsData.email ?? undefined,
             firstName: tsData.firstName ?? undefined,
             lastName: tsData.lastName ?? undefined,
+            appContext,
           })
           .returning();
-        console.log('✅ TradeScout user created successfully:', { userId: user.id, email: user.email });
+        console.log('✅ TradeScout user created successfully:', { userId: user.id, email: user.email, appContext });
         return user;
 
       } else if (authType === 'google') {
         const googleData = userData as GoogleUserData;
-        console.log('🔍 upsertUserByAuth - Google:', { googleId: googleData.googleId, email: googleData.email, userType });
+        console.log('🔍 upsertUserByAuth - Google:', { googleId: googleData.googleId, email: googleData.email, userType, appContext });
         
         // Step 1: Try to find existing user by Google ID
         let existingUser = await db
@@ -608,6 +648,9 @@ export class DatabaseStorage implements IStorage {
 
         if (existingUser.length > 0) {
           console.log('✅ Found existing user by Google ID, updating...');
+          const current = existingUser[0];
+          const newAppContext = current.appContext && current.appContext !== appContext ? 'both' : appContext;
+          
           const [user] = await db
             .update(users)
             .set({
@@ -616,6 +659,7 @@ export class DatabaseStorage implements IStorage {
               lastName: googleData.lastName,
               profileImageUrl: googleData.profileImageUrl,
               googleAccessToken: googleData.googleAccessToken,
+              appContext: newAppContext,
               updatedAt: new Date(),
             })
             .where(eq(users.id, existingUser[0].id))
@@ -634,6 +678,9 @@ export class DatabaseStorage implements IStorage {
           if (existingUser.length > 0) {
             console.log('✅ Found existing user by email, linking Google account...');
             console.log('⚠️  Preserving existing userType:', existingUser[0].userType);
+            const current = existingUser[0];
+            const newAppContext = current.appContext && current.appContext !== appContext ? 'both' : appContext;
+            
             const [user] = await db
               .update(users)
               .set({
@@ -642,6 +689,7 @@ export class DatabaseStorage implements IStorage {
                 lastName: googleData.lastName || existingUser[0].lastName,
                 profileImageUrl: googleData.profileImageUrl || existingUser[0].profileImageUrl,
                 googleAccessToken: googleData.googleAccessToken,
+                appContext: newAppContext,
                 // Preserve existing userType to prevent account type changes
                 updatedAt: new Date(),
               })
@@ -663,14 +711,15 @@ export class DatabaseStorage implements IStorage {
             lastName: googleData.lastName,
             profileImageUrl: googleData.profileImageUrl,
             googleAccessToken: googleData.googleAccessToken,
+            appContext,
           })
           .returning();
-        console.log('✅ Google user created successfully:', { userId: user.id, email: user.email });
+        console.log('✅ Google user created successfully:', { userId: user.id, email: user.email, appContext });
         return user;
 
       } else if (authType === 'facebook') {
         const facebookData = userData as FacebookUserData;
-        console.log('🔍 upsertUserByAuth - Facebook:', { facebookId: facebookData.facebookId, email: facebookData.email, userType });
+        console.log('🔍 upsertUserByAuth - Facebook:', { facebookId: facebookData.facebookId, email: facebookData.email, userType, appContext });
         
         // Step 1: Try to find existing user by Facebook ID
         let existingUser = await db
@@ -681,6 +730,9 @@ export class DatabaseStorage implements IStorage {
 
         if (existingUser.length > 0) {
           console.log('✅ Found existing user by Facebook ID, updating...');
+          const current = existingUser[0];
+          const newAppContext = current.appContext && current.appContext !== appContext ? 'both' : appContext;
+          
           const [user] = await db
             .update(users)
             .set({
@@ -689,6 +741,7 @@ export class DatabaseStorage implements IStorage {
               lastName: facebookData.lastName,
               profileImageUrl: facebookData.profileImageUrl,
               facebookAccessToken: facebookData.facebookAccessToken,
+              appContext: newAppContext,
               updatedAt: new Date(),
             })
             .where(eq(users.id, existingUser[0].id))
@@ -707,6 +760,9 @@ export class DatabaseStorage implements IStorage {
           if (existingUser.length > 0) {
             console.log('✅ Found existing user by email, linking Facebook account...');
             console.log('⚠️  Preserving existing userType:', existingUser[0].userType);
+            const current = existingUser[0];
+            const newAppContext = current.appContext && current.appContext !== appContext ? 'both' : appContext;
+            
             const [user] = await db
               .update(users)
               .set({
@@ -715,6 +771,7 @@ export class DatabaseStorage implements IStorage {
                 lastName: facebookData.lastName || existingUser[0].lastName,
                 profileImageUrl: facebookData.profileImageUrl || existingUser[0].profileImageUrl,
                 facebookAccessToken: facebookData.facebookAccessToken,
+                appContext: newAppContext,
                 // Preserve existing userType to prevent account type changes
                 updatedAt: new Date(),
               })
@@ -736,14 +793,15 @@ export class DatabaseStorage implements IStorage {
             lastName: facebookData.lastName,
             profileImageUrl: facebookData.profileImageUrl,
             facebookAccessToken: facebookData.facebookAccessToken,
+            appContext,
           })
           .returning();
-        console.log('✅ Facebook user created successfully:', { userId: user.id, email: user.email });
+        console.log('✅ Facebook user created successfully:', { userId: user.id, email: user.email, appContext });
         return user;
 
       } else {
         const emailData = userData as EmailUserData;
-        console.log('🔍 upsertUserByAuth - Email:', { email: emailData.email, userType });
+        console.log('🔍 upsertUserByAuth - Email:', { email: emailData.email, userType, appContext });
         
         const [user] = await db
           .insert(users)
@@ -755,15 +813,17 @@ export class DatabaseStorage implements IStorage {
             phone: emailData.phone,
             passwordHash: emailData.passwordHash,
             emailVerified: true,
+            appContext,
           })
           .returning();
-        console.log('✅ Email user created successfully:', { userId: user.id, email: user.email });
+        console.log('✅ Email user created successfully:', { userId: user.id, email: user.email, appContext });
         return user;
       }
     } catch (error: any) {
       console.error('❌ upsertUserByAuth error:', {
         authType,
         userType,
+        appContext,
         errorCode: error.code,
         errorMessage: error.message,
         errorConstraint: error.constraint,
@@ -3689,6 +3749,116 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date() 
       })
       .where(eq(users.id, userId));
+  }
+
+  // ============================================
+  // LISA Phase 4A: Claim Persistence
+  // ============================================
+
+  /**
+   * emitClaim - Write-only fact recording
+   * 
+   * Records an immutable observation about what happened in the system.
+   * NO scoring, NO ranking, NO automation.
+   * 
+   * Claims are facts, not conclusions.
+   * Claims never mutate authority or user state.
+   */
+  async emitClaim(claim: {
+    subjectType: string;
+    subjectId: string;
+    actorType?: string;
+    actorId?: string;
+    app: 'mealscout' | 'tradescout';
+    claimType: LisaClaimType | string;
+    claimValue: Record<string, any>;
+    source: LisaClaimSource | string;
+    confidence?: number;
+  }): Promise<void> {
+    try {
+      await db.insert(lisaClaims).values({
+        subjectType: claim.subjectType,
+        subjectId: claim.subjectId,
+        actorType: claim.actorType || null,
+        actorId: claim.actorId || null,
+        app: claim.app,
+        claimType: claim.claimType,
+        claimValue: claim.claimValue,
+        source: claim.source,
+        confidence: claim.confidence?.toString() || '1.0',
+      });
+      
+      console.log('✅ LISA claim emitted:', {
+        claimType: claim.claimType,
+        app: claim.app,
+        subjectType: claim.subjectType,
+        subjectId: claim.subjectId,
+      });
+    } catch (error) {
+      // Claim recording failures should NOT block business operations
+      console.error('❌ LISA claim emission failed (non-blocking):', error);
+    }
+  }
+
+  /**
+   * getClaims - Read-only claim retrieval
+   * 
+   * Filters claims by subject, actor, app, type, or time window.
+   * Used for debugging and future deterministic resolution (Phase 4B+).
+   * 
+   * NOT used for runtime decision-making yet.
+   */
+  async getClaims(filters: {
+    subjectType?: string;
+    subjectId?: string;
+    actorType?: string;
+    actorId?: string;
+    app?: 'mealscout' | 'tradescout';
+    claimType?: LisaClaimType | string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+  }): Promise<LisaClaim[]> {
+    let query = db.select().from(lisaClaims);
+
+    const conditions = [];
+
+    if (filters.subjectType) {
+      conditions.push(eq(lisaClaims.subjectType, filters.subjectType));
+    }
+    if (filters.subjectId) {
+      conditions.push(eq(lisaClaims.subjectId, filters.subjectId));
+    }
+    if (filters.actorType) {
+      conditions.push(eq(lisaClaims.actorType, filters.actorType));
+    }
+    if (filters.actorId) {
+      conditions.push(eq(lisaClaims.actorId, filters.actorId));
+    }
+    if (filters.app) {
+      conditions.push(eq(lisaClaims.app, filters.app));
+    }
+    if (filters.claimType) {
+      conditions.push(eq(lisaClaims.claimType, filters.claimType));
+    }
+    if (filters.startDate) {
+      conditions.push(gte(lisaClaims.createdAt, filters.startDate));
+    }
+    if (filters.endDate) {
+      conditions.push(lte(lisaClaims.createdAt, filters.endDate));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    query = query.orderBy(desc(lisaClaims.createdAt)) as any;
+
+    if (filters.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+
+    return await query;
   }
 }
 

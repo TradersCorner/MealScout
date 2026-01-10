@@ -65,6 +65,8 @@ export const users = pgTable("users", {
   reviewCount: integer("review_count").default(0),
   recommendationCount: integer("recommendation_count").default(0),
   influenceScore: integer("influence_score").default(0), // Calculated from reviews, recommendations, favorites
+  // App context for multi-platform shared auth (TradeScout + MealScout)
+  appContext: varchar("app_context").default("mealscout"), // 'mealscout' | 'tradescout' | 'both'
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -2222,4 +2224,80 @@ export const telemetryEvents = pgTable('telemetry_events', {
 
 export type TelemetryEvent = typeof telemetryEvents.$inferSelect;
 export type InsertTelemetryEvent = typeof telemetryEvents.$inferInsert;
+
+// LISA Phase 4A: Claim Persistence Table
+// Purpose: Write-only fact recording layer for deterministic resolution
+// NO scoring, NO automation, NO user-facing effects yet
+export const lisaClaims = pgTable('lisa_claim', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  
+  // What the claim is about
+  subjectType: text('subject_type').notNull(),
+  subjectId: varchar('subject_id').notNull(),
+  
+  // Who caused or emitted the claim (optional - some claims are system-level)
+  actorType: text('actor_type'),
+  actorId: varchar('actor_id'),
+  
+  // App context (enforces separation between TradeScout and MealScout)
+  app: text('app').notNull(),
+  
+  // Semantic meaning (verb-based, plain English)
+  claimType: text('claim_type').notNull(),
+  
+  // Raw data only - no computed values
+  claimValue: jsonb('claim_value').notNull(),
+  
+  // Where the claim originated
+  source: text('source').notNull(),
+  
+  // Confidence level (0.0 to 1.0, default 1.0 for direct observations)
+  confidence: decimal('confidence', { precision: 3, scale: 2 }).default('1.0'),
+  
+  // Immutable timestamp
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('idx_lisa_claim_subject').on(table.subjectType, table.subjectId),
+  index('idx_lisa_claim_actor').on(table.actorType, table.actorId),
+  index('idx_lisa_claim_app').on(table.app),
+  index('idx_lisa_claim_type').on(table.claimType),
+  index('idx_lisa_claim_created_at').on(table.createdAt),
+  index('idx_lisa_claim_app_subject').on(table.app, table.subjectType, table.subjectId),
+]);
+
+export type LisaClaim = typeof lisaClaims.$inferSelect;
+export type InsertLisaClaim = typeof lisaClaims.$inferInsert;
+
+// LISA Claim Type definitions (minimal taxonomy - Phase 4A only)
+export const LISA_CLAIM_TYPES = {
+  // Identity / Auth
+  USER_LOGGED_IN: 'user_logged_in',
+  OAUTH_PROVIDER_USED: 'oauth_provider_used',
+  
+  // MealScout
+  VIDEO_RECOMMENDATION_CREATED: 'video_recommendation_created',
+  VIDEO_RECOMMENDATION_VIEWED: 'video_recommendation_viewed',
+  MERCHANT_LISTED: 'merchant_listed',
+  DEAL_CREATED: 'deal_created',
+  
+  // TradeScout (future - placeholders)
+  PROJECT_POSTED: 'project_posted',
+  CONTRACTOR_ENGAGED: 'contractor_engaged',
+  VERIFICATION_COMPLETED: 'verification_completed',
+} as const;
+
+export type LisaClaimType = typeof LISA_CLAIM_TYPES[keyof typeof LISA_CLAIM_TYPES];
+
+// LISA Claim Source definitions
+export const LISA_CLAIM_SOURCES = {
+  SYSTEM: 'system',
+  USER: 'user',
+  OAUTH: 'oauth',
+  VIDEO: 'video',
+  RECOMMENDATION: 'recommendation',
+  DEAL: 'deal',
+  MERCHANT: 'merchant',
+} as const;
+
+export type LisaClaimSource = typeof LISA_CLAIM_SOURCES[keyof typeof LISA_CLAIM_SOURCES];
 

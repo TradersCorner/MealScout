@@ -11,6 +11,13 @@ import { emailService } from "./emailService";
 import type { GoogleUserData, EmailUserData, FacebookUserData, TradeScoutUserData, User } from "@shared/schema";
 import crypto from "crypto";
 
+// Extend session to include app context for multi-app OAuth
+declare module 'express-session' {
+  interface SessionData {
+    fbAppContext?: 'mealscout' | 'tradescout';
+  }
+}
+
 // Session configuration (moved from facebookAuth.ts)
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -115,6 +122,16 @@ export async function setupUnifiedAuth(app: Express) {
         const user = await storage.upsertUserByAuth('google', userData, 'customer');
         console.log('✅ Google customer user created/updated successfully:', { userId: user.id, email: user.email });
         
+        // LISA Phase 4A: Emit claim for OAuth login
+        storage.emitClaim({
+          subjectType: 'user',
+          subjectId: user.id,
+          app: 'mealscout',
+          claimType: 'oauth_provider_used',
+          claimValue: { provider: 'google', email: userData.email },
+          source: 'oauth',
+        }).catch(err => console.error('Failed to emit LISA claim:', err));
+        
         // Send welcome email asynchronously (don't block auth flow)
         emailService.sendWelcomeEmail(user).catch(err => 
           console.error('Failed to send customer welcome email:', err)
@@ -173,6 +190,16 @@ export async function setupUnifiedAuth(app: Express) {
 
         const user = await storage.upsertUserByAuth('google', userData, 'restaurant_owner');
         console.log('✅ Google restaurant user created/updated successfully:', { userId: user.id, email: user.email });
+        
+        // LISA Phase 4A: Emit claim for OAuth login
+        storage.emitClaim({
+          subjectType: 'user',
+          subjectId: user.id,
+          app: 'mealscout',
+          claimType: 'oauth_provider_used',
+          claimValue: { provider: 'google', email: userData.email, userType: 'restaurant_owner' },
+          source: 'oauth',
+        }).catch(err => console.error('Failed to emit LISA claim:', err));
         
         // Send welcome email asynchronously (don't block auth flow)
         emailService.sendWelcomeEmail(user).catch(err => 
@@ -282,9 +309,9 @@ export async function setupUnifiedAuth(app: Express) {
     });
   }
 
-  // Facebook Strategy
+  // Facebook Strategy (shared with TradeScout)
   if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
-    console.log("Setting up Facebook OAuth strategy...");
+    console.log("Setting up Facebook OAuth strategy (shared with TradeScout)...");
     passport.use(new FacebookStrategy({
       clientID: process.env.FACEBOOK_APP_ID,
       clientSecret: process.env.FACEBOOK_APP_SECRET,
@@ -293,9 +320,10 @@ export async function setupUnifiedAuth(app: Express) {
         console.log('🔵 Facebook OAuth callback URL:', callbackUrl);
         return callbackUrl;
       })(),
-      profileFields: ['id', 'displayName', 'emails', 'photos', 'first_name', 'last_name']
+      profileFields: ['id', 'displayName', 'emails', 'photos', 'first_name', 'last_name'],
+      passReqToCallback: true // Enable req access to retrieve app param from session
     },
-    async (accessToken: string, refreshToken: string, profile: any, done: any) => {
+    async (req: any, accessToken: string, refreshToken: string, profile: any, done: any) => {
       try {
         console.log('🔍 Facebook profile data received:', {
           id: profile.id,
@@ -303,6 +331,7 @@ export async function setupUnifiedAuth(app: Express) {
           emails: profile.emails,
           name: profile.name,
           photos: profile.photos,
+          appContext: req.session?.fbAppContext || 'mealscout',
           _json: profile._json ? {
             first_name: profile._json.first_name,
             last_name: profile._json.last_name,
@@ -324,11 +353,24 @@ export async function setupUnifiedAuth(app: Express) {
           email: userData.email,
           firstName: userData.firstName,
           lastName: userData.lastName,
+          appContext: req.session?.fbAppContext || 'mealscout',
           hasProfileImage: !!userData.profileImageUrl
         });
 
-        const user = await storage.upsertUserByAuth('facebook', userData, 'customer');
-        console.log('✅ Facebook user created/updated successfully:', { userId: user.id, email: user.email });
+        // Retrieve app context from session (set in /api/auth/facebook route)
+        const appContext = (req.session?.fbAppContext || 'mealscout') as 'mealscout' | 'tradescout';
+        const user = await storage.upsertUserByAuth('facebook', userData, 'customer', appContext);
+        console.log('✅ Facebook user created/updated successfully:', { userId: user.id, email: user.email, appContext });
+        
+        // LISA Phase 4A: Emit claim for OAuth login
+        storage.emitClaim({
+          subjectType: 'user',
+          subjectId: user.id,
+          app: appContext,
+          claimType: 'oauth_provider_used',
+          claimValue: { provider: 'facebook', email: userData.email },
+          source: 'oauth',
+        }).catch(err => console.error('Failed to emit LISA claim:', err));
         
         // Send welcome email asynchronously (don't block auth flow)
         emailService.sendWelcomeEmail(user).catch(err => 
@@ -336,7 +378,8 @@ export async function setupUnifiedAuth(app: Express) {
         );
         // Send admin signup notification with context asynchronously
         emailService.sendAdminSignupNotification(user, { 
-          signupMethod: 'facebook' 
+          signupMethod: 'facebook',
+          appContext
         }).catch(err => 
           console.error('Failed to send admin signup notification:', err)
         );
@@ -348,9 +391,23 @@ export async function setupUnifiedAuth(app: Express) {
       }
     }));
 
-    // Facebook auth routes
+    // Facebook auth routes with multi-app support
     app.get(
       '/api/auth/facebook',
+      (req, res, next) => {
+        // Capture app parameter from query string (default: mealscout)
+        const appContext = (req.query.app as string) || 'mealscout';
+        
+        // Validate app context
+        if (appContext !== 'mealscout' && appContext !== 'tradescout') {
+          return res.status(400).json({ error: 'Invalid app parameter. Must be "mealscout" or "tradescout"' });
+        }
+        
+        // Store app context in session for callback retrieval
+        req.session.fbAppContext = appContext as 'mealscout' | 'tradescout';
+        console.log(`🔵 Starting Facebook OAuth flow with app context: ${appContext}`);
+        next();
+      },
       passport.authenticate('facebook', { 
         scope: ['email', 'public_profile'] 
       })
@@ -362,7 +419,8 @@ export async function setupUnifiedAuth(app: Express) {
         console.log('🔍 Facebook OAuth callback reached:', {
           query: req.query,
           hasError: !!req.query.error,
-          errorDescription: req.query.error_description
+          errorDescription: req.query.error_description,
+          sessionAppContext: req.session.fbAppContext
         });
         next();
       },
@@ -370,12 +428,49 @@ export async function setupUnifiedAuth(app: Express) {
         failureRedirect: '/?error=auth_failed&source=facebook' 
       }),
       (req, res) => {
-        console.log('✅ Facebook OAuth callback success:', { userId: (req.user as any)?.id });
-        // Add cache-busting parameter to ensure fresh page load
-        res.redirect('/?auth=success&t=' + Date.now());
+        const user = req.user as User;
+        const appContext = req.session.fbAppContext || 'mealscout';
+        
+        console.log('✅ Facebook OAuth callback success:', { 
+          userId: user?.id, 
+          appContext, 
+          userAppContext: user?.appContext 
+        });
+        
+        // Set session cookie with domain based on app context
+        const domainMap = {
+          mealscout: '.mealscout.us',
+          tradescout: '.thetradescout.com'
+        };
+        
+        const cookieDomain = domainMap[appContext as 'mealscout' | 'tradescout'];
+        
+        // Update session cookie domain
+        if (req.session.cookie) {
+          req.session.cookie.domain = cookieDomain;
+          console.log(`🍪 Set session cookie domain to: ${cookieDomain}`);
+        }
+        
+        // Save session with updated cookie domain
+        req.session.save((err) => {
+          if (err) {
+            console.error('❌ Session save error:', err);
+            return res.redirect('/?error=session_error');
+          }
+          
+          // Redirect to appropriate domain
+          const redirectUrls = {
+            mealscout: '/?auth=success&t=' + Date.now(),
+            tradescout: 'https://www.thetradescout.com/?auth=success&t=' + Date.now()
+          };
+          
+          const redirectUrl = redirectUrls[appContext as 'mealscout' | 'tradescout'];
+          console.log(`✅ Redirecting to: ${redirectUrl}`);
+          res.redirect(redirectUrl);
+        });
       }
     );
-    console.log("✅ Facebook OAuth strategy configured successfully");
+    console.log("✅ Facebook OAuth strategy configured successfully (multi-app enabled)");
   } else {
     console.log("Facebook OAuth not configured: FACEBOOK_APP_ID and FACEBOOK_APP_SECRET environment variables are missing");
   }

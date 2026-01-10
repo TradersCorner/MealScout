@@ -25,6 +25,8 @@ import { eq, desc, and, lte, sql, count, gte, like, or, isNull, isNotNull } from
 import { uploadToCloudinary, deleteFromCloudinary } from './imageUpload';
 import { upload } from './imageUpload';
 import multer from 'multer';
+import { storage } from './storage';
+import { LISA_CLAIM_TYPES, LISA_CLAIM_SOURCES } from '@shared/schema';
 
 // Configure multer for video uploads
 const videoStorage = multer.memoryStorage();
@@ -241,6 +243,23 @@ export default function setupStoriesRoutes(app: Express) {
             })
             .where(eq(userReviewerLevels.userId, userId));
         }
+
+        // LISA Phase 4A: Emit claim for video recommendation creation
+        storage.emitClaim({
+          subjectType: 'video',
+          subjectId: story[0].id,
+          actorType: 'user',
+          actorId: userId,
+          app: 'mealscout',
+          claimType: LISA_CLAIM_TYPES.VIDEO_RECOMMENDATION_CREATED,
+          claimValue: {
+            restaurantId: bodyData.restaurantId,
+            cuisine: bodyData.cuisine,
+            hashtags: bodyData.hashtags,
+            duration: bodyData.duration,
+          },
+          source: LISA_CLAIM_SOURCES.USER,
+        }).catch(err => console.error('Failed to emit LISA claim:', err));
 
         res.status(201).json({
           message: 'Video story uploaded successfully',

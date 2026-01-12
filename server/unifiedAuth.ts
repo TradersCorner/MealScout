@@ -8,13 +8,19 @@ import connectPg from "connect-pg-simple";
 import type { Express } from "express";
 import { storage } from "./storage";
 import { emailService } from "./emailService";
-import type { GoogleUserData, EmailUserData, FacebookUserData, TradeScoutUserData, User } from "@shared/schema";
+import type {
+  GoogleUserData,
+  EmailUserData,
+  FacebookUserData,
+  TradeScoutUserData,
+  User,
+} from "@shared/schema";
 import crypto from "crypto";
 
 // Extend session to include app context for multi-app OAuth
-declare module 'express-session' {
+declare module "express-session" {
   interface SessionData {
-    fbAppContext?: 'mealscout' | 'tradescout';
+    fbAppContext?: "mealscout" | "tradescout";
   }
 }
 
@@ -35,8 +41,8 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' required for cross-site cookies in production
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // 'none' required for cross-site cookies in production
       maxAge: sessionTtl,
     },
   });
@@ -49,13 +55,15 @@ export async function setupUnifiedAuth(app: Express) {
       return process.env.PUBLIC_BASE_URL;
     }
     // Fallback for local development
-    if (process.env.NODE_ENV === 'development') {
-      return 'http://localhost:5000';
+    if (process.env.NODE_ENV === "development") {
+      return "http://localhost:5000";
     }
-    throw new Error('PUBLIC_BASE_URL must be set for OAuth to work with multiple users');
+    throw new Error(
+      "PUBLIC_BASE_URL must be set for OAuth to work with multiple users"
+    );
   };
-  const baseUrl = getBaseUrl().replace(/\/+$/, ''); // Remove trailing slashes to prevent double slashes in callback URLs
-  
+  const baseUrl = getBaseUrl().replace(/\/+$/, ""); // Remove trailing slashes to prevent double slashes in callback URLs
+
   // Set up passport serialization for email/password auth
   passport.serializeUser((user: any, done) => {
     done(null, user.id);
@@ -64,7 +72,7 @@ export async function setupUnifiedAuth(app: Express) {
   passport.deserializeUser(async (id: string, done) => {
     try {
       // Handle cases where id might not be a string (old session format)
-      if (!id || typeof id !== 'string') {
+      if (!id || typeof id !== "string") {
         return done(null, false);
       }
       const user = await storage.getUser(id);
@@ -78,174 +86,258 @@ export async function setupUnifiedAuth(app: Express) {
   // Google Strategy and routes for all users (only enabled if credentials are configured)
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     console.log("Setting up Google OAuth strategies...");
-    console.log('🔵 Google OAuth customer callback URL:', `${baseUrl}/api/auth/google/customer/callback`);
-    console.log('🔵 Google OAuth restaurant callback URL:', `${baseUrl}/api/auth/google/restaurant/callback`);
-    
-    passport.use('google-customer', new GoogleStrategy({
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: `${baseUrl}/api/auth/google/customer/callback`,
-    },
-    async (accessToken: string, refreshToken: string, profile: any, done: any) => {
-      try {
-        console.log('🔍 Google customer profile data received:', {
-          id: profile.id,
-          displayName: profile.displayName,
-          emails: profile.emails,
-          name: profile.name,
-          photos: profile.photos,
-          _json: profile._json ? {
-            given_name: profile._json.given_name,
-            family_name: profile._json.family_name,
-            email: profile._json.email,
-            picture: profile._json.picture
-          } : null
-        });
+    console.log(
+      "🔵 Google OAuth customer callback URL:",
+      `${baseUrl}/api/auth/google/customer/callback`
+    );
+    console.log(
+      "🔵 Google OAuth restaurant callback URL:",
+      `${baseUrl}/api/auth/google/restaurant/callback`
+    );
 
-        const userData: GoogleUserData = {
-          googleId: profile.id,
-          email: profile.emails?.[0]?.value || profile._json?.email || null,
-          firstName: profile.name?.givenName || profile._json?.given_name || profile.displayName?.split(' ')[0] || 'Google',
-          lastName: profile.name?.familyName || profile._json?.family_name || profile.displayName?.split(' ').slice(1).join(' ') || 'User',
-          profileImageUrl: profile.photos?.[0]?.value || profile._json?.picture || null,
-          googleAccessToken: accessToken,
-        };
+    passport.use(
+      "google-customer",
+      new GoogleStrategy(
+        {
+          clientID: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          callbackURL: `${baseUrl}/api/auth/google/customer/callback`,
+        },
+        async (
+          accessToken: string,
+          refreshToken: string,
+          profile: any,
+          done: any
+        ) => {
+          try {
+            console.log("🔍 Google customer profile data received:", {
+              id: profile.id,
+              displayName: profile.displayName,
+              emails: profile.emails,
+              name: profile.name,
+              photos: profile.photos,
+              _json: profile._json
+                ? {
+                    given_name: profile._json.given_name,
+                    family_name: profile._json.family_name,
+                    email: profile._json.email,
+                    picture: profile._json.picture,
+                  }
+                : null,
+            });
 
-        console.log('🔍 Processed Google customer user data:', {
-          googleId: userData.googleId,
-          email: userData.email,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          hasProfileImage: !!userData.profileImageUrl
-        });
+            const userData: GoogleUserData = {
+              googleId: profile.id,
+              email: profile.emails?.[0]?.value || profile._json?.email || null,
+              firstName:
+                profile.name?.givenName ||
+                profile._json?.given_name ||
+                profile.displayName?.split(" ")[0] ||
+                "Google",
+              lastName:
+                profile.name?.familyName ||
+                profile._json?.family_name ||
+                profile.displayName?.split(" ").slice(1).join(" ") ||
+                "User",
+              profileImageUrl:
+                profile.photos?.[0]?.value || profile._json?.picture || null,
+              googleAccessToken: accessToken,
+            };
 
-        const user = await storage.upsertUserByAuth('google', userData, 'customer');
-        console.log('✅ Google customer user created/updated successfully:', { userId: user.id, email: user.email });
-        
-        // LISA Phase 4A: Emit claim for OAuth login
-        storage.emitClaim({
-          subjectType: 'user',
-          subjectId: user.id,
-          app: 'mealscout',
-          claimType: 'oauth_provider_used',
-          claimValue: { provider: 'google', email: userData.email },
-          source: 'oauth',
-        }).catch(err => console.error('Failed to emit LISA claim:', err));
-        
-        // Send welcome email asynchronously (don't block auth flow)
-        emailService.sendWelcomeEmail(user).catch(err => 
-          console.error('Failed to send customer welcome email:', err)
-        );
-        // Send admin signup notification with context asynchronously
-        emailService.sendAdminSignupNotification(user, { 
-          signupMethod: 'google' 
-        }).catch(err => 
-          console.error('Failed to send admin signup notification:', err)
-        );
-        return done(null, user);
-      } catch (error) {
-        console.error('❌ Google customer authentication error:', error);
-        console.error('❌ Profile data that caused error:', profile);
-        return done(error, null);
-      }
-    }));
+            console.log("🔍 Processed Google customer user data:", {
+              googleId: userData.googleId,
+              email: userData.email,
+              firstName: userData.firstName,
+              lastName: userData.lastName,
+              hasProfileImage: !!userData.profileImageUrl,
+            });
 
-    passport.use('google-restaurant', new GoogleStrategy({
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: `${baseUrl}/api/auth/google/restaurant/callback`,
-    },
-    async (accessToken: string, refreshToken: string, profile: any, done: any) => {
-      try {
-        console.log('🔍 Google restaurant profile data received:', {
-          id: profile.id,
-          displayName: profile.displayName,
-          emails: profile.emails,
-          name: profile.name,
-          photos: profile.photos,
-          _json: profile._json ? {
-            given_name: profile._json.given_name,
-            family_name: profile._json.family_name,
-            email: profile._json.email,
-            picture: profile._json.picture
-          } : null
-        });
+            const user = await storage.upsertUserByAuth(
+              "google",
+              userData,
+              "customer"
+            );
+            console.log(
+              "✅ Google customer user created/updated successfully:",
+              { userId: user.id, email: user.email }
+            );
 
-        const userData: GoogleUserData = {
-          googleId: profile.id,
-          email: profile.emails?.[0]?.value || profile._json?.email || null,
-          firstName: profile.name?.givenName || profile._json?.given_name || profile.displayName?.split(' ')[0] || 'Google',
-          lastName: profile.name?.familyName || profile._json?.family_name || profile.displayName?.split(' ').slice(1).join(' ') || 'User',
-          profileImageUrl: profile.photos?.[0]?.value || profile._json?.picture || null,
-          googleAccessToken: accessToken,
-        };
+            // LISA Phase 4A: Emit claim for OAuth login
+            storage
+              .emitClaim({
+                subjectType: "user",
+                subjectId: user.id,
+                app: "mealscout",
+                claimType: "oauth_provider_used",
+                claimValue: { provider: "google", email: userData.email },
+                source: "oauth",
+              })
+              .catch((err) => console.error("Failed to emit LISA claim:", err));
 
-        console.log('🔍 Processed Google restaurant user data:', {
-          googleId: userData.googleId,
-          email: userData.email,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          hasProfileImage: !!userData.profileImageUrl
-        });
+            // Send welcome email asynchronously (don't block auth flow)
+            emailService
+              .sendWelcomeEmail(user)
+              .catch((err) =>
+                console.error("Failed to send customer welcome email:", err)
+              );
+            // Send admin signup notification with context asynchronously
+            emailService
+              .sendAdminSignupNotification(user, {
+                signupMethod: "google",
+              })
+              .catch((err) =>
+                console.error("Failed to send admin signup notification:", err)
+              );
+            return done(null, user);
+          } catch (error) {
+            console.error("❌ Google customer authentication error:", error);
+            console.error("❌ Profile data that caused error:", profile);
+            return done(error, null);
+          }
+        }
+      )
+    );
 
-        const user = await storage.upsertUserByAuth('google', userData, 'restaurant_owner');
-        console.log('✅ Google restaurant user created/updated successfully:', { userId: user.id, email: user.email });
-        
-        // LISA Phase 4A: Emit claim for OAuth login
-        storage.emitClaim({
-          subjectType: 'user',
-          subjectId: user.id,
-          app: 'mealscout',
-          claimType: 'oauth_provider_used',
-          claimValue: { provider: 'google', email: userData.email, userType: 'restaurant_owner' },
-          source: 'oauth',
-        }).catch(err => console.error('Failed to emit LISA claim:', err));
-        
-        // Send welcome email asynchronously (don't block auth flow)
-        emailService.sendWelcomeEmail(user).catch(err => 
-          console.error('Failed to send restaurant owner welcome email:', err)
-        );
-        // Send admin signup notification with context asynchronously
-        emailService.sendAdminSignupNotification(user, { 
-          signupMethod: 'google' 
-        }).catch(err => 
-          console.error('Failed to send admin signup notification:', err)
-        );
-        return done(null, user);
-      } catch (error) {
-        console.error('❌ Google restaurant authentication error:', error);
-        console.error('❌ Profile data that caused error:', profile);
-        return done(error, null);
-      }
-    }));
+    passport.use(
+      "google-restaurant",
+      new GoogleStrategy(
+        {
+          clientID: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          callbackURL: `${baseUrl}/api/auth/google/restaurant/callback`,
+        },
+        async (
+          accessToken: string,
+          refreshToken: string,
+          profile: any,
+          done: any
+        ) => {
+          try {
+            console.log("🔍 Google restaurant profile data received:", {
+              id: profile.id,
+              displayName: profile.displayName,
+              emails: profile.emails,
+              name: profile.name,
+              photos: profile.photos,
+              _json: profile._json
+                ? {
+                    given_name: profile._json.given_name,
+                    family_name: profile._json.family_name,
+                    email: profile._json.email,
+                    picture: profile._json.picture,
+                  }
+                : null,
+            });
+
+            const userData: GoogleUserData = {
+              googleId: profile.id,
+              email: profile.emails?.[0]?.value || profile._json?.email || null,
+              firstName:
+                profile.name?.givenName ||
+                profile._json?.given_name ||
+                profile.displayName?.split(" ")[0] ||
+                "Google",
+              lastName:
+                profile.name?.familyName ||
+                profile._json?.family_name ||
+                profile.displayName?.split(" ").slice(1).join(" ") ||
+                "User",
+              profileImageUrl:
+                profile.photos?.[0]?.value || profile._json?.picture || null,
+              googleAccessToken: accessToken,
+            };
+
+            console.log("🔍 Processed Google restaurant user data:", {
+              googleId: userData.googleId,
+              email: userData.email,
+              firstName: userData.firstName,
+              lastName: userData.lastName,
+              hasProfileImage: !!userData.profileImageUrl,
+            });
+
+            const user = await storage.upsertUserByAuth(
+              "google",
+              userData,
+              "restaurant_owner"
+            );
+            console.log(
+              "✅ Google restaurant user created/updated successfully:",
+              { userId: user.id, email: user.email }
+            );
+
+            // LISA Phase 4A: Emit claim for OAuth login
+            storage
+              .emitClaim({
+                subjectType: "user",
+                subjectId: user.id,
+                app: "mealscout",
+                claimType: "oauth_provider_used",
+                claimValue: {
+                  provider: "google",
+                  email: userData.email,
+                  userType: "restaurant_owner",
+                },
+                source: "oauth",
+              })
+              .catch((err) => console.error("Failed to emit LISA claim:", err));
+
+            // Send welcome email asynchronously (don't block auth flow)
+            emailService
+              .sendWelcomeEmail(user)
+              .catch((err) =>
+                console.error(
+                  "Failed to send restaurant owner welcome email:",
+                  err
+                )
+              );
+            // Send admin signup notification with context asynchronously
+            emailService
+              .sendAdminSignupNotification(user, {
+                signupMethod: "google",
+              })
+              .catch((err) =>
+                console.error("Failed to send admin signup notification:", err)
+              );
+            return done(null, user);
+          } catch (error) {
+            console.error("❌ Google restaurant authentication error:", error);
+            console.error("❌ Profile data that caused error:", profile);
+            return done(error, null);
+          }
+        }
+      )
+    );
 
     // Google OAuth routes for customers
     app.get("/api/auth/google/customer", (req, res, next) => {
-      passport.authenticate('google-customer', {
-        scope: ['profile', 'email']
+      passport.authenticate("google-customer", {
+        scope: ["profile", "email"],
       })(req, res, next);
     });
 
-    app.get("/api/auth/google/customer/callback", 
+    app.get(
+      "/api/auth/google/customer/callback",
       (req, res, next) => {
-        console.log('🔍 Google customer OAuth callback reached:', {
+        console.log("🔍 Google customer OAuth callback reached:", {
           query: req.query,
           hasError: !!req.query.error,
-          errorDescription: req.query.error_description
+          errorDescription: req.query.error_description,
         });
         next();
       },
-      passport.authenticate('google-customer', {
+      passport.authenticate("google-customer", {
         failureRedirect: "/?error=auth_failed",
       }),
       (req, res) => {
         // Ensure session is saved before redirecting
         req.session.save((err) => {
           if (err) {
-            console.error('❌ Session save error:', err);
+            console.error("❌ Session save error:", err);
             return res.redirect("/?error=session_error");
           }
-          console.log('✅ Google customer OAuth success, session saved, redirecting...');
+          console.log(
+            "✅ Google customer OAuth success, session saved, redirecting..."
+          );
           res.redirect("/");
         });
       }
@@ -253,50 +345,55 @@ export async function setupUnifiedAuth(app: Express) {
 
     // Google OAuth routes for restaurant owners
     app.get("/api/auth/google/restaurant", (req, res, next) => {
-      passport.authenticate('google-restaurant', {
-        scope: ['profile', 'email']
+      passport.authenticate("google-restaurant", {
+        scope: ["profile", "email"],
       })(req, res, next);
     });
 
-    app.get("/api/auth/google/restaurant/callback", 
+    app.get(
+      "/api/auth/google/restaurant/callback",
       (req, res, next) => {
-        console.log('🔍 Google restaurant OAuth callback reached:', {
+        console.log("🔍 Google restaurant OAuth callback reached:", {
           query: req.query,
           hasError: !!req.query.error,
-          errorDescription: req.query.error_description
+          errorDescription: req.query.error_description,
         });
         next();
       },
-      passport.authenticate('google-restaurant', {
+      passport.authenticate("google-restaurant", {
         failureRedirect: "/restaurant-signup?error=auth_failed",
       }),
       (req, res) => {
         // Ensure session is saved before redirecting
         req.session.save((err) => {
           if (err) {
-            console.error('❌ Session save error:', err);
+            console.error("❌ Session save error:", err);
             return res.redirect("/restaurant-signup?error=session_error");
           }
-          console.log('✅ Google restaurant OAuth success, session saved, redirecting...');
+          console.log(
+            "✅ Google restaurant OAuth success, session saved, redirecting..."
+          );
           res.redirect("/restaurant-signup");
         });
       }
     );
   } else {
-    console.log("Google OAuth not configured: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables are missing");
-    
+    console.log(
+      "Google OAuth not configured: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables are missing"
+    );
+
     // Add error handling routes for when Google OAuth is not configured
     app.get("/api/auth/google/customer", (req, res) => {
-      res.status(503).json({ 
-        error: "Google OAuth not configured", 
-        message: "Google authentication is not available at this time" 
+      res.status(503).json({
+        error: "Google OAuth not configured",
+        message: "Google authentication is not available at this time",
       });
     });
 
     app.get("/api/auth/google/restaurant", (req, res) => {
-      res.status(503).json({ 
-        error: "Google OAuth not configured", 
-        message: "Google authentication is not available at this time" 
+      res.status(503).json({
+        error: "Google OAuth not configured",
+        message: "Google authentication is not available at this time",
       });
     });
 
@@ -311,168 +408,228 @@ export async function setupUnifiedAuth(app: Express) {
 
   // Facebook Strategy (shared with TradeScout)
   if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
-    console.log("Setting up Facebook OAuth strategy (shared with TradeScout)...");
-    passport.use(new FacebookStrategy({
-      clientID: process.env.FACEBOOK_APP_ID,
-      clientSecret: process.env.FACEBOOK_APP_SECRET,
-      callbackURL: (() => {
-        const callbackUrl = `${baseUrl}/api/auth/facebook/callback`;
-        console.log('🔵 Facebook OAuth callback URL:', callbackUrl);
-        return callbackUrl;
-      })(),
-      profileFields: ['id', 'displayName', 'emails', 'photos', 'first_name', 'last_name'],
-      passReqToCallback: true // Enable req access to retrieve app param from session
-    },
-    async (req: any, accessToken: string, refreshToken: string, profile: any, done: any) => {
-      try {
-        console.log('🔍 Facebook profile data received:', {
-          id: profile.id,
-          displayName: profile.displayName,
-          emails: profile.emails,
-          name: profile.name,
-          photos: profile.photos,
-          appContext: req.session?.fbAppContext || 'mealscout',
-          _json: profile._json ? {
-            first_name: profile._json.first_name,
-            last_name: profile._json.last_name,
-            email: profile._json.email
-          } : null
-        });
+    console.log(
+      "Setting up Facebook OAuth strategy (shared with TradeScout)..."
+    );
+    passport.use(
+      new FacebookStrategy(
+        {
+          clientID: process.env.FACEBOOK_APP_ID,
+          clientSecret: process.env.FACEBOOK_APP_SECRET,
+          callbackURL: (() => {
+            const callbackUrl = `${baseUrl}/api/auth/facebook/callback`;
+            console.log("🔵 Facebook OAuth callback URL:", callbackUrl);
+            return callbackUrl;
+          })(),
+          profileFields: [
+            "id",
+            "displayName",
+            "emails",
+            "photos",
+            "first_name",
+            "last_name",
+          ],
+          passReqToCallback: true, // Enable req access to retrieve app param from session
+        },
+        async (
+          req: any,
+          accessToken: string,
+          refreshToken: string,
+          profile: any,
+          done: any
+        ) => {
+          try {
+            console.log("🔍 Facebook profile data received:", {
+              id: profile.id,
+              displayName: profile.displayName,
+              emails: profile.emails,
+              name: profile.name,
+              photos: profile.photos,
+              appContext: req.session?.fbAppContext || "mealscout",
+              _json: profile._json
+                ? {
+                    first_name: profile._json.first_name,
+                    last_name: profile._json.last_name,
+                    email: profile._json.email,
+                  }
+                : null,
+            });
 
-        const userData: FacebookUserData = {
-          facebookId: profile.id,
-          email: profile.emails?.[0]?.value || profile._json?.email || null,
-          firstName: profile.name?.givenName || profile._json?.first_name || profile.displayName?.split(' ')[0] || 'Facebook',
-          lastName: profile.name?.familyName || profile._json?.last_name || profile.displayName?.split(' ').slice(1).join(' ') || 'User',
-          profileImageUrl: profile.photos?.[0]?.value || null,
-          facebookAccessToken: accessToken,
-        };
+            const userData: FacebookUserData = {
+              facebookId: profile.id,
+              email: profile.emails?.[0]?.value || profile._json?.email || null,
+              firstName:
+                profile.name?.givenName ||
+                profile._json?.first_name ||
+                profile.displayName?.split(" ")[0] ||
+                "Facebook",
+              lastName:
+                profile.name?.familyName ||
+                profile._json?.last_name ||
+                profile.displayName?.split(" ").slice(1).join(" ") ||
+                "User",
+              profileImageUrl: profile.photos?.[0]?.value || null,
+              facebookAccessToken: accessToken,
+            };
 
-        console.log('🔍 Processed Facebook user data:', {
-          facebookId: userData.facebookId,
-          email: userData.email,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          appContext: req.session?.fbAppContext || 'mealscout',
-          hasProfileImage: !!userData.profileImageUrl
-        });
+            console.log("🔍 Processed Facebook user data:", {
+              facebookId: userData.facebookId,
+              email: userData.email,
+              firstName: userData.firstName,
+              lastName: userData.lastName,
+              appContext: req.session?.fbAppContext || "mealscout",
+              hasProfileImage: !!userData.profileImageUrl,
+            });
 
-        // Retrieve app context from session (set in /api/auth/facebook route)
-        const appContext = (req.session?.fbAppContext || 'mealscout') as 'mealscout' | 'tradescout';
-        const user = await storage.upsertUserByAuth('facebook', userData, 'customer', appContext);
-        console.log('✅ Facebook user created/updated successfully:', { userId: user.id, email: user.email, appContext });
-        
-        // LISA Phase 4A: Emit claim for OAuth login
-        storage.emitClaim({
-          subjectType: 'user',
-          subjectId: user.id,
-          app: appContext,
-          claimType: 'oauth_provider_used',
-          claimValue: { provider: 'facebook', email: userData.email },
-          source: 'oauth',
-        }).catch(err => console.error('Failed to emit LISA claim:', err));
-        
-        // Send welcome email asynchronously (don't block auth flow)
-        emailService.sendWelcomeEmail(user).catch(err => 
-          console.error('Failed to send customer welcome email:', err)
-        );
-        // Send admin signup notification with context asynchronously
-        emailService.sendAdminSignupNotification(user, { 
-          signupMethod: 'facebook',
-          appContext
-        }).catch(err => 
-          console.error('Failed to send admin signup notification:', err)
-        );
-        return done(null, user);
-      } catch (error) {
-        console.error('❌ Facebook authentication error:', error);
-        console.error('❌ Profile data that caused error:', profile);
-        return done(error, null);
-      }
-    }));
+            // Retrieve app context from session (set in /api/auth/facebook route)
+            const appContext = (req.session?.fbAppContext || "mealscout") as
+              | "mealscout"
+              | "tradescout";
+            const user = await storage.upsertUserByAuth(
+              "facebook",
+              userData,
+              "customer",
+              appContext
+            );
+            console.log("✅ Facebook user created/updated successfully:", {
+              userId: user.id,
+              email: user.email,
+              appContext,
+            });
+
+            // LISA Phase 4A: Emit claim for OAuth login
+            storage
+              .emitClaim({
+                subjectType: "user",
+                subjectId: user.id,
+                app: appContext,
+                claimType: "oauth_provider_used",
+                claimValue: { provider: "facebook", email: userData.email },
+                source: "oauth",
+              })
+              .catch((err) => console.error("Failed to emit LISA claim:", err));
+
+            // Send welcome email asynchronously (don't block auth flow)
+            emailService
+              .sendWelcomeEmail(user)
+              .catch((err) =>
+                console.error("Failed to send customer welcome email:", err)
+              );
+            // Send admin signup notification with context asynchronously
+            emailService
+              .sendAdminSignupNotification(user, {
+                signupMethod: "facebook",
+                appContext,
+              })
+              .catch((err) =>
+                console.error("Failed to send admin signup notification:", err)
+              );
+            return done(null, user);
+          } catch (error) {
+            console.error("❌ Facebook authentication error:", error);
+            console.error("❌ Profile data that caused error:", profile);
+            return done(error, null);
+          }
+        }
+      )
+    );
 
     // Facebook auth routes with multi-app support
     app.get(
-      '/api/auth/facebook',
+      "/api/auth/facebook",
       (req, res, next) => {
         // Capture app parameter from query string (default: mealscout)
-        const appContext = (req.query.app as string) || 'mealscout';
-        
+        const appContext = (req.query.app as string) || "mealscout";
+
         // Validate app context
-        if (appContext !== 'mealscout' && appContext !== 'tradescout') {
-          return res.status(400).json({ error: 'Invalid app parameter. Must be "mealscout" or "tradescout"' });
+        if (appContext !== "mealscout" && appContext !== "tradescout") {
+          return res
+            .status(400)
+            .json({
+              error:
+                'Invalid app parameter. Must be "mealscout" or "tradescout"',
+            });
         }
-        
+
         // Store app context in session for callback retrieval
-        req.session.fbAppContext = appContext as 'mealscout' | 'tradescout';
-        console.log(`🔵 Starting Facebook OAuth flow with app context: ${appContext}`);
+        req.session.fbAppContext = appContext as "mealscout" | "tradescout";
+        console.log(
+          `🔵 Starting Facebook OAuth flow with app context: ${appContext}`
+        );
         next();
       },
-      passport.authenticate('facebook', { 
-        scope: ['email', 'public_profile'] 
+      passport.authenticate("facebook", {
+        scope: ["email", "public_profile"],
       })
     );
 
     app.get(
-      '/api/auth/facebook/callback',
+      "/api/auth/facebook/callback",
       (req, res, next) => {
-        console.log('🔍 Facebook OAuth callback reached:', {
+        console.log("🔍 Facebook OAuth callback reached:", {
           query: req.query,
           hasError: !!req.query.error,
           errorDescription: req.query.error_description,
-          sessionAppContext: req.session.fbAppContext
+          sessionAppContext: req.session.fbAppContext,
         });
         next();
       },
-      passport.authenticate('facebook', { 
-        failureRedirect: '/?error=auth_failed&source=facebook' 
+      passport.authenticate("facebook", {
+        failureRedirect: "/?error=auth_failed&source=facebook",
       }),
       (req, res) => {
         const user = req.user as User;
-        const appContext = req.session.fbAppContext || 'mealscout';
-        
-        console.log('✅ Facebook OAuth callback success:', { 
-          userId: user?.id, 
-          appContext, 
-          userAppContext: user?.appContext 
+        const appContext = req.session.fbAppContext || "mealscout";
+
+        console.log("✅ Facebook OAuth callback success:", {
+          userId: user?.id,
+          appContext,
+          userAppContext: user?.appContext,
         });
-        
+
         // Set session cookie with domain based on app context
         const domainMap = {
-          mealscout: '.mealscout.us',
-          tradescout: '.thetradescout.com'
+          mealscout: ".mealscout.us",
+          tradescout: ".thetradescout.com",
         };
-        
-        const cookieDomain = domainMap[appContext as 'mealscout' | 'tradescout'];
-        
+
+        const cookieDomain =
+          domainMap[appContext as "mealscout" | "tradescout"];
+
         // Update session cookie domain
         if (req.session.cookie) {
           req.session.cookie.domain = cookieDomain;
           console.log(`🍪 Set session cookie domain to: ${cookieDomain}`);
         }
-        
+
         // Save session with updated cookie domain
         req.session.save((err) => {
           if (err) {
-            console.error('❌ Session save error:', err);
-            return res.redirect('/?error=session_error');
+            console.error("❌ Session save error:", err);
+            return res.redirect("/?error=session_error");
           }
-          
+
           // Redirect to appropriate domain
           const redirectUrls = {
-            mealscout: '/?auth=success&t=' + Date.now(),
-            tradescout: 'https://www.thetradescout.com/?auth=success&t=' + Date.now()
+            mealscout: "/?auth=success&t=" + Date.now(),
+            tradescout:
+              "https://www.thetradescout.com/?auth=success&t=" + Date.now(),
           };
-          
-          const redirectUrl = redirectUrls[appContext as 'mealscout' | 'tradescout'];
+
+          const redirectUrl =
+            redirectUrls[appContext as "mealscout" | "tradescout"];
           console.log(`✅ Redirecting to: ${redirectUrl}`);
           res.redirect(redirectUrl);
         });
       }
     );
-    console.log("✅ Facebook OAuth strategy configured successfully (multi-app enabled)");
+    console.log(
+      "✅ Facebook OAuth strategy configured successfully (multi-app enabled)"
+    );
   } else {
-    console.log("Facebook OAuth not configured: FACEBOOK_APP_ID and FACEBOOK_APP_SECRET environment variables are missing");
+    console.log(
+      "Facebook OAuth not configured: FACEBOOK_APP_ID and FACEBOOK_APP_SECRET environment variables are missing"
+    );
   }
 
   // Email/password registration for customers
@@ -485,17 +642,23 @@ export async function setupUnifiedAuth(app: Express) {
       }
 
       if (password.length < 6) {
-        return res.status(400).json({ error: "Password must be at least 6 characters" });
+        return res
+          .status(400)
+          .json({ error: "Password must be at least 6 characters" });
       }
 
       // Validate phone if provided
       if (phone && phone.length < 10) {
-        return res.status(400).json({ error: "Valid phone number is required" });
+        return res
+          .status(400)
+          .json({ error: "Valid phone number is required" });
       }
 
       const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
-        return res.status(400).json({ error: "User with this email already exists" });
+        return res
+          .status(400)
+          .json({ error: "User with this email already exists" });
       }
 
       const passwordHash = await bcrypt.hash(password, 10);
@@ -504,26 +667,36 @@ export async function setupUnifiedAuth(app: Express) {
         email,
         firstName,
         lastName,
-        phone: phone || '',
+        phone: phone || "",
         passwordHash,
       };
 
-      const user = await storage.upsertUserByAuth('email', userData, 'customer');
+      const user = await storage.upsertUserByAuth(
+        "email",
+        userData,
+        "customer"
+      );
 
       // Send welcome email asynchronously (don't block registration flow)
-      emailService.sendWelcomeEmail(user).catch(err => 
-        console.error('Failed to send customer welcome email:', err)
-      );
+      emailService
+        .sendWelcomeEmail(user)
+        .catch((err) =>
+          console.error("Failed to send customer welcome email:", err)
+        );
       // Send admin signup notification with context asynchronously
-      emailService.sendAdminSignupNotification(user, { 
-        signupMethod: 'email' 
-      }).catch(err => 
-        console.error('Failed to send admin signup notification:', err)
-      );
+      emailService
+        .sendAdminSignupNotification(user, {
+          signupMethod: "email",
+        })
+        .catch((err) =>
+          console.error("Failed to send admin signup notification:", err)
+        );
 
       req.login(user, (err) => {
         if (err) {
-          return res.status(500).json({ error: "Failed to log in after registration" });
+          return res
+            .status(500)
+            .json({ error: "Failed to log in after registration" });
         }
         res.json({ user, message: "Registration successful" });
       });
@@ -543,16 +716,22 @@ export async function setupUnifiedAuth(app: Express) {
       }
 
       if (password.length < 6) {
-        return res.status(400).json({ error: "Password must be at least 6 characters" });
+        return res
+          .status(400)
+          .json({ error: "Password must be at least 6 characters" });
       }
 
       if (phone.length < 10) {
-        return res.status(400).json({ error: "Valid phone number is required" });
+        return res
+          .status(400)
+          .json({ error: "Valid phone number is required" });
       }
 
       const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
-        return res.status(400).json({ error: "User with this email already exists" });
+        return res
+          .status(400)
+          .json({ error: "User with this email already exists" });
       }
 
       const passwordHash = await bcrypt.hash(password, 10);
@@ -565,22 +744,32 @@ export async function setupUnifiedAuth(app: Express) {
         passwordHash,
       };
 
-      const user = await storage.upsertUserByAuth('email', userData, 'restaurant_owner');
+      const user = await storage.upsertUserByAuth(
+        "email",
+        userData,
+        "restaurant_owner"
+      );
 
       // Send welcome email asynchronously (don't block registration flow)
-      emailService.sendWelcomeEmail(user).catch(err => 
-        console.error('Failed to send restaurant owner welcome email:', err)
-      );
+      emailService
+        .sendWelcomeEmail(user)
+        .catch((err) =>
+          console.error("Failed to send restaurant owner welcome email:", err)
+        );
       // Send admin signup notification with context asynchronously
-      emailService.sendAdminSignupNotification(user, { 
-        signupMethod: 'email' 
-      }).catch(err => 
-        console.error('Failed to send admin signup notification:', err)
-      );
+      emailService
+        .sendAdminSignupNotification(user, {
+          signupMethod: "email",
+        })
+        .catch((err) =>
+          console.error("Failed to send admin signup notification:", err)
+        );
 
       req.login(user, (err) => {
         if (err) {
-          return res.status(500).json({ error: "Failed to log in after registration" });
+          return res
+            .status(500)
+            .json({ error: "Failed to log in after registration" });
         }
         res.json({ user, message: "Registration successful" });
       });
@@ -596,15 +785,20 @@ export async function setupUnifiedAuth(app: Express) {
       const { email, password } = req.body;
 
       if (!email || !password) {
-        return res.status(400).json({ error: "Email and password are required" });
+        return res
+          .status(400)
+          .json({ error: "Email and password are required" });
       }
 
       const user = await storage.getUserByEmail(email);
-      if (!user || user.userType !== 'restaurant_owner') {
+      if (!user || user.userType !== "restaurant_owner") {
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
-      if (!user.passwordHash || !await bcrypt.compare(password, user.passwordHash)) {
+      if (
+        !user.passwordHash ||
+        !(await bcrypt.compare(password, user.passwordHash))
+      ) {
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
@@ -626,17 +820,28 @@ export async function setupUnifiedAuth(app: Express) {
       const { email, password } = req.body;
 
       if (!email || !password) {
-        return res.status(400).json({ error: "Email and password are required" });
+        return res
+          .status(400)
+          .json({ error: "Email and password are required" });
       }
 
       const user = await storage.getUserByEmail(email);
-      if (!user || !user.passwordHash || !await bcrypt.compare(password, user.passwordHash)) {
+      if (
+        !user ||
+        !user.passwordHash ||
+        !(await bcrypt.compare(password, user.passwordHash))
+      ) {
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
-      // Manually set the session instead of using req.login
-      (req.session as any).passport = { user: user.id };
-      res.json({ user, message: "Login successful" });
+      // Use req.login to properly establish the session
+      req.login(user, (err) => {
+        if (err) {
+          console.error("Session login error:", err);
+          return res.status(500).json({ error: "Failed to establish session" });
+        }
+        res.json({ user, message: "Login successful" });
+      });
     } catch (error) {
       console.error("Login error:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -677,14 +882,20 @@ export async function setupUnifiedAuth(app: Express) {
       const roles: string[] | undefined = Array.isArray(decoded.roles)
         ? decoded.roles
         : typeof decoded.role === "string"
-          ? [decoded.role]
-          : undefined;
+        ? [decoded.role]
+        : undefined;
 
       const mapRolesToUserType = (r?: string[]): User["userType"] => {
         if (!r || r.length === 0) return "customer";
         if (r.includes("mealscout_super_admin")) return "super_admin";
-        if (r.includes("mealscout_admin") || r.includes("admin")) return "admin";
-        if (r.includes("restaurant_owner") || r.includes("merchant") || r.includes("vendor")) return "restaurant_owner";
+        if (r.includes("mealscout_admin") || r.includes("admin"))
+          return "admin";
+        if (
+          r.includes("restaurant_owner") ||
+          r.includes("merchant") ||
+          r.includes("vendor")
+        )
+          return "restaurant_owner";
         return "customer";
       };
 
@@ -694,25 +905,44 @@ export async function setupUnifiedAuth(app: Express) {
         tradescoutId: String(decoded.sub || decoded.id || decoded.userId),
         email: decoded.email ?? null,
         firstName:
-          decoded.given_name || decoded.firstName || (decoded.name ? String(decoded.name).split(" ")[0] : null),
+          decoded.given_name ||
+          decoded.firstName ||
+          (decoded.name ? String(decoded.name).split(" ")[0] : null),
         lastName:
-          decoded.family_name || decoded.lastName || (decoded.name ? String(decoded.name).split(" ").slice(1).join(" ") || null : null),
+          decoded.family_name ||
+          decoded.lastName ||
+          (decoded.name
+            ? String(decoded.name).split(" ").slice(1).join(" ") || null
+            : null),
         roles: roles ?? null,
       };
 
       if (!tsUserData.tradescoutId) {
-        return res.status(400).json({ error: "SSO token missing subject (sub)" });
+        return res
+          .status(400)
+          .json({ error: "SSO token missing subject (sub)" });
       }
 
-      const user = await storage.upsertUserByAuth("tradescout", tsUserData, userType === "super_admin" ? "admin" : userType as "customer" | "restaurant_owner" | "admin");
+      const user = await storage.upsertUserByAuth(
+        "tradescout",
+        tsUserData,
+        userType === "super_admin"
+          ? "admin"
+          : (userType as "customer" | "restaurant_owner" | "admin")
+      );
 
-      // Establish a standard Passport session so all existing
-      // isAuthenticated checks continue to work.
-      (req.session as any).passport = { user: user.id };
-
-      res.json({
-        user,
-        message: "TradeScout SSO login successful",
+      // Establish a standard Passport session using req.login
+      req.login(user, (err) => {
+        if (err) {
+          console.error("TradeScout SSO session error:", err);
+          return res
+            .status(500)
+            .json({ error: "Failed to establish SSO session" });
+        }
+        res.json({
+          user,
+          message: "TradeScout SSO login successful",
+        });
       });
     } catch (error) {
       console.error("TradeScout SSO error:", error);
@@ -743,12 +973,18 @@ export async function setupUnifiedAuth(app: Express) {
       const user = await storage.getUserByEmail(email);
       if (!user) {
         // Don't reveal whether email exists - always return success
-        return res.json({ message: "If an account with that email exists, a password reset link has been sent." });
+        return res.json({
+          message:
+            "If an account with that email exists, a password reset link has been sent.",
+        });
       }
 
       // Generate secure token
-      const resetToken = crypto.randomBytes(32).toString('hex');
-      const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+      const resetToken = crypto.randomBytes(32).toString("hex");
+      const tokenHash = crypto
+        .createHash("sha256")
+        .update(resetToken)
+        .digest("hex");
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
       // Clean up existing tokens for this user
@@ -760,20 +996,25 @@ export async function setupUnifiedAuth(app: Express) {
         tokenHash,
         expiresAt,
         requestIp: req.ip || req.connection.remoteAddress || undefined,
-        userAgent: req.get('User-Agent') || undefined,
+        userAgent: req.get("User-Agent") || undefined,
       });
 
       // Generate reset URL
-      const baseUrl = process.env.PUBLIC_BASE_URL || 'http://localhost:5000';
+      const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:5000";
       const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
       // Send reset email
       await emailService.sendPasswordResetEmail(user, resetUrl);
 
-      res.json({ message: "If an account with that email exists, a password reset link has been sent." });
+      res.json({
+        message:
+          "If an account with that email exists, a password reset link has been sent.",
+      });
     } catch (error) {
       console.error("Forgot password error:", error);
-      res.status(500).json({ error: "Unable to process password reset request" });
+      res
+        .status(500)
+        .json({ error: "Unable to process password reset request" });
     }
   });
 
@@ -782,18 +1023,23 @@ export async function setupUnifiedAuth(app: Express) {
     try {
       const { token } = req.query;
 
-      if (!token || typeof token !== 'string') {
+      if (!token || typeof token !== "string") {
         return res.json({ valid: false, error: "Invalid token" });
       }
 
       // Hash the token to compare with stored hash
-      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+      const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
       // Find token in database
-      const resetToken = await storage.getPasswordResetTokenByTokenHash(tokenHash);
-      
+      const resetToken = await storage.getPasswordResetTokenByTokenHash(
+        tokenHash
+      );
+
       if (!resetToken) {
-        return res.json({ valid: false, error: "Token not found or already used" });
+        return res.json({
+          valid: false,
+          error: "Token not found or already used",
+        });
       }
 
       // Check if token has expired
@@ -814,21 +1060,29 @@ export async function setupUnifiedAuth(app: Express) {
       const { token, password } = req.body;
 
       if (!token || !password) {
-        return res.status(400).json({ error: "Token and password are required" });
+        return res
+          .status(400)
+          .json({ error: "Token and password are required" });
       }
 
       if (password.length < 6) {
-        return res.status(400).json({ error: "Password must be at least 6 characters" });
+        return res
+          .status(400)
+          .json({ error: "Password must be at least 6 characters" });
       }
 
       // Hash the token to compare with stored hash
-      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+      const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
       // Find and validate token
-      const resetToken = await storage.getPasswordResetTokenByTokenHash(tokenHash);
-      
+      const resetToken = await storage.getPasswordResetTokenByTokenHash(
+        tokenHash
+      );
+
       if (!resetToken) {
-        return res.status(400).json({ error: "Invalid or expired reset token" });
+        return res
+          .status(400)
+          .json({ error: "Invalid or expired reset token" });
       }
 
       // Check if token has expired
@@ -873,7 +1127,7 @@ export const isRestaurantOwner = (req: any, res: any, next: any) => {
     return res.status(401).json({ error: "Authentication required" });
   }
 
-  if (req.user.userType !== 'restaurant_owner') {
+  if (req.user.userType !== "restaurant_owner") {
     return res.status(403).json({ error: "Restaurant owner access required" });
   }
 
@@ -881,58 +1135,72 @@ export const isRestaurantOwner = (req: any, res: any, next: any) => {
 };
 
 // Role-based access control middleware
-type UserRole = 'customer' | 'restaurant_owner' | 'staff' | 'admin' | 'super_admin';
+type UserRole =
+  | "customer"
+  | "restaurant_owner"
+  | "staff"
+  | "admin"
+  | "super_admin";
 
-export const requireRole = (allowedRoles: UserRole[]) => (req: any, res: any, next: any) => {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ error: "Authentication required" });
-  }
+export const requireRole =
+  (allowedRoles: UserRole[]) => (req: any, res: any, next: any) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
 
-  // Block disabled accounts
-  if (req.user?.isDisabled) {
-    return res.status(403).json({ error: "Account disabled" });
-  }
+    // Block disabled accounts
+    if (req.user?.isDisabled) {
+      return res.status(403).json({ error: "Account disabled" });
+    }
 
-  const userRole = req.user?.userType as UserRole;
-  if (!allowedRoles.includes(userRole)) {
-    return res.status(403).json({
-      error: "Forbidden",
-      message: `This action requires one of the following roles: ${allowedRoles.join(', ')}`,
-      userRole
-    });
-  }
+    const userRole = req.user?.userType as UserRole;
+    if (!allowedRoles.includes(userRole)) {
+      return res.status(403).json({
+        error: "Forbidden",
+        message: `This action requires one of the following roles: ${allowedRoles.join(
+          ", "
+        )}`,
+        userRole,
+      });
+    }
 
-  next();
-};
+    next();
+  };
 
 // Convenience middleware for admin-only endpoints
-export const isAdmin = requireRole(['admin', 'super_admin']);
+export const isAdmin = requireRole(["admin", "super_admin"]);
 
 // Convenience middleware for super admin only
-export const isSuperAdmin = requireRole(['super_admin']);
+export const isSuperAdmin = requireRole(["super_admin"]);
 
 // Convenience middleware for staff or admin
-export const isStaffOrAdmin = requireRole(['staff', 'admin', 'super_admin']);
+export const isStaffOrAdmin = requireRole(["staff", "admin", "super_admin"]);
 
 // Convenience middleware for restaurant owner or admin
-export const isRestaurantOwnerOrAdmin = requireRole(['restaurant_owner', 'admin', 'super_admin']);
+export const isRestaurantOwnerOrAdmin = requireRole([
+  "restaurant_owner",
+  "admin",
+  "super_admin",
+]);
 
 // API Key authentication middleware
 export const apiKeyAuth = async (req: any, res: any, next: any) => {
-  const apiKey = req.headers['x-api-key'];
-  
+  const apiKey = req.headers["x-api-key"];
+
   if (!apiKey) {
-    return res.status(401).json({ error: "API key required", header: 'X-API-Key' });
+    return res
+      .status(401)
+      .json({ error: "API key required", header: "X-API-Key" });
   }
-  
-  if (typeof apiKey !== 'string') {
+
+  if (typeof apiKey !== "string") {
     return res.status(400).json({ error: "Invalid API key format" });
   }
-  
+
   try {
     // Get all active API keys to check against (in production, use cache)
     const apiKeys = await storage.getActiveApiKeys();
-    
+
     let validKey = null;
     for (const key of apiKeys) {
       // Compare hashed key
@@ -941,81 +1209,92 @@ export const apiKeyAuth = async (req: any, res: any, next: any) => {
         break;
       }
     }
-    
+
     if (!validKey) {
       return res.status(401).json({ error: "Invalid API key" });
     }
-    
+
     if (validKey.expiresAt && new Date(validKey.expiresAt) < new Date()) {
       return res.status(401).json({ error: "API key expired" });
     }
-    
+
     // Attach user to request
     const user = await storage.getUser(validKey.userId);
     if (!user) {
       return res.status(401).json({ error: "API key user not found" });
     }
-    
+
     req.user = user;
     req.apiKey = validKey;
-    
+
     // Update last used time (async, don't await)
-    storage.updateApiKeyLastUsed(validKey.id).catch(err => 
-      console.error('Failed to update API key usage:', err)
-    );
-    
+    storage
+      .updateApiKeyLastUsed(validKey.id)
+      .catch((err) => console.error("Failed to update API key usage:", err));
+
     next();
   } catch (error) {
-    console.error('API key authentication error:', error);
+    console.error("API key authentication error:", error);
     res.status(500).json({ error: "Authentication error" });
   }
 };
 
 // Resource ownership verification middleware
 // Ensures user can only modify their own restaurant or data
-export const verifyResourceOwnership = (resourceType: 'restaurant' | 'deal') => {
+export const verifyResourceOwnership = (
+  resourceType: "restaurant" | "deal"
+) => {
   return async (req: any, res: any, next: any) => {
     if (!req.user) {
       return res.status(401).json({ error: "Authentication required" });
     }
 
     const { restaurantId, dealId } = req.params;
-    
+
     try {
-      if (resourceType === 'restaurant' && restaurantId) {
+      if (resourceType === "restaurant" && restaurantId) {
         // Check if user owns this restaurant
         const restaurant = await storage.getRestaurant(restaurantId);
         if (!restaurant) {
           return res.status(404).json({ error: "Restaurant not found" });
         }
-        
+
         // Allow if user is owner or admin
-        if (restaurant.ownerId !== req.user.id && req.user.userType !== 'admin' && req.user.userType !== 'super_admin') {
-          return res.status(403).json({ error: "You do not own this restaurant" });
+        if (
+          restaurant.ownerId !== req.user.id &&
+          req.user.userType !== "admin" &&
+          req.user.userType !== "super_admin"
+        ) {
+          return res
+            .status(403)
+            .json({ error: "You do not own this restaurant" });
         }
-      } else if (resourceType === 'deal' && dealId) {
+      } else if (resourceType === "deal" && dealId) {
         // Check if user's restaurant owns this deal
         const deal = await storage.getDeal(dealId);
         if (!deal) {
           return res.status(404).json({ error: "Deal not found" });
         }
-        
+
         const restaurant = await storage.getRestaurant(deal.restaurantId);
         if (!restaurant) {
           return res.status(404).json({ error: "Deal's restaurant not found" });
         }
-        
+
         // Allow if user is restaurant owner or admin
-        if (restaurant.ownerId !== req.user.id && req.user.userType !== 'admin' && req.user.userType !== 'super_admin') {
+        if (
+          restaurant.ownerId !== req.user.id &&
+          req.user.userType !== "admin" &&
+          req.user.userType !== "super_admin"
+        ) {
           return res.status(403).json({ error: "You do not own this deal" });
         }
       }
-      
+
       next();
     } catch (error) {
-      console.error('Resource ownership verification error:', error);
+      console.error("Resource ownership verification error:", error);
       res.status(500).json({ error: "Authorization error" });
     }
   };
 };
-

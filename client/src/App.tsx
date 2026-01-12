@@ -8,7 +8,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import CustomerSignup from "@/pages/customer-signup";
-import Home from "@/pages/home";
+import Home from "@/pages/home-north-star";
 import RestaurantSignup from "@/pages/restaurant-signup";
 import DealCreation from "@/pages/deal-creation";
 import DealEdit from "@/pages/deal-edit";
@@ -61,6 +61,12 @@ import ParkingPassPage from "@/pages/parking-pass";
 import HostSignup from "@/pages/host-signup";
 import HostDashboard from "@/pages/host-dashboard";
 import TruckDiscovery from "@/pages/truck-discovery";
+import EventSignup from "@/pages/event-signup";
+import ForFoodTrucks from "@/pages/for-food-trucks";
+import ForRestaurants from "@/pages/for-restaurants";
+import ForBars from "@/pages/for-bars";
+import HostFood from "@/pages/host-food";
+import FindFood from "@/pages/find-food";
 import { BetaDisclaimer } from "@/components/beta-disclaimer";
 import VideoPage from "@/pages/video";
 import VideoDetailPage from "@/pages/video-detail";
@@ -68,8 +74,8 @@ import VideoDetailPage from "@/pages/video-detail";
 // Wrapper component to handle route props
 function DashboardSwitcherPage() {
   const urlParams = new URLSearchParams(window.location.search);
-  const view = urlParams.get('view') as 'admin' | 'user' | 'restaurant' | null;
-  return <DashboardSwitcher defaultView={view || 'admin'} />;
+  const view = urlParams.get("view") as "admin" | "user" | "restaurant" | null;
+  return <DashboardSwitcher defaultView={view || "admin"} />;
 }
 
 function Router() {
@@ -111,6 +117,12 @@ function Router() {
           <Route path="/how-it-works" component={HowItWorks} />
           <Route path="/contact" component={Contact} />
           <Route path="/host-signup" component={HostSignup} />
+          <Route path="/host-food" component={HostFood} />
+          <Route path="/for-food-trucks" component={ForFoodTrucks} />
+          <Route path="/for-restaurants" component={ForRestaurants} />
+          <Route path="/for-bars" component={ForBars} />
+          <Route path="/find-food" component={FindFood} />
+          <Route path="/event-signup" component={EventSignup} />
           <Route path="/sitemap" component={Sitemap} />
           <Route path="/golden-plate-winners" component={GoldenPlateWinners} />
           <Route path="/parking-pass" component={ParkingPassPage} />
@@ -131,11 +143,22 @@ function Router() {
           <Route path="/subscribe" component={Subscribe} />
           <Route path="/subscription" component={Subscribe} />
           <Route path="/subscription/manage" component={Subscribe} />
-          <Route path="/restaurant-owner-dashboard" component={RestaurantOwnerDashboard} />
-          <Route path="/restaurant/dashboard" component={RestaurantOwnerDashboard} />
+          <Route
+            path="/restaurant-owner-dashboard"
+            component={RestaurantOwnerDashboard}
+          />
+          <Route
+            path="/restaurant/dashboard"
+            component={RestaurantOwnerDashboard}
+          />
           <Route path="/user-dashboard" component={UserDashboard} />
           <Route path="/host/dashboard" component={HostDashboard} />
           <Route path="/truck-discovery" component={TruckDiscovery} />
+          <Route path="/for-food-trucks" component={ForFoodTrucks} />
+          <Route path="/for-restaurants" component={ForRestaurants} />
+          <Route path="/for-bars" component={ForBars} />
+          <Route path="/host-food" component={HostFood} />
+          <Route path="/find-food" component={FindFood} />
           <Route path="/search" component={Search} />
           <Route path="/map" component={MapPage} />
           <Route path="/video" component={VideoPage} />
@@ -150,9 +173,18 @@ function Router() {
           <Route path="/admin/control-center" component={AdminControlCenter} />
           <Route path="/admin/tickets" component={AdminSupportTickets} />
           <Route path="/admin/moderation" component={AdminModerationEvents} />
-          <Route path="/admin/moderation/videos" component={AdminModerationVideos} />
-          <Route path="/admin/moderation/metrics" component={AdminModerationMetrics} />
-          <Route path="/admin/moderation/appeals" component={AdminModerationAppeals} />
+          <Route
+            path="/admin/moderation/videos"
+            component={AdminModerationVideos}
+          />
+          <Route
+            path="/admin/moderation/metrics"
+            component={AdminModerationMetrics}
+          />
+          <Route
+            path="/admin/moderation/appeals"
+            component={AdminModerationAppeals}
+          />
           <Route path="/admin/audit-logs" component={AdminAuditLogs} />
           <Route path="/admin/telemetry" component={AdminTelemetry} />
           <Route path="/admin/switcher" component={DashboardSwitcherPage} />
@@ -168,6 +200,7 @@ function Router() {
           <Route path="/how-it-works" component={HowItWorks} />
           <Route path="/contact" component={Contact} />
           <Route path="/host-signup" component={HostSignup} />
+          <Route path="/event-signup" component={EventSignup} />
           <Route path="/sitemap" component={Sitemap} />
           <Route path="/forgot-password" component={ForgotPassword} />
           <Route path="/reset-password" component={ResetPassword} />
@@ -179,7 +212,10 @@ function Router() {
           <Route path="/profile/addresses" component={AddressesPage} />
           <Route path="/profile/payment" component={PaymentMethodsPage} />
           <Route path="/profile/help" component={HelpSupportPage} />
-          <Route path="/restaurant/:restaurantId/reviews" component={ReviewsPage} />
+          <Route
+            path="/restaurant/:restaurantId/reviews"
+            component={ReviewsPage}
+          />
           <Route path="/parking-pass" component={ParkingPassPage} />
         </>
       )}

@@ -42,7 +42,7 @@ export function getSession() {
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // 'none' required for cross-site cookies in production
+      sameSite: "lax", // Changed from "none" to "lax" for same-site cookie support
       maxAge: sessionTtl,
     },
   });
@@ -819,31 +819,48 @@ export async function setupUnifiedAuth(app: Express) {
     try {
       const { email, password } = req.body;
 
+      console.log(`🔐 Login attempt for: ${email}`);
+
       if (!email || !password) {
+        console.log("❌ Missing email or password");
         return res
           .status(400)
           .json({ error: "Email and password are required" });
       }
 
       const user = await storage.getUserByEmail(email);
-      if (
-        !user ||
-        !user.passwordHash ||
-        !(await bcrypt.compare(password, user.passwordHash))
-      ) {
+      if (!user) {
+        console.log(`❌ User not found: ${email}`);
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      console.log(`✅ User found: ${user.id}, userType: ${user.userType}, hasPassword: ${!!user.passwordHash}`);
+
+      if (!user.passwordHash) {
+        console.log("❌ User has no password hash");
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      const passwordMatch = await bcrypt.compare(password, user.passwordHash);
+      console.log(`🔑 Password match: ${passwordMatch}`);
+
+      if (!passwordMatch) {
+        console.log("❌ Password does not match");
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
       // Use req.login to properly establish the session
+      console.log("🔄 Attempting to establish session...");
       req.login(user, (err) => {
         if (err) {
-          console.error("Session login error:", err);
+          console.error("❌ Session login error:", err);
           return res.status(500).json({ error: "Failed to establish session" });
         }
+        console.log(`✅ Login successful for: ${email}`);
         res.json({ user, message: "Login successful" });
       });
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("❌ Login error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

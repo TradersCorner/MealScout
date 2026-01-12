@@ -27,8 +27,11 @@ const app = express();
 const defaultOrigins = [
   "https://www.mealscout.us",
   "https://mealscout.us",
+  "https://mealscout.onrender.com",
+  "https://meal-scout.vercel.app",
   "http://localhost:5174",
   "http://localhost:5200",
+  "http://localhost:5000",
 ];
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || defaultOrigins.join(","))

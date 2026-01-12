@@ -767,12 +767,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupUnifiedAuth(app);
 
   // Auth routes
-  app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
+  app.get("/api/auth/user", async (req: any, res) => {
     try {
+      console.log("📋 /api/auth/user called, isAuthenticated:", req.isAuthenticated());
+      console.log("📋 Session ID:", req.sessionID);
+      console.log("📋 Session data:", req.session);
+      
+      if (!req.isAuthenticated()) {
+        console.log("❌ User not authenticated");
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
       const user = req.user;
+      console.log("✅ Returning user:", user.id, user.email, user.userType);
       res.json(user);
     } catch (error) {
-      console.error("Error fetching user:", error);
+      console.error("❌ Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });

@@ -543,12 +543,9 @@ export async function setupUnifiedAuth(app: Express) {
 
         // Validate app context
         if (appContext !== "mealscout" && appContext !== "tradescout") {
-          return res
-            .status(400)
-            .json({
-              error:
-                'Invalid app parameter. Must be "mealscout" or "tradescout"',
-            });
+          return res.status(400).json({
+            error: 'Invalid app parameter. Must be "mealscout" or "tradescout"',
+          });
         }
 
         // Store app context in session for callback retrieval
@@ -834,7 +831,11 @@ export async function setupUnifiedAuth(app: Express) {
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
-      console.log(`✅ User found: ${user.id}, userType: ${user.userType}, hasPassword: ${!!user.passwordHash}`);
+      console.log(
+        `✅ User found: ${user.id}, userType: ${
+          user.userType
+        }, hasPassword: ${!!user.passwordHash}`
+      );
 
       if (!user.passwordHash) {
         console.log("❌ User has no password hash");

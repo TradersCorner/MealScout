@@ -42,7 +42,7 @@ export function getSession() {
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax", // Changed from "none" to "lax" for same-site cookie support
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: sessionTtl,
     },
   });

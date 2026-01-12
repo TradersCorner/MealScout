@@ -210,9 +210,7 @@ async function getLockedPriceForUser(userId: string): Promise<{
 }
 
 // Password reset rate limiting - database-backed for persistence across server restarts
-async function checkPasswordResetRateLimit(
-  userId: string
-): Promise<{
+async function checkPasswordResetRateLimit(userId: string): Promise<{
   allowed: boolean;
   nextAllowedTime?: Date;
   remainingAttempts?: number;
@@ -769,15 +767,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get("/api/auth/user", async (req: any, res) => {
     try {
-      console.log("📋 /api/auth/user called, isAuthenticated:", req.isAuthenticated());
+      console.log(
+        "📋 /api/auth/user called, isAuthenticated:",
+        req.isAuthenticated()
+      );
       console.log("📋 Session ID:", req.sessionID);
       console.log("📋 Session data:", req.session);
-      
+
       if (!req.isAuthenticated()) {
         console.log("❌ User not authenticated");
         return res.status(401).json({ error: "Not authenticated" });
       }
-      
+
       const user = req.user;
       console.log("✅ Returning user:", user.id, user.email, user.userType);
       res.json(user);
@@ -1239,18 +1240,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating location request:", error);
       if (error instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({
-            message: "Invalid location request data",
-            errors: error.errors,
-          });
-      }
-      res
-        .status(400)
-        .json({
-          message: error.message || "Failed to create location request",
+        return res.status(400).json({
+          message: "Invalid location request data",
+          errors: error.errors,
         });
+      }
+      res.status(400).json({
+        message: error.message || "Failed to create location request",
+      });
     }
   });
 
@@ -1289,21 +1286,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message
         );
 
-        res
-          .status(201)
-          .json({
-            message: "Interest sent to host",
-            interestId: result.interestId,
-          });
+        res.status(201).json({
+          message: "Interest sent to host",
+          interestId: result.interestId,
+        });
       } catch (error: any) {
         console.error("Error expressing truck interest:", error);
         if (error instanceof z.ZodError) {
-          return res
-            .status(400)
-            .json({
-              message: "Invalid truck interest data",
-              errors: error.errors,
-            });
+          return res.status(400).json({
+            message: "Invalid truck interest data",
+            errors: error.errors,
+          });
         }
 
         if (error.message === "Location request not found") {
@@ -1312,11 +1305,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .json({ message: "Location request not found" });
         }
         if (error.message === "Location request is not open") {
-          return res
-            .status(400)
-            .json({
-              message: "Location request is not accepting new interest",
-            });
+          return res.status(400).json({
+            message: "Location request is not accepting new interest",
+          });
         }
 
         res.status(500).json({ message: "Failed to submit interest" });
@@ -1781,12 +1772,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.user.id
         );
         if (!isAuthorized) {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Unauthorized: You can only mark claims as used for your own restaurants",
-            });
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only mark claims as used for your own restaurants",
+          });
         }
 
         const updatedClaim = await storage.markClaimAsUsed(
@@ -1801,14 +1790,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({ success: true, claim: updatedClaim });
       } catch (error) {
         console.error("Error marking claim as used:", error);
-        res
-          .status(400)
-          .json({
-            message:
-              error instanceof Error
-                ? error.message
-                : "Failed to mark claim as used",
-          });
+        res.status(400).json({
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to mark claim as used",
+        });
       }
     }
   );
@@ -1828,12 +1815,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.user.id
         );
         if (!isAuthorized) {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Unauthorized: You can only update settings for restaurants you own",
-            });
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only update settings for restaurants you own",
+          });
         }
 
         const settings = updateRestaurantMobileSettingsSchema.parse(req.body);
@@ -1853,14 +1838,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({ success: true, restaurant: updatedRestaurant });
       } catch (error) {
         console.error("Error updating mobile settings:", error);
-        res
-          .status(400)
-          .json({
-            message:
-              error instanceof Error
-                ? error.message
-                : "Failed to update mobile settings",
-          });
+        res.status(400).json({
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to update mobile settings",
+        });
       }
     }
   );
@@ -1879,12 +1862,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.user.id
         );
         if (!isAuthorized) {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Unauthorized: You can only update location for restaurants you own",
-            });
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only update location for restaurants you own",
+          });
         }
 
         const locationData = updateRestaurantLocationSchema.parse(req.body);
@@ -1908,14 +1889,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({ success: true, restaurant: updatedRestaurant });
       } catch (error) {
         console.error("Error updating restaurant location:", error);
-        res
-          .status(400)
-          .json({
-            message:
-              error instanceof Error
-                ? error.message
-                : "Failed to update location",
-          });
+        res.status(400).json({
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to update location",
+        });
       }
     }
   );
@@ -1934,12 +1913,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.user.id
         );
         if (!isAuthorized) {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Unauthorized: You can only update operating hours for restaurants you own",
-            });
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only update operating hours for restaurants you own",
+          });
         }
 
         const hoursData = updateRestaurantOperatingHoursSchema.parse(req.body);
@@ -1951,14 +1928,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({ success: true, restaurant: updatedRestaurant });
       } catch (error) {
         console.error("Error updating operating hours:", error);
-        res
-          .status(400)
-          .json({
-            message:
-              error instanceof Error
-                ? error.message
-                : "Failed to update operating hours",
-          });
+        res.status(400).json({
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to update operating hours",
+        });
       }
     }
   );
@@ -1972,14 +1947,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, isOpen });
     } catch (error) {
       console.error("Error checking restaurant hours:", error);
-      res
-        .status(400)
-        .json({
-          message:
-            error instanceof Error
-              ? error.message
-              : "Failed to check restaurant hours",
-        });
+      res.status(400).json({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to check restaurant hours",
+      });
     }
   });
 
@@ -1998,12 +1971,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.user.id
         );
         if (!isAuthorized) {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Unauthorized: You can only start sessions for restaurants you own",
-            });
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only start sessions for restaurants you own",
+          });
         }
 
         if (!deviceId) {
@@ -2037,12 +2008,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.user.id
         );
         if (!isAuthorized) {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Unauthorized: You can only end sessions for restaurants you own",
-            });
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only end sessions for restaurants you own",
+          });
         }
 
         await storage.endTruckSession(restaurantId, req.user.id);
@@ -2068,12 +2037,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.user.id
         );
         if (!isAuthorized) {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Unauthorized: You can only update location for restaurants you own",
-            });
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only update location for restaurants you own",
+          });
         }
 
         // Rate limiting: check if too many requests from this user/restaurant
@@ -2101,14 +2068,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({ success: true, location });
       } catch (error) {
         console.error("Error updating location:", error);
-        res
-          .status(400)
-          .json({
-            message:
-              error instanceof Error
-                ? error.message
-                : "Failed to update location",
-          });
+        res.status(400).json({
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to update location",
+        });
       }
     }
   );
@@ -2170,12 +2135,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.user.id
         );
         if (!isAuthorized) {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Unauthorized: You can only access location history for restaurants you own",
-            });
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only access location history for restaurants you own",
+          });
         }
 
         let dateRange: { start: Date; end: Date } | undefined;
@@ -2213,12 +2176,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.user.id
         );
         if (!isAuthorized) {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Unauthorized: You can only access analytics for restaurants you own",
-            });
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only access analytics for restaurants you own",
+          });
         }
 
         // Validate analytics access (paid feature)
@@ -2264,12 +2225,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.user.id
         );
         if (!isAuthorized) {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Unauthorized: You can only access analytics for restaurants you own",
-            });
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only access analytics for restaurants you own",
+          });
         }
 
         // Validate analytics access (paid feature)
@@ -2321,12 +2280,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.user.id
         );
         if (!isAuthorized) {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Unauthorized: You can only access analytics for restaurants you own",
-            });
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only access analytics for restaurants you own",
+          });
         }
 
         // Validate analytics access (paid feature)
@@ -2373,12 +2330,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.user.id
         );
         if (!isAuthorized) {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Unauthorized: You can only access analytics for restaurants you own",
-            });
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only access analytics for restaurants you own",
+          });
         }
 
         // Validate analytics access (paid feature)
@@ -2460,12 +2415,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.user.id
         );
         if (!isAuthorized) {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Unauthorized: You can only access analytics for restaurants you own",
-            });
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only access analytics for restaurants you own",
+          });
         }
 
         // Validate analytics access (paid feature)
@@ -2706,11 +2659,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("Error in restaurant signup:", error);
-      res
-        .status(400)
-        .json({
-          message: error.message || "Failed to create restaurant account",
-        });
+      res.status(400).json({
+        message: error.message || "Failed to create restaurant account",
+      });
     }
   });
 
@@ -2974,12 +2925,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userId
         );
         if (!isAuthorized) {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Unauthorized: You can only access analytics for restaurants you own",
-            });
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only access analytics for restaurants you own",
+          });
         }
 
         // Validate analytics access (paid feature)
@@ -3030,12 +2979,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userId
         );
         if (!isAuthorized) {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Unauthorized: You can only access analytics for restaurants you own",
-            });
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only access analytics for restaurants you own",
+          });
         }
 
         // Validate analytics access (paid feature)
@@ -3152,11 +3099,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json(verificationRequest);
       } catch (error: any) {
         console.error("Error creating verification request:", error);
-        res
-          .status(400)
-          .json({
-            message: error.message || "Failed to create verification request",
-          });
+        res.status(400).json({
+          message: error.message || "Failed to create verification request",
+        });
       }
     }
   );
@@ -3634,13 +3579,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } catch (error: any) {
         console.error("Initialize quote error:", error);
-        return res
-          .status(503)
-          .json({
-            error: {
-              message: error.message || "Unable to provide pricing quote",
-            },
-          });
+        return res.status(503).json({
+          error: {
+            message: error.message || "Unable to provide pricing quote",
+          },
+        });
       }
     }
   );
@@ -3683,11 +3626,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check for test promo code (charges $1 for testing)
       if (promoCode && promoCode.toUpperCase() === "TEST1") {
         if (!stripe) {
-          return res
-            .status(503)
-            .json({
-              error: { message: "Payment service temporarily unavailable" },
-            });
+          return res.status(503).json({
+            error: { message: "Payment service temporarily unavailable" },
+          });
         }
 
         if (!user.email) {
@@ -4349,12 +4290,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.user.id
         );
         if (!isAuthorized) {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Unauthorized: You can only access analytics for restaurants you own",
-            });
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only access analytics for restaurants you own",
+          });
         }
 
         const claims = await storage.getRestaurantDealClaims(

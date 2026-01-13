@@ -2174,16 +2174,23 @@ export class DatabaseStorage implements IStorage {
             const newHash = await bcrypt.hash(adminPassword, 12);
             await db
               .update(users)
-              .set({ passwordHash: newHash, userType: "admin" })
+              .set({ passwordHash: newHash, userType: "super_admin" })
               .where(eq(users.id, existingAdmin.id));
             console.log("✅ Admin password updated to match environment");
+          } else if (existingAdmin.userType !== "super_admin") {
+            // Ensure the admin is super_admin
+            await db
+              .update(users)
+              .set({ userType: "super_admin" })
+              .where(eq(users.id, existingAdmin.id));
+            console.log("✅ Admin upgraded to super_admin");
           }
         } else {
           // If no password hash exists, set it now
           const newHash = await bcrypt.hash(adminPassword, 12);
           await db
             .update(users)
-            .set({ passwordHash: newHash, userType: "admin" })
+            .set({ passwordHash: newHash, userType: "super_admin" })
             .where(eq(users.id, existingAdmin.id));
           console.log("✅ Admin password initialized from environment");
         }
@@ -2203,10 +2210,10 @@ export class DatabaseStorage implements IStorage {
           phone: "+1 (555) 000-0000",
           passwordHash,
         },
-        "admin"
+        "super_admin"
       );
 
-      console.log("✅ Admin account created successfully");
+      console.log("✅ Super Admin account created successfully");
     } catch (error) {
       console.error("❌ Failed to create admin account:", error);
     }

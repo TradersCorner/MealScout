@@ -1136,8 +1136,8 @@ export default function AdminDashboard() {
             <p className="text-muted-foreground mb-4">
               You need admin privileges to access this page.
             </p>
-            <Link href="/admin/login">
-              <Button className="w-full">Go to Admin Login</Button>
+            <Link href="/login">
+              <Button className="w-full">Go to Login</Button>
             </Link>
           </CardContent>
         </Card>

@@ -824,7 +824,7 @@ export default function AdminDashboard() {
   const [extendDays, setExtendDays] = useState(7);
 
   // Check admin authentication
-  const { data: adminUser, isLoading: isAuthLoading } = useQuery({
+  const { data: adminUser, isLoading: isAuthLoading } = useQuery<any>({
     queryKey: ["/api/auth/admin/verify"],
     retry: false,
   });

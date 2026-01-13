@@ -33,7 +33,7 @@ function requiredInProd(name: keyof EnvSpec): string | undefined {
 export function validateEnv(): EnvSpec {
   const isProduction = process.env.NODE_ENV === "production";
   const env: EnvSpec = {
-    DATABASE_URL: required("DATABASE_URL"),
+    DATABASE_URL: optional("DATABASE_URL") || "",
     TRADESCOUT_API_TOKEN: optional("TRADESCOUT_API_TOKEN"),
     SESSION_SECRET: required("SESSION_SECRET"),
     CLIENT_ORIGIN: required("CLIENT_ORIGIN"),
@@ -48,26 +48,37 @@ export function validateEnv(): EnvSpec {
   }
 
   if (!env.TRADESCOUT_API_TOKEN) {
-    console.warn('⚠️  TRADESCOUT_API_TOKEN not set - TradeScout LLM integration will be unavailable');
+    console.warn(
+      "⚠️  TRADESCOUT_API_TOKEN not set - TradeScout LLM integration will be unavailable"
+    );
+  }
+
+  if (!env.DATABASE_URL) {
+    console.warn(
+      "⚠️  DATABASE_URL is not set – running in limited dev mode without database connectivity."
+    );
   }
 
   // For non-production, warn but do not prevent the server from starting
   // when incident email configuration is missing.
   if (!isProduction && !env.BREVO_API_KEY) {
     console.warn(
-      "⚠️  BREVO_API_KEY is not set – incident email notifications will fail and related actions will error until configured.",
+      "⚠️  BREVO_API_KEY is not set – incident email notifications will fail and related actions will error until configured."
     );
   }
 
   if (!isProduction && !env.INCIDENT_EMAIL_RECIPIENTS) {
     console.warn(
-      "⚠️  INCIDENT_EMAIL_RECIPIENTS is not set – incident email notifications will throw errors when triggered.",
+      "⚠️  INCIDENT_EMAIL_RECIPIENTS is not set – incident email notifications will throw errors when triggered."
     );
   }
 
-  if ((env.TWILIO_ACCOUNT_SID && !env.TWILIO_AUTH_TOKEN) || (!env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN)) {
+  if (
+    (env.TWILIO_ACCOUNT_SID && !env.TWILIO_AUTH_TOKEN) ||
+    (!env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN)
+  ) {
     console.warn(
-      "⚠️  Partial Twilio configuration detected – SMS incident notifications will be disabled until all TWILIO_* vars are set.",
+      "⚠️  Partial Twilio configuration detected – SMS incident notifications will be disabled until all TWILIO_* vars are set."
     );
   }
 

@@ -522,7 +522,6 @@ export async function setupUnifiedAuth(app: Express) {
             emailService
               .sendAdminSignupNotification(user, {
                 signupMethod: "facebook",
-                appContext,
               })
               .catch((err) =>
                 console.error("Failed to send admin signup notification:", err)
@@ -1003,8 +1002,7 @@ export async function setupUnifiedAuth(app: Express) {
       }
 
       const newPasswordHash = await bcrypt.hash(newPassword, 12);
-      await storage.updateUserPassword(user.id, newPasswordHash);
-      await storage.setUserMustResetPassword(user.id, false);
+      await storage.updateUserPassword(user.id, newPasswordHash, false);
 
       res.json({ message: "Password changed successfully" });
     } catch (error) {

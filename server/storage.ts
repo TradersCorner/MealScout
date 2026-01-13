@@ -555,7 +555,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllHosts(): Promise<Host[]> {
-    return await db.select().from(hosts).orderBy(hosts.createdAt.desc());
+    return await db.select().from(hosts).orderBy(desc(hosts.createdAt));
   }
 
   async updateHostCoordinates(
@@ -665,7 +665,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(locationRequests)
       .where(eq(locationRequests.status, "open"))
-      .orderBy(locationRequests.createdAt.desc());
+      .orderBy(desc(locationRequests.createdAt));
   }
 
   async getEventInterestsByEventId(

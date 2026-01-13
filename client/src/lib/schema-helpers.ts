@@ -49,8 +49,8 @@ export function generateRestaurantSchema(restaurant: Restaurant) {
   const schema: any = {
     "@context": "https://schema.org",
     "@type": "FoodEstablishment",
-    "name": restaurant.name,
-    "identifier": restaurant.id,
+    name: restaurant.name,
+    identifier: restaurant.id,
   };
 
   if (restaurant.address || restaurant.city) {
@@ -60,7 +60,7 @@ export function generateRestaurantSchema(restaurant: Restaurant) {
       ...(restaurant.city && { addressLocality: restaurant.city }),
       ...(restaurant.state && { addressRegion: restaurant.state }),
       ...(restaurant.zipCode && { postalCode: restaurant.zipCode }),
-      addressCountry: "US"
+      addressCountry: "US",
     };
   }
 
@@ -79,10 +79,10 @@ export function generateRestaurantSchema(restaurant: Restaurant) {
   if (restaurant.rating && restaurant.reviewCount) {
     schema.aggregateRating = {
       "@type": "AggregateRating",
-      "ratingValue": restaurant.rating,
-      "reviewCount": restaurant.reviewCount,
-      "bestRating": "5",
-      "worstRating": "1"
+      ratingValue: restaurant.rating,
+      reviewCount: restaurant.reviewCount,
+      bestRating: "5",
+      worstRating: "1",
     };
   }
 
@@ -100,10 +100,10 @@ export function generateDealSchema(deal: Deal, restaurantName?: string) {
   const schema: any = {
     "@context": "https://schema.org",
     "@type": "Offer",
-    "name": deal.title,
-    "description": deal.description,
-    "identifier": deal.id,
-    "validFrom": deal.startDate,
+    name: deal.title,
+    description: deal.description,
+    identifier: deal.id,
+    validFrom: deal.startDate,
   };
 
   if (deal.endDate) {
@@ -113,14 +113,14 @@ export function generateDealSchema(deal: Deal, restaurantName?: string) {
   if (deal.discountValue) {
     schema.priceSpecification = {
       "@type": "PriceSpecification",
-      "description": deal.discountValue
+      description: deal.discountValue,
     };
   }
 
   if (restaurantName || deal.restaurantName) {
     schema.seller = {
       "@type": "FoodEstablishment",
-      "name": restaurantName || deal.restaurantName
+      name: restaurantName || deal.restaurantName,
     };
   }
 
@@ -136,9 +136,9 @@ export function generateVideoSchema(video: VideoRecommendation) {
   const schema: any = {
     "@context": "https://schema.org",
     "@type": "VideoObject",
-    "name": video.title,
-    "identifier": video.id,
-    "uploadDate": video.uploadDate,
+    name: video.title,
+    identifier: video.id,
+    uploadDate: video.uploadDate,
   };
 
   if (video.description) {
@@ -165,7 +165,7 @@ export function generateVideoSchema(video: VideoRecommendation) {
   if (video.creatorName) {
     schema.creator = {
       "@type": "Person",
-      "name": video.creatorName
+      name: video.creatorName,
     };
   }
 
@@ -175,18 +175,21 @@ export function generateVideoSchema(video: VideoRecommendation) {
 /**
  * Generate ItemList schema for listing pages (cuisine, location)
  */
-export function generateItemListSchema(items: Array<{id: string, name: string, url?: string}>, listName: string) {
+export function generateItemListSchema(
+  items: Array<{ id: string; name: string; url?: string }>,
+  listName: string
+) {
   return {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    "name": listName,
-    "numberOfItems": items.length,
-    "itemListElement": items.map((item, index) => ({
+    name: listName,
+    numberOfItems: items.length,
+    itemListElement: items.map((item, index) => ({
       "@type": "ListItem",
-      "position": index + 1,
-      "name": item.name,
-      ...(item.url && { "url": item.url })
-    }))
+      position: index + 1,
+      name: item.name,
+      ...(item.url && { url: item.url }),
+    })),
   };
 }
 
@@ -197,13 +200,14 @@ export function injectSchema(schema: object) {
   if (typeof window === "undefined") return;
 
   const scriptId = "structured-data";
-  let script = document.getElementById(scriptId);
+  let script = document.getElementById(scriptId) as HTMLScriptElement | null;
 
   if (!script) {
-    script = document.createElement("script");
-    script.id = scriptId;
-    script.type = "application/ld+json";
-    document.head.appendChild(script);
+    const newScript = document.createElement("script");
+    newScript.id = scriptId;
+    newScript.type = "application/ld+json";
+    document.head.appendChild(newScript);
+    script = newScript;
   }
 
   script.textContent = JSON.stringify(schema);

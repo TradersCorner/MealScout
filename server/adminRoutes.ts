@@ -548,11 +548,9 @@ router.post("/users/create", isAdmin, async (req: any, res) => {
       req.body;
 
     if (!email || !firstName || !lastName || !userType) {
-      return res
-        .status(400)
-        .json({
-          message: "Email, firstName, lastName, and userType are required",
-        });
+      return res.status(400).json({
+        message: "Email, firstName, lastName, and userType are required",
+      });
     }
 
     const validUserTypes = ["customer", "restaurant_owner", "staff", "admin"];
@@ -588,7 +586,7 @@ router.post("/users/create", isAdmin, async (req: any, res) => {
     );
 
     // Mark as needing password reset
-    await storage.setUserMustResetPassword(user.id, true);
+    await storage.updateUserPassword(user.id, passwordHash, true);
 
     res.status(201).json({
       message: "User created successfully",
@@ -617,12 +615,9 @@ router.post("/hosts/create", isAdmin, async (req: any, res) => {
     } = req.body;
 
     if (!userId || !businessName || !address || !locationType) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "userId, businessName, address, and locationType are required",
-        });
+      return res.status(400).json({
+        message: "userId, businessName, address, and locationType are required",
+      });
     }
 
     // Verify user exists
@@ -923,11 +918,9 @@ router.post("/users/create", isAdmin, async (req: any, res) => {
       req.body;
 
     if (!email || !firstName || !lastName || !userType) {
-      return res
-        .status(400)
-        .json({
-          message: "Email, firstName, lastName, and userType are required",
-        });
+      return res.status(400).json({
+        message: "Email, firstName, lastName, and userType are required",
+      });
     }
 
     const validUserTypes = ["customer", "restaurant_owner", "staff", "admin"];
@@ -959,7 +952,7 @@ router.post("/users/create", isAdmin, async (req: any, res) => {
       userData,
       userType as any
     );
-    await storage.setUserMustResetPassword(user.id, true);
+    await storage.updateUserPassword(user.id, passwordHash, true);
 
     await logAudit(
       req.user.id,
@@ -998,12 +991,9 @@ router.post("/hosts/create", isAdmin, async (req: any, res) => {
     } = req.body;
 
     if (!userId || !businessName || !address || !locationType) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "userId, businessName, address, and locationType are required",
-        });
+      return res.status(400).json({
+        message: "userId, businessName, address, and locationType are required",
+      });
     }
 
     const user = await storage.getUser(userId);

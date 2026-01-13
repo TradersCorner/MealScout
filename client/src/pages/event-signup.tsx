@@ -46,7 +46,6 @@ export default function EventSignup() {
     setIsSubmitting(true);
 
     try {
-      // TODO: Replace with actual API endpoint
       const response = await fetch("/api/events/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

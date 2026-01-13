@@ -5,14 +5,14 @@ import Navigation from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  User, 
-  Settings, 
-  Bell, 
-  Heart, 
-  Receipt, 
-  CreditCard, 
-  HelpCircle, 
+import {
+  User,
+  Settings,
+  Bell,
+  Heart,
+  Receipt,
+  CreditCard,
+  HelpCircle,
   LogOut,
   ChevronRight,
   Star,
@@ -20,7 +20,7 @@ import {
   Store,
   Building2,
   PartyPopper,
-  Calendar
+  Calendar,
 } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
 import { apiUrl } from "@/lib/api";
@@ -28,11 +28,15 @@ import { apiUrl } from "@/lib/api";
 export default function ProfilePage() {
   const { user, isAuthenticated } = useAuth();
 
-  // TODO: Fetch real stats from API
   const [userStats] = useState({
-    dealsRedeemed: 0, // Real count from backend
-    joinedDate: user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : null,
-    lastActivity: null, // Real last activity date
+    dealsRedeemed: 0,
+    joinedDate: user?.createdAt
+      ? new Date(user.createdAt).toLocaleDateString("en-US", {
+          month: "short",
+          year: "numeric",
+        })
+      : null,
+    lastActivity: null,
   });
 
   if (!isAuthenticated || !user) {
@@ -44,18 +48,20 @@ export default function ProfilePage() {
             Profile
           </h1>
         </header>
-        
+
         <div className="px-6 py-12 text-center">
           <User className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Sign in to view profile</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-2">
+            Sign in to view profile
+          </h2>
           <p className="text-muted-foreground mb-6">
             Log in to access your profile, settings, and deal history
           </p>
-          <Button onClick={() => window.location.href = "/api/auth/facebook"}>
+          <Button onClick={() => (window.location.href = "/api/auth/facebook")}>
             Sign In with Facebook
           </Button>
         </div>
-        
+
         <Navigation />
       </div>
     );
@@ -64,14 +70,41 @@ export default function ProfilePage() {
   const menuItems = [
     { icon: Receipt, label: "Deal History", badge: null, href: "/orders" },
     { icon: Heart, label: "Favorites", badge: null, href: "/favorites" },
-    { icon: Bell, label: "Notifications", badge: null, href: "/profile/notifications" },
-    { icon: MapPin, label: "Addresses", badge: null, href: "/profile/addresses" },
+    {
+      icon: Bell,
+      label: "Notifications",
+      badge: null,
+      href: "/profile/notifications",
+    },
+    {
+      icon: MapPin,
+      label: "Addresses",
+      badge: null,
+      href: "/profile/addresses",
+    },
     // Only show Payment Methods for restaurant owners who need subscription billing
-    ...(user?.userType === 'restaurant_owner' ? [
-      { icon: CreditCard, label: "Payment Methods", badge: null, href: "/profile/payment" }
-    ] : []),
-    { icon: Settings, label: "Settings", badge: null, href: "/profile/settings" },
-    { icon: HelpCircle, label: "Help & Support", badge: null, href: "/profile/help" },
+    ...(user?.userType === "restaurant_owner"
+      ? [
+          {
+            icon: CreditCard,
+            label: "Payment Methods",
+            badge: null,
+            href: "/profile/payment",
+          },
+        ]
+      : []),
+    {
+      icon: Settings,
+      label: "Settings",
+      badge: null,
+      href: "/profile/settings",
+    },
+    {
+      icon: HelpCircle,
+      label: "Help & Support",
+      badge: null,
+      href: "/profile/help",
+    },
   ];
 
   return (
@@ -89,7 +122,7 @@ export default function ProfilePage() {
           <User className="w-6 h-6 text-primary mr-3" />
           Profile
         </h1>
-        
+
         {/* User Info Card */}
         <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
           <CardContent className="p-6">
@@ -106,20 +139,31 @@ export default function ProfilePage() {
                 </div>
               )}
               <div className="flex-1">
-                <h2 className="text-xl font-bold text-foreground" data-testid="text-user-name">
-                  {user?.firstName && user?.lastName 
+                <h2
+                  className="text-xl font-bold text-foreground"
+                  data-testid="text-user-name"
+                >
+                  {user?.firstName && user?.lastName
                     ? `${user.firstName} ${user.lastName}`
-                    : user?.email || 'User'
-                  }
+                    : user?.email || "User"}
                 </h2>
-                <p className="text-sm text-muted-foreground" data-testid="text-user-email">
+                <p
+                  className="text-sm text-muted-foreground"
+                  data-testid="text-user-email"
+                >
                   {user?.email}
                 </p>
                 <div className="flex items-center mt-2">
                   <Star className="w-4 h-4 text-yellow-500 mr-1" />
-                  <span className="text-sm font-medium text-foreground" data-testid="text-user-type">
-                    {user?.userType === 'restaurant_owner' ? 'Restaurant Owner' : 
-                     user?.userType === 'admin' ? 'Admin' : 'Food Explorer'}
+                  <span
+                    className="text-sm font-medium text-foreground"
+                    data-testid="text-user-type"
+                  >
+                    {user?.userType === "restaurant_owner"
+                      ? "Restaurant Owner"
+                      : user?.userType === "admin"
+                      ? "Admin"
+                      : "Food Explorer"}
                   </span>
                 </div>
               </div>
@@ -151,10 +195,12 @@ export default function ProfilePage() {
       {/* Menu Items */}
       <div className="px-6 pb-6">
         {/* Business Opportunities Section (Only for customers) */}
-        {user?.userType === 'customer' && (
+        {user?.userType === "customer" && (
           <div className="mb-6 space-y-4">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Business Opportunities</h3>
-            
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+              Business Opportunities
+            </h3>
+
             {/* Business Location Host CTA */}
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 transition-all cursor-pointer border border-blue-200">
               <CardContent className="p-0">
@@ -169,7 +215,8 @@ export default function ProfilePage() {
                           Host Food Trucks at Your Location
                         </h3>
                         <p className="text-gray-600 text-sm">
-                          Offices, bars, breweries — bring lunch to your people →
+                          Offices, bars, breweries — bring lunch to your people
+                          →
                         </p>
                       </div>
                     </div>
@@ -208,10 +255,17 @@ export default function ProfilePage() {
             <Link key={index} href={item.href}>
               <Card className="bg-white hover:bg-gray-50 transition-colors cursor-pointer border-0 shadow-md">
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between" data-testid={`menu-item-${item.label.toLowerCase().replace(/\s+/g, '-')}`}>
+                  <div
+                    className="flex items-center justify-between"
+                    data-testid={`menu-item-${item.label
+                      .toLowerCase()
+                      .replace(/\s+/g, "-")}`}
+                  >
                     <div className="flex items-center space-x-3">
                       <item.icon className="w-5 h-5 text-muted-foreground" />
-                      <span className="font-medium text-foreground">{item.label}</span>
+                      <span className="font-medium text-foreground">
+                        {item.label}
+                      </span>
                     </div>
                     <div className="flex items-center space-x-2">
                       {item.badge && (
@@ -226,16 +280,18 @@ export default function ProfilePage() {
               </Card>
             </Link>
           ))}
-          
+
           {/* Restaurant Owner Option (de-emphasized in menu) */}
-          {user?.userType === 'customer' && (
+          {user?.userType === "customer" && (
             <Link href="/customer-signup?role=business">
               <Card className="bg-white hover:bg-gray-50 transition-colors cursor-pointer border-0 shadow-md">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <Store className="w-5 h-5 text-muted-foreground" />
-                      <span className="font-medium text-foreground">List Your Restaurant</span>
+                      <span className="font-medium text-foreground">
+                        List Your Restaurant
+                      </span>
                     </div>
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </div>
@@ -251,17 +307,17 @@ export default function ProfilePage() {
             <button
               onClick={async () => {
                 try {
-                  const response = await fetch(apiUrl('/api/auth/logout'), {
-                    method: 'POST',
-                    credentials: 'include'
+                  const response = await fetch(apiUrl("/api/auth/logout"), {
+                    method: "POST",
+                    credentials: "include",
                   });
                   if (response.ok) {
-                    window.location.href = '/';
+                    window.location.href = "/";
                   } else {
-                    console.error('Logout failed');
+                    console.error("Logout failed");
                   }
                 } catch (error) {
-                  console.error('Logout error:', error);
+                  console.error("Logout error:", error);
                 }
               }}
               className="w-full flex items-center justify-between"

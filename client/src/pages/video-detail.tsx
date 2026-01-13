@@ -65,8 +65,17 @@ export default function VideoDetailPage() {
   const videoData = video as any;
   const restaurantData = restaurant as any;
   const videoTitle = videoData.title || "Food Recommendation";
-  const videoDescription = videoData.description || `Watch ${videoTitle} - a local food recommendation on MealScout`;
-  const creatorName = "MealScout User"; // TODO: Get from user data
+  const videoDescription =
+    videoData.description ||
+    `Watch ${videoTitle} - a local food recommendation on MealScout`;
+  const creatorName =
+    videoData.creatorName ||
+    videoData.username ||
+    (videoData.user && (videoData.user.firstName || videoData.user.lastName)
+      ? `${videoData.user.firstName || ""} ${
+          videoData.user.lastName || ""
+        }`.trim()
+      : "MealScout Creator");
   const restaurantName = restaurantData?.name || "";
   const location = restaurantData?.address || "";
 
@@ -87,7 +96,11 @@ export default function VideoDetailPage() {
   const faqItems = [
     {
       question: `What is this video about?`,
-      answer: `This video is a ${videoData.duration}-second food recommendation featuring ${restaurantName || "local food"}. ${videoDescription}`,
+      answer: `This video is a ${
+        videoData.duration
+      }-second food recommendation featuring ${
+        restaurantName || "local food"
+      }. ${videoDescription}`,
     },
     {
       question: `Where can I find this food?`,
@@ -104,9 +117,13 @@ export default function VideoDetailPage() {
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
       <SEOHead
-        title={`${videoTitle} ${restaurantName ? `at ${restaurantName}` : ""} - Video | MealScout`}
+        title={`${videoTitle} ${
+          restaurantName ? `at ${restaurantName}` : ""
+        } - Video | MealScout`}
         description={videoDescription}
-        keywords={`${videoTitle}, ${videoData.cuisine || "food"} video, ${restaurantName || "food recommendation"}, local food`}
+        keywords={`${videoTitle}, ${videoData.cuisine || "food"} video, ${
+          restaurantName || "food recommendation"
+        }, local food`}
         canonicalUrl={`https://mealscout.us/video/${videoId}`}
         schemaData={videoSchema}
       />
@@ -137,9 +154,13 @@ export default function VideoDetailPage() {
       <div className="px-6 py-6 space-y-6">
         {/* Title and Description */}
         <div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">{videoTitle}</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">
+            {videoTitle}
+          </h1>
           {videoData.description && (
-            <p className="text-gray-700 leading-relaxed">{videoData.description}</p>
+            <p className="text-gray-700 leading-relaxed">
+              {videoData.description}
+            </p>
           )}
         </div>
 
@@ -148,13 +169,13 @@ export default function VideoDetailPage() {
           {videoData.cuisine && (
             <Badge variant="secondary">{videoData.cuisine}</Badge>
           )}
-          {videoData.hashtags && videoData.hashtags.length > 0 && (
+          {videoData.hashtags &&
+            videoData.hashtags.length > 0 &&
             videoData.hashtags.map((tag: string) => (
               <Badge key={tag} variant="outline">
                 {tag}
               </Badge>
-            ))
-          )}
+            ))}
         </div>
 
         {/* Creator & Restaurant */}
@@ -166,7 +187,10 @@ export default function VideoDetailPage() {
           {restaurantName && (
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <MapPin className="w-4 h-4" />
-              <Link href={`/restaurants/${videoData.restaurantId}`} className="hover:text-primary">
+              <Link
+                href={`/restaurants/${videoData.restaurantId}`}
+                className="hover:text-primary"
+              >
                 {restaurantName}
               </Link>
             </div>

@@ -9,7 +9,7 @@
 .facebook-browser body {
   overscroll-behavior: none;
   touch-action: pan-x pan-y;
-  -webkit-transform: translate3d(0,0,0); /* Hardware acceleration */
+  -webkit-transform: translate3d(0, 0, 0); /* Hardware acceleration */
 }
 
 /* Fix viewport issues in Facebook browser */
@@ -44,8 +44,8 @@
 
 /* Improve performance for Facebook browser */
 .facebook-browser .transform {
-  -webkit-transform: translate3d(0,0,0);
-  transform: translate3d(0,0,0);
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
@@ -74,8 +74,8 @@
 .facebook-browser .sticky {
   position: -webkit-sticky;
   position: sticky;
-  -webkit-transform: translate3d(0,0,0);
-  transform: translate3d(0,0,0);
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
 }
 
 /* Improve hover states for touch in Facebook browser */
@@ -83,13 +83,14 @@
   .facebook-browser .hover\:bg-gray-50:hover {
     background-color: rgb(249 250 251 / var(--tw-bg-opacity));
   }
-  
+
   .facebook-browser .hover\:bg-red-600:hover {
     background-color: rgb(220 38 38 / var(--tw-bg-opacity));
   }
-  
+
   .facebook-browser .hover\:shadow-lg:hover {
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1),
+      0 4px 6px -4px rgb(0 0 0 / 0.1);
   }
 }
 
@@ -121,3 +122,4 @@
 }
 
 /* Build trigger: harmless touch-friendly CSS note */
+/* Build trigger: tiny noop comment */

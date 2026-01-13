@@ -79,13 +79,13 @@ export default function Navigation() {
   const isStaff = user && user.userType === "staff";
 
   // Debug logging for production issues
-  if (user && typeof window !== 'undefined') {
+  if (user && typeof window !== "undefined") {
     console.log("🔍 Navigation User Debug:", {
       email: user.email,
       userType: user.userType,
       isAdmin,
       isStaff,
-      isRestaurantOwner
+      isRestaurantOwner,
     });
   }
 

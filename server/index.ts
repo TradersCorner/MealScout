@@ -366,8 +366,8 @@ app.use((req, res, next) => {
   }
 
   // Setup session configuration before routes
-  // Trust all proxies so req.secure is honored behind Vercel/Render and Secure cookies are set
-  app.set("trust proxy", true);
+  // Trust first proxy so req.secure is honored behind Vercel/Render and Secure cookies are set
+  app.set("trust proxy", 1);
   app.use((req, _res, next) => {
     if (process.env.NODE_ENV === "production") {
       console.log("🌐 trust proxy enabled -> req.secure:", req.secure);
@@ -377,6 +377,19 @@ app.use((req, res, next) => {
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // Debug endpoint to verify session/cookie forwarding after redirects
+  app.get("/api/debug/session", (req: any, res) => {
+    res.json({
+      sessionID: req.sessionID || null,
+      user: req.user || null,
+      cookie: req.headers?.cookie || null,
+      isAuthenticated:
+        typeof req.isAuthenticated === "function"
+          ? req.isAuthenticated()
+          : false,
+    });
+  });
 
   // Apply granular rate limiting - optimized per endpoint
 

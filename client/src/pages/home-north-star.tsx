@@ -1,9 +1,11 @@
+import { useEffect } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Store, Truck, MapPin, Calendar, Search } from "lucide-react";
 import Navigation from "@/components/navigation";
 import { SEOHead } from "@/components/seo-head";
+import { authDebugProbe } from "@/lib/authDebug";
 
 const HOME_TITLE =
   "MealScout | Local Food Discovery for Trucks, Bars & Restaurants";
@@ -56,6 +58,10 @@ const schemaData = {
 };
 
 export default function Home() {
+  useEffect(() => {
+    authDebugProbe();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50">
       <SEOHead

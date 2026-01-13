@@ -35,10 +35,13 @@ export function getSession() {
     tableName: "sessions",
   });
   return session({
+    name: "tradescout.sid",
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
+    // Trust reverse proxy for secure cookies (Render/Vercel)
+    proxy: true,
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

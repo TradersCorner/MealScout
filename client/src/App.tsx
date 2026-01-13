@@ -80,10 +80,10 @@ function DashboardSwitcherPage() {
 }
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { authState, isAuthenticated } = useAuth();
 
-  // Show loading state while authentication is being determined
-  if (isLoading) {
+  // Canonical guard: never redirect until authState resolves
+  if (authState === "loading") {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />

@@ -1461,6 +1461,16 @@ export type EmailUserData = {
 };
 export type InsertRestaurant = z.infer<typeof insertRestaurantSchema>;
 export type Restaurant = typeof restaurants.$inferSelect;
+
+// Live location state (computed server-side, exposed to client)
+export type LocationState = "green" | "amber" | "hidden";
+
+// Extended restaurant with live location state
+export type RestaurantWithLocation = Restaurant & {
+  location_state?: LocationState;
+  last_confirmed_at?: Date | null;
+};
+
 export type InsertDeal = z.infer<typeof insertDealSchema>;
 export type Deal = typeof deals.$inferSelect;
 export type InsertDealClaim = z.infer<typeof insertDealClaimSchema>;

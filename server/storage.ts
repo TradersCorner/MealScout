@@ -827,12 +827,13 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserType(
     id: string,
-    userType: "customer" | "restaurant_owner" | "staff" | "admin"
+    userType: "customer" | "restaurant_owner" | "staff" | "admin" | "super_admin"
   ): Promise<User> {
-    // Protect super admin email from any type changes
-    const SUPER_ADMIN_EMAIL = process.env.ADMIN_EMAIL || "info.mealscout@gmail.com";
+    // Protect super admin email from demotion; allow upgrading it to super_admin
+    const SUPER_ADMIN_EMAIL =
+      process.env.ADMIN_EMAIL || "info.mealscout@gmail.com";
     const user = await this.getUser(id);
-    if (user?.email === SUPER_ADMIN_EMAIL) {
+    if (user?.email === SUPER_ADMIN_EMAIL && userType !== "super_admin") {
       throw new Error("Cannot modify super admin account");
     }
 
@@ -4294,7 +4295,8 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(userId: string): Promise<void> {
     // Protect super admin email from being deleted
-    const SUPER_ADMIN_EMAIL = process.env.ADMIN_EMAIL || "info.mealscout@gmail.com";
+    const SUPER_ADMIN_EMAIL =
+      process.env.ADMIN_EMAIL || "info.mealscout@gmail.com";
     const user = await this.getUser(userId);
     if (user?.email === SUPER_ADMIN_EMAIL) {
       throw new Error("Cannot delete super admin account");
@@ -4527,7 +4529,8 @@ export class DatabaseStorage implements IStorage {
 
   async disableUser(userId: string): Promise<void> {
     // Protect super admin email from being disabled
-    const SUPER_ADMIN_EMAIL = process.env.ADMIN_EMAIL || "info.mealscout@gmail.com";
+    const SUPER_ADMIN_EMAIL =
+      process.env.ADMIN_EMAIL || "info.mealscout@gmail.com";
     const user = await this.getUser(userId);
     if (user?.email === SUPER_ADMIN_EMAIL) {
       throw new Error("Cannot disable super admin account");

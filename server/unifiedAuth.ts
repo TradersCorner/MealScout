@@ -78,7 +78,19 @@ export async function setupUnifiedAuth(app: Express) {
       if (!id || typeof id !== "string") {
         return done(null, false);
       }
-      const user = await storage.getUser(id);
+      let user = await storage.getUser(id);
+
+      // Auto-upgrade the configured super admin email to super_admin role
+      const SUPER_ADMIN_EMAIL =
+        process.env.ADMIN_EMAIL || "info.mealscout@gmail.com";
+      if (user && user.email === SUPER_ADMIN_EMAIL && user.userType !== "super_admin") {
+        try {
+          user = await storage.updateUserType(user.id, "super_admin");
+        } catch (err) {
+          console.warn("⚠️  Failed to auto-upgrade super admin role:", err);
+        }
+      }
+
       done(null, user);
     } catch (error) {
       // For user not found or other errors, return false to clear the session

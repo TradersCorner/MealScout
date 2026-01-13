@@ -78,6 +78,17 @@ export default function Navigation() {
     user && (user.userType === "admin" || user.userType === "super_admin");
   const isStaff = user && user.userType === "staff";
 
+  // Debug logging for production issues
+  if (user && typeof window !== 'undefined') {
+    console.log("🔍 Navigation User Debug:", {
+      email: user.email,
+      userType: user.userType,
+      isAdmin,
+      isStaff,
+      isRestaurantOwner
+    });
+  }
+
   const customerNavItems: NavItem[] = [
     { path: "/", icon: Home, label: "Home" },
     { path: "/search", icon: Search, label: "Search" },

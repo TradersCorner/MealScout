@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import Navigation from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Navigation as NavigationIcon, List, Filter, X, Star } from "lucide-react";
+import { MapPin, Navigation as NavigationIcon, List, Filter, X, Star, Calendar, Building2 } from "lucide-react";
 import DealCard from "@/components/deal-card";
 import { SEOHead } from "@/components/seo-head";
 
@@ -128,6 +128,80 @@ interface Deal {
   restaurant: Restaurant;
 }
 
+type HostLocation = {
+  id: string;
+  name: string;
+  address: string;
+  locationType: string;
+  expectedFootTraffic?: number;
+  notes?: string | null;
+  preferredDates?: string[];
+};
+
+type EventLocation = {
+  id: string;
+  name: string;
+  description?: string | null;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+  hostName?: string | null;
+  hostAddress?: string | null;
+};
+
+type MapLocationsResponse = {
+  hostLocations: HostLocation[];
+  eventLocations: EventLocation[];
+};
+
+type GeoPoint = { lat: number; lng: number };
+
+const hostIcon = new L.Icon({
+  iconUrl:
+    "data:image/svg+xml;base64," +
+    btoa(`
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="14" cy="14" r="12" fill="#2563EB" stroke="white" stroke-width="3"/>
+        <path d="M14 7l5 4v8h-3v-4h-4v4H9v-8l5-4z" fill="white"/>
+      </svg>
+    `),
+  iconSize: [28, 28],
+  iconAnchor: [14, 28],
+  popupAnchor: [0, -24],
+});
+
+const eventIcon = new L.Icon({
+  iconUrl:
+    "data:image/svg+xml;base64," +
+    btoa(`
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="3" y="5" width="24" height="20" rx="4" fill="#7C3AED" stroke="white" stroke-width="3"/>
+        <path d="M9 3v4M21 3v4" stroke="white" stroke-width="3" stroke-linecap="round"/>
+        <path d="M7 12h16" stroke="white" stroke-width="3"/>
+      </svg>
+    `),
+  iconSize: [30, 30],
+  iconAnchor: [15, 30],
+  popupAnchor: [0, -26],
+});
+
+async function geocodeAddress(address: string): Promise<GeoPoint | null> {
+  if (!address) return null;
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+      address
+    )}&limit=1`,
+    {
+      headers: { "Accept-Language": "en", "User-Agent": "MealScout/1.0" },
+    }
+  );
+  if (!res.ok) return null;
+  const data = (await res.json()) as Array<{ lat: string; lon: string }>;
+  if (!data.length) return null;
+  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+}
+
 export default function MapPage() {
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [mapCenter, setMapCenter] = useState<{lat: number, lng: number}>({ lat: 30.5365, lng: -90.5347 });
@@ -136,6 +210,9 @@ export default function MapPage() {
   const [isLocating, setIsLocating] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(16);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [hostCoords, setHostCoords] = useState<Record<string, GeoPoint>>({});
+  const [eventCoords, setEventCoords] = useState<Record<string, GeoPoint>>({});
+  const [geocodingQueue, setGeocodingQueue] = useState<string[]>([]);
 
   // Get user location
   useEffect(() => {
@@ -178,6 +255,67 @@ export default function MapPage() {
 
   const deals: Deal[] = Array.isArray(dealsData) ? dealsData as Deal[] : [];
 
+  // Fetch host + event locations for map
+  const { data: mapLocations } = useQuery<MapLocationsResponse>({
+    queryKey: ["/api/map/locations"],
+    queryFn: async () => {
+      const res = await fetch("/api/map/locations");
+      if (!res.ok) throw new Error("Failed to load map locations");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Build a geocoding work list for any host/event without coordinates yet
+  useEffect(() => {
+    const queue: string[] = [];
+    const addressByKey: Record<string, string> = {};
+
+    mapLocations?.hostLocations.forEach((host) => {
+      if (!hostCoords[host.id]) {
+        queue.push(`host:${host.id}`);
+        addressByKey[`host:${host.id}`] = host.address;
+      }
+    });
+
+    mapLocations?.eventLocations.forEach((event) => {
+      if (!eventCoords[event.id] && event.hostAddress) {
+        queue.push(`event:${event.id}`);
+        addressByKey[`event:${event.id}`] = event.hostAddress;
+      }
+    });
+
+    if (queue.length) {
+      setGeocodingQueue(queue);
+      (async () => {
+        const newHostCoords: Record<string, GeoPoint> = {};
+        const newEventCoords: Record<string, GeoPoint> = {};
+
+        for (const key of queue) {
+          const address = addressByKey[key];
+          if (!address) continue;
+          const point = await geocodeAddress(address).catch(() => null);
+          if (!point) continue;
+          if (key.startsWith("host:")) {
+            newHostCoords[key.replace("host:", "")] = point;
+          } else if (key.startsWith("event:")) {
+            newEventCoords[key.replace("event:", "")] = point;
+          }
+          // small delay to avoid hammering the free geocoder
+          await new Promise((r) => setTimeout(r, 150));
+        }
+
+        if (Object.keys(newHostCoords).length) {
+          setHostCoords((prev) => ({ ...prev, ...newHostCoords }));
+        }
+        if (Object.keys(newEventCoords).length) {
+          setEventCoords((prev) => ({ ...prev, ...newEventCoords }));
+        }
+        setGeocodingQueue([]);
+      })();
+    }
+  }, [mapLocations, hostCoords, eventCoords]);
+
   const handleCenterOnUser = () => {
     if (userLocation) {
       setMapCenter(userLocation);
@@ -204,6 +342,8 @@ export default function MapPage() {
 
   const hasLocation = !!userLocation;
   const hasDeals = deals.length > 0;
+  const hostPins = mapLocations?.hostLocations?.length || 0;
+  const eventPins = mapLocations?.eventLocations?.length || 0;
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
@@ -222,7 +362,9 @@ export default function MapPage() {
               {isLocating
                 ? "Finding nearby food trucks..."
                 : hasLocation && hasDeals
-                ? "Food trucks near you"
+                ? "Food trucks and hosts near you"
+                : hasLocation && !hasDeals && (hostPins > 0 || eventPins > 0)
+                ? "Hosts and events near you"
                 : hasLocation && !hasDeals
                 ? "No food trucks nearby right now"
                 : "Set your location to see trucks nearby"}
@@ -289,7 +431,6 @@ export default function MapPage() {
               {/* Deal Markers */}
               {deals.map((deal: Deal) => {
                 if (!deal.restaurant) return null;
-                
                 return (
                   <Marker
                     key={deal.id}
@@ -311,6 +452,92 @@ export default function MapPage() {
                             Min: ${deal.minOrderAmount}
                           </span>
                         </div>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+
+              {/* Host Location Markers (open requests) */}
+              {mapLocations?.hostLocations.map((host) => {
+                const coords = hostCoords[host.id];
+                if (!coords) return null;
+                return (
+                  <Marker
+                    key={`host-${host.id}`}
+                    position={[coords.lat, coords.lng]}
+                    icon={hostIcon}
+                  >
+                    <Popup>
+                      <div className="min-w-52 space-y-1">
+                        <div className="flex items-center space-x-2">
+                          <Building2 className="w-4 h-4 text-blue-600" />
+                          <div className="font-semibold text-sm">{host.name}</div>
+                        </div>
+                        <div className="text-xs text-muted-foreground">{host.address}</div>
+                        {host.locationType && (
+                          <div className="text-[11px] uppercase tracking-wide text-blue-700 font-semibold">
+                            {host.locationType}
+                          </div>
+                        )}
+                        {host.expectedFootTraffic && (
+                          <div className="text-xs text-muted-foreground">
+                            Expected foot traffic: {host.expectedFootTraffic}
+                          </div>
+                        )}
+                        {host.preferredDates?.length ? (
+                          <div className="text-xs text-muted-foreground flex items-center space-x-1">
+                            <Calendar className="w-3 h-3" />
+                            <span>{host.preferredDates.slice(0, 3).join(", ")}</span>
+                          </div>
+                        ) : null}
+                        <Button
+                          size="sm"
+                          className="w-full mt-2"
+                          onClick={() => {
+                            // Send truck owners to dashboard to book/express interest
+                            window.location.href = `/restaurant-owner-dashboard?locationRequestId=${host.id}`;
+                          }}
+                        >
+                          Request to book
+                        </Button>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+
+              {/* Event Markers */}
+              {mapLocations?.eventLocations.map((event) => {
+                const coords = eventCoords[event.id];
+                if (!coords) return null;
+                return (
+                  <Marker
+                    key={`event-${event.id}`}
+                    position={[coords.lat, coords.lng]}
+                    icon={eventIcon}
+                  >
+                    <Popup>
+                      <div className="min-w-52 space-y-1">
+                        <div className="font-semibold text-sm">{event.name}</div>
+                        {event.hostName && (
+                          <div className="text-xs text-muted-foreground">Host: {event.hostName}</div>
+                        )}
+                        {event.hostAddress && (
+                          <div className="text-xs text-muted-foreground">{event.hostAddress}</div>
+                        )}
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(event.date).toLocaleDateString()} • {event.startTime} - {event.endTime}
+                        </div>
+                        <Button
+                          size="sm"
+                          className="w-full mt-2"
+                          onClick={() => {
+                            window.location.href = `/restaurant-owner-dashboard?eventId=${event.id}`;
+                          }}
+                        >
+                          View & book slot
+                        </Button>
                       </div>
                     </Popup>
                   </Marker>

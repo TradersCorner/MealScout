@@ -1315,6 +1315,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Public map feed: hosts (open location requests) + upcoming events (hosted slots)
+  app.get("/api/map/locations", async (_req, res) => {
+    try {
+      const [openLocations, upcomingEvents] = await Promise.all([
+        storage.getOpenLocationRequests(),
+        storage.getAllUpcomingEvents(),
+      ]);
+
+      const hostLocations = openLocations.map((loc) => ({
+        id: loc.id,
+        type: "host_location" as const,
+        name: loc.businessName,
+        address: loc.address,
+        locationType: loc.locationType,
+        expectedFootTraffic: loc.expectedFootTraffic,
+        notes: loc.notes,
+        preferredDates: loc.preferredDates,
+        status: loc.status,
+      }));
+
+      const eventLocations = upcomingEvents.map((event) => ({
+        id: event.id,
+        type: "event" as const,
+        name: event.name || "Host Event",
+        description: event.description,
+        date: event.date,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        maxTrucks: event.maxTrucks,
+        status: event.status,
+        hostId: event.hostId,
+        hostName: event.host?.businessName,
+        hostAddress: event.host?.address,
+        hardCapEnabled: event.hardCapEnabled,
+        seriesId: event.seriesId,
+        bookedRestaurantId: event.bookedRestaurantId,
+      }));
+
+      res.json({ hostLocations, eventLocations });
+    } catch (error) {
+      console.error("Error building map locations feed:", error);
+      res.status(500).json({ message: "Failed to load map data" });
+    }
+  });
+
   // Host Profile & Events
   registerHostRoutes(app);
 

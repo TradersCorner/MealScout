@@ -523,6 +523,8 @@ export interface IStorage {
   getEventInterestsByEventId(
     eventId: string
   ): Promise<(EventInterest & { truck: any })[]>;
+  // Map surfacing
+  getOpenLocationRequests(): Promise<LocationRequest[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -627,6 +629,15 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return interest;
+  }
+
+  async getOpenLocationRequests(): Promise<LocationRequest[]> {
+    await this.expireStaleLocationRequests();
+    return await db
+      .select()
+      .from(locationRequests)
+      .where(eq(locationRequests.status, "open"))
+      .orderBy(locationRequests.createdAt.desc());
   }
 
   async getEventInterestsByEventId(

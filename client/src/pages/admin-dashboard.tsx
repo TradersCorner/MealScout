@@ -725,7 +725,10 @@ function StaffManagementTab() {
   });
 
   const eligibleUsers = allUsers.filter(
-    (user) => user.userType !== "admin" && user.userType !== "staff" && user.userType !== "super_admin"
+    (user) =>
+      user.userType !== "admin" &&
+      user.userType !== "staff" &&
+      user.userType !== "super_admin"
   );
 
   // Filter out super_admin from staff members list (they should never appear here)

@@ -679,7 +679,8 @@ router.delete("/users/:userId", isAdmin, async (req: any, res) => {
     }
 
     // Protect super admin email - can never be deleted
-    const SUPER_ADMIN_EMAIL = process.env.ADMIN_EMAIL || "info.mealscout@gmail.com";
+    const SUPER_ADMIN_EMAIL =
+      process.env.ADMIN_EMAIL || "info.mealscout@gmail.com";
     if (user.email === SUPER_ADMIN_EMAIL) {
       return res
         .status(403)

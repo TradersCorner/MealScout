@@ -827,7 +827,12 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserType(
     id: string,
-    userType: "customer" | "restaurant_owner" | "staff" | "admin" | "super_admin"
+    userType:
+      | "customer"
+      | "restaurant_owner"
+      | "staff"
+      | "admin"
+      | "super_admin"
   ): Promise<User> {
     // Protect super admin email from demotion; allow upgrading it to super_admin
     const SUPER_ADMIN_EMAIL =

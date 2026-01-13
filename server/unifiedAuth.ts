@@ -83,7 +83,11 @@ export async function setupUnifiedAuth(app: Express) {
       // Auto-upgrade the configured super admin email to super_admin role
       const SUPER_ADMIN_EMAIL =
         process.env.ADMIN_EMAIL || "info.mealscout@gmail.com";
-      if (user && user.email === SUPER_ADMIN_EMAIL && user.userType !== "super_admin") {
+      if (
+        user &&
+        user.email === SUPER_ADMIN_EMAIL &&
+        user.userType !== "super_admin"
+      ) {
         try {
           user = await storage.updateUserType(user.id, "super_admin");
         } catch (err) {

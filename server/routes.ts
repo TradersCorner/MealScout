@@ -5263,12 +5263,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const redemptionRoutes = (await import("./redemptionRoutes")).default;
   app.use("/api/restaurants", redemptionRoutes);
 
-  // Register manual onboarding routes (admin-only)
-  const { registerManualOnboardingRoutes } = await import(
-    "./routes/manualOnboardingRoutes"
-  );
-  registerManualOnboardingRoutes(app);
-
   // Add share middleware (Phase 7) - adds shareUrl helpers to all handlers
   const { shareUrlMiddleware } = await import("./shareMiddleware");
   app.use(shareUrlMiddleware);

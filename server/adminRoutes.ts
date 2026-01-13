@@ -442,11 +442,26 @@ router.post('/grant-lifetime-access', isAdmin, async (req, res) => {
         hasAnalytics: true,
         hasDealScheduling: true,
       });
+    }
 
-  // Manual user onboarding - create any user type with temp password
-  app.post('/api/admin/users/create', isAdminOrStaff, async (req: any, res) => {
-    try {
-      const { email, firstName, lastName, phone, userType, tempPassword } = req.body;
+    // Log action
+    await logAudit(adminUserId, 'grant_lifetime_access', 'restaurant_subscription', restaurantId, '', '', { reason });
+
+    res.json({
+      message: 'Lifetime Premium access granted successfully',
+      restaurantId,
+      restaurantName: restaurant[0].name,
+    });
+  } catch (error) {
+    console.error('Error granting lifetime access:', error);
+    res.status(500).json({ message: 'Failed to grant lifetime access' });
+  }
+});
+
+// Manual user onboarding - create any user type with temp password
+router.post('/users/create', isAdmin, async (req: any, res) => {
+  try {
+    const { email, firstName, lastName, phone, userType, tempPassword } = req.body;
 
       if (!email || !firstName || !lastName || !userType) {
         return res.status(400).json({ message: 'Email, firstName, lastName, and userType are required' });
@@ -491,10 +506,10 @@ router.post('/grant-lifetime-access', isAdmin, async (req, res) => {
     }
   });
 
-  // Create host profile with geocoded address
-  app.post('/api/admin/hosts/create', isAdminOrStaff, async (req: any, res) => {
-    try {
-      const { userId, businessName, address, locationType, latitude, longitude, amenities, contactPhone, notes } = req.body;
+// Create host profile with geocoded address
+router.post('/hosts/create', isAdmin, async (req: any, res) => {
+  try {
+    const { userId, businessName, address, locationType, latitude, longitude, amenities, contactPhone, notes } = req.body;
 
       if (!userId || !businessName || !address || !locationType) {
         return res.status(400).json({ message: 'userId, businessName, address, and locationType are required' });
@@ -542,10 +557,10 @@ router.post('/grant-lifetime-access', isAdmin, async (req, res) => {
     }
   });
 
-  // Delete user (super admin only)
-  app.delete('/api/admin/users/:userId', isSuperAdmin, async (req: any, res) => {
-    try {
-      const { userId } = req.params;
+// Delete user (super admin only)
+router.delete('/users/:userId', isAdmin, async (req: any, res) => {
+  try {
+    const { userId } = req.params;
 
       if (!userId) {
         return res.status(400).json({ message: 'User ID is required' });
@@ -562,6 +577,7 @@ router.post('/grant-lifetime-access', isAdmin, async (req, res) => {
       }
 
       await storage.deleteUser(userId);
+      await logAudit(req.user.id, 'admin_user_deleted', 'user', userId, req.ip, req.headers['user-agent'], {});
 
       res.json({ message: 'User deleted successfully' });
     } catch (error: any) {
@@ -569,20 +585,6 @@ router.post('/grant-lifetime-access', isAdmin, async (req, res) => {
       res.status(500).json({ message: 'Failed to delete user' });
     }
   });
-
-    // Log action
-    await logAudit(adminUserId, 'grant_lifetime_access', 'restaurant_subscription', restaurantId, '', '', { reason });
-
-    res.json({
-      message: 'Lifetime Premium access granted successfully',
-      restaurantId,
-      restaurantName: restaurant[0].name,
-    });
-  } catch (error) {
-    console.error('Error granting lifetime access:', error);
-    res.status(500).json({ message: 'Failed to grant lifetime access' });
-  }
-});
 
 /**
  * GET /api/admin/lifetime-restaurants
@@ -852,33 +854,6 @@ router.post('/hosts/create', isAdmin, async (req: any, res) => {
   } catch (error: any) {
     console.error('Error creating host manually:', error);
     res.status(500).json({ message: 'Failed to create host profile' });
-  }
-});
-
-// Delete user (super admin only)
-router.delete('/users/:userId', async (req: any, res) => {
-  try {
-    if (req.user.userType !== 'super_admin') {
-      return res.status(403).json({ message: 'Super admin access required' });
-    }
-
-    const { userId } = req.params;
-    const user = await storage.getUser(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    if (user.id === req.user.id) {
-      return res.status(400).json({ message: 'Cannot delete your own account' });
-    }
-
-    await storage.deleteUser(userId);
-    await logAudit(req.user.id, 'admin_user_deleted', 'user', userId, req.ip, req.headers['user-agent'], {});
-
-    res.json({ message: 'User deleted successfully' });
-  } catch (error: any) {
-    console.error('Error deleting user:', error);
-    res.status(500).json({ message: 'Failed to delete user' });
   }
 });
 

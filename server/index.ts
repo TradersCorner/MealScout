@@ -366,7 +366,14 @@ app.use((req, res, next) => {
   }
 
   // Setup session configuration before routes
-  app.set("trust proxy", 1);
+  // Trust all proxies so req.secure is honored behind Vercel/Render and Secure cookies are set
+  app.set("trust proxy", true);
+  app.use((req, _res, next) => {
+    if (process.env.NODE_ENV === "production") {
+      console.log("🌐 trust proxy enabled -> req.secure:", req.secure);
+    }
+    next();
+  });
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());

@@ -62,6 +62,12 @@ export function registerStaffRoutes(app: Express) {
         return res.status(404).json({ error: "User not found" });
       }
 
+      // Protect super admin email
+      const SUPER_ADMIN_EMAIL = process.env.ADMIN_EMAIL || "info.mealscout@gmail.com";
+      if (user.email === SUPER_ADMIN_EMAIL) {
+        return res.status(403).json({ error: "Cannot modify super admin account" });
+      }
+
       // Cannot promote admin/staff to staff (no-op or error)
       if (user.userType === "admin" || user.userType === "staff") {
         return res.status(400).json({ error: "User is already staff or admin" });
@@ -104,6 +110,12 @@ export function registerStaffRoutes(app: Express) {
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
+      }
+
+      // Protect super admin email
+      const SUPER_ADMIN_EMAIL = process.env.ADMIN_EMAIL || "info.mealscout@gmail.com";
+      if (user.email === SUPER_ADMIN_EMAIL) {
+        return res.status(403).json({ error: "Cannot modify super admin account" });
       }
 
       if (user.userType !== "staff") {

@@ -725,7 +725,12 @@ function StaffManagementTab() {
   });
 
   const eligibleUsers = allUsers.filter(
-    (user) => user.userType !== "admin" && user.userType !== "staff"
+    (user) => user.userType !== "admin" && user.userType !== "staff" && user.userType !== "super_admin"
+  );
+
+  // Filter out super_admin from staff members list (they should never appear here)
+  const displayStaffMembers = staffMembers.filter(
+    (staff) => staff.userType !== "super_admin"
   );
 
   return (
@@ -735,11 +740,11 @@ function StaffManagementTab() {
         <h3 className="font-semibold mb-3">Current Staff Members</h3>
         {loadingStaff ? (
           <p className="text-muted-foreground">Loading...</p>
-        ) : staffMembers.length === 0 ? (
+        ) : displayStaffMembers.length === 0 ? (
           <p className="text-muted-foreground">No staff members yet.</p>
         ) : (
           <div className="space-y-2">
-            {staffMembers.map((staff) => (
+            {displayStaffMembers.map((staff) => (
               <div
                 key={staff.id}
                 className="flex items-center justify-between p-3 border rounded-lg"

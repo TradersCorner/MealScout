@@ -1,6 +1,6 @@
 import { useState, type ComponentType } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, Search, Heart, Receipt, User, MapPin, Store, Plus, BarChart3, UserPlus, Clapperboard, Bug } from "lucide-react";
+import { Home, Search, Heart, Receipt, User, MapPin, Store, Plus, BarChart3, UserPlus, Clapperboard, Bug, Shield, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -57,8 +57,10 @@ export default function Navigation() {
     }
   };
 
-  // Check if user is a restaurant owner
+  // Check user role
   const isRestaurantOwner = user && user.userType === 'restaurant_owner';
+  const isAdmin = user && (user.userType === 'admin' || user.userType === 'super_admin');
+  const isStaff = user && user.userType === 'staff';
 
   const customerNavItems: NavItem[] = [
     { path: "/", icon: Home, label: "Home" },
@@ -75,6 +77,21 @@ export default function Navigation() {
     { path: "/map", icon: MapPin, label: "Map" },
     { path: "/video", icon: Clapperboard, label: "Video" },
     { path: "/customer-signup", icon: UserPlus, label: "Create Account" },
+  ];
+
+  const adminNavItems: NavItem[] = [
+    { path: "/", icon: Home, label: "Home" },
+    { path: "/admin-dashboard", icon: Shield, label: "Admin" },
+    { path: "/staff-dashboard", icon: Users, label: "Staff" },
+    { path: "/search", icon: Search, label: "Search" },
+    { path: "/profile", icon: User, label: "Profile" },
+  ];
+
+  const staffNavItems: NavItem[] = [
+    { path: "/", icon: Home, label: "Home" },
+    { path: "/staff-dashboard", icon: Users, label: "Dashboard" },
+    { path: "/search", icon: Search, label: "Search" },
+    { path: "/profile", icon: User, label: "Profile" },
   ];
 
   const restaurantOwnerNavItems: NavItem[] = [
@@ -94,9 +111,13 @@ export default function Navigation() {
 
   const navItems = !user 
     ? [...unauthenticatedNavItems, bugNavItem]
-    : isRestaurantOwner 
-      ? [...restaurantOwnerNavItems, bugNavItem]
-      : [...customerNavItems, bugNavItem];
+    : isAdmin
+      ? [...adminNavItems, bugNavItem]
+      : isStaff
+        ? [...staffNavItems, bugNavItem]
+        : isRestaurantOwner 
+          ? [...restaurantOwnerNavItems, bugNavItem]
+          : [...customerNavItems, bugNavItem];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 w-full bg-white border-t border-gray-200 px-4 py-2 z-50 shadow-lg">

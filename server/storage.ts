@@ -2121,6 +2121,33 @@ export class DatabaseStorage implements IStorage {
 
       if (existingAdmin) {
         console.log("✅ Admin account already exists");
+        // If an admin exists but the configured ADMIN_PASSWORD does not match,
+        // update the stored hash to eliminate password drift between env and DB
+        if (existingAdmin.passwordHash) {
+          const matches = await bcrypt.compare(
+            adminPassword,
+            existingAdmin.passwordHash
+          );
+          if (!matches) {
+            console.log(
+              "🔄 Admin password differs from configured ADMIN_PASSWORD – updating hash"
+            );
+            const newHash = await bcrypt.hash(adminPassword, 12);
+            await db
+              .update(users)
+              .set({ passwordHash: newHash, userType: "admin" })
+              .where(eq(users.id, existingAdmin.id));
+            console.log("✅ Admin password updated to match environment");
+          }
+        } else {
+          // If no password hash exists, set it now
+          const newHash = await bcrypt.hash(adminPassword, 12);
+          await db
+            .update(users)
+            .set({ passwordHash: newHash, userType: "admin" })
+            .where(eq(users.id, existingAdmin.id));
+          console.log("✅ Admin password initialized from environment");
+        }
         return;
       }
 

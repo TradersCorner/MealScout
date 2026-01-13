@@ -1,6 +1,21 @@
 import { useState, type ComponentType } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, Search, Heart, Receipt, User, MapPin, Store, Plus, BarChart3, UserPlus, Clapperboard, Bug, Shield, Users } from "lucide-react";
+import {
+  Home,
+  Search,
+  Heart,
+  Receipt,
+  User,
+  MapPin,
+  Store,
+  Plus,
+  BarChart3,
+  UserPlus,
+  Clapperboard,
+  Bug,
+  Shield,
+  Users,
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -58,9 +73,10 @@ export default function Navigation() {
   };
 
   // Check user role
-  const isRestaurantOwner = user && user.userType === 'restaurant_owner';
-  const isAdmin = user && (user.userType === 'admin' || user.userType === 'super_admin');
-  const isStaff = user && user.userType === 'staff';
+  const isRestaurantOwner = user && user.userType === "restaurant_owner";
+  const isAdmin =
+    user && (user.userType === "admin" || user.userType === "super_admin");
+  const isStaff = user && user.userType === "staff";
 
   const customerNavItems: NavItem[] = [
     { path: "/", icon: Home, label: "Home" },
@@ -77,14 +93,6 @@ export default function Navigation() {
     { path: "/map", icon: MapPin, label: "Map" },
     { path: "/video", icon: Clapperboard, label: "Video" },
     { path: "/customer-signup", icon: UserPlus, label: "Create Account" },
-  ];
-
-  const adminNavItems: NavItem[] = [
-    { path: "/", icon: Home, label: "Home" },
-    { path: "/admin-dashboard", icon: Shield, label: "Admin" },
-    { path: "/staff-dashboard", icon: Users, label: "Staff" },
-    { path: "/search", icon: Search, label: "Search" },
-    { path: "/profile", icon: User, label: "Profile" },
   ];
 
   const staffNavItems: NavItem[] = [
@@ -109,26 +117,50 @@ export default function Navigation() {
     isBug: true,
   };
 
-  const navItems = !user 
+  // Admins should see every flow; merge all nav items and de-duplicate by path
+  const adminNavItems: NavItem[] = (() => {
+    const merged = [
+      // Admin/staff controls
+      { path: "/", icon: Home, label: "Home" },
+      { path: "/admin-dashboard", icon: Shield, label: "Admin" },
+      { path: "/staff-dashboard", icon: Users, label: "Staff" },
+      // Restaurant owner flows
+      ...restaurantOwnerNavItems,
+      // Customer flows
+      ...customerNavItems,
+    ];
+
+    const seen = new Set<string>();
+    const deduped: NavItem[] = [];
+    for (const item of merged) {
+      if (!item.path) continue;
+      if (seen.has(item.path)) continue;
+      seen.add(item.path);
+      deduped.push(item);
+    }
+    return deduped;
+  })();
+
+  const navItems = !user
     ? [...unauthenticatedNavItems, bugNavItem]
     : isAdmin
-      ? [...adminNavItems, bugNavItem]
-      : isStaff
-        ? [...staffNavItems, bugNavItem]
-        : isRestaurantOwner 
-          ? [...restaurantOwnerNavItems, bugNavItem]
-          : [...customerNavItems, bugNavItem];
+    ? [...adminNavItems, bugNavItem]
+    : isStaff
+    ? [...staffNavItems, bugNavItem]
+    : isRestaurantOwner
+    ? [...restaurantOwnerNavItems, bugNavItem]
+    : [...customerNavItems, bugNavItem];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 w-full bg-white border-t border-gray-200 px-4 py-2 z-50 shadow-lg">
       <div className="flex items-center justify-around max-w-md mx-auto">
-        {navItems.map((item) => (
+        {navItems.map((item) =>
           item.path ? (
             <Link key={item.path} href={item.path}>
-              <button 
+              <button
                 className={`flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
-                  location === item.path 
-                    ? "text-red-600 bg-red-50" 
+                  location === item.path
+                    ? "text-red-600 bg-red-50"
                     : "text-gray-600 hover:text-red-600 hover:bg-red-50"
                 }`}
                 data-testid={`nav-${item.label.toLowerCase()}`}
@@ -158,7 +190,7 @@ export default function Navigation() {
               <span className="text-xs font-medium">{item.label}</span>
             </button>
           )
-        ))}
+        )}
       </div>
     </nav>
   );

@@ -181,7 +181,8 @@ export function registerStaffRoutes(app: Express) {
 
   /**
    * POST /api/staff/users
-   * Create a customer account (staff or admin)
+   * Create a user account (staff or admin)
+   * Accepts optional userType parameter (customer, restaurant_owner, staff, admin)
    * Returns temp password that must be reset on first login
    */
   app.post(
@@ -190,11 +191,32 @@ export function registerStaffRoutes(app: Express) {
     isStaffOrAdmin,
     async (req: any, res) => {
       try {
-        const { email, firstName, lastName, phone } = req.body;
+        const { email, firstName, lastName, phone, userType } = req.body;
         const staffUser = req.user;
 
         if (!email || typeof email !== "string") {
           return res.status(400).json({ error: "Valid email is required" });
+        }
+
+        // Validate userType if provided
+        const validUserTypes = [
+          "customer",
+          "restaurant_owner",
+          "staff",
+          "admin",
+        ];
+        const targetUserType =
+          userType && validUserTypes.includes(userType) ? userType : "customer";
+
+        // Only admins can create staff or admin accounts
+        if (
+          (targetUserType === "staff" || targetUserType === "admin") &&
+          staffUser.userType !== "admin" &&
+          staffUser.userType !== "super_admin"
+        ) {
+          return res
+            .status(403)
+            .json({ error: "Only admins can create staff or admin accounts" });
         }
 
         const normalizedEmail = email.trim().toLowerCase();
@@ -215,7 +237,7 @@ export function registerStaffRoutes(app: Express) {
           firstName: firstName?.trim() || null,
           lastName: lastName?.trim() || null,
           phone: phone?.trim() || null,
-          userType: "customer",
+          userType: targetUserType,
           passwordHash,
           mustResetPassword: true,
         });
@@ -228,7 +250,7 @@ export function registerStaffRoutes(app: Express) {
           result.userId,
           req.ip || "unknown",
           req.get("User-Agent") || "unknown",
-          { createdUserType: "customer", createdByRole: staffUser.userType }
+          { createdUserType: targetUserType, createdByRole: staffUser.userType }
         );
 
         res.json({
@@ -237,12 +259,14 @@ export function registerStaffRoutes(app: Express) {
           email: normalizedEmail,
           tempPassword,
           mustResetPassword: true,
-          message:
-            "Customer account created. User must reset password on first login.",
+          message: `${targetUserType.replace(
+            "_",
+            " "
+          )} account created. User must reset password on first login.`,
         });
       } catch (error) {
-        console.error("Error creating customer:", error);
-        res.status(500).json({ error: "Failed to create customer account" });
+        console.error("Error creating user:", error);
+        res.status(500).json({ error: "Failed to create user account" });
       }
     }
   );

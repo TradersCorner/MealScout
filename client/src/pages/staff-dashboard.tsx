@@ -3,7 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -38,8 +44,17 @@ export default function StaffDashboard() {
   const [restaurantAddress, setRestaurantAddress] = useState("");
   const [restaurantPhone, setRestaurantPhone] = useState("");
 
+  // Generic user creation form
+  const [genericEmail, setGenericEmail] = useState("");
+  const [genericFirstName, setGenericFirstName] = useState("");
+  const [genericLastName, setGenericLastName] = useState("");
+  const [genericPhone, setGenericPhone] = useState("");
+  const [genericUserType, setGenericUserType] = useState<string>("customer");
+
   // Created account state
-  const [createdAccount, setCreatedAccount] = useState<CreatedAccount | null>(null);
+  const [createdAccount, setCreatedAccount] = useState<CreatedAccount | null>(
+    null
+  );
 
   // Verify staff access
   const { data: staffCheck, isLoading: checkingAccess } = useQuery({
@@ -79,7 +94,11 @@ export default function StaffDashboard() {
 
   const createRestaurantOwner = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/staff/restaurant-owners", data);
+      const res = await apiRequest(
+        "POST",
+        "/api/staff/restaurant-owners",
+        data
+      );
       return res.json();
     },
     onSuccess: (data) => {
@@ -107,7 +126,42 @@ export default function StaffDashboard() {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to create restaurant owner account",
+        description:
+          error.message || "Failed to create restaurant owner account",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createGenericUser = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/staff/users", {
+        ...data,
+        userType: genericUserType,
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setCreatedAccount({
+        userId: data.userId,
+        email: data.email,
+        tempPassword: data.tempPassword,
+      });
+      toast({
+        title: "User Created",
+        description: `${genericUserType} account created for ${data.email}`,
+      });
+      // Reset form
+      setGenericEmail("");
+      setGenericFirstName("");
+      setGenericLastName("");
+      setGenericPhone("");
+      setGenericUserType("customer");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create user account",
         variant: "destructive",
       });
     },
@@ -129,7 +183,10 @@ export default function StaffDashboard() {
     );
   }
 
-  if (!staffCheck || (user?.userType !== "staff" && user?.userType !== "admin")) {
+  if (
+    !staffCheck ||
+    (user?.userType !== "staff" && user?.userType !== "admin")
+  ) {
     return (
       <div className="max-w-md mx-auto mt-20 p-6 text-center">
         <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
@@ -147,11 +204,13 @@ export default function StaffDashboard() {
   return (
     <div className="min-h-screen bg-background pb-20">
       <Navigation />
-      
+
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Staff Dashboard</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            Staff Dashboard
+          </h1>
           <p className="text-muted-foreground">
             Create customer and restaurant owner accounts on the spot
           </p>
@@ -168,7 +227,8 @@ export default function StaffDashboard() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <span className="font-semibold">Email:</span> {createdAccount.email}
+                <span className="font-semibold">Email:</span>{" "}
+                {createdAccount.email}
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-semibold">Temp Password:</span>
@@ -185,11 +245,13 @@ export default function StaffDashboard() {
               </div>
               {createdAccount.restaurantId && (
                 <div>
-                  <span className="font-semibold">Restaurant ID:</span> {createdAccount.restaurantId}
+                  <span className="font-semibold">Restaurant ID:</span>{" "}
+                  {createdAccount.restaurantId}
                 </div>
               )}
               <p className="text-sm text-muted-foreground mt-2">
-                ⚠️ User must reset password on first login. Copy this password and share it with the user.
+                ⚠️ User must reset password on first login. Copy this password
+                and share it with the user.
               </p>
               <Button
                 size="sm"
@@ -203,6 +265,98 @@ export default function StaffDashboard() {
         )}
 
         <div className="grid md:grid-cols-2 gap-8">
+          {/* Create Any User Type (Admin only) */}
+          {(user?.userType === "admin" || user?.userType === "super_admin") && (
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="w-5 h-5" />
+                  Create User (Any Type)
+                </CardTitle>
+                <CardDescription>
+                  Create any type of user account with temporary password
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    createGenericUser.mutate({
+                      email: genericEmail,
+                      firstName: genericFirstName || undefined,
+                      lastName: genericLastName || undefined,
+                      phone: genericPhone || undefined,
+                    });
+                  }}
+                  className="grid md:grid-cols-2 gap-4"
+                >
+                  <div>
+                    <Label htmlFor="generic-email">Email *</Label>
+                    <Input
+                      id="generic-email"
+                      type="email"
+                      value={genericEmail}
+                      onChange={(e) => setGenericEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="generic-user-type">User Type *</Label>
+                    <select
+                      id="generic-user-type"
+                      value={genericUserType}
+                      onChange={(e) => setGenericUserType(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md bg-background"
+                    >
+                      <option value="customer">Customer</option>
+                      <option value="restaurant_owner">Restaurant Owner</option>
+                      <option value="staff">Staff</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="generic-first-name">First Name</Label>
+                    <Input
+                      id="generic-first-name"
+                      type="text"
+                      value={genericFirstName}
+                      onChange={(e) => setGenericFirstName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="generic-last-name">Last Name</Label>
+                    <Input
+                      id="generic-last-name"
+                      type="text"
+                      value={genericLastName}
+                      onChange={(e) => setGenericLastName(e.target.value)}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="generic-phone">Phone</Label>
+                    <Input
+                      id="generic-phone"
+                      type="tel"
+                      value={genericPhone}
+                      onChange={(e) => setGenericPhone(e.target.value)}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={createGenericUser.isPending || !genericEmail}
+                    >
+                      {createGenericUser.isPending
+                        ? "Creating..."
+                        : `Create ${genericUserType.replace("_", " ")}`}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Create Customer */}
           <Card>
             <CardHeader>
@@ -339,7 +493,7 @@ export default function StaffDashboard() {
                     onChange={(e) => setOwnerPhone(e.target.value)}
                   />
                 </div>
-                
+
                 <div className="border-t pt-4 mt-4">
                   <p className="text-sm font-semibold mb-3 text-muted-foreground">
                     Optional Restaurant Details
@@ -380,7 +534,9 @@ export default function StaffDashboard() {
                   className="w-full"
                   disabled={createRestaurantOwner.isPending || !ownerEmail}
                 >
-                  {createRestaurantOwner.isPending ? "Creating..." : "Create Restaurant Owner"}
+                  {createRestaurantOwner.isPending
+                    ? "Creating..."
+                    : "Create Restaurant Owner"}
                 </Button>
               </form>
             </CardContent>

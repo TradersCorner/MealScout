@@ -97,7 +97,7 @@ export default function Navigation() {
 
   const staffNavItems: NavItem[] = [
     { path: "/", icon: Home, label: "Home" },
-    { path: "/staff-dashboard", icon: Users, label: "Dashboard" },
+    { path: "/staff", icon: Users, label: "Dashboard" },
     { path: "/search", icon: Search, label: "Search" },
     { path: "/profile", icon: User, label: "Profile" },
   ];
@@ -122,8 +122,8 @@ export default function Navigation() {
     const merged = [
       // Admin/staff controls
       { path: "/", icon: Home, label: "Home" },
-      { path: "/admin-dashboard", icon: Shield, label: "Admin" },
-      { path: "/staff-dashboard", icon: Users, label: "Staff" },
+      { path: "/admin/dashboard", icon: Shield, label: "Admin" },
+      { path: "/staff", icon: Users, label: "Staff" },
       // Restaurant owner flows
       ...restaurantOwnerNavItems,
       // Customer flows

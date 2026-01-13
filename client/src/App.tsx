@@ -70,6 +70,7 @@ import FindFood from "@/pages/find-food";
 import { BetaDisclaimer } from "@/components/beta-disclaimer";
 import VideoPage from "@/pages/video";
 import VideoDetailPage from "@/pages/video-detail";
+import ChangePassword from "@/pages/change-password";
 
 // Wrapper component to handle route props
 function DashboardSwitcherPage() {
@@ -128,6 +129,7 @@ function Router() {
           <Route path="/parking-pass" component={ParkingPassPage} />
           <Route path="/forgot-password" component={ForgotPassword} />
           <Route path="/reset-password" component={ResetPassword} />
+          <Route path="/change-password" component={ChangePassword} />
           <Route path="/admin" component={AdminLogin} />
           <Route path="/admin/login" component={AdminLogin} />
         </>
@@ -204,6 +206,7 @@ function Router() {
           <Route path="/sitemap" component={Sitemap} />
           <Route path="/forgot-password" component={ForgotPassword} />
           <Route path="/reset-password" component={ResetPassword} />
+          <Route path="/change-password" component={ChangePassword} />
           <Route path="/admin/login" component={AdminLogin} />
           <Route path="/admin/oauth-setup" component={OAuthSetupGuide} />
           <Route path="/profile/notifications" component={NotificationsPage} />

@@ -98,6 +98,12 @@ export interface IStorage {
   createHost(host: InsertHost): Promise<Host>;
   getHost(id: string): Promise<Host | undefined>;
   getHostByUserId(userId: string): Promise<Host | undefined>;
+  getAllHosts(): Promise<Host[]>;
+  updateHostCoordinates(
+    hostId: string,
+    lat: number,
+    lng: number
+  ): Promise<Host>;
   createEvent(event: InsertEvent): Promise<Event>;
   getEvent(id: string): Promise<Event | undefined>;
   getEventsByHost(
@@ -465,6 +471,7 @@ export interface IStorage {
   ): Promise<UserAddress>;
   deleteUserAddress(id: string): Promise<void>;
   setDefaultAddress(userId: string, addressId: string): Promise<void>;
+  deleteUser(userId: string): Promise<void>;
 
   // Password reset token operations
   createPasswordResetToken(
@@ -545,6 +552,27 @@ export class DatabaseStorage implements IStorage {
       .from(hosts)
       .where(eq(hosts.userId, userId));
     return host;
+  }
+
+  async getAllHosts(): Promise<Host[]> {
+    return await db.select().from(hosts).orderBy(hosts.createdAt.desc());
+  }
+
+  async updateHostCoordinates(
+    hostId: string,
+    lat: number,
+    lng: number
+  ): Promise<Host> {
+    const [updated] = await db
+      .update(hosts)
+      .set({
+        latitude: lat.toString(),
+        longitude: lng.toString(),
+        updatedAt: new Date(),
+      })
+      .where(eq(hosts.id, hostId))
+      .returning();
+    return updated;
   }
 
   async createEvent(event: InsertEvent): Promise<Event> {
@@ -4248,6 +4276,10 @@ export class DatabaseStorage implements IStorage {
           and(eq(userAddresses.id, addressId), eq(userAddresses.userId, userId))
         );
     });
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, userId));
   }
 
   // Password reset token operations

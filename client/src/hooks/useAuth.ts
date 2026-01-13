@@ -2,17 +2,19 @@ import { useQuery } from "@tanstack/react-query";
 import { getQueryFn } from "@/lib/queryClient";
 import type { User } from "@shared/schema";
 import { useEffect } from "react";
+import { useLocation } from "wouter";
 
 export type AuthState = "loading" | "authenticated" | "guest";
 
 export function useAuth() {
+  const [, setLocation] = useLocation();
   const {
     data: user,
     isLoading,
     isError,
     error,
     refetch,
-  } = useQuery<User>({
+  } = useQuery<User & { requiresPasswordReset?: boolean }>({
     queryKey: ["/api/auth/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     retry: false,
@@ -26,6 +28,17 @@ export function useAuth() {
     : user
     ? "authenticated"
     : "guest";
+
+  // Check for password reset requirement
+  useEffect(() => {
+    if (
+      user?.requiresPasswordReset &&
+      window.location.pathname !== "/change-password"
+    ) {
+      console.log("🔒 User must reset password, redirecting...");
+      setLocation("/change-password");
+    }
+  }, [user, setLocation]);
 
   // Check for OAuth redirect completion and refresh auth state
   useEffect(() => {
@@ -55,6 +68,7 @@ export function useAuth() {
     authState,
     isAuthenticated: authState === "authenticated",
     isGuest: authState === "guest",
+    requiresPasswordReset: user?.requiresPasswordReset || false,
     refetch,
   };
 }

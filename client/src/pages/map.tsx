@@ -5,21 +5,35 @@ import L from "leaflet";
 import Navigation from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Navigation as NavigationIcon, List, Filter, X, Star, Calendar, Building2 } from "lucide-react";
+import {
+  MapPin,
+  Navigation as NavigationIcon,
+  List,
+  Filter,
+  X,
+  Star,
+  Calendar,
+  Building2,
+} from "lucide-react";
 import DealCard from "@/components/deal-card";
 import { SEOHead } from "@/components/seo-head";
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-shadow.png',
+  iconRetinaUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-icon-2x.png",
+  iconUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-icon.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-shadow.png",
 });
 
 // Custom user location icon
 const userLocationIcon = new L.Icon({
-  iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+  iconUrl:
+    "data:image/svg+xml;base64," +
+    btoa(`
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="12" cy="12" r="8" fill="#3B82F6" stroke="white" stroke-width="3"/>
       <circle cx="12" cy="12" r="3" fill="white"/>
@@ -31,7 +45,9 @@ const userLocationIcon = new L.Icon({
 
 // Custom deal marker icon
 const dealMarkerIcon = new L.Icon({
-  iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+  iconUrl:
+    "data:image/svg+xml;base64," +
+    btoa(`
     <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="16" cy="16" r="14" fill="#EF4444" stroke="white" stroke-width="3"/>
       <text x="16" y="20" text-anchor="middle" fill="white" font-size="14" font-weight="bold">%</text>
@@ -42,32 +58,38 @@ const dealMarkerIcon = new L.Icon({
 });
 
 // Component to handle map controls
-function MapControls({ onZoomIn, onZoomOut, onCenterUser, userLocation, zoomLevel }: {
+function MapControls({
+  onZoomIn,
+  onZoomOut,
+  onCenterUser,
+  userLocation,
+  zoomLevel,
+}: {
   onZoomIn: () => void;
-  onZoomOut: () => void; 
+  onZoomOut: () => void;
   onCenterUser: () => void;
-  userLocation: {lat: number, lng: number} | null;
+  userLocation: { lat: number; lng: number } | null;
   zoomLevel: number;
 }) {
   const map = useMap();
-  
+
   const handleZoomIn = () => {
     map.zoomIn();
     onZoomIn();
   };
-  
+
   const handleZoomOut = () => {
     map.zoomOut();
     onZoomOut();
   };
-  
+
   const handleCenterUser = () => {
     if (userLocation) {
       map.setView([userLocation.lat, userLocation.lng], map.getZoom());
       onCenterUser();
     }
   };
-  
+
   return (
     <div className="absolute top-4 right-4 flex flex-col space-y-2 z-[1000]">
       <Button
@@ -203,8 +225,14 @@ async function geocodeAddress(address: string): Promise<GeoPoint | null> {
 }
 
 export default function MapPage() {
-  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
-  const [mapCenter, setMapCenter] = useState<{lat: number, lng: number}>({ lat: 30.5365, lng: -90.5347 });
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>({
+    lat: 30.5365,
+    lng: -90.5347,
+  });
   const [showList, setShowList] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -222,7 +250,7 @@ export default function MapPage() {
         (position) => {
           const location = {
             lat: position.coords.latitude,
-            lng: position.coords.longitude
+            lng: position.coords.longitude,
           };
           setUserLocation(location);
           setMapCenter(location);
@@ -240,20 +268,22 @@ export default function MapPage() {
 
   // Fetch nearby deals based on user location
   const { data: dealsData = [], isLoading } = useQuery({
-    queryKey: userLocation 
+    queryKey: userLocation
       ? ["/api/deals/nearby", userLocation.lat, userLocation.lng]
       : ["/api/deals/featured"],
-    queryFn: userLocation 
+    queryFn: userLocation
       ? async () => {
-          const response = await fetch(`/api/deals/nearby/${userLocation.lat}/${userLocation.lng}`);
-          if (!response.ok) throw new Error('Failed to fetch nearby deals');
+          const response = await fetch(
+            `/api/deals/nearby/${userLocation.lat}/${userLocation.lng}`
+          );
+          if (!response.ok) throw new Error("Failed to fetch nearby deals");
           return response.json();
         }
       : undefined,
     enabled: !!userLocation,
   });
 
-  const deals: Deal[] = Array.isArray(dealsData) ? dealsData as Deal[] : [];
+  const deals: Deal[] = Array.isArray(dealsData) ? (dealsData as Deal[]) : [];
 
   // Fetch host + event locations for map
   const { data: mapLocations } = useQuery<MapLocationsResponse>({
@@ -327,17 +357,17 @@ export default function MapPage() {
     if (deal.restaurant) {
       setMapCenter({
         lat: deal.restaurant.latitude,
-        lng: deal.restaurant.longitude
+        lng: deal.restaurant.longitude,
       });
     }
   };
 
   const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 1, 18));
+    setZoomLevel((prev) => Math.min(prev + 1, 18));
   };
 
   const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 1, 1));
+    setZoomLevel((prev) => Math.max(prev - 1, 1));
   };
 
   const hasLocation = !!userLocation;
@@ -390,8 +420,10 @@ export default function MapPage() {
         )}
         {userLocation && (
           <div className="text-xs text-muted-foreground mb-4">
-            📍 Located: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
-            {deals.length > 0 && ` • ${deals.length} truck${deals.length === 1 ? "" : "s"} nearby`}
+            📍 Located: {userLocation.lat.toFixed(4)},{" "}
+            {userLocation.lng.toFixed(4)}
+            {deals.length > 0 &&
+              ` • ${deals.length} truck${deals.length === 1 ? "" : "s"} nearby`}
           </div>
         )}
       </header>
@@ -403,14 +435,14 @@ export default function MapPage() {
             <MapContainer
               center={[mapCenter.lat, mapCenter.lng]}
               zoom={zoomLevel}
-              style={{ height: '100%', width: '100%' }}
+              style={{ height: "100%", width: "100%" }}
               className="rounded-lg overflow-hidden"
             >
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              
+
               {/* User Location Marker */}
               {userLocation && (
                 <Marker
@@ -421,29 +453,37 @@ export default function MapPage() {
                     <div className="text-center">
                       <div className="font-semibold text-sm">You are here</div>
                       <div className="text-xs text-muted-foreground">
-                        {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
+                        {userLocation.lat.toFixed(4)},{" "}
+                        {userLocation.lng.toFixed(4)}
                       </div>
                     </div>
                   </Popup>
                 </Marker>
               )}
-              
+
               {/* Deal Markers */}
               {deals.map((deal: Deal) => {
                 if (!deal.restaurant) return null;
                 return (
                   <Marker
                     key={deal.id}
-                    position={[deal.restaurant.latitude, deal.restaurant.longitude]}
+                    position={[
+                      deal.restaurant.latitude,
+                      deal.restaurant.longitude,
+                    ]}
                     icon={dealMarkerIcon}
                     eventHandlers={{
-                      click: () => handleDealClick(deal)
+                      click: () => handleDealClick(deal),
                     }}
                   >
                     <Popup>
                       <div className="min-w-48">
-                        <div className="font-semibold text-sm mb-1">{deal.title}</div>
-                        <div className="text-xs text-muted-foreground mb-2">{deal.restaurant.name}</div>
+                        <div className="font-semibold text-sm mb-1">
+                          {deal.title}
+                        </div>
+                        <div className="text-xs text-muted-foreground mb-2">
+                          {deal.restaurant.name}
+                        </div>
                         <div className="flex items-center justify-between">
                           <span className="text-primary font-bold text-sm">
                             {deal.discountValue}% OFF
@@ -472,9 +512,13 @@ export default function MapPage() {
                       <div className="min-w-52 space-y-1">
                         <div className="flex items-center space-x-2">
                           <Building2 className="w-4 h-4 text-blue-600" />
-                          <div className="font-semibold text-sm">{host.name}</div>
+                          <div className="font-semibold text-sm">
+                            {host.name}
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">{host.address}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {host.address}
+                        </div>
                         {host.locationType && (
                           <div className="text-[11px] uppercase tracking-wide text-blue-700 font-semibold">
                             {host.locationType}
@@ -488,7 +532,9 @@ export default function MapPage() {
                         {host.preferredDates?.length ? (
                           <div className="text-xs text-muted-foreground flex items-center space-x-1">
                             <Calendar className="w-3 h-3" />
-                            <span>{host.preferredDates.slice(0, 3).join(", ")}</span>
+                            <span>
+                              {host.preferredDates.slice(0, 3).join(", ")}
+                            </span>
                           </div>
                         ) : null}
                         <Button
@@ -519,15 +565,22 @@ export default function MapPage() {
                   >
                     <Popup>
                       <div className="min-w-52 space-y-1">
-                        <div className="font-semibold text-sm">{event.name}</div>
+                        <div className="font-semibold text-sm">
+                          {event.name}
+                        </div>
                         {event.hostName && (
-                          <div className="text-xs text-muted-foreground">Host: {event.hostName}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Host: {event.hostName}
+                          </div>
                         )}
                         {event.hostAddress && (
-                          <div className="text-xs text-muted-foreground">{event.hostAddress}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {event.hostAddress}
+                          </div>
                         )}
                         <div className="text-xs text-muted-foreground">
-                          {new Date(event.date).toLocaleDateString()} • {event.startTime} - {event.endTime}
+                          {new Date(event.date).toLocaleDateString()} •{" "}
+                          {event.startTime} - {event.endTime}
                         </div>
                         <Button
                           size="sm"
@@ -543,9 +596,9 @@ export default function MapPage() {
                   </Marker>
                 );
               })}
-              
+
               {/* Map Controls */}
-              <MapControls 
+              <MapControls
                 onZoomIn={handleZoomIn}
                 onZoomOut={handleZoomOut}
                 onCenterUser={handleCenterOnUser}
@@ -597,7 +650,7 @@ export default function MapPage() {
                   <X className="w-3 h-3" />
                 </Button>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <span className="text-primary font-bold text-sm">
@@ -621,7 +674,9 @@ export default function MapPage() {
         <div className="absolute inset-0 bg-white z-40 overflow-y-auto">
           <header className="px-6 py-6 bg-white border-b border-border sticky top-0">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-foreground">Nearby Deals</h2>
+              <h2 className="text-xl font-bold text-foreground">
+                Nearby Deals
+              </h2>
               <Button
                 variant="ghost"
                 size="sm"
@@ -632,12 +687,15 @@ export default function MapPage() {
               </Button>
             </div>
           </header>
-          
+
           <div className="px-6 py-4">
             {isLoading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="bg-white rounded-2xl overflow-hidden animate-pulse shadow-md">
+                  <div
+                    key={i}
+                    className="bg-white rounded-2xl overflow-hidden animate-pulse shadow-md"
+                  >
                     <div className="w-full h-48 bg-muted"></div>
                     <div className="p-6 space-y-3">
                       <div className="h-6 bg-muted rounded-lg w-3/4"></div>
@@ -657,7 +715,9 @@ export default function MapPage() {
             ) : (
               <div className="text-center py-12">
                 <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">No deals nearby</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  No deals nearby
+                </h3>
                 <p className="text-muted-foreground">
                   Try expanding your search area or check back later.
                 </p>

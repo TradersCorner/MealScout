@@ -781,6 +781,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = req.user;
       console.log("✅ Returning user:", user.id, user.email, user.userType);
+
+      // Check if user must reset password
+      if (user.mustResetPassword) {
+        return res.json({ ...user, requiresPasswordReset: true });
+      }
+
       res.json(user);
     } catch (error) {
       console.error("❌ Error fetching user:", error);
@@ -1075,6 +1081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           birthYear: user.birthYear,
           gender: user.gender,
           postalCode: user.postalCode,
+          mustResetPassword: false, // Clear the flag after successful reset
         });
 
         // Mark the token as used
@@ -1110,6 +1117,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   });
+
+  // Endpoint for authenticated users to change their temporary password
+  app.post(
+    "/api/auth/change-temp-password",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const schema = z.object({
+          currentPassword: z.string().min(1, "Current password is required"),
+          newPassword: z
+            .string()
+            .min(6, "New password must be at least 6 characters"),
+        });
+
+        const { currentPassword, newPassword } = schema.parse(req.body);
+        const user = req.user;
+
+        if (!user.passwordHash) {
+          return res.status(400).json({
+            success: false,
+            error: "Account uses OAuth authentication",
+          });
+        }
+
+        // Verify current password
+        const isValid = await bcrypt.compare(
+          currentPassword,
+          user.passwordHash
+        );
+        if (!isValid) {
+          return res.status(400).json({
+            success: false,
+            error: "Current password is incorrect",
+          });
+        }
+
+        // Hash the new password
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+        // Update the user's password
+        await storage.upsertUser({
+          id: user.id,
+          userType: user.userType,
+          email: user.email!,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profileImageUrl: user.profileImageUrl,
+          passwordHash: hashedPassword,
+          emailVerified: user.emailVerified,
+          facebookId: user.facebookId,
+          facebookAccessToken: user.facebookAccessToken,
+          googleId: user.googleId,
+          googleAccessToken: user.googleAccessToken,
+          stripeCustomerId: user.stripeCustomerId,
+          stripeSubscriptionId: user.stripeSubscriptionId,
+          subscriptionBillingInterval: user.subscriptionBillingInterval,
+          birthYear: user.birthYear,
+          gender: user.gender,
+          postalCode: user.postalCode,
+          mustResetPassword: false, // Clear the flag after successful reset
+        });
+
+        res.json({
+          success: true,
+          message: "Password has been successfully changed",
+        });
+      } catch (error) {
+        console.error("Password change error:", error);
+        if (error instanceof z.ZodError) {
+          res.status(400).json({
+            success: false,
+            error: "Invalid request",
+            details: error.errors,
+          });
+        } else {
+          res.status(500).json({
+            success: false,
+            error: "Unable to change password",
+          });
+        }
+      }
+    }
+  );
 
   // User address routes
   app.get("/api/user/addresses", isAuthenticated, async (req: any, res) => {
@@ -5172,6 +5262,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register redemption routes (Phase R1)
   const redemptionRoutes = (await import("./redemptionRoutes")).default;
   app.use("/api/restaurants", redemptionRoutes);
+
+  // Register manual onboarding routes (admin-only)
+  const { registerManualOnboardingRoutes } = await import(
+    "./routes/manualOnboardingRoutes"
+  );
+  registerManualOnboardingRoutes(app);
 
   // Add share middleware (Phase 7) - adds shareUrl helpers to all handlers
   const { shareUrlMiddleware } = await import("./shareMiddleware");

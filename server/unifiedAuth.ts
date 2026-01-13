@@ -978,6 +978,51 @@ export async function setupUnifiedAuth(app: Express) {
     });
   });
 
+  // Change password (for users with temp passwords or general password change)
+  app.post("/api/auth/change-password", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { oldPassword, newPassword } = req.body;
+
+      if (!oldPassword || !newPassword) {
+        return res
+          .status(400)
+          .json({ error: "Old and new passwords are required" });
+      }
+
+      if (newPassword.length < 8) {
+        return res
+          .status(400)
+          .json({ error: "New password must be at least 8 characters" });
+      }
+
+      const user = req.user as User;
+      if (!user.passwordHash) {
+        return res.status(400).json({ error: "User has no password set" });
+      }
+
+      const passwordMatch = await bcrypt.compare(
+        oldPassword,
+        user.passwordHash
+      );
+      if (!passwordMatch) {
+        return res.status(401).json({ error: "Current password is incorrect" });
+      }
+
+      const newPasswordHash = await bcrypt.hash(newPassword, 12);
+      await storage.updateUserPassword(user.id, newPasswordHash);
+      await storage.setUserMustResetPassword(user.id, false);
+
+      res.json({ message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Change password error:", error);
+      res.status(500).json({ error: "Failed to change password" });
+    }
+  });
+
   // Password reset routes
   app.post("/api/auth/forgot-password", async (req, res) => {
     try {

@@ -5,9 +5,9 @@ import { eq } from "drizzle-orm";
 
 async function checkUserType() {
   const adminEmail = "info.mealscout@gmail.com";
-  
+
   console.log(`🔍 Checking user type for: ${adminEmail}`);
-  
+
   const [user] = await db
     .select()
     .from(users)

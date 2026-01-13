@@ -1825,18 +1825,22 @@ export const hosts = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     businessName: varchar("business_name").notNull(),
     address: text("address").notNull(),
+    latitude: decimal("latitude", { precision: 10, scale: 8 }),
+    longitude: decimal("longitude", { precision: 11, scale: 8 }),
     locationType: varchar("location_type").notNull(), // 'office' | 'bar' | 'brewery' | 'other'
     expectedFootTraffic: integer("expected_foot_traffic"),
     amenities: jsonb("amenities"), // { power: boolean, wifi: boolean, seating: boolean, etc }
     contactPhone: varchar("contact_phone"),
     notes: text("notes"),
     isVerified: boolean("is_verified").default(false),
+    adminCreated: boolean("admin_created").default(false),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
   (table) => [
     index("idx_hosts_user").on(table.userId),
     index("idx_hosts_verified").on(table.isVerified),
+    index("idx_hosts_location").on(table.latitude, table.longitude),
   ]
 );
 

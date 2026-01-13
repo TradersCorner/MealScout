@@ -1,13 +1,13 @@
 /**
  * Admin Control Center API Endpoints
- * 
+ *
  * Provides comprehensive admin tools for:
  * - Incident management
  * - Audit log viewing
  * - Support ticket management
  * - Moderation event review
  * - System health monitoring
- * 
+ *
  * All endpoints require admin authentication.
  */
 
@@ -17,6 +17,9 @@ import { supportTickets, moderationEvents, securityAuditLog, incidents, users } 
 import { eq, desc, and, or, gte, lte, like } from 'drizzle-orm';
 import { isAdmin } from './unifiedAuth';
 import { logAudit } from './auditLogger';
+import { storage } from './storage';
+import bcrypt from 'bcryptjs';
+import type { EmailUserData } from '@shared/schema';
 
 const router = Router();
 
@@ -116,7 +119,7 @@ router.get('/audit-logs', isAdmin, async (req, res) => {
     }
     if (search) {
       const searchLower = String(search).toLowerCase();
-      filtered = filtered.filter((log: any) => 
+      filtered = filtered.filter((log: any) =>
         log.id.toLowerCase().includes(searchLower) ||
         log.resourceId?.toLowerCase().includes(searchLower)
       );
@@ -439,7 +442,133 @@ router.post('/grant-lifetime-access', isAdmin, async (req, res) => {
         hasAnalytics: true,
         hasDealScheduling: true,
       });
+
+  // Manual user onboarding - create any user type with temp password
+  app.post('/api/admin/users/create', isAdminOrStaff, async (req: any, res) => {
+    try {
+      const { email, firstName, lastName, phone, userType, tempPassword } = req.body;
+
+      if (!email || !firstName || !lastName || !userType) {
+        return res.status(400).json({ message: 'Email, firstName, lastName, and userType are required' });
+      }
+
+      const validUserTypes = ['customer', 'restaurant_owner', 'staff', 'admin'];
+      if (!validUserTypes.includes(userType)) {
+        return res.status(400).json({ message: 'Invalid user type' });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: 'User with this email already exists' });
+      }
+
+      // Generate temp password if not provided
+      const password = tempPassword || `Temp${Math.random().toString(36).slice(2, 10)}!`;
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      const userData: EmailUserData = {
+        email,
+        firstName,
+        lastName,
+        phone: phone || '',
+        passwordHash,
+      };
+
+      const user = await storage.upsertUserByAuth('email', userData, userType as any);
+
+      // Mark as needing password reset
+      await storage.setUserMustResetPassword(user.id, true);
+
+      res.status(201).json({
+        message: 'User created successfully',
+        user: { id: user.id, email: user.email, userType: user.userType },
+        tempPassword: password,
+      });
+    } catch (error: any) {
+      console.error('Error creating user manually:', error);
+      res.status(500).json({ message: 'Failed to create user' });
     }
+  });
+
+  // Create host profile with geocoded address
+  app.post('/api/admin/hosts/create', isAdminOrStaff, async (req: any, res) => {
+    try {
+      const { userId, businessName, address, locationType, latitude, longitude, amenities, contactPhone, notes } = req.body;
+
+      if (!userId || !businessName || !address || !locationType) {
+        return res.status(400).json({ message: 'userId, businessName, address, and locationType are required' });
+      }
+
+      // Verify user exists
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Check if host already exists for this user
+      const existingHost = await storage.getHostByUserId(userId);
+      if (existingHost) {
+        return res.status(400).json({ message: 'Host profile already exists for this user' });
+      }
+
+      const hostData: any = {
+        userId,
+        businessName,
+        address,
+        locationType,
+        amenities: amenities || null,
+        contactPhone: contactPhone || null,
+        notes: notes || null,
+        isVerified: true,
+        adminCreated: true,
+      };
+
+      // Add geocoding if provided
+      if (latitude !== undefined && longitude !== undefined) {
+        hostData.latitude = latitude.toString();
+        hostData.longitude = longitude.toString();
+      }
+
+      const host = await storage.createHost(hostData);
+
+      res.status(201).json({
+        message: 'Host profile created successfully',
+        host,
+      });
+    } catch (error: any) {
+      console.error('Error creating host manually:', error);
+      res.status(500).json({ message: 'Failed to create host profile' });
+    }
+  });
+
+  // Delete user (super admin only)
+  app.delete('/api/admin/users/:userId', isSuperAdmin, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+
+      if (!userId) {
+        return res.status(400).json({ message: 'User ID is required' });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Prevent deleting yourself
+      if (user.id === req.user.id) {
+        return res.status(400).json({ message: 'Cannot delete your own account' });
+      }
+
+      await storage.deleteUser(userId);
+
+      res.json({ message: 'User deleted successfully' });
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      res.status(500).json({ message: 'Failed to delete user' });
+    }
+  });
 
     // Log action
     await logAudit(adminUserId, 'grant_lifetime_access', 'restaurant_subscription', restaurantId, '', '', { reason });
@@ -462,7 +591,7 @@ router.post('/grant-lifetime-access', isAdmin, async (req, res) => {
 router.get('/lifetime-restaurants', isAdmin, async (req, res) => {
   try {
     const { restaurants, restaurantSubscriptions } = await import('@shared/schema');
-    
+
     const lifetimeRestaurants = await db
       .select({
         subscriptionId: restaurantSubscriptions.id,
@@ -631,6 +760,125 @@ router.post('/review-report/:reportId', isAdmin, async (req, res) => {
   } catch (error) {
     console.error('Error reviewing report:', error);
     res.status(500).json({ message: 'Failed to review report' });
+  }
+});
+
+// Manual user onboarding - admin/staff can create any user type
+router.post('/users/create', isAdmin, async (req: any, res) => {
+  try {
+    const { email, firstName, lastName, phone, userType, tempPassword } = req.body;
+
+    if (!email || !firstName || !lastName || !userType) {
+      return res.status(400).json({ message: 'Email, firstName, lastName, and userType are required' });
+    }
+
+    const validUserTypes = ['customer', 'restaurant_owner', 'staff', 'admin'];
+    if (!validUserTypes.includes(userType)) {
+      return res.status(400).json({ message: 'Invalid user type' });
+    }
+
+    const existingUser = await storage.getUserByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({ message: 'User with this email already exists' });
+    }
+
+    const password = tempPassword || `Temp${Math.random().toString(36).slice(2, 10)}!`;
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const userData: EmailUserData = {
+      email,
+      firstName,
+      lastName,
+      phone: phone || '',
+      passwordHash,
+    };
+
+    const user = await storage.upsertUserByAuth('email', userData, userType as any);
+    await storage.setUserMustResetPassword(user.id, true);
+
+    await logAudit(req.user.id, 'admin_user_created', 'user', user.id, req.ip, req.headers['user-agent'], { userType });
+
+    res.status(201).json({
+      message: 'User created successfully',
+      user: { id: user.id, email: user.email, userType: user.userType },
+      tempPassword: password,
+    });
+  } catch (error: any) {
+    console.error('Error creating user manually:', error);
+    res.status(500).json({ message: 'Failed to create user' });
+  }
+});
+
+// Create host profile with geocoding
+router.post('/hosts/create', isAdmin, async (req: any, res) => {
+  try {
+    const { userId, businessName, address, locationType, latitude, longitude, amenities, contactPhone, notes } = req.body;
+
+    if (!userId || !businessName || !address || !locationType) {
+      return res.status(400).json({ message: 'userId, businessName, address, and locationType are required' });
+    }
+
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const existingHost = await storage.getHostByUserId(userId);
+    if (existingHost) {
+      return res.status(400).json({ message: 'Host profile already exists for this user' });
+    }
+
+    const hostData: any = {
+      userId,
+      businessName,
+      address,
+      locationType,
+      amenities: amenities || null,
+      contactPhone: contactPhone || null,
+      notes: notes || null,
+      isVerified: true,
+      adminCreated: true,
+    };
+
+    if (latitude !== undefined && longitude !== undefined) {
+      hostData.latitude = latitude.toString();
+      hostData.longitude = longitude.toString();
+    }
+
+    const host = await storage.createHost(hostData);
+    await logAudit(req.user.id, 'admin_host_created', 'host', host.id, req.ip, req.headers['user-agent'], { userId });
+
+    res.status(201).json({ message: 'Host profile created successfully', host });
+  } catch (error: any) {
+    console.error('Error creating host manually:', error);
+    res.status(500).json({ message: 'Failed to create host profile' });
+  }
+});
+
+// Delete user (super admin only)
+router.delete('/users/:userId', async (req: any, res) => {
+  try {
+    if (req.user.userType !== 'super_admin') {
+      return res.status(403).json({ message: 'Super admin access required' });
+    }
+
+    const { userId } = req.params;
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.id === req.user.id) {
+      return res.status(400).json({ message: 'Cannot delete your own account' });
+    }
+
+    await storage.deleteUser(userId);
+    await logAudit(req.user.id, 'admin_user_deleted', 'user', userId, req.ip, req.headers['user-agent'], {});
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ message: 'Failed to delete user' });
   }
 });
 

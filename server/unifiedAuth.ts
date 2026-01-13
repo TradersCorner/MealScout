@@ -338,7 +338,7 @@ export async function setupUnifiedAuth(app: Express) {
           console.log(
             "✅ Google customer OAuth success, session saved, redirecting..."
           );
-          res.redirect("/");
+          res.redirect(`${baseUrl}/`);
         });
       }
     );
@@ -373,7 +373,7 @@ export async function setupUnifiedAuth(app: Express) {
           console.log(
             "✅ Google restaurant OAuth success, session saved, redirecting..."
           );
-          res.redirect("/restaurant-signup");
+          res.redirect(`${baseUrl}/restaurant-signup`);
         });
       }
     );
@@ -584,22 +584,7 @@ export async function setupUnifiedAuth(app: Express) {
           userAppContext: user?.appContext,
         });
 
-        // Set session cookie with domain based on app context
-        const domainMap = {
-          mealscout: ".mealscout.us",
-          tradescout: ".thetradescout.com",
-        };
-
-        const cookieDomain =
-          domainMap[appContext as "mealscout" | "tradescout"];
-
-        // Update session cookie domain
-        if (req.session.cookie) {
-          req.session.cookie.domain = cookieDomain;
-          console.log(`🍪 Set session cookie domain to: ${cookieDomain}`);
-        }
-
-        // Save session with updated cookie domain
+        // Save session
         req.session.save((err) => {
           if (err) {
             console.error("❌ Session save error:", err);
@@ -607,8 +592,10 @@ export async function setupUnifiedAuth(app: Express) {
           }
 
           // Redirect to appropriate domain
+          const frontendBase =
+            process.env.PUBLIC_BASE_URL || "http://localhost:5000";
           const redirectUrls = {
-            mealscout: "/?auth=success&t=" + Date.now(),
+            mealscout: `${frontendBase}/?auth=success&t=` + Date.now(),
             tradescout:
               "https://www.thetradescout.com/?auth=success&t=" + Date.now(),
           };

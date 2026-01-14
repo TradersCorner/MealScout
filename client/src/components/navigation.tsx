@@ -35,6 +35,11 @@ export default function Navigation() {
   const { toast } = useToast();
   const [isReporting, setIsReporting] = useState(false);
 
+  // Hide bottom navigation on the public landing page
+  if (location === "/") {
+    return null;
+  }
+
   const handleBugReport = async () => {
     if (isReporting) return;
     setIsReporting(true);
@@ -78,8 +83,8 @@ export default function Navigation() {
     user && (user.userType === "admin" || user.userType === "super_admin");
   const isStaff = user && user.userType === "staff";
 
-  // Debug logging for production issues
-  if (user && typeof window !== "undefined") {
+  // Debug logging (development only)
+  if (user && typeof window !== "undefined" && import.meta.env.DEV) {
     console.log("🔍 Navigation User Debug:", {
       email: user.email,
       userType: user.userType,

@@ -33,6 +33,11 @@ import {
   UtensilsCrossed,
   Croissant,
   Salad,
+  Fish,
+  Coffee,
+  Cake,
+  Beef,
+  Flame,
 } from "lucide-react";
 import mealScoutLogo from "@assets/ChatGPT Image Sep 14, 2025, 09_25_52 AM_1757872111259.png";
 import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
@@ -392,7 +397,7 @@ export default function Home() {
                 className="flex-shrink-0 rounded-full px-4 py-2 font-semibold text-white bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 border-0 shadow-md hover:shadow-lg transition-all"
                 size="sm"
               >
-                <Sparkles className="w-4 h-4 mr-2" /> Hot Deals
+                <Sparkles className="w-4 h-4 mr-2" /> 🔥 Hot Deals
               </Button>
             </Link>
             <Link href="/category/pizza">
@@ -401,7 +406,7 @@ export default function Home() {
                 size="sm"
                 className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
-                <Pizza className="w-4 h-4 mr-2" /> Pizza
+                🍕 Pizza
               </Button>
             </Link>
             <Link href="/category/burgers">
@@ -410,16 +415,25 @@ export default function Home() {
                 size="sm"
                 className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
-                <Sandwich className="w-4 h-4 mr-2" /> Burgers
+                🍔 Burgers
               </Button>
             </Link>
-            <Link href="/category/asian">
+            <Link href="/category/sushi">
               <Button
                 variant="outline"
                 size="sm"
                 className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
-                <Soup className="w-4 h-4 mr-2" /> Asian
+                🍣 Sushi
+              </Button>
+            </Link>
+            <Link href="/category/chinese">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+              >
+                🥡 Chinese
               </Button>
             </Link>
             <Link href="/category/mexican">
@@ -428,7 +442,7 @@ export default function Home() {
                 size="sm"
                 className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
-                <UtensilsCrossed className="w-4 h-4 mr-2" /> Mexican
+                🌮 Tacos
               </Button>
             </Link>
             <Link href="/category/breakfast">
@@ -437,7 +451,43 @@ export default function Home() {
                 size="sm"
                 className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
-                <Croissant className="w-4 h-4 mr-2" /> Breakfast
+                🥐 Breakfast
+              </Button>
+            </Link>
+            <Link href="/category/seafood">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+              >
+                🦞 Seafood
+              </Button>
+            </Link>
+            <Link href="/category/bbq">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+              >
+                🍖 BBQ
+              </Button>
+            </Link>
+            <Link href="/category/dessert">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+              >
+                🍰 Desserts
+              </Button>
+            </Link>
+            <Link href="/category/coffee">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+              >
+                ☕ Coffee
               </Button>
             </Link>
             <Link href="/category/healthy">
@@ -446,16 +496,7 @@ export default function Home() {
                 size="sm"
                 className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
-                <Salad className="w-4 h-4 mr-2" /> Healthy
-              </Button>
-            </Link>
-            <Link href="/search?filter=budget">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
-              >
-                <DollarSign className="w-4 h-4 mr-2" /> Budget
+                🥗 Healthy
               </Button>
             </Link>
           </div>

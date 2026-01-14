@@ -3,62 +3,92 @@ import { useParams, Link } from "wouter";
 import Navigation from "@/components/navigation";
 import DealCard from "@/components/deal-card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Filter, MapPin, SlidersHorizontal, Pizza, Sandwich, Utensils, UtensilsCrossed, Coffee, Salad, Fish, Cake, Croissant, Soup } from "lucide-react";
+import { ArrowLeft, Filter, MapPin, SlidersHorizontal, Pizza, Sandwich, Utensils, UtensilsCrossed, Coffee, Salad, Fish, Cake, Croissant, Soup, Flame, Beef } from "lucide-react";
 
 const categoryConfig = {
   pizza: {
     title: "Pizza & Italian",
     icon: Pizza,
     gradient: "from-orange-500 to-red-500",
-    description: "Delicious pizza and authentic Italian cuisine"
+    description: "Delicious pizza and authentic Italian cuisine",
+    emoji: "🍕"
   },
   burgers: {
     title: "Burgers & American",
     icon: Sandwich, 
     gradient: "from-red-500 to-yellow-500",
-    description: "Juicy burgers and classic American dishes"
+    description: "Juicy burgers and classic American dishes",
+    emoji: "🍔"
   },
-  asian: {
-    title: "Asian Cuisine",
+  sushi: {
+    title: "Sushi & Japanese",
+    icon: Fish,
+    gradient: "from-red-500 to-pink-500",
+    description: "Fresh sushi and authentic Japanese cuisine",
+    emoji: "🍣"
+  },
+  chinese: {
+    title: "Chinese Food",
     icon: Soup,
-    gradient: "from-red-600 to-orange-500", 
-    description: "Authentic Asian flavors and fresh ingredients"
+    gradient: "from-red-600 to-yellow-500",
+    description: "Authentic Chinese dishes and flavors",
+    emoji: "🥡"
   },
   mexican: {
     title: "Mexican Food",
     icon: UtensilsCrossed,
     gradient: "from-green-500 to-red-500",
-    description: "Spicy and flavorful Mexican specialties"
+    description: "Tacos, burritos, and Mexican specialties",
+    emoji: "🌮"
   },
   breakfast: {
     title: "Breakfast & Brunch",
     icon: Croissant,
     gradient: "from-yellow-400 to-orange-500",
-    description: "Start your day with great breakfast deals"
-  },
-  healthy: {
-    title: "Healthy Options",
-    icon: Salad,
-    gradient: "from-green-400 to-green-600",
-    description: "Fresh, nutritious, and delicious healthy meals"
+    description: "Start your day with great breakfast deals",
+    emoji: "🥐"
   },
   seafood: {
     title: "Seafood",
     icon: Fish,
     gradient: "from-blue-500 to-teal-500", 
-    description: "Fresh catch and seafood specialties"
+    description: "Fresh catch and seafood specialties",
+    emoji: "🦞"
   },
-  coffee: {
-    title: "Coffee & Cafes",
-    icon: Coffee,
-    gradient: "from-amber-600 to-orange-600",
-    description: "Great coffee and cozy cafe atmosphere"
+  bbq: {
+    title: "BBQ & Grilled",
+    icon: Flame,
+    gradient: "from-orange-600 to-red-600",
+    description: "Smoky BBQ and grilled meats",
+    emoji: "🍖"
   },
   dessert: {
     title: "Desserts & Sweets",
     icon: Cake,
     gradient: "from-pink-400 to-purple-500",
-    description: "Sweet treats and decadent desserts"
+    description: "Sweet treats and decadent desserts",
+    emoji: "🍰"
+  },
+  coffee: {
+    title: "Coffee & Cafes",
+    icon: Coffee,
+    gradient: "from-amber-600 to-orange-600",
+    description: "Great coffee and cozy cafe atmosphere",
+    emoji: "☕"
+  },
+  healthy: {
+    title: "Healthy Options",
+    icon: Salad,
+    gradient: "from-green-400 to-green-600",
+    description: "Fresh, nutritious, and delicious healthy meals",
+    emoji: "🥗"
+  },
+  asian: {
+    title: "Asian Cuisine",
+    icon: Soup,
+    gradient: "from-red-600 to-orange-500", 
+    description: "Authentic Asian flavors and fresh ingredients",
+    emoji: "🍜"
   }
 };
 
@@ -96,30 +126,38 @@ export default function CategoryPage() {
         return cuisineType.includes('pizza') || cuisineType.includes('italian') || 
                title.includes('pizza') || title.includes('pasta');
       case 'burgers':
-        return cuisineType.includes('american') || title.includes('burger') || 
-               title.includes('sandwich');
+        return cuisineType.includes('american') || cuisineType.includes('burger') ||
+               title.includes('burger') || title.includes('sandwich');
+      case 'sushi':
+        return cuisineType.includes('japanese') || cuisineType.includes('sushi') ||
+               title.includes('sushi') || title.includes('sashimi');
+      case 'chinese':
+        return cuisineType.includes('chinese') || title.includes('chinese') ||
+               title.includes('noodle') || title.includes('fried rice');
       case 'asian':
-        return cuisineType.includes('asian') || cuisineType.includes('chinese') || 
-               cuisineType.includes('japanese') || title.includes('sushi') || 
-               title.includes('noodle');
+        return cuisineType.includes('asian') || cuisineType.includes('thai') || 
+               cuisineType.includes('vietnamese') || title.includes('pho');
       case 'mexican':
         return cuisineType.includes('mexican') || title.includes('taco') || 
-               title.includes('burrito');
+               title.includes('burrito') || title.includes('enchilada');
       case 'breakfast':
         return title.includes('breakfast') || title.includes('brunch') || 
-               title.includes('pancake') || title.includes('coffee');
-      case 'healthy':
-        return title.includes('salad') || title.includes('smoothie') || 
-               cuisineType.includes('healthy');
+               title.includes('pancake') || title.includes('waffle') || title.includes('eggs');
       case 'seafood':
         return cuisineType.includes('seafood') || title.includes('fish') || 
-               title.includes('shrimp');
-      case 'coffee':
-        return cuisineType.includes('cafe') || title.includes('coffee') || 
-               title.includes('latte');
+               title.includes('shrimp') || title.includes('lobster') || title.includes('crab');
+      case 'bbq':
+        return cuisineType.includes('bbq') || cuisineType.includes('barbecue') ||
+               title.includes('bbq') || title.includes('ribs') || title.includes('brisket');
       case 'dessert':
         return title.includes('dessert') || title.includes('ice cream') || 
-               title.includes('cake');
+               title.includes('cake') || title.includes('cookie');
+      case 'coffee':
+        return cuisineType.includes('cafe') || cuisineType.includes('coffee') ||
+               title.includes('coffee') || title.includes('latte') || title.includes('espresso');
+      case 'healthy':
+        return title.includes('salad') || title.includes('smoothie') || 
+               cuisineType.includes('healthy') || title.includes('bowl');
       default:
         return false;
     }

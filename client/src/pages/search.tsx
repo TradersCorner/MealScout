@@ -224,11 +224,11 @@ export default function SearchPage() {
         canonicalUrl="https://mealscout.us/search"
       />
       {/* Header */}
-      <header className="px-6 py-6 bg-white border-b border-border">
+      <header className="px-6 py-6 bg-gradient-to-br from-orange-50 to-yellow-50 border-b border-orange-100">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Search Deals</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-2xl font-bold text-gray-900">Search Deals</h1>
+            <p className="text-sm text-gray-600">
               {isLocating
                 ? "Finding your location..."
                 : userLocation
@@ -243,6 +243,7 @@ export default function SearchPage() {
             size="sm" 
             onClick={() => setShowFilters(!showFilters)}
             data-testid="button-filter"
+            className="border-orange-300 text-orange-600 hover:bg-orange-50"
           >
             <SlidersHorizontal className="w-4 h-4" />
           </Button>
@@ -270,7 +271,11 @@ export default function SearchPage() {
               variant={selectedCategory === category.id ? "default" : "outline"}
               size="sm"
               onClick={() => setSelectedCategory(category.id)}
-              className="flex-shrink-0 rounded-full px-4 py-2"
+              className={`flex-shrink-0 rounded-full px-4 py-2 ${
+                selectedCategory === category.id 
+                  ? "bg-orange-500 hover:bg-orange-600 text-white" 
+                  : "border-orange-200 text-gray-700 hover:bg-orange-50 hover:border-orange-300"
+              }`}
               data-testid={`button-category-${category.id}`}
             >
               <category.icon className="w-4 h-4 mr-2" />

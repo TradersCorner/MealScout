@@ -35,11 +35,6 @@ export default function Navigation() {
   const { toast } = useToast();
   const [isReporting, setIsReporting] = useState(false);
 
-  // Hide bottom navigation on the public landing page
-  if (location === "/") {
-    return null;
-  }
-
   const handleBugReport = async () => {
     if (isReporting) return;
     setIsReporting(true);

@@ -544,7 +544,7 @@ export default function StaffDashboard() {
         </div>
 
         {/* Quick Links */}
-        {user?.userType === "admin" && (
+        {(user?.userType === "admin" || user?.userType === "super_admin") && (
           <Card className="mt-8">
             <CardHeader>
               <CardTitle>Admin Quick Links</CardTitle>

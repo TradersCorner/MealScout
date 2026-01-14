@@ -285,7 +285,7 @@ export default function Home() {
                   variant="ghost"
                   size="icon"
                   onClick={() => setNavigateTo("/login")}
-                  className="text-gray-700 hover:text-red-600"
+                  className="text-gray-700 hover:text-orange-600"
                   title="Login"
                 >
                   <LogIn className="w-5 h-5" />
@@ -294,7 +294,7 @@ export default function Home() {
                   variant="ghost"
                   size="icon"
                   onClick={() => setNavigateTo("/customer-signup")}
-                  className="text-gray-700 hover:text-red-600"
+                  className="text-gray-700 hover:text-orange-600"
                   title="Customer Sign Up"
                 >
                   <UserPlus className="w-5 h-5" />
@@ -305,7 +305,7 @@ export default function Home() {
                   onClick={() =>
                     setNavigateTo("/customer-signup?role=business")
                   }
-                  className="text-gray-700 hover:text-red-600"
+                  className="text-gray-700 hover:text-orange-600"
                   title="Restaurant/Bar/Food Truck Sign Up"
                 >
                   <Store className="w-5 h-5" />
@@ -315,7 +315,7 @@ export default function Home() {
                   size="icon"
                   onClick={retryLocation}
                   disabled={isLoadingLocation}
-                  className="text-gray-700 hover:text-red-600"
+                  className="text-gray-700 hover:text-orange-600"
                   title="Refresh Location"
                 >
                   {isLoadingLocation ? (
@@ -339,7 +339,7 @@ export default function Home() {
                   size="icon"
                   onClick={retryLocation}
                   disabled={isLoadingLocation}
-                  className="text-gray-700 hover:text-red-600 w-7 h-7"
+                  className="text-gray-700 hover:text-orange-600 w-7 h-7"
                   title="Refresh Location"
                 >
                   {isLoadingLocation ? (

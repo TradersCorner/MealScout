@@ -336,7 +336,6 @@ export default function SearchPage() {
             size="sm"
             onClick={() => setShowFilters(!showFilters)}
             data-testid="button-filter"
-
           >
             <SlidersHorizontal className="w-4 h-4" />
           </Button>

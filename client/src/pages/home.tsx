@@ -376,7 +376,7 @@ export default function Home() {
             onSearch={(query) =>
               setNavigateTo(`/search?q=${encodeURIComponent(query)}`)
             }
-            className="mb-3"
+            className="mb-6 shadow-lg"
             placeholder="Search deals, restaurants..."
           />
 

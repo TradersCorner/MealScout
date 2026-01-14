@@ -171,8 +171,8 @@ export default function Navigation() {
               <button
                 className={`flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
                   location === item.path
-                    ? "text-red-600 bg-red-50"
-                    : "text-gray-600 hover:text-red-600 hover:bg-red-50"
+                    ? "text-orange-600 bg-orange-50"
+                    : "text-gray-600 hover:text-orange-600 hover:bg-orange-50"
                 }`}
                 data-testid={`nav-${item.label.toLowerCase()}`}
               >
@@ -188,7 +188,7 @@ export default function Navigation() {
               className={`flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
                 item.isBug
                   ? "text-white bg-orange-500 hover:bg-orange-600 shadow-md"
-                  : "text-gray-600 hover:text-red-600 hover:bg-red-50"
+                  : "text-gray-600 hover:text-orange-600 hover:bg-orange-50"
               } ${isReporting ? "opacity-80 cursor-not-allowed" : ""}`}
               data-testid={`nav-${item.label.toLowerCase()}`}
               aria-label={item.label}

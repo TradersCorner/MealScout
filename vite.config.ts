@@ -6,9 +6,7 @@ export default defineConfig({
   define: {
     __BUILD_ID__: JSON.stringify(Date.now().toString(36)),
   },
-  plugins: [
-    react(),
-  ],
+  plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),

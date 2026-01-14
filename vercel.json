@@ -1,6 +1,6 @@
 {
-  "buildCommand": "vite build",
-  "outputDirectory": "dist/public",
+  "buildCommand": "npm --prefix client ci && npm --prefix client run build",
+  "outputDirectory": "client/dist",
   "installCommand": "npm install",
   "headers": [
     {

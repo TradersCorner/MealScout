@@ -176,7 +176,7 @@ function ManualUserCreation() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-sm font-medium">First Name</label>
             <input
@@ -1169,13 +1169,13 @@ export default function AdminDashboard() {
   return (
     <div className="max-w-7xl mx-auto min-h-screen bg-background pb-20">
       {/* Header */}
-      <header className="px-6 py-6 bg-white border-b border-border">
-        <div className="flex items-center justify-between">
+      <header className="px-4 sm:px-6 py-4 sm:py-6 bg-white border-b border-border">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center space-x-3">
-            <Shield className="w-8 h-8 text-primary" />
+            <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
             <div>
-              <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-              <p className="text-sm text-muted-foreground">
+              <h1 className="text-xl sm:text-2xl font-bold">Admin Dashboard</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 Manage your MealScout platform
               </p>
             </div>
@@ -1187,12 +1187,12 @@ export default function AdminDashboard() {
       </header>
 
       {/* Dashboard Switcher */}
-      <div className="px-6 pt-6">
+      <div className="px-4 sm:px-6 pt-4 sm:pt-6">
         <QuickDashboardAccess />
       </div>
 
       {/* Stats Overview */}
-      <div className="px-6 py-6">
+      <div className="px-4 sm:px-6 py-4 sm:py-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardHeader className="pb-3">

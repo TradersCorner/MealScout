@@ -205,10 +205,10 @@ export default function StaffDashboard() {
     <div className="min-h-screen bg-background pb-20">
       <Navigation />
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-4 sm:py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
             Staff Dashboard
           </h1>
           <p className="text-muted-foreground">
@@ -230,9 +230,9 @@ export default function StaffDashboard() {
                 <span className="font-semibold">Email:</span>{" "}
                 {createdAccount.email}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <span className="font-semibold">Temp Password:</span>
-                <code className="bg-white px-3 py-1 rounded border text-sm">
+                <code className="bg-white px-3 py-1 rounded border text-sm break-all">
                   {createdAccount.tempPassword}
                 </code>
                 <Button
@@ -264,7 +264,7 @@ export default function StaffDashboard() {
           </Card>
         )}
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
           {/* Create Any User Type (Admin only) */}
           {(user?.userType === "admin" || user?.userType === "super_admin") && (
             <Card className="md:col-span-2">
@@ -288,7 +288,7 @@ export default function StaffDashboard() {
                       phone: genericPhone || undefined,
                     });
                   }}
-                  className="grid md:grid-cols-2 gap-4"
+                  className="grid grid-cols-1 md:grid-cols-2 gap-4"
                 >
                   <div>
                     <Label htmlFor="generic-email">Email *</Label>

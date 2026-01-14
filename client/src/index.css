@@ -1,4 +1,5 @@
-
+/* NUCLEAR CSS TEST - Uncomment to verify deploys visually */
+/* body { outline: 8px solid red !important; } */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,66 +7,70 @@
 :root {
   /* DoorDash-inspired Color Palette */
   --background: hsl(0 0% 98%);
-  --background-gradient: linear-gradient(135deg, hsl(0 0% 99%) 0%, hsl(0 0% 97%) 100%);
+  --background-gradient: linear-gradient(
+    135deg,
+    hsl(0 0% 99%) 0%,
+    hsl(0 0% 97%) 100%
+  );
   --foreground: hsl(0 0% 9%);
-  
+
   --card: hsl(0 0% 100%);
   --card-foreground: hsl(0 0% 9%);
-  
+
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(0 0% 9%);
-  
+
   /* DoorDash red primary */
   --primary: hsl(0 72% 51%);
   --primary-foreground: hsl(0 0% 100%);
-  
+
   /* Clean gray secondary */
   --secondary: hsl(0 0% 96%);
   --secondary-foreground: hsl(0 0% 9%);
-  
+
   /* Light gray backgrounds */
   --muted: hsl(0 0% 96%);
   --muted-foreground: hsl(0 0% 45%);
-  
+
   /* Clean accent */
   --accent: hsl(0 0% 96%);
   --accent-foreground: hsl(0 0% 9%);
-  
+
   --destructive: hsl(0 84% 60%);
   --destructive-foreground: hsl(0 0% 100%);
-  
+
   --border: hsl(0 0% 90%);
   --input: hsl(0 0% 96%);
   --ring: hsl(0 72% 51%);
-  
+
   --radius: 12px;
 }
 
 .dark {
   --background: hsl(0 0% 4%);
   --foreground: hsl(0 0% 96%);
-  
+
   --card: hsl(0 0% 8%);
   --card-foreground: hsl(0 0% 95%);
-  
+
   --popover: hsl(0 0% 6%);
   --popover-foreground: hsl(0 0% 96%);
-  
+
   --primary: hsl(0 72% 51%);
   --primary-foreground: hsl(0 0% 100%);
-  
+
   --secondary: hsl(0 0% 14%);
   --secondary-foreground: hsl(0 0% 100%);
-  
+
   --muted: hsl(0 0% 11%);
   --muted-foreground: hsl(0 0% 54%);
-  
+
   --accent: hsl(0 0% 14%);
   --accent-foreground: hsl(0 0% 100%);
-  
+
   --destructive: hsl(0 72% 51%);
   --destructive-foreground: hsl(0 0% 100%);
-  
+
   --border: hsl(0 0% 18%);
   --input: hsl(0 0% 18%);
   --ring: hsl(0 72% 51%);
@@ -79,16 +84,17 @@
   body {
     background: var(--background-gradient);
     @apply text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+      Ubuntu, Cantarell, sans-serif;
     min-height: 100vh;
   }
-  
+
   /* Modern app background */
   .app-background {
     background: linear-gradient(
-      135deg, 
-      hsl(0 0% 99%) 0%, 
-      hsl(0 0% 97%) 50%, 
+      135deg,
+      hsl(0 0% 99%) 0%,
+      hsl(0 0% 97%) 50%,
       hsl(0 0% 95%) 100%
     );
     min-height: 100vh;
@@ -97,10 +103,10 @@
   /* Animated gradient background */
   .animated-gradient-bg {
     background: linear-gradient(
-      -45deg, 
-      hsl(0 72% 51%), 
-      hsl(14 88% 55%), 
-      hsl(28 76% 47%), 
+      -45deg,
+      hsl(0 72% 51%),
+      hsl(14 88% 55%),
+      hsl(28 76% 47%),
       hsl(45 93% 58%),
       hsl(0 72% 51%)
     );
@@ -111,7 +117,7 @@
   }
 
   .animated-gradient-bg::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -137,38 +143,44 @@
       background-position: 0% 50%;
     }
   }
-  
+
   /* Clean typography */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-weight: 600;
     line-height: 1.2;
   }
-  
+
   /* Clean button styles */
   button {
     font-weight: 500;
   }
-  
+
   /* Clean input styles */
-  input, textarea {
+  input,
+  textarea {
     font-size: 16px;
   }
-  
+
   /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
-  
+
   ::-webkit-scrollbar-track {
     background: transparent;
   }
-  
+
   ::-webkit-scrollbar-thumb {
     background: hsl(0 0% 80%);
     border-radius: 3px;
   }
-  
+
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(0 0% 70%);
   }
@@ -179,16 +191,17 @@
   .shadow-clean {
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   }
-  
+
   .shadow-clean-lg {
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+      0 4px 6px -2px rgba(0, 0, 0, 0.05);
   }
-  
+
   /* DoorDash-style card hover */
   .card-hover {
     transition: box-shadow 0.2s ease-in-out;
   }
-  
+
   .card-hover:hover {
     box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
   }

@@ -7,23 +7,81 @@ import DealCard from "@/components/deal-card";
 import SmartSearch from "@/components/smart-search";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Filter, MapPin, Clock, X, SlidersHorizontal, Utensils, Pizza, Sandwich, Soup, UtensilsCrossed, Salad, Coffee, Fish, Cake, Croissant, Beef, ChefHat, Crown } from "lucide-react";
+import {
+  Search,
+  Filter,
+  MapPin,
+  Clock,
+  X,
+  SlidersHorizontal,
+  Utensils,
+  Pizza,
+  Sandwich,
+  Soup,
+  UtensilsCrossed,
+  Salad,
+  Coffee,
+  Fish,
+  Cake,
+  Croissant,
+  Beef,
+  ChefHat,
+  Crown,
+} from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
 
 // Category configuration mapping (from category.tsx)
 const categoryConfig = {
-  pizza: { title: "Pizza", icon: Pizza, keywords: ['pizza', 'italian'] },
-  burgers: { title: "Burgers", icon: Sandwich, keywords: ['american', 'burger', 'sandwich'] },
-  asian: { title: "Asian", icon: Soup, keywords: ['asian', 'chinese', 'japanese', 'sushi', 'noodle'] },
-  mexican: { title: "Mexican", icon: UtensilsCrossed, keywords: ['mexican', 'taco', 'burrito'] },
-  healthy: { title: "Healthy", icon: Salad, keywords: ['healthy', 'salad', 'smoothie'] },
-  breakfast: { title: "Breakfast", icon: Croissant, keywords: ['breakfast', 'brunch', 'pancake', 'coffee'] },
-  seafood: { title: "Seafood", icon: Fish, keywords: ['seafood', 'fish', 'shrimp'] },
-  coffee: { title: "Coffee", icon: Coffee, keywords: ['cafe', 'coffee', 'latte'] },
-  dessert: { title: "Desserts", icon: Cake, keywords: ['dessert', 'ice cream', 'cake'] }
+  pizza: { title: "Pizza", icon: Pizza, keywords: ["pizza", "italian"] },
+  burgers: {
+    title: "Burgers",
+    icon: Sandwich,
+    keywords: ["american", "burger", "sandwich"],
+  },
+  asian: {
+    title: "Asian",
+    icon: Soup,
+    keywords: ["asian", "chinese", "japanese", "sushi", "noodle"],
+  },
+  mexican: {
+    title: "Mexican",
+    icon: UtensilsCrossed,
+    keywords: ["mexican", "taco", "burrito"],
+  },
+  healthy: {
+    title: "Healthy",
+    icon: Salad,
+    keywords: ["healthy", "salad", "smoothie"],
+  },
+  breakfast: {
+    title: "Breakfast",
+    icon: Croissant,
+    keywords: ["breakfast", "brunch", "pancake", "coffee"],
+  },
+  seafood: {
+    title: "Seafood",
+    icon: Fish,
+    keywords: ["seafood", "fish", "shrimp"],
+  },
+  coffee: {
+    title: "Coffee",
+    icon: Coffee,
+    keywords: ["cafe", "coffee", "latte"],
+  },
+  dessert: {
+    title: "Desserts",
+    icon: Cake,
+    keywords: ["dessert", "ice cream", "cake"],
+  },
 };
 
 export default function SearchPage() {
@@ -33,16 +91,19 @@ export default function SearchPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState([0, 50]);
   const [sortBy, setSortBy] = useState("relevance");
-  
+
   // Location state management
-  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
 
   // Parse URL query parameter
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const query = urlParams.get('q');
+    const query = urlParams.get("q");
     if (query) {
       setSearchQuery(decodeURIComponent(query));
     }
@@ -56,7 +117,7 @@ export default function SearchPage() {
         (position) => {
           const location = {
             lat: position.coords.latitude,
-            lng: position.coords.longitude
+            lng: position.coords.longitude,
           };
           setUserLocation(location);
           setIsLocating(false);
@@ -73,13 +134,15 @@ export default function SearchPage() {
 
   // Fetch nearby deals when location is available, otherwise featured deals
   const { data: nearbyDeals, isLoading: nearbyLoading } = useQuery({
-    queryKey: userLocation 
+    queryKey: userLocation
       ? ["/api/deals/nearby", userLocation.lat, userLocation.lng]
       : ["/api/deals/featured"],
-    queryFn: userLocation 
+    queryFn: userLocation
       ? async () => {
-          const response = await fetch(`/api/deals/nearby/${userLocation.lat}/${userLocation.lng}`);
-          if (!response.ok) throw new Error('Failed to fetch nearby deals');
+          const response = await fetch(
+            `/api/deals/nearby/${userLocation.lat}/${userLocation.lng}`
+          );
+          if (!response.ok) throw new Error("Failed to fetch nearby deals");
           return response.json();
         }
       : undefined,
@@ -92,73 +155,76 @@ export default function SearchPage() {
   });
 
   // Search for restaurants when there's a search query
-  const { data: searchedRestaurants, isLoading: restaurantsLoading } = useQuery({
-    queryKey: ["/api/restaurants/search", searchQuery],
-    queryFn: async () => {
-      if (!searchQuery || searchQuery.length < 2) return [];
-      const params = new URLSearchParams({ q: searchQuery });
-      // Don't filter by location when searching by text - show all matching restaurants
-      const response = await fetch(`/api/restaurants/search?${params}`);
-      if (!response.ok) throw new Error('Failed to search restaurants');
-      return response.json();
-    },
-    enabled: searchQuery.length >= 2,
-  });
+  const { data: searchedRestaurants, isLoading: restaurantsLoading } = useQuery(
+    {
+      queryKey: ["/api/restaurants/search", searchQuery],
+      queryFn: async () => {
+        if (!searchQuery || searchQuery.length < 2) return [];
+        const params = new URLSearchParams({ q: searchQuery });
+        // Don't filter by location when searching by text - show all matching restaurants
+        const response = await fetch(`/api/restaurants/search?${params}`);
+        if (!response.ok) throw new Error("Failed to search restaurants");
+        return response.json();
+      },
+      enabled: searchQuery.length >= 2,
+    }
+  );
 
   const isLoading = nearbyLoading || featuredLoading || restaurantsLoading;
 
   // Function to map cuisine types and titles to category IDs
   const mapDealToCategory = (deal: any): string[] => {
     const categories: string[] = [];
-    const cuisineType = deal.restaurant?.cuisineType?.toLowerCase() || '';
-    const title = deal.title?.toLowerCase() || '';
-    
+    const cuisineType = deal.restaurant?.cuisineType?.toLowerCase() || "";
+    const title = deal.title?.toLowerCase() || "";
+
     // Check each category for matches
     Object.entries(categoryConfig).forEach(([categoryId, config]) => {
       const keywords = config.keywords;
-      const matches = keywords.some(keyword => 
-        cuisineType.includes(keyword) || title.includes(keyword)
+      const matches = keywords.some(
+        (keyword) => cuisineType.includes(keyword) || title.includes(keyword)
       );
       if (matches) {
         categories.push(categoryId);
       }
     });
-    
+
     return categories;
   };
 
   // Generate dynamic categories based on nearby deals
   const generateDynamicCategories = (deals: any[]) => {
     const categoryCounts: Record<string, number> = {};
-    
+
     // Count deals per category
-    deals.forEach(deal => {
+    deals.forEach((deal) => {
       const dealCategories = mapDealToCategory(deal);
-      dealCategories.forEach(categoryId => {
+      dealCategories.forEach((categoryId) => {
         categoryCounts[categoryId] = (categoryCounts[categoryId] || 0) + 1;
       });
     });
-    
+
     // Sort categories by count and take top 5
     const sortedCategories = Object.entries(categoryCounts)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
       .map(([categoryId]) => categoryId);
-    
+
     // Build category buttons
     const dynamicCategories = [{ id: "all", label: "All", icon: Utensils }];
-    
-    sortedCategories.forEach(categoryId => {
+
+    sortedCategories.forEach((categoryId) => {
       if (categoryConfig[categoryId as keyof typeof categoryConfig]) {
-        const config = categoryConfig[categoryId as keyof typeof categoryConfig];
+        const config =
+          categoryConfig[categoryId as keyof typeof categoryConfig];
         dynamicCategories.push({
           id: categoryId,
           label: config.title,
-          icon: config.icon
+          icon: config.icon,
         });
       }
     });
-    
+
     return dynamicCategories;
   };
 
@@ -173,54 +239,81 @@ export default function SearchPage() {
   ];
 
   // Use dynamic categories when we have nearby deals, otherwise use static
-  const allDeals = Array.isArray(nearbyDeals) ? nearbyDeals : Array.isArray(featuredDeals) ? featuredDeals : [];
-  const categories = userLocation && nearbyDeals && nearbyDeals.length > 0 
-    ? generateDynamicCategories(nearbyDeals)
-    : staticCategories;
+  const allDeals = Array.isArray(nearbyDeals)
+    ? nearbyDeals
+    : Array.isArray(featuredDeals)
+    ? featuredDeals
+    : [];
+  const categories =
+    userLocation && nearbyDeals && nearbyDeals.length > 0
+      ? generateDynamicCategories(nearbyDeals)
+      : staticCategories;
 
   // allDeals is already defined above
-  const filteredDeals = allDeals.filter((deal: any) => {
-    const matchesSearch = !searchQuery || 
-      deal.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      deal.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      deal.restaurant?.name?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesCategory = selectedCategory === "all" || (
-      selectedCategory && mapDealToCategory(deal).includes(selectedCategory)
-    );
-    
-    // Apply price range filter
-    const dealPrice = parseFloat(deal.minOrderAmount) || 0;
-    const matchesPrice = dealPrice >= priceRange[0] && dealPrice <= priceRange[1];
-    
-    return matchesSearch && matchesCategory && matchesPrice;
-  }).sort((a: any, b: any) => {
-    // Apply sorting
-    switch (sortBy) {
-      case 'price_low':
-        return parseFloat(a.minOrderAmount || '0') - parseFloat(b.minOrderAmount || '0');
-      case 'price_high':
-        return parseFloat(b.minOrderAmount || '0') - parseFloat(a.minOrderAmount || '0');
-      case 'discount':
-        return parseFloat(b.discountValue || '0') - parseFloat(a.discountValue || '0');
-      case 'newest':
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      default:
-        return 0;
-    }
-  });
+  const filteredDeals = allDeals
+    .filter((deal: any) => {
+      const matchesSearch =
+        !searchQuery ||
+        deal.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        deal.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        deal.restaurant?.name
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase());
 
-  const searchTitle = searchQuery ? `${searchQuery} - Search Results` : 'Search Deals';
-  const searchDescription = searchQuery 
+      const matchesCategory =
+        selectedCategory === "all" ||
+        (selectedCategory &&
+          mapDealToCategory(deal).includes(selectedCategory));
+
+      // Apply price range filter
+      const dealPrice = parseFloat(deal.minOrderAmount) || 0;
+      const matchesPrice =
+        dealPrice >= priceRange[0] && dealPrice <= priceRange[1];
+
+      return matchesSearch && matchesCategory && matchesPrice;
+    })
+    .sort((a: any, b: any) => {
+      // Apply sorting
+      switch (sortBy) {
+        case "price_low":
+          return (
+            parseFloat(a.minOrderAmount || "0") -
+            parseFloat(b.minOrderAmount || "0")
+          );
+        case "price_high":
+          return (
+            parseFloat(b.minOrderAmount || "0") -
+            parseFloat(a.minOrderAmount || "0")
+          );
+        case "discount":
+          return (
+            parseFloat(b.discountValue || "0") -
+            parseFloat(a.discountValue || "0")
+          );
+        case "newest":
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        default:
+          return 0;
+      }
+    });
+
+  const searchTitle = searchQuery
+    ? `${searchQuery} - Search Results`
+    : "Search Deals";
+  const searchDescription = searchQuery
     ? `Find nearby deals for "${searchQuery}". Browse local restaurants and discover limited-time discounts close to you.`
-    : 'Search for food deals near you. Filter by category, price range, and more. Discover nearby discounts from local restaurants.';
+    : "Search for food deals near you. Filter by category, price range, and more. Discover nearby discounts from local restaurants.";
 
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">
       <SEOHead
         title={`${searchTitle} | MealScout`}
         description={searchDescription}
-        keywords={`search food deals, find restaurants, ${searchQuery || 'food search'}, restaurant search, deal finder`}
+        keywords={`search food deals, find restaurants, ${
+          searchQuery || "food search"
+        }, restaurant search, deal finder`}
         canonicalUrl="https://mealscout.us/search"
       />
       {/* Header */}
@@ -238,9 +331,9 @@ export default function SearchPage() {
                 : "Set your location to see what's nearby"}
             </p>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setShowFilters(!showFilters)}
             data-testid="button-filter"
             className="border-orange-300 text-orange-600 hover:bg-orange-50"
@@ -272,8 +365,8 @@ export default function SearchPage() {
               size="sm"
               onClick={() => setSelectedCategory(category.id)}
               className={`flex-shrink-0 rounded-full px-4 py-2 ${
-                selectedCategory === category.id 
-                  ? "bg-orange-500 hover:bg-orange-600 text-white" 
+                selectedCategory === category.id
+                  ? "bg-orange-500 hover:bg-orange-600 text-white"
                   : "border-orange-200 text-gray-700 hover:bg-orange-50 hover:border-orange-300"
               }`}
               data-testid={`button-category-${category.id}`}
@@ -290,15 +383,21 @@ export default function SearchPage() {
             <CardContent className="p-4 space-y-4">
               {/* Sort By */}
               <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">Sort by</label>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Sort by
+                </label>
                 <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="relevance">Most Relevant</SelectItem>
-                    <SelectItem value="price_low">Price: Low to High</SelectItem>
-                    <SelectItem value="price_high">Price: High to Low</SelectItem>
+                    <SelectItem value="price_low">
+                      Price: Low to High
+                    </SelectItem>
+                    <SelectItem value="price_high">
+                      Price: High to Low
+                    </SelectItem>
                     <SelectItem value="discount">Best Discount</SelectItem>
                     <SelectItem value="newest">Newest First</SelectItem>
                   </SelectContent>
@@ -326,7 +425,8 @@ export default function SearchPage() {
               {/* Clear Filters */}
               <div className="flex justify-between items-center pt-2">
                 <span className="text-sm text-muted-foreground">
-                  {filteredDeals.length} deal{filteredDeals.length === 1 ? '' : 's'} found
+                  {filteredDeals.length} deal
+                  {filteredDeals.length === 1 ? "" : "s"} found
                 </span>
                 <Button
                   variant="outline"
@@ -350,51 +450,58 @@ export default function SearchPage() {
       {/* Results */}
       <div className="px-6 py-6">
         {/* Restaurants Section (when searching) */}
-        {searchQuery && searchedRestaurants && searchedRestaurants.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-foreground">Restaurants</h2>
-              <span className="text-sm text-muted-foreground">
-                {searchedRestaurants.length} found
-              </span>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-              {searchedRestaurants.map((restaurant: any) => (
-                <Link 
-                  key={restaurant.id} 
-                  href={`/restaurant/${restaurant.id}`}
-                  data-testid={`card-restaurant-${restaurant.id}`}
-                >
-                  <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-foreground mb-1" data-testid={`text-restaurant-name-${restaurant.id}`}>
-                            {restaurant.name}
-                          </h3>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {restaurant.cuisineType}
-                          </p>
-                          {restaurant.address && (
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <MapPin className="w-3 h-3" />
-                              {restaurant.address}
+        {searchQuery &&
+          searchedRestaurants &&
+          searchedRestaurants.length > 0 && (
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Restaurants
+                </h2>
+                <span className="text-sm text-muted-foreground">
+                  {searchedRestaurants.length} found
+                </span>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                {searchedRestaurants.map((restaurant: any) => (
+                  <Link
+                    key={restaurant.id}
+                    href={`/restaurant/${restaurant.id}`}
+                    data-testid={`card-restaurant-${restaurant.id}`}
+                  >
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-1">
+                            <h3
+                              className="font-semibold text-foreground mb-1"
+                              data-testid={`text-restaurant-name-${restaurant.id}`}
+                            >
+                              {restaurant.name}
+                            </h3>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              {restaurant.cuisineType}
                             </p>
+                            {restaurant.address && (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                {restaurant.address}
+                              </p>
+                            )}
+                          </div>
+                          {restaurant.isVerified && (
+                            <div className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
+                              Verified
+                            </div>
                           )}
                         </div>
-                        {restaurant.isVerified && (
-                          <div className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
-                            Verified
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Deals Section */}
         <div className="flex items-center justify-between mb-6">
@@ -409,7 +516,10 @@ export default function SearchPage() {
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-2xl overflow-hidden animate-pulse shadow-md">
+              <div
+                key={i}
+                className="bg-white rounded-2xl overflow-hidden animate-pulse shadow-md"
+              >
                 <div className="w-full h-48 bg-muted"></div>
                 <div className="p-6 space-y-3">
                   <div className="h-6 bg-muted rounded-lg w-3/4"></div>
@@ -430,17 +540,24 @@ export default function SearchPage() {
               <Search className="w-8 h-8 text-muted-foreground" />
             </div>
             <h3 className="font-bold text-lg text-foreground mb-2">
-              {searchQuery && searchedRestaurants && searchedRestaurants.length > 0 
+              {searchQuery &&
+              searchedRestaurants &&
+              searchedRestaurants.length > 0
                 ? "No deals found, but restaurants are listed above"
                 : "No deals found"}
             </h3>
             <p className="text-muted-foreground">
-              {searchQuery && searchedRestaurants && searchedRestaurants.length > 0
+              {searchQuery &&
+              searchedRestaurants &&
+              searchedRestaurants.length > 0
                 ? "Check out the restaurants above to see when they post new deals"
                 : "Try adjusting your search or browse all deals"}
             </p>
-            <Button 
-              onClick={() => {setSearchQuery(""); setSelectedCategory("all");}} 
+            <Button
+              onClick={() => {
+                setSearchQuery("");
+                setSelectedCategory("all");
+              }}
               className="mt-4"
               data-testid="button-clear-search"
             >

@@ -283,7 +283,7 @@ export default function ProfilePage() {
 
           {/* Restaurant Owner Option (de-emphasized in menu) */}
           {user?.userType === "customer" && (
-            <Link href="/customer-signup?role=business">
+            <Link href="/restaurant-signup">
               <Card className="bg-white hover:bg-gray-50 transition-colors cursor-pointer border-0 shadow-md">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">

@@ -390,15 +390,6 @@ export default function Home() {
                 <Sparkles className="w-4 h-4 mr-2" /> Hot Deals
               </Button>
             </Link>
-            <Link href="/search?filter=quick">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
-              >
-                <Rocket className="w-4 h-4 mr-2" /> Quick Bites
-              </Button>
-            </Link>
             <Link href="/category/pizza">
               <Button
                 variant="outline"
@@ -406,6 +397,51 @@ export default function Home() {
                 className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
                 <Pizza className="w-4 h-4 mr-2" /> Pizza
+              </Button>
+            </Link>
+            <Link href="/category/burgers">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+              >
+                <ChefHat className="w-4 h-4 mr-2" /> Burgers
+              </Button>
+            </Link>
+            <Link href="/category/asian">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+              >
+                <Target className="w-4 h-4 mr-2" /> Asian
+              </Button>
+            </Link>
+            <Link href="/category/mexican">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+              >
+                <Heart className="w-4 h-4 mr-2" /> Mexican
+              </Button>
+            </Link>
+            <Link href="/category/breakfast">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+              >
+                <Clock className="w-4 h-4 mr-2" /> Breakfast
+              </Button>
+            </Link>
+            <Link href="/category/healthy">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+              >
+                <Target className="w-4 h-4 mr-2" /> Healthy
               </Button>
             </Link>
             <Link href="/search?filter=budget">

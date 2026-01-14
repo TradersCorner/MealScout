@@ -411,15 +411,6 @@ export default function DealCard({ deal }: DealCardProps) {
               >
                 Share
               </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 h-7 text-[10px] px-1"
-                onClick={handleParkingClick}
-              >
-                Partner
-              </Button>
             </div>
 
             {/* Button */}

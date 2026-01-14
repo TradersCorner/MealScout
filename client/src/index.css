@@ -21,8 +21,8 @@
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(0 0% 9%);
 
-  /* DoorDash red primary */
-  --primary: hsl(0 72% 51%);
+  /* Orange primary */
+  --primary: hsl(24 95% 53%);
   --primary-foreground: hsl(0 0% 100%);
 
   /* Clean gray secondary */
@@ -34,15 +34,15 @@
   --muted-foreground: hsl(0 0% 45%);
 
   /* Clean accent */
-  --accent: hsl(0 0% 96%);
-  --accent-foreground: hsl(0 0% 9%);
+  --accent: hsl(24 95% 53%);
+  --accent-foreground: hsl(0 0% 100%);
 
   --destructive: hsl(0 84% 60%);
   --destructive-foreground: hsl(0 0% 100%);
 
   --border: hsl(0 0% 90%);
   --input: hsl(0 0% 96%);
-  --ring: hsl(0 72% 51%);
+  --ring: hsl(24 95% 53%);
 
   --radius: 12px;
 }
@@ -57,7 +57,7 @@
   --popover: hsl(0 0% 6%);
   --popover-foreground: hsl(0 0% 96%);
 
-  --primary: hsl(0 72% 51%);
+  --primary: hsl(24 95% 53%);
   --primary-foreground: hsl(0 0% 100%);
 
   --secondary: hsl(0 0% 14%);
@@ -66,15 +66,15 @@
   --muted: hsl(0 0% 11%);
   --muted-foreground: hsl(0 0% 54%);
 
-  --accent: hsl(0 0% 14%);
+  --accent: hsl(24 95% 53%);
   --accent-foreground: hsl(0 0% 100%);
 
-  --destructive: hsl(0 72% 51%);
+  --destructive: hsl(0 84% 60%);
   --destructive-foreground: hsl(0 0% 100%);
 
   --border: hsl(0 0% 18%);
   --input: hsl(0 0% 18%);
-  --ring: hsl(0 72% 51%);
+  --ring: hsl(24 95% 53%);
 }
 
 @layer base {

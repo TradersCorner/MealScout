@@ -38,9 +38,10 @@ export default function CustomerSignup() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const searchParams = new URLSearchParams(window.location.search);
-  const initialAccountType: "diner" | "business" =
-    searchParams.get("role") === "business" ? "business" : "diner";
-  const [accountType, setAccountType] = useState<"diner" | "business">(initialAccountType);
+  const role = searchParams.get("role");
+  const initialAccountType: "diner" | "host" | "business" =
+    role === "business" ? "business" : role === "host" ? "host" : "diner";
+  const [accountType, setAccountType] = useState<"diner" | "host" | "business">(initialAccountType);
 
   const form = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
@@ -111,6 +112,9 @@ export default function CustomerSignup() {
         return;
       }
       businessSignupMutation.mutate(data);
+    } else if (accountType === "host") {
+      // Hosts signup as customers but we can add host-specific flow later
+      customerSignupMutation.mutate(data);
     } else {
       customerSignupMutation.mutate(data);
     }
@@ -144,16 +148,25 @@ export default function CustomerSignup() {
               type="button"
               onClick={() => setAccountType("diner")}
               className={`px-3 py-1 transition-colors ${
-                accountType === "diner" ? "bg-red-500 text-white" : "bg-transparent text-gray-700 hover:bg-gray-100"
+                accountType === "diner" ? "bg-orange-500 text-white" : "bg-transparent text-gray-700 hover:bg-gray-100"
               }`}
             >
               Diner
             </button>
             <button
               type="button"
+              onClick={() => setAccountType("host")}
+              className={`px-3 py-1 border-l border-gray-200 transition-colors ${
+                accountType === "host" ? "bg-orange-500 text-white" : "bg-transparent text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              Host / Event Organizer
+            </button>
+            <button
+              type="button"
               onClick={() => setAccountType("business")}
               className={`px-3 py-1 border-l border-gray-200 transition-colors ${
-                accountType === "business" ? "bg-red-500 text-white" : "bg-transparent text-gray-700 hover:bg-gray-100"
+                accountType === "business" ? "bg-orange-500 text-white" : "bg-transparent text-gray-700 hover:bg-gray-100"
               }`}
             >
               Restaurant / Food Truck
@@ -166,6 +179,8 @@ export default function CustomerSignup() {
           <p className="text-gray-600 text-xs leading-snug max-w-sm mx-auto">
             {accountType === "business"
               ? "Create your login so we can connect your restaurant or truck, list your deals, and pass savings directly to your regulars."
+              : accountType === "host"
+              ? "Organize events and invite food trucks to your location. Free forever to unlock local food truck supply."
               : "Save favorite deals and never miss new drops from local spots."}
           </p>
         </div>
@@ -177,6 +192,8 @@ export default function CustomerSignup() {
               <p className="text-gray-600 text-xs">
                 {accountType === "business"
                   ? "This login powers your business dashboard. Pricing stays transparent and your discounts go straight to your guests."
+                  : accountType === "host"
+                  ? "This login lets you post events and connect with food trucks. No monthly fees, just bring food to your spot."
                   : "Create your account to get started with local food deals."}
               </p>
             </div>

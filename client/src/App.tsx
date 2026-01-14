@@ -8,7 +8,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import CustomerSignup from "@/pages/customer-signup";
-import Home from "@/pages/home-north-star";
+import Home from "@/pages/home";
 import RestaurantSignup from "@/pages/restaurant-signup";
 import DealCreation from "@/pages/deal-creation";
 import DealEdit from "@/pages/deal-edit";

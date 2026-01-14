@@ -28,6 +28,11 @@ import {
   UserPlus,
   Store,
   Bug,
+  Sandwich,
+  Soup,
+  UtensilsCrossed,
+  Croissant,
+  Salad,
 } from "lucide-react";
 import mealScoutLogo from "@assets/ChatGPT Image Sep 14, 2025, 09_25_52 AM_1757872111259.png";
 import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
@@ -405,7 +410,7 @@ export default function Home() {
                 size="sm"
                 className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
-                <ChefHat className="w-4 h-4 mr-2" /> Burgers
+                <Sandwich className="w-4 h-4 mr-2" /> Burgers
               </Button>
             </Link>
             <Link href="/category/asian">
@@ -414,7 +419,7 @@ export default function Home() {
                 size="sm"
                 className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
-                <Target className="w-4 h-4 mr-2" /> Asian
+                <Soup className="w-4 h-4 mr-2" /> Asian
               </Button>
             </Link>
             <Link href="/category/mexican">
@@ -423,7 +428,7 @@ export default function Home() {
                 size="sm"
                 className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
-                <Heart className="w-4 h-4 mr-2" /> Mexican
+                <UtensilsCrossed className="w-4 h-4 mr-2" /> Mexican
               </Button>
             </Link>
             <Link href="/category/breakfast">
@@ -432,7 +437,7 @@ export default function Home() {
                 size="sm"
                 className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
-                <Clock className="w-4 h-4 mr-2" /> Breakfast
+                <Croissant className="w-4 h-4 mr-2" /> Breakfast
               </Button>
             </Link>
             <Link href="/category/healthy">
@@ -441,7 +446,7 @@ export default function Home() {
                 size="sm"
                 className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
-                <Target className="w-4 h-4 mr-2" /> Healthy
+                <Salad className="w-4 h-4 mr-2" /> Healthy
               </Button>
             </Link>
             <Link href="/search?filter=budget">

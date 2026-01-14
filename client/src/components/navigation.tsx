@@ -91,7 +91,6 @@ export default function Navigation() {
 
   const customerNavItems: NavItem[] = [
     { path: "/", icon: Home, label: "Home" },
-    { path: "/search", icon: Search, label: "Search" },
     { path: "/map", icon: MapPin, label: "Map" },
     { path: "/video", icon: Clapperboard, label: "Video" },
     { path: "/favorites", icon: Heart, label: "Favorites" },
@@ -100,7 +99,6 @@ export default function Navigation() {
 
   const unauthenticatedNavItems: NavItem[] = [
     { path: "/", icon: Home, label: "Home" },
-    { path: "/search", icon: Search, label: "Search" },
     { path: "/map", icon: MapPin, label: "Map" },
     { path: "/video", icon: Clapperboard, label: "Video" },
     { path: "/customer-signup", icon: UserPlus, label: "Create Account" },
@@ -109,7 +107,6 @@ export default function Navigation() {
   const staffNavItems: NavItem[] = [
     { path: "/", icon: Home, label: "Home" },
     { path: "/staff", icon: Users, label: "Dashboard" },
-    { path: "/search", icon: Search, label: "Search" },
     { path: "/profile", icon: User, label: "Profile" },
   ];
 

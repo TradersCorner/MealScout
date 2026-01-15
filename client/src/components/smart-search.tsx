@@ -150,13 +150,13 @@ export default function SmartSearch({
             onChange={handleInputChange}
             onFocus={handleInputFocus}
             onKeyDown={handleKeyDown}
-            className="w-full pl-12 pr-4 py-3 text-base border-2 rounded-l-xl focus:border-primary transition-colors border-r-0"
+            className="w-full pl-11 pr-3 py-2.5 text-sm sm:text-base border-2 border-primary/30 rounded-l-xl bg-white focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors border-r-0 shadow-sm"
             data-testid="input-smart-search"
           />
         </div>
         <Button
           onClick={() => handleSearch(value)}
-          className="px-6 py-3 text-base border-2 border-l-0 border-primary rounded-r-xl bg-primary hover:bg-primary/90 text-primary-foreground"
+          className="px-4 sm:px-5 py-2.5 text-sm sm:text-base font-semibold rounded-r-xl border-2 border-l-0 border-orange-500 bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md hover:shadow-lg hover:from-orange-600 hover:to-red-600 focus:ring-2 focus:ring-orange-200 focus:ring-offset-1 focus:ring-offset-white"
           data-testid="button-search"
         >
           Search

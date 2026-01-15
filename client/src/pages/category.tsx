@@ -253,7 +253,7 @@ export default function CategoryPage() {
             <div
               className={`w-8 h-8 bg-gradient-to-r ${config.gradient} rounded-lg flex items-center justify-center mr-3 shadow-sm`}
             >
-                <config.icon className="w-3.5 h-3.5 text-white" />
+              <config.icon className="w-3.5 h-3.5 text-white" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-foreground">
@@ -313,7 +313,7 @@ export default function CategoryPage() {
             <div
               className={`w-20 h-20 bg-gradient-to-r ${config.gradient} rounded-2xl flex items-center justify-center mx-auto mb-4 opacity-20`}
             >
-                <config.icon className="w-6 h-6 text-white" />
+              <config.icon className="w-6 h-6 text-white" />
             </div>
             <h3 className="font-bold text-lg text-foreground mb-2">
               No {config.title} deals yet

@@ -15,47 +15,71 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
-import { Upload, X, Eye, Sparkles, Clock, Users, DollarSign } from "lucide-react";
+import {
+  Upload,
+  X,
+  Eye,
+  Sparkles,
+  Clock,
+  Users,
+  DollarSign,
+} from "lucide-react";
 import { BackHeader } from "@/components/back-header";
 import Navigation from "@/components/navigation";
 
-const dealSchema = z.object({
-  title: z.string().min(1, "Deal title is required"),
-  description: z.string().min(1, "Description is required"),
-  dealType: z.enum(["percentage", "fixed"]),
-  discountValue: z.string().min(1, "Discount value is required"),
-  minOrderAmount: z.string().optional(),
-  imageUrl: z.string().min(1, "Deal image is required"),
-  startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().optional(),
-  startTime: z.string().optional(),
-  endTime: z.string().optional(),
-  availableDuringBusinessHours: z.boolean().default(false),
-  isOngoing: z.boolean().default(false),
-  totalUsesLimit: z.string().optional(),
-  perCustomerLimit: z.string().optional(),
-  facebookPageUrl: z.string().optional(),
-}).refine(
-  (data) => {
-    // If not ongoing, endDate is required
-    if (!data.isOngoing && !data.endDate) {
-      return false;
+const dealSchema = z
+  .object({
+    title: z.string().min(1, "Deal title is required"),
+    description: z.string().min(1, "Description is required"),
+    dealType: z.enum(["percentage", "fixed"]),
+    discountValue: z.string().min(1, "Discount value is required"),
+    minOrderAmount: z.string().optional(),
+    imageUrl: z.string().min(1, "Deal image is required"),
+    startDate: z.string().min(1, "Start date is required"),
+    endDate: z.string().optional(),
+    startTime: z.string().optional(),
+    endTime: z.string().optional(),
+    availableDuringBusinessHours: z.boolean().default(false),
+    isOngoing: z.boolean().default(false),
+    totalUsesLimit: z.string().optional(),
+    perCustomerLimit: z.string().optional(),
+    facebookPageUrl: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      // If not ongoing, endDate is required
+      if (!data.isOngoing && !data.endDate) {
+        return false;
+      }
+      return true;
+    },
+    { message: "End date is required for non-ongoing deals", path: ["endDate"] }
+  )
+  .refine(
+    (data) => {
+      // If not available during business hours, times are required
+      if (
+        !data.availableDuringBusinessHours &&
+        (!data.startTime || !data.endTime)
+      ) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Times are required unless available during business hours",
+      path: ["startTime"],
     }
-    return true;
-  },
-  { message: "End date is required for non-ongoing deals", path: ["endDate"] }
-).refine(
-  (data) => {
-    // If not available during business hours, times are required
-    if (!data.availableDuringBusinessHours && (!data.startTime || !data.endTime)) {
-      return false;
-    }
-    return true;
-  },
-  { message: "Times are required unless available during business hours", path: ["startTime"] }
-);
+  );
 
 type DealFormData = z.infer<typeof dealSchema>;
 
@@ -79,13 +103,17 @@ export default function DealCreation() {
     enabled: isAuthenticated,
   });
 
-  console.log('Deal Creation - Subscription Data:', subscription);
-  console.log('Deal Creation - Is Subscription Loading:', isSubscriptionLoading);
+  console.log("Deal Creation - Subscription Data:", subscription);
+  console.log(
+    "Deal Creation - Is Subscription Loading:",
+    isSubscriptionLoading
+  );
 
   // Fetch current deal count for limits
   const { data: currentDeals } = useQuery({
     queryKey: ["/api/deals/my-active"],
-    enabled: isAuthenticated && Array.isArray(restaurants) && restaurants.length > 0,
+    enabled:
+      isAuthenticated && Array.isArray(restaurants) && restaurants.length > 0,
   });
 
   const form = useForm<DealFormData>({
@@ -95,10 +123,12 @@ export default function DealCreation() {
       description: "",
       dealType: "percentage",
       discountValue: "",
-      minOrderAmount: "",
+      minOrderAmount: "0",
       imageUrl: "",
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      startDate: new Date().toISOString().split("T")[0],
+      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0],
       startTime: "11:00",
       endTime: "15:00",
       availableDuringBusinessHours: false,
@@ -112,16 +142,24 @@ export default function DealCreation() {
   const createDealMutation = useMutation({
     mutationFn: async (data: DealFormData) => {
       if (!Array.isArray(restaurants) || restaurants.length === 0) {
-        throw new Error("No restaurant found. Please register a restaurant first.");
+        throw new Error(
+          "No restaurant found. Please register a restaurant first."
+        );
       }
 
       const dealData = {
         ...data,
         restaurantId: restaurants[0].id,
         discountValue: parseFloat(data.discountValue),
-        minOrderAmount: data.minOrderAmount ? parseFloat(data.minOrderAmount) : null,
-        totalUsesLimit: data.totalUsesLimit ? parseInt(data.totalUsesLimit) : null,
-        perCustomerLimit: data.perCustomerLimit ? parseInt(data.perCustomerLimit) : 1,
+        minOrderAmount: data.minOrderAmount
+          ? parseFloat(data.minOrderAmount)
+          : null,
+        totalUsesLimit: data.totalUsesLimit
+          ? parseInt(data.totalUsesLimit)
+          : null,
+        perCustomerLimit: data.perCustomerLimit
+          ? parseInt(data.perCustomerLimit)
+          : 1,
         startDate: new Date(data.startDate),
         endDate: data.isOngoing ? null : new Date(data.endDate!),
         startTime: data.availableDuringBusinessHours ? null : data.startTime,
@@ -152,9 +190,13 @@ export default function DealCreation() {
         }, 500);
         return;
       }
-      
+
       // Handle subscription required error (402)
-      if (error.message && (error.message.includes('subscription') || error.message.includes('Payment Required'))) {
+      if (
+        error.message &&
+        (error.message.includes("subscription") ||
+          error.message.includes("Payment Required"))
+      ) {
         toast({
           title: "Subscription Required",
           description: "Please upgrade your subscription to create deals",
@@ -165,7 +207,7 @@ export default function DealCreation() {
         }, 1500);
         return;
       }
-      
+
       toast({
         title: "Error",
         description: error.message || "Failed to create deal",
@@ -193,7 +235,7 @@ export default function DealCreation() {
       }
 
       // Check file type
-      if (!file.type.startsWith('image/')) {
+      if (!file.type.startsWith("image/")) {
         toast({
           title: "Invalid file type",
           description: "Please choose an image file",
@@ -216,13 +258,14 @@ export default function DealCreation() {
     setSelectedImage(null);
     form.setValue("imageUrl", ""); // Clear form value
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
   const dealPreviewData = {
     title: form.watch("title") || "Your Deal Title",
-    description: form.watch("description") || "Your deal description will appear here...",
+    description:
+      form.watch("description") || "Your deal description will appear here...",
     dealType: form.watch("dealType"),
     discountValue: form.watch("discountValue") || "0",
     minOrderAmount: form.watch("minOrderAmount"),
@@ -243,8 +286,15 @@ export default function DealCreation() {
       <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
         <Card>
           <CardContent className="p-6">
-            <p className="text-center text-muted-foreground mb-4">Please log in to create deals</p>
-            <Button onClick={() => window.location.href = "/api/auth/google/restaurant"} className="w-full">
+            <p className="text-center text-muted-foreground mb-4">
+              Please log in to create deals
+            </p>
+            <Button
+              onClick={() =>
+                (window.location.href = "/api/auth/google/restaurant")
+              }
+              className="w-full"
+            >
               Log In
             </Button>
           </CardContent>
@@ -259,7 +309,9 @@ export default function DealCreation() {
         <Card>
           <CardContent className="p-6 text-center">
             <i className="fas fa-store text-muted-foreground text-3xl mb-4"></i>
-            <p className="text-muted-foreground mb-4">You need to register a business first</p>
+            <p className="text-muted-foreground mb-4">
+              You need to register a business first
+            </p>
             <Link href="/restaurant-signup">
               <Button className="w-full">Register Business</Button>
             </Link>
@@ -279,20 +331,40 @@ export default function DealCreation() {
   }
 
   // Check subscription status - redirect to subscribe page if needed
-  // Allow access if: active subscription OR beta mode enabled OR has access flag
-  const hasAccess = subscription && ((subscription as any).status === 'active' || (subscription as any).betaMode === true || (subscription as any).hasAccess === true);
-  
+  // Allow access if: active subscription OR beta mode enabled OR has access flag OR admin/staff
+  const isAdminOrStaff =
+    user &&
+    (user.userType === "admin" ||
+      user.userType === "super_admin" ||
+      user.userType === "staff");
+  const hasAccess =
+    isAdminOrStaff ||
+    (subscription &&
+      ((subscription as any).status === "active" ||
+        (subscription as any).betaMode === true ||
+        (subscription as any).hasAccess === true));
+
   if (subscription && !hasAccess) {
-    console.log('Blocking due to subscription status:', (subscription as any).status);
+    console.log(
+      "Blocking due to subscription status:",
+      (subscription as any).status
+    );
     return (
       <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
         <Card>
           <CardContent className="p-6 text-center">
             <div className="text-4xl mb-4">💳</div>
-            <h2 className="text-lg font-semibold mb-2">Subscription Required</h2>
-            <p className="text-muted-foreground mb-4">You need an active subscription to create deals</p>
+            <h2 className="text-lg font-semibold mb-2">
+              Subscription Required
+            </h2>
+            <p className="text-muted-foreground mb-4">
+              You need an active subscription to create deals
+            </p>
             <Link href="/subscribe">
-              <Button className="w-full" data-testid="button-subscribe-to-create">
+              <Button
+                className="w-full"
+                data-testid="button-subscribe-to-create"
+              >
                 View Subscription Plans
               </Button>
             </Link>
@@ -316,7 +388,7 @@ export default function DealCreation() {
             data-testid="button-preview"
           >
             <Eye className="w-4 h-4 mr-2" />
-            {showPreview ? 'Hide' : 'Preview'}
+            {showPreview ? "Hide" : "Preview"}
           </Button>
         }
       />
@@ -327,16 +399,20 @@ export default function DealCreation() {
           <div className="mb-6">
             <div className="flex items-center space-x-2 mb-3">
               <Sparkles className="w-4 h-4 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground">Live Preview</h3>
-              <Badge variant="secondary" className="text-xs">How customers see it</Badge>
+              <h3 className="text-sm font-semibold text-foreground">
+                Live Preview
+              </h3>
+              <Badge variant="secondary" className="text-xs">
+                How customers see it
+              </Badge>
             </div>
-            
+
             <Card className="overflow-hidden border-2 border-primary/20">
               <div className="relative">
                 {dealPreviewData.image ? (
-                  <img 
-                    src={dealPreviewData.image} 
-                    alt="Deal preview" 
+                  <img
+                    src={dealPreviewData.image}
+                    alt="Deal preview"
                     className="w-full h-36 object-cover"
                   />
                 ) : (
@@ -347,16 +423,14 @@ export default function DealCreation() {
                     </div>
                   </div>
                 )}
-                
-                
+
                 <div className="absolute bottom-2 right-2 bg-red-500 text-white px-2 py-1 rounded-md text-sm font-bold">
-                  {dealPreviewData.dealType === "percentage" 
+                  {dealPreviewData.dealType === "percentage"
                     ? `${dealPreviewData.discountValue}% OFF`
-                    : `$${dealPreviewData.discountValue} OFF`
-                  }
+                    : `$${dealPreviewData.discountValue} OFF`}
                 </div>
               </div>
-              
+
               <CardContent className="p-3">
                 <h4 className="font-semibold text-sm text-foreground mb-1 line-clamp-1">
                   {dealPreviewData.title}
@@ -364,7 +438,7 @@ export default function DealCreation() {
                 <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
                   {dealPreviewData.description}
                 </p>
-                
+
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center space-x-3 text-muted-foreground">
                     <div className="flex items-center space-x-1">
@@ -376,7 +450,7 @@ export default function DealCreation() {
                       <span>Limited uses</span>
                     </div>
                   </div>
-                  
+
                   {dealPreviewData.minOrderAmount && (
                     <div className="flex items-center space-x-1 text-muted-foreground">
                       <DollarSign className="w-3 h-3" />
@@ -403,61 +477,72 @@ export default function DealCreation() {
                   <FormControl>
                     <div>
                       {selectedImage ? (
-                <div className="relative rounded-lg overflow-hidden">
-                  <img 
-                    src={selectedImage} 
-                    alt="Deal preview" 
-                    className="w-full h-48 object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                    <div className="flex space-x-2">
-                      <Button 
-                        type="button" 
-                        size="sm" 
-                        variant="secondary"
-                        onClick={() => fileInputRef.current?.click()}
-                        data-testid="button-change-photo"
-                      >
-                        <Upload className="w-4 h-4 mr-1" />
-                        Change
-                      </Button>
-                      <Button 
-                        type="button" 
-                        size="sm" 
-                        variant="destructive"
-                        onClick={removeImage}
-                        data-testid="button-remove-photo"
-                      >
-                        <X className="w-4 h-4 mr-1" />
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-destructive/50 rounded-lg p-8 text-center bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors"
-                >
-                  <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm font-semibold text-foreground mb-1" data-testid="text-photo-prompt">
-                    Add a mouth-watering photo of your deal <span className="text-destructive">*</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground mb-3">JPG, PNG up to 5MB (Required)</p>
-                  <Button type="button" variant="default" size="sm" data-testid="button-upload-photo">
-                    Upload Photo
-                  </Button>
-                </div>
-              )}
-              
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-                data-testid="input-file-upload"
-              />
+                        <div className="relative rounded-lg overflow-hidden">
+                          <img
+                            src={selectedImage}
+                            alt="Deal preview"
+                            className="w-full h-48 object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                            <div className="flex space-x-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => fileInputRef.current?.click()}
+                                data-testid="button-change-photo"
+                              >
+                                <Upload className="w-4 h-4 mr-1" />
+                                Change
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                onClick={removeImage}
+                                data-testid="button-remove-photo"
+                              >
+                                <X className="w-4 h-4 mr-1" />
+                                Remove
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => fileInputRef.current?.click()}
+                          className="border-2 border-dashed border-destructive/50 rounded-lg p-8 text-center bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors"
+                        >
+                          <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                          <p
+                            className="text-sm font-semibold text-foreground mb-1"
+                            data-testid="text-photo-prompt"
+                          >
+                            Add a mouth-watering photo of your deal{" "}
+                            <span className="text-destructive">*</span>
+                          </p>
+                          <p className="text-xs text-muted-foreground mb-3">
+                            JPG, PNG up to 5MB (Required)
+                          </p>
+                          <Button
+                            type="button"
+                            variant="default"
+                            size="sm"
+                            data-testid="button-upload-photo"
+                          >
+                            Upload Photo
+                          </Button>
+                        </div>
+                      )}
+
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        data-testid="input-file-upload"
+                      />
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -467,7 +552,9 @@ export default function DealCreation() {
 
             {/* Quick Templates */}
             <div>
-              <Label className="block text-sm font-medium text-foreground mb-2">Quick Start Templates</Label>
+              <Label className="block text-sm font-medium text-foreground mb-2">
+                Quick Start Templates
+              </Label>
               <div className="grid grid-cols-1 gap-2">
                 <Button
                   type="button"
@@ -476,7 +563,10 @@ export default function DealCreation() {
                   className="justify-start text-xs h-auto py-2"
                   onClick={() => {
                     form.setValue("title", "Happy Hour Special");
-                    form.setValue("description", "Enjoy discounted drinks and appetizers during our happy hour! Perfect for after-work relaxation.");
+                    form.setValue(
+                      "description",
+                      "Enjoy discounted drinks and appetizers during our happy hour! Perfect for after-work relaxation."
+                    );
                     form.setValue("dealType", "percentage");
                     form.setValue("discountValue", "25");
                     form.setValue("startTime", "16:00");
@@ -494,7 +584,10 @@ export default function DealCreation() {
                   className="justify-start text-xs h-auto py-2"
                   onClick={() => {
                     form.setValue("title", "Lunch Combo Deal");
-                    form.setValue("description", "Get a main dish, side, and drink for one great price during lunch hours!");
+                    form.setValue(
+                      "description",
+                      "Get a main dish, side, and drink for one great price during lunch hours!"
+                    );
                     form.setValue("dealType", "fixed");
                     form.setValue("discountValue", "5");
                     form.setValue("minOrderAmount", "15");
@@ -513,7 +606,10 @@ export default function DealCreation() {
                   className="justify-start text-xs h-auto py-2"
                   onClick={() => {
                     form.setValue("title", "Family Night Special");
-                    form.setValue("description", "Perfect for families! Kids eat free with adult entree purchase on weekends.");
+                    form.setValue(
+                      "description",
+                      "Perfect for families! Kids eat free with adult entree purchase on weekends."
+                    );
                     form.setValue("dealType", "percentage");
                     form.setValue("discountValue", "30");
                     form.setValue("perCustomerLimit", "2");
@@ -532,15 +628,19 @@ export default function DealCreation() {
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel data-testid="label-deal-title">Deal Title</FormLabel>
+                  <FormLabel data-testid="label-deal-title">
+                    Deal Title
+                  </FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="e.g., Buy One Get One Free Meal Special" 
-                      {...field} 
+                    <Input
+                      placeholder="e.g., Buy One Get One Free Meal Special"
+                      {...field}
                       data-testid="input-deal-title"
                     />
                   </FormControl>
-                  <p className="text-xs text-muted-foreground mt-1">Keep it short and exciting! Max 50 characters.</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Keep it short and exciting! Max 50 characters.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}
@@ -551,18 +651,24 @@ export default function DealCreation() {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel data-testid="label-description">Deal Description</FormLabel>
+                  <FormLabel data-testid="label-description">
+                    Deal Description
+                  </FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Describe your deal in detail. What's included? Any restrictions?" 
-                      rows={3} 
-                      {...field} 
+                    <Textarea
+                      placeholder="Describe your deal in detail. What's included? Any restrictions?"
+                      rows={3}
+                      {...field}
                       data-testid="textarea-description"
                     />
                   </FormControl>
                   <div className="flex justify-between items-center mt-1">
-                    <p className="text-xs text-muted-foreground">Be specific about what customers get!</p>
-                    <span className="text-xs text-muted-foreground">{field.value?.length || 0}/200</span>
+                    <p className="text-xs text-muted-foreground">
+                      Be specific about what customers get!
+                    </p>
+                    <span className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/200
+                    </span>
                   </div>
                   <FormMessage />
                 </FormItem>
@@ -583,17 +689,45 @@ export default function DealCreation() {
                       className="grid grid-cols-2 gap-3"
                     >
                       <div className="flex items-center space-x-3 p-3 border border-input rounded-lg cursor-pointer hover:bg-muted/50">
-                        <RadioGroupItem value="percentage" id="percentage" data-testid="radio-percentage" />
+                        <RadioGroupItem
+                          value="percentage"
+                          id="percentage"
+                          data-testid="radio-percentage"
+                        />
                         <Label htmlFor="percentage" className="cursor-pointer">
-                          <p className="font-medium text-sm" data-testid="text-percentage-title">Percentage Off</p>
-                          <p className="text-xs text-muted-foreground" data-testid="text-percentage-desc">e.g., 20% off</p>
+                          <p
+                            className="font-medium text-sm"
+                            data-testid="text-percentage-title"
+                          >
+                            Percentage Off
+                          </p>
+                          <p
+                            className="text-xs text-muted-foreground"
+                            data-testid="text-percentage-desc"
+                          >
+                            e.g., 20% off
+                          </p>
                         </Label>
                       </div>
                       <div className="flex items-center space-x-3 p-3 border border-input rounded-lg cursor-pointer hover:bg-muted/50">
-                        <RadioGroupItem value="fixed" id="fixed" data-testid="radio-fixed" />
+                        <RadioGroupItem
+                          value="fixed"
+                          id="fixed"
+                          data-testid="radio-fixed"
+                        />
                         <Label htmlFor="fixed" className="cursor-pointer">
-                          <p className="font-medium text-sm" data-testid="text-fixed-title">Fixed Amount</p>
-                          <p className="text-xs text-muted-foreground" data-testid="text-fixed-desc">e.g., $5 off</p>
+                          <p
+                            className="font-medium text-sm"
+                            data-testid="text-fixed-title"
+                          >
+                            Fixed Amount
+                          </p>
+                          <p
+                            className="text-xs text-muted-foreground"
+                            data-testid="text-fixed-desc"
+                          >
+                            e.g., $5 off
+                          </p>
                         </Label>
                       </div>
                     </RadioGroup>
@@ -609,13 +743,15 @@ export default function DealCreation() {
                 name="discountValue"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel data-testid="label-discount-value">Discount Value</FormLabel>
+                    <FormLabel data-testid="label-discount-value">
+                      Discount Value
+                    </FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Input 
-                          type="number" 
-                          placeholder="25" 
-                          {...field} 
+                        <Input
+                          type="number"
+                          placeholder="25"
+                          {...field}
                           data-testid="input-discount-value"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
@@ -632,15 +768,19 @@ export default function DealCreation() {
                 name="minOrderAmount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel data-testid="label-min-order">Min. Order</FormLabel>
+                    <FormLabel data-testid="label-min-order">
+                      Min. Order
+                    </FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">$</span>
-                        <Input 
-                          type="number" 
-                          placeholder="15.00" 
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                          $
+                        </span>
+                        <Input
+                          type="number"
+                          placeholder="15.00"
                           className="pl-8"
-                          {...field} 
+                          {...field}
                           data-testid="input-min-order"
                         />
                       </div>
@@ -653,10 +793,13 @@ export default function DealCreation() {
 
             {/* Timing */}
             <div>
-              <Label className="block text-sm font-medium text-foreground mb-3" data-testid="label-availability">
+              <Label
+                className="block text-sm font-medium text-foreground mb-3"
+                data-testid="label-availability"
+              >
                 When is this deal available?
               </Label>
-              
+
               {/* Checkboxes for business hours and ongoing */}
               <div className="space-y-3 mb-4">
                 <FormField
@@ -691,12 +834,22 @@ export default function DealCreation() {
 
                             if (isChecked) {
                               // Clear time fields when business hours is enabled
-                              form.setValue("startTime", "", { shouldDirty: true, shouldValidate: true });
-                              form.setValue("endTime", "", { shouldDirty: true, shouldValidate: true });
+                              form.setValue("startTime", "", {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              });
+                              form.setValue("endTime", "", {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              });
                             } else {
                               // Restore defaults when unchecked
-                              form.setValue("startTime", "11:00", { shouldDirty: true });
-                              form.setValue("endTime", "15:00", { shouldDirty: true });
+                              form.setValue("startTime", "11:00", {
+                                shouldDirty: true,
+                              });
+                              form.setValue("endTime", "15:00", {
+                                shouldDirty: true,
+                              });
                             }
                           }}
                           data-testid="checkbox-business-hours"
@@ -717,9 +870,18 @@ export default function DealCreation() {
                     name="startDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs text-muted-foreground" data-testid="label-start-date">Start Date</FormLabel>
+                        <FormLabel
+                          className="text-xs text-muted-foreground"
+                          data-testid="label-start-date"
+                        >
+                          Start Date
+                        </FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} data-testid="input-start-date" />
+                          <Input
+                            type="date"
+                            {...field}
+                            data-testid="input-start-date"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -730,15 +892,21 @@ export default function DealCreation() {
                     name="endDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs text-muted-foreground" data-testid="label-end-date">
-                          End Date {!form.watch("isOngoing") && <span className="text-destructive">*</span>}
+                        <FormLabel
+                          className="text-xs text-muted-foreground"
+                          data-testid="label-end-date"
+                        >
+                          End Date{" "}
+                          {!form.watch("isOngoing") && (
+                            <span className="text-destructive">*</span>
+                          )}
                         </FormLabel>
                         <FormControl>
-                          <Input 
-                            type="date" 
-                            {...field} 
+                          <Input
+                            type="date"
+                            {...field}
                             disabled={form.watch("isOngoing")}
-                            data-testid="input-end-date" 
+                            data-testid="input-end-date"
                           />
                         </FormControl>
                         <FormMessage />
@@ -752,15 +920,23 @@ export default function DealCreation() {
                     name="startTime"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs text-muted-foreground" data-testid="label-start-time">
-                          Available From {!form.watch("availableDuringBusinessHours") && <span className="text-destructive">*</span>}
+                        <FormLabel
+                          className="text-xs text-muted-foreground"
+                          data-testid="label-start-time"
+                        >
+                          Available From{" "}
+                          {!form.watch("availableDuringBusinessHours") && (
+                            <span className="text-destructive">*</span>
+                          )}
                         </FormLabel>
                         <FormControl>
-                          <Input 
-                            type="time" 
-                            {...field} 
-                            disabled={form.watch("availableDuringBusinessHours")}
-                            data-testid="input-start-time" 
+                          <Input
+                            type="time"
+                            {...field}
+                            disabled={form.watch(
+                              "availableDuringBusinessHours"
+                            )}
+                            data-testid="input-start-time"
                           />
                         </FormControl>
                         <FormMessage />
@@ -772,15 +948,23 @@ export default function DealCreation() {
                     name="endTime"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs text-muted-foreground" data-testid="label-end-time">
-                          Available Until {!form.watch("availableDuringBusinessHours") && <span className="text-destructive">*</span>}
+                        <FormLabel
+                          className="text-xs text-muted-foreground"
+                          data-testid="label-end-time"
+                        >
+                          Available Until{" "}
+                          {!form.watch("availableDuringBusinessHours") && (
+                            <span className="text-destructive">*</span>
+                          )}
                         </FormLabel>
                         <FormControl>
-                          <Input 
-                            type="time" 
-                            {...field} 
-                            disabled={form.watch("availableDuringBusinessHours")}
-                            data-testid="input-end-time" 
+                          <Input
+                            type="time"
+                            {...field}
+                            disabled={form.watch(
+                              "availableDuringBusinessHours"
+                            )}
+                            data-testid="input-end-time"
                           />
                         </FormControl>
                         <FormMessage />
@@ -793,7 +977,12 @@ export default function DealCreation() {
 
             {/* Limits */}
             <div>
-              <Label className="block text-sm font-medium text-foreground mb-2" data-testid="label-deal-limits">Deal Limits</Label>
+              <Label
+                className="block text-sm font-medium text-foreground mb-2"
+                data-testid="label-deal-limits"
+              >
+                Deal Limits
+              </Label>
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -801,14 +990,19 @@ export default function DealCreation() {
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="Total uses (optional)" 
-                          {...field} 
+                        <Input
+                          type="number"
+                          placeholder="Total uses (optional)"
+                          {...field}
                           data-testid="input-total-uses"
                         />
                       </FormControl>
-                      <p className="text-xs text-muted-foreground mt-1" data-testid="text-total-uses-help">Leave blank for unlimited</p>
+                      <p
+                        className="text-xs text-muted-foreground mt-1"
+                        data-testid="text-total-uses-help"
+                      >
+                        Leave blank for unlimited
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -819,14 +1013,19 @@ export default function DealCreation() {
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="Per customer limit" 
-                          {...field} 
+                        <Input
+                          type="number"
+                          placeholder="Per customer limit"
+                          {...field}
                           data-testid="input-per-customer"
                         />
                       </FormControl>
-                      <p className="text-xs text-muted-foreground mt-1" data-testid="text-per-customer-help">Max uses per person</p>
+                      <p
+                        className="text-xs text-muted-foreground mt-1"
+                        data-testid="text-per-customer-help"
+                      >
+                        Max uses per person
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -837,26 +1036,39 @@ export default function DealCreation() {
             {/* Facebook Integration */}
             <Card className="bg-gradient-to-r from-blue-50 to-indigo-50">
               <CardContent className="p-4">
-                <h3 className="font-semibold text-foreground text-sm mb-2" data-testid="text-facebook-title">Social Media Integration</h3>
-                <p className="text-muted-foreground text-xs mb-4" data-testid="text-facebook-desc">
-                  Connect your Facebook page to automatically post deals and tag @MealScout
+                <h3
+                  className="font-semibold text-foreground text-sm mb-2"
+                  data-testid="text-facebook-title"
+                >
+                  Social Media Integration
+                </h3>
+                <p
+                  className="text-muted-foreground text-xs mb-4"
+                  data-testid="text-facebook-desc"
+                >
+                  Connect your Facebook page to automatically post deals and tag
+                  @MealScout
                 </p>
-                
+
                 <FormField
                   control={form.control}
                   name="facebookPageUrl"
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
-                        <Input 
-                          type="url" 
-                          placeholder="https://facebook.com/your-restaurant-page" 
+                        <Input
+                          type="url"
+                          placeholder="https://facebook.com/your-restaurant-page"
                           {...field}
                           data-testid="input-facebook-url"
                         />
                       </FormControl>
-                      <p className="text-xs text-muted-foreground mt-1" data-testid="text-facebook-help">
-                        Link your Facebook page to cross-post deals automatically
+                      <p
+                        className="text-xs text-muted-foreground mt-1"
+                        data-testid="text-facebook-help"
+                      >
+                        Link your Facebook page to cross-post deals
+                        automatically
                       </p>
                       <FormMessage />
                     </FormItem>
@@ -867,27 +1079,29 @@ export default function DealCreation() {
 
             {/* Action Buttons */}
             <div className="grid grid-cols-2 gap-4 pt-4">
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 className="py-3 px-4"
                 data-testid="button-save-draft"
               >
                 Save Draft
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="py-3 px-4"
                 disabled={createDealMutation.isPending}
                 data-testid="button-publish-deal"
               >
-                {createDealMutation.isPending ? "Publishing..." : "Publish Deal"}
+                {createDealMutation.isPending
+                  ? "Publishing..."
+                  : "Publish Deal"}
               </Button>
             </div>
           </form>
         </Form>
       </div>
-      
+
       {/* Bottom Navigation */}
       <Navigation />
     </div>

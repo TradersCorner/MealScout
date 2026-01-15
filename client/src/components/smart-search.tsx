@@ -65,13 +65,16 @@ export default function SmartSearch({
     "Burgers near me",
     "Asian cuisine",
     "Coffee shops",
-    "Healthy options"
+    "Healthy options",
   ];
 
   // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -82,18 +85,18 @@ export default function SmartSearch({
 
   const addToRecentSearches = (query: string) => {
     if (!query.trim()) return;
-    
+
     const updatedRecent = [
       query,
-      ...recentSearches.filter(search => search !== query)
+      ...recentSearches.filter((search) => search !== query),
     ].slice(0, MAX_RECENT_SEARCHES);
-    
+
     setRecentSearches(updatedRecent);
     localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updatedRecent));
   };
 
   const removeFromRecent = (query: string) => {
-    const updatedRecent = recentSearches.filter(search => search !== query);
+    const updatedRecent = recentSearches.filter((search) => search !== query);
     setRecentSearches(updatedRecent);
     localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updatedRecent));
   };
@@ -117,11 +120,11 @@ export default function SmartSearch({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       handleSearch(value);
     }
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       setIsOpen(false);
       inputRef.current?.blur();
     }
@@ -129,19 +132,24 @@ export default function SmartSearch({
 
   const getSuggestionIcon = (type: SearchSuggestion["type"]) => {
     switch (type) {
-      case "restaurant": return "🏪";
-      case "cuisine": return "🍽️";
-      case "deal": return "🔥";
-      case "location": return "📍";
-      default: return "🔍";
+      case "restaurant":
+        return "🏪";
+      case "cuisine":
+        return "🍽️";
+      case "deal":
+        return "🔥";
+      case "location":
+        return "📍";
+      default:
+        return "🔍";
     }
   };
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
-      <div className="relative flex">
+      <div className="relative flex items-center gap-2 rounded-full border border-orange-200/80 bg-white/95 px-3 py-2 shadow-md ring-1 ring-orange-100/70">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5 z-10" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500/80 w-5 h-5 z-10" />
           <Input
             ref={inputRef}
             type="text"
@@ -150,13 +158,13 @@ export default function SmartSearch({
             onChange={handleInputChange}
             onFocus={handleInputFocus}
             onKeyDown={handleKeyDown}
-            className="w-full pl-11 pr-3 py-2.5 text-sm sm:text-base border-2 border-primary/30 rounded-l-xl bg-white focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors border-r-0 shadow-sm"
+            className="w-full pl-11 pr-4 py-3 text-sm sm:text-base rounded-full border border-orange-100/80 bg-transparent shadow-none focus:border-orange-300 focus:ring-2 focus:ring-orange-200 focus:ring-offset-1 focus:ring-offset-white placeholder:text-slate-400"
             data-testid="input-smart-search"
           />
         </div>
         <Button
           onClick={() => handleSearch(value)}
-          className="px-4 sm:px-5 py-2.5 text-sm sm:text-base font-semibold rounded-r-xl border-2 border-l-0 border-orange-500 bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md hover:shadow-lg hover:from-orange-600 hover:to-red-600 focus:ring-2 focus:ring-orange-200 focus:ring-offset-1 focus:ring-offset-white"
+          className="px-5 sm:px-6 py-2.5 text-sm sm:text-base font-semibold rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-red-600 focus:ring-2 focus:ring-orange-200 focus:ring-offset-2 focus:ring-offset-white"
           data-testid="button-search"
         >
           Search
@@ -183,7 +191,9 @@ export default function SmartSearch({
                     className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors flex items-center space-x-3"
                     data-testid={`suggestion-${suggestion.type}-${suggestion.id}`}
                   >
-                    <span className="text-lg">{getSuggestionIcon(suggestion.type)}</span>
+                    <span className="text-lg">
+                      {getSuggestionIcon(suggestion.type)}
+                    </span>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-foreground truncate">
                         {suggestion.text}
@@ -262,13 +272,16 @@ export default function SmartSearch({
             )}
 
             {/* No results state */}
-            {value.length >= 2 && (!suggestions || suggestions.length === 0) && (
-              <div className="px-4 py-8 text-center text-muted-foreground">
-                <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>No suggestions found</p>
-                <p className="text-sm">Try searching for restaurants, cuisines, or deals</p>
-              </div>
-            )}
+            {value.length >= 2 &&
+              (!suggestions || suggestions.length === 0) && (
+                <div className="px-4 py-8 text-center text-muted-foreground">
+                  <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p>No suggestions found</p>
+                  <p className="text-sm">
+                    Try searching for restaurants, cuisines, or deals
+                  </p>
+                </div>
+              )}
           </CardContent>
         </Card>
       )}

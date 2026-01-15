@@ -160,7 +160,7 @@ export default function Navigation() {
     : [...customerNavItems, bugNavItem];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 w-full bg-white border-t border-gray-200 px-4 py-2 z-50 shadow-lg">
+    <nav className="fixed bottom-0 left-0 right-0 w-full bg-white/95 backdrop-blur-sm border-t border-orange-100/80 px-4 py-2 z-50 shadow-xl">
       <div className="flex items-center justify-around max-w-md mx-auto">
         {navItems.map((item) =>
           item.path ? (
@@ -168,8 +168,8 @@ export default function Navigation() {
               <button
                 className={`flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
                   location === item.path
-                    ? "text-orange-600 bg-orange-50"
-                    : "text-gray-600 hover:text-orange-600 hover:bg-orange-50"
+                    ? "text-orange-600 bg-orange-50 ring-1 ring-orange-200/70"
+                    : "text-slate-800 hover:text-orange-600 hover:bg-orange-50"
                 }`}
                 data-testid={`nav-${item.label.toLowerCase()}`}
               >
@@ -184,8 +184,8 @@ export default function Navigation() {
               disabled={isReporting}
               className={`flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
                 item.isBug
-                  ? "text-white bg-orange-500 hover:bg-orange-600 shadow-md"
-                  : "text-gray-600 hover:text-orange-600 hover:bg-orange-50"
+                  ? "text-white bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-lg"
+                  : "text-slate-800 hover:text-orange-600 hover:bg-orange-50"
               } ${isReporting ? "opacity-80 cursor-not-allowed" : ""}`}
               data-testid={`nav-${item.label.toLowerCase()}`}
               aria-label={item.label}

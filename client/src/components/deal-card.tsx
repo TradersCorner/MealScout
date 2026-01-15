@@ -9,6 +9,27 @@ import RestaurantDealsDrawer from "./restaurant-deals-drawer";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 
+const SAVED_DEALS_KEY = "mealscout_saved_deals";
+
+function getSavedDeals(): string[] {
+  try {
+    const raw = localStorage.getItem(SAVED_DEALS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistSavedDeals(ids: string[]) {
+  try {
+    localStorage.setItem(SAVED_DEALS_KEY, JSON.stringify(ids));
+  } catch {
+    // Best effort; ignore storage failures
+  }
+}
+
 interface Deal {
   id: string;
   restaurantId: string;
@@ -141,6 +162,12 @@ export default function DealCard({ deal }: DealCardProps) {
   );
   const [, setLocation] = useLocation();
 
+  // Initialize saved state from localStorage for quick UX feedback
+  useEffect(() => {
+    const saved = getSavedDeals();
+    setIsSaved(saved.includes(deal.id));
+  }, [deal.id]);
+
   // Track view when card becomes visible
   useEffect(() => {
     if (hasTrackedView) return;
@@ -226,21 +253,60 @@ export default function DealCard({ deal }: DealCardProps) {
     }
 
     try {
-      // Toggle saved state
+      // Toggle saved state immediately for responsiveness
       const newSavedState = !isSaved;
       setIsSaved(newSavedState);
 
-      // Track the save action
-      if (newSavedState) {
-        await apiRequest("POST", `/api/deals/${deal.id}/save`, {});
-      } else {
-        await apiRequest("DELETE", `/api/deals/${deal.id}/save`, {});
+      // Keep a lightweight client-side record so the bookmark visibly sticks
+      const currentSaved = getSavedDeals();
+      const updatedSaved = newSavedState
+        ? Array.from(new Set([...currentSaved, deal.id]))
+        : currentSaved.filter((id) => id !== deal.id);
+      persistSavedDeals(updatedSaved);
+
+      // Try to persist server-side when the endpoint is available
+      try {
+        if (newSavedState) {
+          await apiRequest("POST", `/api/deals/${deal.id}/save`, {});
+        } else {
+          await apiRequest("DELETE", `/api/deals/${deal.id}/save`, {});
+        }
+      } catch (apiError) {
+        console.debug(
+          "Deal save API not available; kept client bookmark",
+          apiError
+        );
       }
     } catch (error) {
       console.error("Failed to save deal:", error);
       // Revert on error
       setIsSaved(!isSaved);
     }
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const shareUrl = `${window.location.origin}/deal/${deal.id}`;
+    const shareText = `${deal.title} at ${
+      deal.restaurant?.name || "this restaurant"
+    }`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "MealScout Deal",
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch (err) {
+        console.debug("Web Share failed, falling back to modal", err);
+      }
+    }
+
+    setShowShareModal(true);
   };
 
   const handleCardClick = () => {
@@ -492,10 +558,7 @@ export default function DealCard({ deal }: DealCardProps) {
                 variant="outline"
                 size="sm"
                 className="flex-1 h-7 text-[10px] px-1"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowShareModal(true);
-                }}
+                onClick={handleShare}
               >
                 Share
               </Button>

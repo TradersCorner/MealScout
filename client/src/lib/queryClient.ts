@@ -11,9 +11,10 @@ async function throwIfResNotOk(res: Response) {
 export async function apiRequest(
   method: string,
   url: string,
-  data?: unknown | undefined,
+  data?: unknown | undefined
 ): Promise<Response> {
-  const res = await fetch(url, {
+  const finalUrl = url.startsWith("http") ? url : apiUrl(url);
+  const res = await fetch(finalUrl, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
@@ -54,7 +55,11 @@ export const queryClient = new QueryClient({
       gcTime: 30 * 60 * 1000, // 30 minutes garbage collection
       retry: (failureCount, error: any) => {
         // Don't retry on 4xx errors (except 408, 429)
-        if (error.message?.includes('4') && !error.message?.includes('408') && !error.message?.includes('429')) {
+        if (
+          error.message?.includes("4") &&
+          !error.message?.includes("408") &&
+          !error.message?.includes("429")
+        ) {
           return false;
         }
         return failureCount < 2;
@@ -63,7 +68,10 @@ export const queryClient = new QueryClient({
     mutations: {
       retry: (failureCount, error: any) => {
         // Only retry on network errors or 5xx
-        if (error.message?.includes('5') || error.message?.includes('Network')) {
+        if (
+          error.message?.includes("5") ||
+          error.message?.includes("Network")
+        ) {
           return failureCount < 1;
         }
         return false;

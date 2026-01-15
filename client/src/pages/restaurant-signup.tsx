@@ -153,6 +153,18 @@ export default function RestaurantSignup() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
   const [authMode, setAuthMode] = useState<"signup" | "login">("signup");
+
+  // Admin and staff should not use this form - redirect them
+  if (
+    isAuthenticated &&
+    user &&
+    (user.userType === "admin" ||
+      user.userType === "super_admin" ||
+      user.userType === "staff")
+  ) {
+    setLocation("/restaurant-owner-dashboard");
+    return null;
+  }
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -1475,9 +1487,9 @@ export default function RestaurantSignup() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="food_truck">Food Truck</SelectItem>
                           <SelectItem value="restaurant">Restaurant</SelectItem>
                           <SelectItem value="bar">Bar</SelectItem>
-                          <SelectItem value="food_truck">Food Truck</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

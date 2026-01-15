@@ -3,7 +3,24 @@ import { useParams, Link } from "wouter";
 import Navigation from "@/components/navigation";
 import DealCard from "@/components/deal-card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Filter, MapPin, SlidersHorizontal, Pizza, Sandwich, Utensils, UtensilsCrossed, Coffee, Salad, Fish, Cake, Croissant, Soup, Flame, Beef } from "lucide-react";
+import {
+  ArrowLeft,
+  Filter,
+  MapPin,
+  SlidersHorizontal,
+  Pizza,
+  Sandwich,
+  Utensils,
+  UtensilsCrossed,
+  Coffee,
+  Salad,
+  Fish,
+  Cake,
+  Croissant,
+  Soup,
+  Flame,
+  Beef,
+} from "lucide-react";
 
 const categoryConfig = {
   pizza: {
@@ -11,90 +28,92 @@ const categoryConfig = {
     icon: Pizza,
     gradient: "from-orange-500 to-red-500",
     description: "Delicious pizza and authentic Italian cuisine",
-    emoji: "🍕"
+    emoji: "🍕",
   },
   burgers: {
     title: "Burgers & American",
-    icon: Sandwich, 
+    icon: Sandwich,
     gradient: "from-red-500 to-yellow-500",
     description: "Juicy burgers and classic American dishes",
-    emoji: "🍔"
+    emoji: "🍔",
   },
   sushi: {
     title: "Sushi & Japanese",
     icon: Fish,
     gradient: "from-red-500 to-pink-500",
     description: "Fresh sushi and authentic Japanese cuisine",
-    emoji: "🍣"
+    emoji: "🍣",
   },
   chinese: {
     title: "Chinese Food",
     icon: Soup,
     gradient: "from-red-600 to-yellow-500",
     description: "Authentic Chinese dishes and flavors",
-    emoji: "🥡"
+    emoji: "🥡",
   },
   mexican: {
     title: "Mexican Food",
     icon: UtensilsCrossed,
     gradient: "from-green-500 to-red-500",
     description: "Tacos, burritos, and Mexican specialties",
-    emoji: "🌮"
+    emoji: "🌮",
   },
   breakfast: {
     title: "Breakfast & Brunch",
     icon: Croissant,
     gradient: "from-yellow-400 to-orange-500",
     description: "Start your day with great breakfast deals",
-    emoji: "🥐"
+    emoji: "🥐",
   },
   seafood: {
     title: "Seafood",
     icon: Fish,
-    gradient: "from-blue-500 to-teal-500", 
+    gradient: "from-blue-500 to-teal-500",
     description: "Fresh catch and seafood specialties",
-    emoji: "🦞"
+    emoji: "🦞",
   },
   bbq: {
     title: "BBQ & Grilled",
     icon: Flame,
     gradient: "from-orange-600 to-red-600",
     description: "Smoky BBQ and grilled meats",
-    emoji: "🍖"
+    emoji: "🍖",
   },
   dessert: {
     title: "Desserts & Sweets",
     icon: Cake,
     gradient: "from-pink-400 to-purple-500",
     description: "Sweet treats and decadent desserts",
-    emoji: "🍰"
+    emoji: "🍰",
   },
   coffee: {
     title: "Coffee & Cafes",
     icon: Coffee,
     gradient: "from-amber-600 to-orange-600",
     description: "Great coffee and cozy cafe atmosphere",
-    emoji: "☕"
+    emoji: "☕",
   },
   healthy: {
     title: "Healthy Options",
     icon: Salad,
     gradient: "from-green-400 to-green-600",
     description: "Fresh, nutritious, and delicious healthy meals",
-    emoji: "🥗"
+    emoji: "🥗",
   },
   asian: {
     title: "Asian Cuisine",
     icon: Soup,
-    gradient: "from-red-600 to-orange-500", 
+    gradient: "from-red-600 to-orange-500",
     description: "Authentic Asian flavors and fresh ingredients",
-    emoji: "🍜"
-  }
+    emoji: "🍜",
+  },
 };
 
 export default function CategoryPage() {
   const { category } = useParams();
-  const config = category ? categoryConfig[category as keyof typeof categoryConfig] : null;
+  const config = category
+    ? categoryConfig[category as keyof typeof categoryConfig]
+    : null;
 
   const { data: featuredDeals, isLoading } = useQuery({
     queryKey: ["/api/deals/featured"],
@@ -118,46 +137,98 @@ export default function CategoryPage() {
   // Filter deals based on category
   const allDeals = Array.isArray(featuredDeals) ? featuredDeals : [];
   const categoryDeals = allDeals.filter((deal: any) => {
-    const cuisineType = deal.restaurant?.cuisineType?.toLowerCase() || '';
-    const title = deal.title?.toLowerCase() || '';
-    
+    const cuisineType = deal.restaurant?.cuisineType?.toLowerCase() || "";
+    const title = deal.title?.toLowerCase() || "";
+
     switch (category) {
-      case 'pizza':
-        return cuisineType.includes('pizza') || cuisineType.includes('italian') || 
-               title.includes('pizza') || title.includes('pasta');
-      case 'burgers':
-        return cuisineType.includes('american') || cuisineType.includes('burger') ||
-               title.includes('burger') || title.includes('sandwich');
-      case 'sushi':
-        return cuisineType.includes('japanese') || cuisineType.includes('sushi') ||
-               title.includes('sushi') || title.includes('sashimi');
-      case 'chinese':
-        return cuisineType.includes('chinese') || title.includes('chinese') ||
-               title.includes('noodle') || title.includes('fried rice');
-      case 'asian':
-        return cuisineType.includes('asian') || cuisineType.includes('thai') || 
-               cuisineType.includes('vietnamese') || title.includes('pho');
-      case 'mexican':
-        return cuisineType.includes('mexican') || title.includes('taco') || 
-               title.includes('burrito') || title.includes('enchilada');
-      case 'breakfast':
-        return title.includes('breakfast') || title.includes('brunch') || 
-               title.includes('pancake') || title.includes('waffle') || title.includes('eggs');
-      case 'seafood':
-        return cuisineType.includes('seafood') || title.includes('fish') || 
-               title.includes('shrimp') || title.includes('lobster') || title.includes('crab');
-      case 'bbq':
-        return cuisineType.includes('bbq') || cuisineType.includes('barbecue') ||
-               title.includes('bbq') || title.includes('ribs') || title.includes('brisket');
-      case 'dessert':
-        return title.includes('dessert') || title.includes('ice cream') || 
-               title.includes('cake') || title.includes('cookie');
-      case 'coffee':
-        return cuisineType.includes('cafe') || cuisineType.includes('coffee') ||
-               title.includes('coffee') || title.includes('latte') || title.includes('espresso');
-      case 'healthy':
-        return title.includes('salad') || title.includes('smoothie') || 
-               cuisineType.includes('healthy') || title.includes('bowl');
+      case "pizza":
+        return (
+          cuisineType.includes("pizza") ||
+          cuisineType.includes("italian") ||
+          title.includes("pizza") ||
+          title.includes("pasta")
+        );
+      case "burgers":
+        return (
+          cuisineType.includes("american") ||
+          cuisineType.includes("burger") ||
+          title.includes("burger") ||
+          title.includes("sandwich")
+        );
+      case "sushi":
+        return (
+          cuisineType.includes("japanese") ||
+          cuisineType.includes("sushi") ||
+          title.includes("sushi") ||
+          title.includes("sashimi")
+        );
+      case "chinese":
+        return (
+          cuisineType.includes("chinese") ||
+          title.includes("chinese") ||
+          title.includes("noodle") ||
+          title.includes("fried rice")
+        );
+      case "asian":
+        return (
+          cuisineType.includes("asian") ||
+          cuisineType.includes("thai") ||
+          cuisineType.includes("vietnamese") ||
+          title.includes("pho")
+        );
+      case "mexican":
+        return (
+          cuisineType.includes("mexican") ||
+          title.includes("taco") ||
+          title.includes("burrito") ||
+          title.includes("enchilada")
+        );
+      case "breakfast":
+        return (
+          title.includes("breakfast") ||
+          title.includes("brunch") ||
+          title.includes("pancake") ||
+          title.includes("waffle") ||
+          title.includes("eggs")
+        );
+      case "seafood":
+        return (
+          cuisineType.includes("seafood") ||
+          title.includes("fish") ||
+          title.includes("shrimp") ||
+          title.includes("lobster") ||
+          title.includes("crab")
+        );
+      case "bbq":
+        return (
+          cuisineType.includes("bbq") ||
+          cuisineType.includes("barbecue") ||
+          title.includes("bbq") ||
+          title.includes("ribs") ||
+          title.includes("brisket")
+        );
+      case "dessert":
+        return (
+          title.includes("dessert") ||
+          title.includes("ice cream") ||
+          title.includes("cake") ||
+          title.includes("cookie")
+        );
+      case "coffee":
+        return (
+          cuisineType.includes("cafe") ||
+          cuisineType.includes("coffee") ||
+          title.includes("coffee") ||
+          title.includes("latte") ||
+          title.includes("espresso")
+        );
+      case "healthy":
+        return (
+          title.includes("salad") ||
+          title.includes("smoothie") ||
+          cuisineType.includes("healthy") ||
+          title.includes("bowl")
+        );
       default:
         return false;
     }
@@ -169,17 +240,28 @@ export default function CategoryPage() {
       <header className="px-6 py-6 bg-white border-b border-border">
         <div className="flex items-center mb-6">
           <Link href="/">
-            <Button variant="ghost" size="sm" className="mr-3 -ml-2" data-testid="button-back">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mr-3 -ml-2"
+              data-testid="button-back"
+            >
               <ArrowLeft className="w-4 h-4" />
             </Button>
           </Link>
           <div className="flex items-center">
-            <div className={`w-8 h-8 bg-gradient-to-r ${config.gradient} rounded-lg flex items-center justify-center mr-3 shadow-sm`}>
-              <config.icon className="w-4 h-4 text-white" />
+            <div
+              className={`w-8 h-8 bg-gradient-to-r ${config.gradient} rounded-lg flex items-center justify-center mr-3 shadow-sm`}
+            >
+                <config.icon className="w-3.5 h-3.5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">{config.title}</h1>
-              <p className="text-sm text-muted-foreground">{config.description}</p>
+              <h1 className="text-xl font-bold text-foreground">
+                {config.title}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {config.description}
+              </p>
             </div>
           </div>
         </div>
@@ -187,7 +269,8 @@ export default function CategoryPage() {
         {/* Filter & Sort */}
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            {categoryDeals.length} deal{categoryDeals.length !== 1 ? 's' : ''} found
+            {categoryDeals.length} deal{categoryDeals.length !== 1 ? "s" : ""}{" "}
+            found
           </div>
           <div className="flex space-x-2">
             <Button variant="outline" size="sm" data-testid="button-sort">
@@ -207,7 +290,10 @@ export default function CategoryPage() {
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-2xl overflow-hidden animate-pulse shadow-md">
+              <div
+                key={i}
+                className="bg-white rounded-2xl overflow-hidden animate-pulse shadow-md"
+              >
                 <div className="w-full h-48 bg-muted"></div>
                 <div className="p-6 space-y-3">
                   <div className="h-6 bg-muted rounded-lg w-3/4"></div>
@@ -224,17 +310,19 @@ export default function CategoryPage() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <div className={`w-20 h-20 bg-gradient-to-r ${config.gradient} rounded-2xl flex items-center justify-center mx-auto mb-4 opacity-20`}>
-              <config.icon className="w-8 h-8 text-white" />
+            <div
+              className={`w-20 h-20 bg-gradient-to-r ${config.gradient} rounded-2xl flex items-center justify-center mx-auto mb-4 opacity-20`}
+            >
+                <config.icon className="w-6 h-6 text-white" />
             </div>
-            <h3 className="font-bold text-lg text-foreground mb-2">No {config.title} deals yet</h3>
+            <h3 className="font-bold text-lg text-foreground mb-2">
+              No {config.title} deals yet
+            </h3>
             <p className="text-muted-foreground mb-6">
               Check back soon for amazing {config.title.toLowerCase()} deals!
             </p>
             <Link href="/search">
-              <Button data-testid="button-browse-all">
-                Browse All Deals
-              </Button>
+              <Button data-testid="button-browse-all">Browse All Deals</Button>
             </Link>
           </div>
         )}

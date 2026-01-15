@@ -394,17 +394,17 @@ export default function Home() {
           <div className="flex space-x-2 overflow-x-auto pb-1">
             <Link href="/deals/featured">
               <Button
-                className="flex-shrink-0 rounded-full px-4 py-2 font-semibold text-white bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 border-0 shadow-md hover:shadow-lg transition-all"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-semibold text-white bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 border-0 shadow-md hover:shadow-lg transition-all"
                 size="sm"
               >
-                <Sparkles className="w-4 h-4 mr-2" /> 🔥 Hot Deals
+                <Sparkles className="w-4 h-4 mr-1.5" /> 🔥 Hot Deals
               </Button>
             </Link>
             <Link href="/category/pizza">
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
                 🍕 Pizza
               </Button>
@@ -413,7 +413,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
                 🍔 Burgers
               </Button>
@@ -422,7 +422,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
                 🍣 Sushi
               </Button>
@@ -431,7 +431,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
                 🥡 Chinese
               </Button>
@@ -440,7 +440,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
                 🌮 Tacos
               </Button>
@@ -449,7 +449,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
                 🥐 Breakfast
               </Button>
@@ -458,7 +458,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
                 🦞 Seafood
               </Button>
@@ -467,7 +467,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
                 🍖 BBQ
               </Button>
@@ -476,7 +476,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
                 🍰 Desserts
               </Button>
@@ -485,7 +485,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
                 ☕ Coffee
               </Button>
@@ -494,7 +494,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-4 py-2 font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
               >
                 🥗 Healthy
               </Button>

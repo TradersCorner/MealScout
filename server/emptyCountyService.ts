@@ -1,6 +1,6 @@
 /**
  * Empty County Service
- * 
+ *
  * Handles the empty county experience:
  * 1. Acknowledge no partners yet
  * 2. Reframe as opportunity for early backers
@@ -9,9 +9,9 @@
  * 5. Incentivize with affiliate opportunity
  */
 
-import { db } from './db';
-import { restaurantSubmissions, restaurants } from '@shared/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { db } from "./db";
+import { restaurantSubmissions, restaurants } from "@shared/schema";
+import { eq, and, sql } from "drizzle-orm";
 
 interface CountyBounds {
   county: string;
@@ -26,16 +26,65 @@ export async function getCountyContentFallback(
   county: string,
   state: string,
   category?: string,
-  limit: number = 20,
+  limit: number = 20
 ) {
-  // For now, return empty array with fallback chain metadata
-  // Actual implementation would query restaurants by county/state location
-  // This is placeholder since deals table doesn't have county/state fields
+  // Approximate fallback using restaurant address/state since deals
+  // don't yet carry explicit county/state fields.
+  //
+  // Strategy:
+  // - Try to find restaurants whose address mentions the county and state
+  // - If none, fall back to other restaurants in the same state
+  // - If still none, fall back to a small national sample
+  const normalizedState = state.trim();
+  const normalizedCounty = county.trim();
+
+  // 1) Local-like: address contains county and state
+  const localRestaurants = await db
+    .select()
+    .from(restaurants)
+    .where(
+      and(
+        // loosely match "{county}" and "{state}" in the address text
+        // to approximate county-level coverage
+        // e.g., "East Baton Rouge Parish, LA"
+        sql`LOWER(${restaurants.address}) LIKE LOWER('%' || ${normalizedCounty} || '%')`,
+        sql`LOWER(${restaurants.address}) LIKE LOWER('%' || ${normalizedState} || '%')`
+      )
+    )
+    .limit(limit);
+
+  if (localRestaurants.length > 0) {
+    return {
+      source: "local",
+      deals: [],
+      fallbackChain: ["local", "state", "national"],
+    };
+  }
+
+  // 2) Same-state restaurants
+  const stateRestaurants = await db
+    .select()
+    .from(restaurants)
+    .where(
+      sql`LOWER(${restaurants.address}) LIKE LOWER('%' || ${normalizedState} || '%')`
+    )
+    .limit(limit);
+
+  if (stateRestaurants.length > 0) {
+    return {
+      source: "state",
+      deals: [],
+      fallbackChain: ["local", "state", "national"],
+    };
+  }
+
+  // 3) National fallback: if we have any restaurants at all, treat as national
+  const anyRestaurants = await db.select().from(restaurants).limit(limit);
 
   return {
-    source: 'fallback',
+    source: anyRestaurants.length > 0 ? "national" : "empty",
     deals: [],
-    fallbackChain: ['local', 'state', 'national'],
+    fallbackChain: ["local", "state", "national"],
   };
 }
 
@@ -57,47 +106,53 @@ export async function submitRestaurant(
     longitude?: string;
     description?: string;
     photoUrl?: string;
-  },
+  }
 ) {
   // Check if already submitted recently
-  const existing = (await db
-    .select()
-    .from(restaurantSubmissions)
-    .where(
-      and(
-        sql`LOWER(${restaurantSubmissions.restaurantName}) = LOWER(${restaurantName})`,
-        eq(restaurantSubmissions.county, county),
-        eq(restaurantSubmissions.state, state),
-      ),
-    )
-    .limit(1))[0];
+  const existing = (
+    await db
+      .select()
+      .from(restaurantSubmissions)
+      .where(
+        and(
+          sql`LOWER(${restaurantSubmissions.restaurantName}) = LOWER(${restaurantName})`,
+          eq(restaurantSubmissions.county, county),
+          eq(restaurantSubmissions.state, state)
+        )
+      )
+      .limit(1)
+  )[0];
 
   if (existing) {
     return {
       success: false,
-      message: 'This restaurant has already been submitted',
+      message: "This restaurant has already been submitted",
       submission: existing,
     };
   }
 
-  const submission = await db.insert(restaurantSubmissions).values({
-    submittedByUserId,
-    restaurantName,
-    address,
-    county,
-    state,
-    website: data.website,
-    phoneNumber: data.phoneNumber,
-    category: data.category,
-    latitude: data.latitude,
-    longitude: data.longitude,
-    description: data.description,
-    photoUrl: data.photoUrl,
-  }).returning();
+  const submission = await db
+    .insert(restaurantSubmissions)
+    .values({
+      submittedByUserId,
+      restaurantName,
+      address,
+      county,
+      state,
+      website: data.website,
+      phoneNumber: data.phoneNumber,
+      category: data.category,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      description: data.description,
+      photoUrl: data.photoUrl,
+    })
+    .returning();
 
   return {
     success: true,
-    message: 'Restaurant submitted! Our team will review and contact the owner.',
+    message:
+      "Restaurant submitted! Our team will review and contact the owner.",
     submission: submission[0],
   };
 }
@@ -111,10 +166,10 @@ export async function getPendingSubmissions(county?: string, state?: string) {
     .from(restaurantSubmissions)
     .where(
       and(
-        eq(restaurantSubmissions.status, 'pending'),
+        eq(restaurantSubmissions.status, "pending"),
         county ? eq(restaurantSubmissions.county, county) : undefined,
-        state ? eq(restaurantSubmissions.state, state) : undefined,
-      ),
+        state ? eq(restaurantSubmissions.state, state) : undefined
+      )
     )
     .orderBy(restaurantSubmissions.createdAt);
 
@@ -127,23 +182,26 @@ export async function getPendingSubmissions(county?: string, state?: string) {
  */
 export async function approveSubmission(
   submissionId: string,
-  linkToRestaurantId?: string,
+  linkToRestaurantId?: string
 ) {
-  const submission = (await db
-    .select()
-    .from(restaurantSubmissions)
-    .where(eq(restaurantSubmissions.id, submissionId))
-    .limit(1))[0];
+  const submission = (
+    await db
+      .select()
+      .from(restaurantSubmissions)
+      .where(eq(restaurantSubmissions.id, submissionId))
+      .limit(1)
+  )[0];
 
   if (!submission) {
-    throw new Error('Submission not found');
+    throw new Error("Submission not found");
   }
 
   // If linking to existing restaurant, just update the submission
   if (linkToRestaurantId) {
-    const updated = await db.update(restaurantSubmissions)
+    const updated = await db
+      .update(restaurantSubmissions)
       .set({
-        status: 'converted',
+        status: "converted",
         convertedToRestaurantId: linkToRestaurantId,
         approvedAt: new Date(),
       })
@@ -154,9 +212,10 @@ export async function approveSubmission(
   }
 
   // Otherwise, mark as approved for outreach
-  const updated = await db.update(restaurantSubmissions)
+  const updated = await db
+    .update(restaurantSubmissions)
     .set({
-      status: 'approved',
+      status: "approved",
       approvedAt: new Date(),
     })
     .where(eq(restaurantSubmissions.id, submissionId))
@@ -169,9 +228,10 @@ export async function approveSubmission(
  * Reject a submission (admin)
  */
 export async function rejectSubmission(submissionId: string, reason?: string) {
-  const updated = await db.update(restaurantSubmissions)
+  const updated = await db
+    .update(restaurantSubmissions)
     .set({
-      status: 'rejected',
+      status: "rejected",
     })
     .where(eq(restaurantSubmissions.id, submissionId))
     .returning();
@@ -182,24 +242,37 @@ export async function rejectSubmission(submissionId: string, reason?: string) {
 /**
  * Check if a county has content (restaurants or deals)
  */
-export async function isCountyEmpty(county: string, state: string): Promise<boolean> {
-  // For now, always return true since we don't have county/state fields in deals
-  // In a real implementation, would check:
-  // 1. Restaurants with location matching county/state
-  // 2. Deals from those restaurants
-  // For MVP, we'll consider empty if few restaurants exist in database
+export async function isCountyEmpty(
+  county: string,
+  state: string
+): Promise<boolean> {
+  // Treat a county as "non-empty" if there are restaurants whose
+  // address text appears to reference the county + state.
+  const normalizedState = state.trim();
+  const normalizedCounty = county.trim();
 
-  const restaurantCount = await db.select().from(restaurants).limit(1);
+  const matches = await db
+    .select({ id: restaurants.id })
+    .from(restaurants)
+    .where(
+      and(
+        sql`LOWER(${restaurants.address}) LIKE LOWER('%' || ${normalizedCounty} || '%')`,
+        sql`LOWER(${restaurants.address}) LIKE LOWER('%' || ${normalizedState} || '%')`
+      )
+    )
+    .limit(1);
 
-  // If no restaurants at all, county is empty
-  return restaurantCount.length === 0;
+  return matches.length === 0;
 }
 
 /**
  * Get engagement metrics for a county
  * Used to show "You're early" messaging
  */
-export async function getCountyEngagementMetrics(county: string, state: string) {
+export async function getCountyEngagementMetrics(
+  county: string,
+  state: string
+) {
   const restaurantList = await db.select().from(restaurants);
 
   const submissions = await db
@@ -209,8 +282,8 @@ export async function getCountyEngagementMetrics(county: string, state: string) 
       and(
         eq(restaurantSubmissions.county, county),
         eq(restaurantSubmissions.state, state),
-        eq(restaurantSubmissions.status, 'pending'),
-      ),
+        eq(restaurantSubmissions.status, "pending")
+      )
     );
 
   return {
@@ -220,7 +293,7 @@ export async function getCountyEngagementMetrics(county: string, state: string) 
     isEarlyStage: restaurantList.length < 10,
     message:
       restaurantList.length === 0
-        ? 'Be first — help shape your local food scene'
+        ? "Be first — help shape your local food scene"
         : `You're early — only ${restaurantList.length} restaurants here so far`,
   };
 }

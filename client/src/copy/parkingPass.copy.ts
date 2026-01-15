@@ -1,14 +1,14 @@
-/**
- * Parking Pass v1 — COPY LOCK
- * This file is the single source of truth for all user-facing text.
- * DO NOT inline strings in components.
- * Changes here require product + legal review.
- */
-
-export const PARKING_PASS_COPY = {
-  // Progress
-  progress: {
-    location: "Location",
+    },
+  // Parking pass UI copy for in-progress features
+  dev: {
+    placeholders: {
+      locationMap: "Map + nearby hosts will appear here once parking inventory is connected.",
+      dateCalendar: "Calendar view will be wired to the date picker component.",
+      slotList: "Slots will render from host configuration using SlotCard and AllDayCard.",
+      statusUpcomingCountdown: "Countdown and GPS checks will appear here when connected.",
+      statusActiveGpsDetail: "On-site · GPS confirmed (once wired).",
+    },
+  },
     date: "Date",
     slot: "Slot",
     confirm: "Confirm",

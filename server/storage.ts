@@ -1741,6 +1741,16 @@ export class DatabaseStorage implements IStorage {
         .where(gte(users.createdAt, new Date(new Date().setHours(0, 0, 0, 0)))),
     ]);
 
+    // Approximate gross revenue from redeemed deal claims
+    const revenueResult = await db
+      .select({
+        sum: sql<number>`coalesce(cast(sum(${dealClaims.orderAmount}) as numeric), 0)`,
+      })
+      .from(dealClaims)
+      .where(eq(dealClaims.isUsed, true));
+
+    const revenue = revenueResult[0]?.sum || 0;
+
     return {
       totalUsers: totalUsers[0]?.count || 0,
       totalRestaurants: totalRestaurants[0]?.count || 0,
@@ -1749,7 +1759,7 @@ export class DatabaseStorage implements IStorage {
       totalClaims: totalClaims[0]?.count || 0,
       todayClaims: todayClaims[0]?.count || 0,
       newUsersToday: newUsersToday[0]?.count || 0,
-      revenue: 0, // Placeholder for revenue calculation
+      revenue,
     };
   }
 
@@ -1777,9 +1787,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserStatus(userId: string, isActive: boolean): Promise<void> {
-    // Note: Users table doesn't have isActive field, this is a placeholder
-    // Would need to add isActive field to users schema first
-    console.log(`Would update user ${userId} status to ${isActive}`);
+    // Use isDisabled flag on users to represent active status
+    await db
+      .update(users)
+      .set({ isDisabled: !isActive })
+      .where(eq(users.id, userId));
   }
 
   async getAllDealsWithRestaurants(): Promise<any[]> {

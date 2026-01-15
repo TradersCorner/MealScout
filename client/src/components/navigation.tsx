@@ -115,11 +115,16 @@ export default function Navigation() {
       isHost,
     });
   }
-  // Shared core nav: Food (home), Map, Profile for all users
+  // Shared core nav: Food (home), Map, Profile/Account
   const sharedNavItems: NavItem[] = [
     { path: "/", icon: UtensilsCrossed, label: "Food" },
     { path: "/map", icon: MapPin, label: "Map" },
-    { path: "/profile", icon: User, label: "Profile" },
+    // If logged out, send users to the auth funnel instead of a dead profile page
+    {
+      path: user ? "/profile" : "/login",
+      icon: User,
+      label: user ? "Profile" : "Account",
+    },
   ];
 
   const customerExtras: NavItem[] = [

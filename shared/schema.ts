@@ -2942,7 +2942,7 @@ export const LISA_CLAIM_TYPES = {
   MERCHANT_LISTED: "merchant_listed",
   DEAL_CREATED: "deal_created",
 
-  // TradeScout (future - placeholders)
+  // TradeScout (reserved for shared account claims)
   PROJECT_POSTED: "project_posted",
   CONTRACTOR_ENGAGED: "contractor_engaged",
   VERIFICATION_COMPLETED: "verification_completed",

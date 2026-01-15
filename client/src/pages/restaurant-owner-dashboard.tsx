@@ -187,13 +187,15 @@ export default function RestaurantOwnerDashboard() {
     enabled: !!user,
   });
 
-  // Fetch subscription status
+  // Fetch subscription status (no aggressive retries to avoid 503 spam)
   const { data: subscription } = useQuery<{
     status: string;
     hasAccess: boolean;
   }>({
     queryKey: ["/api/subscription/status"],
     enabled: !!user,
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch favorites analytics for paid users
@@ -1187,7 +1189,6 @@ export default function RestaurantOwnerDashboard() {
         <TabsList>
           <TabsTrigger value="active">Active Deals</TabsTrigger>
           <TabsTrigger value="inactive">Inactive Deals</TabsTrigger>
-          <TabsTrigger value="claims">Claims</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="credits">
             <CreditCard className="h-4 w-4 mr-1" />

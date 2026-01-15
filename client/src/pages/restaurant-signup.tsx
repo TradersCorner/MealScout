@@ -153,18 +153,54 @@ export default function RestaurantSignup() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
   const [authMode, setAuthMode] = useState<"signup" | "login">("signup");
+  const [isHost, setIsHost] = useState(false);
+  const [hostCheckDone, setHostCheckDone] = useState(false);
 
-  // Admin and staff should not use this form - redirect them
-  if (
-    isAuthenticated &&
-    user &&
-    (user.userType === "admin" ||
-      user.userType === "super_admin" ||
-      user.userType === "staff")
-  ) {
-    setLocation("/restaurant-owner-dashboard");
-    return null;
-  }
+  // Detect if this authenticated user is a host/event coordinator
+  useEffect(() => {
+    if (!user) {
+      setIsHost(false);
+      setHostCheckDone(true);
+      return;
+    }
+
+    let cancelled = false;
+    setHostCheckDone(false);
+
+    fetch("/api/hosts/me")
+      .then((res) => {
+        if (cancelled) return;
+        setIsHost(res.ok);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setIsHost(false);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setHostCheckDone(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  // Redirect admin/staff away from this flow to their dashboard
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+    if (user.userType === "admin" || user.userType === "staff") {
+      setLocation("/restaurant-owner-dashboard");
+    }
+  }, [isAuthenticated, user, setLocation]);
+
+  // Hosts/event coordinators are not restaurants/food trucks – send them to host tools
+  useEffect(() => {
+    if (!isAuthenticated || !user || !hostCheckDone) return;
+    if (user.userType === "customer" && isHost) {
+      setLocation("/host/dashboard");
+    }
+  }, [isAuthenticated, user, isHost, hostCheckDone, setLocation]);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -498,7 +534,7 @@ export default function RestaurantSignup() {
     loginMutation.mutate(data);
   };
 
-  if (isLoading) {
+  if (isLoading || (!hostCheckDone && isAuthenticated)) {
     return (
       <div className="max-w-md mx-auto bg-background min-h-screen flex items-center justify-center">
         <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full" />
@@ -516,25 +552,25 @@ export default function RestaurantSignup() {
           className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
         />
 
-        <div className="px-4 py-4 max-w-4xl mx-auto">
-          {/* Hero Section - Step 2 of the same system */}
-          <div className="text-center mb-4">
-            <div className="inline-flex items-center justify-center px-2 py-1 mb-2 rounded-full bg-white/70 border border-orange-200 text-[10px] font-medium text-orange-700 uppercase tracking-wide">
+        <div className="px-3 py-3 max-w-4xl mx-auto">
+          {/* Compact hero so the form stays above the fold */}
+          <div className="text-center mb-3">
+            <div className="inline-flex items-center justify-center px-2 py-0.5 mb-1 rounded-full bg-white/70 border border-orange-200 text-[10px] font-medium text-orange-700 uppercase tracking-wide">
               {COPY.unauth.hero.badge}
             </div>
-            <div className="w-12 h-12 mb-2 flex items-center justify-center mx-auto rounded-2xl bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 shadow-md">
-              <Store className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 mb-1 flex items-center justify-center mx-auto rounded-2xl bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 shadow-md">
+              <Store className="w-5 h-5 text-white" />
             </div>
-            <h2 className="text-lg font-bold text-gray-900 mb-1">
+            <h2 className="text-base font-bold text-gray-900 mb-1">
               {COPY.unauth.hero.title}
             </h2>
-            <p className="text-gray-700 text-xs leading-snug max-w-xl mx-auto mb-3">
+            <p className="hidden sm:block text-gray-700 text-xs leading-snug max-w-xl mx-auto mb-2">
               {COPY.unauth.hero.subtitle}
             </p>
             {/* Authentication Section */}
             <div className="max-w-md mx-auto" data-signup-section>
-              <Card className="bg-white/80 backdrop-blur-sm shadow-xl">
-                <CardContent className="p-8">
+              <Card className="bg-white/90 backdrop-blur-sm shadow-xl">
+                <CardContent className="p-5">
                   <div className="flex items-center justify-center space-x-4 mb-6">
                     <button
                       data-testid="button-signup-toggle"
@@ -2110,31 +2146,33 @@ export default function RestaurantSignup() {
 
         {/* Verification Step */}
         {currentStep === "verification" && createdRestaurant && (
-          <div className="space-y-8">
-            {/* Verification Introduction */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2 text-2xl">
-                  <Upload className="w-7 h-7 text-red-600" />
-                  <span>{COPY.verification.title}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <p className="text-lg text-gray-700">
-                    {COPY.verification.intro}
-                  </p>
-                  <ul className="list-disc list-inside space-y-2 text-gray-600 ml-4">
-                    {COPY.verification.bullets.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-                    <p className="text-blue-800 text-sm">
-                      {COPY.verification.whyVerify}
-                    </p>
-                  </div>
+          <div className="space-y-6">
+            {/* Minimal verification header */}
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="inline-flex items-center px-2 py-1 rounded-full bg-red-50 text-red-700 text-[10px] font-semibold uppercase tracking-wide mb-1">
+                  Verify business
                 </div>
+                <h2 className="text-base font-semibold text-gray-900">
+                  {COPY.verification.title}
+                </h2>
+                <p className="text-xs text-gray-600 mt-1 max-w-md">
+                  {COPY.verification.intro}
+                </p>
+              </div>
+              <Upload className="w-6 h-6 text-red-500" />
+            </div>
+
+            <Card className="border-dashed border-red-200 bg-red-50/40">
+              <CardContent className="pt-4 pb-4">
+                <ul className="list-disc list-inside space-y-1 text-xs text-gray-700 ml-1">
+                  {COPY.verification.bullets.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+                <p className="text-[11px] text-blue-800 bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mt-3">
+                  {COPY.verification.whyVerify}
+                </p>
               </CardContent>
             </Card>
 

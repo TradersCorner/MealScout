@@ -1423,6 +1423,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes: loc.notes,
         preferredDates: loc.preferredDates,
         status: loc.status,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
       }));
 
       const eventLocations = upcomingEvents.map((event) => ({
@@ -1438,6 +1440,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hostId: event.hostId,
         hostName: event.host?.businessName,
         hostAddress: event.host?.address,
+        hostLatitude: event.host?.latitude,
+        hostLongitude: event.host?.longitude,
         hardCapEnabled: event.hardCapEnabled,
         seriesId: event.seriesId,
         bookedRestaurantId: event.bookedRestaurantId,

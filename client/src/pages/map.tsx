@@ -158,6 +158,8 @@ type HostLocation = {
   expectedFootTraffic?: number;
   notes?: string | null;
   preferredDates?: string[];
+  latitude?: number | string | null;
+  longitude?: number | string | null;
 };
 
 type EventLocation = {
@@ -224,6 +226,27 @@ async function geocodeAddress(address: string): Promise<GeoPoint | null> {
   return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
 }
 
+// Fallback: approximate location via IP for environments like in-app browsers
+async function ipGeolocationFallback(): Promise<{
+  lat: number;
+  lng: number;
+  city?: string;
+} | null> {
+  try {
+    const response = await fetch("https://ipapi.co/json/");
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data.latitude || !data.longitude) return null;
+    return {
+      lat: parseFloat(data.latitude),
+      lng: parseFloat(data.longitude),
+      city: data.city || data.region,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function MapPage() {
   const [userLocation, setUserLocation] = useState<{
     lat: number;
@@ -245,10 +268,28 @@ export default function MapPage() {
 
   // Get user location
   useEffect(() => {
+    // Start from last known location if the user has previously shared it
+    try {
+      const stored = localStorage.getItem("mealscout_last_location");
+      if (stored) {
+        const parsed = JSON.parse(stored) as {
+          lat?: number;
+          lng?: number;
+        } | null;
+        if (parsed?.lat && parsed?.lng) {
+          const approx = { lat: parsed.lat, lng: parsed.lng };
+          setUserLocation(approx);
+          setMapCenter(approx);
+        }
+      }
+    } catch {
+      // ignore localStorage issues
+    }
+
     if (navigator.geolocation) {
       setIsLocating(true);
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           const location = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
@@ -256,10 +297,20 @@ export default function MapPage() {
           setUserLocation(location);
           setMapCenter(location);
           setIsLocating(false);
+          setLocationError(null);
         },
-        (error) => {
+        async (error) => {
           console.log("Location error:", error);
-          setLocationError("Unable to get your location");
+          // Try a softer message and approximate IP-based fallback
+          setLocationError(
+            "Couldn't get precise GPS, showing an approximate area instead."
+          );
+          const ipLocation = await ipGeolocationFallback();
+          if (ipLocation) {
+            const approx = { lat: ipLocation.lat, lng: ipLocation.lng };
+            setUserLocation(approx);
+            setMapCenter(approx);
+          }
           setIsLocating(false);
         },
         { enableHighAccuracy: true, timeout: 10000 }
@@ -431,7 +482,7 @@ export default function MapPage() {
 
       {/* Map Container */}
       <div className="relative flex-1">
-        <div className="h-96 relative">
+        <div className="relative h-[60vh] min-h-[320px]">
           {mapCenter && (
             <MapContainer
               center={[mapCenter.lat, mapCenter.lng]}
@@ -451,9 +502,9 @@ export default function MapPage() {
                   icon={userLocationIcon}
                 >
                   <Popup>
-                    <div className="text-center">
+                    <div className="text-center rounded-xl bg-blue-600 text-white px-3 py-2 shadow-lg">
                       <div className="font-semibold text-sm">You are here</div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-blue-100">
                         {userLocation.lat.toFixed(4)},{" "}
                         {userLocation.lng.toFixed(4)}
                       </div>
@@ -478,19 +529,19 @@ export default function MapPage() {
                     }}
                   >
                     <Popup>
-                      <div className="min-w-48">
-                        <div className="font-semibold text-sm mb-1">
+                      <div className="min-w-48 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 text-white p-3 shadow-lg space-y-1">
+                        <div className="font-semibold text-sm">
                           {deal.title}
                         </div>
-                        <div className="text-xs text-muted-foreground mb-2">
+                        <div className="text-xs text-red-100">
                           {deal.restaurant.name}
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-primary font-bold text-sm">
+                        <div className="flex items-center justify-between pt-1">
+                          <span className="font-bold text-sm">
                             {deal.discountValue}% OFF
                           </span>
-                          <span className="text-xs text-muted-foreground">
-                            Min: ${deal.minOrderAmount}
+                          <span className="text-xs text-orange-100">
+                            Min order: ${deal.minOrderAmount}
                           </span>
                         </div>
                       </div>
@@ -510,28 +561,28 @@ export default function MapPage() {
                     icon={hostIcon}
                   >
                     <Popup>
-                      <div className="min-w-52 space-y-1">
+                      <div className="min-w-52 space-y-1 rounded-xl bg-blue-600 text-white p-3 shadow-lg">
                         <div className="flex items-center space-x-2">
-                          <Building2 className="w-4 h-4 text-blue-600" />
+                          <Building2 className="w-4 h-4 text-blue-100" />
                           <div className="font-semibold text-sm">
                             {host.name}
                           </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-blue-100">
                           {host.address}
                         </div>
                         {host.locationType && (
-                          <div className="text-[11px] uppercase tracking-wide text-blue-700 font-semibold">
+                          <div className="text-[11px] uppercase tracking-wide text-blue-200 font-semibold">
                             {host.locationType}
                           </div>
                         )}
                         {host.expectedFootTraffic && (
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-blue-100">
                             Expected foot traffic: {host.expectedFootTraffic}
                           </div>
                         )}
                         {host.preferredDates?.length ? (
-                          <div className="text-xs text-muted-foreground flex items-center space-x-1">
+                          <div className="text-xs text-blue-100 flex items-center space-x-1">
                             <Calendar className="w-3 h-3" />
                             <span>
                               {host.preferredDates.slice(0, 3).join(", ")}
@@ -540,7 +591,7 @@ export default function MapPage() {
                         ) : null}
                         <Button
                           size="sm"
-                          className="w-full mt-2"
+                          className="w-full mt-2 bg-white text-blue-700 hover:bg-blue-50"
                           onClick={() => {
                             // Send truck owners to dashboard to book/express interest
                             window.location.href = `/restaurant-owner-dashboard?locationRequestId=${host.id}`;
@@ -565,27 +616,27 @@ export default function MapPage() {
                     icon={eventIcon}
                   >
                     <Popup>
-                      <div className="min-w-52 space-y-1">
+                      <div className="min-w-52 space-y-1 rounded-xl bg-purple-600 text-white p-3 shadow-lg">
                         <div className="font-semibold text-sm">
                           {event.name}
                         </div>
                         {event.hostName && (
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-purple-100">
                             Host: {event.hostName}
                           </div>
                         )}
                         {event.hostAddress && (
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-purple-100">
                             {event.hostAddress}
                           </div>
                         )}
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-purple-100">
                           {new Date(event.date).toLocaleDateString()} •{" "}
                           {event.startTime} - {event.endTime}
                         </div>
                         <Button
                           size="sm"
-                          className="w-full mt-2"
+                          className="w-full mt-2 bg-white text-purple-700 hover:bg-purple-50"
                           onClick={() => {
                             window.location.href = `/restaurant-owner-dashboard?eventId=${event.id}`;
                           }}

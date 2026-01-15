@@ -205,41 +205,6 @@ export default function CustomerSignup() {
         <div>
           {/* Welcome Section (highly compressed) */}
           <div className="text-center mb-2">
-            <div className="inline-flex mb-2 rounded-full bg-white/80 border border-gray-200 shadow-sm text-[11px] font-medium text-gray-700 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setAccountType("diner")}
-                className={`px-3 py-1 transition-colors ${
-                  accountType === "diner"
-                    ? "bg-orange-500 text-white"
-                    : "bg-transparent text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                Diner
-              </button>
-              <button
-                type="button"
-                onClick={() => setAccountType("host")}
-                className={`px-3 py-1 border-l border-gray-200 transition-colors ${
-                  accountType === "host"
-                    ? "bg-orange-500 text-white"
-                    : "bg-transparent text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                Host / Event Organizer
-              </button>
-              <button
-                type="button"
-                onClick={() => setAccountType("business")}
-                className={`px-3 py-1 border-l border-gray-200 transition-colors ${
-                  accountType === "business"
-                    ? "bg-orange-500 text-white"
-                    : "bg-transparent text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                Restaurant / Food Truck
-              </button>
-            </div>
             <div className="w-10 h-10 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 rounded-2xl mb-1 flex items-center justify-center mx-auto shadow-md ring-2 ring-white/70">
               <UserPlus className="w-5 h-5 text-white drop-shadow" />
             </div>
@@ -257,6 +222,45 @@ export default function CustomerSignup() {
 
           {/* Signup Form */}
           <div className="bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-xl p-4">
+            {/* Account type selection inside form */}
+            <div className="flex justify-center mb-4">
+              <div className="inline-flex rounded-full bg-white border border-gray-200 shadow-sm text-[11px] font-medium text-gray-700 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setAccountType("diner")}
+                  className={`px-3 py-1 transition-colors ${
+                    accountType === "diner"
+                      ? "bg-orange-500 text-white"
+                      : "bg-transparent text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Diner
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAccountType("host")}
+                  className={`px-3 py-1 border-l border-gray-200 transition-colors ${
+                    accountType === "host"
+                      ? "bg-orange-500 text-white"
+                      : "bg-transparent text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Host / Event Organizer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAccountType("business")}
+                  className={`px-3 py-1 border-l border-gray-200 transition-colors ${
+                    accountType === "business"
+                      ? "bg-orange-500 text-white"
+                      : "bg-transparent text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Restaurant / Food Truck
+                </button>
+              </div>
+            </div>
+
             <div className="text-center mb-4">
               <h3 className="text-lg font-bold text-gray-900 mb-1">
                 Sign Up with Email

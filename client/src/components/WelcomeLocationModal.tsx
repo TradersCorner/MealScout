@@ -1,20 +1,41 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MapPin, Navigation, Search } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface WelcomeLocationModalProps {
   open: boolean;
-  onLocationSet: (location: { lat: number; lng: number }, locationName: string) => void;
+  onLocationSet: (
+    location: { lat: number; lng: number },
+    locationName: string
+  ) => void;
   onSkip: () => void;
 }
 
-export default function WelcomeLocationModal({ open, onLocationSet, onSkip }: WelcomeLocationModalProps) {
+export default function WelcomeLocationModal({
+  open,
+  onLocationSet,
+  onSkip,
+}: WelcomeLocationModalProps) {
   const [isDetecting, setIsDetecting] = useState(false);
   const [manualLocation, setManualLocation] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+
+  const isTruckSideUser =
+    user &&
+    (user.userType === "restaurant_owner" ||
+      user.userType === "staff" ||
+      user.userType === "admin");
 
   const handleAutoDetect = async () => {
     setIsDetecting(true);
@@ -27,17 +48,19 @@ export default function WelcomeLocationModal({ open, onLocationSet, onSkip }: We
     }
 
     try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 8000,
-          maximumAge: 0
-        });
-      });
+      const position = await new Promise<GeolocationPosition>(
+        (resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 8000,
+            maximumAge: 0,
+          });
+        }
+      );
 
       const newLocation = {
         lat: position.coords.latitude,
-        lng: position.coords.longitude
+        lng: position.coords.longitude,
       };
 
       // Reverse geocode to get location name
@@ -46,13 +69,19 @@ export default function WelcomeLocationModal({ open, onLocationSet, onSkip }: We
           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${newLocation.lat}&lon=${newLocation.lng}`
         );
         const data = await response.json();
-        const locationName = data.address?.city || data.address?.town || data.address?.county || "Your Location";
+        const locationName =
+          data.address?.city ||
+          data.address?.town ||
+          data.address?.county ||
+          "Your Location";
         onLocationSet(newLocation, locationName);
       } catch {
         onLocationSet(newLocation, "Your Location");
       }
     } catch (error: any) {
-      setError("Unable to detect your location. Please enter it manually or skip.");
+      setError(
+        "Unable to detect your location. Please enter it manually or skip."
+      );
     } finally {
       setIsDetecting(false);
     }
@@ -66,16 +95,18 @@ export default function WelcomeLocationModal({ open, onLocationSet, onSkip }: We
 
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(manualLocation)}&limit=1`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          manualLocation
+        )}&limit=1`
       );
       const data = await response.json();
 
       if (data && data[0]) {
         const newLocation = {
           lat: parseFloat(data[0].lat),
-          lng: parseFloat(data[0].lon)
+          lng: parseFloat(data[0].lon),
         };
-        const locationName = data[0].display_name.split(',')[0];
+        const locationName = data[0].display_name.split(",")[0];
         onLocationSet(newLocation, locationName);
       } else {
         setError("Location not found. Try a different city or zip code.");
@@ -91,9 +122,15 @@ export default function WelcomeLocationModal({ open, onLocationSet, onSkip }: We
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onSkip()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-center">Welcome to MealScout!</DialogTitle>
+          <DialogTitle className="text-2xl font-bold text-center">
+            {isTruckSideUser
+              ? "Find food truck spots"
+              : "Welcome to MealScout!"}
+          </DialogTitle>
           <DialogDescription className="text-center text-base">
-            Find amazing deals near you
+            {isTruckSideUser
+              ? "Use your location to discover hosts, events, and neighborhoods looking for food trucks. We'll still surface deals when trucks post them."
+              : "Discover nearby food trucks, pop-ups, and local meal deals near you."}
           </DialogDescription>
         </DialogHeader>
 
@@ -123,7 +160,9 @@ export default function WelcomeLocationModal({ open, onLocationSet, onSkip }: We
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or enter manually</span>
+              <span className="bg-background px-2 text-muted-foreground">
+                Or enter manually
+              </span>
             </div>
           </div>
 
@@ -134,7 +173,7 @@ export default function WelcomeLocationModal({ open, onLocationSet, onSkip }: We
                 placeholder="Enter city or zip code..."
                 value={manualLocation}
                 onChange={(e) => setManualLocation(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleManualSearch()}
+                onKeyDown={(e) => e.key === "Enter" && handleManualSearch()}
                 className="flex-1"
               />
               <Button
@@ -151,9 +190,7 @@ export default function WelcomeLocationModal({ open, onLocationSet, onSkip }: We
               </Button>
             </div>
 
-            {error && (
-              <p className="text-sm text-red-600">{error}</p>
-            )}
+            {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
 
           {/* Skip option */}

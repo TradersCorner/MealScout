@@ -15,6 +15,7 @@ import {
   Bug,
   Shield,
   Users,
+  UtensilsCrossed,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -114,10 +115,9 @@ export default function Navigation() {
       isHost,
     });
   }
-  // Shared core nav: Home, Deals, Map, Profile for all users
+  // Shared core nav: Food (home), Map, Profile for all users
   const sharedNavItems: NavItem[] = [
-    { path: "/", icon: Home, label: "Home" },
-    { path: "/find-food", icon: Receipt, label: "Deals" },
+    { path: "/", icon: UtensilsCrossed, label: "Food" },
     { path: "/map", icon: MapPin, label: "Map" },
     { path: "/profile", icon: User, label: "Profile" },
   ];

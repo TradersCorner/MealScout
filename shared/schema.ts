@@ -1787,6 +1787,8 @@ export const locationRequests = pgTable(
     businessName: varchar("business_name").notNull(),
     address: text("address").notNull(),
     locationType: varchar("location_type").notNull(), // 'office' | 'bar' | 'brewery' | 'other'
+    latitude: decimal("latitude", { precision: 10, scale: 8 }),
+    longitude: decimal("longitude", { precision: 11, scale: 8 }),
     preferredDates: jsonb("preferred_dates").notNull(), // string[] of ISO dates
     expectedFootTraffic: integer("expected_foot_traffic").notNull(),
     notes: text("notes"),

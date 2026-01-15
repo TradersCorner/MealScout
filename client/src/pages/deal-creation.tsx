@@ -98,9 +98,15 @@ export default function DealCreation() {
   });
 
   // Fetch subscription status for deal limits
-  const { data: subscription, isLoading: isSubscriptionLoading } = useQuery({
+  const {
+    data: subscription,
+    isLoading: isSubscriptionLoading,
+    isError: isSubscriptionError,
+  } = useQuery({
     queryKey: ["/api/subscription/status"],
     enabled: isAuthenticated,
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
   console.log("Deal Creation - Subscription Data:", subscription);
@@ -361,7 +367,7 @@ export default function DealCreation() {
   // Show loading while checking subscription
   if (isSubscriptionLoading) {
     return (
-      <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
+      <div className="max-w-md mx-auto bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 min-h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     );
@@ -381,28 +387,31 @@ export default function DealCreation() {
         (subscription as any).betaMode === true ||
         (subscription as any).hasAccess === true));
 
-  if (subscription && !hasAccess) {
+  if (!isSubscriptionError && subscription && !hasAccess) {
     console.log(
       "Blocking due to subscription status:",
       (subscription as any).status
     );
     return (
-      <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
-        <Card>
+      <div className="max-w-md mx-auto bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 min-h-screen flex items-center justify-center px-4">
+        <Card className="w-full shadow-xl border-orange-200/70">
           <CardContent className="p-6 text-center">
-            <div className="text-4xl mb-4">💳</div>
-            <h2 className="text-lg font-semibold mb-2">
-              Subscription Required
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-orange-100 text-orange-600 text-2xl mb-3">
+              💳
+            </div>
+            <h2 className="text-lg font-semibold mb-1">
+              Subscription required to post deals
             </h2>
-            <p className="text-muted-foreground mb-4">
-              You need an active subscription to create deals
+            <p className="text-sm text-muted-foreground mb-4">
+              Unlock unlimited featured spots for your food truck or restaurant
+              with a simple monthly plan.
             </p>
             <Link href="/subscribe">
               <Button
                 className="w-full"
                 data-testid="button-subscribe-to-create"
               >
-                View Subscription Plans
+                View subscription plans
               </Button>
             </Link>
           </CardContent>
@@ -412,9 +421,9 @@ export default function DealCreation() {
   }
 
   return (
-    <div className="max-w-md mx-auto bg-white min-h-screen">
+    <div className="max-w-md mx-auto bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 min-h-screen">
       <BackHeader
-        title="Create New Deal"
+        title="Create a new deal"
         fallbackHref="/restaurant-owner-dashboard"
         icon={Sparkles}
         rightActions={
@@ -430,7 +439,23 @@ export default function DealCreation() {
         }
       />
 
-      <div className="px-4 py-6 pb-24">
+      <div className="px-4 py-5 pb-24 space-y-4">
+        <div className="rounded-2xl bg-white/80 backdrop-blur-sm border border-orange-100 px-4 py-3 flex items-start space-x-3">
+          <div className="mt-0.5">
+            <Sparkles className="w-4 h-4 text-orange-500" />
+          </div>
+          <div className="text-xs text-gray-700">
+            <p className="font-semibold text-gray-900 mb-1">
+              Turn one-time diners into regulars
+            </p>
+            <p>
+              Short, time-bound deals work best for food trucks and busy
+              restaurants. Highlight your hero item and limit the window so it
+              feels special.
+            </p>
+          </div>
+        </div>
+
         {/* Live Preview */}
         {showPreview && (
           <div className="mb-6">
@@ -444,7 +469,7 @@ export default function DealCreation() {
               </Badge>
             </div>
 
-            <Card className="overflow-hidden border-2 border-primary/20">
+            <Card className="overflow-hidden border-0 shadow-xl rounded-2xl bg-white">
               <div className="relative">
                 {dealPreviewData.image ? (
                   <img
@@ -453,15 +478,17 @@ export default function DealCreation() {
                     className="w-full h-36 object-cover"
                   />
                 ) : (
-                  <div className="w-full h-36 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                  <div className="w-full h-36 bg-gradient-to-br from-orange-100 via-red-100 to-yellow-100 flex items-center justify-center">
                     <div className="text-center">
-                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-1" />
-                      <p className="text-xs text-gray-500">No photo yet</p>
+                      <Upload className="w-8 h-8 text-orange-500 mx-auto mb-1" />
+                      <p className="text-xs text-gray-700 font-medium">
+                        Add a photo to see how your deal pops in the feed
+                      </p>
                     </div>
                   </div>
                 )}
 
-                <div className="absolute bottom-2 right-2 bg-red-500 text-white px-2 py-1 rounded-md text-sm font-bold">
+                <div className="absolute bottom-2 right-2 bg-gradient-to-r from-red-500 to-orange-500 text-white px-2 py-1 rounded-md text-sm font-bold shadow-lg">
                   {dealPreviewData.dealType === "percentage"
                     ? `${dealPreviewData.discountValue}% OFF`
                     : `$${dealPreviewData.discountValue} OFF`}
@@ -501,7 +528,10 @@ export default function DealCreation() {
         )}
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-6 bg-white/90 border border-orange-100 rounded-2xl px-4 py-5 shadow-sm"
+          >
             {/* Deal Image - REQUIRED */}
             <FormField
               control={form.control}

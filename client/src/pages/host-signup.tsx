@@ -20,7 +20,9 @@ function HostSignup() {
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(true);
-  
+
+  const HOST_SIGNUP_DRAFT_KEY = "mealscout:host-signup-draft";
+
   // Form State
   const [businessName, setBusinessName] = useState("");
   const [address, setAddress] = useState("");
@@ -29,7 +31,7 @@ function HostSignup() {
   const [contactPhone, setContactPhone] = useState("");
   const [locationType, setLocationType] = useState("");
   const [description, setDescription] = useState("");
-  
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -46,20 +48,79 @@ function HostSignup() {
           // Already a host, redirect to dashboard
           setLocation("/host/dashboard");
         } else {
+          // Load any saved draft once we know we're staying on this page
+          try {
+            const stored = window.localStorage.getItem(HOST_SIGNUP_DRAFT_KEY);
+            if (stored) {
+              const parsed = JSON.parse(stored) as Partial<{
+                businessName: string;
+                address: string;
+                contactName: string;
+                contactEmail: string;
+                contactPhone: string;
+                locationType: string;
+                description: string;
+              }>;
+              if (parsed.businessName) setBusinessName(parsed.businessName);
+              if (parsed.address) setAddress(parsed.address);
+              if (parsed.contactName) setContactName(parsed.contactName);
+              if (parsed.contactEmail) setContactEmail(parsed.contactEmail);
+              if (parsed.contactPhone) setContactPhone(parsed.contactPhone);
+              if (parsed.locationType) setLocationType(parsed.locationType);
+              if (parsed.description) setDescription(parsed.description);
+            }
+          } catch {
+            // ignore parse/storage errors
+          }
           setIsLoading(false);
         }
       })
       .catch(() => setIsLoading(false));
   }, [isAuthenticated, setLocation]);
 
+  // Persist host signup draft so hosts can resume later
+  useEffect(() => {
+    if (isLoading) return;
+    try {
+      const payload = {
+        businessName,
+        address,
+        contactName,
+        contactEmail,
+        contactPhone,
+        locationType,
+        description,
+      };
+      window.localStorage.setItem(
+        HOST_SIGNUP_DRAFT_KEY,
+        JSON.stringify(payload)
+      );
+    } catch {
+      // ignore storage errors
+    }
+  }, [
+    isLoading,
+    businessName,
+    address,
+    contactName,
+    contactEmail,
+    contactPhone,
+    locationType,
+    description,
+  ]);
+
   const validate = () => {
     const validationErrors: Record<string, string> = {};
 
-    if (!businessName.trim()) validationErrors.businessName = "Business name is required";
+    if (!businessName.trim())
+      validationErrors.businessName = "Business name is required";
     if (!address.trim()) validationErrors.address = "Address is required";
-    if (!contactName.trim()) validationErrors.contactName = "Contact name is required";
-    if (!contactEmail.trim()) validationErrors.contactEmail = "Contact email is required";
-    if (!contactPhone.trim()) validationErrors.contactPhone = "Contact phone is required";
+    if (!contactName.trim())
+      validationErrors.contactName = "Contact name is required";
+    if (!contactEmail.trim())
+      validationErrors.contactEmail = "Contact email is required";
+    if (!contactPhone.trim())
+      validationErrors.contactPhone = "Contact phone is required";
     if (!locationType) validationErrors.locationType = "Select a location type";
 
     setErrors(validationErrors);
@@ -92,6 +153,11 @@ function HostSignup() {
       }
 
       setLocation("/host/dashboard");
+      try {
+        window.localStorage.removeItem(HOST_SIGNUP_DRAFT_KEY);
+      } catch {
+        // ignore
+      }
     } catch (error: any) {
       setErrors({ submit: error.message });
     } finally {
@@ -111,8 +177,13 @@ function HostSignup() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-12">
         <div className="bg-white shadow-sm rounded-xl p-8 border border-slate-200 text-center">
-          <h1 className="text-3xl font-bold text-slate-900 mb-4">Become a MealScout Host</h1>
-          <p className="text-slate-600 mb-8">Sign in to create your host profile and start managing food truck events.</p>
+          <h1 className="text-3xl font-bold text-slate-900 mb-4">
+            Become a MealScout Host
+          </h1>
+          <p className="text-slate-600 mb-8">
+            Sign in to create your host profile and start managing food truck
+            events.
+          </p>
           <Button asChild size="lg">
             <a href="/login?redirect=/host-signup">Sign in to continue</a>
           </Button>
@@ -124,11 +195,18 @@ function HostSignup() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Create Host Profile</h1>
-        <p className="text-slate-600">Tell us about your location to start hosting food trucks.</p>
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">
+          Create Host Profile
+        </h1>
+        <p className="text-slate-600">
+          Tell us about your location to start hosting food trucks.
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white shadow-sm rounded-xl border border-slate-200 p-8 space-y-6">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white shadow-sm rounded-xl border border-slate-200 p-8 space-y-6"
+      >
         {errors.submit && (
           <div className="p-4 bg-rose-50 text-rose-700 rounded-lg text-sm">
             {errors.submit}
@@ -136,8 +214,10 @@ function HostSignup() {
         )}
 
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">Business Details</h2>
-          
+          <h2 className="text-lg font-semibold text-slate-900">
+            Business Details
+          </h2>
+
           <div className="grid gap-2">
             <Label htmlFor="businessName">Business Name</Label>
             <Input
@@ -146,7 +226,9 @@ function HostSignup() {
               onChange={(e) => setBusinessName(e.target.value)}
               placeholder="e.g. Tech Park Plaza"
             />
-            {errors.businessName && <p className="text-sm text-rose-600">{errors.businessName}</p>}
+            {errors.businessName && (
+              <p className="text-sm text-rose-600">{errors.businessName}</p>
+            )}
           </div>
 
           <div className="grid gap-2">
@@ -157,7 +239,9 @@ function HostSignup() {
               onChange={(e) => setAddress(e.target.value)}
               placeholder="123 Main St, City, State"
             />
-            {errors.address && <p className="text-sm text-rose-600">{errors.address}</p>}
+            {errors.address && (
+              <p className="text-sm text-rose-600">{errors.address}</p>
+            )}
           </div>
 
           <div className="grid gap-2">
@@ -170,16 +254,22 @@ function HostSignup() {
             >
               <option value="">Select a type...</option>
               {locationTypeOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
             </select>
-            {errors.locationType && <p className="text-sm text-rose-600">{errors.locationType}</p>}
+            {errors.locationType && (
+              <p className="text-sm text-rose-600">{errors.locationType}</p>
+            )}
           </div>
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">Contact Information</h2>
-          
+          <h2 className="text-lg font-semibold text-slate-900">
+            Contact Information
+          </h2>
+
           <div className="grid gap-2">
             <Label htmlFor="contactName">Contact Name</Label>
             <Input
@@ -188,7 +278,9 @@ function HostSignup() {
               onChange={(e) => setContactName(e.target.value)}
               placeholder="Jane Doe"
             />
-            {errors.contactName && <p className="text-sm text-rose-600">{errors.contactName}</p>}
+            {errors.contactName && (
+              <p className="text-sm text-rose-600">{errors.contactName}</p>
+            )}
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
@@ -201,7 +293,9 @@ function HostSignup() {
                 onChange={(e) => setContactEmail(e.target.value)}
                 placeholder="jane@example.com"
               />
-              {errors.contactEmail && <p className="text-sm text-rose-600">{errors.contactEmail}</p>}
+              {errors.contactEmail && (
+                <p className="text-sm text-rose-600">{errors.contactEmail}</p>
+              )}
             </div>
 
             <div className="grid gap-2">
@@ -213,14 +307,18 @@ function HostSignup() {
                 onChange={(e) => setContactPhone(e.target.value)}
                 placeholder="(555) 123-4567"
               />
-              {errors.contactPhone && <p className="text-sm text-rose-600">{errors.contactPhone}</p>}
+              {errors.contactPhone && (
+                <p className="text-sm text-rose-600">{errors.contactPhone}</p>
+              )}
             </div>
           </div>
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">Additional Details</h2>
-          
+          <h2 className="text-lg font-semibold text-slate-900">
+            Additional Details
+          </h2>
+
           <div className="grid gap-2">
             <Label htmlFor="description">Description / Notes</Label>
             <Textarea

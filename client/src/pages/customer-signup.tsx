@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
@@ -56,18 +56,50 @@ export default function CustomerSignup() {
   const [accountType, setAccountType] = useState<"diner" | "host" | "business">(
     initialAccountType
   );
+  const SIGNUP_DRAFT_KEY = "mealscout:customer-signup-draft";
 
-  const form = useForm<SignupFormData>({
-    resolver: zodResolver(signupSchema),
-    defaultValues: {
+  const defaultValues = useMemo<SignupFormData>(() => {
+    const base: SignupFormData = {
       email: "",
       firstName: "",
       lastName: "",
       phone: "",
       password: "",
       confirmPassword: "",
-    },
+    };
+
+    if (typeof window === "undefined") return base;
+
+    try {
+      const stored = window.localStorage.getItem(SIGNUP_DRAFT_KEY);
+      if (!stored) return base;
+      const parsed = JSON.parse(stored) as Partial<SignupFormData>;
+      // Never pre-fill passwords from storage for safety
+      delete (parsed as any).password;
+      delete (parsed as any).confirmPassword;
+      return { ...base, ...parsed };
+    } catch {
+      return base;
+    }
+  }, []);
+
+  const form = useForm<SignupFormData>({
+    resolver: zodResolver(signupSchema),
+    defaultValues,
   });
+
+  // Persist non-sensitive draft so interrupted users can resume later
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+      try {
+        const { password, confirmPassword, ...rest } = value;
+        window.localStorage.setItem(SIGNUP_DRAFT_KEY, JSON.stringify(rest));
+      } catch {
+        // ignore storage errors
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   const customerSignupMutation = useMutation({
     mutationFn: async (data: SignupFormData) => {
@@ -83,6 +115,9 @@ export default function CustomerSignup() {
       );
     },
     onSuccess: () => {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(SIGNUP_DRAFT_KEY);
+      }
       toast({
         title: "Welcome to MealScout!",
         description: "Account created successfully. You're now logged in!",
@@ -108,6 +143,9 @@ export default function CustomerSignup() {
       );
     },
     onSuccess: () => {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(SIGNUP_DRAFT_KEY);
+      }
       toast({
         title: "Welcome to MealScout for Business!",
         description:

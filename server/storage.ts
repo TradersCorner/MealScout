@@ -2223,7 +2223,7 @@ export class DatabaseStorage implements IStorage {
           phone: "+1 (555) 000-0000",
           passwordHash,
         },
-        "super_admin"
+        "admin"
       );
 
       console.log("✅ Super Admin account created successfully");

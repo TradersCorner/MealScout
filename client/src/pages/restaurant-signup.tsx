@@ -1,4 +1,4 @@
-import { useReducer, useState } from "react";
+import { useReducer, useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -180,9 +180,10 @@ export default function RestaurantSignup() {
   );
   const currentStep: HostOnboardingStep = onboardingState.step;
 
-  const form = useForm<RestaurantFormData>({
-    resolver: zodResolver(restaurantSchema),
-    defaultValues: {
+  const RESTAURANT_DRAFT_KEY = "mealscout:restaurant-signup-draft";
+
+  const restaurantDefaultValues = useMemo<RestaurantFormData>(() => {
+    const base: RestaurantFormData = {
       name: "",
       address: "",
       phone: "",
@@ -197,7 +198,23 @@ export default function RestaurantSignup() {
       hasOutdoorSeating: false,
       promoCode: "",
       acceptTerms: false,
-    },
+    };
+
+    if (typeof window === "undefined") return base;
+
+    try {
+      const stored = window.localStorage.getItem(RESTAURANT_DRAFT_KEY);
+      if (!stored) return base;
+      const parsed = JSON.parse(stored) as Partial<RestaurantFormData>;
+      return { ...base, ...parsed };
+    } catch {
+      return base;
+    }
+  }, []);
+
+  const form = useForm<RestaurantFormData>({
+    resolver: zodResolver(restaurantSchema),
+    defaultValues: restaurantDefaultValues,
   });
 
   const signupForm = useForm<SignupFormData>({
@@ -219,6 +236,21 @@ export default function RestaurantSignup() {
       password: "",
     },
   });
+
+  // Persist restaurant business details so owners can resume onboarding
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+      try {
+        window.localStorage.setItem(
+          RESTAURANT_DRAFT_KEY,
+          JSON.stringify(value)
+        );
+      } catch {
+        // ignore storage errors
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   const signupMutation = useMutation({
     mutationFn: async (data: SignupFormData) => {

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -116,9 +116,10 @@ export default function DealCreation() {
       isAuthenticated && Array.isArray(restaurants) && restaurants.length > 0,
   });
 
-  const form = useForm<DealFormData>({
-    resolver: zodResolver(dealSchema),
-    defaultValues: {
+  const DEAL_DRAFT_KEY = "mealscout:deal-creation-draft";
+
+  const dealDefaultValues = useMemo<DealFormData>(() => {
+    const base: DealFormData = {
       title: "",
       description: "",
       dealType: "percentage",
@@ -136,8 +137,39 @@ export default function DealCreation() {
       totalUsesLimit: "",
       perCustomerLimit: "1",
       facebookPageUrl: "",
-    },
+    };
+
+    if (typeof window === "undefined") return base;
+
+    try {
+      const stored = window.localStorage.getItem(DEAL_DRAFT_KEY);
+      if (!stored) return base;
+      const parsed = JSON.parse(stored) as Partial<DealFormData>;
+      // Do not restore imageUrl from storage to avoid huge base64 blobs
+      delete (parsed as any).imageUrl;
+      return { ...base, ...parsed };
+    } catch {
+      return base;
+    }
+  }, []);
+
+  const form = useForm<DealFormData>({
+    resolver: zodResolver(dealSchema),
+    defaultValues: dealDefaultValues,
   });
+
+  // Persist deal draft so restaurant owners can resume creation later
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+      try {
+        const { imageUrl, ...rest } = value;
+        window.localStorage.setItem(DEAL_DRAFT_KEY, JSON.stringify(rest));
+      } catch {
+        // ignore
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   const createDealMutation = useMutation({
     mutationFn: async (data: DealFormData) => {
@@ -175,6 +207,11 @@ export default function DealCreation() {
         title: "Success!",
         description: "Deal created successfully!",
       });
+      try {
+        window.localStorage.removeItem(DEAL_DRAFT_KEY);
+      } catch {
+        // ignore
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
       setLocation("/");
     },

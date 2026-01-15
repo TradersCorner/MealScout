@@ -266,7 +266,7 @@ export default function StaffDashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
           {/* Create Any User Type (Admin only) */}
-          {(user?.userType === "admin" || user?.userType === "super_admin") && (
+          {user?.userType === "admin" && (
             <Card className="md:col-span-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -544,7 +544,7 @@ export default function StaffDashboard() {
         </div>
 
         {/* Quick Links */}
-        {(user?.userType === "admin" || user?.userType === "super_admin") && (
+        {user?.userType === "admin" && (
           <Card className="mt-8">
             <CardHeader>
               <CardTitle>Admin Quick Links</CardTitle>

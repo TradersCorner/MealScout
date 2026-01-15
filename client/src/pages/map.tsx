@@ -230,8 +230,9 @@ export default function MapPage() {
     lng: number;
   } | null>(null);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>({
-    lat: 30.5365,
-    lng: -90.5347,
+    // Neutral default center (approximate center of continental US)
+    lat: 39.8283,
+    lng: -98.5795,
   });
   const [showList, setShowList] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);

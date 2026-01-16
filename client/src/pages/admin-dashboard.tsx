@@ -1333,7 +1333,10 @@ export default function AdminDashboard() {
                       Monthly Revenue
                     </div>
                     <div className="text-xl font-bold">
-                      ${dashboardStats.revenue.toFixed(2)}
+                      {(() => {
+                        const revenue = Number(dashboardStats?.revenue ?? 0);
+                        return `$${revenue.toFixed(2)}`;
+                      })()}
                     </div>
                   </div>
                 </div>

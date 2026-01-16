@@ -75,12 +75,10 @@ function ManualUserCreation() {
     firstName: "",
     lastName: "",
     phone: "",
-    userType: "customer" as
-      | "customer"
-      | "restaurant_owner"
-      | "admin"
-      | "staff"
-      | "super_admin",
+    businessName: "",
+    address: "",
+    cuisineType: "",
+    userType: "customer" as "customer" | "restaurant_owner" | "staff",
   });
   const [tempPassword, setTempPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -103,6 +101,9 @@ function ManualUserCreation() {
         firstName: "",
         lastName: "",
         phone: "",
+        businessName: "",
+        address: "",
+        cuisineType: "",
         userType: "customer",
       });
     },
@@ -118,6 +119,17 @@ function ManualUserCreation() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createUser.mutate(formData);
+  };
+
+  const handleUserTypeChange = (newType: typeof formData.userType) => {
+    // Reset conditional fields when type changes
+    setFormData({
+      ...formData,
+      userType: newType,
+      businessName: "",
+      address: "",
+      cuisineType: "",
+    });
   };
 
   return (
@@ -162,6 +174,29 @@ function ManualUserCreation() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-3">
+        {/* User Type - First Field */}
+        <div>
+          <label className="text-sm font-medium">User Type</label>
+          <select
+            value={formData.userType}
+            onChange={(e) => handleUserTypeChange(e.target.value as any)}
+            className="w-full px-3 py-2 border rounded-md"
+          >
+            <option value="customer">Customer</option>
+            <option value="restaurant_owner">Restaurant Owner</option>
+            <option value="staff">Staff</option>
+          </select>
+          <p className="text-xs text-muted-foreground mt-1">
+            {formData.userType === "customer" &&
+              "Regular customer account - can claim deals and browse restaurants"}
+            {formData.userType === "restaurant_owner" &&
+              "Business account - can create and manage deals for their restaurant"}
+            {formData.userType === "staff" &&
+              "Staff account - can help manage restaurant operations"}
+          </p>
+        </div>
+
+        {/* Common Fields */}
         <div>
           <label className="text-sm font-medium">Email</label>
           <input
@@ -205,9 +240,12 @@ function ManualUserCreation() {
         </div>
 
         <div>
-          <label className="text-sm font-medium">Phone (Optional)</label>
+          <label className="text-sm font-medium">
+            Phone {formData.userType === "customer" ? "(Optional)" : ""}
+          </label>
           <input
             type="tel"
+            required={formData.userType !== "customer"}
             value={formData.phone}
             onChange={(e) =>
               setFormData({ ...formData, phone: e.target.value })
@@ -217,22 +255,102 @@ function ManualUserCreation() {
           />
         </div>
 
-        <div>
-          <label className="text-sm font-medium">User Type</label>
-          <select
-            value={formData.userType}
-            onChange={(e) =>
-              setFormData({ ...formData, userType: e.target.value as any })
-            }
-            className="w-full px-3 py-2 border rounded-md"
-          >
-            <option value="customer">Customer</option>
-            <option value="restaurant_owner">Restaurant Owner</option>
-            <option value="staff">Staff</option>
-            <option value="admin">Admin</option>
-            <option value="super_admin">Super Admin</option>
-          </select>
-        </div>
+        {/* Restaurant Owner Specific Fields */}
+        {formData.userType === "restaurant_owner" && (
+          <>
+            <div className="pt-3 border-t">
+              <h4 className="text-sm font-semibold mb-3">
+                Restaurant Information
+              </h4>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium">Business Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.businessName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, businessName: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border rounded-md"
+                    placeholder="Joe's Pizza"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Address</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.address}
+                    onChange={(e) =>
+                      setFormData({ ...formData, address: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border rounded-md"
+                    placeholder="123 Main St, City, State 12345"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Cuisine Type</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.cuisineType}
+                    onChange={(e) =>
+                      setFormData({ ...formData, cuisineType: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border rounded-md"
+                    placeholder="Italian, Mexican, American, etc."
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-xs text-blue-800">
+                <strong>Note:</strong> Restaurant will be created as verified
+                and active. No document verification required for manual
+                onboarding.
+              </p>
+            </div>
+          </>
+        )}
+
+        {/* Staff Specific Fields */}
+        {formData.userType === "staff" && (
+          <>
+            <div className="pt-3 border-t">
+              <h4 className="text-sm font-semibold mb-3">Staff Information</h4>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium">
+                    Restaurant/Business Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.businessName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, businessName: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border rounded-md"
+                    placeholder="Which restaurant will they work for?"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-xs text-blue-800">
+                <strong>Note:</strong> Staff member will need to be assigned to
+                a restaurant after creation.
+              </p>
+            </div>
+          </>
+        )}
 
         <Button
           type="submit"
@@ -1035,14 +1153,65 @@ export default function AdminDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({
-        title: "User Updated",
-        description: "User status has been updated.",
+        title: "User Status Updated",
+        description: "User account status has been updated.",
+      });
+    },
+  });
+
+  // Update user type
+  const updateUserType = useMutation({
+    mutationFn: async ({
+      userId,
+      userType,
+    }: {
+      userId: string;
+      userType: string;
+    }) => {
+      return await apiRequest("PATCH", `/api/admin/users/${userId}/type`, {
+        userType,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({
+        title: "User Type Updated",
+        description: "User type has been changed successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update user type.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete user
+  const deleteUser = useMutation({
+    mutationFn: async (userId: string) => {
+      return await apiRequest("DELETE", `/api/admin/users/${userId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setUserDetailsOpen(false);
+      toast({
+        title: "User Deleted",
+        description: "User account has been permanently deleted.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete user.",
+        variant: "destructive",
       });
     },
   });
 
   // Delete user (super admin only)
-  const deleteUser = useMutation({
+  const deleteUserPermanently = useMutation({
     mutationFn: async (userId: string) => {
       return await apiRequest("DELETE", `/api/admin/users/${userId}`);
     },
@@ -1273,26 +1442,54 @@ export default function AdminDashboard() {
 
         {/* Main Content Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-7">
-            <TabsTrigger value="overview" data-testid="tab-overview">
+          <TabsList className="w-full inline-flex h-auto flex-wrap gap-1 p-1">
+            <TabsTrigger
+              value="overview"
+              data-testid="tab-overview"
+              className="flex-shrink-0"
+            >
               Overview
             </TabsTrigger>
-            <TabsTrigger value="restaurants" data-testid="tab-restaurants">
+            <TabsTrigger
+              value="restaurants"
+              data-testid="tab-restaurants"
+              className="flex-shrink-0"
+            >
               Restaurants
             </TabsTrigger>
-            <TabsTrigger value="users" data-testid="tab-users">
+            <TabsTrigger
+              value="users"
+              data-testid="tab-users"
+              className="flex-shrink-0"
+            >
               Users
             </TabsTrigger>
-            <TabsTrigger value="staff" data-testid="tab-staff">
+            <TabsTrigger
+              value="staff"
+              data-testid="tab-staff"
+              className="flex-shrink-0"
+            >
               Staff
             </TabsTrigger>
-            <TabsTrigger value="deals" data-testid="tab-deals">
+            <TabsTrigger
+              value="deals"
+              data-testid="tab-deals"
+              className="flex-shrink-0"
+            >
               Deals
             </TabsTrigger>
-            <TabsTrigger value="verifications" data-testid="tab-verifications">
+            <TabsTrigger
+              value="verifications"
+              data-testid="tab-verifications"
+              className="flex-shrink-0"
+            >
               Verifications
             </TabsTrigger>
-            <TabsTrigger value="onboarding" data-testid="tab-onboarding">
+            <TabsTrigger
+              value="onboarding"
+              data-testid="tab-onboarding"
+              className="flex-shrink-0"
+            >
               Manual Onboarding
             </TabsTrigger>
           </TabsList>
@@ -1440,6 +1637,25 @@ export default function AdminDashboard() {
                         )}
                       </div>
                       <div className="flex items-center space-x-3">
+                        <div className="flex flex-col gap-2">
+                          <select
+                            value={user.userType}
+                            onChange={(e) =>
+                              updateUserType.mutate({
+                                userId: user.id,
+                                userType: e.target.value,
+                              })
+                            }
+                            className="text-xs px-2 py-1 border rounded-md"
+                            disabled={updateUserType.isPending}
+                          >
+                            <option value="customer">Customer</option>
+                            <option value="restaurant_owner">Restaurant Owner</option>
+                            <option value="staff">Staff</option>
+                            <option value="admin">Admin</option>
+                            <option value="super_admin">Super Admin</option>
+                          </select>
+                        </div>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1452,26 +1668,30 @@ export default function AdminDashboard() {
                           <Eye className="w-4 h-4 mr-1" />
                           Details
                         </Button>
-                        <Badge
-                          variant={
-                            user.userType === "admin"
-                              ? "destructive"
-                              : "secondary"
-                          }
-                        >
-                          {user.userType}
-                        </Badge>
-                        <Switch
-                          checked={user.isActive}
-                          onCheckedChange={(checked) =>
-                            toggleUserStatus.mutate({
-                              userId: user.id,
-                              isActive: checked,
-                            })
-                          }
-                          disabled={user.userType === "admin"}
-                          data-testid={`switch-user-${user.id}`}
-                        />
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={user.isActive}
+                            onCheckedChange={(checked) =>
+                              toggleUserStatus.mutate({
+                                userId: user.id,
+                                isActive: checked,
+                              })
+                            }
+                            data-testid={`switch-user-${user.id}`}
+                          />
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => {
+                              if (confirm(`Are you sure you want to permanently delete ${user.firstName} ${user.lastName}? This cannot be undone.`)) {
+                                deleteUser.mutate(user.id);
+                              }
+                            }}
+                            disabled={deleteUser.isPending}
+                          >
+                            <UserMinus className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}

@@ -224,6 +224,43 @@ export function registerAdminManagementRoutes(app: Express) {
     }
   );
 
+  app.patch(
+    "/api/admin/users/:id/type",
+    isAuthenticated,
+    isAdmin,
+    async (req: any, res) => {
+      try {
+        const { userType } = req.body;
+        const allowedTypes = ["customer", "restaurant_owner", "staff", "admin", "super_admin"];
+        
+        if (!allowedTypes.includes(userType)) {
+          return res.status(400).json({ message: "Invalid user type" });
+        }
+
+        await storage.updateUserType(req.params.id, userType);
+        res.json({ message: "User type updated successfully" });
+      } catch (error) {
+        console.error("Error updating user type:", error);
+        res.status(500).json({ message: "Failed to update user type" });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/admin/users/:id",
+    isAuthenticated,
+    isAdmin,
+    async (req: any, res) => {
+      try {
+        await storage.deleteUser(req.params.id);
+        res.json({ message: "User deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting user:", error);
+        res.status(500).json({ message: "Failed to delete user" });
+      }
+    }
+  );
+
   app.get(
     "/api/admin/users/:userId/addresses",
     isAuthenticated,

@@ -510,6 +510,9 @@ export interface IStorage {
 
   // Admin user operations
   getAllUsers(): Promise<User[]>;
+  updateUserStatus(userId: string, isActive: boolean): Promise<void>;
+  updateUserType(userId: string, userType: string): Promise<void>;
+  deleteUser(userId: string): Promise<void>;
 
   // Host operations
   createHost(host: InsertHost): Promise<Host>;
@@ -1792,6 +1795,17 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ isDisabled: !isActive })
       .where(eq(users.id, userId));
+  }
+
+  async updateUserType(userId: string, userType: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ userType })
+      .where(eq(users.id, userId));
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, userId));
   }
 
   async getAllDealsWithRestaurants(): Promise<any[]> {

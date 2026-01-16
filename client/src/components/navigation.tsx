@@ -16,6 +16,7 @@ import {
   Shield,
   Users,
   UtensilsCrossed,
+  Calendar,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -78,6 +79,7 @@ export default function Navigation() {
   const isAdmin =
     user && (user.userType === "admin" || user.userType === "super_admin");
   const isStaff = user && user.userType === "staff";
+  const isEventCoordinator = user && user.userType === "event_coordinator";
 
   const [isHost, setIsHost] = useState(false);
 
@@ -112,6 +114,7 @@ export default function Navigation() {
       isAdmin,
       isStaff,
       isRestaurantOwner,
+      isEventCoordinator,
       isHost,
     });
   }
@@ -139,6 +142,7 @@ export default function Navigation() {
 
   // Host-specific flows: dashboard + host marketing and discovery
   const hostExtras: NavItem[] = [
+    { path: "/events", icon: Calendar, label: "Events" },
     { path: "/host/dashboard", icon: Users, label: "Host" },
     { path: "/host-food", icon: MapPin, label: "Host Food" },
     { path: "/truck-discovery", icon: Search, label: "Truck Slots" },
@@ -148,10 +152,12 @@ export default function Navigation() {
   ];
 
   // Staff should be able to jump into every major website flow
+  // Including all business types (restaurant, food truck, bar), host, and event coordinator capabilities
   const staffExtras: NavItem[] = [
+    { path: "/events", icon: Calendar, label: "Events" },
     { path: "/staff", icon: Users, label: "Staff" },
     { path: "/host/dashboard", icon: Users, label: "Host" },
-    { path: "/restaurant-owner-dashboard", icon: Store, label: "Restaurants" },
+    { path: "/restaurant-owner-dashboard", icon: Store, label: "Dashboard" },
     { path: "/deal-creation", icon: Plus, label: "Create Deal" },
     { path: "/subscription", icon: BarChart3, label: "Subscription" },
     { path: "/truck-discovery", icon: Search, label: "Truck Slots" },
@@ -189,11 +195,15 @@ export default function Navigation() {
     return result;
   };
 
-  // Admins should see every flow; start from shared nav
+  // Admins should see every flow including all business types, host, and event coordinator capabilities
   const adminNavItems: NavItem[] = mergeNavItems(sharedNavItems, [
     { path: "/admin/dashboard", icon: Shield, label: "Admin" },
     { path: "/staff", icon: Users, label: "Staff" },
+    { path: "/events", icon: Calendar, label: "Events" },
+    { path: "/host/dashboard", icon: Users, label: "Host" },
     ...restaurantOwnerExtras,
+    { path: "/truck-discovery", icon: Search, label: "Truck Slots" },
+    { path: "/host-food", icon: MapPin, label: "Host Food" },
     ...customerExtras,
   ]);
 
@@ -220,12 +230,26 @@ export default function Navigation() {
     hostExtras
   );
 
+  const eventCoordinatorExtras: NavItem[] = [
+    { path: "/events", icon: Calendar, label: "Events" },
+    { path: "/host/dashboard", icon: Users, label: "Host" },
+    { path: "/truck-discovery", icon: Search, label: "Truck Slots" },
+    { path: "/for-food-trucks", icon: Store, label: "For Trucks" },
+  ];
+
+  const eventCoordinatorNavItems: NavItem[] = mergeNavItems(
+    sharedNavItems,
+    eventCoordinatorExtras
+  );
+
   const navItems = !user
     ? [...unauthenticatedNavItems, bugNavItem]
     : isAdmin
     ? [...adminNavItems, bugNavItem]
     : isStaff
     ? [...staffNavItems, bugNavItem]
+    : isEventCoordinator
+    ? [...eventCoordinatorNavItems, bugNavItem]
     : isRestaurantOwner
     ? [...restaurantOwnerNavItems, bugNavItem]
     : isHost

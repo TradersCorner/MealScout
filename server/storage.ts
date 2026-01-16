@@ -513,6 +513,20 @@ export interface IStorage {
   updateUserStatus(userId: string, isActive: boolean): Promise<void>;
   updateUserType(userId: string, userType: string): Promise<void>;
   deleteUser(userId: string): Promise<void>;
+  createUserManually(userData: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+    userType: string;
+    tempPassword: string;
+  }): Promise<User>;
+  createRestaurantForUser(restaurantData: {
+    userId: string;
+    name: string;
+    address: string;
+    cuisineType: string;
+  }): Promise<Restaurant>;
 
   // Host operations
   createHost(host: InsertHost): Promise<Host>;
@@ -1798,14 +1812,60 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserType(userId: string, userType: string): Promise<void> {
-    await db
-      .update(users)
-      .set({ userType })
-      .where(eq(users.id, userId));
+    await db.update(users).set({ userType }).where(eq(users.id, userId));
   }
 
   async deleteUser(userId: string): Promise<void> {
     await db.delete(users).where(eq(users.id, userId));
+  }
+
+  async createUserManually(userData: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+    userType: string;
+    tempPassword: string;
+  }): Promise<User> {
+    const bcrypt = require("bcryptjs");
+    const hashedPassword = await bcrypt.hash(userData.tempPassword, 10);
+
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        phone: userData.phone,
+        userType: userData.userType,
+        passwordHash: hashedPassword,
+        mustResetPassword: true,
+        emailVerified: true, // Admin-created accounts are pre-verified
+      })
+      .returning();
+
+    return user;
+  }
+
+  async createRestaurantForUser(restaurantData: {
+    userId: string;
+    name: string;
+    address: string;
+    cuisineType: string;
+  }): Promise<Restaurant> {
+    const [restaurant] = await db
+      .insert(restaurants)
+      .values({
+        ownerId: restaurantData.userId,
+        name: restaurantData.name,
+        address: restaurantData.address,
+        cuisineType: restaurantData.cuisineType,
+        isActive: true,
+        isVerified: true, // Admin-created restaurants are pre-verified
+      })
+      .returning();
+
+    return restaurant;
   }
 
   async getAllDealsWithRestaurants(): Promise<any[]> {

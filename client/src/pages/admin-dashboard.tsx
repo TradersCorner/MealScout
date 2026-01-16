@@ -66,7 +66,7 @@ interface PendingRestaurant {
   isActive: boolean;
 }
 
-// Manual User Creation Component
+// Manual User/Host Creation Component (Combined)
 function ManualUserCreation() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -78,8 +78,20 @@ function ManualUserCreation() {
     businessName: "",
     address: "",
     cuisineType: "",
-    userType: "customer" as "customer" | "restaurant_owner" | "staff",
+    latitude: "",
+    longitude: "",
+    locationType: "private_residence",
+    footTraffic: "low",
+    amenities: [] as string[],
+    userType: "customer" as
+      | "customer"
+      | "food_truck"
+      | "restaurant_owner"
+      | "staff"
+      | "event_coordinator"
+      | "host",
   });
+  const [geocoding, setGeocoding] = useState(false);
   const [tempPassword, setTempPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -92,8 +104,10 @@ function ManualUserCreation() {
       setTempPassword(data.tempPassword);
       setShowPassword(true);
       toast({
-        title: "User Created",
-        description: "User has been created with a temporary password.",
+        title: "Account Created",
+        description: `${
+          formData.userType === "host" ? "Host" : "User"
+        } has been created with a temporary password.`,
       });
       // Reset form
       setFormData({
@@ -104,13 +118,18 @@ function ManualUserCreation() {
         businessName: "",
         address: "",
         cuisineType: "",
-        userType: "customer",
+        latitude: "",
+        longitude: "",
+        locationType: "private_residence",
+        footTraffic: "low",
+        amenities: [],
+        userType: "food_truck",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to create user.",
+        description: error.message || "Failed to create account.",
         variant: "destructive",
       });
     },
@@ -129,7 +148,53 @@ function ManualUserCreation() {
       businessName: "",
       address: "",
       cuisineType: "",
+      latitude: "",
+      longitude: "",
+      locationType: "private_residence",
+      footTraffic: "low",
+      amenities: [],
     });
+  };
+
+  const handleGeocode = async () => {
+    if (!formData.address) return;
+
+    setGeocoding(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          formData.address
+        )}`
+      );
+      const data = await response.json();
+
+      if (data && data[0]) {
+        setFormData({
+          ...formData,
+          latitude: data[0].lat,
+          longitude: data[0].lon,
+        });
+        toast({
+          title: "Coordinates Found",
+          description: "Location has been geocoded successfully.",
+        });
+      } else {
+        toast({
+          title: "Not Found",
+          description:
+            "Could not find coordinates for this address. Please enter manually.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to geocode address.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeocoding(false);
+    }
   };
 
   return (
@@ -176,23 +241,32 @@ function ManualUserCreation() {
       <form onSubmit={handleSubmit} className="space-y-3">
         {/* User Type - First Field */}
         <div>
-          <label className="text-sm font-medium">User Type</label>
+          <label className="text-sm font-medium">Account Type</label>
           <select
             value={formData.userType}
             onChange={(e) => handleUserTypeChange(e.target.value as any)}
             className="w-full px-3 py-2 border rounded-md"
           >
-            <option value="customer">Customer</option>
+            <option value="food_truck">Food Truck</option>
             <option value="restaurant_owner">Restaurant Owner</option>
+            <option value="customer">Customer</option>
+            <option value="host">Host (Parking/Events)</option>
+            <option value="event_coordinator">Event Coordinator</option>
             <option value="staff">Staff</option>
           </select>
           <p className="text-xs text-muted-foreground mt-1">
+            {formData.userType === "food_truck" &&
+              "Food truck owner - mobile restaurant, create deals, manage location"}
             {formData.userType === "customer" &&
-              "Regular customer account - can claim deals and browse restaurants"}
+              "Regular customer - can claim deals and browse restaurants"}
             {formData.userType === "restaurant_owner" &&
-              "Business account - can create and manage deals for their restaurant"}
+              "Business owner - manage restaurant and create deals"}
             {formData.userType === "staff" &&
-              "Staff account - can help manage restaurant operations"}
+              "Staff member - help manage restaurant operations"}
+            {formData.userType === "event_coordinator" &&
+              "Event coordinator - organize and manage food truck events"}
+            {formData.userType === "host" &&
+              "Host - provide parking spots and event locations for food trucks"}
           </p>
         </div>
 
@@ -240,12 +314,10 @@ function ManualUserCreation() {
         </div>
 
         <div>
-          <label className="text-sm font-medium">
-            Phone {formData.userType === "customer" ? "(Optional)" : ""}
-          </label>
+          <label className="text-sm font-medium">Phone</label>
           <input
             type="tel"
-            required={formData.userType !== "customer"}
+            required
             value={formData.phone}
             onChange={(e) =>
               setFormData({ ...formData, phone: e.target.value })
@@ -255,8 +327,9 @@ function ManualUserCreation() {
           />
         </div>
 
-        {/* Restaurant Owner Specific Fields */}
-        {formData.userType === "restaurant_owner" && (
+        {/* Restaurant Owner & Food Truck Specific Fields */}
+        {(formData.userType === "restaurant_owner" ||
+          formData.userType === "food_truck") && (
           <>
             <div className="pt-3 border-t">
               <h4 className="text-sm font-semibold mb-3">
@@ -352,254 +425,199 @@ function ManualUserCreation() {
           </>
         )}
 
+        {/* Event Coordinator Specific Fields */}
+        {formData.userType === "event_coordinator" && (
+          <>
+            <div className="pt-3 border-t">
+              <h4 className="text-sm font-semibold mb-3">
+                Event Coordinator Information
+              </h4>
+
+              <div className="p-3 bg-purple-50 border border-purple-200 rounded-md">
+                <p className="text-xs text-purple-800">
+                  <strong>Event Coordinator:</strong> Can organize food truck
+                  events, coordinate with hosts and restaurants, and manage
+                  event logistics.
+                </p>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Host Specific Fields */}
+        {formData.userType === "host" && (
+          <>
+            <div className="pt-3 border-t">
+              <h4 className="text-sm font-semibold mb-3">
+                Host Location Information
+              </h4>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium">
+                    Location/Business Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.businessName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, businessName: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border rounded-md"
+                    placeholder="Park name, business name, etc."
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Full Address</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      required
+                      value={formData.address}
+                      onChange={(e) =>
+                        setFormData({ ...formData, address: e.target.value })
+                      }
+                      className="flex-1 px-3 py-2 border rounded-md"
+                      placeholder="123 Main St, City, State 12345"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleGeocode}
+                      disabled={geocoding || !formData.address}
+                    >
+                      {geocoding ? "Loading..." : "Get Coords"}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium">Latitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      value={formData.latitude}
+                      onChange={(e) =>
+                        setFormData({ ...formData, latitude: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border rounded-md"
+                      placeholder="29.9511"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Longitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      value={formData.longitude}
+                      onChange={(e) =>
+                        setFormData({ ...formData, longitude: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border rounded-md"
+                      placeholder="-90.0715"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Location Type</label>
+                  <select
+                    value={formData.locationType}
+                    onChange={(e) =>
+                      setFormData({ ...formData, locationType: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border rounded-md"
+                  >
+                    <option value="private_residence">Private Residence</option>
+                    <option value="business">Business</option>
+                    <option value="parking_lot">Parking Lot</option>
+                    <option value="event_space">Event Space</option>
+                    <option value="public_park">Public Park</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Foot Traffic</label>
+                  <select
+                    value={formData.footTraffic}
+                    onChange={(e) =>
+                      setFormData({ ...formData, footTraffic: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border rounded-md"
+                  >
+                    <option value="low">Low (Quiet area)</option>
+                    <option value="medium">Medium (Moderate activity)</option>
+                    <option value="high">High (Busy area)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">
+                    Amenities (Optional)
+                  </label>
+                  <div className="space-y-2">
+                    {["Power", "Water", "Restrooms", "Wifi", "Seating"].map(
+                      (amenity) => (
+                        <label
+                          key={amenity}
+                          className="flex items-center gap-2"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.amenities.includes(
+                              amenity.toLowerCase()
+                            )}
+                            onChange={(e) => {
+                              const value = amenity.toLowerCase();
+                              if (e.target.checked) {
+                                setFormData({
+                                  ...formData,
+                                  amenities: [...formData.amenities, value],
+                                });
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  amenities: formData.amenities.filter(
+                                    (a) => a !== value
+                                  ),
+                                });
+                              }
+                            }}
+                            className="rounded"
+                          />
+                          <span className="text-sm">{amenity}</span>
+                        </label>
+                      )
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-xs text-green-800">
+                <strong>Host Account:</strong> Can list parking spots and event
+                spaces for food trucks to use. Will have access to host
+                dashboard.
+              </p>
+            </div>
+          </>
+        )}
+
         <Button
           type="submit"
           disabled={createUser.isPending}
           className="w-full"
         >
-          {createUser.isPending ? "Creating..." : "Create User"}
+          {createUser.isPending ? "Creating..." : "Create Account"}
         </Button>
       </form>
     </div>
-  );
-}
-
-// Manual Host Creation Component
-function ManualHostCreation() {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [formData, setFormData] = useState({
-    userId: "",
-    businessName: "",
-    address: "",
-    latitude: "",
-    longitude: "",
-    locationType: "private_residence" as string,
-    footTraffic: "low" as string,
-    amenities: [] as string[],
-  });
-  const [geocoding, setGeocoding] = useState(false);
-
-  const { data: users = [] } = useQuery<any[]>({
-    queryKey: ["/api/admin/users"],
-  });
-
-  const createHost = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest("POST", "/api/admin/hosts/create", data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/hosts"] });
-      toast({
-        title: "Host Created",
-        description: "Host profile has been created and added to the map.",
-      });
-      // Reset form
-      setFormData({
-        userId: "",
-        businessName: "",
-        address: "",
-        latitude: "",
-        longitude: "",
-        locationType: "private_residence",
-        footTraffic: "low",
-        amenities: [],
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create host.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const geocodeAddress = async () => {
-    if (!formData.address) {
-      toast({
-        title: "Error",
-        description: "Please enter an address first",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setGeocoding(true);
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          formData.address
-        )}`,
-        { headers: { "User-Agent": "MealScout/1.0" } }
-      );
-      const data = await response.json();
-
-      if (data && data.length > 0) {
-        setFormData({
-          ...formData,
-          latitude: data[0].lat,
-          longitude: data[0].lon,
-        });
-        toast({
-          title: "Success",
-          description: "Address geocoded successfully",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Could not find coordinates for this address",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to geocode address",
-        variant: "destructive",
-      });
-    } finally {
-      setGeocoding(false);
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const payload: any = {
-      businessName: formData.businessName,
-      address: formData.address,
-      locationType: formData.locationType,
-      footTraffic: formData.footTraffic,
-      amenities: formData.amenities,
-    };
-
-    if (formData.userId) payload.userId = formData.userId;
-    if (formData.latitude && formData.longitude) {
-      payload.latitude = formData.latitude;
-      payload.longitude = formData.longitude;
-    }
-
-    createHost.mutate(payload);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      <div>
-        <label className="text-sm font-medium">Business Name</label>
-        <input
-          type="text"
-          required
-          value={formData.businessName}
-          onChange={(e) =>
-            setFormData({ ...formData, businessName: e.target.value })
-          }
-          className="w-full px-3 py-2 border rounded-md"
-        />
-      </div>
-
-      <div>
-        <label className="text-sm font-medium">User (Optional)</label>
-        <select
-          value={formData.userId}
-          onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
-          className="w-full px-3 py-2 border rounded-md"
-        >
-          <option value="">No user attached</option>
-          {users.map((user) => (
-            <option key={user.id} value={user.id}>
-              {user.email} ({user.firstName} {user.lastName})
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="text-sm font-medium">Address</label>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            required
-            value={formData.address}
-            onChange={(e) =>
-              setFormData({ ...formData, address: e.target.value })
-            }
-            className="flex-1 px-3 py-2 border rounded-md"
-          />
-          <Button
-            type="button"
-            onClick={geocodeAddress}
-            disabled={geocoding}
-            variant="outline"
-          >
-            {geocoding ? "..." : "Geocode"}
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm font-medium">Latitude</label>
-          <input
-            type="text"
-            value={formData.latitude}
-            onChange={(e) =>
-              setFormData({ ...formData, latitude: e.target.value })
-            }
-            className="w-full px-3 py-2 border rounded-md"
-            placeholder="Auto-filled"
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium">Longitude</label>
-          <input
-            type="text"
-            value={formData.longitude}
-            onChange={(e) =>
-              setFormData({ ...formData, longitude: e.target.value })
-            }
-            className="w-full px-3 py-2 border rounded-md"
-            placeholder="Auto-filled"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="text-sm font-medium">Location Type</label>
-        <select
-          value={formData.locationType}
-          onChange={(e) =>
-            setFormData({ ...formData, locationType: e.target.value })
-          }
-          className="w-full px-3 py-2 border rounded-md"
-        >
-          <option value="private_residence">Private Residence</option>
-          <option value="office_space">Office Space</option>
-          <option value="community_center">Community Center</option>
-          <option value="outdoor_venue">Outdoor Venue</option>
-          <option value="event_space">Event Space</option>
-        </select>
-      </div>
-
-      <div>
-        <label className="text-sm font-medium">Foot Traffic</label>
-        <select
-          value={formData.footTraffic}
-          onChange={(e) =>
-            setFormData({ ...formData, footTraffic: e.target.value })
-          }
-          className="w-full px-3 py-2 border rounded-md"
-        >
-          <option value="low">Low (1-20 people)</option>
-          <option value="medium">Medium (21-50 people)</option>
-          <option value="high">High (51+ people)</option>
-        </select>
-      </div>
-
-      <Button type="submit" disabled={createHost.isPending} className="w-full">
-        {createHost.isPending ? "Creating..." : "Create Host"}
-      </Button>
-    </form>
   );
 }
 
@@ -1650,7 +1668,9 @@ export default function AdminDashboard() {
                             disabled={updateUserType.isPending}
                           >
                             <option value="customer">Customer</option>
-                            <option value="restaurant_owner">Restaurant Owner</option>
+                            <option value="restaurant_owner">
+                              Restaurant Owner
+                            </option>
                             <option value="staff">Staff</option>
                             <option value="admin">Admin</option>
                             <option value="super_admin">Super Admin</option>
@@ -1683,7 +1703,11 @@ export default function AdminDashboard() {
                             size="sm"
                             variant="destructive"
                             onClick={() => {
-                              if (confirm(`Are you sure you want to permanently delete ${user.firstName} ${user.lastName}? This cannot be undone.`)) {
+                              if (
+                                confirm(
+                                  `Are you sure you want to permanently delete ${user.firstName} ${user.lastName}? This cannot be undone.`
+                                )
+                              ) {
                                 deleteUser.mutate(user.id);
                               }
                             }}
@@ -2005,32 +2029,16 @@ export default function AdminDashboard() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Users className="w-5 h-5" />
-                    Create User with Temp Password
+                    Create Account
                   </CardTitle>
                   <CardDescription>
-                    Manually onboard a new user. They'll receive a temporary
-                    password that must be changed on first login.
+                    Manually onboard a new user, host, event coordinator,
+                    restaurant owner, or staff member. They'll receive a
+                    temporary password that must be changed on first login.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ManualUserCreation />
-                </CardContent>
-              </Card>
-
-              {/* Create Host Card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Store className="w-5 h-5" />
-                    Create Host Profile
-                  </CardTitle>
-                  <CardDescription>
-                    Create a host profile and add it to the map. Optionally
-                    attach to an existing user.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ManualHostCreation />
                 </CardContent>
               </Card>
             </div>

@@ -553,7 +553,16 @@ router.post("/users/create", isAdmin, async (req: any, res) => {
       });
     }
 
-    const validUserTypes = ["customer", "restaurant_owner", "staff", "admin"];
+    const validUserTypes = [
+      "customer",
+      "restaurant_owner",
+      "food_truck",
+      "host",
+      "event_coordinator",
+      "staff",
+      "admin",
+      "super_admin",
+    ];
     if (!validUserTypes.includes(userType)) {
       return res.status(400).json({ message: "Invalid user type" });
     }
@@ -932,7 +941,16 @@ router.post("/users/create", isAdmin, async (req: any, res) => {
       });
     }
 
-    const validUserTypes = ["customer", "restaurant_owner", "staff", "admin"];
+    const validUserTypes = [
+      "customer",
+      "restaurant_owner",
+      "food_truck",
+      "host",
+      "event_coordinator",
+      "staff",
+      "admin",
+      "super_admin",
+    ];
     if (!validUserTypes.includes(userType)) {
       return res.status(400).json({ message: "Invalid user type" });
     }

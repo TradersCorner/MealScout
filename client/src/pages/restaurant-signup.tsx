@@ -223,7 +223,7 @@ export default function RestaurantSignup() {
       name: "",
       address: "",
       phone: "",
-      businessType: "restaurant",
+      businessType: "food_truck",
       cuisineType: "",
       description: "",
       websiteUrl: "",

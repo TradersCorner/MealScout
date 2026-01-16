@@ -17,6 +17,18 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split vendor code for better caching
+          "react-vendor": ["react", "react-dom"],
+          "router-vendor": ["wouter"],
+          "query-vendor": ["@tanstack/react-query"],
+          "ui-vendor": ["lucide-react"],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
   },
   server: {
     port: 5174,

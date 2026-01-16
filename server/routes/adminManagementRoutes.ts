@@ -9,6 +9,95 @@ const stripe = process.env.STRIPE_SECRET_KEY
   : null;
 
 export function registerAdminManagementRoutes(app: Express) {
+  // Manual User/Host Creation
+  app.post(
+    "/api/admin/users/create",
+    isAuthenticated,
+    isAdmin,
+    async (req: any, res) => {
+      try {
+        const {
+          email,
+          firstName,
+          lastName,
+          phone,
+          businessName,
+          address,
+          cuisineType,
+          latitude,
+          longitude,
+          locationType,
+          footTraffic,
+          amenities,
+          userType,
+        } = req.body;
+
+        // Validate required fields
+        if (!email || !firstName || !lastName || !phone || !userType) {
+          return res.status(400).json({
+            message:
+              "Email, firstName, lastName, phone, and userType are required",
+          });
+        }
+
+        // Generate temp password
+        const tempPassword =
+          Math.random().toString(36).slice(2) +
+          Math.random().toString(36).toUpperCase().slice(2);
+
+        // Create user account
+        const user = await storage.createUserManually({
+          email,
+          firstName,
+          lastName,
+          phone,
+          userType,
+          tempPassword,
+        });
+
+        // Handle restaurant owner and food truck creation
+        if ((userType === \"restaurant_owner\" || userType === \"food_truck\") && businessName && address) {
+          await storage.createRestaurantForUser({
+            userId: user.id,
+            name: businessName,
+            address,
+            cuisineType: cuisineType || \"Various\",
+          });
+        }
+
+        // Handle host and event coordinator creation
+        if ((userType === \"host\" || userType === \"event_coordinator\") && businessName && address) {
+          const hostData: any = {
+            userId: user.id,
+            businessName,
+            address,
+            locationType: locationType || "private_residence",
+            footTraffic: footTraffic || "low",
+            amenities: amenities || [],
+          };
+
+          if (latitude && longitude) {
+            hostData.latitude = parseFloat(latitude);
+            hostData.longitude = parseFloat(longitude);
+          }
+
+          await storage.createHost(hostData);
+        }
+
+        res.json({
+          success: true,
+          tempPassword,
+          message: `${userType} account created successfully`,
+        });
+      } catch (error: any) {
+        console.error("Error creating user manually:", error);
+        res.status(500).json({
+          message: error.message || "Failed to create user",
+        });
+      }
+    }
+  );
+
   // Admin API endpoints
   app.get("/api/auth/admin/verify", isAuthenticated, async (req: any, res) => {
     try {
@@ -231,8 +320,15 @@ export function registerAdminManagementRoutes(app: Express) {
     async (req: any, res) => {
       try {
         const { userType } = req.body;
-        const allowedTypes = ["customer", "restaurant_owner", "staff", "admin", "super_admin"];
-        
+        const allowedTypes = [
+          "customer",
+          "restaurant_owner",          \"food_truck\",
+          \"host\",
+          \"event_coordinator\",          "staff",
+          "admin",
+          "super_admin",
+        ];
+
         if (!allowedTypes.includes(userType)) {
           return res.status(400).json({ message: "Invalid user type" });
         }

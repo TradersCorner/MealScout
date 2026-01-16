@@ -75,18 +75,36 @@ export function registerAdminManagementRoutes(app: Express) {
           businessName &&
           address
         ) {
+          // Convert footTraffic string to expected integer
+          const footTrafficMap: Record<string, number> = {
+            low: 50,
+            medium: 150,
+            high: 300,
+          };
+
+          // Convert amenities array to object
+          const amenitiesObj: Record<string, boolean> = {};
+          if (Array.isArray(amenities)) {
+            amenities.forEach((amenity: string) => {
+              amenitiesObj[amenity] = true;
+            });
+          }
+
           const hostData: any = {
             userId: user.id,
             businessName,
             address,
-            locationType: locationType || "private_residence",
-            footTraffic: footTraffic || "low",
-            amenities: amenities || [],
+            locationType: locationType || "other",
+            expectedFootTraffic: footTrafficMap[footTraffic] || 100,
+            amenities:
+              Object.keys(amenitiesObj).length > 0 ? amenitiesObj : null,
+            isVerified: true, // Admin-created hosts are pre-verified
+            adminCreated: true,
           };
 
           if (latitude && longitude) {
-            hostData.latitude = parseFloat(latitude);
-            hostData.longitude = parseFloat(longitude);
+            hostData.latitude = latitude.toString();
+            hostData.longitude = longitude.toString();
           }
 
           await storage.createHost(hostData);

@@ -56,7 +56,11 @@ export function registerAdminManagementRoutes(app: Express) {
         });
 
         // Handle restaurant owner and food truck creation
-        if ((userType === "restaurant_owner" || userType === "food_truck") && businessName && address) {
+        if (
+          (userType === "restaurant_owner" || userType === "food_truck") &&
+          businessName &&
+          address
+        ) {
           await storage.createRestaurantForUser({
             userId: user.id,
             name: businessName,
@@ -66,7 +70,11 @@ export function registerAdminManagementRoutes(app: Express) {
         }
 
         // Handle host and event coordinator creation
-        if ((userType === "host" || userType === "event_coordinator") && businessName && address) {
+        if (
+          (userType === "host" || userType === "event_coordinator") &&
+          businessName &&
+          address
+        ) {
           const hostData: any = {
             userId: user.id,
             businessName,

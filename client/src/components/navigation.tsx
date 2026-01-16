@@ -21,7 +21,6 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import html2canvas from "html2canvas";
 
 type NavItem = {
   path?: string;
@@ -41,6 +40,9 @@ export default function Navigation() {
     if (isReporting) return;
     setIsReporting(true);
     try {
+      // Lazy load html2canvas only when needed (don't bundle it in main app)
+      const html2canvas = (await import("html2canvas")).default;
+      
       const canvas = await html2canvas(document.body, {
         useCORS: true,
         allowTaint: true,

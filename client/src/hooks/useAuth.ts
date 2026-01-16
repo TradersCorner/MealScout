@@ -20,7 +20,7 @@ export function useAuth() {
     retry: false,
     refetchOnWindowFocus: false,
     refetchOnMount: true,
-    staleTime: 60_000, // Consider user data fresh for 1 minute
+    staleTime: 5 * 60_000, // Consider user data fresh for 5 minutes (reduce auth calls)
   });
 
   const authState: AuthState = isLoading

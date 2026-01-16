@@ -135,8 +135,35 @@ function ManualUserCreation() {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Auto-geocode for hosts if address provided
+    if (
+      formData.userType === "host" &&
+      formData.address &&
+      !formData.latitude
+    ) {
+      setGeocoding(true);
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+            formData.address
+          )}`
+        );
+        const data = await response.json();
+
+        if (data && data[0]) {
+          formData.latitude = data[0].lat;
+          formData.longitude = data[0].lon;
+        }
+      } catch (error) {
+        console.error("Failed to geocode:", error);
+      } finally {
+        setGeocoding(false);
+      }
+    }
+
     createUser.mutate(formData);
   };
 
@@ -264,9 +291,9 @@ function ManualUserCreation() {
             {formData.userType === "staff" &&
               "Staff member - help manage restaurant operations"}
             {formData.userType === "event_coordinator" &&
-              "Event coordinator - organize and manage food truck events"}
+              "Event coordinator - organize events (NO PAYMENTS through us)"}
             {formData.userType === "host" &&
-              "Host - provide parking spots and event locations for food trucks"}
+              "Host - rent parking spots/lots to food trucks (hourly/daily/weekly/monthly + $10 booking fee)"}
           </p>
         </div>
 
@@ -435,9 +462,13 @@ function ManualUserCreation() {
 
               <div className="p-3 bg-purple-50 border border-purple-200 rounded-md">
                 <p className="text-xs text-purple-800">
-                  <strong>Event Coordinator:</strong> Can organize food truck
-                  events, coordinate with hosts and restaurants, and manage
-                  event logistics.
+                  <strong>Event Coordinator:</strong> Organizes food truck
+                  events and coordinates logistics.
+                  <br />
+                  <strong className="text-red-700">
+                    IMPORTANT: NO payments go through us. They handle all
+                    payments directly.
+                  </strong>
                 </p>
               </div>
             </div>
@@ -451,6 +482,18 @@ function ManualUserCreation() {
               <h4 className="text-sm font-semibold mb-3">
                 Host Location Information
               </h4>
+
+              <div className="p-3 bg-green-50 border border-green-200 rounded-md mb-3">
+                <p className="text-xs text-green-800">
+                  <strong>Host Model:</strong> Hosts create lots with 1+ spots.
+                  They set rental prices (hourly/daily/weekly/monthly).
+                  <br />
+                  <strong>
+                    We add $10 to every booking - host gets their price, we get
+                    $10.
+                  </strong>
+                </p>
+              </div>
 
               <div className="space-y-3">
                 <div>
@@ -471,57 +514,19 @@ function ManualUserCreation() {
 
                 <div>
                   <label className="text-sm font-medium">Full Address</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      required
-                      value={formData.address}
-                      onChange={(e) =>
-                        setFormData({ ...formData, address: e.target.value })
-                      }
-                      className="flex-1 px-3 py-2 border rounded-md"
-                      placeholder="123 Main St, City, State 12345"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleGeocode}
-                      disabled={geocoding || !formData.address}
-                    >
-                      {geocoding ? "Loading..." : "Get Coords"}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm font-medium">Latitude</label>
-                    <input
-                      type="number"
-                      step="any"
-                      required
-                      value={formData.latitude}
-                      onChange={(e) =>
-                        setFormData({ ...formData, latitude: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border rounded-md"
-                      placeholder="29.9511"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Longitude</label>
-                    <input
-                      type="number"
-                      step="any"
-                      required
-                      value={formData.longitude}
-                      onChange={(e) =>
-                        setFormData({ ...formData, longitude: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border rounded-md"
-                      placeholder="-90.0715"
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={formData.address}
+                    onChange={(e) =>
+                      setFormData({ ...formData, address: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border rounded-md"
+                    placeholder="123 Main St, City, State 12345"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Coordinates will be automatically geocoded from this address
+                  </p>
                 </div>
 
                 <div>
@@ -2343,14 +2348,6 @@ export default function AdminDashboard() {
                             {address.state && `, ${address.state}`}
                             {address.postalCode && ` ${address.postalCode}`}
                           </p>
-                          {address.latitude && address.longitude && (
-                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
-                              <MapPin className="w-3 h-3" />
-                              Coordinates:{" "}
-                              {parseFloat(address.latitude).toFixed(6)},{" "}
-                              {parseFloat(address.longitude).toFixed(6)}
-                            </p>
-                          )}
                         </div>
                       </div>
                     ))}

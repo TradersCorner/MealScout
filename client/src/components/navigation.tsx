@@ -42,7 +42,7 @@ export default function Navigation() {
     try {
       // Lazy load html2canvas only when needed (don't bundle it in main app)
       const html2canvas = (await import("html2canvas")).default;
-      
+
       const canvas = await html2canvas(document.body, {
         useCORS: true,
         allowTaint: true,

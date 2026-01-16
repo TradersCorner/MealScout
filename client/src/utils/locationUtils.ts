@@ -5,26 +5,8 @@ export async function getReverseGeocodedLocationName(
   longitude: number,
   onLocationNameUpdate: (name: string) => void
 ): Promise<void> {
-  // First set coordinate-based name as fallback
-  const coordinateBasedName = `Location (${latitude.toFixed(
-    3
-  )}, ${longitude.toFixed(3)})`;
-  onLocationNameUpdate(coordinateBasedName);
-
-  // Avoid direct Nominatim calls in production where CORS and usage limits
-  // can cause noisy failures; coordinate-based name is good enough there.
-  if (
-    typeof window !== "undefined" &&
-    window.location.hostname === "www.mealscout.us"
-  ) {
-    console.log(
-      "🌍 Skipping reverse geocoding on production host; using coordinates only"
-    );
-    return;
-  }
-
+  // Don't show coordinates - try to get city name immediately
   try {
-    // Try reverse geocoding with OpenStreetMap Nominatim
     console.log("🌍 Attempting reverse geocoding for:", {
       latitude,
       longitude,
@@ -137,6 +119,7 @@ export async function getReverseGeocodedLocationName(
     console.warn("⚠️ Reverse geocoding failed:", error);
   }
 
-  // Fallback: keep the coordinate-based name
-  console.log("📍 Using coordinate-based fallback:", coordinateBasedName);
+  // Fallback: show generic location name instead of coordinates
+  onLocationNameUpdate("Location");
+  console.log("📍 Using generic location fallback (no coordinates shown)");
 }

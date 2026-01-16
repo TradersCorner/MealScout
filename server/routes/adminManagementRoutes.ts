@@ -56,17 +56,17 @@ export function registerAdminManagementRoutes(app: Express) {
         });
 
         // Handle restaurant owner and food truck creation
-        if ((userType === \"restaurant_owner\" || userType === \"food_truck\") && businessName && address) {
+        if ((userType === "restaurant_owner" || userType === "food_truck") && businessName && address) {
           await storage.createRestaurantForUser({
             userId: user.id,
             name: businessName,
             address,
-            cuisineType: cuisineType || \"Various\",
+            cuisineType: cuisineType || "Various",
           });
         }
 
         // Handle host and event coordinator creation
-        if ((userType === \"host\" || userType === \"event_coordinator\") && businessName && address) {
+        if ((userType === "host" || userType === "event_coordinator") && businessName && address) {
           const hostData: any = {
             userId: user.id,
             businessName,
@@ -322,9 +322,11 @@ export function registerAdminManagementRoutes(app: Express) {
         const { userType } = req.body;
         const allowedTypes = [
           "customer",
-          "restaurant_owner",          \"food_truck\",
-          \"host\",
-          \"event_coordinator\",          "staff",
+          "restaurant_owner",
+          "food_truck",
+          "host",
+          "event_coordinator",
+          "staff",
           "admin",
           "super_admin",
         ];

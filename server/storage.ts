@@ -1811,14 +1811,6 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId));
   }
 
-  async updateUserType(userId: string, userType: string): Promise<void> {
-    await db.update(users).set({ userType }).where(eq(users.id, userId));
-  }
-
-  async deleteUser(userId: string): Promise<void> {
-    await db.delete(users).where(eq(users.id, userId));
-  }
-
   async createUserManually(userData: {
     email: string;
     firstName: string;

@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1768542518961,
+      "tag": "0000_famous_deathbird",
+      "breakpoints": true
+    }
+  ]
+}

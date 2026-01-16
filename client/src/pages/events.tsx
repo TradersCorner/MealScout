@@ -31,14 +31,32 @@ export default function EventsPage() {
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white">
       <div className="max-w-6xl mx-auto p-4 space-y-6">
         {/* Header */}
-        <div className="space-y-2">
+        <div className="space-y-4">
           <h1 className="text-4xl font-bold text-gray-900 flex items-center gap-3">
             <Calendar className="w-10 h-10 text-amber-500" />
-            Upcoming Events
+            Find Food Trucks at Events
           </h1>
-          <p className="text-lg text-gray-600">
-            Discover food truck events and parking opportunities near you
-          </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-base text-gray-800 mb-2">
+              <strong>What are these events?</strong>
+            </p>
+            <p className="text-sm text-gray-700 mb-1">
+              These are high-volume events (festivals, markets, corporate
+              gatherings) coordinated by event organizers to help you find food
+              trucks.
+            </p>
+            <p className="text-sm text-gray-700">
+              <strong>Looking for a parking spot?</strong> Check out our{" "}
+              <a
+                href="/host-locations"
+                className="text-blue-600 hover:underline"
+              >
+                Host Locations
+              </a>{" "}
+              - businesses like gas stations, schools, and laundromats offering
+              parking spots for food trucks.
+            </p>
+          </div>
         </div>
 
         {/* Events Grid */}
@@ -49,9 +67,19 @@ export default function EventsPage() {
               <h3 className="text-xl font-semibold text-gray-700 mb-2">
                 No Upcoming Events
               </h3>
-              <p className="text-gray-500">
-                Check back soon for new food truck events and parking
-                opportunities!
+              <p className="text-gray-500 mb-3">
+                No high-volume events are currently listed.
+              </p>
+              <p className="text-sm text-gray-600">
+                Looking for a place to park your food truck? Browse{" "}
+                <a
+                  href="/host-locations"
+                  className="text-blue-600 hover:underline"
+                >
+                  Host Locations
+                </a>{" "}
+                - businesses offering parking spots at gas stations, schools,
+                breweries, and more.
               </p>
             </CardContent>
           </Card>

@@ -2688,7 +2688,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Hash password
-        const bcrypt = await import("bcryptjs");
         const passwordHash = await bcrypt.hash(validatedUserData.password, 10);
 
         // Create restaurant owner user account using email auth

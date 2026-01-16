@@ -66,6 +66,9 @@ import {
   eventInterests,
   type EventInterest,
   type InsertEventInterest,
+  hostReviews,
+  type HostReview,
+  type InsertHostReview,
   telemetryEvents,
   type InsertTelemetryEvent,
   lisaClaims,
@@ -1819,7 +1822,6 @@ export class DatabaseStorage implements IStorage {
     userType: string;
     tempPassword: string;
   }): Promise<User> {
-    const bcrypt = require("bcryptjs");
     const hashedPassword = await bcrypt.hash(userData.tempPassword, 10);
 
     const [user] = await db

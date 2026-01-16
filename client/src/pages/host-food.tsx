@@ -3,9 +3,9 @@ import Navigation from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { SEOHead } from "@/components/seo-head";
 
-const TITLE = "Host Food at Your Location | MealScout";
+const TITLE = "Host Food Trucks at Your Location | MealScout";
 const DESCRIPTION =
-  "Hosts use MealScout to bring food trucks and restaurants to their location. Free forever.";
+  "Own a gas station, school, brewery, or other business? Host food trucks at your location. Free forever. Food trucks find you, you choose who parks.";
 
 export default function HostFood() {
   const canonicalUrl =
@@ -24,18 +24,19 @@ export default function HostFood() {
       <main className="max-w-3xl mx-auto px-4 py-12 space-y-8">
         <header className="space-y-3">
           <h1 className="text-3xl font-bold text-gray-900">
-            Host Food at Your Location
+            Host Food Trucks at Your Business
           </h1>
           <p className="text-lg text-gray-700">
-            Bring food trucks or partner restaurants to your venue without fees
-            or heavy setup.
+            Gas station, school, laundromat, office park, or brewery? Bring food
+            trucks to your location with zero fees or setup costs.
           </p>
           <p className="text-lg text-gray-700">
-            MealScout is free for hosts and events. We coordinate; you choose.
+            <strong>Completely free for hosts.</strong> Food trucks find you,
+            you choose who parks.
           </p>
           <div className="pt-2">
             <Button asChild size="lg">
-              <Link href="/host-signup">Host With MealScout</Link>
+              <Link href="/host-signup">Become a Host Location</Link>
             </Button>
           </div>
         </header>
@@ -43,12 +44,17 @@ export default function HostFood() {
         <section className="space-y-2">
           <h2 className="text-xl font-semibold text-gray-900">How it works</h2>
           <p className="text-gray-700">
-            Tell us your address, days available, and any constraints like power
-            or parking. We surface the right trucks and restaurants.
+            1. Tell us your business type, address, available days, and
+            amenities (power, wifi, parking space).
           </p>
           <p className="text-gray-700">
-            No fees for hosts. You get reliable service; businesses get fair,
-            transparent coordination.
+            2. Food trucks discover your location and request to park.
+          </p>
+          <p className="text-gray-700">
+            3. You approve or decline requests - you're always in control.
+          </p>
+          <p className="text-gray-700 font-semibold mt-4">
+            No fees. No contracts. You can stop anytime.
           </p>
         </section>
       </main>

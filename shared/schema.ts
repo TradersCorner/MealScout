@@ -1951,6 +1951,46 @@ export const eventInterests = pgTable(
   ]
 );
 
+// Host Location Reviews: Food trucks can review host locations
+export const hostReviews = pgTable(
+  "host_reviews",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    hostId: varchar("host_id")
+      .notNull()
+      .references(() => hosts.id, { onDelete: "cascade" }),
+    truckId: varchar("truck_id")
+      .notNull()
+      .references(() => restaurants.id, { onDelete: "cascade" }),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }), // Food truck owner
+    rating: integer("rating").notNull(), // 1-5 stars
+    comment: text("comment"),
+    // Specific feedback categories
+    trafficRating: integer("traffic_rating"), // 1-5, how busy was the location
+    amenitiesRating: integer("amenities_rating"), // 1-5, power, wifi, etc.
+    hostCommunicationRating: integer("host_communication_rating"), // 1-5
+    wouldReturnAgain: boolean("would_return_again").default(true),
+    // Admin moderation
+    isApproved: boolean("is_approved").default(true),
+    flaggedReason: text("flagged_reason"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_host_reviews_host").on(table.hostId),
+    index("idx_host_reviews_truck").on(table.truckId),
+    index("idx_host_reviews_user").on(table.userId),
+    index("idx_host_reviews_rating").on(table.rating),
+    index("idx_host_reviews_approved").on(table.isApproved),
+    // Ensure one review per truck per host location
+    unique("uq_host_reviews_host_truck").on(table.hostId, table.truckId),
+  ]
+);
+
 // PHASE 1: Referral tracking - "who brought who"
 export const referrals = pgTable(
   "referrals",
@@ -2453,6 +2493,7 @@ export const hostsRelations = relations(hosts, ({ one, many }) => ({
     references: [users.id],
   }),
   events: many(events),
+  reviews: many(hostReviews),
 }));
 
 export const eventInterestsRelations = relations(eventInterests, ({ one }) => ({
@@ -2476,6 +2517,21 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
     references: [restaurants.id],
   }),
   interests: many(eventInterests),
+}));
+
+export const hostReviewsRelations = relations(hostReviews, ({ one }) => ({
+  host: one(hosts, {
+    fields: [hostReviews.hostId],
+    references: [hosts.id],
+  }),
+  truck: one(restaurants, {
+    fields: [hostReviews.truckId],
+    references: [restaurants.id],
+  }),
+  user: one(users, {
+    fields: [hostReviews.userId],
+    references: [users.id],
+  }),
 }));
 
 export const referralsRelations = relations(referrals, ({ one }) => ({
@@ -2853,6 +2909,15 @@ export const insertEventInterestSchema = createInsertSchema(
 
 export type EventInterest = typeof eventInterests.$inferSelect;
 export type InsertEventInterest = z.infer<typeof insertEventInterestSchema>;
+
+export const insertHostReviewSchema = createInsertSchema(hostReviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type HostReview = typeof hostReviews.$inferSelect;
+export type InsertHostReview = z.infer<typeof insertHostReviewSchema>;
 
 // Telemetry: Generic event tracking for analytics
 export const telemetryEvents = pgTable(

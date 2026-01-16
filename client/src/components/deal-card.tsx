@@ -515,10 +515,12 @@ export default function DealCard({ deal }: DealCardProps) {
                 </svg>
                 <span className="font-medium">4.5</span>
               </div>
-              <span>•</span>
-              <span>
-                {deal.distance ? `${deal.distance.toFixed(1)} mi` : "0.5 mi"}
-              </span>
+              {deal.distance !== undefined && (
+                <>
+                  <span>•</span>
+                  <span>{deal.distance.toFixed(1)} mi</span>
+                </>
+              )}
               {deal.minOrderAmount && (
                 <>
                   <span>•</span>

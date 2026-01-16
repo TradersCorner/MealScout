@@ -62,7 +62,11 @@ export default function DealDetail() {
   });
 
   const { data: rating } = useQuery({
-    queryKey: ["/api/reviews/restaurant", (deal as Deal)?.restaurantId, "rating"],
+    queryKey: [
+      "/api/reviews/restaurant",
+      (deal as Deal)?.restaurantId,
+      "rating",
+    ],
     enabled: !!(deal as Deal)?.restaurantId,
   });
 
@@ -72,13 +76,13 @@ export default function DealDetail() {
       // Track the deal view
       const trackView = async () => {
         try {
-          await apiRequest('POST', `/api/deals/${dealId}/view`, {});
+          await apiRequest("POST", `/api/deals/${dealId}/view`, {});
         } catch (error) {
           // Silently fail - view tracking shouldn't interrupt user experience
-          console.debug('View tracking failed:', error);
+          console.debug("View tracking failed:", error);
         }
       };
-      
+
       // Delay to ensure the user actually viewed the page (not just a quick navigation)
       const timer = setTimeout(trackView, 1000);
       return () => clearTimeout(timer);
@@ -92,7 +96,8 @@ export default function DealDetail() {
     onSuccess: () => {
       toast({
         title: "Deal Claimed!",
-        description: "You have successfully claimed this deal. Show this to the restaurant.",
+        description:
+          "You have successfully claimed this deal. Show this to the restaurant.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/deals", dealId] });
     },
@@ -156,44 +161,53 @@ export default function DealDetail() {
   };
 
   const formatTime = (timeString: string) => {
-    const [hours, minutes] = timeString.split(':');
+    const [hours, minutes] = timeString.split(":");
     const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const ampm = hour >= 12 ? "PM" : "AM";
     const displayHour = hour % 12 || 12;
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
-  const dealTitle = (deal as Deal)?.title || 'Food Deal';
-  const restaurantName = (restaurant as Restaurant)?.name || 'Restaurant';
-  const dealDescription = (deal as Deal)?.description || 'Exclusive food deal from a local restaurant';
-  const discountValue = (deal as Deal)?.discountValue || '';
-  const dealType = (deal as Deal)?.dealType || '';
+  const dealTitle = (deal as Deal)?.title || "Food Deal";
+  const restaurantName = (restaurant as Restaurant)?.name || "Restaurant";
+  const dealDescription =
+    (deal as Deal)?.description ||
+    "Exclusive food deal from a local restaurant";
+  const discountValue = (deal as Deal)?.discountValue || "";
+  const dealType = (deal as Deal)?.dealType || "";
 
   const offerSchema = {
     "@context": "https://schema.org",
     "@type": "Offer",
-    "name": dealTitle,
-    "description": dealDescription,
-    "url": `https://mealscout.us/deals/${dealId}`,
-    "priceCurrency": "USD",
-    "price": dealType === 'percentage' ? '0' : discountValue,
-    "discount": dealType === 'percentage' ? `${discountValue}%` : `$${discountValue}`,
-    "seller": {
+    name: dealTitle,
+    description: dealDescription,
+    url: `https://mealscout.us/deals/${dealId}`,
+    priceCurrency: "USD",
+    price: dealType === "percentage" ? "0" : discountValue,
+    discount:
+      dealType === "percentage" ? `${discountValue}%` : `$${discountValue}`,
+    seller: {
       "@type": "Restaurant",
-      "name": restaurantName,
-      "address": (restaurant as Restaurant)?.address || ""
+      name: restaurantName,
+      address: (restaurant as Restaurant)?.address || "",
     },
-    "validFrom": (deal as Deal)?.startDate,
-    "validThrough": (deal as Deal)?.endDate,
-    "availability": "https://schema.org/InStock"
+    validFrom: (deal as Deal)?.startDate,
+    validThrough: (deal as Deal)?.endDate,
+    availability: "https://schema.org/InStock",
   };
 
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-white min-h-screen">
       <SEOHead
         title={`${dealTitle} - ${restaurantName} | MealScout`}
-        description={`${dealDescription}. ${dealType === 'percentage' ? `Get ${discountValue}% off` : `Save $${discountValue}`} at ${restaurantName}. Claim this exclusive deal now on MealScout!`}
-        keywords={`${restaurantName}, ${dealTitle}, food deal, restaurant discount, ${(restaurant as Restaurant)?.cuisineType || 'food'}`}
+        description={`${dealDescription}. ${
+          dealType === "percentage"
+            ? `Get ${discountValue}% off`
+            : `Save $${discountValue}`
+        } at ${restaurantName}. Claim this exclusive deal now on MealScout!`}
+        keywords={`${restaurantName}, ${dealTitle}, food deal, restaurant discount, ${
+          (restaurant as Restaurant)?.cuisineType || "food"
+        }`}
         canonicalUrl={`https://mealscout.us/deals/${dealId}`}
         schemaData={offerSchema}
       />
@@ -203,18 +217,21 @@ export default function DealDetail() {
         icon={Tag}
         className="bg-white sticky top-0 z-10"
       />
-      
+
       {/* Action Buttons */}
       <div className="bg-white px-4 py-2 border-b border-border sticky top-16 z-10">
         <div className="flex justify-end space-x-2">
-          <button 
-            className="p-2 rounded-full hover:bg-muted" 
+          <button
+            className="p-2 rounded-full hover:bg-muted"
             onClick={() => setShowShareModal(true)}
             data-testid="button-share"
           >
             <i className="fas fa-share text-foreground"></i>
           </button>
-          <button className="p-2 rounded-full hover:bg-muted" data-testid="button-favorite">
+          <button
+            className="p-2 rounded-full hover:bg-muted"
+            data-testid="button-favorite"
+          >
             <i className="fas fa-heart text-muted-foreground hover:text-primary"></i>
           </button>
         </div>
@@ -224,9 +241,9 @@ export default function DealDetail() {
       <div className="relative">
         <div className="w-full h-64 bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center">
           {(deal as Deal)?.imageUrl ? (
-            <img 
-              src={(deal as Deal).imageUrl} 
-              alt={(deal as Deal).title} 
+            <img
+              src={(deal as Deal).imageUrl}
+              alt={(deal as Deal).title}
               className="w-full h-full object-cover"
               data-testid="img-deal"
             />
@@ -234,7 +251,10 @@ export default function DealDetail() {
             <i className="fas fa-utensils text-primary text-4xl"></i>
           )}
         </div>
-        <div className="absolute top-4 left-4 bg-accent text-accent-foreground px-3 py-1 rounded-full font-bold text-sm" data-testid="text-discount-badge">
+        <div
+          className="absolute top-4 left-4 bg-accent text-accent-foreground px-3 py-1 rounded-full font-bold text-sm"
+          data-testid="text-discount-badge"
+        >
           {formatDiscount(deal as Deal)}
         </div>
       </div>
@@ -244,19 +264,31 @@ export default function DealDetail() {
         {/* Restaurant Info */}
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h1 className="text-xl font-bold text-foreground mb-1" data-testid="text-restaurant-name">
+            <h1
+              className="text-xl font-bold text-foreground mb-1"
+              data-testid="text-restaurant-name"
+            >
               {(restaurant as Restaurant)?.name || "Restaurant"}
             </h1>
             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-              <div className="flex items-center space-x-1">
-                <i className="fas fa-map-marker-alt"></i>
-                <span data-testid="text-restaurant-distance">0.2 mi away</span>
-              </div>
+              {(deal as Deal)?.distance !== undefined && (
+                <div className="flex items-center space-x-1">
+                  <i className="fas fa-map-marker-alt"></i>
+                  <span data-testid="text-restaurant-distance">
+                    {(deal as Deal).distance.toFixed(1)} mi away
+                  </span>
+                </div>
+              )}
               <div className="flex items-center space-x-1">
                 <i className="fas fa-star text-yellow-400"></i>
                 <span data-testid="text-restaurant-rating">
-                  {(rating as any)?.rating && typeof (rating as any).rating === 'number' ? (rating as any).rating.toFixed(1) : 
-                   (rating as any)?.rating && !isNaN(Number((rating as any).rating)) ? Number((rating as any).rating).toFixed(1) : "New"} 
+                  {(rating as any)?.rating &&
+                  typeof (rating as any).rating === "number"
+                    ? (rating as any).rating.toFixed(1)
+                    : (rating as any)?.rating &&
+                      !isNaN(Number((rating as any).rating))
+                    ? Number((rating as any).rating).toFixed(1)
+                    : "New"}
                   {Array.isArray(reviews) && ` (${reviews.length} reviews)`}
                 </span>
               </div>
@@ -270,20 +302,33 @@ export default function DealDetail() {
         {/* Deal Description */}
         <Card className="bg-muted/50 mb-6">
           <CardContent className="p-4">
-            <h2 className="font-semibold text-foreground mb-2" data-testid="text-deal-title">{(deal as Deal)?.title}</h2>
-            <p className="text-muted-foreground text-sm mb-3" data-testid="text-deal-description">{(deal as Deal)?.description}</p>
-            
+            <h2
+              className="font-semibold text-foreground mb-2"
+              data-testid="text-deal-title"
+            >
+              {(deal as Deal)?.title}
+            </h2>
+            <p
+              className="text-muted-foreground text-sm mb-3"
+              data-testid="text-deal-description"
+            >
+              {(deal as Deal)?.description}
+            </p>
+
             <div className="flex items-center space-x-4 text-xs">
               <div className="flex items-center space-x-1">
                 <i className="fas fa-clock text-muted-foreground"></i>
                 <span data-testid="text-deal-time">
-                  Valid {formatTime((deal as Deal)?.startTime || "11:00")} - {formatTime((deal as Deal)?.endTime || "15:00")}
+                  Valid {formatTime((deal as Deal)?.startTime || "11:00")} -{" "}
+                  {formatTime((deal as Deal)?.endTime || "15:00")}
                 </span>
               </div>
               {(deal as Deal)?.minOrderAmount && (
                 <div className="flex items-center space-x-1">
                   <i className="fas fa-dollar-sign text-muted-foreground"></i>
-                  <span data-testid="text-min-order">Min. order ${(deal as Deal).minOrderAmount}</span>
+                  <span data-testid="text-min-order">
+                    Min. order ${(deal as Deal).minOrderAmount}
+                  </span>
                 </div>
               )}
             </div>
@@ -295,7 +340,12 @@ export default function DealDetail() {
           <Card>
             <CardContent className="text-center p-3">
               <i className="fas fa-clock text-secondary text-lg mb-1"></i>
-              <p className="text-xs font-medium text-foreground" data-testid="text-pickup-time">15-25 min</p>
+              <p
+                className="text-xs font-medium text-foreground"
+                data-testid="text-pickup-time"
+              >
+                15-25 min
+              </p>
               <p className="text-xs text-muted-foreground">Pickup time</p>
             </CardContent>
           </Card>
@@ -303,7 +353,10 @@ export default function DealDetail() {
             <CardContent className="text-center p-3">
               <i className="fas fa-phone text-primary text-lg mb-1"></i>
               <p className="text-xs font-medium text-foreground">Call Now</p>
-              <p className="text-xs text-muted-foreground" data-testid="text-restaurant-phone">
+              <p
+                className="text-xs text-muted-foreground"
+                data-testid="text-restaurant-phone"
+              >
                 {(restaurant as Restaurant)?.phone || "(555) 123-4567"}
               </p>
             </CardContent>
@@ -312,7 +365,14 @@ export default function DealDetail() {
             <CardContent className="text-center p-3">
               <i className="fas fa-directions text-accent text-lg mb-1"></i>
               <p className="text-xs font-medium text-foreground">Directions</p>
-              <p className="text-xs text-muted-foreground" data-testid="text-directions">2 blocks away</p>
+              {(restaurant as Restaurant)?.address && (
+                <p
+                  className="text-xs text-muted-foreground"
+                  data-testid="text-directions"
+                >
+                  {(restaurant as Restaurant).address.split(",")[0]}
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -321,43 +381,68 @@ export default function DealDetail() {
         {Array.isArray(reviews) && reviews.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-foreground" data-testid="text-reviews-title">Recent Reviews</h3>
-              <button className="text-primary text-sm font-medium" data-testid="button-see-all-reviews">See all</button>
+              <h3
+                className="font-semibold text-foreground"
+                data-testid="text-reviews-title"
+              >
+                Recent Reviews
+              </h3>
+              <button
+                className="text-primary text-sm font-medium"
+                data-testid="button-see-all-reviews"
+              >
+                See all
+              </button>
             </div>
-            
+
             <div className="space-y-4">
-              {(reviews as any[]).slice(0, 2).map((review: any, index: number) => (
-                <Card key={review.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                        <i className="fas fa-user text-muted-foreground text-xs"></i>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <p className="font-medium text-sm text-foreground" data-testid={`text-reviewer-name-${index}`}>
-                            {review.user?.firstName || "Anonymous"}
-                          </p>
-                          <div className="flex text-yellow-400">
-                            {[...Array(5)].map((_, i) => (
-                              <i 
-                                key={i} 
-                                className={`fas fa-star text-xs ${i < review.rating ? 'text-yellow-400' : 'text-muted-foreground'}`}
-                              ></i>
-                            ))}
-                          </div>
+              {(reviews as any[])
+                .slice(0, 2)
+                .map((review: any, index: number) => (
+                  <Card key={review.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                          <i className="fas fa-user text-muted-foreground text-xs"></i>
                         </div>
-                        <p className="text-xs text-muted-foreground" data-testid={`text-review-date-${index}`}>
-                          {new Date(review.createdAt).toLocaleDateString()}
-                        </p>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2">
+                            <p
+                              className="font-medium text-sm text-foreground"
+                              data-testid={`text-reviewer-name-${index}`}
+                            >
+                              {review.user?.firstName || "Anonymous"}
+                            </p>
+                            <div className="flex text-yellow-400">
+                              {[...Array(5)].map((_, i) => (
+                                <i
+                                  key={i}
+                                  className={`fas fa-star text-xs ${
+                                    i < review.rating
+                                      ? "text-yellow-400"
+                                      : "text-muted-foreground"
+                                  }`}
+                                ></i>
+                              ))}
+                            </div>
+                          </div>
+                          <p
+                            className="text-xs text-muted-foreground"
+                            data-testid={`text-review-date-${index}`}
+                          >
+                            {new Date(review.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <p className="text-sm text-foreground" data-testid={`text-review-comment-${index}`}>
-                      {review.comment || "Great deal!"}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
+                      <p
+                        className="text-sm text-foreground"
+                        data-testid={`text-review-comment-${index}`}
+                      >
+                        {review.comment || "Great deal!"}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
             </div>
           </div>
         )}
@@ -366,7 +451,7 @@ export default function DealDetail() {
       {/* Bottom Action Bar */}
       <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-white border-t border-border px-4 py-4">
         <div className="flex items-center space-x-3">
-          <Button 
+          <Button
             className="flex-1 py-3 font-semibold text-sm food-gradient-primary border-0"
             onClick={() => setShowClaimModal(true)}
             disabled={!isAuthenticated}
@@ -375,23 +460,32 @@ export default function DealDetail() {
             <i className="fab fa-facebook-f mr-2"></i>
             Claim & Post to Facebook
           </Button>
-          <Button 
-            variant="outline" 
-            size="icon" 
+          <Button
+            variant="outline"
+            size="icon"
             className="px-4 py-3"
             data-testid="button-save-deal"
           >
             <i className="fas fa-heart text-muted-foreground"></i>
           </Button>
         </div>
-        <p className="text-center text-xs text-muted-foreground mt-2" data-testid="text-deal-expires">
-          Deal expires in {Math.ceil((new Date((deal as Deal)?.endDate || Date.now()).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days
+        <p
+          className="text-center text-xs text-muted-foreground mt-2"
+          data-testid="text-deal-expires"
+        >
+          Deal expires in{" "}
+          {Math.ceil(
+            (new Date((deal as Deal)?.endDate || Date.now()).getTime() -
+              Date.now()) /
+              (1000 * 60 * 60 * 24)
+          )}{" "}
+          days
         </p>
       </div>
 
       {/* Deal Claim Modal */}
       <DealClaimModal
-        dealId={dealId || ''}
+        dealId={dealId || ""}
         isOpen={showClaimModal}
         onClose={() => setShowClaimModal(false)}
       />
@@ -401,15 +495,15 @@ export default function DealDetail() {
         isOpen={showShareModal}
         onClose={() => setShowShareModal(false)}
         deal={{
-          id: (deal as Deal)?.id || '',
-          title: (deal as Deal)?.title || '',
-          description: (deal as Deal)?.description || '',
-          discountValue: (deal as Deal)?.discountValue || '0',
+          id: (deal as Deal)?.id || "",
+          title: (deal as Deal)?.title || "",
+          description: (deal as Deal)?.description || "",
+          discountValue: (deal as Deal)?.discountValue || "0",
           minOrderAmount: (deal as Deal)?.minOrderAmount,
           restaurant: {
-            name: (restaurant as Restaurant)?.name || 'Restaurant',
+            name: (restaurant as Restaurant)?.name || "Restaurant",
             cuisineType: (restaurant as Restaurant)?.cuisineType,
-          }
+          },
         }}
       />
     </div>

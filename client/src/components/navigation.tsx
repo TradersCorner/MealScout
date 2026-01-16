@@ -238,18 +238,19 @@ export default function Navigation() {
         <div className="flex items-center justify-start space-x-2 min-w-max">
           {navItems.map((item) =>
             item.path ? (
-              <Link key={item.path} href={item.path}>
-                <button
-                  className={`flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
-                    location === item.path
-                      ? "text-orange-600 bg-orange-50 ring-1 ring-orange-200/70"
-                      : "text-slate-800 hover:text-orange-600 hover:bg-orange-50"
-                  }`}
-                  data-testid={`nav-${item.label.toLowerCase()}`}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span className="text-xs font-medium">{item.label}</span>
-                </button>
+              <Link
+                key={item.path}
+                href={item.path}
+                className={`flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
+                  location === item.path
+                    ? "text-orange-600 bg-orange-50 ring-1 ring-orange-200/70"
+                    : "text-slate-800 hover:text-orange-600 hover:bg-orange-50"
+                }`}
+                data-testid={`nav-${item.label.toLowerCase()}`}
+                aria-label={item.label}
+              >
+                <item.icon className="w-5 h-5" />
+                <span className="text-xs font-medium">{item.label}</span>
               </Link>
             ) : (
               <button

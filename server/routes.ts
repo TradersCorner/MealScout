@@ -4388,12 +4388,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
         }
 
+        // Prepare Facebook post data
+        const facebookMessage = `🍽️ Just claimed an amazing deal at ${
+          restaurant.name
+        }!\n\n${deal.title}\n${deal.discountValue}% OFF (Min order: $${
+          deal.minOrderAmount || "15"
+        })\n\nFound this through MealScout - check it out! #MealScout #FoodDeals`;
+
         res.json({
           success: true,
           claimId: claim.id,
           dealTitle: deal.title,
           restaurantName: restaurant.name,
           restaurantAddress: restaurant.address,
+          facebookPostData: {
+            message: facebookMessage,
+            place: restaurant.facebookPlaceId || undefined,
+          },
         });
       } catch (error: any) {
         console.error("Error claiming deal:", error);

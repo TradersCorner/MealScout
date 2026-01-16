@@ -1,14 +1,7 @@
-    },
-  // Parking pass UI copy for in-progress features
-  dev: {
-    placeholders: {
-      locationMap: "Map + nearby hosts will appear here once parking inventory is connected.",
-      dateCalendar: "Calendar view will be wired to the date picker component.",
-      slotList: "Slots will render from host configuration using SlotCard and AllDayCard.",
-      statusUpcomingCountdown: "Countdown and GPS checks will appear here when connected.",
-      statusActiveGpsDetail: "On-site · GPS confirmed (once wired).",
-    },
-  },
+export const PARKING_PASS_COPY = {
+  // Navigation
+  nav: {
+    location: "Location",
     date: "Date",
     slot: "Slot",
     confirm: "Confirm",
@@ -23,7 +16,8 @@
     selectCta: "Select Location",
     summary: {
       idle: "Once you tap the button above, we’ll lock in your area for parking options.",
-      gpsLocked: "GPS locked for this booking session. We’ll use it to rank nearby hosts only.",
+      gpsLocked:
+        "GPS locked for this booking session. We’ll use it to rank nearby hosts only.",
       currentAreaLabel: "Current area:",
     },
     systemNote:
@@ -88,8 +82,7 @@
       "These appear here as structured, read-only rules.",
     ],
     bufferTitle: "Buffer",
-    bufferNotice:
-      "30-minute buffer after your booking for exit and turnover.",
+    bufferNotice: "30-minute buffer after your booking for exit and turnover.",
     offlineTitle: "Offline",
     offlineRule:
       "If GPS is unavailable, your spot is guaranteed for the first 4 hours. After that, rotation may occur.",
@@ -117,8 +110,7 @@
       directions: "Directions",
       offlineNote: "GPS issues won’t cancel your booking.",
       cancelCta: "Cancel (credit only)",
-      cancelConfirm:
-        "You will receive credit only. No cash refunds.",
+      cancelConfirm: "You will receive credit only. No cash refunds.",
     },
     active: {
       gpsOk: "On-site · GPS confirmed",
@@ -134,10 +126,13 @@
     // Dev-only placeholders for UI scaffolding
     dev: {
       placeholders: {
-        locationMap: "Map + nearby hosts will appear here once parking inventory is connected.",
+        locationMap:
+          "Map + nearby hosts will appear here once parking inventory is connected.",
         dateCalendar: "Calendar placeholder  Wire to date picker component",
-        slotList: "Slots UI placeholder. Once connected, render <SlotCard /> and <AllDayCard /> instances from host configuration.",
-        statusUpcomingCountdown: "Countdown and GPS checks appear here once connected.",
+        slotList:
+          "Slots UI placeholder. Once connected, render <SlotCard /> and <AllDayCard /> instances from host configuration.",
+        statusUpcomingCountdown:
+          "Countdown and GPS checks appear here once connected.",
         statusActiveGpsDetail: "On-site  GPS confirmed (once wired).",
       },
     },

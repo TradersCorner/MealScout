@@ -1,15 +1,31 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
-import { 
-  User, Heart, Receipt, TrendingUp, MapPin, 
-  Clock, Star, DollarSign, Calendar, Gift,
-  Utensils, Navigation as NavigationIcon, ChefHat
+import {
+  User,
+  Heart,
+  Receipt,
+  TrendingUp,
+  MapPin,
+  Clock,
+  Star,
+  DollarSign,
+  Calendar,
+  Gift,
+  Utensils,
+  Navigation as NavigationIcon,
+  ChefHat,
 } from "lucide-react";
 import Navigation from "@/components/navigation";
 import type { Deal, Restaurant, DealClaim } from "@shared/schema";
@@ -25,7 +41,9 @@ interface UserStats {
 
 export default function UserDashboard() {
   const { user } = useAuth();
-  const [location, setLocation] = useState<{lat: number; lng: number} | null>(null);
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
+    null
+  );
   const [locationName, setLocationName] = useState("Getting location...");
 
   // Get user location
@@ -35,19 +53,22 @@ export default function UserDashboard() {
         (position) => {
           const { latitude, longitude } = position.coords;
           setLocation({ lat: latitude, lng: longitude });
-          
+
           // Better reverse geocoding that prioritizes real city names
-          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`)
-            .then(res => res.json())
-            .then(data => {
+          fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
+          )
+            .then((res) => res.json())
+            .then((data) => {
               if (data.address) {
                 // Prioritize actual cities over administrative divisions
-                const locationName = data.address.city || 
-                                   data.address.town || 
-                                   data.address.village || 
-                                   data.address.county || 
-                                   data.address.state || 
-                                   "Your Location";
+                const locationName =
+                  data.address.city ||
+                  data.address.town ||
+                  data.address.village ||
+                  data.address.county ||
+                  data.address.state ||
+                  "Your Location";
                 setLocationName(locationName);
               } else {
                 setLocationName("Your Location");
@@ -66,55 +87,66 @@ export default function UserDashboard() {
 
   // Fetch user stats
   const { data: userStats } = useQuery<UserStats>({
-    queryKey: ['/api/users/stats'],
+    queryKey: ["/api/users/stats"],
     enabled: !!user,
   });
 
   // Fetch user's claimed deals
-  const { data: claimedDeals = [], isLoading: claimedLoading } = useQuery<(DealClaim & {deal: Deal, restaurant: Restaurant})[]>({
-    queryKey: ['/api/users/claimed-deals'],
+  const { data: claimedDeals = [], isLoading: claimedLoading } = useQuery<
+    (DealClaim & { deal: Deal; restaurant: Restaurant })[]
+  >({
+    queryKey: ["/api/users/claimed-deals"],
     enabled: !!user,
   });
 
-  // Fetch user's favorite restaurants  
-  const { data: favoriteRestaurants = [], isLoading: favoritesLoading } = useQuery<Restaurant[]>({
-    queryKey: ['/api/users/favorites'],
-    enabled: !!user,
-  });
+  // Fetch user's favorite restaurants
+  const { data: favoriteRestaurants = [], isLoading: favoritesLoading } =
+    useQuery<Restaurant[]>({
+      queryKey: ["/api/users/favorites"],
+      enabled: !!user,
+    });
 
   // Fetch nearby deals
-  const { data: nearbyDeals = [], isLoading: nearbyLoading } = useQuery<(Deal & {restaurant: Restaurant})[]>({
+  const { data: nearbyDeals = [], isLoading: nearbyLoading } = useQuery<
+    (Deal & { restaurant: Restaurant })[]
+  >({
     queryKey: ["/api/deals/nearby", location?.lat, location?.lng],
     enabled: !!location,
   });
 
   // Fetch recommended deals based on user preferences
-  const { data: recommendedDeals = [] } = useQuery<(Deal & {restaurant: Restaurant})[]>({
-    queryKey: ['/api/deals/recommended'],
+  const { data: recommendedDeals = [] } = useQuery<
+    (Deal & { restaurant: Restaurant })[]
+  >({
+    queryKey: ["/api/deals/recommended"],
     enabled: !!user,
   });
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
     }).format(amount);
   };
 
   const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(':');
+    const [hours, minutes] = time.split(":");
     const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const ampm = hour >= 12 ? "PM" : "AM";
     const displayHour = hour % 12 || 12;
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
   const getDealTypeColor = (type: string) => {
     switch (type) {
-      case 'breakfast': return 'bg-yellow-100 text-yellow-800';
-      case 'lunch': return 'bg-blue-100 text-blue-800';
-      case 'dinner': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "breakfast":
+        return "bg-yellow-100 text-yellow-800";
+      case "lunch":
+        return "bg-blue-100 text-blue-800";
+      case "dinner":
+        return "bg-purple-100 text-purple-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -123,7 +155,9 @@ export default function UserDashboard() {
       <div className="max-w-md mx-auto text-center py-12">
         <User className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
         <h2 className="text-2xl font-bold mb-2">Sign In Required</h2>
-        <p className="text-muted-foreground mb-4">Please sign in to view your dashboard.</p>
+        <p className="text-muted-foreground mb-4">
+          Please sign in to view your dashboard.
+        </p>
         <Button asChild data-testid="button-sign-in">
           <Link href="/login">Sign In</Link>
         </Button>
@@ -153,7 +187,7 @@ export default function UserDashboard() {
           <div className="text-right">
             <div className="text-sm text-muted-foreground">Welcome back</div>
             <div className="font-semibold" data-testid="text-user-welcome">
-              {user?.firstName ? `${user.firstName}!` : 'Food Explorer!'}
+              {user?.firstName ? `${user.firstName}!` : "Food Explorer!"}
             </div>
           </div>
         </div>
@@ -225,11 +259,16 @@ export default function UserDashboard() {
           <TabsContent value="recent" className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Recent Activity</h3>
-              <Button variant="outline" size="sm" asChild data-testid="button-view-all-orders">
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                data-testid="button-view-all-orders"
+              >
                 <Link href="/orders">View All</Link>
               </Button>
             </div>
-            
+
             {claimedLoading ? (
               <Card>
                 <CardContent className="flex items-center justify-center py-12">
@@ -239,13 +278,20 @@ export default function UserDashboard() {
             ) : claimedDeals.length > 0 ? (
               <div className="space-y-3">
                 {claimedDeals.slice(0, 5).map((claim) => (
-                  <Card key={claim.id} className="hover:shadow-md transition-shadow">
+                  <Card
+                    key={claim.id}
+                    className="hover:shadow-md transition-shadow"
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-semibold">{claim.deal.title}</h4>
-                            <Badge className={getDealTypeColor(claim.deal.dealType)}>
+                            <h4 className="font-semibold">
+                              {claim.deal.title}
+                            </h4>
+                            <Badge
+                              className={getDealTypeColor(claim.deal.dealType)}
+                            >
                               {claim.deal.dealType}
                             </Badge>
                           </div>
@@ -255,7 +301,9 @@ export default function UserDashboard() {
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
-                              {claim.claimedAt ? new Date(claim.claimedAt).toLocaleDateString() : 'Unknown'}
+                              {claim.claimedAt
+                                ? new Date(claim.claimedAt).toLocaleDateString()
+                                : "Unknown"}
                             </span>
                             <span className="flex items-center gap-1">
                               <DollarSign className="h-3 w-3" />
@@ -263,7 +311,12 @@ export default function UserDashboard() {
                             </span>
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" asChild data-testid={`button-view-deal-${claim.deal.id}`}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          asChild
+                          data-testid={`button-view-deal-${claim.deal.id}`}
+                        >
                           <Link href={`/deal/${claim.deal.id}`}>View</Link>
                         </Button>
                       </div>
@@ -275,8 +328,12 @@ export default function UserDashboard() {
               <Card>
                 <CardContent className="text-center py-12">
                   <Gift className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No deals claimed yet</h3>
-                  <p className="text-muted-foreground mb-4">Start discovering amazing deals near you!</p>
+                  <h3 className="text-lg font-semibold mb-2">
+                    No deals claimed yet
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    Start discovering amazing deals near you!
+                  </p>
                   <Button asChild data-testid="button-explore-deals">
                     <Link href="/">Explore Deals</Link>
                   </Button>
@@ -288,11 +345,16 @@ export default function UserDashboard() {
           <TabsContent value="nearby" className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Deals Near You</h3>
-              <Button variant="outline" size="sm" asChild data-testid="button-view-map">
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                data-testid="button-view-map"
+              >
                 <Link href="/map">View Map</Link>
               </Button>
             </div>
-            
+
             {nearbyLoading ? (
               <Card>
                 <CardContent className="flex items-center justify-center py-12">
@@ -302,7 +364,10 @@ export default function UserDashboard() {
             ) : nearbyDeals.length > 0 ? (
               <div className="space-y-3">
                 {nearbyDeals.slice(0, 5).map((deal) => (
-                  <Card key={deal.id} className="hover:shadow-md transition-shadow">
+                  <Card
+                    key={deal.id}
+                    className="hover:shadow-md transition-shadow"
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -318,23 +383,32 @@ export default function UserDashboard() {
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
-                              {deal.availableDuringBusinessHours 
-                                ? "During business hours" 
-                                : deal.startTime && deal.endTime 
-                                  ? `${formatTime(deal.startTime)} - ${formatTime(deal.endTime)}` 
-                                  : "All day"}
+                              {deal.availableDuringBusinessHours
+                                ? "During business hours"
+                                : deal.startTime && deal.endTime
+                                ? `${formatTime(deal.startTime)} - ${formatTime(
+                                    deal.endTime
+                                  )}`
+                                : "All day"}
                             </span>
                             <span className="flex items-center gap-1">
                               <DollarSign className="h-3 w-3" />
                               {deal.discountValue}
                             </span>
-                            <span className="flex items-center gap-1">
-                              <NavigationIcon className="h-3 w-3" />
-                              {((deal as any).distance || 0.5).toFixed(1)}mi
-                            </span>
+                            {(deal as any).distance !== undefined && (
+                              <span className="flex items-center gap-1">
+                                <NavigationIcon className="h-3 w-3" />
+                                {(deal as any).distance.toFixed(1)}mi
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" asChild data-testid={`button-view-nearby-${deal.id}`}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          asChild
+                          data-testid={`button-view-nearby-${deal.id}`}
+                        >
                           <Link href={`/deal/${deal.id}`}>View</Link>
                         </Button>
                       </div>
@@ -346,8 +420,12 @@ export default function UserDashboard() {
               <Card>
                 <CardContent className="text-center py-12">
                   <MapPin className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No nearby deals</h3>
-                  <p className="text-muted-foreground">Check back later for deals in your area.</p>
+                  <h3 className="text-lg font-semibold mb-2">
+                    No nearby deals
+                  </h3>
+                  <p className="text-muted-foreground">
+                    Check back later for deals in your area.
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -356,11 +434,16 @@ export default function UserDashboard() {
           <TabsContent value="favorites" className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Favorite Restaurants</h3>
-              <Button variant="outline" size="sm" asChild data-testid="button-view-all-favorites">
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                data-testid="button-view-all-favorites"
+              >
                 <Link href="/favorites">View All</Link>
               </Button>
             </div>
-            
+
             {favoritesLoading ? (
               <Card>
                 <CardContent className="flex items-center justify-center py-12">
@@ -370,7 +453,10 @@ export default function UserDashboard() {
             ) : favoriteRestaurants.length > 0 ? (
               <div className="space-y-3">
                 {favoriteRestaurants.slice(0, 5).map((restaurant) => (
-                  <Card key={restaurant.id} className="hover:shadow-md transition-shadow">
+                  <Card
+                    key={restaurant.id}
+                    className="hover:shadow-md transition-shadow"
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
@@ -379,17 +465,28 @@ export default function UserDashboard() {
                           </div>
                           <div>
                             <h4 className="font-semibold">{restaurant.name}</h4>
-                            <p className="text-sm text-muted-foreground">{restaurant.cuisineType}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {restaurant.cuisineType}
+                            </p>
                             <div className="flex items-center gap-1 mt-1">
                               <Star className="h-3 w-3 text-yellow-500 fill-current" />
                               <span className="text-xs text-muted-foreground">
-                                {(restaurant as any).averageRating?.toFixed(1) || 'New'}
+                                {(restaurant as any).averageRating?.toFixed(
+                                  1
+                                ) || "New"}
                               </span>
                             </div>
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" asChild data-testid={`button-view-restaurant-${restaurant.id}`}>
-                          <Link href={`/restaurant/${restaurant.id}`}>View</Link>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          asChild
+                          data-testid={`button-view-restaurant-${restaurant.id}`}
+                        >
+                          <Link href={`/restaurant/${restaurant.id}`}>
+                            View
+                          </Link>
                         </Button>
                       </div>
                     </CardContent>
@@ -400,8 +497,12 @@ export default function UserDashboard() {
               <Card>
                 <CardContent className="text-center py-12">
                   <Heart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No favorites yet</h3>
-                  <p className="text-muted-foreground">Start exploring and save your favorite restaurants!</p>
+                  <h3 className="text-lg font-semibold mb-2">
+                    No favorites yet
+                  </h3>
+                  <p className="text-muted-foreground">
+                    Start exploring and save your favorite restaurants!
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -411,11 +512,14 @@ export default function UserDashboard() {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Recommended For You</h3>
             </div>
-            
+
             {recommendedDeals.length > 0 ? (
               <div className="space-y-3">
                 {recommendedDeals.slice(0, 5).map((deal) => (
-                  <Card key={deal.id} className="hover:shadow-md transition-shadow">
+                  <Card
+                    key={deal.id}
+                    className="hover:shadow-md transition-shadow"
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -435,11 +539,13 @@ export default function UserDashboard() {
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
-                              {deal.availableDuringBusinessHours 
-                                ? "During business hours" 
-                                : deal.startTime && deal.endTime 
-                                  ? `${formatTime(deal.startTime)} - ${formatTime(deal.endTime)}` 
-                                  : "All day"}
+                              {deal.availableDuringBusinessHours
+                                ? "During business hours"
+                                : deal.startTime && deal.endTime
+                                ? `${formatTime(deal.startTime)} - ${formatTime(
+                                    deal.endTime
+                                  )}`
+                                : "All day"}
                             </span>
                             <span className="flex items-center gap-1">
                               <DollarSign className="h-3 w-3" />
@@ -447,7 +553,12 @@ export default function UserDashboard() {
                             </span>
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" asChild data-testid={`button-view-recommended-${deal.id}`}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          asChild
+                          data-testid={`button-view-recommended-${deal.id}`}
+                        >
                           <Link href={`/deal/${deal.id}`}>View</Link>
                         </Button>
                       </div>
@@ -459,8 +570,12 @@ export default function UserDashboard() {
               <Card>
                 <CardContent className="text-center py-12">
                   <ChefHat className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Building recommendations</h3>
-                  <p className="text-muted-foreground">Use more deals to get personalized recommendations!</p>
+                  <h3 className="text-lg font-semibold mb-2">
+                    Building recommendations
+                  </h3>
+                  <p className="text-muted-foreground">
+                    Use more deals to get personalized recommendations!
+                  </p>
                 </CardContent>
               </Card>
             )}

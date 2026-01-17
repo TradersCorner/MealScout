@@ -1178,6 +1178,122 @@ export async function setupUnifiedAuth(app: Express) {
       res.status(500).json({ error: "Unable to reset password" });
     }
   });
+
+  // Validate account setup token
+  app.get("/api/auth/validate-setup-token", async (req, res) => {
+    try {
+      const { token } = req.query;
+
+      if (!token || typeof token !== "string") {
+        return res.json({ valid: false, error: "Invalid token" });
+      }
+
+      // Hash the token to compare with stored hash
+      const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+      // Find token in database
+      const setupToken = await storage.getAccountSetupTokenByTokenHash(
+        tokenHash
+      );
+
+      if (!setupToken) {
+        return res.json({
+          valid: false,
+          error: "Token not found or already used",
+        });
+      }
+
+      // Check if token has expired
+      if (new Date() > setupToken.expiresAt) {
+        return res.json({ valid: false, error: "Token has expired" });
+      }
+
+      // Get user info
+      const user = await storage.getUser(setupToken.userId);
+      if (!user) {
+        return res.json({ valid: false, error: "User not found" });
+      }
+
+      res.json({
+        valid: true,
+        userEmail: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      });
+    } catch (error) {
+      console.error("Token validation error:", error);
+      res.json({ valid: false, error: "Unable to validate token" });
+    }
+  });
+
+  // Complete account setup with token
+  app.post("/api/auth/complete-setup", async (req, res) => {
+    try {
+      const { token, password, firstName, lastName } = req.body;
+
+      if (!token || !password) {
+        return res
+          .status(400)
+          .json({ error: "Token and password are required" });
+      }
+
+      if (password.length < 8) {
+        return res
+          .status(400)
+          .json({ error: "Password must be at least 8 characters" });
+      }
+
+      // Hash the token to compare with stored hash
+      const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+      // Find and validate token
+      const setupToken = await storage.getAccountSetupTokenByTokenHash(
+        tokenHash
+      );
+
+      if (!setupToken) {
+        return res
+          .status(400)
+          .json({ error: "Invalid or expired setup token" });
+      }
+
+      // Check if token has expired
+      if (new Date() > setupToken.expiresAt) {
+        return res.status(400).json({ error: "Setup token has expired" });
+      }
+
+      // Get user
+      const user = await storage.getUser(setupToken.userId);
+      if (!user) {
+        return res.status(400).json({ error: "User not found" });
+      }
+
+      // Check if user already has a password
+      if (user.passwordHash) {
+        return res
+          .status(400)
+          .json({ error: "Account has already been set up" });
+      }
+
+      // Hash new password
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      // Update user with password and optional name fields
+      const updateData: any = { passwordHash };
+      if (firstName) updateData.firstName = firstName;
+      if (lastName) updateData.lastName = lastName;
+
+      await storage.updateUser(user.id, updateData);
+
+      // Mark token as used
+      await storage.markAccountSetupTokenUsed(setupToken.id);
+
+      res.json({ message: "Account setup completed successfully" });
+    } catch (error) {
+      console.error("Account setup error:", error);
+      res.status(500).json({ error: "Unable to complete account setup" });
+    }
+  });
 }
 
 // Middleware to check if user is authenticated

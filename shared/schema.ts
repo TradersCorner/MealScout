@@ -495,6 +495,37 @@ export const passwordResetTokens = pgTable(
   ]
 );
 
+// Account setup tokens for new user onboarding (email-based flow)
+export const accountSetupTokens = pgTable(
+  "account_setup_tokens",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(), // Store hashed token for security
+    expiresAt: timestamp("expires_at").notNull(),
+    usedAt: timestamp("used_at"), // Nullable - set when token is used
+    createdByUserId: varchar("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }), // Staff/admin who created the account
+    requestIp: varchar("request_ip"), // Track IP for security auditing
+    userAgent: varchar("user_agent"), // Track user agent for security auditing
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_account_setup_tokens_user").on(
+      table.userId,
+      table.createdAt.desc()
+    ),
+    index("IDX_account_setup_tokens_token").on(table.tokenHash),
+    index("IDX_account_setup_tokens_expires").on(table.expiresAt),
+    index("IDX_account_setup_tokens_used").on(table.usedAt),
+  ]
+);
+
 // Deal feedback for ratings and suggestions
 export const dealFeedback = pgTable(
   "deal_feedback",
@@ -559,6 +590,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   restaurantRecommendations: many(restaurantRecommendations),
   addresses: many(userAddresses),
   passwordResetTokens: many(passwordResetTokens),
+  accountSetupTokens: many(accountSetupTokens),
   apiKeys: many(apiKeys),
 }));
 
@@ -1024,6 +1056,20 @@ export const passwordResetTokensRelations = relations(
   })
 );
 
+export const accountSetupTokensRelations = relations(
+  accountSetupTokens,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [accountSetupTokens.userId],
+      references: [users.id],
+    }),
+    createdBy: one(users, {
+      fields: [accountSetupTokens.createdByUserId],
+      references: [users.id],
+    }),
+  })
+);
+
 export const dealFeedbackRelations = relations(dealFeedback, ({ one }) => ({
   deal: one(deals, {
     fields: [dealFeedback.dealId],
@@ -1315,6 +1361,26 @@ export const insertPasswordResetTokenSchema = createInsertSchema(
       .optional(),
   });
 
+export const insertAccountSetupTokenSchema = createInsertSchema(
+  accountSetupTokens
+)
+  .omit({
+    id: true,
+    usedAt: true,
+    createdAt: true,
+  })
+  .extend({
+    tokenHash: z.string().min(1, "Token hash is required"),
+    expiresAt: z
+      .date()
+      .refine((date) => date > new Date(), "Expiry date must be in the future"),
+    requestIp: z.string().ip().optional(),
+    userAgent: z
+      .string()
+      .max(500, "User agent must be less than 500 characters")
+      .optional(),
+  });
+
 export const insertDealFeedbackSchema = createInsertSchema(dealFeedback)
   .omit({
     id: true,
@@ -1519,6 +1585,11 @@ export type InsertPasswordResetToken = z.infer<
   typeof insertPasswordResetTokenSchema
 >;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+export type InsertAccountSetupToken = z.infer<
+  typeof insertAccountSetupTokenSchema
+>;
+export type AccountSetupToken = typeof accountSetupTokens.$inferSelect;
 
 export type InsertDealFeedback = z.infer<typeof insertDealFeedbackSchema>;
 export type DealFeedback = typeof dealFeedback.$inferSelect;

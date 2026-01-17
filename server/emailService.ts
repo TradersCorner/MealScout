@@ -737,6 +737,96 @@ The MealScout Security Team
     return { html, text };
   }
 
+  static getAccountSetupTemplate(user: User, setupUrl: string, createdByName?: string): { html: string; text: string } {
+    const greeting = user.firstName || user.email?.split('@')[0] || 'there';
+    const createdByText = createdByName ? ` by ${createdByName}` : '';
+    
+    const content = `
+      <h2>Welcome to MealScout! 🎉</h2>
+      <p>Hello ${greeting}!</p>
+      <p>Your MealScout account has been created${createdByText}. Let's get you set up! Click the button below to complete your profile:</p>
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${setupUrl}" class="cta-button" style="display: inline-block;">Complete My Profile</a>
+      </div>
+
+      <div class="highlight-box">
+        <strong>📝 What's Next?</strong><br>
+        • Create your password (minimum 8 characters)<br>
+        • Upload a profile picture (optional)<br>
+        • Start exploring exclusive food deals in your area!
+      </div>
+
+      <div class="features">
+        <div class="feature">
+          <div class="feature-icon">🎟️</div>
+          <div class="feature-text">
+            <div class="feature-title">Exclusive Deals</div>
+            <div class="feature-desc">Access special offers from local restaurants and food trucks.</div>
+          </div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">⭐</div>
+          <div class="feature-text">
+            <div class="feature-title">Save Favorites</div>
+            <div class="feature-desc">Keep track of your favorite spots and never miss a deal.</div>
+          </div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">🗺️</div>
+          <div class="feature-text">
+            <div class="feature-title">Find Food Trucks</div>
+            <div class="feature-desc">Discover where your favorite food trucks are parked today.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <p style="margin: 0; font-size: 14px; color: #666;">
+          <strong>⏰ This setup link expires in 7 days</strong> for your security. 
+          If you need a new link, contact our support team at info.mealscout@gmail.com
+        </p>
+      </div>
+
+      <p><strong>Can't click the button?</strong> Copy and paste this link into your browser:<br>
+      <span style="word-break: break-all; color: #ff6b35; font-size: 14px;">${setupUrl}</span></p>
+      
+      <p>Looking forward to helping you discover amazing food!<br>
+      The MealScout Team 🍔🌮🍕</p>
+    `;
+
+    const html = this.getBaseTemplate('Welcome to MealScout!', content);
+    const text = `Welcome to MealScout!
+
+Hello ${greeting}!
+
+Your MealScout account has been created${createdByText}. Let's get you set up!
+
+Complete your profile here: ${setupUrl}
+
+What's Next:
+• Create your password (minimum 8 characters)
+• Upload a profile picture (optional)
+• Start exploring exclusive food deals in your area!
+
+Why You'll Love MealScout:
+🎟️ Exclusive Deals - Access special offers from local restaurants and food trucks
+⭐ Save Favorites - Keep track of your favorite spots and never miss a deal
+🗺️ Find Food Trucks - Discover where your favorite food trucks are parked today
+
+⏰ This setup link expires in 7 days for your security. If you need a new link, contact our support team at info.mealscout@gmail.com
+
+Can't click the link? Copy and paste this into your browser:
+${setupUrl}
+
+Looking forward to helping you discover amazing food!
+The MealScout Team
+
+© 2025 MealScout. All rights reserved.`;
+
+    return { html, text };
+  }
+
   static getBugReportTemplate(data: { 
     userEmail?: string; 
     userName?: string; 
@@ -948,6 +1038,18 @@ export class EmailService {
     return await this.sendEmail({
       to: user.email!,
       subject: 'Reset your MealScout password 🔐',
+      html: template.html,
+      text: template.text,
+    });
+  }
+
+  // Send account setup email for new users
+  async sendAccountSetupEmail(user: User, setupUrl: string, createdByName?: string): Promise<boolean> {
+    const template = EmailTemplates.getAccountSetupTemplate(user, setupUrl, createdByName);
+    
+    return await this.sendEmail({
+      to: user.email!,
+      subject: 'Welcome to MealScout! Complete your profile 🎉',
       html: template.html,
       text: template.text,
     });

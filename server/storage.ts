@@ -14,6 +14,7 @@ import {
   truckInterests,
   userAddresses,
   passwordResetTokens,
+  accountSetupTokens,
   dealFeedback,
   apiKeys,
   type User,
@@ -46,6 +47,8 @@ import {
   type InsertUserAddress,
   type PasswordResetToken,
   type InsertPasswordResetToken,
+  type AccountSetupToken,
+  type InsertAccountSetupToken,
   type DealFeedback,
   type InsertDealFeedback,
   type GoogleUserData,
@@ -487,6 +490,18 @@ export interface IStorage {
   markPasswordResetTokenUsed(id: string): Promise<PasswordResetToken>;
   deleteUserResetTokens(userId: string): Promise<void>;
   deleteExpiredResetTokens(): Promise<number>;
+
+  // Account setup token operations
+  createAccountSetupToken(
+    tokenData: InsertAccountSetupToken
+  ): Promise<AccountSetupToken>;
+  getAccountSetupToken(id: string): Promise<AccountSetupToken | undefined>;
+  getAccountSetupTokenByTokenHash(
+    tokenHash: string
+  ): Promise<AccountSetupToken | undefined>;
+  markAccountSetupTokenUsed(id: string): Promise<AccountSetupToken>;
+  deleteUserSetupTokens(userId: string): Promise<void>;
+  deleteExpiredSetupTokens(): Promise<number>;
 
   // API Key operations
   getActiveApiKeys(): Promise<any[]>;
@@ -4456,6 +4471,77 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(passwordResetTokens)
       .where(lte(passwordResetTokens.expiresAt, new Date()));
+
+    // Return the number of deleted rows
+    return result.rowCount || 0;
+  }
+
+  // Account setup token operations
+  async createAccountSetupToken(
+    tokenData: InsertAccountSetupToken
+  ): Promise<AccountSetupToken> {
+    const [token] = await db
+      .insert(accountSetupTokens)
+      .values(tokenData)
+      .returning();
+    return token;
+  }
+
+  async getAccountSetupToken(
+    id: string
+  ): Promise<AccountSetupToken | undefined> {
+    const [token] = await db
+      .select()
+      .from(accountSetupTokens)
+      .where(eq(accountSetupTokens.id, id));
+    return token;
+  }
+
+  async getAccountSetupTokenByTokenHash(
+    tokenHash: string
+  ): Promise<AccountSetupToken | undefined> {
+    const [token] = await db
+      .select()
+      .from(accountSetupTokens)
+      .where(
+        and(
+          eq(accountSetupTokens.tokenHash, tokenHash),
+          gte(accountSetupTokens.expiresAt, new Date()),
+          isNull(accountSetupTokens.usedAt)
+        )
+      );
+    return token;
+  }
+
+  async markAccountSetupTokenUsed(id: string): Promise<AccountSetupToken> {
+    const [token] = await db
+      .update(accountSetupTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(accountSetupTokens.id, id))
+      .returning();
+    return token;
+  }
+
+  async deleteUserSetupTokens(userId: string): Promise<void> {
+    // Only delete expired or already used tokens to preserve valid ones
+    const now = new Date();
+    await db
+      .delete(accountSetupTokens)
+      .where(
+        and(
+          eq(accountSetupTokens.userId, userId),
+          or(
+            lte(accountSetupTokens.expiresAt, now),
+            isNotNull(accountSetupTokens.usedAt)
+          )
+        )
+      );
+  }
+
+  async deleteExpiredSetupTokens(): Promise<number> {
+    const result = await db
+      .delete(accountSetupTokens)
+      .where(lte(accountSetupTokens.expiresAt, new Date()));
 
     // Return the number of deleted rows
     return result.rowCount || 0;

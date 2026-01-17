@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { storage } from "./storage";
 import { isAuthenticated, isAdmin, isStaffOrAdmin } from "./unifiedAuth";
 import { logAudit } from "./auditLogger";
+import { emailService } from "./emailService";
 
 /**
  * Staff Management & User Creation Routes
@@ -183,7 +184,7 @@ export function registerStaffRoutes(app: Express) {
    * POST /api/staff/users
    * Create a user account (staff or admin)
    * Accepts optional userType parameter (customer, restaurant_owner, staff, admin)
-   * Returns temp password that must be reset on first login
+   * Sends email with account setup link
    */
   app.post(
     "/api/staff/users",
@@ -229,18 +230,59 @@ export function registerStaffRoutes(app: Express) {
             .json({ error: "User with this email already exists" });
         }
 
-        const tempPassword = generateTempPassword();
-        const passwordHash = await bcrypt.hash(tempPassword, 12);
-
+        // Create user without password - they'll set it via email link
         const result = await storage.createUserWithPassword({
           email: normalizedEmail,
           firstName: firstName?.trim() || null,
           lastName: lastName?.trim() || null,
           phone: phone?.trim() || null,
           userType: targetUserType,
-          passwordHash,
-          mustResetPassword: true,
+          passwordHash: null, // No password yet
+          mustResetPassword: false, // Not using temp password flow
         });
+
+        // Generate account setup token (valid for 7 days)
+        const setupToken = crypto.randomBytes(32).toString("hex");
+        const tokenHash = crypto
+          .createHash("sha256")
+          .update(setupToken)
+          .digest("hex");
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+        await storage.createAccountSetupToken({
+          userId: result.userId,
+          tokenHash,
+          expiresAt,
+          createdByUserId: staffUser.id,
+          requestIp: req.ip || null,
+          userAgent: req.get("User-Agent") || null,
+        });
+
+        // Create setup URL
+        const setupUrl = `${
+          req.get("Origin") || req.protocol + "://" + req.get("host")
+        }/account-setup?token=${encodeURIComponent(setupToken)}`;
+
+        // Send setup email
+        const createdByName = staffUser.firstName
+          ? `${staffUser.firstName} ${staffUser.lastName || ""}`
+          : undefined;
+
+        const user = await storage.getUser(result.userId);
+        if (user) {
+          const emailSent = await emailService.sendAccountSetupEmail(
+            user,
+            setupUrl,
+            createdByName
+          );
+
+          if (!emailSent) {
+            console.error(
+              "Failed to send account setup email for user:",
+              user.email
+            );
+          }
+        }
 
         // Audit log
         await logAudit(
@@ -257,12 +299,11 @@ export function registerStaffRoutes(app: Express) {
           success: true,
           userId: result.userId,
           email: normalizedEmail,
-          tempPassword,
-          mustResetPassword: true,
+          setupEmailSent: true,
           message: `${targetUserType.replace(
             "_",
             " "
-          )} account created. User must reset password on first login.`,
+          )} account created. Setup instructions sent to ${normalizedEmail}.`,
         });
       } catch (error) {
         console.error("Error creating user:", error);

@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { db } from "@/db";
 import { eventBookings, events, hosts, restaurants } from "@shared/schema";
 import { eq, and, or, desc } from "drizzle-orm";
-import { isAuthenticated } from "../middleware";
+import { isAuthenticated } from "../unifiedAuth";
 
 /**
  * Booking Management Routes

@@ -3,7 +3,9 @@ import { sql } from "drizzle-orm";
 export const cities = pgTable(
   "cities",
   {
-    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
     name: varchar("name").notNull(),
     slug: varchar("slug").notNull(),
     state: varchar("state"),
@@ -12,7 +14,7 @@ export const cities = pgTable(
   (table) => [
     index("idx_cities_slug").on(table.slug),
     index("idx_cities_name_state").on(table.name, table.state),
-  ]
+  ],
 );
 import {
   index,
@@ -39,7 +41,7 @@ export const sessions = pgTable(
     sess: jsonb("sess").notNull(),
     expire: timestamp("expire").notNull(),
   },
-  (table) => [index("IDX_session_expire").on(table.expire)]
+  (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
 // User storage table supporting multiple authentication methods
@@ -109,10 +111,10 @@ export const securityAuditLog = pgTable(
     index("idx_security_audit_action").on(table.action),
     index("idx_security_audit_resource").on(
       table.resourceType,
-      table.resourceId
+      table.resourceId,
     ),
     index("idx_security_audit_time").on(table.timestamp),
-  ]
+  ],
 );
 
 // Incidents table for SOC-lite workflow
@@ -141,7 +143,7 @@ export const incidents = pgTable(
     index("idx_incidents_severity").on(table.severity),
     index("idx_incidents_rule").on(table.ruleId),
     index("idx_incidents_created").on(table.createdAt),
-  ]
+  ],
 );
 
 // On-call rotation schedule
@@ -159,7 +161,7 @@ export const oncallRotation = pgTable(
     isPrimary: boolean("is_primary").default(true),
     createdAt: timestamp("created_at").defaultNow(),
   },
-  (table) => [index("idx_oncall_dates").on(table.startDate, table.endDate)]
+  (table) => [index("idx_oncall_dates").on(table.startDate, table.endDate)],
 );
 
 export const restaurants = pgTable("restaurants", {
@@ -232,7 +234,7 @@ export const deals = pgTable("deals", {
   startTime: varchar("start_time"), // Nullable if available during business hours
   endTime: varchar("end_time"), // Nullable if available during business hours
   availableDuringBusinessHours: boolean(
-    "available_during_business_hours"
+    "available_during_business_hours",
   ).default(false), // Use restaurant operating hours
   isOngoing: boolean("is_ongoing").default(false), // No expiration date
   totalUsesLimit: integer("total_uses_limit"),
@@ -266,7 +268,7 @@ export const dealClaims = pgTable(
     index("IDX_deal_claims_deal_used").on(table.dealId, table.usedAt),
     index("IDX_deal_claims_deal_status").on(table.dealId, table.isUsed),
     index("IDX_deal_claims_user_claimed").on(table.userId, table.claimedAt),
-  ]
+  ],
 );
 
 export const reviews = pgTable("reviews", {
@@ -320,7 +322,7 @@ export const dealViews = pgTable(
     index("IDX_deal_views_deal_viewed").on(table.dealId, table.viewedAt),
     index("IDX_deal_views_user_deal").on(table.userId, table.dealId),
     index("IDX_deal_views_session").on(table.sessionId),
-  ]
+  ],
 );
 
 // Restaurant favorites tracking
@@ -342,17 +344,17 @@ export const restaurantFavorites = pgTable(
   (table) => [
     index("IDX_restaurant_favorites_restaurant").on(
       table.restaurantId,
-      table.favoritedAt.desc()
+      table.favoritedAt.desc(),
     ),
     index("IDX_restaurant_favorites_user").on(
       table.userId,
-      table.favoritedAt.desc()
+      table.favoritedAt.desc(),
     ),
     index("IDX_restaurant_favorites_unique").on(
       table.restaurantId,
-      table.userId
+      table.userId,
     ),
-  ]
+  ],
 );
 
 // Restaurant recommendations tracking - when a restaurant appears in recommendation feeds
@@ -377,22 +379,22 @@ export const restaurantRecommendations = pgTable(
   (table) => [
     index("IDX_restaurant_recommendations_restaurant").on(
       table.restaurantId,
-      table.showedAt.desc()
+      table.showedAt.desc(),
     ),
     index("IDX_restaurant_recommendations_user").on(
       table.userId,
-      table.showedAt.desc()
+      table.showedAt.desc(),
     ),
     index("IDX_restaurant_recommendations_session").on(table.sessionId),
     index("IDX_restaurant_recommendations_type").on(
       table.recommendationType,
-      table.showedAt.desc()
+      table.showedAt.desc(),
     ),
     index("IDX_restaurant_recommendations_clicked").on(
       table.isClicked,
-      table.clickedAt
+      table.clickedAt,
     ),
-  ]
+  ],
 );
 
 // Food truck session management
@@ -417,7 +419,7 @@ export const foodTruckSessions = pgTable(
   (table) => [
     index("IDX_food_truck_sessions_restaurant").on(table.restaurantId),
     index("IDX_food_truck_sessions_active").on(table.isActive, table.startedAt),
-  ]
+  ],
 );
 
 // Food truck location history for tracking and analytics
@@ -443,16 +445,16 @@ export const foodTruckLocations = pgTable(
   (table) => [
     index("IDX_food_truck_locations_restaurant_time").on(
       table.restaurantId,
-      table.recordedAt.desc()
+      table.recordedAt.desc(),
     ),
     index("IDX_food_truck_locations_time").on(table.recordedAt.desc()),
     index("IDX_food_truck_locations_geo").on(
       table.restaurantId,
       table.latitude,
-      table.longitude
+      table.longitude,
     ),
     index("IDX_food_truck_locations_session").on(table.sessionId),
-  ]
+  ],
 );
 
 // User addresses for saved locations
@@ -481,7 +483,7 @@ export const userAddresses = pgTable(
     index("IDX_user_addresses_user").on(table.userId, table.createdAt.desc()),
     index("IDX_user_addresses_type").on(table.userId, table.type),
     index("IDX_user_addresses_default").on(table.userId, table.isDefault),
-  ]
+  ],
 );
 
 // Password reset tokens for secure password reset functionality
@@ -504,12 +506,12 @@ export const passwordResetTokens = pgTable(
   (table) => [
     index("IDX_password_reset_tokens_user").on(
       table.userId,
-      table.createdAt.desc()
+      table.createdAt.desc(),
     ),
     index("IDX_password_reset_tokens_token").on(table.tokenHash),
     index("IDX_password_reset_tokens_expires").on(table.expiresAt),
     index("IDX_password_reset_tokens_used").on(table.usedAt),
-  ]
+  ],
 );
 
 // Account setup tokens for new user onboarding (email-based flow)
@@ -535,12 +537,12 @@ export const accountSetupTokens = pgTable(
   (table) => [
     index("IDX_account_setup_tokens_user").on(
       table.userId,
-      table.createdAt.desc()
+      table.createdAt.desc(),
     ),
     index("IDX_account_setup_tokens_token").on(table.tokenHash),
     index("IDX_account_setup_tokens_expires").on(table.expiresAt),
     index("IDX_account_setup_tokens_used").on(table.usedAt),
-  ]
+  ],
 );
 
 // Deal feedback for ratings and suggestions
@@ -567,7 +569,7 @@ export const dealFeedback = pgTable(
     index("IDX_deal_feedback_user").on(table.userId, table.createdAt.desc()),
     index("IDX_deal_feedback_rating").on(table.dealId, table.rating),
     index("IDX_deal_feedback_type").on(table.feedbackType),
-  ]
+  ],
 );
 
 // API Keys for service-to-service authentication
@@ -594,7 +596,7 @@ export const apiKeys = pgTable(
     index("IDX_api_keys_user").on(table.userId, table.isActive),
     index("IDX_api_keys_prefix").on(table.keyPrefix),
     index("IDX_api_keys_active").on(table.isActive, table.expiresAt),
-  ]
+  ],
 );
 
 // Relations
@@ -673,16 +675,16 @@ export const videoStories = pgTable(
     index("IDX_video_stories_user").on(table.userId, table.createdAt.desc()),
     index("IDX_video_stories_restaurant").on(
       table.restaurantId,
-      table.createdAt.desc()
+      table.createdAt.desc(),
     ),
     index("IDX_video_stories_expires").on(table.expiresAt),
     index("IDX_video_stories_status").on(table.status),
     index("IDX_video_stories_deleted").on(table.deletedAt),
     index("IDX_video_stories_featured").on(
       table.isFeatured,
-      table.featuredSlotNumber
+      table.featuredSlotNumber,
     ),
-  ]
+  ],
 );
 
 // Story Likes (favorites)
@@ -704,7 +706,7 @@ export const storyLikes = pgTable(
     index("IDX_story_likes_story").on(table.storyId, table.createdAt.desc()),
     index("IDX_story_likes_user").on(table.userId, table.createdAt.desc()),
     index("IDX_story_likes_unique").on(table.storyId, table.userId),
-  ]
+  ],
 );
 
 // Story Comments
@@ -722,7 +724,7 @@ export const storyComments: any = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     parentCommentId: varchar("parent_comment_id").references(
       (): any => storyComments.id,
-      { onDelete: "cascade" }
+      { onDelete: "cascade" },
     ), // for replies
     text: text("text").notNull(),
     createdAt: timestamp("created_at").defaultNow(),
@@ -734,7 +736,7 @@ export const storyComments: any = pgTable(
     index("IDX_story_comments_story").on(table.storyId, table.createdAt.desc()),
     index("IDX_story_comments_user").on(table.userId, table.createdAt.desc()),
     index("IDX_story_comments_parent").on(table.parentCommentId),
-  ]
+  ],
 );
 
 // Story Views (for analytics)
@@ -756,7 +758,7 @@ export const storyViews = pgTable(
   (table) => [
     index("IDX_story_views_story").on(table.storyId, table.viewedAt.desc()),
     index("IDX_story_views_user").on(table.userId, table.viewedAt.desc()),
-  ]
+  ],
 );
 
 // Reviewer Levels (denormalized for performance)
@@ -788,7 +790,7 @@ export const videoStoryReports = pgTable(
     description: text("description"),
     status: varchar("status").notNull().default("pending"), // 'pending' | 'reviewed' | 'action_taken' | 'dismissed'
     reviewedByAdminId: varchar("reviewed_by_admin_id").references(
-      () => users.id
+      () => users.id,
     ),
     reviewedAt: timestamp("reviewed_at"),
     adminNotes: text("admin_notes"),
@@ -798,7 +800,7 @@ export const videoStoryReports = pgTable(
     index("IDX_video_reports_story").on(table.storyId, table.createdAt.desc()),
     index("IDX_video_reports_user").on(table.reportedByUserId),
     index("IDX_video_reports_status").on(table.status),
-  ]
+  ],
 );
 
 // Feed Ads - House ads and affiliate placements in feed
@@ -826,7 +828,7 @@ export const feedAds = pgTable(
   (table) => [
     index("idx_feed_ads_active").on(table.isActive, table.startAt, table.endAt),
     index("idx_feed_ads_priority").on(table.priority),
-  ]
+  ],
 );
 
 // Story Awards (for golden forks, etc.)
@@ -846,7 +848,7 @@ export const storyAwards = pgTable(
     index("IDX_story_awards_story").on(table.storyId),
     index("IDX_story_awards_type").on(table.awardType),
     index("IDX_story_awards_date").on(table.awardedAt.desc()),
-  ]
+  ],
 );
 
 // Relations
@@ -865,7 +867,7 @@ export const videoStoriesRelations = relations(
     comments: many(storyComments),
     views: many(storyViews),
     awards: many(storyAwards),
-  })
+  }),
 );
 
 export const storyLikesRelations = relations(storyLikes, ({ one }) => ({
@@ -897,7 +899,7 @@ export const storyCommentsRelations = relations(
       }),
       replies: many(storyComments),
     };
-  }
+  },
 );
 
 export const storyViewsRelations = relations(storyViews, ({ one }) => ({
@@ -925,7 +927,7 @@ export const userReviewerLevelsRelations = relations(
       fields: [userReviewerLevels.userId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const restaurantsRelations = relations(restaurants, ({ one, many }) => ({
@@ -985,7 +987,7 @@ export const verificationRequestsRelations = relations(
       fields: [verificationRequests.reviewerId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const dealViewsRelations = relations(dealViews, ({ one }) => ({
@@ -1011,7 +1013,7 @@ export const foodTruckSessionsRelations = relations(
       references: [users.id],
     }),
     locations: many(foodTruckLocations),
-  })
+  }),
 );
 
 export const foodTruckLocationsRelations = relations(
@@ -1025,7 +1027,7 @@ export const foodTruckLocationsRelations = relations(
       fields: [foodTruckLocations.sessionId],
       references: [foodTruckSessions.id],
     }),
-  })
+  }),
 );
 
 export const restaurantFavoritesRelations = relations(
@@ -1039,7 +1041,7 @@ export const restaurantFavoritesRelations = relations(
       fields: [restaurantFavorites.userId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const restaurantRecommendationsRelations = relations(
@@ -1053,7 +1055,7 @@ export const restaurantRecommendationsRelations = relations(
       fields: [restaurantRecommendations.userId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const userAddressesRelations = relations(userAddresses, ({ one }) => ({
@@ -1070,7 +1072,7 @@ export const passwordResetTokensRelations = relations(
       fields: [passwordResetTokens.userId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const accountSetupTokensRelations = relations(
@@ -1084,7 +1086,7 @@ export const accountSetupTokensRelations = relations(
       fields: [accountSetupTokens.createdByUserId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const dealFeedbackRelations = relations(dealFeedback, ({ one }) => ({
@@ -1105,13 +1107,13 @@ export const operatingHoursTimeSlotSchema = z
       .string()
       .regex(
         /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-        "Time must be in HH:MM format"
+        "Time must be in HH:MM format",
       ),
     close: z
       .string()
       .regex(
         /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-        "Time must be in HH:MM format"
+        "Time must be in HH:MM format",
       ),
   })
   .refine((slot) => {
@@ -1211,7 +1213,10 @@ export const insertDealSchema = createInsertSchema(deals)
       }
       return true;
     },
-    { message: "End date is required for non-ongoing deals", path: ["endDate"] }
+    {
+      message: "End date is required for non-ongoing deals",
+      path: ["endDate"],
+    },
   )
   .refine(
     (data) => {
@@ -1228,7 +1233,7 @@ export const insertDealSchema = createInsertSchema(deals)
       message:
         "Start and end times are required unless available during business hours",
       path: ["startTime"],
-    }
+    },
   );
 
 export const insertDealClaimSchema = createInsertSchema(dealClaims).omit({
@@ -1251,7 +1256,7 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({
 });
 
 export const insertVerificationRequestSchema = createInsertSchema(
-  verificationRequests
+  verificationRequests,
 )
   .omit({
     id: true,
@@ -1268,12 +1273,12 @@ export const insertVerificationRequestSchema = createInsertSchema(
       .max(5, "Maximum 5 documents allowed")
       .refine(
         (docs) => docs.every((doc) => doc.startsWith("data:")),
-        "Documents must be valid base64 data URLs"
+        "Documents must be valid base64 data URLs",
       ),
   });
 
 export const insertFoodTruckSessionSchema = createInsertSchema(
-  foodTruckSessions
+  foodTruckSessions,
 ).omit({
   id: true,
   startedAt: true,
@@ -1283,7 +1288,7 @@ export const insertFoodTruckSessionSchema = createInsertSchema(
 });
 
 export const insertFoodTruckLocationSchema = createInsertSchema(
-  foodTruckLocations
+  foodTruckLocations,
 )
   .omit({
     id: true,
@@ -1304,7 +1309,7 @@ export const updateRestaurantMobileSettingsSchema = z.object({
 });
 
 export const insertRestaurantFavoriteSchema = createInsertSchema(
-  restaurantFavorites
+  restaurantFavorites,
 ).omit({
   id: true,
   favoritedAt: true,
@@ -1312,7 +1317,7 @@ export const insertRestaurantFavoriteSchema = createInsertSchema(
 });
 
 export const insertRestaurantRecommendationSchema = createInsertSchema(
-  restaurantRecommendations
+  restaurantRecommendations,
 )
   .omit({
     id: true,
@@ -1361,7 +1366,7 @@ export const insertUserAddressSchema = createInsertSchema(userAddresses)
   });
 
 export const insertPasswordResetTokenSchema = createInsertSchema(
-  passwordResetTokens
+  passwordResetTokens,
 )
   .omit({
     id: true,
@@ -1381,7 +1386,7 @@ export const insertPasswordResetTokenSchema = createInsertSchema(
   });
 
 export const insertAccountSetupTokenSchema = createInsertSchema(
-  accountSetupTokens
+  accountSetupTokens,
 )
   .omit({
     id: true,
@@ -1649,7 +1654,7 @@ export const supportTickets = pgTable(
     adminNotes: text("admin_notes"),
     assignedToAdminId: varchar("assigned_to_admin_id").references(
       () => users.id,
-      { onDelete: "set null" }
+      { onDelete: "set null" },
     ),
     createdAt: timestamp("created_at")
       .notNull()
@@ -1660,14 +1665,14 @@ export const supportTickets = pgTable(
     resolvedAt: timestamp("resolved_at"),
     resolvedByAdminId: varchar("resolved_by_admin_id").references(
       () => users.id,
-      { onDelete: "set null" }
+      { onDelete: "set null" },
     ),
   },
   (table) => [
     index("idx_support_tickets_user_id").on(table.userId),
     index("idx_support_tickets_status").on(table.status),
     index("idx_support_tickets_created_at").on(table.createdAt),
-  ]
+  ],
 );
 
 // Moderation events for tracking content flags, abuse, policy violations
@@ -1694,7 +1699,7 @@ export const moderationEvents = pgTable(
     actionTaken: varchar("action_taken"), // 'none' | 'warning' | 'content-removed' | 'suspension' | 'ban'
     reviewedByAdminId: varchar("reviewed_by_admin_id").references(
       () => users.id,
-      { onDelete: "set null" }
+      { onDelete: "set null" },
     ),
     createdAt: timestamp("created_at")
       .notNull()
@@ -1706,7 +1711,7 @@ export const moderationEvents = pgTable(
     index("idx_moderation_events_severity").on(table.severity),
     index("idx_moderation_events_created_at").on(table.createdAt),
     index("idx_moderation_events_reported_user").on(table.reportedUserId),
-  ]
+  ],
 );
 
 // Affiliate tracking for user-generated referrals
@@ -1733,7 +1738,7 @@ export const affiliateLinks = pgTable(
     index("idx_affiliate_links_user").on(table.affiliateUserId),
     index("idx_affiliate_links_code").on(table.code),
     index("idx_affiliate_links_created").on(table.createdAt),
-  ]
+  ],
 );
 
 // Track affiliate clicks and conversions
@@ -1753,7 +1758,7 @@ export const affiliateClicks = pgTable(
     convertedAt: timestamp("converted_at"), // Null until they signup
     restaurantSignupId: varchar("restaurant_signup_id").references(
       () => users.id,
-      { onDelete: "set null" }
+      { onDelete: "set null" },
     ),
     sessionId: varchar("session_id"), // First-click attribution
   },
@@ -1761,7 +1766,7 @@ export const affiliateClicks = pgTable(
     index("idx_affiliate_clicks_link").on(table.affiliateLinkId),
     index("idx_affiliate_clicks_session").on(table.sessionId),
     index("idx_affiliate_clicks_created").on(table.clickedAt),
-  ]
+  ],
 );
 
 // Commission tracking - monthly record of earnings
@@ -1779,7 +1784,7 @@ export const affiliateCommissions = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     affiliateLinkId: varchar("affiliate_link_id").references(
       () => affiliateLinks.id,
-      { onDelete: "set null" }
+      { onDelete: "set null" },
     ),
     commissionAmount: decimal("commission_amount", {
       precision: 10,
@@ -1802,7 +1807,7 @@ export const affiliateCommissions = pgTable(
     index("idx_commissions_restaurant").on(table.restaurantUserId),
     index("idx_commissions_status").on(table.status),
     index("idx_commissions_month").on(table.forMonth),
-  ]
+  ],
 );
 
 // Affiliate wallet - tracks balance, credits, and cash outs
@@ -1817,7 +1822,7 @@ export const affiliateWallet = pgTable(
       .unique()
       .references(() => users.id, { onDelete: "cascade" }),
     totalEarned: decimal("total_earned", { precision: 12, scale: 2 }).default(
-      "0"
+      "0",
     ),
     availableBalance: decimal("available_balance", {
       precision: 12,
@@ -1832,11 +1837,11 @@ export const affiliateWallet = pgTable(
       scale: 2,
     }).default("0"),
     totalSpent: decimal("total_spent", { precision: 12, scale: 2 }).default(
-      "0"
+      "0",
     ),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
-  (table) => [index("idx_wallet_user").on(table.userId)]
+  (table) => [index("idx_wallet_user").on(table.userId)],
 );
 
 // Withdrawal requests / Cash out requests
@@ -1861,7 +1866,7 @@ export const affiliateWithdrawals = pgTable(
     index("idx_withdrawals_user").on(table.userId),
     index("idx_withdrawals_status").on(table.status),
     index("idx_withdrawals_created").on(table.requestedAt),
-  ]
+  ],
 );
 
 // Location Requests: businesses hosting food trucks
@@ -1889,7 +1894,7 @@ export const locationRequests = pgTable(
     index("idx_location_requests_user").on(table.postedByUserId),
     index("idx_location_requests_status").on(table.status),
     index("idx_location_requests_created").on(table.createdAt),
-  ]
+  ],
 );
 
 // Truck Interest: food trucks expressing interest in a location request
@@ -1912,7 +1917,7 @@ export const truckInterests = pgTable(
     index("idx_truck_interests_request").on(table.locationRequestId),
     index("idx_truck_interests_restaurant").on(table.restaurantId),
     index("idx_truck_interests_created").on(table.createdAt),
-  ]
+  ],
 );
 
 // Hosts: Persistent profiles for businesses hosting food trucks
@@ -1941,7 +1946,9 @@ export const hosts = pgTable(
     // Stripe Connect for receiving payments
     stripeConnectAccountId: varchar("stripe_connect_account_id"),
     stripeConnectStatus: varchar("stripe_connect_status").default("pending"),
-    stripeOnboardingCompleted: boolean("stripe_onboarding_completed").default(false),
+    stripeOnboardingCompleted: boolean("stripe_onboarding_completed").default(
+      false,
+    ),
     stripeChargesEnabled: boolean("stripe_charges_enabled").default(false),
     stripePayoutsEnabled: boolean("stripe_payouts_enabled").default(false),
     createdAt: timestamp("created_at").defaultNow(),
@@ -1952,7 +1959,7 @@ export const hosts = pgTable(
     index("idx_hosts_verified").on(table.isVerified),
     index("idx_hosts_location").on(table.latitude, table.longitude),
     index("idx_hosts_stripe_account").on(table.stripeConnectAccountId),
-  ]
+  ],
 );
 
 // Events: Specific slots created by hosts for food trucks
@@ -1986,7 +1993,7 @@ export const eventSeries = pgTable(
     index("idx_event_series_host").on(table.hostId),
     index("idx_event_series_status").on(table.status),
     index("idx_event_series_dates").on(table.startDate, table.endDate),
-  ]
+  ],
 );
 
 export const events = pgTable(
@@ -2010,7 +2017,7 @@ export const events = pgTable(
     status: varchar("status").notNull().default("open"), // 'open' | 'booked' | 'cancelled' | 'completed'
     bookedRestaurantId: varchar("booked_restaurant_id").references(
       () => restaurants.id,
-      { onDelete: "set null" }
+      { onDelete: "set null" },
     ),
     // Capacity Guard v2.2
     hardCapEnabled: boolean("hard_cap_enabled").default(false),
@@ -2029,7 +2036,7 @@ export const events = pgTable(
     index("idx_events_status").on(table.status),
     index("idx_events_booked_restaurant").on(table.bookedRestaurantId),
     index("idx_events_requires_payment").on(table.requiresPayment),
-  ]
+  ],
 );
 
 // Event Interests: Trucks expressing interest in specific events
@@ -2053,7 +2060,7 @@ export const eventInterests = pgTable(
     index("idx_event_interests_event").on(table.eventId),
     index("idx_event_interests_truck").on(table.truckId),
     unique("uq_event_interests_event_truck").on(table.eventId, table.truckId),
-  ]
+  ],
 );
 
 // Host Location Reviews: Food trucks can review host locations
@@ -2093,7 +2100,7 @@ export const hostReviews = pgTable(
     index("idx_host_reviews_approved").on(table.isApproved),
     // Ensure one review per truck per host location
     unique("uq_host_reviews_host_truck").on(table.hostId, table.truckId),
-  ]
+  ],
 );
 
 // Event Bookings: Parking Pass payments with host pricing + $10 MealScout fee
@@ -2122,7 +2129,9 @@ export const eventBookings = pgTable(
     stripePaymentStatus: varchar("stripe_payment_status"), // 'pending' | 'succeeded' | 'failed'
     paidAt: timestamp("paid_at"),
     // Stripe Connect (splits payment between platform and host)
-    stripeApplicationFeeAmount: integer("stripe_application_fee_amount").default(1000), // Always $10 to platform
+    stripeApplicationFeeAmount: integer(
+      "stripe_application_fee_amount",
+    ).default(1000), // Always $10 to platform
     stripeTransferDestination: varchar("stripe_transfer_destination"), // Host's Stripe Connect account ID
     // Refunds
     refundStatus: varchar("refund_status").default("none"), // 'none' | 'partial' | 'full'
@@ -2145,7 +2154,7 @@ export const eventBookings = pgTable(
     index("idx_bookings_created").on(table.createdAt),
     // One booking per truck per event
     unique("uq_bookings_event_truck").on(table.eventId, table.truckId),
-  ]
+  ],
 );
 
 // PHASE 1: Referral tracking - "who brought who"
@@ -2160,7 +2169,7 @@ export const referrals = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     referredRestaurantId: varchar("referred_restaurant_id").references(
       () => restaurants.id,
-      { onDelete: "set null" }
+      { onDelete: "set null" },
     ),
     clickedAt: timestamp("clicked_at").notNull(),
     signedUpAt: timestamp("signed_up_at"),
@@ -2173,7 +2182,7 @@ export const referrals = pgTable(
     index("idx_referrals_restaurant").on(table.referredRestaurantId),
     index("idx_referrals_status").on(table.status),
     index("idx_referrals_clicked").on(table.clickedAt),
-  ]
+  ],
 );
 
 // PHASE 1: Referral click tracking - records every click on an affiliate link
@@ -2194,7 +2203,7 @@ export const referralClicks = pgTable(
   (table) => [
     index("idx_referral_clicks_affiliate").on(table.affiliateUserId),
     index("idx_referral_clicks_created").on(table.createdAt),
-  ]
+  ],
 );
 
 // PHASE 3: Commission ledger - tracks all commissions earned
@@ -2222,7 +2231,7 @@ export const affiliateCommissionLedger = pgTable(
     index("idx_commission_ledger_affiliate").on(table.affiliateUserId),
     index("idx_commission_ledger_referral").on(table.referralId),
     index("idx_commission_ledger_created").on(table.createdAt),
-  ]
+  ],
 );
 
 // PHASE 4: Credit ledger - tracks user credits (balance never stored, derived from SUM)
@@ -2246,7 +2255,7 @@ export const creditLedger = pgTable(
     index("idx_credit_ledger_user").on(table.userId),
     index("idx_credit_ledger_source").on(table.sourceType),
     index("idx_credit_ledger_redeemed").on(table.redeemedAt),
-  ]
+  ],
 );
 
 // PHASE 5: User payout preferences
@@ -2265,7 +2274,7 @@ export const userPayoutPreferences = pgTable(
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
-  (table) => [index("idx_payout_prefs_user").on(table.userId)]
+  (table) => [index("idx_payout_prefs_user").on(table.userId)],
 );
 
 // PHASE R1: Restaurant credit redemptions - tracks when users spend credits at restaurants
@@ -2299,7 +2308,7 @@ export const restaurantCreditRedemptions = pgTable(
     index("idx_redemptions_status").on(table.settlementStatus),
     index("idx_redemptions_batch").on(table.settlementBatchId),
     index("idx_redemptions_created").on(table.createdAt),
-  ]
+  ],
 );
 
 // PHASE R2 (preview): Restaurant settlement batches - groups redemptions for payout
@@ -2324,7 +2333,7 @@ export const restaurantSettlementBatch = pgTable(
     index("idx_batch_id").on(table.batchId),
     index("idx_batch_status").on(table.status),
     index("idx_batch_period").on(table.periodStart, table.periodEnd),
-  ]
+  ],
 );
 
 // Community restaurant submissions (for empty counties)
@@ -2336,7 +2345,7 @@ export const restaurantSubmissions = pgTable(
       .default(sql`gen_random_uuid()`),
     submittedByUserId: varchar("submitted_by_user_id").references(
       () => users.id,
-      { onDelete: "set null" }
+      { onDelete: "set null" },
     ),
     restaurantName: varchar("restaurant_name").notNull(),
     address: text("address"),
@@ -2353,7 +2362,7 @@ export const restaurantSubmissions = pgTable(
     approvedAt: timestamp("approved_at"),
     convertedToRestaurantId: varchar("converted_to_restaurant_id").references(
       () => restaurants.id,
-      { onDelete: "set null" }
+      { onDelete: "set null" },
     ),
     createdAt: timestamp("created_at").defaultNow(),
   },
@@ -2361,7 +2370,7 @@ export const restaurantSubmissions = pgTable(
     index("idx_submissions_status").on(table.status),
     index("idx_submissions_county").on(table.county),
     index("idx_submissions_created").on(table.createdAt),
-  ]
+  ],
 );
 
 // Award History - Track Golden Plate awards given every 90 days
@@ -2387,7 +2396,7 @@ export const awardHistory = pgTable(
     index("idx_award_type").on(table.awardType),
     index("idx_award_period").on(table.awardPeriodStart, table.awardPeriodEnd),
     index("idx_award_area").on(table.geographicArea),
-  ]
+  ],
 );
 
 // Image uploads - Track all uploaded images for restaurants and users
@@ -2416,7 +2425,7 @@ export const imageUploads = pgTable(
     index("idx_image_entity").on(table.entityId, table.entityType),
     index("idx_image_uploader").on(table.uploadedByUserId),
     index("idx_image_type").on(table.imageType),
-  ]
+  ],
 );
 
 // Featured Video Slots - Fair rotation of restaurant's featured videos (3 slots max)
@@ -2432,11 +2441,11 @@ export const featuredVideoSlots = pgTable(
     slotNumber: integer("slot_number").notNull(), // 1, 2, or 3
     currentVideoId: varchar("current_video_id").references(
       () => videoStories.id,
-      { onDelete: "set null" }
+      { onDelete: "set null" },
     ),
     cycleStartDate: timestamp("cycle_start_date").defaultNow(),
     cycleEndDate: timestamp("cycle_end_date").default(
-      sql`NOW() + INTERVAL '1 day'`
+      sql`NOW() + INTERVAL '1 day'`,
     ), // 24hr rotation
     previousVideoIds: text("previous_video_ids").array().default([]), // Last 5 videos for variety
     engagementScore: decimal("engagement_score", {
@@ -2450,7 +2459,7 @@ export const featuredVideoSlots = pgTable(
   (table) => [
     index("idx_featured_restaurant").on(table.restaurantId, table.slotNumber),
     index("idx_featured_cycle").on(table.cycleEndDate),
-  ]
+  ],
 );
 
 // Restaurant Subscriptions - Monetization tiers for restaurants
@@ -2497,7 +2506,7 @@ export const restaurantSubscriptions = pgTable(
     index("idx_subscription_restaurant").on(table.restaurantId),
     index("idx_subscription_tier").on(table.tier),
     index("idx_subscription_status").on(table.status),
-  ]
+  ],
 );
 
 // Minimal relations for query builder support on admin/SOC/affiliate tables
@@ -2522,7 +2531,7 @@ export const securityAuditLogRelations = relations(
       fields: [securityAuditLog.userId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const supportTicketsRelations = relations(supportTickets, ({ one }) => ({
@@ -2555,7 +2564,7 @@ export const moderationEventsRelations = relations(
       fields: [moderationEvents.reviewedByAdminId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const affiliateLinksRelations = relations(
@@ -2567,7 +2576,7 @@ export const affiliateLinksRelations = relations(
     }),
     clicks: many(affiliateClicks),
     commissions: many(affiliateCommissions),
-  })
+  }),
 );
 
 export const affiliateClicksRelations = relations(
@@ -2581,7 +2590,7 @@ export const affiliateClicksRelations = relations(
       fields: [affiliateClicks.restaurantSignupId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const affiliateCommissionsRelations = relations(
@@ -2599,7 +2608,7 @@ export const affiliateCommissionsRelations = relations(
       fields: [affiliateCommissions.affiliateLinkId],
       references: [affiliateLinks.id],
     }),
-  })
+  }),
 );
 
 export const affiliateWalletRelations = relations(
@@ -2609,7 +2618,7 @@ export const affiliateWalletRelations = relations(
       fields: [affiliateWallet.userId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const affiliateWithdrawalsRelations = relations(
@@ -2619,7 +2628,7 @@ export const affiliateWithdrawalsRelations = relations(
       fields: [affiliateWithdrawals.userId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const locationRequestsRelations = relations(
@@ -2630,7 +2639,7 @@ export const locationRequestsRelations = relations(
       references: [users.id],
     }),
     interests: many(truckInterests),
-  })
+  }),
 );
 
 export const truckInterestsRelations = relations(truckInterests, ({ one }) => ({
@@ -2737,7 +2746,7 @@ export const restaurantSubmissionsRelations = relations(
       fields: [restaurantSubmissions.convertedToRestaurantId],
       references: [restaurants.id],
     }),
-  })
+  }),
 );
 
 export const affiliateCommissionLedgerRelations = relations(
@@ -2755,7 +2764,7 @@ export const affiliateCommissionLedgerRelations = relations(
       fields: [affiliateCommissionLedger.restaurantId],
       references: [restaurants.id],
     }),
-  })
+  }),
 );
 
 export const creditLedgerRelations = relations(creditLedger, ({ one }) => ({
@@ -2772,7 +2781,7 @@ export const userPayoutPreferencesRelations = relations(
       fields: [userPayoutPreferences.userId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const restaurantCreditRedemptionsRelations = relations(
@@ -2786,7 +2795,7 @@ export const restaurantCreditRedemptionsRelations = relations(
       fields: [restaurantCreditRedemptions.userId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export type LocationRequest = typeof locationRequests.$inferSelect;
@@ -2863,7 +2872,7 @@ export const insertLocationRequestSchema = createInsertSchema(
     preferredDates: z.array(z.string()),
     expectedFootTraffic: z.number().int(),
     notes: z.string().max(200).optional(),
-  }
+  },
 )
   .omit({
     id: true,
@@ -2924,7 +2933,7 @@ export const insertTruckInterestSchema = createInsertSchema(truckInterests, {
 });
 
 export const insertSupportTicketSchema = createInsertSchema(
-  supportTickets
+  supportTickets,
 ).omit({
   id: true,
   createdAt: true,
@@ -2937,7 +2946,7 @@ export const insertSupportTicketSchema = createInsertSchema(
 
 // Schemas for moderation events
 export const insertModerationEventSchema = createInsertSchema(
-  moderationEvents
+  moderationEvents,
 ).omit({
   id: true,
   createdAt: true,
@@ -2947,7 +2956,7 @@ export const insertModerationEventSchema = createInsertSchema(
 
 // Schemas for affiliate system
 export const insertAffiliateLinkSchema = createInsertSchema(
-  affiliateLinks
+  affiliateLinks,
 ).omit({
   id: true,
   code: true,
@@ -2958,7 +2967,7 @@ export const insertAffiliateLinkSchema = createInsertSchema(
 });
 
 export const insertRestaurantSubmissionSchema = createInsertSchema(
-  restaurantSubmissions
+  restaurantSubmissions,
 ).omit({
   id: true,
   approvedAt: true,
@@ -2986,7 +2995,7 @@ export type InsertImageUpload = z.infer<typeof insertImageUploadSchema>;
 
 // Schemas for featured video slots
 export const insertFeaturedVideoSlotSchema = createInsertSchema(
-  featuredVideoSlots
+  featuredVideoSlots,
 ).omit({
   id: true,
   cycleStartDate: true,
@@ -3000,7 +3009,7 @@ export type InsertFeaturedVideoSlot = z.infer<
 
 // Schemas for restaurant subscriptions
 export const insertRestaurantSubscriptionSchema = createInsertSchema(
-  restaurantSubscriptions
+  restaurantSubscriptions,
 ).omit({
   id: true,
   createdAt: true,
@@ -3017,7 +3026,7 @@ export type InsertRestaurantSubscription = z.infer<
 
 // Schemas for video story reports
 export const insertVideoStoryReportSchema = createInsertSchema(
-  videoStoryReports
+  videoStoryReports,
 ).omit({
   id: true,
   createdAt: true,
@@ -3042,12 +3051,13 @@ export const insertFeedAdSchema = createInsertSchema(feedAds).omit({
 export type FeedAd = typeof feedAds.$inferSelect;
 export type InsertFeedAd = z.infer<typeof insertFeedAdSchema>;
 
-export const insertHostSchema = createInsertSchema(hosts).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  isVerified: true,
-});
+export const insertHostSchema = createInsertSchema(hosts)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+    isVerified: true,
+  })
   .extend({
     city: z.string().min(1, "City is required"),
     state: z.string().min(2, "State is required"),
@@ -3079,7 +3089,7 @@ export type Event = typeof events.$inferSelect;
 export type InsertEvent = z.infer<typeof insertEventSchema>;
 
 export const insertEventInterestSchema = createInsertSchema(
-  eventInterests
+  eventInterests,
 ).omit({
   id: true,
   createdAt: true,
@@ -3125,7 +3135,7 @@ export const telemetryEvents = pgTable(
   (table) => [
     index("idx_telemetry_name").on(table.eventName),
     index("idx_telemetry_created").on(table.createdAt),
-  ]
+  ],
 );
 
 export type TelemetryEvent = typeof telemetryEvents.$inferSelect;
@@ -3163,7 +3173,7 @@ export const lisaClaims = pgTable(
 
     // Confidence level (0.0 to 1.0, default 1.0 for direct observations)
     confidence: decimal("confidence", { precision: 3, scale: 2 }).default(
-      "1.0"
+      "1.0",
     ),
 
     // Immutable timestamp
@@ -3178,9 +3188,9 @@ export const lisaClaims = pgTable(
     index("idx_lisa_claim_app_subject").on(
       table.app,
       table.subjectType,
-      table.subjectId
+      table.subjectId,
     ),
-  ]
+  ],
 );
 
 export type LisaClaim = typeof lisaClaims.$inferSelect;
@@ -3282,9 +3292,9 @@ export const claims = pgTable(
     index("idx_claims_person_type_status").on(
       table.personId,
       table.claimType,
-      table.status
+      table.status,
     ),
-  ]
+  ],
 );
 
 export type Claim = typeof claims.$inferSelect;

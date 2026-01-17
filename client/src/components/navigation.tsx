@@ -147,7 +147,11 @@ export default function Navigation() {
   const hostExtras: NavItem[] = [
     { path: "/events", icon: Calendar, label: "Events" },
     { path: "/host/dashboard", icon: Users, label: "Host" },
-    { path: "/parking-pass-manage", icon: ParkingCircle, label: "Parking Pass" },
+    {
+      path: "/parking-pass-manage",
+      icon: ParkingCircle,
+      label: "Parking Pass",
+    },
     { path: "/host-food", icon: MapPin, label: "Host Food" },
     { path: "/truck-discovery", icon: Search, label: "Truck Slots" },
     { path: "/for-food-trucks", icon: Store, label: "For Trucks" },
@@ -161,7 +165,11 @@ export default function Navigation() {
     { path: "/events", icon: Calendar, label: "Events" },
     { path: "/staff", icon: Users, label: "Staff" },
     { path: "/host/dashboard", icon: Users, label: "Host" },
-    { path: "/parking-pass-manage", icon: ParkingCircle, label: "Parking Pass" },
+    {
+      path: "/parking-pass-manage",
+      icon: ParkingCircle,
+      label: "Parking Pass",
+    },
     { path: "/restaurant-owner-dashboard", icon: Store, label: "Dashboard" },
     { path: "/deal-creation", icon: Plus, label: "Create Deal" },
     { path: "/subscription", icon: BarChart3, label: "Subscription" },
@@ -175,7 +183,11 @@ export default function Navigation() {
 
   const restaurantOwnerExtras: NavItem[] = [
     { path: "/restaurant-owner-dashboard", icon: Store, label: "Dashboard" },
-    { path: "/parking-pass-manage", icon: ParkingCircle, label: "Parking Pass" },
+    {
+      path: "/parking-pass-manage",
+      icon: ParkingCircle,
+      label: "Parking Pass",
+    },
     { path: "/deal-creation", icon: Plus, label: "Create Deal" },
     { path: "/subscription", icon: BarChart3, label: "Subscription" },
   ];
@@ -207,7 +219,11 @@ export default function Navigation() {
     { path: "/staff", icon: Users, label: "Staff" },
     { path: "/events", icon: Calendar, label: "Events" },
     { path: "/host/dashboard", icon: Users, label: "Host" },
-    { path: "/parking-pass-manage", icon: ParkingCircle, label: "Parking Pass" },
+    {
+      path: "/parking-pass-manage",
+      icon: ParkingCircle,
+      label: "Parking Pass",
+    },
     ...restaurantOwnerExtras,
     { path: "/truck-discovery", icon: Search, label: "Truck Slots" },
     { path: "/host-food", icon: MapPin, label: "Host Food" },
@@ -240,7 +256,11 @@ export default function Navigation() {
   const eventCoordinatorExtras: NavItem[] = [
     { path: "/events", icon: Calendar, label: "Events" },
     { path: "/host/dashboard", icon: Users, label: "Host" },
-    { path: "/parking-pass-manage", icon: ParkingCircle, label: "Parking Pass" },
+    {
+      path: "/parking-pass-manage",
+      icon: ParkingCircle,
+      label: "Parking Pass",
+    },
     { path: "/truck-discovery", icon: Search, label: "Truck Slots" },
     { path: "/for-food-trucks", icon: Store, label: "For Trucks" },
   ];

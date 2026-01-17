@@ -284,7 +284,8 @@ export default function ParkingPassManage() {
             <CardHeader>
               <CardTitle>No Parking Pass Access</CardTitle>
               <CardDescription>
-                You need either a food truck profile or a host profile to use the parking pass system.
+                You need either a food truck profile or a host profile to use
+                the parking pass system.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -340,7 +341,9 @@ export default function ParkingPassManage() {
                 <Card>
                   <CardContent className="py-12 text-center">
                     <Truck className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                    <p className="text-gray-600 mb-4">No parking spots reserved yet</p>
+                    <p className="text-gray-600 mb-4">
+                      No parking spots reserved yet
+                    </p>
                     <Button asChild>
                       <a href="/parking-pass">Find Parking Spots</a>
                     </Button>
@@ -388,7 +391,9 @@ export default function ParkingPassManage() {
                 <Card>
                   <CardContent className="py-12 text-center">
                     <Store className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                    <p className="text-gray-600 mb-4">No parking pass reservations yet</p>
+                    <p className="text-gray-600 mb-4">
+                      No parking pass reservations yet
+                    </p>
                     <Button asChild>
                       <a href="/host/dashboard">Manage Events</a>
                     </Button>

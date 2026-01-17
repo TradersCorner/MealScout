@@ -1,10 +1,10 @@
 /**
  * Keep-Alive Service
  * Prevents Render.com free tier from spinning down by self-pinging
- * This keeps the server warm and responsive
+ * Also keeps Neon database warm by hitting DB-aware health endpoint
  */
 
-const PING_INTERVAL = 13 * 60 * 1000; // 13 minutes (before Render's 15-min timeout)
+const PING_INTERVAL = 4 * 60 * 1000; // 4 minutes (before Neon's 5-min timeout)
 const SERVICE_URL = process.env.SERVICE_URL || "https://mealscout.onrender.com";
 
 let pingTimer: NodeJS.Timeout | null = null;
@@ -27,14 +27,14 @@ export function startKeepAlive() {
       PING_INTERVAL / 60000
     } minutes)`
   );
-  console.log(`📍 Target: ${SERVICE_URL}/health`);
+  console.log(`📍 Target: ${SERVICE_URL}/api/health (includes DB warmup)`);
 
-  // Initial ping after 5 minutes
+  // Initial ping after 2 minutes to warm up DB early
   setTimeout(() => {
     pingServer();
     // Then start regular interval
     pingTimer = setInterval(pingServer, PING_INTERVAL);
-  }, 5 * 60 * 1000);
+  }, 2 * 60 * 1000);
 }
 
 /**
@@ -54,7 +54,7 @@ export function stopKeepAlive() {
 async function pingServer() {
   try {
     const start = Date.now();
-    const response = await fetch(`${SERVICE_URL}/health`, {
+    const response = await fetch(`${SERVICE_URL}/api/health`, {
       method: "GET",
       headers: {
         "User-Agent": "MealScout-KeepAlive/1.0",
@@ -64,7 +64,10 @@ async function pingServer() {
     const duration = Date.now() - start;
 
     if (response.ok) {
-      console.log(`✅ Keep-alive ping successful (${duration}ms)`);
+      const data = await response.json();
+      console.log(
+        `✅ Keep-alive ping successful (${duration}ms) - DB: ${data.status}`
+      );
     } else {
       console.warn(`⚠️  Keep-alive ping returned ${response.status}`);
     }

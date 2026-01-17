@@ -21,6 +21,7 @@ import { validateEnv } from "./utils/env";
 import { healthRouter } from "./routes/health";
 import { videoStories, restaurants } from "@shared/schema";
 import { and, eq } from "drizzle-orm";
+import { startKeepAlive, stopKeepAlive } from "./keepAlive";
 
 validateEnv();
 
@@ -115,6 +116,9 @@ const gracefulShutdown = (signal: string) => {
 
   isShuttingDown = true;
   console.log(`🔄 ${signal} received. Initiating graceful shutdown...`);
+
+  // Stop keep-alive service
+  stopKeepAlive();
 
   // Give the server a few seconds to finish processing current requests
   setTimeout(() => {
@@ -999,6 +1003,9 @@ app.use((req, res, next) => {
           );
         }
       });
+
+      // Start keep-alive service to prevent Render.com spin-down
+      startKeepAlive();
 
       // Perform database validation after server startup - non-blocking
       setTimeout(async () => {

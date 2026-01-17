@@ -17,6 +17,7 @@ import {
   Users,
   UtensilsCrossed,
   Calendar,
+  ParkingCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -146,6 +147,7 @@ export default function Navigation() {
   const hostExtras: NavItem[] = [
     { path: "/events", icon: Calendar, label: "Events" },
     { path: "/host/dashboard", icon: Users, label: "Host" },
+    { path: "/parking-pass-manage", icon: ParkingCircle, label: "Parking Pass" },
     { path: "/host-food", icon: MapPin, label: "Host Food" },
     { path: "/truck-discovery", icon: Search, label: "Truck Slots" },
     { path: "/for-food-trucks", icon: Store, label: "For Trucks" },
@@ -159,6 +161,7 @@ export default function Navigation() {
     { path: "/events", icon: Calendar, label: "Events" },
     { path: "/staff", icon: Users, label: "Staff" },
     { path: "/host/dashboard", icon: Users, label: "Host" },
+    { path: "/parking-pass-manage", icon: ParkingCircle, label: "Parking Pass" },
     { path: "/restaurant-owner-dashboard", icon: Store, label: "Dashboard" },
     { path: "/deal-creation", icon: Plus, label: "Create Deal" },
     { path: "/subscription", icon: BarChart3, label: "Subscription" },
@@ -172,6 +175,7 @@ export default function Navigation() {
 
   const restaurantOwnerExtras: NavItem[] = [
     { path: "/restaurant-owner-dashboard", icon: Store, label: "Dashboard" },
+    { path: "/parking-pass-manage", icon: ParkingCircle, label: "Parking Pass" },
     { path: "/deal-creation", icon: Plus, label: "Create Deal" },
     { path: "/subscription", icon: BarChart3, label: "Subscription" },
   ];
@@ -203,6 +207,7 @@ export default function Navigation() {
     { path: "/staff", icon: Users, label: "Staff" },
     { path: "/events", icon: Calendar, label: "Events" },
     { path: "/host/dashboard", icon: Users, label: "Host" },
+    { path: "/parking-pass-manage", icon: ParkingCircle, label: "Parking Pass" },
     ...restaurantOwnerExtras,
     { path: "/truck-discovery", icon: Search, label: "Truck Slots" },
     { path: "/host-food", icon: MapPin, label: "Host Food" },
@@ -211,52 +216,53 @@ export default function Navigation() {
 
   const customerNavItems: NavItem[] = mergeNavItems(
     sharedNavItems,
-    customerExtras
+    customerExtras,
   );
 
   const unauthenticatedNavItems: NavItem[] = mergeNavItems(
     sharedNavItems,
-    unauthenticatedExtras
+    unauthenticatedExtras,
   );
 
   const staffNavItems: NavItem[] = mergeNavItems(sharedNavItems, staffExtras);
 
   const restaurantOwnerNavItems: NavItem[] = mergeNavItems(
     sharedNavItems,
-    restaurantOwnerExtras
+    restaurantOwnerExtras,
   );
 
   const hostNavItems: NavItem[] = mergeNavItems(
     sharedNavItems,
     customerExtras,
-    hostExtras
+    hostExtras,
   );
 
   const eventCoordinatorExtras: NavItem[] = [
     { path: "/events", icon: Calendar, label: "Events" },
     { path: "/host/dashboard", icon: Users, label: "Host" },
+    { path: "/parking-pass-manage", icon: ParkingCircle, label: "Parking Pass" },
     { path: "/truck-discovery", icon: Search, label: "Truck Slots" },
     { path: "/for-food-trucks", icon: Store, label: "For Trucks" },
   ];
 
   const eventCoordinatorNavItems: NavItem[] = mergeNavItems(
     sharedNavItems,
-    eventCoordinatorExtras
+    eventCoordinatorExtras,
   );
 
   const navItems = !user
     ? [...unauthenticatedNavItems, bugNavItem]
     : isAdmin
-    ? [...adminNavItems, bugNavItem]
-    : isStaff
-    ? [...staffNavItems, bugNavItem]
-    : isEventCoordinator
-    ? [...eventCoordinatorNavItems, bugNavItem]
-    : isRestaurantOwner
-    ? [...restaurantOwnerNavItems, bugNavItem]
-    : isHost
-    ? [...hostNavItems, bugNavItem]
-    : [...customerNavItems, bugNavItem];
+      ? [...adminNavItems, bugNavItem]
+      : isStaff
+        ? [...staffNavItems, bugNavItem]
+        : isEventCoordinator
+          ? [...eventCoordinatorNavItems, bugNavItem]
+          : isRestaurantOwner
+            ? [...restaurantOwnerNavItems, bugNavItem]
+            : isHost
+              ? [...hostNavItems, bugNavItem]
+              : [...customerNavItems, bugNavItem];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 w-full bg-white/95 backdrop-blur-sm border-t border-orange-100/80 px-4 py-2 z-50 shadow-xl">
@@ -298,7 +304,7 @@ export default function Navigation() {
                 )}
                 <span className="text-xs font-medium">{item.label}</span>
               </button>
-            )
+            ),
           )}
         </div>
       </div>

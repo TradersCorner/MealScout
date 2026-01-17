@@ -11,11 +11,13 @@ import {
   ChevronDown,
   ChevronUp,
   AlertCircle,
+  DollarSign,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { BookingPaymentModal } from "@/components/booking-payment-modal";
 
 interface Host {
   id: string;
@@ -43,6 +45,8 @@ interface Event {
   seriesId?: string | null;
   host: Host;
   series?: EventSeries | null;
+  requiresPayment?: boolean;
+  hostPriceCents?: number;
 }
 
 interface SeriesGroup {
@@ -62,11 +66,13 @@ function TruckDiscovery() {
   const [events, setEvents] = useState<Event[]>([]);
   const [error, setError] = useState("");
   const [interestedEvents, setInterestedEvents] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set());
   const [myRestaurantId, setMyRestaurantId] = useState<string | null>(null);
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -143,6 +149,24 @@ function TruckDiscovery() {
     }
   };
 
+  const handleBookNow = (event: Event) => {
+    if (!myRestaurantId) {
+      toast({
+        title: "Truck Profile Required",
+        description: "You must have a truck profile to book a parking spot.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSelectedEvent(event);
+    setBookingModalOpen(true);
+  };
+
+  const handleBookingSuccess = () => {
+    // Refresh events to update booking status
+    window.location.reload();
+  };
+
   const toggleSeries = (seriesId: string) => {
     setExpandedSeries((prev) => {
       const next = new Set(prev);
@@ -161,7 +185,7 @@ function TruckDiscovery() {
       (acc, event) => {
         if (event.seriesId && event.series) {
           const existingGroup = acc.series.find(
-            (g) => g.seriesId === event.seriesId
+            (g) => g.seriesId === event.seriesId,
           );
           if (existingGroup) {
             existingGroup.occurrences.push(event);
@@ -183,13 +207,13 @@ function TruckDiscovery() {
         }
         return acc;
       },
-      { series: [] as SeriesGroup[], standalone: [] as Event[] }
+      { series: [] as SeriesGroup[], standalone: [] as Event[] },
     );
 
   // Sort series by earliest occurrence
   groupedData.series.sort(
     (a, b) =>
-      new Date(a.earliestDate).getTime() - new Date(b.earliestDate).getTime()
+      new Date(a.earliestDate).getTime() - new Date(b.earliestDate).getTime(),
   );
 
   if (isLoading) {
@@ -304,7 +328,7 @@ function TruckDiscovery() {
                               <Calendar className="h-4 w-4 mr-2 text-rose-500" />
                               {format(
                                 new Date(event.date),
-                                "EEEE, MMMM d, yyyy"
+                                "EEEE, MMMM d, yyyy",
                               )}
                             </div>
                           </div>
@@ -409,6 +433,17 @@ function TruckDiscovery() {
                           {event.maxTrucks !== 1 ? "s" : ""}
                         </span>
                       </div>
+                      {event.requiresPayment &&
+                        event.hostPriceCents !== undefined && (
+                          <div className="flex items-center text-sm font-semibold text-orange-700 bg-orange-50 border border-orange-200 rounded-md px-3 py-2">
+                            <DollarSign className="h-4 w-4 mr-2" />
+                            <span>
+                              $
+                              {((event.hostPriceCents + 1000) / 100).toFixed(2)}{" "}
+                              (includes $10 MealScout fee)
+                            </span>
+                          </div>
+                        )}
                       {event.hardCapEnabled && (
                         <Badge
                           variant="outline"
@@ -420,31 +455,60 @@ function TruckDiscovery() {
                       )}
                     </div>
 
-                    <Button
-                      className="w-full"
-                      onClick={() => handleExpressInterest(event.id)}
-                      disabled={
-                        submittingId === event.id ||
-                        interestedEvents.has(event.id)
-                      }
-                    >
-                      {submittingId === event.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : interestedEvents.has(event.id) ? (
-                        <>
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Interest Sent
-                        </>
-                      ) : (
-                        "Express Interest"
-                      )}
-                    </Button>
+                    {event.requiresPayment ? (
+                      <Button
+                        className="w-full bg-orange-600 hover:bg-orange-700"
+                        onClick={() => handleBookNow(event)}
+                      >
+                        <DollarSign className="h-4 w-4 mr-2" />
+                        Book Now & Pay
+                      </Button>
+                    ) : (
+                      <Button
+                        className="w-full"
+                        onClick={() => handleExpressInterest(event.id)}
+                        disabled={
+                          submittingId === event.id ||
+                          interestedEvents.has(event.id)
+                        }
+                      >
+                        {submittingId === event.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : interestedEvents.has(event.id) ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Interest Sent
+                          </>
+                        ) : (
+                          "Express Interest"
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
+      )}
+
+      {/* Booking Payment Modal */}
+      {selectedEvent && myRestaurantId && (
+        <BookingPaymentModal
+          open={bookingModalOpen}
+          onOpenChange={setBookingModalOpen}
+          eventId={selectedEvent.id}
+          truckId={myRestaurantId}
+          eventDetails={{
+            name: selectedEvent.host.businessName,
+            date: format(new Date(selectedEvent.date), "MMMM d, yyyy"),
+            startTime: selectedEvent.startTime,
+            endTime: selectedEvent.endTime,
+            hostName: selectedEvent.host.businessName,
+            hostPrice: selectedEvent.hostPriceCents,
+          }}
+          onSuccess={handleBookingSuccess}
+        />
       )}
     </div>
   );

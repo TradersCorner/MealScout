@@ -26,6 +26,7 @@ import { registerHostRoutes } from "./routes/hostRoutes";
 import { registerOpenCallSeriesRoutes } from "./routes/openCallSeriesRoutes";
 import { registerEventRoutes } from "./routes/eventRoutes";
 import { registerAdminManagementRoutes } from "./routes/adminManagementRoutes";
+import { registerBookingRoutes } from "./routes/bookingRoutes";
 import { registerStaffRoutes } from "./staffRoutes";
 import {
   setupUnifiedAuth,
@@ -113,7 +114,7 @@ function validateRequiredEnv() {
 
   if (missing.length > 0) {
     const errorMsg = `❌ FATAL: Missing required environment variables: ${missing.join(
-      ", "
+      ", ",
     )}`;
     console.error(errorMsg);
     if (process.env.NODE_ENV === "production") {
@@ -126,14 +127,14 @@ function validateRequiredEnv() {
     const origins = process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim());
     if (origins.length === 0) {
       console.warn(
-        "⚠️  ALLOWED_ORIGINS is empty, using default: http://localhost:5000"
+        "⚠️  ALLOWED_ORIGINS is empty, using default: http://localhost:5000",
       );
     } else {
       console.log("✅ ALLOWED_ORIGINS configured:", origins.join(", "));
     }
   } else {
     console.warn(
-      "⚠️  ALLOWED_ORIGINS not set, defaulting to: http://localhost:5000"
+      "⚠️  ALLOWED_ORIGINS not set, defaulting to: http://localhost:5000",
     );
   }
 }
@@ -168,7 +169,7 @@ console.log("🎯 process.env.BETA_MODE =", process.env.BETA_MODE);
 // Production safety check: warn if beta mode is enabled in production
 if (process.env.NODE_ENV === "production" && BETA_MODE) {
   console.warn(
-    "⚠️  WARNING: BETA_MODE is enabled in production environment! All users will have free access to premium features."
+    "⚠️  WARNING: BETA_MODE is enabled in production environment! All users will have free access to premium features.",
   );
 }
 
@@ -184,7 +185,7 @@ async function getLockedPriceForUser(userId: string): Promise<{
   const price50 = process.env.PRICE_MONTHLY_50;
   if (!price25 || !price50) {
     throw new Error(
-      "Stripe Price IDs not configured (PRICE_MONTHLY_25 / PRICE_MONTHLY_50)"
+      "Stripe Price IDs not configured (PRICE_MONTHLY_25 / PRICE_MONTHLY_50)",
     );
   }
 
@@ -235,8 +236,8 @@ async function checkPasswordResetRateLimit(userId: string): Promise<{
     .where(
       and(
         eq(passwordResetTokens.userId, userId),
-        gte(passwordResetTokens.createdAt, cutoffTime)
-      )
+        gte(passwordResetTokens.createdAt, cutoffTime),
+      ),
     );
 
   if (recentAttempts.length >= maxAttempts) {
@@ -271,17 +272,17 @@ function validateEnvironment() {
 
   if (missing.length > 0) {
     const errorMsg = `❌ FATAL: Missing required environment variables: ${missing.join(
-      ", "
+      ", ",
     )}`;
     console.error(errorMsg);
     if (process.env.NODE_ENV === "production") {
       console.error(
-        "🛑 Production mode: Cannot start without required configuration"
+        "🛑 Production mode: Cannot start without required configuration",
       );
       process.exit(1);
     } else {
       console.warn(
-        "⚠️  Development mode: Server starting with incomplete configuration. This may cause runtime errors."
+        "⚠️  Development mode: Server starting with incomplete configuration. This may cause runtime errors.",
       );
     }
     return false;
@@ -325,7 +326,7 @@ async function validateAnalyticsAccess(userId: string): Promise<{
 
     // Verify subscription status with Stripe
     const subscription = await stripe.subscriptions.retrieve(
-      user.stripeSubscriptionId
+      user.stripeSubscriptionId,
     );
     if (!subscription || subscription.status !== "active") {
       return {
@@ -354,7 +355,7 @@ async function validateAnalyticsAccess(userId: string): Promise<{
 // Subscription validation function - Now allows unlimited deals for all paid subscriptions
 async function validateSubscriptionLimits(
   userId: string,
-  excludeDealId?: string
+  excludeDealId?: string,
 ): Promise<{
   isValid: boolean;
   error?: string;
@@ -429,7 +430,7 @@ async function validateSubscriptionLimits(
     for (const restaurant of restaurants) {
       const deals = await storage.getDealsByRestaurant(restaurant.id);
       const activeDeals = deals.filter(
-        (d) => d.isActive && (!excludeDealId || d.id !== excludeDealId)
+        (d) => d.isActive && (!excludeDealId || d.id !== excludeDealId),
       );
       activeDealsCount += activeDeals.length;
     }
@@ -756,7 +757,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const envValid = validateEnvironment();
     if (!envValid) {
       console.log(
-        "🚀 Server starting despite environment validation issues to allow health checks"
+        "🚀 Server starting despite environment validation issues to allow health checks",
       );
     }
   }
@@ -769,7 +770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log(
         "📋 /api/auth/user called, isAuthenticated:",
-        req.isAuthenticated()
+        req.isAuthenticated(),
       );
       console.log("📋 Session ID:", req.sessionID);
       console.log("📋 Session data:", req.session);
@@ -804,7 +805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.body.email,
         req.ip,
         req.headers["user-agent"],
-        { email: req.body.email }
+        { email: req.body.email },
       );
       // Validate request body
       const schema = z.object({
@@ -822,7 +823,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (!rateLimit.allowed) {
           const resetTimeMinutes = Math.ceil(
-            (rateLimit.nextAllowedTime!.getTime() - Date.now()) / (1000 * 60)
+            (rateLimit.nextAllowedTime!.getTime() - Date.now()) / (1000 * 60),
           );
           return res.status(429).json({
             error: "Too many password reset attempts",
@@ -883,20 +884,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Send password reset email
           const emailSent = await emailService.sendPasswordResetEmail(
             user,
-            resetUrl
+            resetUrl,
           );
 
           if (!emailSent) {
             console.error(
               "Failed to send password reset email for user:",
-              user.email
+              user.email,
             );
           }
         } catch (error) {
           console.error(
             "Error processing password reset for user:",
             user.email,
-            error
+            error,
           );
           // Don't expose error details
         }
@@ -968,9 +969,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .digest("hex");
 
         // Look up the token in the database
-        const tokenRecord = await storage.getPasswordResetTokenByTokenHash(
-          verifierHash
-        );
+        const tokenRecord =
+          await storage.getPasswordResetTokenByTokenHash(verifierHash);
 
         // Return validation result with timing-safe response
         const isValid = !!tokenRecord;
@@ -1036,9 +1036,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .digest("hex");
 
         // Look up the token in the database
-        const tokenRecord = await storage.getPasswordResetTokenByTokenHash(
-          verifierHash
-        );
+        const tokenRecord =
+          await storage.getPasswordResetTokenByTokenHash(verifierHash);
 
         if (!tokenRecord) {
           return res.status(400).json({
@@ -1144,7 +1143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify current password
         const isValid = await bcrypt.compare(
           currentPassword,
-          user.passwordHash
+          user.passwordHash,
         );
         if (!isValid) {
           return res.status(400).json({
@@ -1198,7 +1197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
-    }
+    },
   );
 
   // User address routes
@@ -1252,7 +1251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const updates = insertUserAddressSchema.partial().parse(req.body);
         const updatedAddress = await storage.updateUserAddress(
           addressId,
-          updates
+          updates,
         );
         res.json(updatedAddress);
       } catch (error) {
@@ -1265,7 +1264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           res.status(500).json({ message: "Failed to update address" });
         }
       }
-    }
+    },
   );
 
   app.delete(
@@ -1288,7 +1287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error deleting address:", error);
         res.status(500).json({ message: "Failed to delete address" });
       }
-    }
+    },
   );
 
   app.post(
@@ -1311,7 +1310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error setting default address:", error);
         res.status(500).json({ message: "Failed to set default address" });
       }
-    }
+    },
   );
 
   // Host location request routes
@@ -1355,7 +1354,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const ownsRestaurant = await storage.verifyRestaurantOwnership(
           restaurantId,
-          req.user.id
+          req.user.id,
         );
         if (!ownsRestaurant) {
           return res
@@ -1373,7 +1372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await sendTruckInterestNotification(
           result.locationRequest,
           restaurantId,
-          message
+          message,
         );
 
         res.status(201).json({
@@ -1402,7 +1401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(500).json({ message: "Failed to submit interest" });
       }
-    }
+    },
   );
 
   // Public map feed: hosts (open location requests) + upcoming events (hosted slots)
@@ -1469,6 +1468,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Truck Discovery
   registerEventRoutes(app);
 
+  // Booking Management
+  registerBookingRoutes(app);
+
   app.patch(
     "/api/hosts/interests/:interestId/status",
     isAuthenticated,
@@ -1485,7 +1487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify host owns the event associated with this interest
         const { interest, event, host } = await getInterestEventAndHostForUser(
           interestId,
-          userId
+          userId,
         );
 
         if (!interest) {
@@ -1511,7 +1513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // If hard cap is enabled, block acceptance if full
         if (status === "accepted" && event.hardCapEnabled) {
           const currentInterests = await storage.getEventInterestsByEventId(
-            event.id
+            event.id,
           );
           // Note: interest.status is definitely NOT 'accepted' here due to idempotency check above
           const acceptedCount = computeAcceptedCount(currentInterests);
@@ -1544,7 +1546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const updatedInterest = await storage.updateEventInterestStatus(
           interestId,
-          status
+          status,
         );
 
         // Send notification to truck (fire and forget)
@@ -1552,7 +1554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             // Telemetry: Interest Status Changed
             const allInterests = await storage.getEventInterestsByEventId(
-              event.id
+              event.id,
             );
             const acceptedCount = computeAcceptedCount(allInterests);
             const isOverCap = acceptedCount >= event.maxTrucks;
@@ -1588,7 +1590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   truck.name,
                   host!.businessName,
                   new Date(event.date).toLocaleDateString(),
-                  status as "accepted" | "declined"
+                  status as "accepted" | "declined",
                 );
               }
             }
@@ -1602,7 +1604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error updating interest status:", error);
         res.status(500).json({ message: "Failed to update status" });
       }
-    }
+    },
   );
 
   app.get(
@@ -1630,7 +1632,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching event interests:", error);
         res.status(500).json({ message: "Failed to fetch interests" });
       }
-    }
+    },
   );
 
   // Restaurant routes
@@ -1664,7 +1666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const restaurants = await storage.getSubscribedRestaurants(
         latitude,
         longitude,
-        radius
+        radius,
       );
 
       // Get all restaurant IDs to fetch deal counts efficiently
@@ -1682,8 +1684,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(
             and(
               inArray(deals.restaurantId, restaurantIds),
-              eq(deals.isActive, true)
-            )
+              eq(deals.isActive, true),
+            ),
           )
           .groupBy(deals.restaurantId);
 
@@ -1696,7 +1698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             count: number;
           }) => {
             dealCounts[restaurantId] = count;
-          }
+          },
         );
       }
 
@@ -1728,7 +1730,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching user restaurants:", error);
         res.status(500).json({ message: "Failed to fetch restaurants" });
       }
-    }
+    },
   );
 
   app.get(
@@ -1744,7 +1746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           activeDeals: deals.filter((d) => d.isActive).length,
           totalViews: deals.reduce(
             (sum, d) => sum + ((d as any).viewCount || 0),
-            0
+            0,
           ),
           totalClaims: deals.reduce((sum, d) => sum + (d.currentUses || 0), 0),
           conversionRate: 0,
@@ -1761,7 +1763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching restaurant stats:", error);
         res.status(500).json({ message: "Failed to fetch stats" });
       }
-    }
+    },
   );
 
   // 🔒 SECURITY: Update deal - requires ownership of restaurant
@@ -1778,7 +1780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.params.dealId,
           req.ip,
           req.headers["user-agent"],
-          req.body
+          req.body,
         );
         const { dealId } = req.params;
         const updates = req.body;
@@ -1794,7 +1796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (updates.isActive === true && !currentDeal.isActive) {
           const subscriptionValidation = await validateSubscriptionLimits(
             userId,
-            dealId
+            dealId,
           );
           if (!subscriptionValidation.isValid) {
             return res.status(402).json({
@@ -1811,7 +1813,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error updating deal:", error);
         res.status(500).json({ message: "Failed to update deal" });
       }
-    }
+    },
   );
 
   // 🔒 SECURITY: Delete deal - requires ownership of restaurant
@@ -1828,7 +1830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.params.dealId,
           req.ip,
           req.headers["user-agent"],
-          {}
+          {},
         );
         const { dealId } = req.params;
         // Ownership verified by middleware - safe to delete
@@ -1838,7 +1840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error deleting deal:", error);
         res.status(500).json({ message: "Failed to delete deal" });
       }
-    }
+    },
   );
 
   // Event ingestion endpoints
@@ -1853,7 +1855,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const deal = await storage.getDeal(dealId);
       if (!deal) {
         console.warn(
-          `[deals:view] deal not found for id ${dealId} - skipping view tracking`
+          `[deals:view] deal not found for id ${dealId} - skipping view tracking`,
         );
         return res.json({
           success: true,
@@ -1866,7 +1868,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dealId,
         userId,
         sessionId,
-        3600000
+        3600000,
       ); // 1 hour window
 
       if (hasRecentView) {
@@ -1908,7 +1910,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify that the user owns the restaurant associated with this claim
         const isAuthorized = await storage.verifyRestaurantOwnershipByClaim(
           claimId,
-          req.user.id
+          req.user.id,
         );
         if (!isAuthorized) {
           return res.status(403).json({
@@ -1919,7 +1921,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const updatedClaim = await storage.markClaimAsUsed(
           claimId,
-          orderAmount ?? null
+          orderAmount ?? null,
         );
         if (!updatedClaim) {
           return res
@@ -1936,7 +1938,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               : "Failed to mark claim as used",
         });
       }
-    }
+    },
   );
 
   // Food truck endpoints
@@ -1951,7 +1953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify user owns this restaurant
         const isAuthorized = await storage.verifyRestaurantOwnership(
           restaurantId,
-          req.user.id
+          req.user.id,
         );
         if (!isAuthorized) {
           return res.status(403).json({
@@ -1963,7 +1965,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const settings = updateRestaurantMobileSettingsSchema.parse(req.body);
         const updatedRestaurant = await storage.setRestaurantMobileSettings(
           restaurantId,
-          settings
+          settings,
         );
 
         // Broadcast status update via WebSocket if mobile status changed
@@ -1984,7 +1986,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               : "Failed to update mobile settings",
         });
       }
-    }
+    },
   );
 
   // Update restaurant location (owner only)
@@ -1998,7 +2000,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify user owns this restaurant
         const isAuthorized = await storage.verifyRestaurantOwnership(
           restaurantId,
-          req.user.id
+          req.user.id,
         );
         if (!isAuthorized) {
           return res.status(403).json({
@@ -2010,7 +2012,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const locationData = updateRestaurantLocationSchema.parse(req.body);
         const updatedRestaurant = await storage.updateRestaurantLocation(
           restaurantId,
-          locationData
+          locationData,
         );
 
         // Broadcast location update via WebSocket
@@ -2035,7 +2037,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               : "Failed to update location",
         });
       }
-    }
+    },
   );
 
   // Update restaurant operating hours (owner only)
@@ -2049,7 +2051,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify user owns this restaurant
         const isAuthorized = await storage.verifyRestaurantOwnership(
           restaurantId,
-          req.user.id
+          req.user.id,
         );
         if (!isAuthorized) {
           return res.status(403).json({
@@ -2061,7 +2063,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const hoursData = updateRestaurantOperatingHoursSchema.parse(req.body);
         const updatedRestaurant = await storage.setRestaurantOperatingHours(
           restaurantId,
-          hoursData.operatingHours
+          hoursData.operatingHours,
         );
 
         res.json({ success: true, restaurant: updatedRestaurant });
@@ -2074,7 +2076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               : "Failed to update operating hours",
         });
       }
-    }
+    },
   );
 
   // Check if restaurant is currently open (public endpoint)
@@ -2107,7 +2109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify user owns this restaurant
         const isAuthorized = await storage.verifyRestaurantOwnership(
           restaurantId,
-          req.user.id
+          req.user.id,
         );
         if (!isAuthorized) {
           return res.status(403).json({
@@ -2123,14 +2125,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const session = await storage.startTruckSession(
           restaurantId,
           deviceId,
-          req.user.id
+          req.user.id,
         );
         res.json({ success: true, session });
       } catch (error) {
         console.error("Error starting truck session:", error);
         res.status(500).json({ message: "Failed to start truck session" });
       }
-    }
+    },
   );
 
   // End food truck session
@@ -2144,7 +2146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify user owns this restaurant
         const isAuthorized = await storage.verifyRestaurantOwnership(
           restaurantId,
-          req.user.id
+          req.user.id,
         );
         if (!isAuthorized) {
           return res.status(403).json({
@@ -2159,7 +2161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error ending truck session:", error);
         res.status(500).json({ message: "Failed to end truck session" });
       }
-    }
+    },
   );
 
   // Update food truck location with rate limiting
@@ -2173,7 +2175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify user owns this restaurant
         const isAuthorized = await storage.verifyRestaurantOwnership(
           restaurantId,
-          req.user.id
+          req.user.id,
         );
         if (!isAuthorized) {
           return res.status(403).json({
@@ -2184,7 +2186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Rate limiting: check if too many requests from this user/restaurant
         const rateLimitResult = checkRateLimit(
-          `location_update_${req.user.id}_${restaurantId}`
+          `location_update_${req.user.id}_${restaurantId}`,
         );
         if (!rateLimitResult.allowed) {
           return res.status(429).json({
@@ -2214,7 +2216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               : "Failed to update location",
         });
       }
-    }
+    },
   );
 
   // Get live food trucks nearby (public endpoint)
@@ -2250,7 +2252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const trucks = await storage.getLiveTrucksNearby(
         latitude,
         longitude,
-        radius
+        radius,
       );
       res.json({ trucks });
     } catch (error) {
@@ -2271,7 +2273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify user owns this restaurant
         const isAuthorized = await storage.verifyRestaurantOwnership(
           restaurantId,
-          req.user.id
+          req.user.id,
         );
         if (!isAuthorized) {
           return res.status(403).json({
@@ -2290,14 +2292,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const locations = await storage.getTruckLocationHistory(
           restaurantId,
-          dateRange
+          dateRange,
         );
         res.json({ locations });
       } catch (error) {
         console.error("Error fetching location history:", error);
         res.status(500).json({ message: "Failed to fetch location history" });
       }
-    }
+    },
   );
 
   // Analytics API endpoints (require authentication to verify restaurant ownership)
@@ -2312,7 +2314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify user owns this restaurant
         const isAuthorized = await storage.verifyRestaurantOwnership(
           restaurantId,
-          req.user.id
+          req.user.id,
         );
         if (!isAuthorized) {
           return res.status(403).json({
@@ -2340,14 +2342,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const summary = await storage.getRestaurantAnalyticsSummary(
           restaurantId,
-          dateRange
+          dateRange,
         );
         res.json(summary);
       } catch (error) {
         console.error("Error fetching analytics summary:", error);
         res.status(500).json({ message: "Failed to fetch analytics summary" });
       }
-    }
+    },
   );
 
   app.get(
@@ -2361,7 +2363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify user owns this restaurant
         const isAuthorized = await storage.verifyRestaurantOwnership(
           restaurantId,
-          req.user.id
+          req.user.id,
         );
         if (!isAuthorized) {
           return res.status(403).json({
@@ -2393,7 +2395,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const timeseries = await storage.getRestaurantAnalyticsTimeseries(
           restaurantId,
           dateRange,
-          interval as "day" | "week"
+          interval as "day" | "week",
         );
         res.json(timeseries);
       } catch (error) {
@@ -2402,7 +2404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch analytics timeseries" });
       }
-    }
+    },
   );
 
   app.get(
@@ -2416,7 +2418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify user owns this restaurant
         const isAuthorized = await storage.verifyRestaurantOwnership(
           restaurantId,
-          req.user.id
+          req.user.id,
         );
         if (!isAuthorized) {
           return res.status(403).json({
@@ -2444,14 +2446,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const insights = await storage.getRestaurantCustomerInsights(
           restaurantId,
-          dateRange
+          dateRange,
         );
         res.json(insights);
       } catch (error) {
         console.error("Error fetching customer insights:", error);
         res.status(500).json({ message: "Failed to fetch customer insights" });
       }
-    }
+    },
   );
 
   app.get(
@@ -2466,7 +2468,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify user owns this restaurant
         const isAuthorized = await storage.verifyRestaurantOwnership(
           restaurantId,
-          req.user.id
+          req.user.id,
         );
         if (!isAuthorized) {
           return res.status(403).json({
@@ -2537,7 +2539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch analytics comparison" });
       }
-    }
+    },
   );
 
   app.get(
@@ -2551,7 +2553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify user owns this restaurant
         const isAuthorized = await storage.verifyRestaurantOwnership(
           restaurantId,
-          req.user.id
+          req.user.id,
         );
         if (!isAuthorized) {
           return res.status(403).json({
@@ -2582,7 +2584,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const exportData = await storage.getRestaurantAnalyticsExport(
           restaurantId,
-          dateRange
+          dateRange,
         );
 
         if (format === "csv") {
@@ -2621,10 +2623,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           res.setHeader(
             "Content-Disposition",
             `attachment; filename="analytics-${encodeURIComponent(
-              restaurantId
+              restaurantId,
             )}-${encodeURIComponent(startDate as string)}-${encodeURIComponent(
-              endDate as string
-            )}.csv"`
+              endDate as string,
+            )}.csv"`,
           );
           res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
           res.send(csv);
@@ -2635,7 +2637,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error exporting analytics:", error);
         res.status(500).json({ message: "Failed to export analytics" });
       }
-    }
+    },
   );
 
   // Restaurant owner signup endpoint (creates user account + restaurant in one flow)
@@ -2658,7 +2660,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (user.userType === "customer") {
           console.log(
             "Converting customer account to restaurant owner:",
-            user.id
+            user.id,
           );
           await storage.updateUserType(user.id, "restaurant_owner");
           // Update the user object to reflect the change
@@ -2679,7 +2681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Check if user already exists
         const existingUser = await storage.getUserByEmail(
-          validatedUserData.email
+          validatedUserData.email,
         );
         if (existingUser) {
           return res
@@ -2697,7 +2699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ...validatedUserData,
             passwordHash,
           },
-          "restaurant_owner"
+          "restaurant_owner",
         );
 
         // Log the new user in by setting up session
@@ -2726,7 +2728,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const enabled =
           String(
-            process.env.VAC_AUTO_VERIFY_ENABLED || "true"
+            process.env.VAC_AUTO_VERIFY_ENABLED || "true",
           ).toLowerCase() !== "false";
         if (enabled) {
           const vac = await vacEvaluateRestaurantSignup({
@@ -2750,10 +2752,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else {
             console.log(
               "⚠️  Creating manual verification request for:",
-              restaurant.id
+              restaurant.id,
             );
             const hasPending = await storage.hasPendingVerificationRequest(
-              restaurant.id
+              restaurant.id,
             );
             if (!hasPending) {
               await storage.createVerificationRequest({
@@ -2818,7 +2820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const enabled =
           String(
-            process.env.VAC_AUTO_VERIFY_ENABLED || "true"
+            process.env.VAC_AUTO_VERIFY_ENABLED || "true",
           ).toLowerCase() !== "false";
         if (enabled) {
           const vac = await vacEvaluateRestaurantSignup({
@@ -2842,10 +2844,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else {
             console.log(
               "⚠️  Creating manual verification request for:",
-              restaurant.id
+              restaurant.id,
             );
             const hasPending = await storage.hasPendingVerificationRequest(
-              restaurant.id
+              restaurant.id,
             );
             if (!hasPending) {
               await storage.createVerificationRequest({
@@ -2892,7 +2894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching restaurant owner:", error);
         res.status(500).json({ message: "Failed to fetch user" });
       }
-    }
+    },
   );
 
   // Restaurant search endpoint (returns restaurants matching search query)
@@ -2916,7 +2918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           restaurant.isActive &&
           (restaurant.name.toLowerCase().includes(searchTerm) ||
             restaurant.cuisineType?.toLowerCase().includes(searchTerm) ||
-            restaurant.address?.toLowerCase().includes(searchTerm))
+            restaurant.address?.toLowerCase().includes(searchTerm)),
       );
 
       // Filter by distance if coordinates provided
@@ -3013,7 +3015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(400)
           .json({ message: error.message || "Failed to add favorite" });
       }
-    }
+    },
   );
 
   app.delete(
@@ -3030,7 +3032,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error removing restaurant favorite:", error);
         res.status(500).json({ message: "Failed to remove favorite" });
       }
-    }
+    },
   );
 
   app.get(
@@ -3045,7 +3047,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching user restaurant favorites:", error);
         res.status(500).json({ message: "Failed to fetch favorites" });
       }
-    }
+    },
   );
 
   // Analytics endpoint for restaurant owners to see favorites (paid feature)
@@ -3060,7 +3062,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify user owns this restaurant
         const isAuthorized = await storage.verifyRestaurantOwnership(
           restaurantId,
-          userId
+          userId,
         );
         if (!isAuthorized) {
           return res.status(403).json({
@@ -3090,7 +3092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const favoritesAnalytics =
           await storage.getRestaurantFavoritesAnalytics(
             restaurantId,
-            dateRange
+            dateRange,
           );
         res.json(favoritesAnalytics);
       } catch (error) {
@@ -3099,7 +3101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch favorites analytics" });
       }
-    }
+    },
   );
 
   // Analytics endpoint for restaurant owners to see recommendations (paid feature)
@@ -3114,7 +3116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify user owns this restaurant
         const isAuthorized = await storage.verifyRestaurantOwnership(
           restaurantId,
-          userId
+          userId,
         );
         if (!isAuthorized) {
           return res.status(403).json({
@@ -3144,7 +3146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const recommendationsAnalytics =
           await storage.getRestaurantRecommendationsAnalytics(
             restaurantId,
-            dateRange
+            dateRange,
           );
         res.json(recommendationsAnalytics);
       } catch (error) {
@@ -3153,7 +3155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch recommendations analytics" });
       }
-    }
+    },
   );
 
   // Track recommendation click-through (public endpoint for tracking)
@@ -3175,7 +3177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to track recommendation click" });
       }
-    }
+    },
   );
 
   // Verification routes for restaurant owners
@@ -3204,9 +3206,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Check for existing pending requests (dedupe)
-        const hasPendingRequest = await storage.hasPendingVerificationRequest(
-          restaurantId
-        );
+        const hasPendingRequest =
+          await storage.hasPendingVerificationRequest(restaurantId);
         if (hasPendingRequest) {
           return res.status(409).json({
             message:
@@ -3222,7 +3223,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Additional server-side document validation for security
         const documentValidation = validateDocuments(
-          verificationData.documents
+          verificationData.documents,
         );
         if (!documentValidation.valid) {
           return res.status(400).json({
@@ -3231,9 +3232,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        const verificationRequest = await storage.createVerificationRequest(
-          verificationData
-        );
+        const verificationRequest =
+          await storage.createVerificationRequest(verificationData);
         res.json(verificationRequest);
       } catch (error: any) {
         console.error("Error creating verification request:", error);
@@ -3241,7 +3241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: error.message || "Failed to create verification request",
         });
       }
-    }
+    },
   );
 
   app.get(
@@ -3250,9 +3250,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const userId = req.user.id;
-        const verifications = await storage.getVerificationRequestsByOwner(
-          userId
-        );
+        const verifications =
+          await storage.getVerificationRequestsByOwner(userId);
         res.json(verifications);
       } catch (error) {
         console.error("Error fetching verification requests:", error);
@@ -3260,7 +3259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch verification requests" });
       }
-    }
+    },
   );
 
   // Deal routes
@@ -3278,7 +3277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         undefined,
         req.ip,
         req.headers["user-agent"],
-        req.body
+        req.body,
       );
       const userId = req.user.id;
 
@@ -3295,20 +3294,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           raw.minOrderAmount === "" || raw.minOrderAmount == null
             ? null
             : typeof raw.minOrderAmount === "number"
-            ? raw.minOrderAmount.toString()
-            : raw.minOrderAmount,
+              ? raw.minOrderAmount.toString()
+              : raw.minOrderAmount,
         totalUsesLimit:
           raw.totalUsesLimit === "" || raw.totalUsesLimit == null
             ? null
             : typeof raw.totalUsesLimit === "string"
-            ? parseInt(raw.totalUsesLimit)
-            : raw.totalUsesLimit,
+              ? parseInt(raw.totalUsesLimit)
+              : raw.totalUsesLimit,
         perCustomerLimit:
           raw.perCustomerLimit === "" || raw.perCustomerLimit == null
             ? 1
             : typeof raw.perCustomerLimit === "string"
-            ? parseInt(raw.perCustomerLimit)
-            : raw.perCustomerLimit,
+              ? parseInt(raw.perCustomerLimit)
+              : raw.perCustomerLimit,
         // Convert date strings to Date objects
         startDate:
           typeof raw.startDate === "string"
@@ -3318,8 +3317,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           raw.isOngoing || raw.endDate === "" || raw.endDate == null
             ? null
             : typeof raw.endDate === "string"
-            ? new Date(raw.endDate)
-            : raw.endDate,
+              ? new Date(raw.endDate)
+              : raw.endDate,
         // Times nullable if business hours
         startTime: raw.availableDuringBusinessHours ? null : raw.startTime,
         endTime: raw.availableDuringBusinessHours ? null : raw.endTime,
@@ -3345,7 +3344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userId,
             restaurantId: dealData.restaurantId,
             ownerId: restaurant?.ownerId,
-          }
+          },
         );
         return res.status(403).json({ message: "Unauthorized" });
       }
@@ -3402,7 +3401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         restaurants.map(async (restaurant) => {
           const deals = await storage.getDealsByRestaurant(restaurant.id);
           return deals.filter((deal) => deal.isActive);
-        })
+        }),
       );
 
       // Flatten the array of arrays into a single array
@@ -3452,9 +3451,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get all active deals for this restaurant with restaurant data included
-      const allRestaurantDeals = await storage.getDealsByRestaurant(
-        restaurantId
-      );
+      const allRestaurantDeals =
+        await storage.getDealsByRestaurant(restaurantId);
       const activeDeals = allRestaurantDeals
         .filter((deal) => deal.isActive)
         .map((deal) => ({
@@ -3556,9 +3554,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } catch (err) {
               console.error("Error tracking recommendation:", err);
             }
-          })
+          }),
         ).catch((err) =>
-          console.error("Error tracking recommendations batch:", err)
+          console.error("Error tracking recommendations batch:", err),
         );
       }
 
@@ -3602,7 +3600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/reviews/restaurant/:restaurantId", async (req, res) => {
     try {
       const reviews = await storage.getRestaurantReviews(
-        req.params.restaurantId
+        req.params.restaurantId,
       );
       res.json(reviews);
     } catch (error) {
@@ -3614,7 +3612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/reviews/restaurant/:restaurantId/rating", async (req, res) => {
     try {
       const rating = await storage.getRestaurantAverageRating(
-        req.params.restaurantId
+        req.params.restaurantId,
       );
       res.json({ rating });
     } catch (error) {
@@ -3723,7 +3721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         });
       }
-    }
+    },
   );
 
   // Legacy Stripe subscription route for restaurant fees (kept for backward compatibility)
@@ -3812,7 +3810,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             user.id,
             customerId,
             subscription.id,
-            `standard-${billingInterval}`
+            `standard-${billingInterval}`,
           );
 
           const latestInvoice = subscription.latest_invoice;
@@ -3853,7 +3851,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             user.stripeSubscriptionId,
             {
               expand: ["latest_invoice.payment_intent"],
-            }
+            },
           );
 
           // If subscription is incomplete or incomplete_expired, cancel it and create a new one
@@ -3862,7 +3860,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             subscription.status === "incomplete_expired"
           ) {
             console.log(
-              `Canceling incomplete subscription ${subscription.id} to create new one`
+              `Canceling incomplete subscription ${subscription.id} to create new one`,
             );
             await stripe.subscriptions.cancel(subscription.id);
             // Clear the subscription ID so we create a new one below
@@ -3931,7 +3929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           user.id,
           customerId,
           subscription.id,
-          `standard-${interval}`
+          `standard-${interval}`,
         );
 
         // Send payment confirmation email asynchronously
@@ -3939,7 +3937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         emailService
           .sendPaymentConfirmation(user, amount, planType, subscription.id)
           .catch((err) =>
-            console.error("Failed to send payment confirmation email:", err)
+            console.error("Failed to send payment confirmation email:", err),
           );
 
         const latestInvoice = subscription.latest_invoice;
@@ -3961,7 +3959,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating subscription:", error);
         return res.status(400).send({ error: { message: error.message } });
       }
-    }
+    },
   );
 
   // Check subscription status
@@ -3977,7 +3975,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // BETA MODE: Grant all users active subscription status
       if (BETA_MODE) {
         console.log(
-          "✅ BETA_MODE: Granting active subscription status to all users"
+          "✅ BETA_MODE: Granting active subscription status to all users",
         );
         return res.json({
           status: "active",
@@ -4016,7 +4014,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           user.stripeSubscriptionId,
           {
             expand: ["latest_invoice.payment_intent"],
-          }
+          },
         );
 
         // If subscription is incomplete, try to pay the invoice directly
@@ -4026,21 +4024,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (latestInvoice && typeof latestInvoice === "object") {
             const invoice = latestInvoice as any;
             console.log(
-              `Force paying invoice ${invoice.id} to complete subscription...`
+              `Force paying invoice ${invoice.id} to complete subscription...`,
             );
 
             try {
               const paidInvoice = await stripe.invoices.pay(invoice.id);
               console.log(
-                `Successfully paid invoice ${invoice.id}, status: ${paidInvoice.status}`
+                `Successfully paid invoice ${invoice.id}, status: ${paidInvoice.status}`,
               );
 
               // Check subscription status after payment
               const refreshedSubscription = await stripe.subscriptions.retrieve(
-                user.stripeSubscriptionId
+                user.stripeSubscriptionId,
               );
               console.log(
-                `After paying invoice, subscription status: ${refreshedSubscription.status}`
+                `After paying invoice, subscription status: ${refreshedSubscription.status}`,
               );
 
               res.json({
@@ -4067,7 +4065,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Subscription status error:", error);
         res.status(500).json({ message: error.message });
       }
-    }
+    },
   );
 
   // Pause subscription endpoint
@@ -4093,7 +4091,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             pause_collection: {
               behavior: "keep_as_draft",
             },
-          }
+          },
         );
 
         res.json({
@@ -4104,7 +4102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Pause subscription error:", error);
         res.status(500).json({ message: error.message });
       }
-    }
+    },
   );
 
   // Stripe Webhook Handler
@@ -4140,16 +4138,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (invoice.subscription && stripe) {
             // Retrieve the subscription to get full details
             const subscription = await stripe.subscriptions.retrieve(
-              invoice.subscription as string
+              invoice.subscription as string,
             );
             if (subscription && subscription.status === "active") {
               console.log(
-                `[WEBHOOK] Subscription ${subscription.id} is now active for customer ${subscription.customer}`
+                `[WEBHOOK] Subscription ${subscription.id} is now active for customer ${subscription.customer}`,
               );
 
               // Find user by subscription ID (more reliable than customer ID)
               const user = await storage.getUserByStripeSubscriptionId(
-                subscription.id
+                subscription.id,
               );
 
               // PHASE 3: Process affiliate commissions when restaurant pays
@@ -4157,7 +4155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 try {
                   // Find restaurant owned by this user
                   const ownedRestaurants = await storage.getRestaurantsByOwner(
-                    user.id
+                    user.id,
                   );
                   if (ownedRestaurants.length > 0) {
                     const { createCommissionForRestaurantPayment } =
@@ -4167,14 +4165,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       await createCommissionForRestaurantPayment(
                         restaurant.id,
                         invoice.total, // Total in cents
-                        invoice.id
+                        invoice.id,
                       );
                     }
                   }
                 } catch (commissionError) {
                   console.error(
                     "[WEBHOOK] Error processing affiliate commissions:",
-                    commissionError
+                    commissionError,
                   );
                   // Don't fail the webhook if commission processing fails
                 }
@@ -4182,7 +4180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
               if (user) {
                 console.log(
-                  `[WEBHOOK] Found user ${user.id} (${user.email}) - ensuring subscription is active`
+                  `[WEBHOOK] Found user ${user.id} (${user.email}) - ensuring subscription is active`,
                 );
 
                 // Make sure the user has the subscription ID stored
@@ -4196,16 +4194,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     stripeCustomerId: subscription.customer as string,
                   });
                   console.log(
-                    `[WEBHOOK] Updated user ${user.id} with subscription ID ${subscription.id}`
+                    `[WEBHOOK] Updated user ${user.id} with subscription ID ${subscription.id}`,
                   );
                 } else {
                   console.log(
-                    `[WEBHOOK] User ${user.id} subscription already properly configured`
+                    `[WEBHOOK] User ${user.id} subscription already properly configured`,
                   );
                 }
               } else {
                 console.log(
-                  `[WEBHOOK] Warning: No user found for subscription ${subscription.id}`
+                  `[WEBHOOK] Warning: No user found for subscription ${subscription.id}`,
                 );
               }
             }
@@ -4214,7 +4212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case "payment_intent.succeeded":
           const paymentIntent = event.data.object;
           console.log(
-            `[WEBHOOK] PaymentIntent ${paymentIntent.id} succeeded for booking ${paymentIntent.metadata.bookingId}`
+            `[WEBHOOK] PaymentIntent ${paymentIntent.id} succeeded for booking ${paymentIntent.metadata.bookingId}`,
           );
 
           // Update booking status if this is for an event booking
@@ -4232,11 +4230,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 .where(eq(eventBookings.id, paymentIntent.metadata.bookingId));
 
               console.log(
-                `[WEBHOOK] Booking ${paymentIntent.metadata.bookingId} confirmed`
+                `[WEBHOOK] Booking ${paymentIntent.metadata.bookingId} confirmed`,
               );
 
               // Update event status to 'booked' if needed
-              if (paymentIntent.metadata.eventId && paymentIntent.metadata.truckId) {
+              if (
+                paymentIntent.metadata.eventId &&
+                paymentIntent.metadata.truckId
+              ) {
                 const { events } = await import("@shared/schema");
                 await db
                   .update(events)
@@ -4247,7 +4248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   .where(eq(events.id, paymentIntent.metadata.eventId));
 
                 console.log(
-                  `[WEBHOOK] Event ${paymentIntent.metadata.eventId} marked as booked by truck ${paymentIntent.metadata.truckId}`
+                  `[WEBHOOK] Event ${paymentIntent.metadata.eventId} marked as booked by truck ${paymentIntent.metadata.truckId}`,
                 );
               }
             } catch (error) {
@@ -4259,7 +4260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case "payment_intent.payment_failed":
           const failedIntent = event.data.object;
           console.log(
-            `[WEBHOOK] PaymentIntent ${failedIntent.id} failed for booking ${failedIntent.metadata.bookingId}`
+            `[WEBHOOK] PaymentIntent ${failedIntent.id} failed for booking ${failedIntent.metadata.bookingId}`,
           );
 
           if (failedIntent.metadata.bookingId) {
@@ -4275,7 +4276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 .where(eq(eventBookings.id, failedIntent.metadata.bookingId));
 
               console.log(
-                `[WEBHOOK] Booking ${failedIntent.metadata.bookingId} marked as failed`
+                `[WEBHOOK] Booking ${failedIntent.metadata.bookingId} marked as failed`,
               );
             } catch (error) {
               console.error("[WEBHOOK] Error updating failed booking:", error);
@@ -4283,21 +4284,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           break;
 
-
         case "customer.subscription.updated":
           const subscriptionUpdated = event.data.object;
           console.log(
-            `[WEBHOOK] Subscription ${subscriptionUpdated.id} updated to status: ${subscriptionUpdated.status}`
+            `[WEBHOOK] Subscription ${subscriptionUpdated.id} updated to status: ${subscriptionUpdated.status}`,
           );
 
           // Find user by subscription ID
           const userForUpdate = await storage.getUserByStripeSubscriptionId(
-            subscriptionUpdated.id
+            subscriptionUpdated.id,
           );
 
           if (userForUpdate) {
             console.log(
-              `[WEBHOOK] Found user ${userForUpdate.id} for subscription ${subscriptionUpdated.id}`
+              `[WEBHOOK] Found user ${userForUpdate.id} for subscription ${subscriptionUpdated.id}`,
             );
 
             // If subscription becomes inactive or canceled, we might want to handle it
@@ -4307,17 +4307,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
               subscriptionUpdated.status === "incomplete_expired"
             ) {
               console.log(
-                `[WEBHOOK] Subscription ${subscriptionUpdated.id} is now ${subscriptionUpdated.status} for user ${userForUpdate.id}`
+                `[WEBHOOK] Subscription ${subscriptionUpdated.id} is now ${subscriptionUpdated.status} for user ${userForUpdate.id}`,
               );
               // The validateSubscriptionLimits function will catch this on next deal creation attempt
             } else if (subscriptionUpdated.status === "active") {
               console.log(
-                `[WEBHOOK] Subscription ${subscriptionUpdated.id} is active for user ${userForUpdate.id}`
+                `[WEBHOOK] Subscription ${subscriptionUpdated.id} is active for user ${userForUpdate.id}`,
               );
             }
           } else {
             console.log(
-              `[WEBHOOK] Warning: No user found for subscription ${subscriptionUpdated.id}`
+              `[WEBHOOK] Warning: No user found for subscription ${subscriptionUpdated.id}`,
             );
           }
           break;
@@ -4325,27 +4325,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case "customer.subscription.deleted":
           const subscriptionDeleted = event.data.object;
           console.log(
-            `[WEBHOOK] Subscription ${subscriptionDeleted.id} was deleted`
+            `[WEBHOOK] Subscription ${subscriptionDeleted.id} was deleted`,
           );
 
           // Find user and clear their subscription
           const userForDeletion = await storage.getUserByStripeSubscriptionId(
-            subscriptionDeleted.id
+            subscriptionDeleted.id,
           );
 
           if (userForDeletion) {
             console.log(
-              `[WEBHOOK] Clearing subscription for user ${userForDeletion.id}`
+              `[WEBHOOK] Clearing subscription for user ${userForDeletion.id}`,
             );
             await storage.updateUser(userForDeletion.id, {
               stripeSubscriptionId: null,
             });
             console.log(
-              `[WEBHOOK] Subscription cleared for user ${userForDeletion.id} (${userForDeletion.email})`
+              `[WEBHOOK] Subscription cleared for user ${userForDeletion.id} (${userForDeletion.email})`,
             );
           } else {
             console.log(
-              `[WEBHOOK] Warning: No user found for deleted subscription ${subscriptionDeleted.id}`
+              `[WEBHOOK] Warning: No user found for deleted subscription ${subscriptionDeleted.id}`,
             );
           }
           break;
@@ -4380,7 +4380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const subscription = await stripe.subscriptions.update(
           user.stripeSubscriptionId,
-          { cancel_at_period_end: true }
+          { cancel_at_period_end: true },
         );
 
         // If keepAdsLive is false, deactivate deals immediately
@@ -4399,7 +4399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Cancel subscription error:", error);
         res.status(500).json({ message: error.message });
       }
-    }
+    },
   );
 
   // Deal claiming route with Facebook integration
@@ -4455,7 +4455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (emailError) {
           console.error(
             "Failed to send deal claimed notification:",
-            emailError
+            emailError,
           );
         }
 
@@ -4481,7 +4481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error claiming deal:", error);
         res.status(500).json({ message: "Failed to claim deal" });
       }
-    }
+    },
   );
 
   // Get claimed deals for user
@@ -4508,7 +4508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify user owns this restaurant
         const isAuthorized = await storage.verifyRestaurantOwnership(
           restaurantId,
-          req.user.id
+          req.user.id,
         );
         if (!isAuthorized) {
           return res.status(403).json({
@@ -4519,14 +4519,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const claims = await storage.getRestaurantDealClaims(
           restaurantId,
-          status as string
+          status as string,
         );
         res.json(claims);
       } catch (error) {
         console.error("Error fetching restaurant claims:", error);
         res.status(500).json({ message: "Failed to fetch restaurant claims" });
       }
-    }
+    },
   );
 
   // Search suggestions endpoint
@@ -4565,7 +4565,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           restaurant.cuisineType.toLowerCase().includes(searchTerm)
         ) {
           const existing = suggestions.find(
-            (s) => s.text.toLowerCase() === restaurant.cuisineType.toLowerCase()
+            (s) =>
+              s.text.toLowerCase() === restaurant.cuisineType.toLowerCase(),
           );
           if (!existing) {
             suggestions.push({
@@ -4648,7 +4649,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("   Time:", bugReportData.timestamp);
       console.log(
         "   Screenshot:",
-        screenshot ? `${screenshot.substring(0, 50)}...` : "None"
+        screenshot ? `${screenshot.substring(0, 50)}...` : "None",
       );
 
       const success = await emailService.sendBugReport(bugReportData);
@@ -4761,7 +4762,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error checking OAuth status:", error);
         res.status(500).json({ error: "Failed to check OAuth status" });
       }
-    }
+    },
   );
 
   // Health check endpoint for monitoring
@@ -4796,7 +4797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(desc(cities.createdAt));
       const baseUrl = process.env.SERVICE_URL || "https://www.mealscout.us";
       const urls = rows.map(
-        (c: any) => `${baseUrl}/food-trucks/${encodeURIComponent(c.slug)}`
+        (c: any) => `${baseUrl}/food-trucks/${encodeURIComponent(c.slug)}`,
       );
       const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
         .map((u) => `  <url><loc>${u}</loc></url>`)
@@ -4813,9 +4814,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/cities/:slug", async (req, res) => {
     try {
       const { slug } = req.params as { slug: string };
-      const { cities, restaurants, hosts, events, videoStories } = await import(
-        "@shared/schema"
-      );
+      const { cities, restaurants, hosts, events, videoStories } =
+        await import("@shared/schema");
       // Find city record
       const [city] = await db
         .select()
@@ -4831,7 +4831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(restaurants.city, city.name));
       const trucks = cityRestaurants.filter((r: any) => r.isFoodTruck);
       const restaurantsOnly = cityRestaurants.filter(
-        (r: any) => !r.isFoodTruck
+        (r: any) => !r.isFoodTruck,
       );
 
       // Upcoming events in this city (via hosts.city)
@@ -4848,7 +4848,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(events)
           .where(eq(events.status, "open"));
         upcomingEvents = upcomingEvents.filter(
-          (e: any) => new Date(e.date) >= now && hostIds.includes(e.hostId)
+          (e: any) => new Date(e.date) >= now && hostIds.includes(e.hostId),
         );
       }
 
@@ -4861,7 +4861,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(videoStories)
           .orderBy(desc(videoStories.createdAt));
         stories = stories.filter(
-          (s: any) => s.restaurantId && restaurantIds.includes(s.restaurantId)
+          (s: any) => s.restaurantId && restaurantIds.includes(s.restaurantId),
         );
         stories = stories.slice(0, 8);
       }
@@ -4932,7 +4932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await uploadToCloudinary(
           req.file.buffer,
           "restaurant-logos",
-          `restaurant-${restaurantId}-logo`
+          `restaurant-${restaurantId}-logo`,
         );
 
         // Save to database
@@ -4963,7 +4963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error uploading restaurant logo:", error);
         res.status(500).json({ message: "Failed to upload image" });
       }
-    }
+    },
   );
 
   // Upload restaurant cover image
@@ -4996,7 +4996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await uploadToCloudinary(
           req.file.buffer,
           "restaurant-covers",
-          `restaurant-${restaurantId}-cover`
+          `restaurant-${restaurantId}-cover`,
         );
 
         const imageUpload = await db
@@ -5025,7 +5025,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error uploading restaurant cover:", error);
         res.status(500).json({ message: "Failed to upload image" });
       }
-    }
+    },
   );
 
   // Upload deal image
@@ -5063,7 +5063,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await uploadToCloudinary(
           req.file.buffer,
           "deal-images",
-          `deal-${dealId}`
+          `deal-${dealId}`,
         );
 
         const imageUpload = await db
@@ -5091,7 +5091,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error uploading deal image:", error);
         res.status(500).json({ message: "Failed to upload image" });
       }
-    }
+    },
   );
 
   // Upload user profile image
@@ -5114,7 +5114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await uploadToCloudinary(
           req.file.buffer,
           "user-profiles",
-          `user-${req.user.id}`
+          `user-${req.user.id}`,
         );
 
         const imageUpload = await db
@@ -5145,7 +5145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error uploading user profile image:", error);
         res.status(500).json({ message: "Failed to upload image" });
       }
-    }
+    },
   );
 
   // Delete uploaded image
@@ -5200,7 +5200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error checking Golden Fork eligibility:", error);
         res.status(500).json({ message: "Failed to check eligibility" });
       }
-    }
+    },
   );
 
   // Claim Golden Fork award
@@ -5221,7 +5221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error claiming Golden Fork:", error);
         res.status(500).json({ message: "Failed to claim award" });
       }
-    }
+    },
   );
 
   // Get all Golden Fork holders
@@ -5242,10 +5242,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const holdersWithRecommendations = await Promise.all(
         holders.map(async (holder: (typeof holders)[number]) => {
           const recommendationCount = await getUserRecommendationCount(
-            holder.id
+            holder.id,
           );
           return { ...holder, recommendationCount };
-        })
+        }),
       );
 
       res.json(holdersWithRecommendations);
@@ -5307,8 +5307,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(restaurants.hasGoldenPlate, true),
-            like(restaurants.address, `%${area}%`)
-          )
+            like(restaurants.address, `%${area}%`),
+          ),
         );
       res.json(winners);
     } catch (error) {
@@ -5370,7 +5370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error awarding Golden Plates:", error);
         res.status(500).json({ message: "Failed to award Golden Plates" });
       }
-    }
+    },
   );
 
   // Get award history
@@ -5469,15 +5469,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(
     "/api/cron/escalations",
     incidentRoutes.stack.find(
-      (layer: any) => layer.route?.path === "/cron/escalations"
-    )?.handle || ((_req, res) => res.status(404).json({ error: "Not found" }))
+      (layer: any) => layer.route?.path === "/cron/escalations",
+    )?.handle || ((_req, res) => res.status(404).json({ error: "Not found" })),
   );
 
   app.post(
     "/api/cron/auto-close",
     incidentRoutes.stack.find(
-      (layer: any) => layer.route?.path === "/cron/auto-close"
-    )?.handle || ((_req, res) => res.status(404).json({ error: "Not found" }))
+      (layer: any) => layer.route?.path === "/cron/auto-close",
+    )?.handle || ((_req, res) => res.status(404).json({ error: "Not found" })),
   );
 
   const httpServer = createServer(app);

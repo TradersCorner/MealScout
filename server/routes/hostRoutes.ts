@@ -3,7 +3,13 @@ import { z } from "zod";
 import { storage } from "../storage";
 import { emailService } from "../emailService";
 import { db } from "../db";
-import { insertHostSchema, insertEventSchema, events, hosts, eventBookings } from "@shared/schema";
+import {
+  insertHostSchema,
+  insertEventSchema,
+  events,
+  hosts,
+  eventBookings,
+} from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { isAuthenticated } from "../unifiedAuth";
 import Stripe from "stripe";
@@ -422,226 +428,262 @@ export function registerHostRoutes(app: Express) {
         // =====================================================================
 
         // Stripe Connect Onboarding: Host enables payments
-        app.post("/api/hosts/stripe/onboard", isAuthenticated, async (req: any, res) => {
-          try {
-            if (!stripe) {
-              return res.status(500).json({ message: "Stripe not configured" });
-            }
+        app.post(
+          "/api/hosts/stripe/onboard",
+          isAuthenticated,
+          async (req: any, res) => {
+            try {
+              if (!stripe) {
+                return res
+                  .status(500)
+                  .json({ message: "Stripe not configured" });
+              }
 
-            const userId = req.user.id;
-            const host = await getHostByUserId(userId);
-            if (!host) {
-              return res.status(404).json({ message: "Host profile not found" });
-            }
+              const userId = req.user.id;
+              const host = await getHostByUserId(userId);
+              if (!host) {
+                return res
+                  .status(404)
+                  .json({ message: "Host profile not found" });
+              }
 
-            let accountId = host.stripeConnectAccountId;
+              let accountId = host.stripeConnectAccountId;
 
-            // Create Stripe Connect account if not exists
-            if (!accountId) {
-              const account = await stripe.accounts.create({
-                type: "express",
-                country: "US",
-                email: req.user.email,
-                capabilities: {
-                  card_payments: { requested: true },
-                  transfers: { requested: true },
-                },
-                business_type: "individual",
-                metadata: {
-                  hostId: host.id,
-                  businessName: host.businessName,
-                },
+              // Create Stripe Connect account if not exists
+              if (!accountId) {
+                const account = await stripe.accounts.create({
+                  type: "express",
+                  country: "US",
+                  email: req.user.email,
+                  capabilities: {
+                    card_payments: { requested: true },
+                    transfers: { requested: true },
+                  },
+                  business_type: "individual",
+                  metadata: {
+                    hostId: host.id,
+                    businessName: host.businessName,
+                  },
+                });
+
+                accountId = account.id;
+
+                // Save to database
+                await db
+                  .update(hosts)
+                  .set({ stripeConnectAccountId: accountId })
+                  .where(eq(hosts.id, host.id));
+              }
+
+              // Create onboarding link
+              const baseUrl = `${req.protocol}://${req.get("host")}`;
+              const accountLink = await stripe.accountLinks.create({
+                account: accountId,
+                refresh_url: `${baseUrl}/host/dashboard?setup=refresh`,
+                return_url: `${baseUrl}/host/dashboard?setup=complete`,
+                type: "account_onboarding",
               });
 
-              accountId = account.id;
-
-              // Save to database
-              await db
-                .update(hosts)
-                .set({ stripeConnectAccountId: accountId })
-                .where(eq(hosts.id, host.id));
+              res.json({ onboardingUrl: accountLink.url });
+            } catch (error: any) {
+              console.error("Error creating Stripe Connect account:", error);
+              res
+                .status(500)
+                .json({ message: "Failed to initiate Stripe onboarding" });
             }
-
-            // Create onboarding link
-            const baseUrl = `${req.protocol}://${req.get("host")}`;
-            const accountLink = await stripe.accountLinks.create({
-              account: accountId,
-              refresh_url: `${baseUrl}/host/dashboard?setup=refresh`,
-              return_url: `${baseUrl}/host/dashboard?setup=complete`,
-              type: "account_onboarding",
-            });
-
-            res.json({ onboardingUrl: accountLink.url });
-          } catch (error: any) {
-            console.error("Error creating Stripe Connect account:", error);
-            res.status(500).json({ message: "Failed to initiate Stripe onboarding" });
           }
-        });
+        );
 
         // Check Stripe Connect account status
-        app.get("/api/hosts/stripe/status", isAuthenticated, async (req: any, res) => {
-          try {
-            if (!stripe) {
-              return res.status(500).json({ message: "Stripe not configured" });
-            }
+        app.get(
+          "/api/hosts/stripe/status",
+          isAuthenticated,
+          async (req: any, res) => {
+            try {
+              if (!stripe) {
+                return res
+                  .status(500)
+                  .json({ message: "Stripe not configured" });
+              }
 
-            const userId = req.user.id;
-            const host = await getHostByUserId(userId);
-            if (!host) {
-              return res.status(404).json({ message: "Host profile not found" });
-            }
+              const userId = req.user.id;
+              const host = await getHostByUserId(userId);
+              if (!host) {
+                return res
+                  .status(404)
+                  .json({ message: "Host profile not found" });
+              }
 
-            if (!host.stripeConnectAccountId) {
-              return res.json({
-                connected: false,
-                chargesEnabled: false,
-                payoutsEnabled: false,
+              if (!host.stripeConnectAccountId) {
+                return res.json({
+                  connected: false,
+                  chargesEnabled: false,
+                  payoutsEnabled: false,
+                });
+              }
+
+              const account = await stripe.accounts.retrieve(
+                host.stripeConnectAccountId
+              );
+
+              // Update database with current status
+              await db
+                .update(hosts)
+                .set({
+                  stripeChargesEnabled: account.charges_enabled,
+                  stripePayoutsEnabled: account.payouts_enabled,
+                  stripeOnboardingCompleted: account.details_submitted,
+                  stripeConnectStatus: account.charges_enabled
+                    ? "active"
+                    : "pending",
+                })
+                .where(eq(hosts.id, host.id));
+
+              res.json({
+                connected: true,
+                chargesEnabled: account.charges_enabled,
+                payoutsEnabled: account.payouts_enabled,
+                onboardingCompleted: account.details_submitted,
               });
+            } catch (error: any) {
+              console.error("Error checking Stripe status:", error);
+              res
+                .status(500)
+                .json({ message: "Failed to check Stripe status" });
             }
-
-            const account = await stripe.accounts.retrieve(host.stripeConnectAccountId);
-
-            // Update database with current status
-            await db
-              .update(hosts)
-              .set({
-                stripeChargesEnabled: account.charges_enabled,
-                stripePayoutsEnabled: account.payouts_enabled,
-                stripeOnboardingCompleted: account.details_submitted,
-                stripeConnectStatus: account.charges_enabled ? "active" : "pending",
-              })
-              .where(eq(hosts.id, host.id));
-
-            res.json({
-              connected: true,
-              chargesEnabled: account.charges_enabled,
-              payoutsEnabled: account.payouts_enabled,
-              onboardingCompleted: account.details_submitted,
-            });
-          } catch (error: any) {
-            console.error("Error checking Stripe status:", error);
-            res.status(500).json({ message: "Failed to check Stripe status" });
           }
-        });
+        );
 
         // Book an event (creates payment intent with $10 platform fee auto-added)
-        app.post("/api/events/:eventId/book", isAuthenticated, async (req: any, res) => {
-          try {
-            if (!stripe) {
-              return res.status(500).json({ message: "Stripe not configured" });
-            }
+        app.post(
+          "/api/events/:eventId/book",
+          isAuthenticated,
+          async (req: any, res) => {
+            try {
+              if (!stripe) {
+                return res
+                  .status(500)
+                  .json({ message: "Stripe not configured" });
+              }
 
-            const { eventId } = req.params;
-            const { truckId } = req.body;
-            const userId = req.user.id;
+              const { eventId } = req.params;
+              const { truckId } = req.body;
+              const userId = req.user.id;
 
-            if (!truckId) {
-              return res.status(400).json({ message: "Truck ID required" });
-            }
+              if (!truckId) {
+                return res.status(400).json({ message: "Truck ID required" });
+              }
 
-            // Verify truck ownership
-            const truck = await storage.getRestaurant(truckId);
-            if (!truck || truck.ownerId !== userId) {
-              return res.status(403).json({ message: "Not authorized" });
-            }
+              // Verify truck ownership
+              const truck = await storage.getRestaurant(truckId);
+              if (!truck || truck.ownerId !== userId) {
+                return res.status(403).json({ message: "Not authorized" });
+              }
 
-            // Get event
-            const event = await storage.getEvent(eventId);
-            if (!event) {
-              return res.status(404).json({ message: "Event not found" });
-            }
+              // Get event
+              const event = await storage.getEvent(eventId);
+              if (!event) {
+                return res.status(404).json({ message: "Event not found" });
+              }
 
-            if (event.status !== "open") {
-              return res.status(400).json({ message: "Event not available for booking" });
-            }
+              if (event.status !== "open") {
+                return res
+                  .status(400)
+                  .json({ message: "Event not available for booking" });
+              }
 
-            // Get host
-            const host = await storage.getHost(event.hostId);
-            if (!host) {
-              return res.status(404).json({ message: "Host not found" });
-            }
+              // Get host
+              const host = await storage.getHost(event.hostId);
+              if (!host) {
+                return res.status(404).json({ message: "Host not found" });
+              }
 
-            // Verify host has Stripe Connect setup
-            if (!host.stripeConnectAccountId || !host.stripeChargesEnabled) {
-              return res.status(400).json({
-                message: "Host payment setup incomplete. Contact host to enable payments.",
-              });
-            }
+              // Verify host has Stripe Connect setup
+              if (!host.stripeConnectAccountId || !host.stripeChargesEnabled) {
+                return res.status(400).json({
+                  message:
+                    "Host payment setup incomplete. Contact host to enable payments.",
+                });
+              }
 
-            // Check for existing booking
-            const existingBooking = await db
-              .select()
-              .from(eventBookings)
-              .where(eq(eventBookings.eventId, eventId))
-              .where(eq(eventBookings.truckId, truckId))
-              .limit(1);
+              // Check for existing booking
+              const existingBooking = await db
+                .select()
+                .from(eventBookings)
+                .where(eq(eventBookings.eventId, eventId))
+                .where(eq(eventBookings.truckId, truckId))
+                .limit(1);
 
-            if (existingBooking.length > 0) {
-              return res.status(400).json({
-                message: "You already have a booking for this event",
-                bookingId: existingBooking[0].id,
-              });
-            }
+              if (existingBooking.length > 0) {
+                return res.status(400).json({
+                  message: "You already have a booking for this event",
+                  bookingId: existingBooking[0].id,
+                });
+              }
 
-            // Calculate pricing: Host price + $10 platform fee
-            const hostPriceCents = event.hostPriceCents || 0;
-            const platformFeeCents = 1000; // Always $10
-            const totalCents = hostPriceCents + platformFeeCents;
+              // Calculate pricing: Host price + $10 platform fee
+              const hostPriceCents = event.hostPriceCents || 0;
+              const platformFeeCents = 1000; // Always $10
+              const totalCents = hostPriceCents + platformFeeCents;
 
-            // Create booking record
-            const [booking] = await db
-              .insert(eventBookings)
-              .values({
-                eventId,
-                truckId,
-                hostId: event.hostId,
-                hostPriceCents,
-                platformFeeCents,
-                totalCents,
-                status: "pending",
-                stripeApplicationFeeAmount: platformFeeCents,
-                stripeTransferDestination: host.stripeConnectAccountId,
-              })
-              .returning();
+              // Create booking record
+              const [booking] = await db
+                .insert(eventBookings)
+                .values({
+                  eventId,
+                  truckId,
+                  hostId: event.hostId,
+                  hostPriceCents,
+                  platformFeeCents,
+                  totalCents,
+                  status: "pending",
+                  stripeApplicationFeeAmount: platformFeeCents,
+                  stripeTransferDestination: host.stripeConnectAccountId,
+                })
+                .returning();
 
-            // Create Stripe PaymentIntent with Connect
-            const paymentIntent = await stripe.paymentIntents.create({
-              amount: totalCents,
-              currency: "usd",
-              application_fee_amount: platformFeeCents, // $10 to MealScout
-              transfer_data: {
-                destination: host.stripeConnectAccountId, // Rest to host
-              },
-              metadata: {
+              // Create Stripe PaymentIntent as a direct charge on the host's Connect account.
+              // Processing fees will be deducted from the host; the platform receives the $10 application fee.
+              const paymentIntent = await stripe.paymentIntents.create(
+                {
+                  amount: totalCents,
+                  currency: "usd",
+                  application_fee_amount: platformFeeCents, // $10 to MealScout (platform)
+                  metadata: {
+                    bookingId: booking.id,
+                    eventId: event.id,
+                    hostId: host.id,
+                    truckId,
+                    hostPrice: hostPriceCents,
+                    platformFee: platformFeeCents,
+                  },
+                },
+                {
+                  stripeAccount: host.stripeConnectAccountId, // Direct charge: fees come from host, app fee to platform
+                }
+              );
+
+              // Save payment intent ID
+              await db
+                .update(eventBookings)
+                .set({ stripePaymentIntentId: paymentIntent.id })
+                .where(eq(eventBookings.id, booking.id));
+
+              res.json({
                 bookingId: booking.id,
-                eventId: event.id,
-                hostId: host.id,
-                truckId,
-                hostPrice: hostPriceCents,
-                platformFee: platformFeeCents,
-              },
-            });
-
-            // Save payment intent ID
-            await db
-              .update(eventBookings)
-              .set({ stripePaymentIntentId: paymentIntent.id })
-              .where(eq(eventBookings.id, booking.id));
-
-            res.json({
-              bookingId: booking.id,
-              clientSecret: paymentIntent.client_secret,
-              totalCents,
-              breakdown: {
-                hostPrice: hostPriceCents,
-                platformFee: platformFeeCents,
-              },
-            });
-          } catch (error: any) {
-            console.error("Error creating booking:", error);
-            res.status(500).json({ message: "Failed to create booking" });
+                clientSecret: paymentIntent.client_secret,
+                totalCents,
+                breakdown: {
+                  hostPrice: hostPriceCents,
+                  platformFee: platformFeeCents,
+                },
+              });
+            } catch (error: any) {
+              console.error("Error creating booking:", error);
+              res.status(500).json({ message: "Failed to create booking" });
+            }
           }
-        });
+        );
       }
     }
   );

@@ -4211,6 +4211,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           break;
+        case "payment_intent.succeeded":
+          const paymentIntent = event.data.object;
+          console.log(
+            `[WEBHOOK] PaymentIntent ${paymentIntent.id} succeeded for booking ${paymentIntent.metadata.bookingId}`
+          );
+
+          // Update booking status if this is for an event booking
+          if (paymentIntent.metadata.bookingId) {
+            try {
+              const { eventBookings } = await import("@shared/schema");
+              await db
+                .update(eventBookings)
+                .set({
+                  status: "confirmed",
+                  stripePaymentStatus: "succeeded",
+                  paidAt: new Date(),
+                  bookingConfirmedAt: new Date(),
+                })
+                .where(eq(eventBookings.id, paymentIntent.metadata.bookingId));
+
+              console.log(
+                `[WEBHOOK] Booking ${paymentIntent.metadata.bookingId} confirmed`
+              );
+
+              // Update event status to 'booked' if needed
+              if (paymentIntent.metadata.eventId && paymentIntent.metadata.truckId) {
+                const { events } = await import("@shared/schema");
+                await db
+                  .update(events)
+                  .set({
+                    status: "booked",
+                    bookedRestaurantId: paymentIntent.metadata.truckId,
+                  })
+                  .where(eq(events.id, paymentIntent.metadata.eventId));
+
+                console.log(
+                  `[WEBHOOK] Event ${paymentIntent.metadata.eventId} marked as booked by truck ${paymentIntent.metadata.truckId}`
+                );
+              }
+            } catch (error) {
+              console.error("[WEBHOOK] Error confirming booking:", error);
+            }
+          }
+          break;
+
+        case "payment_intent.payment_failed":
+          const failedIntent = event.data.object;
+          console.log(
+            `[WEBHOOK] PaymentIntent ${failedIntent.id} failed for booking ${failedIntent.metadata.bookingId}`
+          );
+
+          if (failedIntent.metadata.bookingId) {
+            try {
+              const { eventBookings } = await import("@shared/schema");
+              await db
+                .update(eventBookings)
+                .set({
+                  status: "cancelled",
+                  stripePaymentStatus: "failed",
+                  cancellationReason: "Payment failed",
+                })
+                .where(eq(eventBookings.id, failedIntent.metadata.bookingId));
+
+              console.log(
+                `[WEBHOOK] Booking ${failedIntent.metadata.bookingId} marked as failed`
+              );
+            } catch (error) {
+              console.error("[WEBHOOK] Error updating failed booking:", error);
+            }
+          }
+          break;
+
 
         case "customer.subscription.updated":
           const subscriptionUpdated = event.data.object;
@@ -4711,6 +4783,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: "Database connection failed",
         timestamp: new Date().toISOString(),
       });
+    }
+  });
+
+  // Dynamic sitemap.xml (proxied by Vercel)
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      const { cities } = await import("@shared/schema");
+      const rows = await db
+        .select()
+        .from(cities)
+        .orderBy(desc(cities.createdAt));
+      const baseUrl = process.env.SERVICE_URL || "https://www.mealscout.us";
+      const urls = rows.map(
+        (c: any) => `${baseUrl}/food-trucks/${encodeURIComponent(c.slug)}`
+      );
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
+        .map((u) => `  <url><loc>${u}</loc></url>`)
+        .join("\n")}\n</urlset>`;
+      res.setHeader("Content-Type", "application/xml");
+      res.send(xml);
+    } catch (e) {
+      console.error("sitemap failed", e);
+      res.status(500).send("<error>failed</error>");
+    }
+  });
+
+  // City landing page API: returns real data for a city slug
+  app.get("/api/cities/:slug", async (req, res) => {
+    try {
+      const { slug } = req.params as { slug: string };
+      const { cities, restaurants, hosts, events, videoStories } = await import(
+        "@shared/schema"
+      );
+      // Find city record
+      const [city] = await db
+        .select()
+        .from(cities)
+        .where(eq(cities.slug, slug));
+      if (!city) {
+        return res.status(404).json({ message: "City not found" });
+      }
+      // Restaurants and trucks in this city
+      const cityRestaurants = await db
+        .select()
+        .from(restaurants)
+        .where(eq(restaurants.city, city.name));
+      const trucks = cityRestaurants.filter((r: any) => r.isFoodTruck);
+      const restaurantsOnly = cityRestaurants.filter(
+        (r: any) => !r.isFoodTruck
+      );
+
+      // Upcoming events in this city (via hosts.city)
+      const hostRows = await db
+        .select()
+        .from(hosts)
+        .where(eq(hosts.city, city.name));
+      const hostIds = hostRows.map((h: any) => h.id);
+      let upcomingEvents: any[] = [];
+      if (hostIds.length) {
+        const now = new Date();
+        upcomingEvents = await db
+          .select()
+          .from(events)
+          .where(eq(events.status, "open"));
+        upcomingEvents = upcomingEvents.filter(
+          (e: any) => new Date(e.date) >= now && hostIds.includes(e.hostId)
+        );
+      }
+
+      // Recent video stories linked to restaurants in this city
+      const restaurantIds = cityRestaurants.map((r: any) => r.id);
+      let stories: any[] = [];
+      if (restaurantIds.length) {
+        stories = await db
+          .select()
+          .from(videoStories)
+          .orderBy(desc(videoStories.createdAt));
+        stories = stories.filter(
+          (s: any) => s.restaurantId && restaurantIds.includes(s.restaurantId)
+        );
+        stories = stories.slice(0, 8);
+      }
+
+      // Cuisine counts
+      const cuisineCounts: Record<string, number> = {};
+      for (const r of cityRestaurants) {
+        if ((r as any).cuisineType) {
+          const c = String((r as any).cuisineType).toLowerCase();
+          cuisineCounts[c] = (cuisineCounts[c] || 0) + 1;
+        }
+      }
+
+      res.json({
+        city: { name: city.name, slug: city.slug, state: city.state },
+        stats: {
+          restaurants: restaurantsOnly.length,
+          trucks: trucks.length,
+          events: upcomingEvents.length,
+        },
+        restaurants: restaurantsOnly,
+        trucks,
+        events: upcomingEvents,
+        cuisines: Object.entries(cuisineCounts)
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 12),
+        stories,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error building city page:", error);
+      res.status(500).json({ message: "Failed to load city" });
     }
   });
 

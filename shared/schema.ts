@@ -1,4 +1,19 @@
 import { sql } from "drizzle-orm";
+// Cities registry for SEO landing pages
+export const cities = pgTable(
+  "cities",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    name: varchar("name").notNull(),
+    slug: varchar("slug").notNull(),
+    state: varchar("state"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_cities_slug").on(table.slug),
+    index("idx_cities_name_state").on(table.name, table.state),
+  ]
+);
 import {
   index,
   jsonb,
@@ -175,6 +190,8 @@ export const restaurants = pgTable("restaurants", {
   // Image uploads
   logoUrl: varchar("logo_url"),
   coverImageUrl: varchar("cover_image_url"),
+  city: varchar("city"),
+  state: varchar("state"),
   // Business profile information (for customer-facing display and LLM crawling)
   description: text("description"), // About the business
   websiteUrl: varchar("website_url"), // Business website
@@ -1169,6 +1186,8 @@ export const insertRestaurantSchema = createInsertSchema(restaurants)
       })
       .optional()
       .nullable(),
+    city: z.string().min(1, "City is required"),
+    state: z.string().min(2, "State is required"),
   });
 
 export const insertDealSchema = createInsertSchema(deals)
@@ -1908,6 +1927,8 @@ export const hosts = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     businessName: varchar("business_name").notNull(),
     address: text("address").notNull(),
+    city: varchar("city"),
+    state: varchar("state"),
     latitude: decimal("latitude", { precision: 10, scale: 8 }),
     longitude: decimal("longitude", { precision: 11, scale: 8 }),
     locationType: varchar("location_type").notNull(), // 'office' | 'bar' | 'brewery' | 'other'
@@ -1917,6 +1938,12 @@ export const hosts = pgTable(
     notes: text("notes"),
     isVerified: boolean("is_verified").default(false),
     adminCreated: boolean("admin_created").default(false),
+    // Stripe Connect for receiving payments
+    stripeConnectAccountId: varchar("stripe_connect_account_id"),
+    stripeConnectStatus: varchar("stripe_connect_status").default("pending"),
+    stripeOnboardingCompleted: boolean("stripe_onboarding_completed").default(false),
+    stripeChargesEnabled: boolean("stripe_charges_enabled").default(false),
+    stripePayoutsEnabled: boolean("stripe_payouts_enabled").default(false),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
@@ -1924,6 +1951,7 @@ export const hosts = pgTable(
     index("idx_hosts_user").on(table.userId),
     index("idx_hosts_verified").on(table.isVerified),
     index("idx_hosts_location").on(table.latitude, table.longitude),
+    index("idx_hosts_stripe_account").on(table.stripeConnectAccountId),
   ]
 );
 
@@ -1986,6 +2014,11 @@ export const events = pgTable(
     ),
     // Capacity Guard v2.2
     hardCapEnabled: boolean("hard_cap_enabled").default(false),
+    // Pricing for Parking Pass
+    hostPriceCents: integer("host_price_cents"), // Host sets this, NULL = free
+    requiresPayment: boolean("requires_payment").default(false),
+    stripeProductId: varchar("stripe_product_id"),
+    stripePriceId: varchar("stripe_price_id"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
@@ -1995,6 +2028,7 @@ export const events = pgTable(
     index("idx_events_date").on(table.date),
     index("idx_events_status").on(table.status),
     index("idx_events_booked_restaurant").on(table.bookedRestaurantId),
+    index("idx_events_requires_payment").on(table.requiresPayment),
   ]
 );
 
@@ -2059,6 +2093,58 @@ export const hostReviews = pgTable(
     index("idx_host_reviews_approved").on(table.isApproved),
     // Ensure one review per truck per host location
     unique("uq_host_reviews_host_truck").on(table.hostId, table.truckId),
+  ]
+);
+
+// Event Bookings: Parking Pass payments with host pricing + $10 MealScout fee
+export const eventBookings = pgTable(
+  "event_bookings",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    eventId: varchar("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    truckId: varchar("truck_id")
+      .notNull()
+      .references(() => restaurants.id, { onDelete: "cascade" }),
+    hostId: varchar("host_id")
+      .notNull()
+      .references(() => hosts.id, { onDelete: "cascade" }),
+    // Pricing (locked at booking time so changes don't affect existing bookings)
+    hostPriceCents: integer("host_price_cents").notNull(), // What host set
+    platformFeeCents: integer("platform_fee_cents").notNull().default(1000), // Always $10
+    totalCents: integer("total_cents").notNull(), // host_price + platform_fee (what truck pays)
+    // Payment status
+    status: varchar("status").notNull().default("pending"), // 'pending' | 'confirmed' | 'cancelled' | 'refunded'
+    stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+    stripePaymentStatus: varchar("stripe_payment_status"), // 'pending' | 'succeeded' | 'failed'
+    paidAt: timestamp("paid_at"),
+    // Stripe Connect (splits payment between platform and host)
+    stripeApplicationFeeAmount: integer("stripe_application_fee_amount").default(1000), // Always $10 to platform
+    stripeTransferDestination: varchar("stripe_transfer_destination"), // Host's Stripe Connect account ID
+    // Refunds
+    refundStatus: varchar("refund_status").default("none"), // 'none' | 'partial' | 'full'
+    refundAmountCents: integer("refund_amount_cents"),
+    refundedAt: timestamp("refunded_at"),
+    refundReason: text("refund_reason"),
+    // Metadata
+    bookingConfirmedAt: timestamp("booking_confirmed_at"),
+    cancelledAt: timestamp("cancelled_at"),
+    cancellationReason: text("cancellation_reason"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_bookings_event").on(table.eventId),
+    index("idx_bookings_truck").on(table.truckId),
+    index("idx_bookings_host").on(table.hostId),
+    index("idx_bookings_status").on(table.status),
+    index("idx_bookings_payment_intent").on(table.stripePaymentIntentId),
+    index("idx_bookings_created").on(table.createdAt),
+    // One booking per truck per event
+    unique("uq_bookings_event_truck").on(table.eventId, table.truckId),
   ]
 );
 
@@ -2565,6 +2651,7 @@ export const hostsRelations = relations(hosts, ({ one, many }) => ({
   }),
   events: many(events),
   reviews: many(hostReviews),
+  bookings: many(eventBookings),
 }));
 
 export const eventInterestsRelations = relations(eventInterests, ({ one }) => ({
@@ -2588,6 +2675,7 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
     references: [restaurants.id],
   }),
   interests: many(eventInterests),
+  bookings: many(eventBookings),
 }));
 
 export const hostReviewsRelations = relations(hostReviews, ({ one }) => ({
@@ -2602,6 +2690,21 @@ export const hostReviewsRelations = relations(hostReviews, ({ one }) => ({
   user: one(users, {
     fields: [hostReviews.userId],
     references: [users.id],
+  }),
+}));
+
+export const eventBookingsRelations = relations(eventBookings, ({ one }) => ({
+  event: one(events, {
+    fields: [eventBookings.eventId],
+    references: [events.id],
+  }),
+  truck: one(restaurants, {
+    fields: [eventBookings.truckId],
+    references: [restaurants.id],
+  }),
+  host: one(hosts, {
+    fields: [eventBookings.hostId],
+    references: [hosts.id],
   }),
 }));
 
@@ -2945,6 +3048,10 @@ export const insertHostSchema = createInsertSchema(hosts).omit({
   updatedAt: true,
   isVerified: true,
 });
+  .extend({
+    city: z.string().min(1, "City is required"),
+    state: z.string().min(2, "State is required"),
+  });
 
 export type Host = typeof hosts.$inferSelect;
 export type InsertHost = z.infer<typeof insertHostSchema>;
@@ -2989,6 +3096,19 @@ export const insertHostReviewSchema = createInsertSchema(hostReviews).omit({
 
 export type HostReview = typeof hostReviews.$inferSelect;
 export type InsertHostReview = z.infer<typeof insertHostReviewSchema>;
+
+export const insertEventBookingSchema = createInsertSchema(eventBookings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  paidAt: true,
+  bookingConfirmedAt: true,
+  cancelledAt: true,
+  refundedAt: true,
+});
+
+export type EventBooking = typeof eventBookings.$inferSelect;
+export type InsertEventBooking = z.infer<typeof insertEventBookingSchema>;
 
 // Telemetry: Generic event tracking for analytics
 export const telemetryEvents = pgTable(

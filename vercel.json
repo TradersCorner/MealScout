@@ -30,6 +30,10 @@
     {
       "source": "/socket.io/:path*",
       "destination": "https://mealscout.onrender.com/socket.io/:path*"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "https://mealscout.onrender.com/sitemap.xml"
     }
   ]
 }

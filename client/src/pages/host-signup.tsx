@@ -26,6 +26,8 @@ function HostSignup() {
   // Form State
   const [businessName, setBusinessName] = useState("");
   const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
@@ -55,6 +57,8 @@ function HostSignup() {
               const parsed = JSON.parse(stored) as Partial<{
                 businessName: string;
                 address: string;
+                city: string;
+                state: string;
                 contactName: string;
                 contactEmail: string;
                 contactPhone: string;
@@ -63,6 +67,8 @@ function HostSignup() {
               }>;
               if (parsed.businessName) setBusinessName(parsed.businessName);
               if (parsed.address) setAddress(parsed.address);
+              if (parsed.city) setCity(parsed.city);
+              if (parsed.state) setState(parsed.state);
               if (parsed.contactName) setContactName(parsed.contactName);
               if (parsed.contactEmail) setContactEmail(parsed.contactEmail);
               if (parsed.contactPhone) setContactPhone(parsed.contactPhone);
@@ -85,6 +91,8 @@ function HostSignup() {
       const payload = {
         businessName,
         address,
+        city,
+        state,
         contactName,
         contactEmail,
         contactPhone,
@@ -102,6 +110,8 @@ function HostSignup() {
     isLoading,
     businessName,
     address,
+    city,
+    state,
     contactName,
     contactEmail,
     contactPhone,
@@ -115,6 +125,8 @@ function HostSignup() {
     if (!businessName.trim())
       validationErrors.businessName = "Business name is required";
     if (!address.trim()) validationErrors.address = "Address is required";
+    if (!city.trim()) validationErrors.city = "City is required";
+    if (!state.trim()) validationErrors.state = "State is required";
     if (!contactName.trim())
       validationErrors.contactName = "Contact name is required";
     if (!contactEmail.trim())
@@ -139,6 +151,8 @@ function HostSignup() {
         body: JSON.stringify({
           businessName,
           address,
+          city,
+          state,
           contactName,
           contactEmail,
           contactPhone,
@@ -237,11 +251,39 @@ function HostSignup() {
               id="address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="123 Main St, City, State"
+              placeholder="123 Main St"
             />
             {errors.address && (
               <p className="text-sm text-rose-600">{errors.address}</p>
             )}
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="city">City</Label>
+              <Input
+                id="city"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. Austin"
+              />
+              {errors.city && (
+                <p className="text-sm text-rose-600">{errors.city}</p>
+              )}
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="state">State</Label>
+              <Input
+                id="state"
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                placeholder="e.g. TX"
+              />
+              {errors.state && (
+                <p className="text-sm text-rose-600">{errors.state}</p>
+              )}
+            </div>
           </div>
 
           <div className="grid gap-2">

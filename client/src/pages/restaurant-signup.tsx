@@ -52,6 +52,8 @@ import { HOST_ONBOARDING_COPY as COPY } from "@/copy/hostOnboarding.copy";
 const restaurantSchema = z.object({
   name: z.string().min(1, COPY.validation.restaurant.nameRequired),
   address: z.string().min(1, COPY.validation.restaurant.addressRequired),
+  city: z.string().min(1, "City is required"),
+  state: z.string().min(2, "State is required"),
   phone: z.string().min(10, COPY.validation.restaurant.phoneInvalid),
   businessType: z.enum(["restaurant", "bar", "food_truck"], {
     required_error: COPY.validation.restaurant.businessTypeRequired,
@@ -222,6 +224,8 @@ export default function RestaurantSignup() {
     const base: RestaurantFormData = {
       name: "",
       address: "",
+      city: "",
+      state: "",
       phone: "",
       businessType: "food_truck",
       cuisineType: "",
@@ -352,6 +356,8 @@ export default function RestaurantSignup() {
           restaurantData: {
             name: data.name,
             address: data.address,
+            city: data.city,
+            state: data.state,
             phone: data.phone,
             businessType: data.businessType,
             cuisineType: data.cuisineType,
@@ -384,6 +390,8 @@ export default function RestaurantSignup() {
           restaurantData: {
             name: data.name,
             address: data.address,
+            city: data.city,
+            state: data.state,
             phone: data.phone,
             businessType: data.businessType,
             cuisineType: data.cuisineType,

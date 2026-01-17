@@ -573,6 +573,13 @@ export class DatabaseStorage implements IStorage {
   // Host operations
   async createHost(host: InsertHost): Promise<Host> {
     const [newHost] = await db.insert(hosts).values(host).returning();
+    try {
+      if (newHost.city) {
+        await this.ensureCityExists(newHost.city, newHost.state || null);
+      }
+    } catch (e) {
+      console.warn("ensureCityExists failed for host", e);
+    }
     return newHost;
   }
 
@@ -1410,7 +1417,35 @@ export class DatabaseStorage implements IStorage {
       .insert(restaurants)
       .values(restaurantData)
       .returning();
+    try {
+      if ((newRestaurant as any).city) {
+        await this.ensureCityExists(
+          (newRestaurant as any).city,
+          (newRestaurant as any).state || null
+        );
+      }
+    } catch (e) {
+      console.warn("ensureCityExists failed for restaurant", e);
+    }
     return newRestaurant;
+  }
+
+  async ensureCityExists(name: string, state: string | null): Promise<void> {
+    const { cities } = await import("@shared/schema");
+    const slug = name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-");
+    try {
+      await db
+        .insert(cities)
+        .values({ name, slug, state: state || null })
+        .onConflictDoNothing();
+    } catch (e) {
+      // ignore duplicates
+    }
   }
 
   async getRestaurant(id: string): Promise<Restaurant | undefined> {

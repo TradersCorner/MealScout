@@ -18,6 +18,7 @@ const Home = lazy(() => import("@/pages/home"));
 const Landing = lazy(() => import("@/pages/landing"));
 const CustomerSignup = lazy(() => import("@/pages/customer-signup"));
 const RestaurantSignup = lazy(() => import("@/pages/restaurant-signup"));
+const CityLanding = lazy(() => import("@/pages/city-landing"));
 const DealCreation = lazy(() => import("@/pages/deal-creation"));
 const DealEdit = lazy(() => import("@/pages/deal-edit"));
 const DealDetail = lazy(() => import("@/pages/deal-detail"));
@@ -149,6 +150,7 @@ function Router() {
             <Route path="/find-food" component={FindFood} />
             <Route path="/event-signup" component={EventSignup} />
             <Route path="/events" component={EventsPage} />
+            <Route path="/food-trucks/:citySlug" component={CityLanding} />
             <Route path="/sitemap" component={Sitemap} />
             <Route
               path="/golden-plate-winners"

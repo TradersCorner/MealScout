@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { useParams, Link } from "wouter";
 import Navigation from "@/components/navigation";
 import DealCard from "@/components/deal-card";
@@ -10,9 +11,36 @@ import { MapPin, Phone, Star, Clock, Navigation as DirectionsIcon, Heart, CheckC
 import { SEOHead } from "@/components/seo-head";
 import { MinimalFAQ } from "@/components/seo-faq";
 import { generateRestaurantSchema } from "@/lib/schema-helpers";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function RestaurantDetailPage() {
   const { id: restaurantId } = useParams();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
+  const [bookingForm, setBookingForm] = useState({
+    name: "",
+    email: user?.email || "",
+    phone: "",
+    expectedGuests: "",
+    date: "",
+    startTime: "",
+    endTime: "",
+    location: "",
+    notes: "",
+  });
 
   const { data: restaurant, isLoading: restaurantLoading } = useQuery({
     queryKey: ["/api/restaurants", restaurantId],
@@ -33,6 +61,79 @@ export default function RestaurantDetailPage() {
     queryKey: ["/api/deals/featured"],
     enabled: true,
   });
+
+  const isStaffOrAdmin =
+    user?.userType === "staff" ||
+    user?.userType === "admin" ||
+    user?.userType === "super_admin";
+
+  const isFoodTruck =
+    (restaurant as any)?.isFoodTruck ||
+    (restaurant as any)?.businessType === "food_truck";
+
+  const { data: scheduleData, isLoading: scheduleLoading } = useQuery({
+    queryKey: ["/api/bookings/truck", restaurantId, "schedule"],
+    enabled: !!restaurantId && !!isFoodTruck && isStaffOrAdmin,
+    queryFn: async () => {
+      const res = await fetch(`/api/bookings/truck/${restaurantId}/schedule`);
+      if (!res.ok) {
+        throw new Error("Failed to load schedule");
+      }
+      return res.json();
+    },
+  });
+
+  const scheduleItems = Array.isArray(scheduleData?.schedule)
+    ? scheduleData.schedule
+    : [];
+
+  const handleBookingFieldChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
+    setBookingForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubmitBookingRequest = async () => {
+    if (!restaurantId) return;
+    setIsSubmittingBooking(true);
+    try {
+      const res = await fetch(`/api/trucks/${restaurantId}/booking-request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bookingForm),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to send request");
+      }
+
+      toast({
+        title: "Request sent",
+        description: "The truck owner will follow up by email.",
+      });
+
+      setBookingForm({
+        name: "",
+        email: user?.email || "",
+        phone: "",
+        expectedGuests: "",
+        date: "",
+        startTime: "",
+        endTime: "",
+        location: "",
+        notes: "",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Request failed",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmittingBooking(false);
+    }
+  };
 
   if (restaurantLoading) {
     return (
@@ -196,23 +297,188 @@ export default function RestaurantDetailPage() {
               <Phone className="w-4 h-4 mr-2" />
               Call
             </Button>
-            <Link
-              href={`/parking-pass?hostId=${restaurantId ?? ""}&source=profile`}
-            >
+            {isFoodTruck && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    data-testid="button-book-truck"
+                  >
+                    Book This Truck
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Book {restaurantName}</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="name">Your Name</Label>
+                      <Input
+                        id="name"
+                        name="name"
+                        value={bookingForm.name}
+                        onChange={handleBookingFieldChange}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={bookingForm.email}
+                        onChange={handleBookingFieldChange}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="phone">Phone</Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        value={bookingForm.phone}
+                        onChange={handleBookingFieldChange}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="expectedGuests">Expected Guests</Label>
+                      <Input
+                        id="expectedGuests"
+                        name="expectedGuests"
+                        value={bookingForm.expectedGuests}
+                        onChange={handleBookingFieldChange}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="date">Date</Label>
+                      <Input
+                        id="date"
+                        name="date"
+                        type="date"
+                        value={bookingForm.date}
+                        onChange={handleBookingFieldChange}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="startTime">Start Time</Label>
+                      <Input
+                        id="startTime"
+                        name="startTime"
+                        type="time"
+                        value={bookingForm.startTime}
+                        onChange={handleBookingFieldChange}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="endTime">End Time</Label>
+                      <Input
+                        id="endTime"
+                        name="endTime"
+                        type="time"
+                        value={bookingForm.endTime}
+                        onChange={handleBookingFieldChange}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="location">Location</Label>
+                      <Input
+                        id="location"
+                        name="location"
+                        value={bookingForm.location}
+                        onChange={handleBookingFieldChange}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="notes">Notes</Label>
+                      <Textarea
+                        id="notes"
+                        name="notes"
+                        value={bookingForm.notes}
+                        onChange={handleBookingFieldChange}
+                        rows={4}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      onClick={handleSubmitBookingRequest}
+                      disabled={isSubmittingBooking}
+                    >
+                      {isSubmittingBooking ? "Sending..." : "Send Request"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+            {!isFoodTruck && (
               <Button
                 variant="outline"
                 className="flex-1"
-                data-testid="button-parking-pass"
+                data-testid="button-view-specials"
+                onClick={() =>
+                  document
+                    .getElementById("restaurant-specials")
+                    ?.scrollIntoView({ behavior: "smooth" })
+                }
               >
-                Parking Pass
+                View Specials
               </Button>
-            </Link>
+            )}
           </div>
         </div>
 
-        {/* Current Deals */}
-        <div className="mb-8">
-          <h2 className="text-xl font-bold text-foreground mb-4">Current Deals</h2>
+        {isFoodTruck && isStaffOrAdmin && (
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-foreground mb-4">
+              Upcoming Schedule
+            </h2>
+            {scheduleLoading ? (
+              <Card>
+                <CardContent className="p-6 text-center text-muted-foreground">
+                  Loading schedule...
+                </CardContent>
+              </Card>
+            ) : scheduleItems.length > 0 ? (
+              <div className="space-y-3">
+                {scheduleItems.map((item: any) => (
+                  <Card key={`${item.type}-${item.event.id}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-semibold text-foreground">
+                            {new Date(item.event.date).toLocaleDateString()} ·{" "}
+                            {item.event.startTime} - {item.event.endTime}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {item.host.businessName} · {item.host.address}
+                          </p>
+                        </div>
+                        <Badge variant="secondary">
+                          {item.type === "booking"
+                            ? "Booked"
+                            : "Accepted"}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="p-6 text-center text-muted-foreground">
+                  No upcoming bookings or accepted events yet.
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* Current Specials */}
+        <div className="mb-8" id="restaurant-specials">
+          <h2 className="text-xl font-bold text-foreground mb-4">
+            Current Specials
+          </h2>
           {restaurantDeals.length > 0 ? (
             <div className="space-y-4">
               {restaurantDeals.map((deal: any) => (
@@ -225,7 +491,9 @@ export default function RestaurantDetailPage() {
                 <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <span className="text-2xl">🎯</span>
                 </div>
-                <p className="text-muted-foreground">No current deals available</p>
+                <p className="text-muted-foreground">
+                  No current specials available
+                </p>
                 <p className="text-sm text-muted-foreground mt-1">Check back soon!</p>
               </CardContent>
             </Card>
@@ -291,8 +559,8 @@ export default function RestaurantDetailPage() {
                 answer: `Contact ${restaurantName} directly at ${(restaurant as any)?.phone || 'their phone number'} to inquire about delivery options and availability in your area.`
               },
               {
-                question: `What are the current deals at ${restaurantName}?`,
-                answer: `${restaurantName} has ${restaurantDeals.length} active deals available on MealScout. View all current deals and claim offers directly from this page.`
+                question: `What are the current specials at ${restaurantName}?`,
+                answer: `${restaurantName} has ${restaurantDeals.length} active specials available on MealScout. View all current specials and claim offers directly from this page.`
               },
               {
                 question: `What type of cuisine does ${restaurantName} serve?`,

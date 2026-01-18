@@ -95,7 +95,7 @@ export default function DealDetail() {
     },
     onSuccess: () => {
       toast({
-        title: "Deal Claimed!",
+        title: "Special Claimed!",
         description:
           "You have successfully claimed this deal. Show this to the restaurant.",
       });
@@ -142,7 +142,7 @@ export default function DealDetail() {
         <Card>
           <CardContent className="p-6 text-center">
             <i className="fas fa-exclamation-triangle text-muted-foreground text-3xl mb-4"></i>
-            <p className="text-muted-foreground mb-4">Deal not found</p>
+            <p className="text-muted-foreground mb-4">Special not found</p>
             <Link href="/">
               <Button>Back to Home</Button>
             </Link>
@@ -168,11 +168,11 @@ export default function DealDetail() {
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
-  const dealTitle = (deal as Deal)?.title || "Food Deal";
+  const dealTitle = (deal as Deal)?.title || "Food Special";
   const restaurantName = (restaurant as Restaurant)?.name || "Restaurant";
   const dealDescription =
     (deal as Deal)?.description ||
-    "Exclusive food deal from a local restaurant";
+    "Exclusive food special from a local restaurant";
   const discountValue = (deal as Deal)?.discountValue || "";
   const dealType = (deal as Deal)?.dealType || "";
 
@@ -204,15 +204,15 @@ export default function DealDetail() {
           dealType === "percentage"
             ? `Get ${discountValue}% off`
             : `Save $${discountValue}`
-        } at ${restaurantName}. Claim this exclusive deal now on MealScout!`}
-        keywords={`${restaurantName}, ${dealTitle}, food deal, restaurant discount, ${
+        } at ${restaurantName}. Claim this exclusive special now on MealScout!`}
+        keywords={`${restaurantName}, ${dealTitle}, food special, restaurant discount, ${
           (restaurant as Restaurant)?.cuisineType || "food"
         }`}
         canonicalUrl={`https://mealscout.us/deals/${dealId}`}
         schemaData={offerSchema}
       />
       <BackHeader
-        title="Deal Details"
+        title="Special Details"
         fallbackHref="/"
         icon={Tag}
         className="bg-white sticky top-0 z-10"
@@ -438,7 +438,7 @@ export default function DealDetail() {
                         className="text-sm text-foreground"
                         data-testid={`text-review-comment-${index}`}
                       >
-                        {review.comment || "Great deal!"}
+                        {review.comment || "Great special!"}
                       </p>
                     </CardContent>
                   </Card>
@@ -473,7 +473,7 @@ export default function DealDetail() {
           className="text-center text-xs text-muted-foreground mt-2"
           data-testid="text-deal-expires"
         >
-          Deal expires in{" "}
+          Special expires in{" "}
           {Math.ceil(
             (new Date((deal as Deal)?.endDate || Date.now()).getTime() -
               Date.now()) /

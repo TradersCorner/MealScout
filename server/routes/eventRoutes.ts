@@ -2,7 +2,11 @@ import type { Express } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
 import { emailService } from "../emailService";
-import { isAuthenticated, isRestaurantOwner } from "../unifiedAuth";
+import {
+  isAuthenticated,
+  isRestaurantOwner,
+  isStaffOrAdmin,
+} from "../unifiedAuth";
 import { insertEventInterestSchema } from "@shared/schema";
 
 export function registerEventRoutes(app: Express) {
@@ -139,4 +143,57 @@ export function registerEventRoutes(app: Express) {
       }
     }
   );
+
+  app.post("/api/events/signup", isStaffOrAdmin, async (req: any, res) => {
+    try {
+      const schema = z.object({
+        eventName: z.string().min(1),
+        date: z.string().min(1),
+        city: z.string().min(1),
+        expectedCrowd: z.string().min(1),
+        contactEmail: z.string().email(),
+        contactPhone: z.string().optional(),
+        notes: z.string().optional(),
+      });
+
+      const parsed = schema.parse(req.body);
+
+      const adminEmail =
+        process.env.ADMIN_ALERT_EMAIL || "info.mealscout@gmail.com";
+
+      const subject = `New event coordinator request: ${parsed.eventName}`;
+      const html = `
+        <h2>New event coordinator request</h2>
+        <p><strong>Event:</strong> ${parsed.eventName}</p>
+        <p><strong>Date:</strong> ${parsed.date}</p>
+        <p><strong>City:</strong> ${parsed.city}</p>
+        <p><strong>Expected Crowd:</strong> ${parsed.expectedCrowd}</p>
+        <p><strong>Contact Email:</strong> ${parsed.contactEmail}</p>
+        ${parsed.contactPhone ? `<p><strong>Phone:</strong> ${parsed.contactPhone}</p>` : ""}
+        ${parsed.notes ? `<p><strong>Notes:</strong> ${parsed.notes}</p>` : ""}
+      `;
+
+      await emailService.sendBasicEmail(adminEmail, subject, html);
+
+      await storage.createTelemetryEvent({
+        eventName: "event_coordinator_request_created",
+        userId: req.user.id,
+        properties: {
+          eventName: parsed.eventName,
+          city: parsed.city,
+          expectedCrowd: parsed.expectedCrowd,
+        },
+      });
+
+      res.json({ message: "Request submitted" });
+    } catch (error: any) {
+      console.error("Error submitting event coordinator request:", error);
+      if (error instanceof z.ZodError) {
+        return res
+          .status(400)
+          .json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to submit request" });
+    }
+  });
 }

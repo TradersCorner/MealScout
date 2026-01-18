@@ -1,8 +1,17 @@
 import type { Express } from "express";
+import { z } from "zod";
 import { db } from "../db";
-import { eventBookings, events, hosts, restaurants } from "@shared/schema";
-import { eq, and, or, desc } from "drizzle-orm";
-import { isAuthenticated } from "../unifiedAuth";
+import {
+  eventBookings,
+  eventInterests,
+  events,
+  hosts,
+  restaurants,
+} from "@shared/schema";
+import { eq, and, or, desc, gte } from "drizzle-orm";
+import { isAuthenticated, isStaffOrAdmin } from "../unifiedAuth";
+import { storage } from "../storage";
+import { emailService } from "../emailService";
 
 /**
  * Booking Management Routes
@@ -258,6 +267,208 @@ export function registerBookingRoutes(app: Express) {
       } catch (error) {
         console.error("Error cancelling booking:", error);
         res.status(500).json({ message: "Failed to cancel booking" });
+      }
+    },
+  );
+
+  // Admin/staff-only: public profile schedule (booked + accepted events)
+  app.get(
+    "/api/bookings/truck/:truckId/schedule",
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const { truckId } = req.params;
+
+        const [truck] = await db
+          .select({ id: restaurants.id, name: restaurants.name })
+          .from(restaurants)
+          .where(eq(restaurants.id, truckId));
+
+        if (!truck) {
+          return res.status(404).json({ message: "Truck not found" });
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const bookingRows = await db
+          .select({
+            eventId: eventBookings.eventId,
+            status: eventBookings.status,
+            bookingConfirmedAt: eventBookings.bookingConfirmedAt,
+            createdAt: eventBookings.createdAt,
+            event: events,
+            host: hosts,
+          })
+          .from(eventBookings)
+          .innerJoin(events, eq(eventBookings.eventId, events.id))
+          .innerJoin(hosts, eq(eventBookings.hostId, hosts.id))
+          .where(
+            and(
+              eq(eventBookings.truckId, truckId),
+              or(
+                eq(eventBookings.status, "confirmed"),
+                eq(eventBookings.status, "pending"),
+              ),
+              or(eq(events.status, "open"), eq(events.status, "booked")),
+              gte(events.date, today),
+            ),
+          )
+          .orderBy(desc(events.date));
+
+        const acceptedInterestRows = await db
+          .select({
+            eventId: eventInterests.eventId,
+            status: eventInterests.status,
+            createdAt: eventInterests.createdAt,
+            event: events,
+            host: hosts,
+          })
+          .from(eventInterests)
+          .innerJoin(events, eq(eventInterests.eventId, events.id))
+          .innerJoin(hosts, eq(events.hostId, hosts.id))
+          .where(
+            and(
+              eq(eventInterests.truckId, truckId),
+              eq(eventInterests.status, "accepted"),
+              or(eq(events.status, "open"), eq(events.status, "booked")),
+              gte(events.date, today),
+            ),
+          )
+          .orderBy(desc(events.date));
+
+        const bookingEventIds = new Set(
+          bookingRows.map((row) => row.eventId),
+        );
+
+        const schedule = [
+          ...bookingRows.map((row) => ({
+            type: "booking",
+            status: row.status,
+            createdAt: row.createdAt,
+            bookingConfirmedAt: row.bookingConfirmedAt,
+            event: {
+              id: row.event.id,
+              date: row.event.date,
+              startTime: row.event.startTime,
+              endTime: row.event.endTime,
+              status: row.event.status,
+              hostPriceCents: row.event.hostPriceCents,
+              requiresPayment: row.event.requiresPayment,
+            },
+            host: {
+              businessName: row.host.businessName,
+              address: row.host.address,
+              locationType: row.host.locationType,
+            },
+          })),
+          ...acceptedInterestRows
+            .filter((row) => !bookingEventIds.has(row.eventId))
+            .map((row) => ({
+              type: "accepted_interest",
+              status: row.status,
+              createdAt: row.createdAt,
+              event: {
+                id: row.event.id,
+                date: row.event.date,
+                startTime: row.event.startTime,
+                endTime: row.event.endTime,
+                status: row.event.status,
+                hostPriceCents: row.event.hostPriceCents,
+                requiresPayment: row.event.requiresPayment,
+              },
+              host: {
+                businessName: row.host.businessName,
+                address: row.host.address,
+                locationType: row.host.locationType,
+              },
+            })),
+        ];
+
+        res.json({
+          truck: { id: truck.id, name: truck.name },
+          schedule,
+        });
+      } catch (error) {
+        console.error("Error fetching truck schedule:", error);
+        res.status(500).json({ message: "Failed to fetch schedule" });
+      }
+    },
+  );
+
+  // Admin/staff-only: booking request from public profile
+  app.post(
+    "/api/trucks/:truckId/booking-request",
+    async (req: any, res) => {
+      try {
+        const { truckId } = req.params;
+
+        const schema = z.object({
+          name: z.string().min(1),
+          email: z.string().email(),
+          phone: z.string().min(5),
+          expectedGuests: z.string().min(1),
+          date: z.string().min(1),
+          startTime: z.string().min(1),
+          endTime: z.string().min(1),
+          location: z.string().min(1),
+          notes: z.string().optional(),
+        });
+
+        const parsed = schema.parse(req.body);
+
+        const truck = await storage.getRestaurant(truckId);
+        if (!truck) {
+          return res.status(404).json({ message: "Truck not found" });
+        }
+
+        const owner = await storage.getUser(truck.ownerId);
+        if (!owner || !owner.email) {
+          return res
+            .status(400)
+            .json({ message: "Truck owner email not available" });
+        }
+
+        const subject = `New booking request for ${truck.name}`;
+        const html = `
+          <h2>New booking request for ${truck.name}</h2>
+          <p><strong>Requester:</strong> ${parsed.name}</p>
+          <p><strong>Email:</strong> ${parsed.email}</p>
+          <p><strong>Phone:</strong> ${parsed.phone}</p>
+          <p><strong>Expected Guests:</strong> ${parsed.expectedGuests}</p>
+          <p><strong>Date:</strong> ${parsed.date}</p>
+          <p><strong>Time:</strong> ${parsed.startTime} - ${parsed.endTime}</p>
+          <p><strong>Location:</strong> ${parsed.location}</p>
+          ${parsed.notes ? `<p><strong>Notes:</strong> ${parsed.notes}</p>` : ""}
+        `;
+
+        await emailService.sendBasicEmail(owner.email, subject, html);
+
+        if (!process.env.TWILIO_ACCOUNT_SID) {
+          console.warn(
+            "SMS not configured for booking requests (missing TWILIO_ACCOUNT_SID).",
+          );
+        }
+
+        await storage.createTelemetryEvent({
+          eventName: "truck_booking_request_created",
+          userId: req.user?.id || null,
+          properties: {
+            truckId,
+            requesterEmail: parsed.email,
+            expectedGuests: parsed.expectedGuests,
+          },
+        });
+
+        res.json({ message: "Request sent" });
+      } catch (error: any) {
+        console.error("Error sending booking request:", error);
+        if (error instanceof z.ZodError) {
+          return res
+            .status(400)
+            .json({ message: "Invalid request data", errors: error.errors });
+        }
+        res.status(500).json({ message: "Failed to send request" });
       }
     },
   );

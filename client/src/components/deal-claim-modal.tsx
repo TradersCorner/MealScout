@@ -122,8 +122,9 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
     setShareStatus('none');
     setStep('success');
     toast({
-      title: "Deal Claimed",
-      description: "Deal claimed successfully! You can share on Facebook later if you'd like.",
+      title: "Special Claimed",
+      description:
+        "Special claimed successfully! You can share on Facebook later if you'd like.",
     });
     setTimeout(() => {
       onClose();
@@ -141,7 +142,9 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
               <div className="w-16 h-16 food-gradient-primary rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <i className="fas fa-utensils text-white text-xl"></i>
               </div>
-              <h3 className="text-xl font-bold text-foreground mb-3">Claim This Deal</h3>
+              <h3 className="text-xl font-bold text-foreground mb-3">
+                Claim This Special
+              </h3>
               <p className="text-muted-foreground mb-6">
                 Claim this deal and optionally share it on Facebook to spread the word about great food!
               </p>
@@ -151,7 +154,7 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
                   className="w-full py-3 food-gradient-primary border-0 font-bold"
                   disabled={claimDealMutation.isPending}
                 >
-                  {claimDealMutation.isPending ? "Claiming..." : "Claim Deal"}
+                  {claimDealMutation.isPending ? "Claiming..." : "Claim Special"}
                 </Button>
                 <Button
                   onClick={onClose}
@@ -183,7 +186,8 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
                   <span className="font-semibold text-foreground">Your Name</span>
                 </div>
                 <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">
-                  {postData.facebookPostData?.message || `Just claimed an amazing deal at ${postData.restaurantName}! 🍽️\n\n${postData.dealTitle}\n\nFound this through MealScout - check it out! #MealScout #FoodDeals`}
+                  {postData.facebookPostData?.message ||
+                    `Just claimed an amazing special at ${postData.restaurantName}! 🍽️\n\n${postData.dealTitle}\n\nFound this through MealScout - check it out! #MealScout #FoodSpecials`}
                 </p>
                 <div className="mt-3 p-3 bg-background rounded-lg border border-border/50">
                   <div className="flex items-center space-x-2">
@@ -221,7 +225,9 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
                 <i className="fas fa-check text-white text-xl"></i>
               </div>
               <h3 className="text-xl font-bold text-foreground mb-3">
-                {shareStatus === 'succeeded' ? 'Deal Claimed & Shared!' : 'Deal Claimed Successfully!'}
+                {shareStatus === "succeeded"
+                  ? "Special Claimed & Shared!"
+                  : "Special Claimed Successfully!"}
               </h3>
               <div className="space-y-3 mb-6">
                 <p className="text-foreground font-medium">

@@ -48,7 +48,7 @@ export default function EventsPage() {
             <p className="text-sm text-gray-700">
               <strong>Looking for a parking spot?</strong> Check out our{" "}
               <a
-                href="/host-locations"
+                href="/host-food"
                 className="text-blue-600 hover:underline"
               >
                 Host Locations
@@ -73,7 +73,7 @@ export default function EventsPage() {
               <p className="text-sm text-gray-600">
                 Looking for a place to park your food truck? Browse{" "}
                 <a
-                  href="/host-locations"
+                  href="/host-food"
                   className="text-blue-600 hover:underline"
                 >
                   Host Locations

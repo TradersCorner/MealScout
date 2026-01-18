@@ -26,7 +26,7 @@ import { BackHeader } from "@/components/back-header";
 import type { Deal } from "@shared/schema";
 
 const dealEditSchema = z.object({
-  title: z.string().min(1, "Deal title is required"),
+  title: z.string().min(1, "Special title is required"),
   description: z.string().min(1, "Description is required"),
   dealType: z.enum(["percentage", "fixed"]),
   discountValue: z.string().min(1, "Discount value is required"),
@@ -143,7 +143,7 @@ export default function DealEdit() {
     onSuccess: () => {
       toast({
         title: "Success!",
-        description: "Deal updated successfully!",
+        description: "Special updated successfully!",
       });
       setIsDirty(false);
       queryClient.invalidateQueries({ queryKey: [`/api/deals/${dealId}`] });
@@ -178,7 +178,7 @@ export default function DealEdit() {
     },
     onSuccess: () => {
       toast({
-        title: "Deal Deleted",
+        title: "Special Deleted",
         description: "The deal has been permanently deleted.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
@@ -217,7 +217,7 @@ export default function DealEdit() {
     },
     onSuccess: (newDeal) => {
       toast({
-        title: "Deal Duplicated",
+        title: "Special Duplicated",
         description: "A copy of this deal has been created successfully.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
@@ -306,7 +306,7 @@ export default function DealEdit() {
         <Card>
           <CardContent className="p-6 text-center">
             <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2">Deal Not Found</h2>
+            <h2 className="text-xl font-bold mb-2">Special Not Found</h2>
             <p className="text-muted-foreground mb-4">
               The deal you're trying to edit doesn't exist or you don't have permission to edit it.
             </p>
@@ -320,7 +320,7 @@ export default function DealEdit() {
   }
 
   const dealPreviewData = {
-    title: form.watch("title") || "Your Deal Title",
+    title: form.watch("title") || "Your Special Title",
     description: form.watch("description") || "Your deal description...",
     dealType: form.watch("dealType"),
     discountValue: form.watch("discountValue") || "0",
@@ -333,7 +333,7 @@ export default function DealEdit() {
   return (
     <div className="max-w-4xl mx-auto bg-background min-h-screen">
       <BackHeader
-        title="Edit Deal"
+        title="Edit Special"
         fallbackHref="/restaurant-owner-dashboard"
         icon={Edit3}
         rightActions={
@@ -364,7 +364,7 @@ export default function DealEdit() {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Deal</AlertDialogTitle>
+                  <AlertDialogTitle>Delete Special</AlertDialogTitle>
                   <AlertDialogDescription>
                     Are you sure you want to delete this deal? This action cannot be undone.
                     All existing claims will be invalidated.
@@ -377,7 +377,9 @@ export default function DealEdit() {
                     className="bg-destructive hover:bg-destructive/90"
                     data-testid="button-confirm-delete"
                   >
-                    {deleteDealMutation.isPending ? "Deleting..." : "Delete Deal"}
+                    {deleteDealMutation.isPending
+                      ? "Deleting..."
+                      : "Delete Special"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -405,7 +407,7 @@ export default function DealEdit() {
                     name="title"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Deal Title</FormLabel>
+                        <FormLabel>Special Title</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Enter deal title..."
@@ -443,7 +445,7 @@ export default function DealEdit() {
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
-                          <FormLabel className="text-base">Deal Status</FormLabel>
+                          <FormLabel className="text-base">Special Status</FormLabel>
                           <p className="text-sm text-muted-foreground">
                             Make this deal visible to customers
                           </p>
@@ -668,7 +670,7 @@ export default function DealEdit() {
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Upload className="w-5 h-5 mr-2" />
-                    Deal Image
+                    Special Image
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -686,7 +688,7 @@ export default function DealEdit() {
                       <div className="relative">
                         <img
                           src={selectedImage}
-                          alt="Deal"
+                          alt="Special"
                           className="w-full h-48 object-cover rounded-lg"
                         />
                         <Button
@@ -777,7 +779,7 @@ export default function DealEdit() {
           <div className="lg:w-80 lg:sticky lg:top-24 lg:self-start">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Deal Preview</CardTitle>
+                <CardTitle className="text-lg">Special Preview</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="bg-white rounded-lg border overflow-hidden">

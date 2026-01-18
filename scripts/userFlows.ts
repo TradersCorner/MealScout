@@ -156,7 +156,7 @@ class UserFlowTester {
     }
   }
 
-  /**
+ /**
    * FLOW 1: New User Journey
    * - Visit homepage
    * - Search for deals
@@ -168,9 +168,7 @@ class UserFlowTester {
     const flowStart = Date.now();
     const steps: StepResult[] = [];
 
-    steps.push(
-      await this.recordStep('1. Visit homepage', 'GET', '/', 200)
-    );
+    steps.push(await this.recordStep('1. Visit homepage', 'GET', '/', 200));
 
     steps.push(
       await this.recordStep('2. Search for pizza deals', 'GET', '/api/deals/search?q=pizza&limit=10', 200)
@@ -185,7 +183,7 @@ class UserFlowTester {
     );
 
     steps.push(
-      await this.recordStep('5. View award winners', 'GET', '/api/awards/golden-fork/holders', 200)
+      await this.recordStep('5. View award holders', 'GET', '/api/awards/golden-fork/holders', 200)
     );
 
     steps.push(
@@ -203,8 +201,8 @@ class UserFlowTester {
    * FLOW 2: Deal Seeker Journey
    * - Search with multiple queries
    * - Filter by category
-   * - View deal details
-   * - Check real-time availability
+   * - Check featured deals
+   * - View deal detail
    */
   async flowDealSeekerJourney() {
     this.log('\n→ Flow 2: Deal Seeker Journey', 'info');
@@ -219,15 +217,11 @@ class UserFlowTester {
     }
 
     steps.push(
-      await this.recordStep('Filter by category', 'GET', '/api/deals/by-category/pizza?limit=20', [200, 404])
+      await this.recordStep('Get featured deals', 'GET', '/api/deals/featured?limit=20', 200)
     );
 
     steps.push(
-      await this.recordStep('Get hot deals', 'GET', '/api/deals/hot', [200, 404])
-    );
-
-    steps.push(
-      await this.recordStep('Get trending deals', 'GET', '/api/deals/trending', [200, 404])
+      await this.recordStep('Get recommended deals (auth optional)', 'GET', '/api/deals/recommended', [200, 401])
     );
 
     const duration = Date.now() - flowStart;
@@ -239,9 +233,8 @@ class UserFlowTester {
 
   /**
    * FLOW 3: Food Truck Tracker Journey
-   * - Get nearby food trucks
-   * - Check specific food truck status
-   * - View route history
+   * - View upcoming events
+   * - Validate events discovery
    */
   async flowFoodTruckJourney() {
     this.log('\n→ Flow 3: Food Truck Tracker Journey', 'info');
@@ -249,23 +242,11 @@ class UserFlowTester {
     const steps: StepResult[] = [];
 
     steps.push(
-      await this.recordStep('1. Get nearby food trucks', 'GET', '/api/food-trucks/nearby/40.7128/-74.0060', [200, 404])
+      await this.recordStep('1. Get upcoming events', 'GET', '/api/events/upcoming', 200)
     );
 
     steps.push(
-      await this.recordStep('2. Get all food trucks', 'GET', '/api/food-trucks', [200, 404])
-    );
-
-    steps.push(
-      await this.recordStep('3. Get food truck details', 'GET', '/api/food-trucks/truck-1', [200, 404])
-    );
-
-    steps.push(
-      await this.recordStep('4. Get food truck schedule', 'GET', '/api/food-trucks/truck-1/schedule', [200, 404])
-    );
-
-    steps.push(
-      await this.recordStep('5. Get food truck reviews', 'GET', '/api/food-trucks/truck-1/reviews', [200, 404])
+      await this.recordStep('2. Get events discovery', 'GET', '/api/events', [200, 401])
     );
 
     const duration = Date.now() - flowStart;
@@ -277,87 +258,64 @@ class UserFlowTester {
 
   /**
    * FLOW 4: Restaurant Owner Journey
-   * - Create restaurant
-   * - Update restaurant info
-   * - Add deals
-   * - View analytics
+   * - Verify auth gates for owner endpoints
    */
   async flowRestaurantOwnerJourney() {
     this.log('\n→ Flow 4: Restaurant Owner Journey', 'info');
     const flowStart = Date.now();
     const steps: StepResult[] = [];
 
-    const token = 'test-owner-token';
-
     steps.push(
       await this.recordStep(
-        '1. Create restaurant',
+        '1. Create restaurant (auth required)',
         'POST',
         '/api/restaurants',
-        [200, 201, 400, 401],
+        [401, 403],
         {
           name: 'Test Restaurant',
           address: '123 Main St',
           latitude: 40.7128,
           longitude: -74.0060,
           cuisine: 'Italian',
-        },
-        token
+        }
       )
     );
 
     steps.push(
       await this.recordStep(
-        '2. Update restaurant',
-        'PUT',
-        '/api/restaurants/rest-1',
-        [200, 400, 401],
-        {
-          description: 'Updated description',
-          phone: '555-0123',
-        },
-        token
-      )
-    );
-
-    steps.push(
-      await this.recordStep(
-        '3. Create deal',
+        '2. Create deal (auth required)',
         'POST',
         '/api/deals',
-        [200, 201, 400, 401],
+        [401, 403],
         {
           restaurantId: 'rest-1',
           title: 'Happy Hour',
           description: '50% off drinks',
           discount: 50,
-        },
-        token
+        }
       )
     );
 
     steps.push(
       await this.recordStep(
-        '4. Get restaurant analytics',
+        '3. Get my active deals (auth required)',
         'GET',
-        '/api/restaurants/rest-1/analytics',
-        [200, 404, 401],
-        undefined,
-        token
+        '/api/deals/my-active',
+        [401, 403]
       )
     );
 
     steps.push(
       await this.recordStep(
-        '5. Get restaurant deals',
+        '4. Get claimed deals (auth required)',
         'GET',
-        '/api/restaurants/rest-1/deals',
-        [200, 404]
+        '/api/deals/claimed',
+        [401, 403]
       )
     );
 
     const duration = Date.now() - flowStart;
-    const success = steps.filter((s) => !['Create deal'].some((x) => s.name.includes(x))).every((s) => s.success);
+    const success = steps.every((s) => s.success);
     const flow: FlowResult = { name: 'Restaurant Owner', steps, duration, success };
     this.flows.push(flow);
     this.printFlowResult(flow);
@@ -379,19 +337,11 @@ class UserFlowTester {
     );
 
     steps.push(
-      await this.recordStep('2. Get Golden Fork history', 'GET', '/api/awards/golden-fork/history', [200, 404])
+      await this.recordStep('2. Get awards history', 'GET', '/api/awards/history', 200)
     );
 
     steps.push(
       await this.recordStep('3. Get Golden Plate winners', 'GET', '/api/awards/golden-plate/winners', 200)
-    );
-
-    steps.push(
-      await this.recordStep('4. Get Golden Plate stats', 'GET', '/api/awards/golden-plate/stats', [200, 404])
-    );
-
-    steps.push(
-      await this.recordStep('5. Check user influence', 'GET', '/api/users/user-1/influence', [200, 404])
     );
 
     const duration = Date.now() - flowStart;
@@ -413,16 +363,13 @@ class UserFlowTester {
     const flowStart = Date.now();
     const steps: StepResult[] = [];
 
-    const dummyToken = 'test-token';
-
     steps.push(
       await this.recordStep(
         '1. Find deals via LLM',
         'POST',
         '/api/actions',
-        [200, 400, 401],
-        { action: 'FIND_DEALS', params: { search: 'pizza', limit: 10 } },
-        dummyToken
+        [200, 400, 401, 403],
+        { action: 'FIND_DEALS', params: { search: 'pizza', limit: 10 } }
       )
     );
 
@@ -431,9 +378,8 @@ class UserFlowTester {
         '2. Find restaurants via LLM',
         'POST',
         '/api/actions',
-        [200, 400, 401],
-        { action: 'FIND_RESTAURANTS', params: { search: 'Mario', limit: 10 } },
-        dummyToken
+        [200, 400, 401, 403],
+        { action: 'FIND_RESTAURANTS', params: { search: 'Mario', limit: 10 } }
       )
     );
 
@@ -442,9 +388,8 @@ class UserFlowTester {
         '3. Get food trucks via LLM',
         'POST',
         '/api/actions',
-        [200, 400, 401],
-        { action: 'GET_FOOD_TRUCKS', params: { latitude: 40.7128, longitude: -74.0060, radiusKm: 5 } },
-        dummyToken
+        [200, 400, 401, 403],
+        { action: 'GET_FOOD_TRUCKS', params: { latitude: 40.7128, longitude: -74.0060, radiusKm: 5 } }
       )
     );
 
@@ -453,9 +398,8 @@ class UserFlowTester {
         '4. Get credits balance via LLM',
         'POST',
         '/api/actions',
-        [200, 400, 401],
-        { action: 'GET_CREDITS_BALANCE', params: { userId: 'user-1' } },
-        dummyToken
+        [200, 400, 401, 403],
+        { action: 'GET_CREDITS_BALANCE', params: { userId: 'user-1' } }
       )
     );
 
@@ -467,9 +411,7 @@ class UserFlowTester {
 
   /**
    * FLOW 7: Analytics & Reporting Journey
-   * - Get user analytics
-   * - Get restaurant analytics
-   * - Get system-wide stats
+   * - Validate health/monitoring endpoints
    */
   async flowAnalyticsJourney() {
     this.log('\n→ Flow 7: Analytics & Reporting Journey', 'info');
@@ -477,23 +419,11 @@ class UserFlowTester {
     const steps: StepResult[] = [];
 
     steps.push(
-      await this.recordStep('1. Get system stats', 'GET', '/api/analytics/stats', [200, 404])
+      await this.recordStep('1. API health check', 'GET', '/api/health', 200)
     );
 
     steps.push(
-      await this.recordStep('2. Get user stats', 'GET', '/api/users/user-1/stats', [200, 404])
-    );
-
-    steps.push(
-      await this.recordStep('3. Get restaurant analytics', 'GET', '/api/restaurants/rest-1/analytics', [200, 404])
-    );
-
-    steps.push(
-      await this.recordStep('4. Get deal analytics', 'GET', '/api/deals/analytics', [200, 404])
-    );
-
-    steps.push(
-      await this.recordStep('5. Get trending categories', 'GET', '/api/analytics/trending-categories', [200, 404])
+      await this.recordStep('2. API head check', 'HEAD', '/api', [200, 204])
     );
 
     const duration = Date.now() - flowStart;

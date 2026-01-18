@@ -625,7 +625,7 @@ export default function Home() {
           ) : (
             <div className="text-center py-8 text-gray-500">
               <p className="mb-3">No deals nearby yet</p>
-              <Link href="/recommend-spot">
+              <Link href="/contact">
                 <Button size="sm" variant="outline">
                   Recommend your favorite spot
                 </Button>
@@ -982,7 +982,7 @@ export default function Home() {
             <div className="space-y-2">
               <h4 className="font-semibold text-gray-900">Support</h4>
               <Link
-                href="/help"
+                href="/faq"
                 className="block text-gray-600 hover:text-orange-600"
               >
                 Help Center

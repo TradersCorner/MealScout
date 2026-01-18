@@ -971,6 +971,13 @@ export default function AdminDashboard() {
   const [selectedDeal, setSelectedDeal] = useState<any>(null);
   const [dealDetailsOpen, setDealDetailsOpen] = useState(false);
   const [extendDays, setExtendDays] = useState(7);
+  const handleLogout = async () => {
+    try {
+      await apiRequest("POST", "/api/auth/logout");
+    } finally {
+      window.location.href = "/";
+    }
+  };
 
   // Check admin authentication
   const { data: adminUser, isLoading: isAuthLoading } = useQuery<any>({
@@ -1372,8 +1379,12 @@ export default function AdminDashboard() {
               </p>
             </div>
           </div>
-          <Button variant="outline" asChild data-testid="button-logout-admin">
-            <Link href="/api/logout">Logout</Link>
+          <Button
+            variant="outline"
+            onClick={handleLogout}
+            data-testid="button-logout-admin"
+          >
+            Logout
           </Button>
         </div>
       </header>

@@ -39,7 +39,7 @@ export default function DealShareModal({ isOpen, onClose, deal }: DealShareModal
       setCopied(true);
       toast({
         title: "Link Copied!",
-        description: "Deal link has been copied to your clipboard.",
+        description: "Special link has been copied to your clipboard.",
       });
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
@@ -69,7 +69,7 @@ export default function DealShareModal({ isOpen, onClose, deal }: DealShareModal
   };
 
   const handleEmailShare = () => {
-    const subject = `Great Deal at ${deal.restaurant?.name || 'a local restaurant'}!`;
+    const subject = `Great Special at ${deal.restaurant?.name || "a local restaurant"}!`;
     const body = `${shareText}\n\n${shareUrl}`;
     const emailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.open(emailUrl);
@@ -112,7 +112,7 @@ export default function DealShareModal({ isOpen, onClose, deal }: DealShareModal
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Share2 className="w-5 h-5" />
-            <span>Share Deal</span>
+            <span>Share Special</span>
           </DialogTitle>
         </DialogHeader>
 

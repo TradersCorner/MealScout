@@ -41,17 +41,19 @@ export default function FavoritesPage() {
       <div className="max-w-md mx-auto bg-background min-h-screen flex flex-col items-center justify-center px-6 text-center">
         <SEOHead
           title="My Favorites - MealScout | Saved Deals & Restaurants"
-          description="Sign in to save your favorite restaurants and deals so you can get back to them quickly."
-          keywords="favorites, saved deals, favorite restaurants, saved restaurants, bookmarked deals"
+          description="Sign in to save your favorite restaurants and specials so you can get back to them quickly."
+          keywords="favorites, saved specials, favorite restaurants, saved restaurants, bookmarked specials"
           canonicalUrl="https://mealscout.us/favorites"
           noIndex={true}
         />
         <div className="w-16 h-16 bg-orange-50 dark:bg-orange-900/30 rounded-2xl flex items-center justify-center mb-4">
           <Heart className="w-8 h-8 text-orange-500" />
         </div>
-        <h1 className="text-2xl font-bold text-foreground mb-2">Save deals you care about</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-2">
+          Save specials you care about
+        </h1>
         <p className="text-muted-foreground mb-6">
-          Sign in to bookmark restaurants and deals and come back to them anytime. No ordering required — just keep track of what looks good.
+          Sign in to bookmark restaurants and specials and come back to them anytime. No ordering required — just keep track of what looks good.
         </p>
         <div className="flex flex-col gap-3 w-full max-w-sm">
           <Link href="/login">
@@ -73,8 +75,8 @@ export default function FavoritesPage() {
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">
       <SEOHead
         title="My Favorites - MealScout | Saved Deals & Restaurants"
-        description="View your saved favorite restaurants and deals. Quick access to the food deals you love most. Never lose track of great dining discounts."
-        keywords="favorites, saved deals, favorite restaurants, saved restaurants, bookmarked deals"
+        description="View your saved favorite restaurants and specials. Quick access to the food specials you love most. Never lose track of great dining discounts."
+        keywords="favorites, saved specials, favorite restaurants, saved restaurants, bookmarked specials"
         canonicalUrl="https://mealscout.us/favorites"
         noIndex={true}
       />
@@ -83,7 +85,7 @@ export default function FavoritesPage() {
         fallbackHref="/"
         icon={Heart}
         className="bg-white border-b border-border"
-        subtitle="Your saved deals and restaurants"
+        subtitle="Your saved specials and restaurants"
       />
 
       {/* Content */}
@@ -200,7 +202,7 @@ export default function FavoritesPage() {
             </div>
             <h3 className="font-bold text-lg text-foreground mb-2">Sign in to see favorites</h3>
             <p className="text-muted-foreground mb-6">
-              Create an account to save your favorite restaurants and deals
+              Create an account to save your favorite restaurants and specials
             </p>
             <Link href="/login">
               <Button data-testid="button-sign-in">
@@ -217,7 +219,7 @@ export default function FavoritesPage() {
             Pro Tip
           </h3>
           <p className="text-sm text-muted-foreground">
-            Save deals to get notified when they're about to expire or when similar deals become available!
+            Save specials to get notified when they're about to expire or when similar specials become available!
           </p>
         </div>
       </div>

@@ -21,6 +21,10 @@ export default function EventSignup() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isStaffOrAdmin =
+    user?.userType === "staff" ||
+    user?.userType === "admin" ||
+    user?.userType === "super_admin";
 
   const [formData, setFormData] = useState({
     eventName: "",
@@ -83,6 +87,29 @@ export default function EventSignup() {
       <Navigation />
 
       <div className="container max-w-2xl mx-auto px-4 py-12">
+        {!isStaffOrAdmin ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-3xl flex items-center gap-2">
+                <Calendar className="w-8 h-8 text-blue-600" />
+                Event coordinator access required
+              </CardTitle>
+              <CardDescription className="text-lg">
+                This form is currently limited to staff and admin accounts while
+                we finish testing.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={() => setLocation("/login?redirect=/event-signup")}
+              >
+                Log in to continue
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
         <Card>
           <CardHeader>
             <CardTitle className="text-3xl flex items-center gap-2">
@@ -211,6 +238,7 @@ export default function EventSignup() {
             </form>
           </CardContent>
         </Card>
+        )}
       </div>
     </div>
   );

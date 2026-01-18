@@ -38,12 +38,12 @@ import Navigation from "@/components/navigation";
 
 const dealSchema = z
   .object({
-    title: z.string().min(1, "Deal title is required"),
+    title: z.string().min(1, "Special title is required"),
     description: z.string().min(1, "Description is required"),
     dealType: z.enum(["percentage", "fixed"]),
     discountValue: z.string().min(1, "Discount value is required"),
     minOrderAmount: z.string().optional(),
-    imageUrl: z.string().min(1, "Deal image is required"),
+    imageUrl: z.string().min(1, "Special image is required"),
     startDate: z.string().min(1, "Start date is required"),
     endDate: z.string().optional(),
     startTime: z.string().optional(),
@@ -242,7 +242,7 @@ export default function DealCreation() {
       ) {
         toast({
           title: "Subscription Required",
-          description: "Please upgrade your subscription to create deals",
+          description: "Please upgrade your subscription to create specials",
           variant: "destructive",
         });
         setTimeout(() => {
@@ -306,7 +306,7 @@ export default function DealCreation() {
   };
 
   const dealPreviewData = {
-    title: form.watch("title") || "Your Deal Title",
+    title: form.watch("title") || "Your Special Title",
     description:
       form.watch("description") || "Your deal description will appear here...",
     dealType: form.watch("dealType"),
@@ -330,7 +330,7 @@ export default function DealCreation() {
         <Card>
           <CardContent className="p-6">
             <p className="text-center text-muted-foreground mb-4">
-              Please log in to create deals
+              Please log in to create specials
             </p>
             <Button
               onClick={() =>
@@ -400,7 +400,7 @@ export default function DealCreation() {
               💳
             </div>
             <h2 className="text-lg font-semibold mb-1">
-              Subscription required to post deals
+              Subscription required to post specials
             </h2>
             <p className="text-sm text-muted-foreground mb-4">
               Unlock unlimited featured spots for your food truck or restaurant
@@ -423,7 +423,7 @@ export default function DealCreation() {
   return (
     <div className="max-w-md mx-auto bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 min-h-screen">
       <BackHeader
-        title="Create a new deal"
+        title="Create a new special"
         fallbackHref="/restaurant-owner-dashboard"
         icon={Sparkles}
         rightActions={
@@ -449,7 +449,7 @@ export default function DealCreation() {
               Turn one-time diners into regulars
             </p>
             <p>
-              Short, time-bound deals work best for food trucks and busy
+              Short, time-bound specials work best for food trucks and busy
               restaurants. Highlight your hero item and limit the window so it
               feels special.
             </p>
@@ -539,7 +539,7 @@ export default function DealCreation() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-sm font-medium">
-                    Deal Photo <span className="text-destructive">*</span>
+                    Special Photo <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
                     <div>
@@ -696,7 +696,7 @@ export default function DealCreation() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel data-testid="label-deal-title">
-                    Deal Title
+                    Special Title
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -719,7 +719,7 @@ export default function DealCreation() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel data-testid="label-description">
-                    Deal Description
+                    Special Description
                   </FormLabel>
                   <FormControl>
                     <Textarea
@@ -742,13 +742,15 @@ export default function DealCreation() {
               )}
             />
 
-            {/* Deal Type */}
+            {/* Special Type */}
             <FormField
               control={form.control}
               name="dealType"
               render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel data-testid="label-deal-type">Deal Type</FormLabel>
+                  <FormLabel data-testid="label-deal-type">
+                    Special Type
+                  </FormLabel>
                   <FormControl>
                     <RadioGroup
                       onValueChange={field.onChange}
@@ -1048,7 +1050,7 @@ export default function DealCreation() {
                 className="block text-sm font-medium text-foreground mb-2"
                 data-testid="label-deal-limits"
               >
-                Deal Limits
+                Special Limits
               </Label>
               <div className="grid grid-cols-2 gap-4">
                 <FormField
@@ -1113,7 +1115,7 @@ export default function DealCreation() {
                   className="text-muted-foreground text-xs mb-4"
                   data-testid="text-facebook-desc"
                 >
-                  Connect your Facebook page to automatically post deals and tag
+                  Connect your Facebook page to automatically post specials and tag
                   @MealScout
                 </p>
 
@@ -1134,7 +1136,7 @@ export default function DealCreation() {
                         className="text-xs text-muted-foreground mt-1"
                         data-testid="text-facebook-help"
                       >
-                        Link your Facebook page to cross-post deals
+                        Link your Facebook page to cross-post specials
                         automatically
                       </p>
                       <FormMessage />
@@ -1162,7 +1164,7 @@ export default function DealCreation() {
               >
                 {createDealMutation.isPending
                   ? "Publishing..."
-                  : "Publish Deal"}
+                  : "Publish Special"}
               </Button>
             </div>
           </form>

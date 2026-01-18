@@ -168,9 +168,9 @@ export default function UserDashboard() {
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen pb-20">
       <SEOHead
-        title="My Dashboard - MealScout | Track Your Deals & Savings"
-        description="View your personal dashboard with deal history, savings tracker, favorite restaurants, and personalized recommendations. Track your food deal journey on MealScout."
-        keywords="user dashboard, my deals, savings tracker, deal history, favorite restaurants"
+        title="My Dashboard - MealScout | Track Your Specials & Savings"
+        description="View your personal dashboard with special history, savings tracker, favorite restaurants, and personalized recommendations. Track your food special journey on MealScout."
+        keywords="user dashboard, my specials, savings tracker, special history, favorite restaurants"
         canonicalUrl="https://mealscout.us/user-dashboard"
         noIndex={true}
       />
@@ -200,7 +200,7 @@ export default function UserDashboard() {
             <CardHeader className="pb-2">
               <CardDescription className="flex items-center gap-2">
                 <Receipt className="h-4 w-4" />
-                Deals Used
+                Specials Used
               </CardDescription>
               <CardTitle className="text-2xl">
                 {userStats?.totalDealsUsed || 0}
@@ -329,13 +329,13 @@ export default function UserDashboard() {
                 <CardContent className="text-center py-12">
                   <Gift className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-2">
-                    No deals claimed yet
+                    No specials claimed yet
                   </h3>
                   <p className="text-muted-foreground mb-4">
-                    Start discovering amazing deals near you!
+                    Start discovering amazing specials near you!
                   </p>
                   <Button asChild data-testid="button-explore-deals">
-                    <Link href="/">Explore Deals</Link>
+                    <Link href="/">Explore Specials</Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -344,7 +344,7 @@ export default function UserDashboard() {
 
           <TabsContent value="nearby" className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Deals Near You</h3>
+              <h3 className="text-lg font-semibold">Specials Near You</h3>
               <Button
                 variant="outline"
                 size="sm"
@@ -421,10 +421,10 @@ export default function UserDashboard() {
                 <CardContent className="text-center py-12">
                   <MapPin className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-2">
-                    No nearby deals
+                    No nearby specials
                   </h3>
                   <p className="text-muted-foreground">
-                    Check back later for deals in your area.
+                    Check back later for specials in your area.
                   </p>
                 </CardContent>
               </Card>
@@ -574,7 +574,7 @@ export default function UserDashboard() {
                     Building recommendations
                   </h3>
                   <p className="text-muted-foreground">
-                    Use more deals to get personalized recommendations!
+                    Use more specials to get personalized recommendations!
                   </p>
                 </CardContent>
               </Card>

@@ -192,7 +192,9 @@ export default function RestaurantDealsDrawer({
               {restaurantName}
             </h2>
             <p className="text-sm text-gray-600">
-              {deals ? `${deals.length} deals available` : "Loading deals..."}
+              {deals
+                ? `${deals.length} specials available`
+                : "Loading specials..."}
             </p>
           </div>
           <button
@@ -286,7 +288,7 @@ export default function RestaurantDealsDrawer({
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading deals...</p>
+                <p className="text-gray-600">Loading specials...</p>
               </div>
             </div>
           ) : deals && deals.length > 0 ? (
@@ -295,7 +297,7 @@ export default function RestaurantDealsDrawer({
               <div className="p-4 bg-gray-50 border-b border-gray-100">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">
-                    Deal {currentDealIndex + 1} of {deals.length}
+                    Special {currentDealIndex + 1} of {deals.length}
                   </span>
                   <div className="flex space-x-2">
                     <Button
@@ -405,7 +407,7 @@ export default function RestaurantDealsDrawer({
                         className="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-bold py-3 rounded-2xl"
                         data-testid={`button-claim-deal-${deals[currentDealIndex].id}`}
                       >
-                        Claim This Deal
+                        Claim This Special
                       </Button>
                     </div>
                   </CardContent>
@@ -434,7 +436,7 @@ export default function RestaurantDealsDrawer({
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <p className="text-gray-600">
-                  No deals available for this restaurant.
+                  No specials available for this restaurant.
                 </p>
               </div>
             </div>

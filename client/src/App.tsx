@@ -81,6 +81,7 @@ const OAuthSetupGuide = lazy(() => import("@/pages/oauth-setup-guide"));
 const GoldenPlateWinners = lazy(() => import("@/pages/golden-plate-winners"));
 const ParkingPassPage = lazy(() => import("@/pages/parking-pass"));
 const ParkingPassManage = lazy(() => import("@/pages/parking-pass-manage"));
+const StatusPage = lazy(() => import("@/pages/status"));
 const HostSignup = lazy(() => import("@/pages/host-signup"));
 const HostDashboard = lazy(() => import("@/pages/host-dashboard"));
 const TruckDiscovery = lazy(() => import("@/pages/truck-discovery"));
@@ -154,6 +155,7 @@ function Router() {
             <Route path="/events" component={EventsPage} />
             <Route path="/food-trucks/:citySlug" component={CityLanding} />
             <Route path="/sitemap" component={Sitemap} />
+            <Route path="/status" component={StatusPage} />
             <Route
               path="/golden-plate-winners"
               component={GoldenPlateWinners}
@@ -240,6 +242,7 @@ function Router() {
             <Route path="/host-signup" component={HostSignup} />
             <Route path="/event-signup" component={EventSignup} />
             <Route path="/sitemap" component={Sitemap} />
+            <Route path="/status" component={StatusPage} />
             <Route path="/forgot-password" component={ForgotPassword} />
             <Route path="/reset-password" component={ResetPassword} />
             <Route path="/change-password" component={ChangePassword} />

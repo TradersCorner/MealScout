@@ -1055,7 +1055,7 @@ export default function RestaurantOwnerDashboard() {
           <Store className="h-16 w-16 mx-auto text-muted-foreground" />
           <h1 className="text-3xl font-bold">No Restaurant Found</h1>
           <p className="text-muted-foreground">
-            You need to register your restaurant first to create deals.
+            You need to register your restaurant first to create specials.
           </p>
           <Link href="/restaurant-signup">
             <Button size="lg" data-testid="button-register-restaurant">
@@ -1070,9 +1070,9 @@ export default function RestaurantOwnerDashboard() {
   return (
     <div className="container mx-auto px-4 py-8">
       <SEOHead
-        title="Restaurant Dashboard - MealScout | Manage Your Deals"
-        description="Manage your restaurant deals, view analytics, track performance, and engage with customers. Access insights on deal claims, views, conversion rates, and customer feedback."
-        keywords="restaurant dashboard, manage deals, restaurant analytics, deal performance, customer insights"
+        title="Restaurant Dashboard - MealScout | Manage Your Specials"
+        description="Manage your restaurant specials, view analytics, track performance, and engage with customers. Access insights on special claims, views, conversion rates, and customer feedback."
+        keywords="restaurant dashboard, manage specials, restaurant analytics, special performance, customer insights"
         canonicalUrl="https://mealscout.us/restaurant-owner-dashboard"
         noIndex={true}
       />
@@ -1089,14 +1089,14 @@ export default function RestaurantOwnerDashboard() {
               <Link href="/deal-creation">
                 <Button data-testid="button-create-deal">
                   <Plus className="h-4 w-4 mr-2" />
-                  Create New Deal
+                  Create New Special
                 </Button>
               </Link>
             ) : (
               <Link href="/subscribe">
                 <Button variant="default" data-testid="button-subscribe">
                   <CreditCard className="h-4 w-4 mr-2" />
-                  Subscribe to Create Deals
+                  Subscribe to Create Specials
                 </Button>
               </Link>
             )}
@@ -1141,7 +1141,7 @@ export default function RestaurantOwnerDashboard() {
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
-              Active Deals
+              Active Specials
             </CardDescription>
             <CardTitle className="text-3xl">
               {stats?.activeDeals || 0}
@@ -1187,8 +1187,8 @@ export default function RestaurantOwnerDashboard() {
       {/* Deals Management */}
       <Tabs defaultValue="active" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="active">Active Deals</TabsTrigger>
-          <TabsTrigger value="inactive">Inactive Deals</TabsTrigger>
+          <TabsTrigger value="active">Active Specials</TabsTrigger>
+          <TabsTrigger value="inactive">Inactive Specials</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="credits">
             <CreditCard className="h-4 w-4 mr-1" />
@@ -1320,11 +1320,13 @@ export default function RestaurantOwnerDashboard() {
             !loadingDeals && (
               <Card>
                 <CardContent className="text-center py-12">
-                  <p className="text-muted-foreground mb-4">No active deals</p>
+                  <p className="text-muted-foreground mb-4">
+                    No active specials
+                  </p>
                   <Link href="/deal-creation">
                     <Button data-testid="button-create-first-deal">
                       <Plus className="h-4 w-4 mr-2" />
-                      Create Your First Deal
+                      Create Your First Special
                     </Button>
                   </Link>
                 </CardContent>
@@ -1381,7 +1383,7 @@ export default function RestaurantOwnerDashboard() {
             !loadingDeals && (
               <Card>
                 <CardContent className="text-center py-12">
-                  <p className="text-muted-foreground">No inactive deals</p>
+                  <p className="text-muted-foreground">No inactive specials</p>
                 </CardContent>
               </Card>
             )}
@@ -1399,7 +1401,7 @@ export default function RestaurantOwnerDashboard() {
                       Performance Analytics
                     </CardTitle>
                     <CardDescription>
-                      Comprehensive insights into your deals performance and
+                      Comprehensive insights into your specials performance and
                       customer engagement
                     </CardDescription>
                   </div>
@@ -1780,7 +1782,7 @@ export default function RestaurantOwnerDashboard() {
                 <CardHeader>
                   <CardTitle className="text-lg">Revenue Over Time</CardTitle>
                   <CardDescription>
-                    Daily revenue and deal performance trends
+                    Daily revenue and special performance trends
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1847,9 +1849,9 @@ export default function RestaurantOwnerDashboard() {
             {/* Top Deals Performance */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Top Performing Deals</CardTitle>
+                <CardTitle className="text-lg">Top Performing Specials</CardTitle>
                 <CardDescription>
-                  Your most successful deals ranked by views and revenue
+                  Your most successful specials ranked by views and revenue
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1892,7 +1894,7 @@ export default function RestaurantOwnerDashboard() {
                   </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
-                    No deal performance data available
+                    No special performance data available
                   </div>
                 )}
               </CardContent>
@@ -2330,7 +2332,7 @@ export default function RestaurantOwnerDashboard() {
                         • Sessions auto-stop after 2 minutes of inactivity
                       </li>
                       <li>
-                        • Customers can see your live location and active deals
+                        • Customers can see your live location and active specials
                       </li>
                       <li>• Works best with mobile internet connection</li>
                     </ul>

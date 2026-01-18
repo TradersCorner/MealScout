@@ -21,7 +21,7 @@ export default function FAQ() {
         "name": "How does MealScout work?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "MealScout connects you with local restaurants offering time-limited deals. Simply browse deals near you, claim the ones you want, and show your phone at the restaurant to redeem."
+          "text": "MealScout connects you with local restaurants offering time-limited Specials. Simply browse Specials near you, claim the ones you want, and show your phone at the restaurant to redeem."
         }
       },
       {
@@ -29,15 +29,15 @@ export default function FAQ() {
         "name": "Is MealScout free to use?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes, MealScout is completely free for customers. You can browse, claim, and redeem deals without any charges or subscription fees."
+          "text": "Yes, MealScout is completely free for customers. You can browse, claim, and redeem Specials without any charges or subscription fees."
         }
       },
       {
         "@type": "Question",
-        "name": "How do I claim a deal?",
+        "name": "How do I claim a Special?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Simply tap the 'Claim Deal' button on any offer you're interested in. The deal will be saved to your account and you can show it at the restaurant to redeem."
+          "text": "Simply tap the 'Claim Special' button on any offer you're interested in. The Special will be saved to your account and you can show it at the restaurant to redeem."
         }
       }
     ]
@@ -49,15 +49,15 @@ export default function FAQ() {
       questions: [
         {
           question: "How does MealScout work?",
-          answer: "MealScout connects you with local restaurants offering time-limited deals. Simply browse deals near you, claim the ones you want, and show your phone at the restaurant to redeem. It's that simple!"
+          answer: "MealScout connects you with local restaurants offering time-limited Specials. Simply browse Specials near you, claim the ones you want, and show your phone at the restaurant to redeem. It's that simple!"
         },
         {
           question: "Is MealScout free to use?",
-          answer: "Yes, MealScout is completely free for customers. You can browse, claim, and redeem deals without any charges or subscription fees."
+          answer: "Yes, MealScout is completely free for customers. You can browse, claim, and redeem Specials without any charges or subscription fees."
         },
         {
           question: "Do I need to download an app?",
-          answer: "No app required! MealScout works directly in your web browser on any device. Just visit our website and start exploring deals immediately."
+          answer: "No app required! MealScout works directly in your web browser on any device. Just visit our website and start exploring Specials immediately."
         },
         {
           question: "How do I create an account?",
@@ -66,23 +66,23 @@ export default function FAQ() {
       ]
     },
     {
-      category: "Using Deals",
+      category: "Using Specials",
       questions: [
         {
-          question: "How do I claim a deal?",
-          answer: "Simply tap the 'Claim Deal' button on any offer you're interested in. The deal will be saved to your account and you can show it at the restaurant to redeem."
+          question: "How do I claim a Special?",
+          answer: "Simply tap the 'Claim Special' button on any offer you're interested in. The Special will be saved to your account and you can show it at the restaurant to redeem."
         },
         {
-          question: "How long do deals last?",
-          answer: "Deal duration varies by restaurant. Some are available all day, others might be limited to specific hours like lunch or dinner. Check the deal details for exact timing."
+          question: "How long do Specials last?",
+          answer: "Special duration varies by restaurant. Some are available all day, others might be limited to specific hours like lunch or dinner. Check the Special details for exact timing."
         },
         {
-          question: "Can I use multiple deals at once?",
-          answer: "This depends on the restaurant's policy. Most deals can't be combined with other offers, but you can usually use different deals on separate visits."
+          question: "Can I use multiple Specials at once?",
+          answer: "This depends on the restaurant's policy. Most Specials can't be combined with other offers, but you can usually use different Specials on separate visits."
         },
         {
-          question: "What if a deal doesn't work at the restaurant?",
-          answer: "If you encounter any issues redeeming a deal, please contact us immediately. We'll work with the restaurant to resolve the issue and ensure you get your savings."
+          question: "What if a Special doesn't work at the restaurant?",
+          answer: "If you encounter any issues redeeming a Special, please contact us immediately. We'll work with the restaurant to resolve the issue and ensure you get your savings."
         }
       ]
     },
@@ -91,15 +91,15 @@ export default function FAQ() {
       questions: [
         {
           question: "How does location-based discovery work?",
-          answer: "MealScout uses your device's location (with your permission) to show you deals from restaurants within walking distance. You can also manually search specific areas."
+          answer: "MealScout uses your device's location (with your permission) to show you Specials from restaurants within walking distance. You can also manually search specific areas."
         },
         {
-          question: "Can I see deals in other cities?",
-          answer: "Yes! You can search for deals in any city where MealScout operates. This is perfect for planning dining when traveling."
+          question: "Can I see Specials in other cities?",
+          answer: "Yes! You can search for Specials in any city where MealScout operates. This is perfect for planning dining when traveling."
         },
         {
           question: "How accurate is the location feature?",
-          answer: "Our location feature is highly accurate and shows deals within a few blocks of your current location. We use advanced GPS technology for precise results."
+          answer: "Our location feature is highly accurate and shows Specials within a few blocks of your current location. We use advanced GPS technology for precise results."
         },
         {
           question: "What if location services are disabled?",
@@ -119,8 +119,8 @@ export default function FAQ() {
           answer: "Yes, all partner restaurants go through our verification process to ensure they meet our quality and service standards."
         },
         {
-          question: "How do restaurants create deals?",
-          answer: "Restaurant partners have access to a dashboard where they can create time-based deals, set usage limits, and track performance analytics."
+          question: "How do restaurants create Specials?",
+          answer: "Restaurant partners have access to a dashboard where they can create time-based Specials, set usage limits, and track performance analytics."
         },
         {
           question: "Can I suggest a restaurant to join?",
@@ -141,7 +141,7 @@ export default function FAQ() {
         },
         {
           question: "How do I change my notification preferences?",
-          answer: "Visit your profile settings to customize when and how you receive notifications about new deals and updates."
+          answer: "Visit your profile settings to customize when and how you receive notifications about new Specials and updates."
         },
         {
           question: "Can I change my location settings?",
@@ -157,16 +157,16 @@ export default function FAQ() {
           answer: "Try refreshing the page or clearing your browser cache. If issues persist, check your internet connection or try accessing from a different device."
         },
         {
-          question: "I can't see any deals in my area, why?",
+          question: "I can't see any Specials in my area, why?",
           answer: "This could mean we don't have restaurant partners in your immediate area yet, or your location services might be disabled. Try expanding your search radius."
         },
         {
-          question: "A restaurant says they don't know about the deal I claimed",
-          answer: "This occasionally happens with new partner restaurants. Show them the deal on your phone and ask them to contact us if they need verification."
+          question: "A restaurant says they don't know about the Special I claimed",
+          answer: "This occasionally happens with new partner restaurants. Show them the Special on your phone and ask them to contact us if they need verification."
         },
         {
-          question: "How do I report a problem with a restaurant or deal?",
-          answer: "You can report issues through the 'Report Problem' button on each deal page, or contact our support team directly."
+          question: "How do I report a problem with a restaurant or Special?",
+          answer: "You can report issues through the 'Report Problem' button on each Special page, or contact our support team directly."
         }
       ]
     }
@@ -175,9 +175,9 @@ export default function FAQ() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       <SEOHead
-        title="Frequently Asked Questions - MealScout Food Deals Help Center"
-        description="Get answers to common questions about MealScout. Learn how to find food deals, claim promotions, redeem offers, and make the most of our local restaurant platform."
-        keywords="mealscout faq, food deals help, restaurant promotions questions, how to use mealscout, deal redemption, local dining help"
+        title="Frequently Asked Questions - MealScout Food Specials Help Center"
+        description="Get answers to common questions about MealScout. Learn how to find food Specials, claim promotions, redeem offers, and make the most of our local restaurant platform."
+        keywords="mealscout faq, food Specials help, restaurant promotions questions, how to use mealscout, Special redemption, local dining help"
         canonicalUrl="https://mealscout.com/faq"
         schemaData={schemaData}
       />
@@ -197,7 +197,7 @@ export default function FAQ() {
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-6">How Can We Help You?</h1>
           <p className="text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
-            Find answers to the most common questions about using MealScout to discover amazing food deals near you.
+            Find answers to the most common questions about using MealScout to discover amazing food Specials near you.
           </p>
         </div>
 
@@ -223,7 +223,7 @@ export default function FAQ() {
             <CardHeader>
               <CardTitle className="text-2xl font-bold text-gray-900 flex items-center gap-3">
                 {section.category === "Getting Started" && <Clock className="w-6 h-6 text-blue-600" />}
-                {section.category === "Using Deals" && <Shield className="w-6 h-6 text-green-600" />}
+                {section.category === "Using Specials" && <Shield className="w-6 h-6 text-green-600" />}
                 {section.category === "Location & Discovery" && <MessageCircle className="w-6 h-6 text-purple-600" />}
                 {section.category === "Restaurant Partners" && <Phone className="w-6 h-6 text-orange-600" />}
                 {section.category === "Account & Privacy" && <Shield className="w-6 h-6 text-red-600" />}

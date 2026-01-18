@@ -295,11 +295,11 @@ export default function DealCard({ deal }: DealCardProps) {
 
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: "MealScout Deal",
-          text: shareText,
-          url: shareUrl,
-        });
+          await navigator.share({
+            title: "MealScout Special",
+            text: shareText,
+            url: shareUrl,
+          });
         return;
       } catch (err) {
         console.debug("Web Share failed, falling back to modal", err);
@@ -553,8 +553,8 @@ export default function DealCard({ deal }: DealCardProps) {
                 className="flex-1 h-7 text-[10px] px-1"
                 onClick={(e) => handleSave(e)}
               >
-                {isSaved ? "Bookmarked" : "Bookmark deal"}
-              </Button>
+                {isSaved ? "Bookmarked" : "Bookmark special"}
+                </Button>
 
               <Button
                 variant="outline"
@@ -574,8 +574,8 @@ export default function DealCard({ deal }: DealCardProps) {
                 handleCardClick();
               }}
             >
-              View Deal
-            </Button>
+              View Special
+              </Button>
           </div>
         </CardContent>
       </Card>

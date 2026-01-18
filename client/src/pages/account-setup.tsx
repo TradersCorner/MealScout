@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/api";
+import { apiRequest } from "@/lib/queryClient";
 import { Eye, EyeOff, CheckCircle, KeyRound } from "lucide-react";
 import { BackHeader } from "@/components/back-header";
 import { SEOHead } from "@/components/seo-head";

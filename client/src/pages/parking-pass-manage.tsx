@@ -76,8 +76,10 @@ export default function ParkingPassManage() {
 
         // Check if user has a truck profile
         const truckRes = await fetch("/api/restaurants/my");
+        let trucks: any[] = [];
         if (truckRes.ok) {
-          const trucks = await truckRes.json();
+          const truckData = await truckRes.json();
+          trucks = Array.isArray(truckData) ? truckData : [];
           if (trucks.length > 0) {
             setIsTruck(true);
             // Fetch truck bookings
@@ -104,7 +106,7 @@ export default function ParkingPassManage() {
           }
 
           // Only set default to host if no truck profile
-          if (!truckRes.ok || !(await truckRes.json()).length) {
+          if (trucks.length === 0) {
             setActiveTab("host");
           }
         }

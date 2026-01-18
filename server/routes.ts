@@ -75,6 +75,7 @@ import {
 import { z } from "zod";
 import { validateDocuments, checkRateLimit } from "./documentValidation";
 import { randomBytes, timingSafeEqual, createHash } from "crypto";
+import { sanitizeUser } from "./utils/sanitize";
 import {
   upload,
   uploadToCloudinary,
@@ -784,11 +785,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("✅ Returning user:", user.id, user.email, user.userType);
 
       // Check if user must reset password
+      const safeUser = sanitizeUser(user);
+
       if (user.mustResetPassword) {
-        return res.json({ ...user, requiresPasswordReset: true });
+        return res.json({ ...safeUser, requiresPasswordReset: true });
       }
 
-      res.json(user);
+      res.json(safeUser);
     } catch (error) {
       console.error("❌ Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -2889,7 +2892,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const user = req.user;
-        res.json(user);
+        res.json(sanitizeUser(user));
       } catch (error) {
         console.error("Error fetching restaurant owner:", error);
         res.status(500).json({ message: "Failed to fetch user" });
@@ -4488,7 +4491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/deals/claimed", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const claimedDeals = await storage.getUserDealClaims(userId);
+      const claimedDeals = await storage.getUserDealClaimsWithDetails(userId);
       res.json(claimedDeals);
     } catch (error) {
       console.error("Error fetching claimed deals:", error);

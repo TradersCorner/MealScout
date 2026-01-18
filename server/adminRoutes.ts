@@ -325,6 +325,24 @@ router.get("/moderation-events/:id", isAdmin, async (req, res) => {
 });
 
 /**
+ * GET /api/admin/moderation-appeals
+ * Read-only appeals registry (empty until appeals are stored)
+ */
+router.get("/moderation-appeals", isAdmin, async (req, res) => {
+  try {
+    const { status } = req.query;
+    if (status && !["all", "received", "reviewed"].includes(String(status))) {
+      return res.status(400).json({ error: "Invalid status filter" });
+    }
+
+    res.json([]);
+  } catch (error) {
+    console.error("Failed to fetch moderation appeals:", error);
+    res.status(500).json({ error: "Failed to fetch moderation appeals" });
+  }
+});
+
+/**
  * PATCH /api/admin/moderation-events/:id
  * Review and take action on moderation event
  */

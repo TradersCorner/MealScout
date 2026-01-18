@@ -248,6 +248,7 @@ export interface IStorage {
   // Deal claim operations
   claimDeal(claim: InsertDealClaim): Promise<DealClaim>;
   getUserDealClaims(userId: string): Promise<DealClaim[]>;
+  getUserDealClaimsWithDetails(userId: string): Promise<any[]>;
   getDealClaimsCount(dealId: string, userId?: string): Promise<number>;
   getRestaurantDealClaims(
     restaurantId: string,
@@ -2200,6 +2201,28 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(dealClaims)
+      .where(eq(dealClaims.userId, userId))
+      .orderBy(desc(dealClaims.claimedAt));
+  }
+
+  async getUserDealClaimsWithDetails(userId: string): Promise<any[]> {
+    return await db
+      .select({
+        id: dealClaims.id,
+        dealId: dealClaims.dealId,
+        claimedAt: dealClaims.claimedAt,
+        usedAt: dealClaims.usedAt,
+        isUsed: dealClaims.isUsed,
+        orderAmount: dealClaims.orderAmount,
+        dealTitle: deals.title,
+        dealType: deals.dealType,
+        discountValue: deals.discountValue,
+        restaurantId: deals.restaurantId,
+        restaurantName: restaurants.name,
+      })
+      .from(dealClaims)
+      .innerJoin(deals, eq(dealClaims.dealId, deals.id))
+      .innerJoin(restaurants, eq(deals.restaurantId, restaurants.id))
       .where(eq(dealClaims.userId, userId))
       .orderBy(desc(dealClaims.claimedAt));
   }

@@ -76,9 +76,11 @@ const Contact = lazy(() => import("@/pages/contact"));
 const Sitemap = lazy(() => import("@/pages/sitemap"));
 const ForgotPassword = lazy(() => import("@/pages/forgot-password"));
 const ResetPassword = lazy(() => import("@/pages/reset-password"));
+const AccountSetup = lazy(() => import("@/pages/account-setup"));
 const OAuthSetupGuide = lazy(() => import("@/pages/oauth-setup-guide"));
 const GoldenPlateWinners = lazy(() => import("@/pages/golden-plate-winners"));
 const ParkingPassPage = lazy(() => import("@/pages/parking-pass"));
+const ParkingPassManage = lazy(() => import("@/pages/parking-pass-manage"));
 const HostSignup = lazy(() => import("@/pages/host-signup"));
 const HostDashboard = lazy(() => import("@/pages/host-dashboard"));
 const TruckDiscovery = lazy(() => import("@/pages/truck-discovery"));
@@ -160,6 +162,7 @@ function Router() {
             <Route path="/forgot-password" component={ForgotPassword} />
             <Route path="/reset-password" component={ResetPassword} />
             <Route path="/change-password" component={ChangePassword} />
+            <Route path="/account-setup" component={AccountSetup} />
             <Route path="/admin" component={AdminLogin} />
             <Route path="/admin/login" component={AdminLogin} />
           </>
@@ -240,6 +243,7 @@ function Router() {
             <Route path="/forgot-password" component={ForgotPassword} />
             <Route path="/reset-password" component={ResetPassword} />
             <Route path="/change-password" component={ChangePassword} />
+            <Route path="/account-setup" component={AccountSetup} />
             <Route path="/admin/login" component={AdminLogin} />
             <Route path="/admin/oauth-setup" component={OAuthSetupGuide} />
             <Route
@@ -256,6 +260,7 @@ function Router() {
               component={ReviewsPage}
             />
             <Route path="/parking-pass" component={ParkingPassPage} />
+            <Route path="/parking-pass-manage" component={ParkingPassManage} />
           </>
         )}
         <Route component={NotFound} />

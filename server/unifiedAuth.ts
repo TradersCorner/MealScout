@@ -16,6 +16,7 @@ import type {
   User,
 } from "@shared/schema";
 import crypto from "crypto";
+import { sanitizeUser } from "./utils/sanitize";
 
 // Extend session to include app context for multi-app OAuth
 declare module "express-session" {
@@ -700,7 +701,7 @@ export async function setupUnifiedAuth(app: Express) {
             .status(500)
             .json({ error: "Failed to log in after registration" });
         }
-        res.json({ user, message: "Registration successful" });
+        res.json({ user: sanitizeUser(user), message: "Registration successful" });
       });
     } catch (error) {
       console.error("Customer registration error:", error);
@@ -773,7 +774,7 @@ export async function setupUnifiedAuth(app: Express) {
             .status(500)
             .json({ error: "Failed to log in after registration" });
         }
-        res.json({ user, message: "Registration successful" });
+        res.json({ user: sanitizeUser(user), message: "Registration successful" });
       });
     } catch (error) {
       console.error("Restaurant registration error:", error);
@@ -808,7 +809,7 @@ export async function setupUnifiedAuth(app: Express) {
         if (err) {
           return res.status(500).json({ error: "Failed to log in" });
         }
-        res.json({ user, message: "Login successful" });
+        res.json({ user: sanitizeUser(user), message: "Login successful" });
       });
     } catch (error) {
       console.error("Restaurant login error:", error);
@@ -863,7 +864,7 @@ export async function setupUnifiedAuth(app: Express) {
           return res.status(500).json({ error: "Failed to establish session" });
         }
         console.log(`✅ Login successful for: ${email}`);
-        res.json({ user, message: "Login successful" });
+        res.json({ user: sanitizeUser(user), message: "Login successful" });
       });
     } catch (error) {
       console.error("❌ Login error:", error);
@@ -963,7 +964,7 @@ export async function setupUnifiedAuth(app: Express) {
             .json({ error: "Failed to establish SSO session" });
         }
         res.json({
-          user,
+          user: sanitizeUser(user),
           message: "TradeScout SSO login successful",
         });
       });

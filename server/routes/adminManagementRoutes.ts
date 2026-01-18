@@ -2,6 +2,7 @@ import type { Express } from "express";
 import Stripe from "stripe";
 import { storage } from "../storage";
 import { isAuthenticated, isAdmin } from "../unifiedAuth";
+import { sanitizeUser, sanitizeUsers } from "../utils/sanitize";
 
 // Optional Stripe integration (mirrors server/routes.ts)
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -133,7 +134,7 @@ export function registerAdminManagementRoutes(app: Express) {
         user.userType === "super_admin" ||
         user.userType === "staff"
       ) {
-        res.json(user);
+        res.json(sanitizeUser(user, { includeStripe: true }));
       } else {
         res.status(403).json({ message: "Admin access required" });
       }
@@ -315,7 +316,7 @@ export function registerAdminManagementRoutes(app: Express) {
     async (req: any, res) => {
       try {
         const users = await storage.getAllUsers();
-        res.json(users);
+        res.json(sanitizeUsers(users, { includeStripe: true }));
       } catch (error) {
         console.error("Error fetching users:", error);
         res.status(500).json({ message: "Failed to fetch users" });

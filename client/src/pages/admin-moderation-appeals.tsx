@@ -15,6 +15,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { APPEAL_INTAKE_COPY as COPY } from '@/copy/appealIntake.copy';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -310,14 +311,37 @@ export default function AdminModerationAppealsPage() {
   const { data: appeals, isLoading, isError, refetch } = useQuery<AppealRecord[]>({
     queryKey: ['/api/admin/moderation-appeals', statusFilter],
     queryFn: async () => {
-      // For v1, this would fetch from a dedicated appeals endpoint
-      // For now, return mock structure to demonstrate the surface
-      // In production, wire to existing audit/report tables
-      
-      // Mock data for demonstration (replace with actual API call)
-      const mockAppeals: AppealRecord[] = [];
-      
-      return mockAppeals;
+      const response = await apiRequest(
+        'GET',
+        `/api/admin/moderation-appeals?status=${statusFilter}`,
+      );
+      const payload = await response.json();
+      if (!Array.isArray(payload)) {
+        return [];
+      }
+      return payload.map((appeal: any) => ({
+        id: String(appeal.id || ''),
+        submittedAt: appeal.submittedAt ? new Date(appeal.submittedAt) : new Date(),
+        status: appeal.status === 'reviewed' ? 'reviewed' : 'received',
+        appealingPartyId: String(appeal.appealingPartyId || ''),
+        referencedDecision: {
+          decisionId: String(appeal.referencedDecision?.decisionId || ''),
+          date: appeal.referencedDecision?.date
+            ? new Date(appeal.referencedDecision.date)
+            : appeal.submittedAt
+              ? new Date(appeal.submittedAt)
+              : new Date(),
+          action: ['hide', 'restore', 'remove'].includes(
+            appeal.referencedDecision?.action,
+          )
+            ? appeal.referencedDecision.action
+            : 'hide',
+          reason: appeal.referencedDecision?.reason || null,
+        },
+        evidenceLinks: Array.isArray(appeal.evidenceLinks)
+          ? appeal.evidenceLinks
+          : [],
+      }));
     },
   });
 

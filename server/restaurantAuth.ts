@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import type { Express } from "express";
 import { storage } from "./storage";
 import type { GoogleUserData, EmailUserData } from "@shared/schema";
+import { sanitizeUser } from "./utils/sanitize";
 
 export async function setupRestaurantAuth(app: Express) {
   // Check for Google OAuth environment variables
@@ -92,7 +93,7 @@ export async function setupRestaurantAuth(app: Express) {
         if (err) {
           return res.status(500).json({ error: "Failed to log in after registration" });
         }
-        res.json({ user, message: "Registration successful" });
+        res.json({ user: sanitizeUser(user), message: "Registration successful" });
       });
     } catch (error) {
       console.error("Restaurant registration error:", error);
@@ -125,7 +126,7 @@ export async function setupRestaurantAuth(app: Express) {
         if (err) {
           return res.status(500).json({ error: "Failed to log in" });
         }
-        res.json({ user, message: "Login successful" });
+        res.json({ user: sanitizeUser(user), message: "Login successful" });
       });
     } catch (error) {
       console.error("Restaurant login error:", error);

@@ -157,7 +157,7 @@ export default function RestaurantOwnerDashboard() {
   // Location update state
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
   const [locationUpdateError, setLocationUpdateError] = useState<string | null>(
-    null
+    null,
   );
 
   // WebSocket integration for real-time updates
@@ -272,18 +272,18 @@ export default function RestaurantOwnerDashboard() {
       const currentEnd = new Date(analyticsDateRange.end);
       const currentStart = new Date(analyticsDateRange.start);
       const daysDiff = Math.ceil(
-        (currentEnd.getTime() - currentStart.getTime()) / (1000 * 60 * 60 * 24)
+        (currentEnd.getTime() - currentStart.getTime()) / (1000 * 60 * 60 * 24),
       );
       const previousStart = new Date(
-        currentStart.getTime() - daysDiff * 24 * 60 * 60 * 1000
+        currentStart.getTime() - daysDiff * 24 * 60 * 60 * 1000,
       );
       const previousEnd = new Date(
-        currentStart.getTime() - 24 * 60 * 60 * 1000
+        currentStart.getTime() - 24 * 60 * 60 * 1000,
       );
 
       return apiRequest(
         "GET",
-        `/api/restaurants/${selectedRestaurant}/analytics/compare?currentStart=${currentStart.toISOString()}&currentEnd=${currentEnd.toISOString()}&previousStart=${previousStart.toISOString()}&previousEnd=${previousEnd.toISOString()}`
+        `/api/restaurants/${selectedRestaurant}/analytics/compare?currentStart=${currentStart.toISOString()}&currentEnd=${currentEnd.toISOString()}&previousStart=${previousStart.toISOString()}&previousEnd=${previousEnd.toISOString()}`,
       );
     },
     enabled: !!selectedRestaurant && (subscription?.hasAccess ?? false),
@@ -294,7 +294,7 @@ export default function RestaurantOwnerDashboard() {
     lat1: number,
     lng1: number,
     lat2: number,
-    lng2: number
+    lng2: number,
   ) => {
     const R = 6371e3; // Earth's radius in meters
     const φ1 = (lat1 * Math.PI) / 180;
@@ -330,7 +330,7 @@ export default function RestaurantOwnerDashboard() {
           heading: location.heading,
           speed: location.speed,
           source: "gps",
-        }
+        },
       );
     },
     onSuccess: () => {
@@ -350,7 +350,7 @@ export default function RestaurantOwnerDashboard() {
         `/api/restaurants/${selectedRestaurant}/food-truck/stop`,
         {
           sessionId,
-        }
+        },
       );
     },
     onSuccess: () => {
@@ -388,7 +388,7 @@ export default function RestaurantOwnerDashboard() {
 
   // Get current restaurant data
   const currentRestaurant = restaurants.find(
-    (r) => r.id === selectedRestaurant
+    (r) => r.id === selectedRestaurant,
   );
 
   // GPS fallback function using IP geolocation
@@ -447,7 +447,7 @@ export default function RestaurantOwnerDashboard() {
             });
           } else {
             setLocationError(
-              "Unable to determine location. Please check your settings."
+              "Unable to determine location. Please check your settings.",
             );
             setConnectionStatus("disconnected");
           }
@@ -479,7 +479,7 @@ export default function RestaurantOwnerDashboard() {
                 currentLocation.lat,
                 currentLocation.lng,
                 newLocation.lat,
-                newLocation.lng
+                newLocation.lng,
               ) > 50)
           ) {
             updateLocationMutation.mutate({
@@ -528,7 +528,7 @@ export default function RestaurantOwnerDashboard() {
           enableHighAccuracy: true,
           timeout: 10000,
           maximumAge: 5000,
-        }
+        },
       );
 
       setGpsWatchId(watchId);
@@ -570,15 +570,15 @@ export default function RestaurantOwnerDashboard() {
             .string()
             .regex(
               /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-              "Time must be in HH:MM format"
+              "Time must be in HH:MM format",
             ),
           close: z
             .string()
             .regex(
               /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-              "Time must be in HH:MM format"
+              "Time must be in HH:MM format",
             ),
-        })
+        }),
       )
       .optional(),
     tue: z
@@ -588,15 +588,15 @@ export default function RestaurantOwnerDashboard() {
             .string()
             .regex(
               /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-              "Time must be in HH:MM format"
+              "Time must be in HH:MM format",
             ),
           close: z
             .string()
             .regex(
               /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-              "Time must be in HH:MM format"
+              "Time must be in HH:MM format",
             ),
-        })
+        }),
       )
       .optional(),
     wed: z
@@ -606,15 +606,15 @@ export default function RestaurantOwnerDashboard() {
             .string()
             .regex(
               /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-              "Time must be in HH:MM format"
+              "Time must be in HH:MM format",
             ),
           close: z
             .string()
             .regex(
               /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-              "Time must be in HH:MM format"
+              "Time must be in HH:MM format",
             ),
-        })
+        }),
       )
       .optional(),
     thu: z
@@ -624,15 +624,15 @@ export default function RestaurantOwnerDashboard() {
             .string()
             .regex(
               /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-              "Time must be in HH:MM format"
+              "Time must be in HH:MM format",
             ),
           close: z
             .string()
             .regex(
               /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-              "Time must be in HH:MM format"
+              "Time must be in HH:MM format",
             ),
-        })
+        }),
       )
       .optional(),
     fri: z
@@ -642,15 +642,15 @@ export default function RestaurantOwnerDashboard() {
             .string()
             .regex(
               /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-              "Time must be in HH:MM format"
+              "Time must be in HH:MM format",
             ),
           close: z
             .string()
             .regex(
               /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-              "Time must be in HH:MM format"
+              "Time must be in HH:MM format",
             ),
-        })
+        }),
       )
       .optional(),
     sat: z
@@ -660,15 +660,15 @@ export default function RestaurantOwnerDashboard() {
             .string()
             .regex(
               /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-              "Time must be in HH:MM format"
+              "Time must be in HH:MM format",
             ),
           close: z
             .string()
             .regex(
               /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-              "Time must be in HH:MM format"
+              "Time must be in HH:MM format",
             ),
-        })
+        }),
       )
       .optional(),
     sun: z
@@ -678,15 +678,15 @@ export default function RestaurantOwnerDashboard() {
             .string()
             .regex(
               /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-              "Time must be in HH:MM format"
+              "Time must be in HH:MM format",
             ),
           close: z
             .string()
             .regex(
               /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-              "Time must be in HH:MM format"
+              "Time must be in HH:MM format",
             ),
-        })
+        }),
       )
       .optional(),
   });
@@ -764,7 +764,7 @@ export default function RestaurantOwnerDashboard() {
         enableHighAccuracy: true,
         timeout: 10000,
         maximumAge: 60000,
-      }
+      },
     );
   };
 
@@ -810,7 +810,7 @@ export default function RestaurantOwnerDashboard() {
         enableHighAccuracy: true,
         timeout: 10000,
         maximumAge: 60000,
-      }
+      },
     );
   };
 
@@ -909,7 +909,7 @@ export default function RestaurantOwnerDashboard() {
           latitude: location.lat,
           longitude: location.lng,
           deviceId: navigator.userAgent || "web-browser",
-        }
+        },
       );
     },
     onSuccess: (data: any) => {
@@ -944,7 +944,7 @@ export default function RestaurantOwnerDashboard() {
         `/api/restaurants/${selectedRestaurant}`,
         {
           isFoodTruck,
-        }
+        },
       );
     },
     onSuccess: () => {
@@ -964,7 +964,7 @@ export default function RestaurantOwnerDashboard() {
       return await apiRequest(
         "PATCH",
         `/api/restaurants/${selectedRestaurant}/location`,
-        location
+        location,
       );
     },
     onSuccess: () => {
@@ -997,7 +997,7 @@ export default function RestaurantOwnerDashboard() {
         `/api/restaurants/${selectedRestaurant}/operating-hours`,
         {
           operatingHours,
-        }
+        },
       );
     },
     onSuccess: () => {
@@ -1241,10 +1241,10 @@ export default function RestaurantOwnerDashboard() {
                               {deal.availableDuringBusinessHours
                                 ? "During business hours"
                                 : deal.startTime && deal.endTime
-                                ? `${formatTime(deal.startTime)} - ${formatTime(
-                                    deal.endTime
-                                  )}`
-                                : "All day"}
+                                  ? `${formatTime(deal.startTime)} - ${formatTime(
+                                      deal.endTime,
+                                    )}`
+                                  : "All day"}
                             </span>
                           </div>
                           {deal.totalUsesLimit && (
@@ -1299,7 +1299,7 @@ export default function RestaurantOwnerDashboard() {
                           onClick={() => {
                             if (
                               confirm(
-                                `Are you sure you want to delete "${deal.title}"? This cannot be undone.`
+                                `Are you sure you want to delete "${deal.title}"? This cannot be undone.`,
                               )
                             ) {
                               deleteDealMutation.mutate(deal.id);
@@ -1559,7 +1559,7 @@ export default function RestaurantOwnerDashboard() {
                               ? "+"
                               : ""}
                             {(comparison as any).changes.claimsChange.toFixed(
-                              1
+                              1,
                             )}
                             %
                           </span>
@@ -1613,7 +1613,7 @@ export default function RestaurantOwnerDashboard() {
                               ? "+"
                               : ""}
                             {(comparison as any).changes.revenueChange.toFixed(
-                              1
+                              1,
                             )}
                             %
                           </span>
@@ -1637,7 +1637,7 @@ export default function RestaurantOwnerDashboard() {
                           data-testid="text-conversion-rate"
                         >
                           {(analyticsSummary as any)?.conversionRate?.toFixed(
-                            1
+                            1,
                           ) || 0}
                           %
                         </p>
@@ -1849,7 +1849,9 @@ export default function RestaurantOwnerDashboard() {
             {/* Top Deals Performance */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Top Performing Specials</CardTitle>
+                <CardTitle className="text-lg">
+                  Top Performing Specials
+                </CardTitle>
                 <CardDescription>
                   Your most successful specials ranked by views and revenue
                 </CardDescription>
@@ -1889,7 +1891,7 @@ export default function RestaurantOwnerDashboard() {
                             </div>
                           </div>
                         </div>
-                      )
+                      ),
                     )}
                   </div>
                 ) : (
@@ -1926,7 +1928,7 @@ export default function RestaurantOwnerDashboard() {
                       <p className="text-2xl font-bold">
                         $
                         {(customerInsights as any)?.averageOrderValue?.toFixed(
-                          2
+                          2,
                         ) || 0}
                       </p>
                     </div>
@@ -2015,7 +2017,7 @@ export default function RestaurantOwnerDashboard() {
                                     {gender.count}
                                   </span>
                                 </div>
-                              )
+                              ),
                             )}
                           </div>
                         </div>
@@ -2092,7 +2094,7 @@ export default function RestaurantOwnerDashboard() {
                   }
                   onClick={() =>
                     toggleFoodTruckMutation.mutate(
-                      !currentRestaurant?.isFoodTruck
+                      !currentRestaurant?.isFoodTruck,
                     )
                   }
                   data-testid="button-toggle-food-truck"
@@ -2112,8 +2114,8 @@ export default function RestaurantOwnerDashboard() {
                             connectionStatus === "connected"
                               ? "bg-green-100"
                               : connectionStatus === "connecting"
-                              ? "bg-yellow-100"
-                              : "bg-gray-100"
+                                ? "bg-yellow-100"
+                                : "bg-gray-100"
                           }`}
                         >
                           {connectionStatus === "connected" ? (
@@ -2132,8 +2134,8 @@ export default function RestaurantOwnerDashboard() {
                             {connectionStatus === "connected"
                               ? "Broadcasting your location to customers"
                               : connectionStatus === "connecting"
-                              ? "Connecting to GPS..."
-                              : "Start broadcasting to appear on customer maps"}
+                                ? "Connecting to GPS..."
+                                : "Start broadcasting to appear on customer maps"}
                           </p>
                         </div>
                       </div>
@@ -2193,8 +2195,8 @@ export default function RestaurantOwnerDashboard() {
                           {connectionStatus === "connected" && isConnected
                             ? "Real-time"
                             : connectionStatus === "connected" && !isConnected
-                            ? "GPS Only"
-                            : connectionStatus}
+                              ? "GPS Only"
+                              : connectionStatus}
                         </p>
                         {wsError && (
                           <p className="text-xs text-red-500 mt-1">
@@ -2332,7 +2334,8 @@ export default function RestaurantOwnerDashboard() {
                         • Sessions auto-stop after 2 minutes of inactivity
                       </li>
                       <li>
-                        • Customers can see your live location and active specials
+                        • Customers can see your live location and active
+                        specials
                       </li>
                       <li>• Works best with mobile internet connection</li>
                     </ul>
@@ -2390,7 +2393,8 @@ export default function RestaurantOwnerDashboard() {
                           data-testid="text-restaurant-location"
                         >
                           {currentRestaurant.city || "Unknown Location"}
-                          {currentRestaurant.state && `, ${currentRestaurant.state}`}
+                          {currentRestaurant.state &&
+                            `, ${currentRestaurant.state}`}
                         </p>
                       </div>
                     )}
@@ -2437,7 +2441,7 @@ export default function RestaurantOwnerDashboard() {
                   <Form {...operatingHoursForm}>
                     <form
                       onSubmit={operatingHoursForm.handleSubmit(
-                        handleOperatingHoursSubmit
+                        handleOperatingHoursSubmit,
                       )}
                       className="space-y-4"
                     >
@@ -2455,7 +2459,7 @@ export default function RestaurantOwnerDashboard() {
 
                           const timeSlots =
                             operatingHoursForm.watch(
-                              day as keyof OperatingHoursFormData
+                              day as keyof OperatingHoursFormData,
                             ) || [];
 
                           return (
@@ -2470,7 +2474,7 @@ export default function RestaurantOwnerDashboard() {
                                   size="sm"
                                   onClick={() =>
                                     addTimeSlot(
-                                      day as keyof OperatingHoursFormData
+                                      day as keyof OperatingHoursFormData,
                                     )
                                   }
                                   disabled={timeSlots.length >= 3}
@@ -2539,7 +2543,7 @@ export default function RestaurantOwnerDashboard() {
                                         onClick={() =>
                                           removeTimeSlot(
                                             day as keyof OperatingHoursFormData,
-                                            index
+                                            index,
                                           )
                                         }
                                         data-testid={`button-remove-${day}-${index}-hours`}
@@ -2552,7 +2556,7 @@ export default function RestaurantOwnerDashboard() {
                               )}
                             </div>
                           );
-                        }
+                        },
                       )}
 
                       <div className="flex items-center gap-3 pt-4">

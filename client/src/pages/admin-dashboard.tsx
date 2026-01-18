@@ -148,8 +148,8 @@ function ManualUserCreation() {
       try {
         const response = await fetch(
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-            formData.address
-          )}`
+            formData.address,
+          )}`,
         );
         const data = await response.json();
 
@@ -190,8 +190,8 @@ function ManualUserCreation() {
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          formData.address
-        )}`
+          formData.address,
+        )}`,
       );
       const data = await response.json();
 
@@ -575,7 +575,7 @@ function ManualUserCreation() {
                           <input
                             type="checkbox"
                             checked={formData.amenities.includes(
-                              amenity.toLowerCase()
+                              amenity.toLowerCase(),
                             )}
                             onChange={(e) => {
                               const value = amenity.toLowerCase();
@@ -588,7 +588,7 @@ function ManualUserCreation() {
                                 setFormData({
                                   ...formData,
                                   amenities: formData.amenities.filter(
-                                    (a) => a !== value
+                                    (a) => a !== value,
                                   ),
                                 });
                               }
@@ -597,7 +597,7 @@ function ManualUserCreation() {
                           />
                           <span className="text-sm">{amenity}</span>
                         </label>
-                      )
+                      ),
                     )}
                   </div>
                 </div>
@@ -654,7 +654,7 @@ function HostLocationManager() {
         {
           latitude: lat,
           longitude: lng,
-        }
+        },
       );
     },
     onSuccess: () => {
@@ -686,9 +686,9 @@ function HostLocationManager() {
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          host.address
+          host.address,
         )}`,
-        { headers: { "User-Agent": "MealScout/1.0" } }
+        { headers: { "User-Agent": "MealScout/1.0" } },
       );
       const data = await response.json();
 
@@ -869,12 +869,12 @@ function StaffManagementTab() {
     (user) =>
       user.userType !== "admin" &&
       user.userType !== "staff" &&
-      user.userType !== "super_admin"
+      user.userType !== "super_admin",
   );
 
   // Filter out super_admin from staff members list (they should never appear here)
   const displayStaffMembers = staffMembers.filter(
-    (staff) => staff.userType !== "super_admin"
+    (staff) => staff.userType !== "super_admin",
   );
 
   return (
@@ -1033,7 +1033,7 @@ export default function AdminDashboard() {
     mutationFn: async (restaurantId: string) => {
       return await apiRequest(
         "POST",
-        `/api/admin/restaurants/${restaurantId}/approve`
+        `/api/admin/restaurants/${restaurantId}/approve`,
       );
     },
     onSuccess: () => {
@@ -1060,7 +1060,7 @@ export default function AdminDashboard() {
     mutationFn: async (restaurantId: string) => {
       return await apiRequest(
         "DELETE",
-        `/api/admin/restaurants/${restaurantId}`
+        `/api/admin/restaurants/${restaurantId}`,
       );
     },
     onSuccess: () => {
@@ -1269,7 +1269,7 @@ export default function AdminDashboard() {
     mutationFn: async (requestId: string) => {
       return await apiRequest(
         "POST",
-        `/api/admin/verifications/${requestId}/approve`
+        `/api/admin/verifications/${requestId}/approve`,
       );
     },
     onSuccess: () => {
@@ -1301,7 +1301,7 @@ export default function AdminDashboard() {
       return await apiRequest(
         "POST",
         `/api/admin/verifications/${requestId}/reject`,
-        { reason }
+        { reason },
       );
     },
     onSuccess: () => {
@@ -1721,7 +1721,7 @@ export default function AdminDashboard() {
                             onClick={() => {
                               if (
                                 confirm(
-                                  `Are you sure you want to permanently delete ${user.firstName} ${user.lastName}? This cannot be undone.`
+                                  `Are you sure you want to permanently delete ${user.firstName} ${user.lastName}? This cannot be undone.`,
                                 )
                               ) {
                                 deleteUser.mutate(user.id);
@@ -1858,7 +1858,7 @@ export default function AdminDashboard() {
                             onClick={() => {
                               if (
                                 window.confirm(
-                                  "Are you sure you want to delete this deal? This action cannot be undone."
+                                  "Are you sure you want to delete this deal? This action cannot be undone.",
                                 )
                               ) {
                                 deleteDeal.mutate(deal.id);
@@ -1918,8 +1918,8 @@ export default function AdminDashboard() {
                               request.status === "pending"
                                 ? "secondary"
                                 : request.status === "approved"
-                                ? "default"
-                                : "destructive"
+                                  ? "default"
+                                  : "destructive"
                             }
                             className="flex items-center space-x-1"
                           >
@@ -1973,7 +1973,7 @@ export default function AdminDashboard() {
                                           </div>
                                         )}
                                       </div>
-                                    )
+                                    ),
                                   )}
                                 </div>
                               </div>
@@ -2011,7 +2011,7 @@ export default function AdminDashboard() {
                               variant="destructive"
                               onClick={() => {
                                 const reason = window.prompt(
-                                  "Please provide a reason for rejection:"
+                                  "Please provide a reason for rejection:",
                                 );
                                 if (reason && reason.trim()) {
                                   rejectVerification.mutate({
@@ -2300,7 +2300,7 @@ export default function AdminDashboard() {
                           year: "numeric",
                           month: "long",
                           day: "numeric",
-                        }
+                        },
                       )}
                     </p>
                   </div>
@@ -2316,7 +2316,7 @@ export default function AdminDashboard() {
                             year: "numeric",
                             month: "long",
                             day: "numeric",
-                          }
+                          },
                         )}
                       </p>
                     </div>
@@ -2399,7 +2399,7 @@ export default function AdminDashboard() {
                     onClick={() => {
                       if (
                         window.confirm(
-                          `Are you absolutely sure you want to delete ${selectedUser.email}? This will permanently delete the account and all associated data. This action cannot be undone.`
+                          `Are you absolutely sure you want to delete ${selectedUser.email}? This will permanently delete the account and all associated data. This action cannot be undone.`,
                         )
                       ) {
                         deleteUser.mutate(selectedUser.id);
@@ -2658,7 +2658,7 @@ export default function AdminDashboard() {
                   onClick={() => {
                     if (
                       window.confirm(
-                        "Are you absolutely sure? This will permanently delete the deal and all associated data."
+                        "Are you absolutely sure? This will permanently delete the deal and all associated data.",
                       )
                     ) {
                       deleteDeal.mutate(selectedDeal.id);

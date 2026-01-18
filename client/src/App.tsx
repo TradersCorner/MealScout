@@ -36,22 +36,22 @@ const AdminIncidents = lazy(() => import("@/pages/AdminIncidents"));
 const AdminControlCenter = lazy(() => import("@/pages/AdminControlCenter"));
 const AdminSupportTickets = lazy(() => import("@/pages/AdminSupportTickets"));
 const AdminModerationEvents = lazy(
-  () => import("@/pages/AdminModerationEvents")
+  () => import("@/pages/AdminModerationEvents"),
 );
 const AdminModerationVideos = lazy(
-  () => import("@/pages/admin-moderation-videos")
+  () => import("@/pages/admin-moderation-videos"),
 );
 const AdminModerationMetrics = lazy(
-  () => import("@/pages/admin-moderation-metrics")
+  () => import("@/pages/admin-moderation-metrics"),
 );
 const AdminModerationAppeals = lazy(
-  () => import("@/pages/admin-moderation-appeals")
+  () => import("@/pages/admin-moderation-appeals"),
 );
 const AdminAuditLogs = lazy(() => import("@/pages/AdminAuditLogs"));
 const AdminTelemetry = lazy(() => import("@/pages/admin-telemetry"));
 const AffiliateEarnings = lazy(() => import("@/pages/AffiliateEarnings"));
 const EmptyCountyExperience = lazy(
-  () => import("@/pages/EmptyCountyExperience")
+  () => import("@/pages/EmptyCountyExperience"),
 );
 const CategoryPage = lazy(() => import("@/pages/category"));
 const FeaturedDealsPage = lazy(() => import("@/pages/deals-featured"));
@@ -62,7 +62,7 @@ const AddressesPage = lazy(() => import("@/pages/profile/addresses"));
 const PaymentMethodsPage = lazy(() => import("@/pages/profile/payment"));
 const HelpSupportPage = lazy(() => import("@/pages/profile/help"));
 const RestaurantOwnerDashboard = lazy(
-  () => import("@/pages/restaurant-owner-dashboard")
+  () => import("@/pages/restaurant-owner-dashboard"),
 );
 const UserDashboard = lazy(() => import("@/pages/user-dashboard"));
 const DashboardSwitcher = lazy(() => import("@/components/dashboard-switcher"));

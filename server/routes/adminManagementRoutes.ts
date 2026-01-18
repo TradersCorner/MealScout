@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { storage } from "../storage";
 import { isAuthenticated, isAdmin } from "../unifiedAuth";
 import { sanitizeUser, sanitizeUsers } from "../utils/sanitize";
+import { sendAccountSetupInvite } from "../utils/accountSetup";
 
 // Optional Stripe integration (mirrors server/routes.ts)
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -41,19 +42,13 @@ export function registerAdminManagementRoutes(app: Express) {
           });
         }
 
-        // Generate temp password
-        const tempPassword =
-          Math.random().toString(36).slice(2) +
-          Math.random().toString(36).toUpperCase().slice(2);
-
-        // Create user account
-        const user = await storage.createUserManually({
+        // Create user account (invite link flow)
+        const user = await storage.createUserInvite({
           email,
           firstName,
           lastName,
           phone,
           userType,
-          tempPassword,
         });
 
         // Handle restaurant owner and food truck creation
@@ -111,10 +106,16 @@ export function registerAdminManagementRoutes(app: Express) {
           await storage.createHost(hostData);
         }
 
+        const emailSent = await sendAccountSetupInvite({
+          user,
+          createdBy: req.user,
+          req,
+        });
+
         res.json({
           success: true,
-          tempPassword,
-          message: `${userType} account created successfully`,
+          setupEmailSent: emailSent,
+          message: `${userType} account created successfully. Setup link emailed to ${email}.`,
         });
       } catch (error: any) {
         console.error("Error creating user manually:", error);

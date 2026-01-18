@@ -1,10 +1,8 @@
 import type { Express } from "express";
-import bcrypt from "bcryptjs";
-import crypto from "crypto";
 import { storage } from "./storage";
 import { isAuthenticated, isAdmin, isStaffOrAdmin } from "./unifiedAuth";
 import { logAudit } from "./auditLogger";
-import { emailService } from "./emailService";
+import { sendAccountSetupInvite } from "./utils/accountSetup";
 
 /**
  * Staff Management & User Creation Routes
@@ -15,14 +13,8 @@ import { emailService } from "./emailService";
  * - Demote/disable staff
  *
  * Staff-or-Admin routes:
- * - Create customer accounts (with temp password + must reset)
- * - Create restaurant owner accounts (with optional restaurant shell)
+ * - Create user accounts with email invite links
  */
-
-// Utility: generate secure temporary password
-function generateTempPassword(): string {
-  return crypto.randomBytes(12).toString("base64url"); // ~16 chars URL-safe
-}
 
 export function registerStaffRoutes(app: Express) {
   // ============================================
@@ -192,7 +184,21 @@ export function registerStaffRoutes(app: Express) {
     isStaffOrAdmin,
     async (req: any, res) => {
       try {
-        const { email, firstName, lastName, phone, userType } = req.body;
+        const {
+          email,
+          firstName,
+          lastName,
+          phone,
+          userType,
+          businessName,
+          address,
+          cuisineType,
+          latitude,
+          longitude,
+          locationType,
+          footTraffic,
+          amenities,
+        } = req.body;
         const staffUser = req.user;
 
         if (!email || typeof email !== "string") {
@@ -203,6 +209,9 @@ export function registerStaffRoutes(app: Express) {
         const validUserTypes = [
           "customer",
           "restaurant_owner",
+          "food_truck",
+          "host",
+          "event_coordinator",
           "staff",
           "admin",
         ];
@@ -231,65 +240,80 @@ export function registerStaffRoutes(app: Express) {
         }
 
         // Create user without password - they'll set it via email link
-        const result = await storage.createUserWithPassword({
+        const user = await storage.createUserInvite({
           email: normalizedEmail,
           firstName: firstName?.trim() || null,
           lastName: lastName?.trim() || null,
           phone: phone?.trim() || null,
           userType: targetUserType,
-          passwordHash: null, // No password yet
-          mustResetPassword: false, // Not using temp password flow
         });
 
-        // Generate account setup token (valid for 7 days)
-        const setupToken = crypto.randomBytes(32).toString("hex");
-        const tokenHash = crypto
-          .createHash("sha256")
-          .update(setupToken)
-          .digest("hex");
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-
-        await storage.createAccountSetupToken({
-          userId: result.userId,
-          tokenHash,
-          expiresAt,
-          createdByUserId: staffUser.id,
-          requestIp: req.ip || null,
-          userAgent: req.get("User-Agent") || null,
-        });
-
-        // Create setup URL
-        const setupUrl = `${
-          req.get("Origin") || req.protocol + "://" + req.get("host")
-        }/account-setup?token=${encodeURIComponent(setupToken)}`;
-
-        // Send setup email
-        const createdByName = staffUser.firstName
-          ? `${staffUser.firstName} ${staffUser.lastName || ""}`
-          : undefined;
-
-        const user = await storage.getUser(result.userId);
-        if (user) {
-          const emailSent = await emailService.sendAccountSetupEmail(
-            user,
-            setupUrl,
-            createdByName
-          );
-
-          if (!emailSent) {
-            console.error(
-              "Failed to send account setup email for user:",
-              user.email
-            );
-          }
+        // Optionally create restaurant or host profiles
+        if (
+          (targetUserType === "restaurant_owner" ||
+            targetUserType === "food_truck") &&
+          businessName &&
+          address
+        ) {
+          await storage.createRestaurantForUser({
+            userId: user.id,
+            name: businessName,
+            address,
+            cuisineType: cuisineType || "Various",
+          });
         }
+
+        if (
+          (targetUserType === "host" ||
+            targetUserType === "event_coordinator") &&
+          businessName &&
+          address
+        ) {
+          const footTrafficMap: Record<string, number> = {
+            low: 50,
+            medium: 150,
+            high: 300,
+          };
+
+          const amenitiesObj: Record<string, boolean> = {};
+          if (Array.isArray(amenities)) {
+            amenities.forEach((amenity: string) => {
+              amenitiesObj[amenity] = true;
+            });
+          }
+
+          const hostData: any = {
+            userId: user.id,
+            businessName,
+            address,
+            locationType: locationType || "other",
+            expectedFootTraffic: footTrafficMap[footTraffic] || 100,
+            amenities:
+              Object.keys(amenitiesObj).length > 0 ? amenitiesObj : null,
+            isVerified: true,
+            adminCreated: true,
+          };
+
+          if (latitude && longitude) {
+            hostData.latitude = latitude.toString();
+            hostData.longitude = longitude.toString();
+          }
+
+          await storage.createHost(hostData);
+        }
+
+        const emailSent = await sendAccountSetupInvite({
+          user,
+          createdBy: staffUser,
+          req,
+        });
 
         // Audit log
         await logAudit(
           staffUser.id,
           "user_created_by_staff",
           "user",
-          result.userId,
+          user.id,
           req.ip || "unknown",
           req.get("User-Agent") || "unknown",
           { createdUserType: targetUserType, createdByRole: staffUser.userType }
@@ -297,9 +321,9 @@ export function registerStaffRoutes(app: Express) {
 
         res.json({
           success: true,
-          userId: result.userId,
+          userId: user.id,
           email: normalizedEmail,
-          setupEmailSent: true,
+          setupEmailSent: emailSent,
           message: `${targetUserType.replace(
             "_",
             " "
@@ -348,18 +372,12 @@ export function registerStaffRoutes(app: Express) {
             .json({ error: "User with this email already exists" });
         }
 
-        const tempPassword = generateTempPassword();
-        const passwordHash = await bcrypt.hash(tempPassword, 12);
-
-        // Create restaurant owner account
-        const result = await storage.createUserWithPassword({
+        const user = await storage.createUserInvite({
           email: normalizedEmail,
           firstName: firstName?.trim() || null,
           lastName: lastName?.trim() || null,
           phone: phone?.trim() || null,
           userType: "restaurant_owner",
-          passwordHash,
-          mustResetPassword: true,
         });
 
         let restaurantId: string | null = null;
@@ -367,7 +385,7 @@ export function registerStaffRoutes(app: Express) {
         // If restaurant details provided, create shell
         if (restaurantName && restaurantName.trim()) {
           const restaurant = await storage.createRestaurant({
-            ownerId: result.userId,
+            ownerId: user.id,
             name: restaurantName.trim(),
             address: restaurantAddress?.trim() || "Address pending",
             phone: restaurantPhone?.trim() || null,
@@ -379,11 +397,17 @@ export function registerStaffRoutes(app: Express) {
         }
 
         // Audit log
+        const emailSent = await sendAccountSetupInvite({
+          user,
+          createdBy: staffUser,
+          req,
+        });
+
         await logAudit(
           staffUser.id,
           "restaurant_owner_created_by_staff",
           "user",
-          result.userId,
+          user.id,
           req.ip || "unknown",
           req.get("User-Agent") || "unknown",
           {
@@ -396,14 +420,13 @@ export function registerStaffRoutes(app: Express) {
 
         res.json({
           success: true,
-          userId: result.userId,
+          userId: user.id,
           email: normalizedEmail,
-          tempPassword,
+          setupEmailSent: emailSent,
           restaurantId,
-          mustResetPassword: true,
           message: restaurantId
-            ? "Restaurant owner and restaurant shell created. User must reset password on first login."
-            : "Restaurant owner created. User must reset password on first login.",
+            ? "Restaurant owner and restaurant shell created. Setup instructions sent by email."
+            : "Restaurant owner created. Setup instructions sent by email.",
         });
       } catch (error) {
         console.error("Error creating restaurant owner:", error);

@@ -4114,10 +4114,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let event;
 
     try {
+      const payload = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : req.body;
       // For development, we'll accept any webhook without signature verification
       // In production, you should verify the webhook signature for security
       if (process.env.NODE_ENV === "development") {
-        event = JSON.parse(req.body);
+        event = typeof payload === "string" ? JSON.parse(payload) : payload;
       } else {
         const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
         if (!stripe || !endpointSecret) {

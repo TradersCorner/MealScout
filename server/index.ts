@@ -312,9 +312,16 @@ const apiLimiter = createRateLimiter({
   keyGenerator: (req) => req.ip || "unknown",
 });
 
-// Body parsing with size limits
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: false, limit: "10mb" }));
+// Body parsing with size limits (keep Stripe webhook raw for signature verification)
+app.use("/api/stripe/webhook", express.raw({ type: "application/json" }));
+app.use((req, res, next) => {
+  if (req.path === "/api/stripe/webhook") return next();
+  return express.json({ limit: "10mb" })(req, res, next);
+});
+app.use((req, res, next) => {
+  if (req.path === "/api/stripe/webhook") return next();
+  return express.urlencoded({ extended: false, limit: "10mb" })(req, res, next);
+});
 
 const REDACTED_LOG_KEYS = new Set([
   "passwordHash",

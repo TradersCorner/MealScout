@@ -267,6 +267,23 @@ export interface IStorage {
   // Admin operations
   ensureAdminExists(): Promise<void>;
 
+  // Account setup invite
+  createUserInvite(data: {
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    phone: string | null;
+    userType:
+      | "customer"
+      | "restaurant_owner"
+      | "food_truck"
+      | "host"
+      | "event_coordinator"
+      | "staff"
+      | "admin"
+      | "super_admin";
+  }): Promise<User>;
+
   // Verification operations
   createVerificationRequest(
     verificationRequest: InsertVerificationRequest
@@ -1886,6 +1903,38 @@ export class DatabaseStorage implements IStorage {
         passwordHash: hashedPassword,
         mustResetPassword: true,
         emailVerified: true, // Admin-created accounts are pre-verified
+      })
+      .returning();
+
+    return user;
+  }
+
+  async createUserInvite(data: {
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    phone: string | null;
+    userType:
+      | "customer"
+      | "restaurant_owner"
+      | "food_truck"
+      | "host"
+      | "event_coordinator"
+      | "staff"
+      | "admin"
+      | "super_admin";
+  }): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        userType: data.userType,
+        passwordHash: null,
+        mustResetPassword: false,
+        emailVerified: false,
       })
       .returning();
 

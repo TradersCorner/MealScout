@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 
 // Load Stripe publishable key
 const stripePromise = loadStripe(
-  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "",
+  import.meta.env.VITE_STRIPE_PUBLIC_KEY || "",
 );
 
 interface BookingPaymentModalProps {

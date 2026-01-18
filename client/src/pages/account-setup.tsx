@@ -4,7 +4,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,15 +20,17 @@ import { Eye, EyeOff, CheckCircle, KeyRound } from "lucide-react";
 import { BackHeader } from "@/components/back-header";
 import { SEOHead } from "@/components/seo-head";
 
-const accountSetupSchema = z.object({
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  confirmPassword: z.string().min(1, "Please confirm your password"),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+const accountSetupSchema = z
+  .object({
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
 type AccountSetupFormData = z.infer<typeof accountSetupSchema>;
 
@@ -37,7 +45,7 @@ export default function AccountSetup() {
   // Extract token from URL parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const tokenParam = urlParams.get('token');
+    const tokenParam = urlParams.get("token");
     setToken(tokenParam);
   }, []);
 
@@ -52,22 +60,28 @@ export default function AccountSetup() {
   });
 
   // Validate token on mount
-  const { data: tokenValidation, isLoading: isValidatingToken, error: tokenError } = useQuery<{
+  const {
+    data: tokenValidation,
+    isLoading: isValidatingToken,
+    error: tokenError,
+  } = useQuery<{
     valid: boolean;
     userEmail?: string;
     firstName?: string;
     lastName?: string;
     error?: string;
   }>({
-    queryKey: ['/api/auth/validate-setup-token', token],
+    queryKey: ["/api/auth/validate-setup-token", token],
     queryFn: async () => {
       if (!token) {
-        throw new Error('No token provided');
+        throw new Error("No token provided");
       }
-      const res = await fetch(`/api/auth/validate-setup-token?token=${encodeURIComponent(token)}`);
+      const res = await fetch(
+        `/api/auth/validate-setup-token?token=${encodeURIComponent(token)}`,
+      );
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.error || 'Invalid token');
+        throw new Error(error.error || "Invalid token");
       }
       return res.json();
     },
@@ -78,16 +92,16 @@ export default function AccountSetup() {
   // Pre-fill name fields if available
   useEffect(() => {
     if (tokenValidation?.firstName) {
-      form.setValue('firstName', tokenValidation.firstName);
+      form.setValue("firstName", tokenValidation.firstName);
     }
     if (tokenValidation?.lastName) {
-      form.setValue('lastName', tokenValidation.lastName);
+      form.setValue("lastName", tokenValidation.lastName);
     }
   }, [tokenValidation, form]);
 
   const setupMutation = useMutation({
     mutationFn: async (data: AccountSetupFormData) => {
-      return await apiRequest('POST', '/api/auth/complete-setup', {
+      return await apiRequest("POST", "/api/auth/complete-setup", {
         token,
         password: data.password,
         firstName: data.firstName,
@@ -102,13 +116,15 @@ export default function AccountSetup() {
       });
       // Redirect to login after 2 seconds
       setTimeout(() => {
-        setLocation('/login');
+        setLocation("/login");
       }, 2000);
     },
     onError: (error: any) => {
       toast({
         title: "Setup Failed",
-        description: error.message || "Failed to complete account setup. Please try again.",
+        description:
+          error.message ||
+          "Failed to complete account setup. Please try again.",
         variant: "destructive",
       });
     },
@@ -122,11 +138,22 @@ export default function AccountSetup() {
   const password = form.watch("password");
   const getPasswordStrength = (password: string) => {
     if (!password) return { level: 0, text: "", color: "gray" };
-    if (password.length < 8) return { level: 1, text: "Too short", color: "red" };
-    if (password.length < 10) return { level: 2, text: "Weak", color: "orange" };
-    if (password.length < 12 && /[A-Z]/.test(password) && /[0-9]/.test(password))
+    if (password.length < 8)
+      return { level: 1, text: "Too short", color: "red" };
+    if (password.length < 10)
+      return { level: 2, text: "Weak", color: "orange" };
+    if (
+      password.length < 12 &&
+      /[A-Z]/.test(password) &&
+      /[0-9]/.test(password)
+    )
       return { level: 3, text: "Good", color: "blue" };
-    if (password.length >= 12 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password))
+    if (
+      password.length >= 12 &&
+      /[A-Z]/.test(password) &&
+      /[0-9]/.test(password) &&
+      /[^A-Za-z0-9]/.test(password)
+    )
       return { level: 4, text: "Strong", color: "green" };
     return { level: 2, text: "Weak", color: "orange" };
   };
@@ -173,10 +200,7 @@ export default function AccountSetup() {
               <p className="text-sm text-gray-600 mb-4">
                 Please contact support or request a new setup link.
               </p>
-              <Button
-                className="w-full"
-                onClick={() => setLocation('/login')}
-              >
+              <Button className="w-full" onClick={() => setLocation("/login")}>
                 Go to Login
               </Button>
             </CardContent>
@@ -283,7 +307,11 @@ export default function AccountSetup() {
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                     disabled={setupMutation.isPending}
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
                 {password && (
@@ -291,16 +319,22 @@ export default function AccountSetup() {
                     <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden">
                       <div
                         className={`h-full transition-all duration-300 bg-${passwordStrength.color}-500`}
-                        style={{ width: `${(passwordStrength.level / 4) * 100}%` }}
+                        style={{
+                          width: `${(passwordStrength.level / 4) * 100}%`,
+                        }}
                       />
                     </div>
-                    <span className={`text-xs font-medium text-${passwordStrength.color}-600`}>
+                    <span
+                      className={`text-xs font-medium text-${passwordStrength.color}-600`}
+                    >
                       {passwordStrength.text}
                     </span>
                   </div>
                 )}
                 {form.formState.errors.password && (
-                  <p className="text-sm text-red-600">{form.formState.errors.password.message}</p>
+                  <p className="text-sm text-red-600">
+                    {form.formState.errors.password.message}
+                  </p>
                 )}
               </div>
 
@@ -323,7 +357,11 @@ export default function AccountSetup() {
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                     disabled={setupMutation.isPending}
                   >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showConfirmPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
                 {form.formState.errors.confirmPassword && (

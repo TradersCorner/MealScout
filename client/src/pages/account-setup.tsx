@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/api";
 import { Eye, EyeOff, CheckCircle, KeyRound } from "lucide-react";
 import { BackHeader } from "@/components/back-header";
-import SEOHead from "@/components/SEOHead";
+import { SEOHead } from "@/components/seo-head";
 
 const accountSetupSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),

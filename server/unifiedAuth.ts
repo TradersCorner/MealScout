@@ -637,6 +637,8 @@ export async function setupUnifiedAuth(app: Express) {
   }
 
   const normalizePhone = (phone: string) => phone.replace(/\D/g, "");
+  const requirePhoneVerification =
+    process.env.REQUIRE_PHONE_VERIFICATION !== "false";
 
   const verifyPhoneCode = async (phone: string, code: string) => {
     const tokenHash = crypto.createHash("sha256").update(code).digest("hex");
@@ -728,14 +730,7 @@ export async function setupUnifiedAuth(app: Express) {
     try {
       const { email, firstName, lastName, phone, password, otpCode } = req.body;
 
-      if (
-        !email ||
-        !firstName ||
-        !lastName ||
-        !phone ||
-        !password ||
-        !otpCode
-      ) {
+      if (!email || !firstName || !lastName || !phone || !password) {
         return res.status(400).json({ error: "All fields are required" });
       }
 
@@ -763,12 +758,19 @@ export async function setupUnifiedAuth(app: Express) {
         return res.status(400).json({ error: "Phone number already in use" });
       }
 
-      const phoneVerified = await verifyPhoneCode(
-        normalizedPhone,
-        String(otpCode),
-      );
-      if (!phoneVerified) {
-        return res.status(400).json({ error: "Phone verification failed" });
+      if (requirePhoneVerification) {
+        if (!otpCode) {
+          return res
+            .status(400)
+            .json({ error: "Verification code is required" });
+        }
+        const phoneVerified = await verifyPhoneCode(
+          normalizedPhone,
+          String(otpCode),
+        );
+        if (!phoneVerified) {
+          return res.status(400).json({ error: "Phone verification failed" });
+        }
       }
 
       const passwordHash = await bcrypt.hash(password, 10);
@@ -824,14 +826,7 @@ export async function setupUnifiedAuth(app: Express) {
     try {
       const { email, firstName, lastName, phone, password, otpCode } = req.body;
 
-      if (
-        !email ||
-        !firstName ||
-        !lastName ||
-        !phone ||
-        !password ||
-        !otpCode
-      ) {
+      if (!email || !firstName || !lastName || !phone || !password) {
         return res.status(400).json({ error: "All fields are required" });
       }
 
@@ -859,12 +854,19 @@ export async function setupUnifiedAuth(app: Express) {
         return res.status(400).json({ error: "Phone number already in use" });
       }
 
-      const phoneVerified = await verifyPhoneCode(
-        normalizedPhone,
-        String(otpCode),
-      );
-      if (!phoneVerified) {
-        return res.status(400).json({ error: "Phone verification failed" });
+      if (requirePhoneVerification) {
+        if (!otpCode) {
+          return res
+            .status(400)
+            .json({ error: "Verification code is required" });
+        }
+        const phoneVerified = await verifyPhoneCode(
+          normalizedPhone,
+          String(otpCode),
+        );
+        if (!phoneVerified) {
+          return res.status(400).json({ error: "Phone verification failed" });
+        }
       }
 
       const passwordHash = await bcrypt.hash(password, 10);

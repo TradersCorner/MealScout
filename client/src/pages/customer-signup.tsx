@@ -32,7 +32,7 @@ const signupSchema = z
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),
     phone: z.string().min(10, "Phone number must be at least 10 digits"),
-    otpCode: z.string().min(6, "Verification code is required"),
+    otpCode: z.string().optional(),
     password: z.string().min(6, "Password must be at least 6 characters"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
   })
@@ -50,6 +50,8 @@ export default function CustomerSignup() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
+  const requirePhoneVerification =
+    import.meta.env.VITE_REQUIRE_PHONE_VERIFICATION !== "false";
 
   const searchParams = new URLSearchParams(window.location.search);
   const role = searchParams.get("role");
@@ -171,11 +173,32 @@ export default function CustomerSignup() {
         });
         return;
       }
+      if (requirePhoneVerification && !data.otpCode) {
+        form.setError("otpCode", {
+          type: "manual",
+          message: "Verification code is required",
+        });
+        return;
+      }
       businessSignupMutation.mutate(data);
     } else if (accountType === "host") {
       // Hosts signup as customers but we can add host-specific flow later
+      if (requirePhoneVerification && !data.otpCode) {
+        form.setError("otpCode", {
+          type: "manual",
+          message: "Verification code is required",
+        });
+        return;
+      }
       customerSignupMutation.mutate(data);
     } else {
+      if (requirePhoneVerification && !data.otpCode) {
+        form.setError("otpCode", {
+          type: "manual",
+          message: "Verification code is required",
+        });
+        return;
+      }
       customerSignupMutation.mutate(data);
     }
   };
@@ -388,14 +411,20 @@ export default function CustomerSignup() {
                             placeholder="(555) 123-4567"
                             {...field}
                           />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleSendOtp}
-                            disabled={otpSending}
-                          >
-                            {otpSending ? "Sending..." : otpSent ? "Resend" : "Send code"}
-                          </Button>
+                          {requirePhoneVerification && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleSendOtp}
+                              disabled={otpSending}
+                            >
+                              {otpSending
+                                ? "Sending..."
+                                : otpSent
+                                  ? "Resend"
+                                  : "Send code"}
+                            </Button>
+                          )}
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -403,29 +432,31 @@ export default function CustomerSignup() {
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="otpCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Verification Code</FormLabel>
-                      <FormControl>
-                        <InputOTP
-                          maxLength={6}
-                          value={field.value}
-                          onChange={field.onChange}
-                        >
-                          <InputOTPGroup>
-                            {[0, 1, 2, 3, 4, 5].map((index) => (
-                              <InputOTPSlot key={index} index={index} />
-                            ))}
-                          </InputOTPGroup>
-                        </InputOTP>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {requirePhoneVerification && (
+                  <FormField
+                    control={form.control}
+                    name="otpCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Verification Code</FormLabel>
+                        <FormControl>
+                          <InputOTP
+                            maxLength={6}
+                            value={field.value}
+                            onChange={field.onChange}
+                          >
+                            <InputOTPGroup>
+                              {[0, 1, 2, 3, 4, 5].map((index) => (
+                                <InputOTPSlot key={index} index={index} />
+                              ))}
+                            </InputOTPGroup>
+                          </InputOTP>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <FormField
                   control={form.control}

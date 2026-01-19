@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MapPin, Navigation, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { Link } from "wouter";
 
 interface WelcomeLocationModalProps {
   open: boolean;
@@ -201,6 +202,12 @@ export default function WelcomeLocationModal({
           >
             Skip for now
           </Button>
+
+          {!user && (
+            <Button asChild className="w-full">
+              <Link href="/customer-signup">Create account</Link>
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

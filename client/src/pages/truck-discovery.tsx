@@ -11,13 +11,11 @@ import {
   ChevronDown,
   ChevronUp,
   AlertCircle,
-  DollarSign,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { BookingPaymentModal } from "@/components/booking-payment-modal";
 
 interface Host {
   id: string;
@@ -45,8 +43,6 @@ interface Event {
   seriesId?: string | null;
   host: Host;
   series?: EventSeries | null;
-  requiresPayment?: boolean;
-  hostPriceCents?: number;
 }
 
 interface SeriesGroup {
@@ -71,8 +67,6 @@ function TruckDiscovery() {
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set());
   const [myRestaurantId, setMyRestaurantId] = useState<string | null>(null);
-  const [bookingModalOpen, setBookingModalOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -149,23 +143,6 @@ function TruckDiscovery() {
     }
   };
 
-  const handleBookNow = (event: Event) => {
-    if (!myRestaurantId) {
-      toast({
-        title: "Truck Profile Required",
-        description: "You must have a truck profile to book a parking spot.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setSelectedEvent(event);
-    setBookingModalOpen(true);
-  };
-
-  const handleBookingSuccess = () => {
-    // Refresh events to update booking status
-    window.location.reload();
-  };
 
   const toggleSeries = (seriesId: string) => {
     setExpandedSeries((prev) => {
@@ -248,7 +225,7 @@ function TruckDiscovery() {
         <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300">
           <Truck className="mx-auto h-12 w-12 text-slate-300 mb-3" />
           <h3 className="text-lg font-medium text-slate-900">
-            No parking spots or events available right now
+            No events available right now
           </h3>
           <p className="text-slate-500">
             Check back later for new host locations and events.
@@ -433,17 +410,9 @@ function TruckDiscovery() {
                           {event.maxTrucks !== 1 ? "s" : ""}
                         </span>
                       </div>
-                      {event.requiresPayment &&
-                        event.hostPriceCents !== undefined && (
-                          <div className="flex items-center text-sm font-semibold text-orange-700 bg-orange-50 border border-orange-200 rounded-md px-3 py-2">
-                            <DollarSign className="h-4 w-4 mr-2" />
-                            <span>
-                              $
-                              {((event.hostPriceCents + 1000) / 100).toFixed(2)}{" "}
-                              (includes $10 MealScout fee)
-                            </span>
-                          </div>
-                        )}
+                      <div className="text-xs text-gray-500">
+                        Interest-based only. No payments for events.
+                      </div>
                       {event.hardCapEnabled && (
                         <Badge
                           variant="outline"
@@ -455,35 +424,25 @@ function TruckDiscovery() {
                       )}
                     </div>
 
-                    {event.requiresPayment ? (
-                      <Button
-                        className="w-full bg-orange-600 hover:bg-orange-700"
-                        onClick={() => handleBookNow(event)}
-                      >
-                        <DollarSign className="h-4 w-4 mr-2" />
-                        Book Now & Pay
-                      </Button>
-                    ) : (
-                      <Button
-                        className="w-full"
-                        onClick={() => handleExpressInterest(event.id)}
-                        disabled={
-                          submittingId === event.id ||
-                          interestedEvents.has(event.id)
-                        }
-                      >
-                        {submittingId === event.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : interestedEvents.has(event.id) ? (
-                          <>
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Interest Sent
-                          </>
-                        ) : (
-                          "Express Interest"
-                        )}
-                      </Button>
-                    )}
+                    <Button
+                      className="w-full"
+                      onClick={() => handleExpressInterest(event.id)}
+                      disabled={
+                        submittingId === event.id ||
+                        interestedEvents.has(event.id)
+                      }
+                    >
+                      {submittingId === event.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : interestedEvents.has(event.id) ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Interest Sent
+                        </>
+                      ) : (
+                        "Express Interest"
+                      )}
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -492,24 +451,6 @@ function TruckDiscovery() {
         </div>
       )}
 
-      {/* Booking Payment Modal */}
-      {selectedEvent && myRestaurantId && (
-        <BookingPaymentModal
-          open={bookingModalOpen}
-          onOpenChange={setBookingModalOpen}
-          eventId={selectedEvent.id}
-          truckId={myRestaurantId}
-          eventDetails={{
-            name: selectedEvent.host.businessName,
-            date: format(new Date(selectedEvent.date), "MMMM d, yyyy"),
-            startTime: selectedEvent.startTime,
-            endTime: selectedEvent.endTime,
-            hostName: selectedEvent.host.businessName,
-            hostPrice: selectedEvent.hostPriceCents,
-          }}
-          onSuccess={handleBookingSuccess}
-        />
-      )}
     </div>
   );
 }

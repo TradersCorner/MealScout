@@ -14,6 +14,7 @@ import {
   truckInterests,
   userAddresses,
   passwordResetTokens,
+  phoneVerificationTokens,
   accountSetupTokens,
   dealFeedback,
   apiKeys,
@@ -47,6 +48,8 @@ import {
   type InsertUserAddress,
   type PasswordResetToken,
   type InsertPasswordResetToken,
+  type PhoneVerificationToken,
+  type InsertPhoneVerificationToken,
   type AccountSetupToken,
   type InsertAccountSetupToken,
   type DealFeedback,
@@ -97,6 +100,7 @@ import {
   ne,
 } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import { syncUserToBrevo } from "./brevoCrm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -169,6 +173,7 @@ export interface IStorage {
   // (IMPORTANT) these user operations are mandatory for authentication.
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByPhone(phone: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   upsertUserByAuth(
     authType: "google" | "email" | "facebook" | "tradescout",
@@ -509,6 +514,20 @@ export interface IStorage {
   deleteUserResetTokens(userId: string): Promise<void>;
   deleteExpiredResetTokens(): Promise<number>;
 
+  // Phone verification tokens
+  createPhoneVerificationToken(
+    tokenData: InsertPhoneVerificationToken
+  ): Promise<PhoneVerificationToken>;
+  getPhoneVerificationTokenByHash(
+    phone: string,
+    tokenHash: string
+  ): Promise<PhoneVerificationToken | undefined>;
+  markPhoneVerificationTokenUsed(
+    id: string
+  ): Promise<PhoneVerificationToken>;
+  deletePhoneVerificationTokens(phone: string): Promise<void>;
+  deleteExpiredPhoneVerificationTokens(): Promise<number>;
+
   // Account setup token operations
   createAccountSetupToken(
     tokenData: InsertAccountSetupToken
@@ -547,7 +566,18 @@ export interface IStorage {
   // Admin user operations
   getAllUsers(): Promise<User[]>;
   updateUserStatus(userId: string, isActive: boolean): Promise<void>;
-  updateUserType(userId: string, userType: string): Promise<void>;
+  updateUserType(
+    userId: string,
+    userType:
+      | "customer"
+      | "restaurant_owner"
+      | "food_truck"
+      | "host"
+      | "event_coordinator"
+      | "staff"
+      | "admin"
+      | "super_admin"
+  ): Promise<User>;
   deleteUser(userId: string): Promise<void>;
   createUserManually(userData: {
     email: string;
@@ -880,6 +910,11 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByPhone(phone: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.phone, phone));
+    return user;
+  }
+
   async getUserById(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
@@ -890,6 +925,9 @@ export class DatabaseStorage implements IStorage {
     userType:
       | "customer"
       | "restaurant_owner"
+      | "food_truck"
+      | "host"
+      | "event_coordinator"
       | "staff"
       | "admin"
       | "super_admin"
@@ -907,6 +945,7 @@ export class DatabaseStorage implements IStorage {
       .set({ userType, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
+    void syncUserToBrevo(updatedUser).catch(() => {});
     return updatedUser;
   }
 
@@ -978,6 +1017,7 @@ export class DatabaseStorage implements IStorage {
             })
             .where(eq(users.id, current.id))
             .returning();
+          void syncUserToBrevo(user).catch(() => {});
           return user;
         }
 
@@ -1015,6 +1055,7 @@ export class DatabaseStorage implements IStorage {
               })
               .where(eq(users.id, current.id))
               .returning();
+            void syncUserToBrevo(user).catch(() => {});
             return user;
           }
         }
@@ -1037,6 +1078,7 @@ export class DatabaseStorage implements IStorage {
           email: user.email,
           appContext,
         });
+        void syncUserToBrevo(user).catch(() => {});
         return user;
       } else if (authType === "google") {
         const googleData = userData as GoogleUserData;
@@ -1075,6 +1117,7 @@ export class DatabaseStorage implements IStorage {
             })
             .where(eq(users.id, existingUser[0].id))
             .returning();
+          void syncUserToBrevo(user).catch(() => {});
           return user;
         }
 
@@ -1115,6 +1158,7 @@ export class DatabaseStorage implements IStorage {
               })
               .where(eq(users.id, existingUser[0].id))
               .returning();
+            void syncUserToBrevo(user).catch(() => {});
             return user;
           }
         }
@@ -1139,6 +1183,7 @@ export class DatabaseStorage implements IStorage {
           email: user.email,
           appContext,
         });
+        void syncUserToBrevo(user).catch(() => {});
         return user;
       } else if (authType === "facebook") {
         const facebookData = userData as FacebookUserData;
@@ -1177,6 +1222,7 @@ export class DatabaseStorage implements IStorage {
             })
             .where(eq(users.id, existingUser[0].id))
             .returning();
+          void syncUserToBrevo(user).catch(() => {});
           return user;
         }
 
@@ -1218,6 +1264,7 @@ export class DatabaseStorage implements IStorage {
               })
               .where(eq(users.id, existingUser[0].id))
               .returning();
+            void syncUserToBrevo(user).catch(() => {});
             return user;
           }
         }
@@ -1242,6 +1289,7 @@ export class DatabaseStorage implements IStorage {
           email: user.email,
           appContext,
         });
+        void syncUserToBrevo(user).catch(() => {});
         return user;
       } else {
         const emailData = userData as EmailUserData;
@@ -1269,6 +1317,7 @@ export class DatabaseStorage implements IStorage {
           email: user.email,
           appContext,
         });
+        void syncUserToBrevo(user).catch(() => {});
         return user;
       }
     } catch (error: any) {
@@ -1324,6 +1373,7 @@ export class DatabaseStorage implements IStorage {
               })
               .where(eq(users.id, current.id))
               .returning();
+            void syncUserToBrevo(user).catch(() => {});
             return user;
           }
         } else if (authType === "google") {
@@ -1363,6 +1413,7 @@ export class DatabaseStorage implements IStorage {
               })
               .where(eq(users.id, existingUser[0].id))
               .returning();
+            void syncUserToBrevo(user).catch(() => {});
             return user;
           }
         } else if (authType === "facebook") {
@@ -1402,6 +1453,7 @@ export class DatabaseStorage implements IStorage {
               })
               .where(eq(users.id, existingUser[0].id))
               .returning();
+            void syncUserToBrevo(user).catch(() => {});
             return user;
           }
         }
@@ -1906,6 +1958,7 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
 
+    void syncUserToBrevo(user).catch(() => {});
     return user;
   }
 
@@ -1938,6 +1991,7 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
 
+    void syncUserToBrevo(user).catch(() => {});
     return user;
   }
 
@@ -2013,6 +2067,11 @@ export class DatabaseStorage implements IStorage {
           phone: restaurants.phone,
           latitude: restaurants.latitude,
           longitude: restaurants.longitude,
+          isFoodTruck: restaurants.isFoodTruck,
+          mobileOnline: restaurants.mobileOnline,
+          currentLatitude: restaurants.currentLatitude,
+          currentLongitude: restaurants.currentLongitude,
+          lastBroadcastAt: restaurants.lastBroadcastAt,
         },
         distance: sql<number>`
           (6371 * acos(
@@ -4583,6 +4642,58 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount || 0;
   }
 
+  async createPhoneVerificationToken(
+    tokenData: InsertPhoneVerificationToken
+  ): Promise<PhoneVerificationToken> {
+    const [token] = await db
+      .insert(phoneVerificationTokens)
+      .values(tokenData)
+      .returning();
+    return token;
+  }
+
+  async getPhoneVerificationTokenByHash(
+    phone: string,
+    tokenHash: string
+  ): Promise<PhoneVerificationToken | undefined> {
+    const [token] = await db
+      .select()
+      .from(phoneVerificationTokens)
+      .where(
+        and(
+          eq(phoneVerificationTokens.phone, phone),
+          eq(phoneVerificationTokens.tokenHash, tokenHash),
+          gte(phoneVerificationTokens.expiresAt, new Date()),
+          isNull(phoneVerificationTokens.usedAt)
+        )
+      );
+    return token;
+  }
+
+  async markPhoneVerificationTokenUsed(
+    id: string
+  ): Promise<PhoneVerificationToken> {
+    const [token] = await db
+      .update(phoneVerificationTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(phoneVerificationTokens.id, id))
+      .returning();
+    return token;
+  }
+
+  async deletePhoneVerificationTokens(phone: string): Promise<void> {
+    await db
+      .delete(phoneVerificationTokens)
+      .where(eq(phoneVerificationTokens.phone, phone));
+  }
+
+  async deleteExpiredPhoneVerificationTokens(): Promise<number> {
+    const result = await db
+      .delete(phoneVerificationTokens)
+      .where(lte(phoneVerificationTokens.expiresAt, new Date()));
+    return result.rowCount || 0;
+  }
+
   // Account setup token operations
   async createAccountSetupToken(
     tokenData: InsertAccountSetupToken
@@ -4787,6 +4898,7 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
 
+    void syncUserToBrevo(user).catch(() => {});
     return { userId: user.id };
   }
 

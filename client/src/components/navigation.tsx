@@ -255,7 +255,7 @@ export default function Navigation() {
 
   const eventCoordinatorExtras: NavItem[] = [
     { path: "/events", icon: Calendar, label: "Events" },
-    { path: "/event-signup", icon: Calendar, label: "Post Event" },
+    { path: "/event-coordinator/dashboard", icon: Calendar, label: "Dashboard" },
     { path: "/truck-discovery", icon: Search, label: "Truck Slots" },
     { path: "/for-food-trucks", icon: Store, label: "For Trucks" },
   ];

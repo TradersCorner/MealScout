@@ -74,7 +74,7 @@ function PaymentForm({
       const { error } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/truck-discovery?booking=success`,
+          return_url: `${window.location.origin}/parking-pass?booking=success`,
         },
         redirect: "if_required",
       });

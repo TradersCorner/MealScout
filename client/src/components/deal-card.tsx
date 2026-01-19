@@ -47,6 +47,11 @@ interface Deal {
     phone?: string;
     latitude?: number;
     longitude?: number;
+    isFoodTruck?: boolean;
+    mobileOnline?: boolean;
+    currentLatitude?: number;
+    currentLongitude?: number;
+    lastBroadcastAt?: string | null;
   };
   distance?: number;
   currentUses?: number;
@@ -143,6 +148,8 @@ const getDefaultImage = (cuisineType?: string, title?: string) => {
 
 export default function DealCard({ deal }: DealCardProps) {
   const { user, isGuest } = useAuth();
+  const isLiveTruck =
+    !!deal.restaurant?.isFoodTruck && !!deal.restaurant?.mobileOnline;
   const [showShareModal, setShowShareModal] = useState(false);
   const [showDealsDrawer, setShowDealsDrawer] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -503,6 +510,12 @@ export default function DealCard({ deal }: DealCardProps) {
 
             {/* Rating + Distance */}
             <div className="flex items-center gap-1.5 mb-1.5 text-[10px] text-gray-600">
+              {isLiveTruck && (
+                <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Live now
+                </div>
+              )}
               <div className="flex items-center gap-0.5">
                 <svg
                   width="10"

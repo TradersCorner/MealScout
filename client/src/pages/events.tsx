@@ -105,11 +105,11 @@ export default function EventsPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {/* Date & Time */}
-                  {event.startDate && (
+                  {event.date && (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Clock className="w-4 h-4" />
                       <span>
-                        {new Date(event.startDate).toLocaleDateString("en-US", {
+                        {new Date(event.date).toLocaleDateString("en-US", {
                           weekday: "short",
                           month: "short",
                           day: "numeric",

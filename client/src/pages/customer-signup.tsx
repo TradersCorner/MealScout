@@ -20,19 +20,19 @@ import {
 import { Mail, Eye, EyeOff, UserPlus, ArrowLeft } from "lucide-react";
 import { BackHeader } from "@/components/back-header";
 import { SEOHead } from "@/components/seo-head";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 
 const signupSchema = z
   .object({
     email: z.string().email("Valid email is required"),
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),
-    phone: z
-      .string()
-      .optional()
-      .refine((phone) => {
-        if (!phone || phone.trim() === "") return true;
-        return phone.length >= 10;
-      }, "Phone number must be at least 10 digits"),
+    phone: z.string().min(10, "Phone number must be at least 10 digits"),
+    otpCode: z.string().min(6, "Verification code is required"),
     password: z.string().min(6, "Password must be at least 6 characters"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
   })
@@ -48,6 +48,8 @@ export default function CustomerSignup() {
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
 
   const searchParams = new URLSearchParams(window.location.search);
   const role = searchParams.get("role");
@@ -64,6 +66,7 @@ export default function CustomerSignup() {
       firstName: "",
       lastName: "",
       phone: "",
+      otpCode: "",
       password: "",
       confirmPassword: "",
     };
@@ -104,10 +107,6 @@ export default function CustomerSignup() {
   const customerSignupMutation = useMutation({
     mutationFn: async (data: SignupFormData) => {
       const { confirmPassword, ...signupData } = data;
-      // Remove phone if empty
-      if (!signupData.phone?.trim()) {
-        delete signupData.phone;
-      }
       return await apiRequest(
         "POST",
         "/api/auth/customer/register",
@@ -178,6 +177,38 @@ export default function CustomerSignup() {
       customerSignupMutation.mutate(data);
     } else {
       customerSignupMutation.mutate(data);
+    }
+  };
+
+  const handleSendOtp = async () => {
+    const phone = form.getValues("phone") || "";
+    const digitsOnly = phone.replace(/\D/g, "");
+    if (!digitsOnly || digitsOnly.length < 10) {
+      form.setError("phone", {
+        type: "manual",
+        message: "Enter a valid phone number before sending a code",
+      });
+      return;
+    }
+
+    setOtpSending(true);
+    try {
+      await apiRequest("POST", "/api/auth/phone/send-code", {
+        phone: digitsOnly,
+      });
+      setOtpSent(true);
+      toast({
+        title: "Code sent",
+        description: "Check your phone for the verification code.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to send code",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setOtpSending(false);
     }
   };
 
@@ -347,15 +378,49 @@ export default function CustomerSignup() {
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Phone (Optional)</FormLabel>
+                      <FormLabel>Phone</FormLabel>
                       <FormControl>
-                        <Input
-                          data-testid="input-phone"
-                          type="tel"
-                          autoComplete="tel"
-                          placeholder="(555) 123-4567"
-                          {...field}
-                        />
+                        <div className="flex gap-2">
+                          <Input
+                            data-testid="input-phone"
+                            type="tel"
+                            autoComplete="tel"
+                            placeholder="(555) 123-4567"
+                            {...field}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleSendOtp}
+                            disabled={otpSending}
+                          >
+                            {otpSending ? "Sending..." : otpSent ? "Resend" : "Send code"}
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="otpCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Verification Code</FormLabel>
+                      <FormControl>
+                        <InputOTP
+                          maxLength={6}
+                          value={field.value}
+                          onChange={field.onChange}
+                        >
+                          <InputOTPGroup>
+                            {[0, 1, 2, 3, 4, 5].map((index) => (
+                              <InputOTPSlot key={index} index={index} />
+                            ))}
+                          </InputOTPGroup>
+                        </InputOTP>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

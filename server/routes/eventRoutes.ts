@@ -14,7 +14,7 @@ export function registerEventRoutes(app: Express) {
   app.get("/api/events/upcoming", async (req: any, res) => {
     try {
       const events = await storage.getAllUpcomingEvents();
-      res.json(events);
+      res.json(events.filter((event) => !event.requiresPayment));
     } catch (error: any) {
       console.error("Error fetching upcoming events:", error);
       res.status(500).json({ message: "Failed to fetch events" });
@@ -26,10 +26,21 @@ export function registerEventRoutes(app: Express) {
     try {
       // Optional: Filter by location (lat/lng/radius) in the future
       const events = await storage.getAllUpcomingEvents();
-      res.json(events);
+      res.json(events.filter((event) => !event.requiresPayment));
     } catch (error: any) {
       console.error("Error fetching all events:", error);
       res.status(500).json({ message: "Failed to fetch events" });
+    }
+  });
+
+  // Parking Pass listings (paid parking spots only)
+  app.get("/api/parking-pass", isAuthenticated, async (req: any, res) => {
+    try {
+      const events = await storage.getAllUpcomingEvents();
+      res.json(events.filter((event) => event.requiresPayment));
+    } catch (error: any) {
+      console.error("Error fetching parking pass listings:", error);
+      res.status(500).json({ message: "Failed to fetch parking pass listings" });
     }
   });
 
@@ -62,6 +73,13 @@ export function registerEventRoutes(app: Express) {
         const event = await storage.getEvent(eventId);
         if (!event) {
           return res.status(404).json({ message: "Event not found" });
+        }
+
+        if (event.requiresPayment) {
+          return res.status(400).json({
+            message:
+              "This listing uses Parking Pass. Events do not accept payments.",
+          });
         }
 
         const today = new Date();

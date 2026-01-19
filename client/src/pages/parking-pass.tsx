@@ -1,52 +1,21 @@
-import { useMemo, useReducer, useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import LocationButton from "@/components/location-button";
-import { PARKING_PASS_COPY as COPY } from "@/copy/parkingPass.copy";
-import { BookingPaymentModal } from "@/components/booking-payment-modal";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
-
-/**
- * Parking Pass v2 – Fully Integrated
- * Connects to real events and booking API
- */
-
-// Types
-export type ParkingPassState =
-  | {
-      step: "location";
-      locationOk: boolean;
-      coords: { lat: number; lng: number } | null;
-    }
-  | { step: "loading" }
-  | { step: "slot"; selectedHostId: string | null }
-  | { step: "confirm"; selectedEvent: EventWithHost; truckId: string }
-  | { step: "status"; bookingId: string; status: "upcoming" | "confirmed" };
-
-export type ParkingPassEvent =
-  | { type: "SET_LOCATION_OK"; coords: { lat: number; lng: number } }
-  | { type: "CONTINUE_FROM_LOCATION" }
-  | { type: "BACK_TO_LOCATION" }
-  | { type: "EVENTS_LOADED" }
-  | { type: "SELECT_EVENT"; event: EventWithHost; truckId: string }
-  | { type: "BACK_FROM_CONFIRM" }
-  | { type: "BOOKING_CONFIRMED"; bookingId: string }
-  | { type: "BACK_TO_HOME" };
+import { BookingPaymentModal } from "@/components/booking-payment-modal";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Host {
   id: string;
   businessName: string;
   address: string;
   locationType: string;
-  latitude?: number | string | null;
-  longitude?: number | string | null;
 }
 
-interface EventWithHost {
+interface ParkingPassEvent {
   id: string;
   date: string;
   startTime: string;
@@ -57,154 +26,71 @@ interface EventWithHost {
   host: Host;
 }
 
-export function transition(
-  state: ParkingPassState,
-  event: ParkingPassEvent,
-): ParkingPassState {
-  switch (state.step) {
-    case "location":
-      if (event.type === "SET_LOCATION_OK") {
-        return { ...state, locationOk: true, coords: event.coords };
-      }
-      if (event.type === "CONTINUE_FROM_LOCATION" && state.locationOk) {
-        return { step: "loading" };
-      }
-      return state;
-
-    case "loading":
-      if (event.type === "EVENTS_LOADED") {
-        return { step: "slot", selectedHostId: null };
-      }
-      return state;
-
-    case "slot":
-      if (event.type === "BACK_TO_LOCATION") {
-        return { step: "location", locationOk: false, coords: null };
-      }
-      if (event.type === "SELECT_EVENT") {
-        return {
-          step: "confirm",
-          selectedEvent: event.event,
-          truckId: event.truckId,
-        };
-      }
-      return state;
-
-    case "confirm":
-      if (event.type === "BACK_FROM_CONFIRM") {
-        return { step: "slot", selectedHostId: null };
-      }
-      if (event.type === "BOOKING_CONFIRMED") {
-        return {
-          step: "status",
-          bookingId: event.bookingId,
-          status: "confirmed",
-        };
-      }
-      return state;
-
-    case "status":
-      if (event.type === "BACK_TO_HOME") {
-        return { step: "location", locationOk: false, coords: null };
-      }
-      return state;
-
-    default:
-      return state;
-  }
-}
-
-// Location Selection Screen
-function LocationSelectionScreen({
-  onNext,
-  onLocationOk,
-}: {
-  onNext: () => void;
-  onLocationOk: (coords: { lat: number; lng: number }) => void;
-}) {
-  const [locationName, setLocationName] = useState<string | null>(null);
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+export default function ParkingPassPage() {
+  const { isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [isLoading, setIsLoading] = useState(true);
+  const [events, setEvents] = useState<ParkingPassEvent[]>([]);
+  const [truckId, setTruckId] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<ParkingPassEvent | null>(
     null,
   );
-  const [error, setError] = useState<string | null>(null);
+  const [paymentOpen, setPaymentOpen] = useState(false);
 
-  return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">
-          {COPY.location.title}
-        </h2>
-        <p className="text-xs text-gray-600">{COPY.location.subtext}</p>
-      </div>
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setLocation("/login?redirect=/parking-pass");
+    }
+  }, [isAuthenticated, setLocation]);
 
-      <LocationButton
-        onLocationUpdate={(loc) => {
-          setCoords(loc);
-          setError(null);
-          onLocationOk(loc);
-        }}
-        onLocationNameUpdate={(name) => {
-          setLocationName(name);
-        }}
-        onLocationError={(message) => {
-          setError(message);
-        }}
-        size="default"
-        className="w-full"
-      />
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
 
-      <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-700">
-        {locationName ? (
-          <p>
-            <span className="font-semibold">
-              {COPY.location.summary.currentAreaLabel}
-            </span>{" "}
-            {locationName}
-          </p>
-        ) : (
-          <p>{COPY.location.summary.idle}</p>
-        )}
-        {coords && (
-          <p className="mt-1 text-[11px] text-gray-500">
-            {COPY.location.summary.gpsLocked}
-          </p>
-        )}
-        {error && <p className="mt-1 text-[11px] text-red-600">{error}</p>}
-      </div>
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const truckRes = await fetch("/api/restaurants/my");
+        if (truckRes.ok) {
+          const trucks = await truckRes.json();
+          if (!cancelled && Array.isArray(trucks) && trucks[0]) {
+            setTruckId(trucks[0].id);
+          }
+        }
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-3 text-xs text-gray-600">
-        {COPY.location.systemNote}
-      </div>
+        const eventsRes = await fetch("/api/parking-pass");
+        if (!eventsRes.ok) {
+          throw new Error("Failed to load parking pass listings");
+        }
+        const data = await eventsRes.json();
+        if (!cancelled) {
+          const openEvents = Array.isArray(data)
+            ? data.filter((e) => e.status === "open")
+            : [];
+          setEvents(openEvents);
+        }
+      } catch (error: any) {
+        if (!cancelled) {
+          toast({
+            title: "Error",
+            description:
+              error.message || "Failed to load parking pass listings.",
+            variant: "destructive",
+          });
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
 
-      <div className="pt-2 flex justify-end">
-        <Button size="sm" disabled={!coords} onClick={onNext}>
-          Find Parking Spots
-        </Button>
-      </div>
-    </div>
-  );
-}
+    loadData();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, toast]);
 
-// Slot Selection Screen - Shows Real Events
-function SlotSelectionScreen({
-  onBack,
-  onSelectEvent,
-  events,
-  truckId,
-}: {
-  onBack: () => void;
-  onSelectEvent: (event: EventWithHost, truckId: string) => void;
-  events: EventWithHost[];
-  truckId: string | null;
-}) {
-  const { toast } = useToast();
-
-  const paidEvents = events.filter(
-    (e) => e.requiresPayment && e.hostPriceCents !== undefined,
-  );
-  const freeEvents = events.filter((e) => !e.requiresPayment);
-
-  const handleSelect = (event: EventWithHost) => {
+  const handleSelect = (event: ParkingPassEvent) => {
     if (!truckId) {
       toast({
         title: "Truck Profile Required",
@@ -213,382 +99,96 @@ function SlotSelectionScreen({
       });
       return;
     }
-    onSelectEvent(event, truckId);
+    setSelectedEvent(event);
+    setPaymentOpen(true);
   };
 
-  return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">
-          Available Parking Spots
-        </h2>
-        <p className="text-xs text-gray-600">Select a spot to book and pay</p>
-      </div>
-
-      {events.length === 0 && (
-        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-600">
-          No parking spots available in your area right now.
-        </div>
-      )}
-
-      {/* Paid Events */}
-      {paidEvents.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-gray-700">
-            Paid Parking Spots
-          </h3>
-          {paidEvents.map((event) => {
-            const totalPrice = ((event.hostPriceCents || 0) + 1000) / 100;
-            return (
-              <button
-                key={event.id}
-                type="button"
-                onClick={() => handleSelect(event)}
-                className="w-full text-left rounded-xl border border-gray-200 bg-white px-4 py-3 hover:border-orange-500 hover:bg-orange-50 transition-colors"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-gray-900">
-                    {event.host.businessName}
-                  </span>
-                  <span className="font-semibold text-orange-600">
-                    ${totalPrice.toFixed(2)}
-                  </span>
-                </div>
-                <div className="text-xs text-gray-600 space-y-1">
-                  <p>{event.host.address}</p>
-                  <p>
-                    {format(new Date(event.date), "EEEE, MMM d")} •{" "}
-                    {event.startTime} - {event.endTime}
-                  </p>
-                  <p className="text-[11px] text-gray-500">
-                    Includes $10 MealScout fee
-                  </p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Free Events */}
-      {freeEvents.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-gray-700">
-            Free Parking Spots
-          </h3>
-          {freeEvents.map((event) => (
-            <button
-              key={event.id}
-              type="button"
-              onClick={() => handleSelect(event)}
-              className="w-full text-left rounded-xl border border-gray-200 bg-white px-4 py-3 hover:border-green-500 hover:bg-green-50 transition-colors"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold text-gray-900">
-                  {event.host.businessName}
-                </span>
-                <span className="font-semibold text-green-600">FREE</span>
-              </div>
-              <div className="text-xs text-gray-600 space-y-1">
-                <p>{event.host.address}</p>
-                <p>
-                  {format(new Date(event.date), "EEEE, MMM d")} •{" "}
-                  {event.startTime} - {event.endTime}
-                </p>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="flex justify-between pt-2">
-        <Button variant="outline" size="sm" onClick={onBack}>
-          Change Location
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// Confirmation Screen with Payment Modal
-function ConfirmationScreen({
-  event,
-  truckId,
-  onBack,
-  onSuccess,
-}: {
-  event: EventWithHost;
-  truckId: string;
-  onBack: () => void;
-  onSuccess: (bookingId: string) => void;
-}) {
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const isPaid = event.requiresPayment && event.hostPriceCents !== undefined;
-
-  const handleConfirm = () => {
-    if (isPaid) {
-      setPaymentModalOpen(true);
-    } else {
-      // Free booking - would need to implement direct booking endpoint
-      onSuccess("free-booking-" + Date.now());
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">
-          Confirm Your Booking
-        </h2>
-      </div>
-
-      <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-gray-700">Location</span>
-          <span className="font-medium text-gray-900">
-            {event.host.businessName}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-gray-700">Address</span>
-          <span className="font-medium text-gray-900 text-right text-xs">
-            {event.host.address}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-gray-700">Date</span>
-          <span className="font-medium text-gray-900">
-            {format(new Date(event.date), "MMMM d, yyyy")}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-gray-700">Time</span>
-          <span className="font-medium text-gray-900">
-            {event.startTime} - {event.endTime}
-          </span>
-        </div>
-      </div>
-
-      {isPaid && (
-        <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm">
-          <div className="flex items-center justify-between font-semibold text-gray-900">
-            <span>Total</span>
-            <span className="text-lg text-orange-600">
-              ${(((event.hostPriceCents || 0) + 1000) / 100).toFixed(2)}
-            </span>
-          </div>
-          <div className="text-xs text-gray-600 mt-1">
-            Includes $10 MealScout coordination fee
-          </div>
-        </div>
-      )}
-
-      <div className="flex justify-between pt-2">
-        <Button variant="outline" size="sm" onClick={onBack}>
-          Back
-        </Button>
-        <Button size="sm" onClick={handleConfirm}>
-          {isPaid ? "Pay & Confirm" : "Confirm Booking"}
-        </Button>
-      </div>
-
-      {isPaid && (
-        <BookingPaymentModal
-          open={paymentModalOpen}
-          onOpenChange={setPaymentModalOpen}
-          eventId={event.id}
-          truckId={truckId}
-          eventDetails={{
-            name: event.host.businessName,
-            date: format(new Date(event.date), "MMMM d, yyyy"),
-            startTime: event.startTime,
-            endTime: event.endTime,
-            hostName: event.host.businessName,
-            hostPrice: event.hostPriceCents,
-          }}
-          onSuccess={() => {
-            setPaymentModalOpen(false);
-            onSuccess("booking-" + event.id);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-// Status Screen - Booking Confirmed
-function StatusScreen({ onBackToHome }: { onBackToHome: () => void }) {
-  return (
-    <div className="space-y-4 text-center">
-      <div className="rounded-full bg-green-100 w-16 h-16 mx-auto flex items-center justify-center mb-4">
-        <svg
-          className="w-8 h-8 text-green-600"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M5 13l4 4L19 7"
-          />
-        </svg>
-      </div>
-      <h2 className="text-xl font-bold text-gray-900">Booking Confirmed!</h2>
-      <p className="text-sm text-gray-600">
-        Your parking spot has been reserved. Check your email for details.
-      </p>
-      <div className="pt-4">
-        <Button onClick={onBackToHome} className="w-full">
-          Back to Home
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-export default function ParkingPassPage() {
-  const [, navigate] = useLocation();
-  const { user } = useAuth();
-  const { toast } = useToast();
-
-  const [state, dispatch] = useReducer(transition, {
-    step: "location",
-    locationOk: false,
-    coords: null,
-  } as ParkingPassState);
-
-  const [events, setEvents] = useState<EventWithHost[]>([]);
-  const [myRestaurantId, setMyRestaurantId] = useState<string | null>(null);
-  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
-
-  // Fetch user's restaurant/truck profile
-  useEffect(() => {
-    const fetchTruck = async () => {
-      try {
-        const res = await fetch("/api/restaurants/my");
-        if (res.ok) {
-          const trucks = await res.json();
-          if (trucks.length > 0) {
-            setMyRestaurantId(trucks[0].id);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching truck:", error);
-      }
-    };
-    if (user) {
-      fetchTruck();
-    }
-  }, [user]);
-
-  // Load events when transitioning to loading state
-  useEffect(() => {
-    if (state.step === "loading") {
-      setIsLoadingEvents(true);
-      fetch("/api/events")
-        .then((res) => {
-          if (!res.ok) throw new Error("Failed to load events");
-          return res.json();
-        })
-        .then((data: EventWithHost[]) => {
-          // Filter to open events only
-          const openEvents = data.filter((e) => e.status === "open");
-          setEvents(openEvents);
-          dispatch({ type: "EVENTS_LOADED" });
-        })
-        .catch((error) => {
-          console.error("Error loading events:", error);
-          toast({
-            title: "Error",
-            description: "Failed to load parking spots. Please try again.",
-            variant: "destructive",
-          });
-          dispatch({ type: "BACK_TO_LOCATION" });
-        })
-        .finally(() => {
-          setIsLoadingEvents(false);
-        });
-    }
-  }, [state.step, toast]);
-
-  const handleBackToHome = () => {
-    navigate("/");
-  };
-
-  const renderStep = () => {
-    if (state.step === "location") {
-      return (
-        <LocationSelectionScreen
-          onNext={() => dispatch({ type: "CONTINUE_FROM_LOCATION" })}
-          onLocationOk={(coords) =>
-            dispatch({ type: "SET_LOCATION_OK", coords })
-          }
-        />
-      );
-    }
-
-    if (state.step === "loading") {
-      return (
-        <div className="flex flex-col items-center justify-center py-12 space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
-          <p className="text-sm text-gray-600">Loading parking spots...</p>
-        </div>
-      );
-    }
-
-    if (state.step === "slot") {
-      return (
-        <SlotSelectionScreen
-          onBack={() => dispatch({ type: "BACK_TO_LOCATION" })}
-          onSelectEvent={(event, truckId) =>
-            dispatch({ type: "SELECT_EVENT", event, truckId })
-          }
-          events={events}
-          truckId={myRestaurantId}
-        />
-      );
-    }
-
-    if (state.step === "confirm") {
-      return (
-        <ConfirmationScreen
-          event={state.selectedEvent}
-          truckId={state.truckId}
-          onBack={() => dispatch({ type: "BACK_FROM_CONFIRM" })}
-          onSuccess={(bookingId) =>
-            dispatch({ type: "BOOKING_CONFIRMED", bookingId })
-          }
-        />
-      );
-    }
-
-    if (state.step === "status") {
-      return <StatusScreen onBackToHome={handleBackToHome} />;
-    }
-
-    return null;
+  const handleSuccess = () => {
+    setSelectedEvent(null);
+    setPaymentOpen(false);
+    toast({
+      title: "Parking Pass Booked",
+      description: "Your parking spot is reserved.",
+    });
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-3 py-6">
       <Card className="w-full max-w-md rounded-3xl shadow-xl border border-gray-200 bg-white">
-        <CardContent className="p-5">
-          <div className="mb-4">
+        <CardContent className="p-5 space-y-4">
+          <div>
             <h1 className="text-2xl font-bold text-gray-900">Parking Pass</h1>
             <p className="text-xs text-gray-500">
-              {state.step === "location" && "Step 1 of 3: Select Location"}
-              {state.step === "loading" && "Loading..."}
-              {state.step === "slot" && "Step 2 of 3: Choose Spot"}
-              {state.step === "confirm" && "Step 3 of 3: Confirm & Pay"}
-              {state.step === "status" && "Complete"}
+              Paid parking spots for food trucks.
             </p>
           </div>
 
-          {renderStep()}
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-8 space-y-3">
+              <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+              <p className="text-sm text-gray-600">
+                Loading parking pass spots...
+              </p>
+            </div>
+          ) : events.length === 0 ? (
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-600">
+              No paid parking pass spots are available right now.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {events.map((event) => {
+                const totalPrice =
+                  ((event.hostPriceCents || 0) + 1000) / 100;
+                return (
+                  <button
+                    key={event.id}
+                    type="button"
+                    onClick={() => handleSelect(event)}
+                    className="w-full text-left rounded-xl border border-gray-200 bg-white px-4 py-3 hover:border-orange-500 hover:bg-orange-50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold text-gray-900">
+                        {event.host.businessName}
+                      </span>
+                      <span className="font-semibold text-orange-600">
+                        ${totalPrice.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600 space-y-1">
+                      <p>{event.host.address}</p>
+                      <p>
+                        {format(new Date(event.date), "EEEE, MMM d")} -{" "}
+                        {event.startTime} - {event.endTime}
+                      </p>
+                      <p className="text-[11px] text-gray-500">
+                        Includes $10 MealScout fee
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {selectedEvent && truckId && (
+        <BookingPaymentModal
+          open={paymentOpen}
+          onOpenChange={setPaymentOpen}
+          eventId={selectedEvent.id}
+          truckId={truckId}
+          eventDetails={{
+            name: "Parking Pass",
+            date: format(new Date(selectedEvent.date), "MMMM d, yyyy"),
+            startTime: selectedEvent.startTime,
+            endTime: selectedEvent.endTime,
+            hostName: selectedEvent.host.businessName,
+            hostPrice: selectedEvent.hostPriceCents,
+          }}
+          onSuccess={handleSuccess}
+        />
+      )}
     </div>
   );
 }

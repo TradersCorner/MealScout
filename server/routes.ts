@@ -25,6 +25,7 @@ import {
 import { registerHostRoutes } from "./routes/hostRoutes";
 import { registerOpenCallSeriesRoutes } from "./routes/openCallSeriesRoutes";
 import { registerEventRoutes } from "./routes/eventRoutes";
+import { registerEventCoordinatorRoutes } from "./routes/eventCoordinatorRoutes";
 import { registerAdminManagementRoutes } from "./routes/adminManagementRoutes";
 import { registerBookingRoutes } from "./routes/bookingRoutes";
 import { registerStaffRoutes } from "./staffRoutes";
@@ -1410,10 +1411,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Public map feed: hosts (open location requests) + upcoming events (hosted slots)
   app.get("/api/map/locations", async (_req, res) => {
     try {
-      const [openLocations, upcomingEvents] = await Promise.all([
-        storage.getOpenLocationRequests(),
-        storage.getAllUpcomingEvents(),
-      ]);
+        const [openLocations, upcomingEvents] = await Promise.all([
+          storage.getOpenLocationRequests(),
+          storage.getAllUpcomingEvents(),
+        ]);
+
+        const publicEvents = upcomingEvents.filter(
+          (event) => !event.requiresPayment,
+        );
 
       const hostLocations = openLocations.map((loc) => ({
         id: loc.id,
@@ -1429,7 +1434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         longitude: loc.longitude,
       }));
 
-      const eventLocations = upcomingEvents.map((event) => ({
+        const eventLocations = publicEvents.map((event) => ({
         id: event.id,
         type: "event" as const,
         name: event.name || "Host Event",
@@ -1470,6 +1475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Truck Discovery
   registerEventRoutes(app);
+  registerEventCoordinatorRoutes(app);
 
   // Booking Management
   registerBookingRoutes(app);
@@ -2130,6 +2136,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           deviceId,
           req.user.id,
         );
+        await storage.setRestaurantMobileSettings(restaurantId, {
+          mobileOnline: true,
+        });
         res.json({ success: true, session });
       } catch (error) {
         console.error("Error starting truck session:", error);
@@ -2159,6 +2168,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         await storage.endTruckSession(restaurantId, req.user.id);
+        await storage.setRestaurantMobileSettings(restaurantId, {
+          mobileOnline: false,
+        });
         res.json({ success: true });
       } catch (error) {
         console.error("Error ending truck session:", error);

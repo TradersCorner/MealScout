@@ -282,11 +282,16 @@ export function registerStaffRoutes(app: Express) {
             });
           }
 
+          const resolvedLocationType =
+            targetUserType === "event_coordinator"
+              ? "event_coordinator"
+              : locationType || "other";
+
           const hostData: any = {
             userId: user.id,
             businessName,
             address,
-            locationType: locationType || "other",
+            locationType: resolvedLocationType,
             expectedFootTraffic: footTrafficMap[footTraffic] || 100,
             amenities:
               Object.keys(amenitiesObj).length > 0 ? amenitiesObj : null,

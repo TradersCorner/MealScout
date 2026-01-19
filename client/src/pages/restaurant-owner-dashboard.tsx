@@ -26,6 +26,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useLocation } from "wouter";
+import ShareButton from "@/components/share-button";
 import {
   Store,
   Plus,
@@ -321,7 +322,7 @@ export default function RestaurantOwnerDashboard() {
     }) => {
       return await apiRequest(
         "POST",
-        `/api/restaurants/${selectedRestaurant}/food-truck/location`,
+        `/api/restaurants/${selectedRestaurant}/location`,
         {
           sessionId,
           latitude: location.lat,
@@ -347,7 +348,7 @@ export default function RestaurantOwnerDashboard() {
     mutationFn: async () => {
       return await apiRequest(
         "POST",
-        `/api/restaurants/${selectedRestaurant}/food-truck/stop`,
+        `/api/restaurants/${selectedRestaurant}/truck-session/end`,
         {
           sessionId,
         },
@@ -390,6 +391,14 @@ export default function RestaurantOwnerDashboard() {
   const currentRestaurant = restaurants.find(
     (r) => r.id === selectedRestaurant,
   );
+  const liveShareUrl = selectedRestaurant
+    ? `/restaurant/${selectedRestaurant}?live=1`
+    : "/map";
+  const liveShareTitle = currentRestaurant?.name
+    ? `${currentRestaurant.name} is live on MealScout`
+    : "We are live on MealScout";
+  const liveShareDescription =
+    "Find us live right now on the MealScout map.";
 
   // GPS fallback function using IP geolocation
   const tryFallbackLocation = async (): Promise<{
@@ -904,7 +913,7 @@ export default function RestaurantOwnerDashboard() {
     mutationFn: async (location: { lat: number; lng: number }) => {
       return await apiRequest(
         "POST",
-        `/api/restaurants/${selectedRestaurant}/food-truck/start`,
+        `/api/restaurants/${selectedRestaurant}/truck-session/start`,
         {
           latitude: location.lat,
           longitude: location.lng,
@@ -913,7 +922,7 @@ export default function RestaurantOwnerDashboard() {
       );
     },
     onSuccess: (data: any) => {
-      setSessionId(data.sessionId);
+      setSessionId(data?.session?.id || null);
       setIsBroadcasting(true);
       setConnectionStatus("connected");
 
@@ -2169,6 +2178,13 @@ export default function RestaurantOwnerDashboard() {
                             Stop Broadcasting
                           </Button>
                         )}
+                        <ShareButton
+                          url={liveShareUrl}
+                          title={liveShareTitle}
+                          description={liveShareDescription}
+                          variant="outline"
+                          size="sm"
+                        />
                       </div>
                     </div>
 

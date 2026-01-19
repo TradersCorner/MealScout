@@ -310,6 +310,7 @@ export default function StaffDashboard() {
                     >
                       <option value="customer">Customer</option>
                       <option value="restaurant_owner">Restaurant Owner</option>
+                      <option value="event_coordinator">Event Coordinator</option>
                       <option value="staff">Staff</option>
                       <option value="admin">Admin</option>
                     </select>

@@ -87,11 +87,29 @@ export function registerHostRoutes(app: Express) {
       if (!host) {
         return res.status(404).json({ message: "Host profile not found" });
       }
+      if (req.user.userType === "event_coordinator" || host.locationType === "event_coordinator") {
+        return res.status(403).json({
+          message: "Event coordinators can only post events, not Parking Pass listings.",
+        });
+      }
+
+      if (!req.body?.requiresPayment) {
+        return res.status(400).json({
+          message: "Hosts can only create paid Parking Pass listings.",
+        });
+      }
 
       const parsed = insertEventSchema.parse({
         ...req.body,
+        requiresPayment: true,
         hostId: host.id,
       });
+
+      if (!parsed.hostPriceCents || parsed.hostPriceCents <= 0) {
+        return res.status(400).json({
+          message: "Parking Pass listings must include a price.",
+        });
+      }
 
       // Validation: Future dates only
       const eventDate = new Date(parsed.date);
@@ -576,6 +594,13 @@ export function registerHostRoutes(app: Express) {
         return res
           .status(400)
           .json({ message: "Event not available for booking" });
+      }
+
+      if (!event.requiresPayment) {
+        return res.status(400).json({
+          message:
+            "Payments are only available for Parking Pass listings, not events.",
+        });
       }
 
       // Get host

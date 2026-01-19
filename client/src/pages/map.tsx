@@ -137,6 +137,14 @@ interface Restaurant {
   isActive: boolean;
 }
 
+interface LiveTruck {
+  id: string;
+  name: string;
+  currentLatitude?: string | number | null;
+  currentLongitude?: string | number | null;
+  distance?: number;
+}
+
 interface Deal {
   id: string;
   restaurantId: string;
@@ -208,6 +216,20 @@ const eventIcon = new L.Icon({
   iconSize: [30, 30],
   iconAnchor: [15, 30],
   popupAnchor: [0, -26],
+});
+
+const liveTruckIcon = new L.Icon({
+  iconUrl:
+    "data:image/svg+xml;base64," +
+    btoa(`
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="15" cy="15" r="13" fill="#10B981" stroke="white" stroke-width="3"/>
+        <path d="M8 17h9l2-4h2.5c.8 0 1.5.7 1.5 1.5V17h-2.5a2 2 0 1 1-4 0H12a2 2 0 1 1-4 0H6v-6h2v6z" fill="white"/>
+      </svg>
+    `),
+  iconSize: [30, 30],
+  iconAnchor: [15, 30],
+  popupAnchor: [0, -24],
 });
 
 async function geocodeAddress(address: string): Promise<GeoPoint | null> {
@@ -337,6 +359,25 @@ export default function MapPage() {
 
   const deals: Deal[] = Array.isArray(dealsData) ? (dealsData as Deal[]) : [];
 
+  const { data: liveTrucksData = [] } = useQuery<LiveTruck[]>({
+    queryKey: userLocation
+      ? ["/api/trucks/live", userLocation.lat, userLocation.lng]
+      : ["live-trucks", "none"],
+    queryFn: userLocation
+      ? async () => {
+          const response = await fetch(
+            `/api/trucks/live?lat=${userLocation.lat}&lng=${userLocation.lng}&radiusKm=5`
+          );
+          if (!response.ok) throw new Error("Failed to fetch live trucks");
+          return response.json();
+        }
+      : undefined,
+    enabled: !!userLocation,
+    staleTime: 30 * 1000,
+  });
+
+  const liveTrucks = Array.isArray(liveTrucksData) ? liveTrucksData : [];
+
   // Fetch host + event locations for map
   const { data: mapLocations } = useQuery<MapLocationsResponse>({
     queryKey: ["/api/map/locations"],
@@ -424,6 +465,7 @@ export default function MapPage() {
 
   const hasLocation = !!userLocation;
   const hasDeals = deals.length > 0;
+  const liveTruckPins = liveTrucks.length;
   const hostPins = mapLocations?.hostLocations?.length || 0;
   const eventPins = mapLocations?.eventLocations?.length || 0;
 
@@ -443,9 +485,13 @@ export default function MapPage() {
             <p className="text-sm text-muted-foreground">
               {isLocating
                 ? "Finding nearby food trucks..."
-                : hasLocation && hasDeals
+                : hasLocation && liveTruckPins > 0
                 ? "Food trucks and hosts near you"
-                : hasLocation && !hasDeals && (hostPins > 0 || eventPins > 0)
+                : hasLocation && hasDeals
+                ? "Deals near you"
+                : hasLocation &&
+                  !hasDeals &&
+                  (hostPins > 0 || eventPins > 0 || liveTruckPins > 0)
                 ? "Hosts and events near you"
                 : hasLocation && !hasDeals
                 ? "No food trucks nearby right now"
@@ -474,8 +520,10 @@ export default function MapPage() {
           <div className="text-xs text-muted-foreground mb-4">
             📍 Located: {userLocation.lat.toFixed(4)},{" "}
             {userLocation.lng.toFixed(4)}
-            {deals.length > 0 &&
-              ` • ${deals.length} truck${deals.length === 1 ? "" : "s"} nearby`}
+            {liveTruckPins > 0 &&
+              ` • ${liveTruckPins} truck${
+                liveTruckPins === 1 ? "" : "s"
+              } nearby`}
           </div>
         )}
       </header>
@@ -544,6 +592,49 @@ export default function MapPage() {
                             Min order: ${deal.minOrderAmount}
                           </span>
                         </div>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+
+              {/* Live Truck Markers */}
+              {liveTrucks.map((truck) => {
+                const lat = truck.currentLatitude
+                  ? Number(truck.currentLatitude)
+                  : null;
+                const lng = truck.currentLongitude
+                  ? Number(truck.currentLongitude)
+                  : null;
+                if (!lat || !lng) return null;
+                return (
+                  <Marker
+                    key={`live-${truck.id}`}
+                    position={[lat, lng]}
+                    icon={liveTruckIcon}
+                  >
+                    <Popup>
+                      <div className="min-w-48 rounded-xl bg-emerald-600 text-white p-3 shadow-lg space-y-1">
+                        <div className="font-semibold text-sm">
+                          {truck.name}
+                        </div>
+                        <div className="text-xs text-emerald-100">
+                          Live now
+                        </div>
+                        {typeof truck.distance === "number" && (
+                          <div className="text-xs text-emerald-100">
+                            {truck.distance.toFixed(1)} km away
+                          </div>
+                        )}
+                        <Button
+                          size="sm"
+                          className="w-full mt-2 bg-white text-emerald-700 hover:bg-emerald-50"
+                          onClick={() => {
+                            window.location.href = `/restaurant/${truck.id}`;
+                          }}
+                        >
+                          View truck
+                        </Button>
                       </div>
                     </Popup>
                   </Marker>

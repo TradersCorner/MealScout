@@ -8,6 +8,7 @@ import connectPg from "connect-pg-simple";
 import type { Express } from "express";
 import { storage } from "./storage";
 import { emailService } from "./emailService";
+import { sendSms } from "./smsService";
 import type {
   GoogleUserData,
   EmailUserData,
@@ -635,12 +636,104 @@ export async function setupUnifiedAuth(app: Express) {
     );
   }
 
+  const normalizePhone = (phone: string) => phone.replace(/\D/g, "");
+
+  const verifyPhoneCode = async (phone: string, code: string) => {
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(code)
+      .digest("hex");
+    const token = await storage.getPhoneVerificationTokenByHash(
+      phone,
+      tokenHash
+    );
+    if (!token) {
+      return false;
+    }
+    await storage.markPhoneVerificationTokenUsed(token.id);
+    return true;
+  };
+
+  app.post("/api/auth/phone/send-code", async (req, res) => {
+    try {
+      const { phone } = req.body;
+      if (!phone || typeof phone !== "string") {
+        return res.status(400).json({ error: "Phone number is required" });
+      }
+
+      const normalizedPhone = normalizePhone(phone);
+      if (normalizedPhone.length < 10) {
+        return res.status(400).json({ error: "Valid phone number is required" });
+      }
+
+      const existingUser = await storage.getUserByPhone(normalizedPhone);
+      if (existingUser) {
+        return res
+          .status(400)
+          .json({ error: "Phone number already in use" });
+      }
+
+      await storage.deleteExpiredPhoneVerificationTokens();
+      await storage.deletePhoneVerificationTokens(normalizedPhone);
+
+      const code = String(
+        Math.floor(100000 + Math.random() * 900000)
+      );
+      const tokenHash = crypto.createHash("sha256").update(code).digest("hex");
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+      await storage.createPhoneVerificationToken({
+        phone: normalizedPhone,
+        tokenHash,
+        expiresAt,
+        requestIp: req.ip || req.connection.remoteAddress || undefined,
+        userAgent: req.get("User-Agent") || undefined,
+      });
+
+      const smsSent = await sendSms(
+        normalizedPhone,
+        `Your MealScout verification code is ${code}. It expires in 10 minutes.`
+      );
+
+      if (!smsSent) {
+        return res
+          .status(500)
+          .json({ error: "Failed to send verification code" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Phone verification send error:", error);
+      res.status(500).json({ error: "Unable to send verification code" });
+    }
+  });
+
+  app.post("/api/auth/phone/verify-code", async (req, res) => {
+    try {
+      const { phone, code } = req.body;
+      if (!phone || !code) {
+        return res.status(400).json({ error: "Phone and code are required" });
+      }
+
+      const normalizedPhone = normalizePhone(phone);
+      const ok = await verifyPhoneCode(normalizedPhone, String(code));
+      if (!ok) {
+        return res.status(400).json({ error: "Invalid or expired code" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Phone verification error:", error);
+      res.status(500).json({ error: "Unable to verify code" });
+    }
+  });
+
   // Email/password registration for customers
   app.post("/api/auth/customer/register", async (req, res) => {
     try {
-      const { email, firstName, lastName, phone, password } = req.body;
+      const { email, firstName, lastName, phone, password, otpCode } = req.body;
 
-      if (!email || !firstName || !lastName || !password) {
+      if (!email || !firstName || !lastName || !phone || !password || !otpCode) {
         return res.status(400).json({ error: "All fields are required" });
       }
 
@@ -650,8 +743,8 @@ export async function setupUnifiedAuth(app: Express) {
           .json({ error: "Password must be at least 6 characters" });
       }
 
-      // Validate phone if provided
-      if (phone && phone.length < 10) {
+      const normalizedPhone = normalizePhone(phone);
+      if (normalizedPhone.length < 10) {
         return res
           .status(400)
           .json({ error: "Valid phone number is required" });
@@ -663,6 +756,22 @@ export async function setupUnifiedAuth(app: Express) {
           .status(400)
           .json({ error: "User with this email already exists" });
       }
+      const existingPhone = await storage.getUserByPhone(normalizedPhone);
+      if (existingPhone) {
+        return res
+          .status(400)
+          .json({ error: "Phone number already in use" });
+      }
+
+      const phoneVerified = await verifyPhoneCode(
+        normalizedPhone,
+        String(otpCode)
+      );
+      if (!phoneVerified) {
+        return res
+          .status(400)
+          .json({ error: "Phone verification failed" });
+      }
 
       const passwordHash = await bcrypt.hash(password, 10);
 
@@ -670,7 +779,7 @@ export async function setupUnifiedAuth(app: Express) {
         email,
         firstName,
         lastName,
-        phone: phone || "",
+        phone: normalizedPhone,
         passwordHash,
       };
 
@@ -712,9 +821,9 @@ export async function setupUnifiedAuth(app: Express) {
   // Email/password registration for restaurant owners
   app.post("/api/auth/restaurant/register", async (req, res) => {
     try {
-      const { email, firstName, lastName, phone, password } = req.body;
+      const { email, firstName, lastName, phone, password, otpCode } = req.body;
 
-      if (!email || !firstName || !lastName || !phone || !password) {
+      if (!email || !firstName || !lastName || !phone || !password || !otpCode) {
         return res.status(400).json({ error: "All fields are required" });
       }
 
@@ -724,7 +833,8 @@ export async function setupUnifiedAuth(app: Express) {
           .json({ error: "Password must be at least 6 characters" });
       }
 
-      if (phone.length < 10) {
+      const normalizedPhone = normalizePhone(phone);
+      if (normalizedPhone.length < 10) {
         return res
           .status(400)
           .json({ error: "Valid phone number is required" });
@@ -736,6 +846,22 @@ export async function setupUnifiedAuth(app: Express) {
           .status(400)
           .json({ error: "User with this email already exists" });
       }
+      const existingPhone = await storage.getUserByPhone(normalizedPhone);
+      if (existingPhone) {
+        return res
+          .status(400)
+          .json({ error: "Phone number already in use" });
+      }
+
+      const phoneVerified = await verifyPhoneCode(
+        normalizedPhone,
+        String(otpCode)
+      );
+      if (!phoneVerified) {
+        return res
+          .status(400)
+          .json({ error: "Phone verification failed" });
+      }
 
       const passwordHash = await bcrypt.hash(password, 10);
 
@@ -743,7 +869,7 @@ export async function setupUnifiedAuth(app: Express) {
         email,
         firstName,
         lastName,
-        phone,
+        phone: normalizedPhone,
         passwordHash,
       };
 

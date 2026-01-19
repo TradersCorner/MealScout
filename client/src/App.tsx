@@ -15,7 +15,6 @@ import Login from "@/pages/login";
 const Home = lazy(() => import("@/pages/home"));
 
 // Lazy load all other pages - they only download when the user navigates to them
-const Landing = lazy(() => import("@/pages/landing"));
 const CustomerSignup = lazy(() => import("@/pages/customer-signup"));
 const RestaurantSignup = lazy(() => import("@/pages/restaurant-signup"));
 const CityLanding = lazy(() => import("@/pages/city-landing"));
@@ -84,6 +83,9 @@ const ParkingPassManage = lazy(() => import("@/pages/parking-pass-manage"));
 const StatusPage = lazy(() => import("@/pages/status"));
 const HostSignup = lazy(() => import("@/pages/host-signup"));
 const HostDashboard = lazy(() => import("@/pages/host-dashboard"));
+const EventCoordinatorDashboard = lazy(
+  () => import("@/pages/event-coordinator-dashboard"),
+);
 const TruckDiscovery = lazy(() => import("@/pages/truck-discovery"));
 const EventSignup = lazy(() => import("@/pages/event-signup"));
 const EventsPage = lazy(() => import("@/pages/events"));
@@ -95,6 +97,7 @@ const FindFood = lazy(() => import("@/pages/find-food"));
 const VideoPage = lazy(() => import("@/pages/video"));
 const VideoDetailPage = lazy(() => import("@/pages/video-detail"));
 const ChangePassword = lazy(() => import("@/pages/change-password"));
+const TruckLanding = lazy(() => import("@/pages/truck-landing"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -124,7 +127,6 @@ function Router() {
         {!isAuthenticated ? (
           <>
             <Route path="/" component={Home} />
-            <Route path="/welcome" component={Landing} />
             <Route path="/login" component={Login} />
             <Route path="/customer-signup" component={CustomerSignup} />
             <Route path="/restaurant-signup" component={RestaurantSignup} />
@@ -154,6 +156,7 @@ function Router() {
             <Route path="/event-signup" component={EventSignup} />
             <Route path="/events" component={EventsPage} />
             <Route path="/food-trucks/:citySlug" component={CityLanding} />
+            <Route path="/truck-landing" component={TruckLanding} />
             <Route path="/sitemap" component={Sitemap} />
             <Route path="/status" component={StatusPage} />
             <Route
@@ -189,7 +192,11 @@ function Router() {
               component={RestaurantOwnerDashboard}
             />
             <Route path="/user-dashboard" component={UserDashboard} />
-            <Route path="/host/dashboard" component={HostDashboard} />
+        <Route path="/host/dashboard" component={HostDashboard} />
+        <Route
+          path="/event-coordinator/dashboard"
+          component={EventCoordinatorDashboard}
+        />
             <Route path="/truck-discovery" component={TruckDiscovery} />
             <Route path="/for-food-trucks" component={ForFoodTrucks} />
             <Route path="/for-restaurants" component={ForRestaurants} />
@@ -242,6 +249,7 @@ function Router() {
             <Route path="/host-signup" component={HostSignup} />
             <Route path="/event-signup" component={EventSignup} />
             <Route path="/sitemap" component={Sitemap} />
+            <Route path="/truck-landing" component={TruckLanding} />
             <Route path="/status" component={StatusPage} />
             <Route path="/forgot-password" component={ForgotPassword} />
             <Route path="/reset-password" component={ResetPassword} />

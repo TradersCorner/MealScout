@@ -514,6 +514,27 @@ export const passwordResetTokens = pgTable(
   ],
 );
 
+// Phone verification tokens for SMS-based signup verification
+export const phoneVerificationTokens = pgTable(
+  "phone_verification_tokens",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    phone: varchar("phone").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    usedAt: timestamp("used_at"),
+    requestIp: varchar("request_ip"),
+    userAgent: varchar("user_agent"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_phone_verification_phone").on(table.phone, table.createdAt),
+    index("idx_phone_verification_expires").on(table.expiresAt),
+  ],
+);
+
 // Account setup tokens for new user onboarding (email-based flow)
 export const accountSetupTokens = pgTable(
   "account_setup_tokens",
@@ -1385,6 +1406,27 @@ export const insertPasswordResetTokenSchema = createInsertSchema(
       .optional(),
   });
 
+export const insertPhoneVerificationTokenSchema = createInsertSchema(
+  phoneVerificationTokens,
+)
+  .omit({
+    id: true,
+    usedAt: true,
+    createdAt: true,
+  })
+  .extend({
+    phone: z.string().min(10, "Phone number is required"),
+    tokenHash: z.string().min(1, "Token hash is required"),
+    expiresAt: z
+      .date()
+      .refine((date) => date > new Date(), "Expiry date must be in the future"),
+    requestIp: z.string().optional(),
+    userAgent: z
+      .string()
+      .max(500, "User agent must be less than 500 characters")
+      .optional(),
+  });
+
 export const insertAccountSetupTokenSchema = createInsertSchema(
   accountSetupTokens,
 )
@@ -1609,6 +1651,11 @@ export type InsertPasswordResetToken = z.infer<
   typeof insertPasswordResetTokenSchema
 >;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertPhoneVerificationToken = z.infer<
+  typeof insertPhoneVerificationTokenSchema
+>;
+export type PhoneVerificationToken =
+  typeof phoneVerificationTokens.$inferSelect;
 
 export type InsertAccountSetupToken = z.infer<
   typeof insertAccountSetupTokenSchema

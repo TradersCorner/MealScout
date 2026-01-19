@@ -2009,6 +2009,25 @@ export const hosts = pgTable(
   ],
 );
 
+export const hostBlackoutDates = pgTable(
+  "host_blackout_dates",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    hostId: varchar("host_id")
+      .notNull()
+      .references(() => hosts.id, { onDelete: "cascade" }),
+    date: timestamp("date").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_host_blackout_host").on(table.hostId),
+    index("idx_host_blackout_date").on(table.date),
+    unique("uq_host_blackout_date").on(table.hostId, table.date),
+  ],
+);
+
 // Events: Specific slots created by hosts for food trucks
 // Event Series: Multi-day or recurring event configurations (Open Calls)
 export const eventSeries = pgTable(
@@ -2714,6 +2733,7 @@ export const hostsRelations = relations(hosts, ({ one, many }) => ({
   events: many(events),
   reviews: many(hostReviews),
   bookings: many(eventBookings),
+  blackoutDates: many(hostBlackoutDates),
 }));
 
 export const eventInterestsRelations = relations(eventInterests, ({ one }) => ({
@@ -2739,6 +2759,16 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   interests: many(eventInterests),
   bookings: many(eventBookings),
 }));
+
+export const hostBlackoutDatesRelations = relations(
+  hostBlackoutDates,
+  ({ one }) => ({
+    host: one(hosts, {
+      fields: [hostBlackoutDates.hostId],
+      references: [hosts.id],
+    }),
+  }),
+);
 
 export const hostReviewsRelations = relations(hostReviews, ({ one }) => ({
   host: one(hosts, {
@@ -3118,6 +3148,18 @@ export const insertHostSchema = createInsertSchema(hosts)
 
 export type Host = typeof hosts.$inferSelect;
 export type InsertHost = z.infer<typeof insertHostSchema>;
+
+export const insertHostBlackoutDateSchema = createInsertSchema(
+  hostBlackoutDates,
+).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type HostBlackoutDate = typeof hostBlackoutDates.$inferSelect;
+export type InsertHostBlackoutDate = z.infer<
+  typeof insertHostBlackoutDateSchema
+>;
 
 export const insertEventSeriesSchema = createInsertSchema(eventSeries).omit({
   id: true,

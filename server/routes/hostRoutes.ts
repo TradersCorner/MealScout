@@ -6,9 +6,11 @@ import { db } from "../db";
 import {
   insertHostSchema,
   insertEventSchema,
+  insertHostBlackoutDateSchema,
   events,
   hosts,
   eventBookings,
+  hostBlackoutDates,
 } from "@shared/schema";
 import { and, eq, gte, inArray, lt } from "drizzle-orm";
 import { isAuthenticated } from "../unifiedAuth";
@@ -171,6 +173,90 @@ export function registerHostRoutes(app: Express) {
     }
   });
 
+  app.get(
+    "/api/hosts/:hostId/blackout-dates",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { hostId } = req.params;
+        const userId = req.user.id;
+        const host = await storage.getHost(hostId);
+        if (!host || host.userId !== userId) {
+          return res.status(404).json({ message: "Host profile not found" });
+        }
+        const blackoutDates = await storage.getHostBlackoutDates(hostId);
+        res.json(blackoutDates);
+      } catch (error: any) {
+        console.error("Error fetching blackout dates:", error);
+        res.status(500).json({ message: "Failed to fetch blackout dates" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/hosts/:hostId/blackout-dates",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { hostId } = req.params;
+        const userId = req.user.id;
+        const host = await storage.getHost(hostId);
+        if (!host || host.userId !== userId) {
+          return res.status(404).json({ message: "Host profile not found" });
+        }
+
+        const parsed = insertHostBlackoutDateSchema.parse({
+          hostId,
+          date: new Date(req.body?.date),
+        });
+
+        const created = await storage.createHostBlackoutDate(parsed);
+        res.status(201).json(created);
+      } catch (error: any) {
+        console.error("Error creating blackout date:", error);
+        if (error instanceof z.ZodError) {
+          return res
+            .status(400)
+            .json({ message: "Invalid blackout date", errors: error.errors });
+        }
+        res.status(500).json({ message: "Failed to create blackout date" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/hosts/:hostId/blackout-dates",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { hostId } = req.params;
+        const userId = req.user.id;
+        const host = await storage.getHost(hostId);
+        if (!host || host.userId !== userId) {
+          return res.status(404).json({ message: "Host profile not found" });
+        }
+
+        const date = new Date(req.body?.date);
+        if (Number.isNaN(date.getTime())) {
+          return res.status(400).json({ message: "Valid date required" });
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (date <= today) {
+          return res.status(400).json({
+            message: "Same-day blackout dates cannot be removed.",
+          });
+        }
+
+        await storage.deleteHostBlackoutDate(hostId, date);
+        res.json({ message: "Blackout date removed" });
+      } catch (error: any) {
+        console.error("Error deleting blackout date:", error);
+        res.status(500).json({ message: "Failed to delete blackout date" });
+      }
+    },
+  );
+
   app.post("/api/hosts/events", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -210,8 +296,17 @@ export function registerHostRoutes(app: Express) {
       const dailyPriceCents = slotSum + 1000;
       const weeklyPriceCents = slotSum * 7 + 1000;
 
+      const daysOfWeekSchema = z.array(z.number().int().min(0).max(6));
+      const daysOfWeek = daysOfWeekSchema.parse(req.body?.daysOfWeek || []);
+      if (daysOfWeek.length === 0) {
+        return res
+          .status(400)
+          .json({ message: "At least one day of week is required." });
+      }
+
       const parsed = insertEventSchema.parse({
         ...req.body,
+        date: new Date(),
         requiresPayment: true,
         hostId: host.id,
         breakfastPriceCents: breakfastPriceCents || null,
@@ -221,16 +316,6 @@ export function registerHostRoutes(app: Express) {
         weeklyPriceCents,
         hostPriceCents: slotSum,
       });
-
-      // Validation: Future dates only
-      const eventDate = new Date(parsed.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (eventDate < today) {
-        return res
-          .status(400)
-          .json({ message: "Event date must be in the future" });
-      }
 
       // Validation: End time > Start time
       const [startHour, startMinute] = parsed.startTime.split(":").map(Number);
@@ -244,15 +329,89 @@ export function registerHostRoutes(app: Express) {
           .json({ message: "End time must be after start time" });
       }
 
-      // Validation: Capacity >= 1
+      // Validation: Spots >= 1
       if (parsed.maxTrucks !== undefined && parsed.maxTrucks < 1) {
         return res
           .status(400)
-          .json({ message: "Max trucks must be at least 1" });
+          .json({ message: "Number of spots must be at least 1" });
       }
 
-      const event = await storage.createEvent(parsed);
-      res.status(201).json(event);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const horizon = new Date(today);
+      horizon.setDate(horizon.getDate() + 30);
+
+      const existingEvents = await db
+        .select({
+          date: events.date,
+          startTime: events.startTime,
+          endTime: events.endTime,
+        })
+        .from(events)
+        .where(
+          and(
+            eq(events.hostId, host.id),
+            gte(events.date, today),
+            lt(events.date, horizon),
+            eq(events.requiresPayment, true),
+          ),
+        );
+
+      const blackoutRows = await db
+        .select({ date: hostBlackoutDates.date })
+        .from(hostBlackoutDates)
+        .where(
+          and(
+            eq(hostBlackoutDates.hostId, host.id),
+            gte(hostBlackoutDates.date, today),
+            lt(hostBlackoutDates.date, horizon),
+          ),
+        );
+
+      const blackoutSet = new Set(
+        blackoutRows.map(
+          (row) => new Date(row.date).toISOString().split("T")[0],
+        ),
+      );
+
+      const existingKeys = new Set(
+        existingEvents.map((item) => {
+          const dateKey = new Date(item.date).toISOString().split("T")[0];
+          return `${dateKey}-${item.startTime}-${item.endTime}`;
+        }),
+      );
+
+      const newEvents = [];
+      for (
+        let cursor = new Date(today);
+        cursor < horizon;
+        cursor.setDate(cursor.getDate() + 1)
+      ) {
+        if (!daysOfWeek.includes(cursor.getDay())) {
+          continue;
+        }
+        const dateKey = cursor.toISOString().split("T")[0];
+        if (blackoutSet.has(dateKey)) {
+          continue;
+        }
+        const key = `${dateKey}-${parsed.startTime}-${parsed.endTime}`;
+        if (existingKeys.has(key)) {
+          continue;
+        }
+
+        const eventPayload = {
+          ...parsed,
+          date: new Date(dateKey),
+        };
+        newEvents.push(eventPayload);
+      }
+
+      if (newEvents.length === 0) {
+        return res.status(200).json([]);
+      }
+
+      const createdEvents = await db.insert(events).values(newEvents).returning();
+      res.status(201).json(createdEvents);
     } catch (error: any) {
       console.error("Error creating event:", error);
       if (error instanceof z.ZodError) {
@@ -686,7 +845,7 @@ export function registerHostRoutes(app: Express) {
       }
 
       const { eventId } = req.params;
-      const { truckId, slotType } = req.body;
+      const { truckId, slotType, slotTypes } = req.body;
       const userId = req.user.id;
 
       if (!truckId) {
@@ -699,8 +858,24 @@ export function registerHostRoutes(app: Express) {
         "daily",
         "weekly",
       ]);
-      if (!slotType || !allowedSlotTypes.has(slotType)) {
-        return res.status(400).json({ message: "Valid slotType required" });
+      const requestedSlots = Array.isArray(slotTypes)
+        ? slotTypes
+        : slotType
+          ? [slotType]
+          : [];
+      const normalizedSlots = Array.from(
+        new Set(
+          requestedSlots
+            .filter((value: any) => typeof value === "string")
+            .map((value: string) => value.trim())
+            .filter((value: string) => value.length > 0),
+        ),
+      );
+      if (
+        normalizedSlots.length === 0 ||
+        normalizedSlots.some((value) => !allowedSlotTypes.has(value))
+      ) {
+        return res.status(400).json({ message: "Valid slotTypes required" });
       }
 
       // Verify truck ownership
@@ -757,6 +932,18 @@ export function registerHostRoutes(app: Express) {
         });
       }
 
+      const currentBookings = await db
+        .select({ id: eventBookings.id })
+        .from(eventBookings)
+        .where(eq(eventBookings.eventId, eventId))
+        .where(inArray(eventBookings.status, ["pending", "confirmed"]));
+
+      if (currentBookings.length >= event.maxTrucks) {
+        return res.status(400).json({
+          message: "This parking pass is fully booked.",
+        });
+      }
+
       const eventDate = new Date(event.date);
       const dayStart = new Date(eventDate);
       dayStart.setHours(0, 0, 0, 0);
@@ -794,14 +981,21 @@ export function registerHostRoutes(app: Express) {
         daily: event.dailyPriceCents,
         weekly: event.weeklyPriceCents,
       };
-      const selectedPrice = slotPriceMap[slotType];
-      if (!selectedPrice || selectedPrice <= 0) {
+      const selectedPrices = normalizedSlots.map((slot) => ({
+        slot,
+        price: slotPriceMap[slot] || 0,
+      }));
+      if (selectedPrices.some((item) => item.price <= 0)) {
         return res.status(400).json({
-          message: "Selected slot is not available for this listing.",
+          message: "One or more selected slots are not available.",
         });
       }
-      const hostPriceCents = selectedPrice;
-      const platformFeeCents = 1000; // Always $10
+      const hostPriceCents = selectedPrices.reduce(
+        (sum, item) => sum + item.price,
+        0,
+      );
+      const bookingDays = normalizedSlots.includes("weekly") ? 7 : 1;
+      const platformFeeCents = 1000 * bookingDays; // $10 per day per host
       const totalCents = hostPriceCents + platformFeeCents;
 
       // Create booking record
@@ -817,9 +1011,17 @@ export function registerHostRoutes(app: Express) {
           status: "pending",
           stripeApplicationFeeAmount: platformFeeCents,
           stripeTransferDestination: host.stripeConnectAccountId,
-          slotType,
+          slotType: normalizedSlots.join(","),
         })
         .returning();
+
+      const updatedCount = currentBookings.length + 1;
+      if (updatedCount >= event.maxTrucks) {
+        await db
+          .update(events)
+          .set({ status: "filled" })
+          .where(eq(events.id, event.id));
+      }
 
       // Create Stripe PaymentIntent as a direct charge on the host's Connect account.
       // Processing fees will be deducted from the host; the platform receives the $10 application fee.

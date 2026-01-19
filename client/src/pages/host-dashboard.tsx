@@ -58,7 +58,7 @@ function HostDashboard() {
   const [events, setEvents] = useState<Event[]>([]);
 
   const [isCreating, setIsCreating] = useState(false);
-  const [date, setDate] = useState("");
+  const [daysOfWeek, setDaysOfWeek] = useState<number[]>([]);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [anyTime, setAnyTime] = useState(false);
@@ -76,6 +76,9 @@ function HostDashboard() {
     seating: false,
   });
   const [isSavingAmenities, setIsSavingAmenities] = useState(false);
+  const [blackoutDateInput, setBlackoutDateInput] = useState("");
+  const [blackoutDates, setBlackoutDates] = useState<string[]>([]);
+  const [isSavingBlackout, setIsSavingBlackout] = useState(false);
 
   useEffect(() => {
     if (isLoading) {
@@ -151,6 +154,28 @@ function HostDashboard() {
       }
     };
     fetchEvents();
+
+    const fetchBlackouts = async () => {
+      try {
+        const res = await fetch(
+          `/api/hosts/${selectedHostId}/blackout-dates`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            const dates = data
+              .map((row) =>
+                new Date(row.date).toISOString().split("T")[0],
+              )
+              .sort();
+            setBlackoutDates(dates);
+          }
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    fetchBlackouts();
   }, [hosts, selectedHostId]);
 
   const handleCreateEvent = async (event: React.FormEvent) => {
@@ -167,6 +192,10 @@ function HostDashboard() {
       setCreateError("At least one slot price is required.");
       return;
     }
+    if (daysOfWeek.length === 0) {
+      setCreateError("Select at least one day of the week.");
+      return;
+    }
 
     try {
       const res = await fetch("/api/hosts/events", {
@@ -174,7 +203,7 @@ function HostDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           hostId: selectedHostId,
-          date,
+          daysOfWeek,
           startTime: finalStartTime,
           endTime: finalEndTime,
           maxTrucks: Number(maxTrucks),
@@ -192,9 +221,10 @@ function HostDashboard() {
       }
 
       const newEvent = await res.json();
-      setEvents([...events, newEvent]);
+      const newEvents = Array.isArray(newEvent) ? newEvent : [newEvent];
+      setEvents([...events, ...newEvents]);
       setIsCreating(false);
-      setDate("");
+      setDaysOfWeek([]);
       setStartTime("");
       setEndTime("");
       setAnyTime(false);
@@ -242,6 +272,62 @@ function HostDashboard() {
       });
     } finally {
       setIsSavingAmenities(false);
+    }
+  };
+
+  const handleAddBlackout = async () => {
+    if (!host || !blackoutDateInput) return;
+    setIsSavingBlackout(true);
+    try {
+      const res = await fetch(`/api/hosts/${host.id}/blackout-dates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: blackoutDateInput }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to add blackout date");
+      }
+      const dateKey = blackoutDateInput;
+      setBlackoutDates((current) =>
+        current.includes(dateKey) ? current : [...current, dateKey].sort(),
+      );
+      setBlackoutDateInput("");
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingBlackout(false);
+    }
+  };
+
+  const handleRemoveBlackout = async (dateKey: string) => {
+    if (!host) return;
+    setIsSavingBlackout(true);
+    try {
+      const res = await fetch(`/api/hosts/${host.id}/blackout-dates`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: dateKey }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to remove blackout date");
+      }
+      setBlackoutDates((current) =>
+        current.filter((item) => item !== dateKey),
+      );
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingBlackout(false);
     }
   };
 
@@ -392,6 +478,56 @@ function HostDashboard() {
         </div>
       </div>
 
+      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-8">
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Blackout Dates
+            </h2>
+            <p className="text-sm text-slate-500">
+              Block specific days when trucks cannot park.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Input
+            type="date"
+            value={blackoutDateInput}
+            onChange={(event) => setBlackoutDateInput(event.target.value)}
+            min={new Date().toISOString().split("T")[0]}
+          />
+          <Button
+            type="button"
+            onClick={handleAddBlackout}
+            disabled={!blackoutDateInput || isSavingBlackout}
+          >
+            {isSavingBlackout ? "Saving..." : "Add blackout date"}
+          </Button>
+        </div>
+        {blackoutDates.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-500">
+            No blackout dates set.
+          </p>
+        ) : (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {blackoutDates.map((dateKey) => (
+              <button
+                key={dateKey}
+                type="button"
+                onClick={() => handleRemoveBlackout(dateKey)}
+                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 hover:bg-slate-100"
+                disabled={
+                  isSavingBlackout ||
+                  dateKey <= new Date().toISOString().split("T")[0]
+                }
+              >
+                {format(new Date(dateKey), "MMM d, yyyy")} (remove)
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {isCreating && (
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-8 animate-in fade-in slide-in-from-top-4">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -422,7 +558,7 @@ function HostDashboard() {
                       When trucks can park
                     </h3>
                     <p className="text-xs text-slate-500">
-                      Pick a date and time window or choose any time.
+                      Pick the weekly schedule and a time window.
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -438,18 +574,43 @@ function HostDashboard() {
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="date">Date</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={date}
-                      onChange={(event) => setDate(event.target.value)}
-                      min={new Date().toISOString().split("T")[0]}
-                      required
-                    />
+                    <Label>Days of the week</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { label: "Mon", value: 1 },
+                        { label: "Tue", value: 2 },
+                        { label: "Wed", value: 3 },
+                        { label: "Thu", value: 4 },
+                        { label: "Fri", value: 5 },
+                        { label: "Sat", value: 6 },
+                        { label: "Sun", value: 0 },
+                      ].map((day) => {
+                        const selected = daysOfWeek.includes(day.value);
+                        return (
+                          <button
+                            key={day.value}
+                            type="button"
+                            className={`rounded-md border px-3 py-2 text-xs font-medium transition ${
+                              selected
+                                ? "border-orange-300 bg-orange-100 text-orange-900"
+                                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                            }`}
+                            onClick={() =>
+                              setDaysOfWeek((current) =>
+                                current.includes(day.value)
+                                  ? current.filter((item) => item !== day.value)
+                                  : [...current, day.value],
+                              )
+                            }
+                          >
+                            {day.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="maxTrucks">Parking spots</Label>
+                    <Label htmlFor="maxTrucks">Number of spots</Label>
                     <Input
                       id="maxTrucks"
                       type="number"
@@ -487,7 +648,7 @@ function HostDashboard() {
                 </div>
                 {anyTime && (
                   <p className="mt-3 text-xs text-slate-500">
-                    Any time means trucks can park 24/7 that day.
+                    Any time means trucks can park 24/7.
                   </p>
                 )}
               </div>
@@ -668,19 +829,19 @@ function HostDashboard() {
                         </div>
 
                         <div>
-                          <div className="flex items-center gap-4 text-sm text-slate-600 mb-1">
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
-                              {event.startTime === "00:00" &&
-                              event.endTime === "23:59"
-                                ? "Any time"
-                                : `${event.startTime} - ${event.endTime}`}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Truck className="h-4 w-4" />
-                              {event.maxTrucks} Truck
-                              {event.maxTrucks !== 1 ? "s" : ""}
-                            </span>
+            <div className="flex items-center gap-4 text-sm text-slate-600 mb-1">
+              <span className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                {event.startTime === "00:00" &&
+                event.endTime === "23:59"
+                  ? "Any time"
+                  : `${event.startTime} - ${event.endTime}`}
+              </span>
+              <span className="flex items-center gap-1">
+                <Truck className="h-4 w-4" />
+                {event.maxTrucks} Spot
+                {event.maxTrucks !== 1 ? "s" : ""}
+              </span>
                             {event.requiresPayment && (
                               <span className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded-full px-2 py-0.5">
                                 Daily {formatCents(event.dailyPriceCents)} / Weekly{" "}

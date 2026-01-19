@@ -4249,23 +4249,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 `[WEBHOOK] Booking ${paymentIntent.metadata.bookingId} confirmed`,
               );
 
-              // Update event status to 'booked' if needed
-              if (
-                paymentIntent.metadata.eventId &&
-                paymentIntent.metadata.truckId
-              ) {
-                const { events } = await import("@shared/schema");
-                await db
-                  .update(events)
-                  .set({
-                    status: "booked",
-                    bookedRestaurantId: paymentIntent.metadata.truckId,
-                  })
-                  .where(eq(events.id, paymentIntent.metadata.eventId));
+              if (paymentIntent.metadata.eventId) {
+                const { events, eventBookings } = await import("@shared/schema");
+                const eventId = paymentIntent.metadata.eventId;
+                const [event] = await db
+                  .select()
+                  .from(events)
+                  .where(eq(events.id, eventId));
 
-                console.log(
-                  `[WEBHOOK] Event ${paymentIntent.metadata.eventId} marked as booked by truck ${paymentIntent.metadata.truckId}`,
-                );
+                if (event) {
+                  const activeBookings = await db
+                    .select({ id: eventBookings.id })
+                    .from(eventBookings)
+                    .where(eq(eventBookings.eventId, eventId))
+                    .where(
+                      inArray(eventBookings.status, ["pending", "confirmed"]),
+                    );
+
+                  const newStatus =
+                    activeBookings.length >= event.maxTrucks
+                      ? "filled"
+                      : "open";
+
+                  await db
+                    .update(events)
+                    .set({
+                      status: newStatus,
+                      bookedRestaurantId: null,
+                    })
+                    .where(eq(events.id, eventId));
+
+                  console.log(
+                    `[WEBHOOK] Event ${eventId} updated to status ${newStatus}`,
+                  );
+                }
               }
             } catch (error) {
               console.error("[WEBHOOK] Error confirming booking:", error);

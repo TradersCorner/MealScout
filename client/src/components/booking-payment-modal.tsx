@@ -27,7 +27,7 @@ interface BookingPaymentModalProps {
   onOpenChange: (open: boolean) => void;
   eventId: string;
   truckId: string;
-  slotType: string;
+  slotTypes: string[];
   eventDetails: {
     name: string;
     date: string;
@@ -35,6 +35,7 @@ interface BookingPaymentModalProps {
     endTime: string;
     hostName: string;
     hostPrice?: number;
+    slotSummary?: string;
   };
   onSuccess: () => void;
 }
@@ -114,12 +115,12 @@ function PaymentForm({
             ${(breakdown.hostPrice / 100).toFixed(2)}
           </span>
         </div>
-        <div className="flex items-center justify-between text-gray-700">
-          <span>MealScout Platform Fee</span>
-          <span className="font-medium">
-            ${(breakdown.platformFee / 100).toFixed(2)}
-          </span>
-        </div>
+      <div className="flex items-center justify-between text-gray-700">
+        <span>MealScout Platform Fee (per day)</span>
+        <span className="font-medium">
+          ${(breakdown.platformFee / 100).toFixed(2)}
+        </span>
+      </div>
         <div className="border-t border-gray-300 pt-2 flex items-center justify-between font-semibold text-gray-900">
           <span>Total</span>
           <span className="text-lg">${(totalCents / 100).toFixed(2)}</span>
@@ -163,8 +164,7 @@ function PaymentForm({
 
       {/* Terms Notice */}
       <p className="text-xs text-gray-500 text-center">
-        By confirming payment, you agree to the booking terms and cancellation
-        policy.
+        By confirming payment, you acknowledge bookings are non-refundable.
       </p>
     </form>
   );
@@ -175,7 +175,7 @@ export function BookingPaymentModal({
   onOpenChange,
   eventId,
   truckId,
-  slotType,
+  slotTypes,
   eventDetails,
   onSuccess,
 }: BookingPaymentModalProps) {
@@ -200,7 +200,7 @@ export function BookingPaymentModal({
       const res = await fetch(`/api/events/${eventId}/book`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ truckId, slotType }),
+        body: JSON.stringify({ truckId, slotTypes }),
       });
 
       if (!res.ok) {
@@ -249,9 +249,14 @@ export function BookingPaymentModal({
               <p className="font-semibold text-gray-900">{eventDetails.name}</p>
               <p>{eventDetails.hostName}</p>
               <p>
-                {eventDetails.date} • {eventDetails.startTime} -{" "}
+                {eventDetails.date} - {eventDetails.startTime} -{" "}
                 {eventDetails.endTime}
               </p>
+              {eventDetails.slotSummary && (
+                <p className="text-xs text-gray-500">
+                  Slots: {eventDetails.slotSummary}
+                </p>
+              )}
             </div>
           </DialogDescription>
         </DialogHeader>

@@ -146,7 +146,7 @@ export default function ParkingPassManage() {
       toast({
         title: "Booking Cancelled",
         description:
-          "Your booking has been cancelled. Refund will be processed within 5-10 business days.",
+          "Your booking has been cancelled. Bookings are non-refundable.",
       });
 
       // Refresh bookings

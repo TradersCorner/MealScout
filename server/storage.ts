@@ -65,6 +65,9 @@ import {
   eventSeries,
   type Host,
   type InsertHost,
+  hostBlackoutDates,
+  type HostBlackoutDate,
+  type InsertHostBlackoutDate,
   type Event,
   type InsertEvent,
   type EventSeries,
@@ -108,6 +111,15 @@ export interface IStorage {
   createHost(host: InsertHost): Promise<Host>;
   getHost(id: string): Promise<Host | undefined>;
   getHostByUserId(userId: string): Promise<Host | undefined>;
+  getHostsByUserId(userId: string): Promise<Host[]>;
+  getHostBlackoutDates(hostId: string): Promise<HostBlackoutDate[]>;
+  createHostBlackoutDate(
+    blackout: InsertHostBlackoutDate
+  ): Promise<HostBlackoutDate>;
+  deleteHostBlackoutDate(
+    hostId: string,
+    date: Date
+  ): Promise<void>;
   getAllHosts(): Promise<Host[]>;
   updateHostCoordinates(
     hostId: string,
@@ -671,6 +683,35 @@ export class DatabaseStorage implements IStorage {
       .where(eq(hosts.id, hostId))
       .returning();
     return updated;
+  }
+
+  async getHostBlackoutDates(hostId: string): Promise<HostBlackoutDate[]> {
+    return await db
+      .select()
+      .from(hostBlackoutDates)
+      .where(eq(hostBlackoutDates.hostId, hostId))
+      .orderBy(asc(hostBlackoutDates.date));
+  }
+
+  async createHostBlackoutDate(
+    blackout: InsertHostBlackoutDate
+  ): Promise<HostBlackoutDate> {
+    const [created] = await db
+      .insert(hostBlackoutDates)
+      .values(blackout)
+      .returning();
+    return created;
+  }
+
+  async deleteHostBlackoutDate(hostId: string, date: Date): Promise<void> {
+    await db
+      .delete(hostBlackoutDates)
+      .where(
+        and(
+          eq(hostBlackoutDates.hostId, hostId),
+          eq(hostBlackoutDates.date, date),
+        ),
+      );
   }
 
   async createEvent(event: InsertEvent): Promise<Event> {

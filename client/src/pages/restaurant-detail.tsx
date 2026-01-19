@@ -73,7 +73,7 @@ export default function RestaurantDetailPage() {
 
   const { data: scheduleData, isLoading: scheduleLoading } = useQuery({
     queryKey: ["/api/bookings/truck", restaurantId, "schedule"],
-    enabled: !!restaurantId && !!isFoodTruck && isStaffOrAdmin,
+    enabled: !!restaurantId && !!isFoodTruck,
     queryFn: async () => {
       const res = await fetch(`/api/bookings/truck/${restaurantId}/schedule`);
       if (!res.ok) {
@@ -86,6 +86,13 @@ export default function RestaurantDetailPage() {
   const scheduleItems = Array.isArray(scheduleData?.schedule)
     ? scheduleData.schedule
     : [];
+  const formatSlotSummary = (value: string) =>
+    value
+      .split(",")
+      .map((slot) => slot.trim())
+      .filter(Boolean)
+      .map((slot) => slot.charAt(0).toUpperCase() + slot.slice(1))
+      .join(", ");
 
   const handleBookingFieldChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -227,7 +234,7 @@ export default function RestaurantDetailPage() {
         <div className="w-full h-full flex items-center justify-center">
           <div className="text-center text-white/80">
             <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl">🍽️</span>
+              <span className="text-2xl">--</span>
             </div>
           </div>
         </div>
@@ -428,7 +435,7 @@ export default function RestaurantDetailPage() {
           </div>
         </div>
 
-        {isFoodTruck && isStaffOrAdmin && (
+        {isFoodTruck && (
           <div className="mb-8">
             <h2 className="text-xl font-bold text-foreground mb-4">
               Upcoming Schedule
@@ -447,12 +454,17 @@ export default function RestaurantDetailPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="font-semibold text-foreground">
-                            {new Date(item.event.date).toLocaleDateString()} ·{" "}
+                            {new Date(item.event.date).toLocaleDateString()} -{" "}
                             {item.event.startTime} - {item.event.endTime}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {item.host.businessName} · {item.host.address}
+                            {item.host.businessName} - {item.host.address}
                           </p>
+                          {item.slotType && (
+                            <p className="text-xs text-muted-foreground">
+                              Slots: {formatSlotSummary(String(item.slotType))}
+                            </p>
+                          )}
                         </div>
                         <Badge variant="secondary">
                           {item.type === "booking"
@@ -489,7 +501,7 @@ export default function RestaurantDetailPage() {
             <Card>
               <CardContent className="p-6 text-center">
                 <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🎯</span>
+                  <span className="text-2xl">-</span>
                 </div>
                 <p className="text-muted-foreground">
                   No current specials available

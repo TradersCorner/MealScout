@@ -8,8 +8,8 @@ import {
   hosts,
   restaurants,
 } from "@shared/schema";
-import { eq, and, or, desc, gte } from "drizzle-orm";
-import { isAuthenticated, isStaffOrAdmin } from "../unifiedAuth";
+import { eq, and, or, desc, gte, inArray } from "drizzle-orm";
+import { isAuthenticated } from "../unifiedAuth";
 import { storage } from "../storage";
 import { emailService } from "../emailService";
 
@@ -17,7 +17,7 @@ import { emailService } from "../emailService";
  * Booking Management Routes
  * - GET /api/bookings/my-truck - Get all bookings for user's food truck
  * - GET /api/bookings/my-host - Get all bookings for user's host locations
- * - POST /api/bookings/:bookingId/cancel - Cancel a booking with refund
+ * - POST /api/bookings/:bookingId/cancel - Cancel a booking (non-refundable)
  */
 export function registerBookingRoutes(app: Express) {
   // Get all bookings for the user's food truck
@@ -218,27 +218,7 @@ export function registerBookingRoutes(app: Express) {
             .json({ message: "Booking is already cancelled" });
         }
 
-        // If there's a payment intent, process refund
-        if (booking.stripePaymentIntentId) {
-          const stripe = (await import("stripe")).default;
-          const stripeClient = new stripe(process.env.STRIPE_SECRET_KEY!, {
-            apiVersion: "2024-12-18.acacia",
-          });
-
-          try {
-            // Refund the payment
-            await stripeClient.refunds.create({
-              payment_intent: booking.stripePaymentIntentId,
-              reason: "requested_by_customer",
-            });
-          } catch (stripeError: any) {
-            console.error("Stripe refund error:", stripeError);
-            return res.status(500).json({
-              message: "Failed to process refund. Please contact support.",
-              error: stripeError.message,
-            });
-          }
-        }
+        // No refunds for cancellations.
 
         // Update booking status
         await db
@@ -251,18 +231,25 @@ export function registerBookingRoutes(app: Express) {
           })
           .where(eq(eventBookings.id, bookingId));
 
-        // Update event status if needed
+        const remainingBookings = await db
+          .select({ id: eventBookings.id })
+          .from(eventBookings)
+          .where(eq(eventBookings.eventId, booking.eventId))
+          .where(inArray(eventBookings.status, ["pending", "confirmed"]));
+
+        const newStatus = remainingBookings.length > 0 ? "open" : "open";
+
         await db
           .update(events)
           .set({
-            status: "open",
+            status: newStatus,
             bookedRestaurantId: null,
           })
           .where(eq(events.id, booking.eventId));
 
         res.json({
           message: "Booking cancelled successfully",
-          refundProcessed: !!booking.stripePaymentIntentId,
+          refundProcessed: false,
         });
       } catch (error) {
         console.error("Error cancelling booking:", error);
@@ -271,10 +258,9 @@ export function registerBookingRoutes(app: Express) {
     },
   );
 
-  // Admin/staff-only: public profile schedule (booked + accepted events)
+  // Public profile schedule (booked + accepted events)
   app.get(
     "/api/bookings/truck/:truckId/schedule",
-    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         const { truckId } = req.params;
@@ -297,6 +283,7 @@ export function registerBookingRoutes(app: Express) {
             status: eventBookings.status,
             bookingConfirmedAt: eventBookings.bookingConfirmedAt,
             createdAt: eventBookings.createdAt,
+            slotType: eventBookings.slotType,
             event: events,
             host: hosts,
           })
@@ -347,6 +334,7 @@ export function registerBookingRoutes(app: Express) {
             status: row.status,
             createdAt: row.createdAt,
             bookingConfirmedAt: row.bookingConfirmedAt,
+            slotType: row.slotType,
             event: {
               id: row.event.id,
               date: row.event.date,

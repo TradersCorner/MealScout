@@ -52,6 +52,8 @@ function HostDashboard() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isLoadingPage, setIsLoadingPage] = useState(true);
+  const [hosts, setHosts] = useState<HostProfile[]>([]);
+  const [selectedHostId, setSelectedHostId] = useState<string>("");
   const [host, setHost] = useState<HostProfile | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
 
@@ -92,22 +94,26 @@ function HostDashboard() {
 
     const fetchData = async () => {
       try {
-        const hostRes = await fetch("/api/hosts/me");
-        if (!hostRes.ok) {
-          if (hostRes.status === 404) {
-            setLocation("/host-signup");
-            return;
-          }
-          throw new Error("Failed to fetch host profile");
+        const hostsRes = await fetch("/api/hosts");
+        if (!hostsRes.ok) {
+          throw new Error("Failed to fetch host profiles");
         }
-        const hostData = await hostRes.json();
-        setHost(hostData);
+        const hostList = await hostsRes.json();
+        if (!Array.isArray(hostList) || hostList.length === 0) {
+          setLocation("/host-signup");
+          return;
+        }
+
+        setHosts(hostList);
+        const initialHost = hostList[0];
+        setSelectedHostId(initialHost.id);
+        setHost(initialHost);
         setAmenities((current) => ({
           ...current,
-          ...(hostData.amenities ?? {}),
+          ...(initialHost.amenities ?? {}),
         }));
 
-        const eventsRes = await fetch("/api/hosts/events");
+        const eventsRes = await fetch(`/api/hosts/events?hostId=${initialHost.id}`);
         if (eventsRes.ok) {
           const eventsData = await eventsRes.json();
           setEvents(eventsData);
@@ -121,6 +127,31 @@ function HostDashboard() {
 
     fetchData();
   }, [isAuthenticated, isLoading, setLocation, user]);
+
+  useEffect(() => {
+    if (!selectedHostId) return;
+    const selected = hosts.find((item) => item.id === selectedHostId) || null;
+    setHost(selected);
+    if (selected) {
+      setAmenities((current) => ({
+        ...current,
+        ...(selected.amenities ?? {}),
+      }));
+    }
+
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch(`/api/hosts/events?hostId=${selectedHostId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setEvents(data);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    fetchEvents();
+  }, [hosts, selectedHostId]);
 
   const handleCreateEvent = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -142,6 +173,7 @@ function HostDashboard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          hostId: selectedHostId,
           date,
           startTime: finalStartTime,
           endTime: finalEndTime,
@@ -182,7 +214,7 @@ function HostDashboard() {
     }
     setIsSavingAmenities(true);
     try {
-      const res = await fetch("/api/hosts/me", {
+      const res = await fetch(`/api/hosts/${host.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amenities }),
@@ -195,6 +227,9 @@ function HostDashboard() {
 
       const updatedHost = await res.json();
       setHost(updatedHost);
+      setHosts((current) =>
+        current.map((item) => (item.id === updatedHost.id ? updatedHost : item)),
+      );
       toast({
         title: "Amenities updated",
         description: "Your parking pass amenities are saved.",
@@ -273,13 +308,32 @@ function HostDashboard() {
           </Alert>
         )}
 
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col gap-4 mb-8 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">
             {host.businessName}
           </h1>
           <p className="text-slate-600">{host.address}</p>
         </div>
+        {hosts.length > 1 && (
+          <div className="flex items-center gap-2">
+            <Label htmlFor="hostSelect" className="text-sm text-slate-600">
+              Property
+            </Label>
+            <select
+              id="hostSelect"
+              value={selectedHostId}
+              onChange={(event) => setSelectedHostId(event.target.value)}
+              className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm"
+            >
+              {hosts.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.businessName} · {item.address}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <Button onClick={() => setIsCreating(!isCreating)}>
           {isCreating ? (
             "Cancel"
@@ -339,144 +393,189 @@ function HostDashboard() {
       </div>
 
       {isCreating && (
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-8 animate-in fade-in slide-in-from-top-4">
-          <h2 className="text-lg font-semibold mb-4">
-            Create Parking Pass Listing
-          </h2>
-          <form onSubmit={handleCreateEvent} className="space-y-4">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-8 animate-in fade-in slide-in-from-top-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-slate-900">
+                Post a Parking Pass
+              </h2>
+              <p className="text-sm text-slate-500">
+                Set the day, time window, and what each slot costs.
+              </p>
+            </div>
+            <div className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-600">
+              {host.businessName}
+            </div>
+          </div>
+          <form onSubmit={handleCreateEvent} className="mt-6 space-y-6">
             {createError && (
               <div className="p-3 bg-rose-50 text-rose-700 rounded-md text-sm">
                 {createError}
               </div>
             )}
 
-            <div className="grid md:grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="date">Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={date}
-                  onChange={(event) => setDate(event.target.value)}
-                  min={new Date().toISOString().split("T")[0]}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="startTime">Start Time</Label>
-                <Input
-                  id="startTime"
-                  type="time"
-                  value={startTime}
-                  onChange={(event) => setStartTime(event.target.value)}
-                  disabled={anyTime}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="endTime">End Time</Label>
-                <Input
-                  id="endTime"
-                  type="time"
-                  value={endTime}
-                  onChange={(event) => setEndTime(event.target.value)}
-                  disabled={anyTime}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="maxTrucks">Max Trucks</Label>
-                <Input
-                  id="maxTrucks"
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={maxTrucks}
-                  onChange={(event) => setMaxTrucks(Number(event.target.value))}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <input
-                id="anyTime"
-                type="checkbox"
-                className="h-4 w-4"
-                checked={anyTime}
-                onChange={(event) => setAnyTime(event.target.checked)}
-              />
-              <Label htmlFor="anyTime" className="text-sm text-slate-700">
-                Any time (trucks can park at any hour)
-              </Label>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="breakfastPrice">Breakfast Slot (USD)</Label>
-                <Input
-                  id="breakfastPrice"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={breakfastPrice}
-                  onChange={(event) => setBreakfastPrice(event.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lunchPrice">Lunch Slot (USD)</Label>
-                <Input
-                  id="lunchPrice"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={lunchPrice}
-                  onChange={(event) => setLunchPrice(event.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dinnerPrice">Dinner Slot (USD)</Label>
-                <Input
-                  id="dinnerPrice"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={dinnerPrice}
-                  onChange={(event) => setDinnerPrice(event.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="rounded-md border border-orange-200 bg-orange-50 p-3 text-xs text-orange-800">
-                Daily rate: slot total + $10. Weekly rate: (slot total x 7) + $10.
-              </div>
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
-                <div className="flex items-center justify-between">
-                  <span>Slot total</span>
-                  <span className="font-semibold">
-                    {slotSum ? `$${slotSum.toFixed(2)}` : "—"}
-                  </span>
+            <div className="grid gap-4 md:grid-cols-[1.2fr_1fr]">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900">
+                      When trucks can park
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Pick a date and time window or choose any time.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="anyTime"
+                      checked={anyTime}
+                      onCheckedChange={setAnyTime}
+                    />
+                    <Label htmlFor="anyTime" className="text-xs text-slate-600">
+                      Any time
+                    </Label>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span>Daily estimate</span>
-                  <span className="font-semibold">
-                    {dailyEstimate ? `$${dailyEstimate.toFixed(2)}` : "—"}
-                  </span>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Date</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={date}
+                      onChange={(event) => setDate(event.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="maxTrucks">Parking spots</Label>
+                    <Input
+                      id="maxTrucks"
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={maxTrucks}
+                      onChange={(event) =>
+                        setMaxTrucks(Number(event.target.value))
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="startTime">Start</Label>
+                    <Input
+                      id="startTime"
+                      type="time"
+                      value={startTime}
+                      onChange={(event) => setStartTime(event.target.value)}
+                      disabled={anyTime}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="endTime">End</Label>
+                    <Input
+                      id="endTime"
+                      type="time"
+                      value={endTime}
+                      onChange={(event) => setEndTime(event.target.value)}
+                      disabled={anyTime}
+                      required
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span>Weekly estimate</span>
-                  <span className="font-semibold">
-                    {weeklyEstimate ? `$${weeklyEstimate.toFixed(2)}` : "—"}
-                  </span>
+                {anyTime && (
+                  <p className="mt-3 text-xs text-slate-500">
+                    Any time means trucks can park 24/7 that day.
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">
+                <h3 className="text-base font-semibold text-orange-900">
+                  Earnings preview
+                </h3>
+                <p className="text-xs text-orange-700 mb-4">
+                  Daily = slot total + $10. Weekly = (slot total x 7) + $10.
+                </p>
+                <div className="space-y-2 text-sm text-orange-900">
+                  <div className="flex items-center justify-between">
+                    <span>Slot total</span>
+                    <span className="font-semibold">
+                      {slotSum ? `$${slotSum.toFixed(2)}` : "-"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Daily</span>
+                    <span className="font-semibold">
+                      {dailyEstimate ? `$${dailyEstimate.toFixed(2)}` : "-"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Weekly</span>
+                    <span className="font-semibold">
+                      {weeklyEstimate ? `$${weeklyEstimate.toFixed(2)}` : "-"}
+                    </span>
+                  </div>
+                </div>
+                <p className="mt-4 text-xs text-orange-800">
+                  Trucks pay your slot price plus the $10 MealScout fee.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <h3 className="text-base font-semibold text-slate-900 mb-2">
+                Set slot pricing
+              </h3>
+              <p className="text-xs text-slate-500 mb-4">
+                Set any slot to $0 if you don't want to offer it.
+              </p>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                  <Label htmlFor="breakfastPrice">Breakfast</Label>
+                  <Input
+                    id="breakfastPrice"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={breakfastPrice}
+                    onChange={(event) => setBreakfastPrice(event.target.value)}
+                    placeholder="0.00"
+                  />
+                  <p className="text-xs text-slate-500">Early shift pricing.</p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                  <Label htmlFor="lunchPrice">Lunch</Label>
+                  <Input
+                    id="lunchPrice"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={lunchPrice}
+                    onChange={(event) => setLunchPrice(event.target.value)}
+                    placeholder="0.00"
+                  />
+                  <p className="text-xs text-slate-500">Peak traffic slot.</p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                  <Label htmlFor="dinnerPrice">Dinner</Label>
+                  <Input
+                    id="dinnerPrice"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={dinnerPrice}
+                    onChange={(event) => setDinnerPrice(event.target.value)}
+                    placeholder="0.00"
+                  />
+                  <p className="text-xs text-slate-500">Evening coverage.</p>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4 border p-4 rounded-md border-slate-200 bg-slate-50">
+            <div className="flex items-center space-x-4 border p-4 rounded-xl border-slate-200 bg-slate-50">
               <Switch
                 id="hard-cap"
                 checked={hardCapEnabled}
@@ -498,8 +597,13 @@ function HostDashboard() {
               </div>
             </div>
 
-            <div className="flex justify-end">
-              <Button type="submit">Create Parking Pass</Button>
+            <div className="flex items-center justify-between pt-2">
+              <p className="text-xs text-slate-500">
+                You can edit times later if plans change.
+              </p>
+              <Button type="submit" className="px-6">
+                Publish Parking Pass
+              </Button>
             </div>
           </form>
         </div>

@@ -94,20 +94,23 @@ export default function ParkingPassManage() {
           }
         }
 
-        // Check if user has a host profile
-        const hostRes = await fetch("/api/hosts/me");
+        // Check if user has host profiles
+        const hostRes = await fetch("/api/hosts");
         if (hostRes.ok) {
-          setIsHost(true);
-          // Fetch host bookings
-          const hostBookingsRes = await fetch("/api/bookings/my-host");
-          if (hostBookingsRes.ok) {
-            const data = await hostBookingsRes.json();
-            setHostBookings(data);
-          }
+          const hostData = await hostRes.json();
+          if (Array.isArray(hostData) && hostData.length > 0) {
+            setIsHost(true);
+            // Fetch host bookings
+            const hostBookingsRes = await fetch("/api/bookings/my-host");
+            if (hostBookingsRes.ok) {
+              const data = await hostBookingsRes.json();
+              setHostBookings(data);
+            }
 
-          // Only set default to host if no truck profile
-          if (trucks.length === 0) {
-            setActiveTab("host");
+            // Only set default to host if no truck profile
+            if (trucks.length === 0) {
+              setActiveTab("host");
+            }
           }
         }
       } catch (error) {

@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { lazy, Suspense } from "react";
 import { BetaDisclaimer } from "@/components/beta-disclaimer";
+import Navigation from "@/components/navigation";
 
 // Eager load only critical pages (home, login) - everything else lazy loads
 import NotFound from "@/pages/not-found";
@@ -287,6 +288,7 @@ function App() {
         <Toaster />
         <BetaDisclaimer />
         <Router />
+        <Navigation />
         {/* Build canary - shows deployment timestamp */}
         {import.meta.env.PROD && (
           <div

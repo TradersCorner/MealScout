@@ -31,11 +31,29 @@ type NavItem = {
   isBug?: boolean;
 };
 
+let navRenderLock = 0;
+
 export default function Navigation() {
+  const [canRender] = useState(() => {
+    if (navRenderLock > 0) return false;
+    navRenderLock += 1;
+    return true;
+  });
   const [location] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [isReporting, setIsReporting] = useState(false);
+
+  useEffect(() => {
+    if (!canRender) return;
+    return () => {
+      navRenderLock = Math.max(0, navRenderLock - 1);
+    };
+  }, [canRender]);
+
+  if (!canRender) {
+    return null;
+  }
 
   const handleBugReport = async () => {
     if (isReporting) return;

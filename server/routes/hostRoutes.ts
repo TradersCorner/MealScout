@@ -80,6 +80,32 @@ export function registerHostRoutes(app: Express) {
     }
   });
 
+  app.get("/api/hosts", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const hostProfiles = await storage.getHostsByUserId(userId);
+      res.json(hostProfiles);
+    } catch (error: any) {
+      console.error("Error fetching host profiles:", error);
+      res.status(500).json({ message: "Failed to fetch host profiles" });
+    }
+  });
+
+  app.get("/api/hosts/:hostId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { hostId } = req.params;
+      const userId = req.user.id;
+      const host = await storage.getHost(hostId);
+      if (!host || host.userId !== userId) {
+        return res.status(404).json({ message: "Host profile not found" });
+      }
+      res.json(host);
+    } catch (error: any) {
+      console.error("Error fetching host profile:", error);
+      res.status(500).json({ message: "Failed to fetch host profile" });
+    }
+  });
+
   app.patch("/api/hosts/me", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -112,11 +138,48 @@ export function registerHostRoutes(app: Express) {
     }
   });
 
+  app.patch("/api/hosts/:hostId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { hostId } = req.params;
+      const userId = req.user.id;
+      const host = await storage.getHost(hostId);
+      if (!host || host.userId !== userId) {
+        return res.status(404).json({ message: "Host profile not found" });
+      }
+
+      const amenitiesSchema = z.record(z.boolean()).optional().nullable();
+      const parsedAmenities = amenitiesSchema.parse(req.body?.amenities);
+
+      const [updated] = await db
+        .update(hosts)
+        .set({
+          amenities: parsedAmenities ?? null,
+          updatedAt: new Date(),
+        })
+        .where(eq(hosts.id, host.id))
+        .returning();
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating host profile:", error);
+      if (error instanceof z.ZodError) {
+        return res
+          .status(400)
+          .json({ message: "Invalid amenities data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update host profile" });
+    }
+  });
+
   app.post("/api/hosts/events", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const host = await getHostByUserId(userId);
-      if (!host) {
+      const hostId = req.body?.hostId;
+      if (!hostId) {
+        return res.status(400).json({ message: "Host ID required" });
+      }
+      const host = await storage.getHost(hostId);
+      if (!host || host.userId !== userId) {
         return res.status(404).json({ message: "Host profile not found" });
       }
       if (req.user.userType === "event_coordinator" || host.locationType === "event_coordinator") {
@@ -206,8 +269,12 @@ export function registerHostRoutes(app: Express) {
   app.get("/api/hosts/events", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const host = await getHostByUserId(userId);
-      if (!host) {
+      const hostId = req.query?.hostId;
+      if (!hostId) {
+        return res.status(400).json({ message: "Host ID required" });
+      }
+      const host = await storage.getHost(hostId);
+      if (!host || host.userId !== userId) {
         return res.status(404).json({ message: "Host profile not found" });
       }
 

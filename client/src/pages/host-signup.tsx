@@ -43,46 +43,36 @@ function HostSignup() {
       return;
     }
 
-    // Check if already a host
-    fetch("/api/hosts/me")
-      .then((res) => {
-        if (res.ok) {
-          // Already a host, redirect to dashboard
-          setLocation("/host/dashboard");
-        } else {
-          // Load any saved draft once we know we're staying on this page
-          try {
-            const stored = window.localStorage.getItem(HOST_SIGNUP_DRAFT_KEY);
-            if (stored) {
-              const parsed = JSON.parse(stored) as Partial<{
-                businessName: string;
-                address: string;
-                city: string;
-                state: string;
-                contactName: string;
-                contactEmail: string;
-                contactPhone: string;
-                locationType: string;
-                description: string;
-              }>;
-              if (parsed.businessName) setBusinessName(parsed.businessName);
-              if (parsed.address) setAddress(parsed.address);
-              if (parsed.city) setCity(parsed.city);
-              if (parsed.state) setState(parsed.state);
-              if (parsed.contactName) setContactName(parsed.contactName);
-              if (parsed.contactEmail) setContactEmail(parsed.contactEmail);
-              if (parsed.contactPhone) setContactPhone(parsed.contactPhone);
-              if (parsed.locationType) setLocationType(parsed.locationType);
-              if (parsed.description) setDescription(parsed.description);
-            }
-          } catch {
-            // ignore parse/storage errors
-          }
-          setIsLoading(false);
-        }
-      })
-      .catch(() => setIsLoading(false));
-  }, [isAuthenticated, setLocation]);
+    // Load any saved draft once we know we're staying on this page
+    try {
+      const stored = window.localStorage.getItem(HOST_SIGNUP_DRAFT_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as Partial<{
+          businessName: string;
+          address: string;
+          city: string;
+          state: string;
+          contactName: string;
+          contactEmail: string;
+          contactPhone: string;
+          locationType: string;
+          description: string;
+        }>;
+        if (parsed.businessName) setBusinessName(parsed.businessName);
+        if (parsed.address) setAddress(parsed.address);
+        if (parsed.city) setCity(parsed.city);
+        if (parsed.state) setState(parsed.state);
+        if (parsed.contactName) setContactName(parsed.contactName);
+        if (parsed.contactEmail) setContactEmail(parsed.contactEmail);
+        if (parsed.contactPhone) setContactPhone(parsed.contactPhone);
+        if (parsed.locationType) setLocationType(parsed.locationType);
+        if (parsed.description) setDescription(parsed.description);
+      }
+    } catch {
+      // ignore parse/storage errors
+    }
+    setIsLoading(false);
+  }, [isAuthenticated]);
 
   // Persist host signup draft so hosts can resume later
   useEffect(() => {

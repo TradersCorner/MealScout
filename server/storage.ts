@@ -644,6 +644,14 @@ export class DatabaseStorage implements IStorage {
     return host;
   }
 
+  async getHostsByUserId(userId: string): Promise<Host[]> {
+    return await db
+      .select()
+      .from(hosts)
+      .where(eq(hosts.userId, userId))
+      .orderBy(desc(hosts.createdAt));
+  }
+
   async getAllHosts(): Promise<Host[]> {
     return await db.select().from(hosts).orderBy(desc(hosts.createdAt));
   }

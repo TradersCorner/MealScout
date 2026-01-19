@@ -35,7 +35,7 @@ export default function EventCoordinatorDashboard() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingPage, setIsLoadingPage] = useState(true);
   const [events, setEvents] = useState<Event[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState("");
@@ -70,7 +70,7 @@ export default function EventCoordinatorDashboard() {
     }
 
     const loadEvents = async () => {
-      setIsLoading(true);
+      setIsLoadingPage(true);
       try {
         const res = await fetch("/api/event-coordinator/events");
         if (!res.ok) {
@@ -85,7 +85,7 @@ export default function EventCoordinatorDashboard() {
           variant: "destructive",
         });
       } finally {
-        setIsLoading(false);
+        setIsLoadingPage(false);
       }
     };
 
@@ -145,7 +145,7 @@ export default function EventCoordinatorDashboard() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingPage) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-rose-600" />

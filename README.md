@@ -14,5 +14,5 @@
 # Test:
 `npm test`
 
-#License:
+# License:
 MIT

@@ -37,7 +37,7 @@ export function registerStaffRoutes(app: Express) {
         console.error("Error fetching staff:", error);
         res.status(500).json({ error: "Failed to fetch staff members" });
       }
-    }
+    },
   );
 
   /**
@@ -89,7 +89,7 @@ export function registerStaffRoutes(app: Express) {
           userId,
           req.ip || "unknown",
           req.get("User-Agent") || "unknown",
-          { previousRole: user.userType, newRole: "staff" }
+          { previousRole: user.userType, newRole: "staff" },
         );
 
         res.json({ success: true, message: "User promoted to staff" });
@@ -97,7 +97,7 @@ export function registerStaffRoutes(app: Express) {
         console.error("Error promoting staff:", error);
         res.status(500).json({ error: "Failed to promote user to staff" });
       }
-    }
+    },
   );
 
   /**
@@ -145,7 +145,7 @@ export function registerStaffRoutes(app: Express) {
             userId,
             req.ip || "unknown",
             req.get("User-Agent") || "unknown",
-            { reason: "admin_action" }
+            { reason: "admin_action" },
           );
           res.json({ success: true, message: "Staff account disabled" });
         } else {
@@ -157,7 +157,7 @@ export function registerStaffRoutes(app: Express) {
             userId,
             req.ip || "unknown",
             req.get("User-Agent") || "unknown",
-            { previousRole: "staff", newRole: "customer" }
+            { previousRole: "staff", newRole: "customer" },
           );
           res.json({ success: true, message: "Staff demoted to customer" });
         }
@@ -165,7 +165,7 @@ export function registerStaffRoutes(app: Express) {
         console.error("Error demoting staff:", error);
         res.status(500).json({ error: "Failed to demote staff" });
       }
-    }
+    },
   );
 
   // ============================================
@@ -321,7 +321,10 @@ export function registerStaffRoutes(app: Express) {
           user.id,
           req.ip || "unknown",
           req.get("User-Agent") || "unknown",
-          { createdUserType: targetUserType, createdByRole: staffUser.userType }
+          {
+            createdUserType: targetUserType,
+            createdByRole: staffUser.userType,
+          },
         );
 
         res.json({
@@ -331,14 +334,14 @@ export function registerStaffRoutes(app: Express) {
           setupEmailSent: emailSent,
           message: `${targetUserType.replace(
             "_",
-            " "
+            " ",
           )} account created. Setup instructions sent to ${normalizedEmail}.`,
         });
       } catch (error) {
         console.error("Error creating user:", error);
         res.status(500).json({ error: "Failed to create user account" });
       }
-    }
+    },
   );
 
   /**
@@ -420,7 +423,7 @@ export function registerStaffRoutes(app: Express) {
             createdByRole: staffUser.userType,
             restaurantCreated: !!restaurantId,
             restaurantId,
-          }
+          },
         );
 
         res.json({
@@ -439,7 +442,7 @@ export function registerStaffRoutes(app: Express) {
           .status(500)
           .json({ error: "Failed to create restaurant owner account" });
       }
-    }
+    },
   );
 
   /**
@@ -479,7 +482,7 @@ export function registerStaffRoutes(app: Express) {
           user.id,
           req.ip || "unknown",
           req.get("User-Agent") || "unknown",
-          { forced: true }
+          { forced: true },
         );
 
         res.json({ success: true, message: "Password updated successfully" });
@@ -487,6 +490,6 @@ export function registerStaffRoutes(app: Express) {
         console.error("Error resetting password:", error);
         res.status(500).json({ error: "Failed to reset password" });
       }
-    }
+    },
   );
 }

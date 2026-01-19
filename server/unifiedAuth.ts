@@ -64,7 +64,7 @@ export async function setupUnifiedAuth(app: Express) {
       return "http://localhost:5000";
     }
     throw new Error(
-      "PUBLIC_BASE_URL must be set for OAuth to work with multiple users"
+      "PUBLIC_BASE_URL must be set for OAuth to work with multiple users",
     );
   };
   const baseUrl = getBaseUrl().replace(/\/+$/, ""); // Remove trailing slashes to prevent double slashes in callback URLs
@@ -109,11 +109,11 @@ export async function setupUnifiedAuth(app: Express) {
     console.log("Setting up Google OAuth strategies...");
     console.log(
       "🔵 Google OAuth customer callback URL:",
-      `${baseUrl}/api/auth/google/customer/callback`
+      `${baseUrl}/api/auth/google/customer/callback`,
     );
     console.log(
       "🔵 Google OAuth restaurant callback URL:",
-      `${baseUrl}/api/auth/google/restaurant/callback`
+      `${baseUrl}/api/auth/google/restaurant/callback`,
     );
 
     passport.use(
@@ -128,7 +128,7 @@ export async function setupUnifiedAuth(app: Express) {
           accessToken: string,
           refreshToken: string,
           profile: any,
-          done: any
+          done: any,
         ) => {
           try {
             console.log("🔍 Google customer profile data received:", {
@@ -176,11 +176,11 @@ export async function setupUnifiedAuth(app: Express) {
             const user = await storage.upsertUserByAuth(
               "google",
               userData,
-              "customer"
+              "customer",
             );
             console.log(
               "✅ Google customer user created/updated successfully:",
-              { userId: user.id, email: user.email }
+              { userId: user.id, email: user.email },
             );
 
             // LISA Phase 4A: Emit claim for OAuth login
@@ -199,7 +199,7 @@ export async function setupUnifiedAuth(app: Express) {
             emailService
               .sendWelcomeEmail(user)
               .catch((err) =>
-                console.error("Failed to send customer welcome email:", err)
+                console.error("Failed to send customer welcome email:", err),
               );
             // Send admin signup notification with context asynchronously
             emailService
@@ -207,7 +207,7 @@ export async function setupUnifiedAuth(app: Express) {
                 signupMethod: "google",
               })
               .catch((err) =>
-                console.error("Failed to send admin signup notification:", err)
+                console.error("Failed to send admin signup notification:", err),
               );
             return done(null, user);
           } catch (error) {
@@ -215,8 +215,8 @@ export async function setupUnifiedAuth(app: Express) {
             console.error("❌ Profile data that caused error:", profile);
             return done(error, null);
           }
-        }
-      )
+        },
+      ),
     );
 
     passport.use(
@@ -231,7 +231,7 @@ export async function setupUnifiedAuth(app: Express) {
           accessToken: string,
           refreshToken: string,
           profile: any,
-          done: any
+          done: any,
         ) => {
           try {
             console.log("🔍 Google restaurant profile data received:", {
@@ -279,11 +279,11 @@ export async function setupUnifiedAuth(app: Express) {
             const user = await storage.upsertUserByAuth(
               "google",
               userData,
-              "restaurant_owner"
+              "restaurant_owner",
             );
             console.log(
               "✅ Google restaurant user created/updated successfully:",
-              { userId: user.id, email: user.email }
+              { userId: user.id, email: user.email },
             );
 
             // LISA Phase 4A: Emit claim for OAuth login
@@ -308,8 +308,8 @@ export async function setupUnifiedAuth(app: Express) {
               .catch((err) =>
                 console.error(
                   "Failed to send restaurant owner welcome email:",
-                  err
-                )
+                  err,
+                ),
               );
             // Send admin signup notification with context asynchronously
             emailService
@@ -317,7 +317,7 @@ export async function setupUnifiedAuth(app: Express) {
                 signupMethod: "google",
               })
               .catch((err) =>
-                console.error("Failed to send admin signup notification:", err)
+                console.error("Failed to send admin signup notification:", err),
               );
             return done(null, user);
           } catch (error) {
@@ -325,8 +325,8 @@ export async function setupUnifiedAuth(app: Express) {
             console.error("❌ Profile data that caused error:", profile);
             return done(error, null);
           }
-        }
-      )
+        },
+      ),
     );
 
     // Google OAuth routes for customers
@@ -357,11 +357,11 @@ export async function setupUnifiedAuth(app: Express) {
             return res.redirect("/?error=session_error");
           }
           console.log(
-            "✅ Google customer OAuth success, session saved, redirecting..."
+            "✅ Google customer OAuth success, session saved, redirecting...",
           );
           res.redirect(`${baseUrl}/`);
         });
-      }
+      },
     );
 
     // Google OAuth routes for restaurant owners
@@ -392,15 +392,15 @@ export async function setupUnifiedAuth(app: Express) {
             return res.redirect("/restaurant-signup?error=session_error");
           }
           console.log(
-            "✅ Google restaurant OAuth success, session saved, redirecting..."
+            "✅ Google restaurant OAuth success, session saved, redirecting...",
           );
           res.redirect(`${baseUrl}/restaurant-signup`);
         });
-      }
+      },
     );
   } else {
     console.log(
-      "Google OAuth not configured: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables are missing"
+      "Google OAuth not configured: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables are missing",
     );
 
     // Add error handling routes for when Google OAuth is not configured
@@ -430,7 +430,7 @@ export async function setupUnifiedAuth(app: Express) {
   // Facebook Strategy (shared with TradeScout)
   if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
     console.log(
-      "Setting up Facebook OAuth strategy (shared with TradeScout)..."
+      "Setting up Facebook OAuth strategy (shared with TradeScout)...",
     );
     passport.use(
       new FacebookStrategy(
@@ -457,7 +457,7 @@ export async function setupUnifiedAuth(app: Express) {
           accessToken: string,
           refreshToken: string,
           profile: any,
-          done: any
+          done: any,
         ) => {
           try {
             console.log("🔍 Facebook profile data received:", {
@@ -510,7 +510,7 @@ export async function setupUnifiedAuth(app: Express) {
               "facebook",
               userData,
               "customer",
-              appContext
+              appContext,
             );
             console.log("✅ Facebook user created/updated successfully:", {
               userId: user.id,
@@ -534,7 +534,7 @@ export async function setupUnifiedAuth(app: Express) {
             emailService
               .sendWelcomeEmail(user)
               .catch((err) =>
-                console.error("Failed to send customer welcome email:", err)
+                console.error("Failed to send customer welcome email:", err),
               );
             // Send admin signup notification with context asynchronously
             emailService
@@ -542,7 +542,7 @@ export async function setupUnifiedAuth(app: Express) {
                 signupMethod: "facebook",
               })
               .catch((err) =>
-                console.error("Failed to send admin signup notification:", err)
+                console.error("Failed to send admin signup notification:", err),
               );
             return done(null, user);
           } catch (error) {
@@ -550,8 +550,8 @@ export async function setupUnifiedAuth(app: Express) {
             console.error("❌ Profile data that caused error:", profile);
             return done(error, null);
           }
-        }
-      )
+        },
+      ),
     );
 
     // Facebook auth routes with multi-app support
@@ -571,13 +571,13 @@ export async function setupUnifiedAuth(app: Express) {
         // Store app context in session for callback retrieval
         req.session.fbAppContext = appContext as "mealscout" | "tradescout";
         console.log(
-          `🔵 Starting Facebook OAuth flow with app context: ${appContext}`
+          `🔵 Starting Facebook OAuth flow with app context: ${appContext}`,
         );
         next();
       },
       passport.authenticate("facebook", {
         scope: ["email", "public_profile"],
-      })
+      }),
     );
 
     app.get(
@@ -625,27 +625,24 @@ export async function setupUnifiedAuth(app: Express) {
           console.log(`✅ Redirecting to: ${redirectUrl}`);
           res.redirect(redirectUrl);
         });
-      }
+      },
     );
     console.log(
-      "✅ Facebook OAuth strategy configured successfully (multi-app enabled)"
+      "✅ Facebook OAuth strategy configured successfully (multi-app enabled)",
     );
   } else {
     console.log(
-      "Facebook OAuth not configured: FACEBOOK_APP_ID and FACEBOOK_APP_SECRET environment variables are missing"
+      "Facebook OAuth not configured: FACEBOOK_APP_ID and FACEBOOK_APP_SECRET environment variables are missing",
     );
   }
 
   const normalizePhone = (phone: string) => phone.replace(/\D/g, "");
 
   const verifyPhoneCode = async (phone: string, code: string) => {
-    const tokenHash = crypto
-      .createHash("sha256")
-      .update(code)
-      .digest("hex");
+    const tokenHash = crypto.createHash("sha256").update(code).digest("hex");
     const token = await storage.getPhoneVerificationTokenByHash(
       phone,
-      tokenHash
+      tokenHash,
     );
     if (!token) {
       return false;
@@ -663,22 +660,20 @@ export async function setupUnifiedAuth(app: Express) {
 
       const normalizedPhone = normalizePhone(phone);
       if (normalizedPhone.length < 10) {
-        return res.status(400).json({ error: "Valid phone number is required" });
+        return res
+          .status(400)
+          .json({ error: "Valid phone number is required" });
       }
 
       const existingUser = await storage.getUserByPhone(normalizedPhone);
       if (existingUser) {
-        return res
-          .status(400)
-          .json({ error: "Phone number already in use" });
+        return res.status(400).json({ error: "Phone number already in use" });
       }
 
       await storage.deleteExpiredPhoneVerificationTokens();
       await storage.deletePhoneVerificationTokens(normalizedPhone);
 
-      const code = String(
-        Math.floor(100000 + Math.random() * 900000)
-      );
+      const code = String(Math.floor(100000 + Math.random() * 900000));
       const tokenHash = crypto.createHash("sha256").update(code).digest("hex");
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -692,7 +687,7 @@ export async function setupUnifiedAuth(app: Express) {
 
       const smsSent = await sendSms(
         normalizedPhone,
-        `Your MealScout verification code is ${code}. It expires in 10 minutes.`
+        `Your MealScout verification code is ${code}. It expires in 10 minutes.`,
       );
 
       if (!smsSent) {
@@ -733,7 +728,14 @@ export async function setupUnifiedAuth(app: Express) {
     try {
       const { email, firstName, lastName, phone, password, otpCode } = req.body;
 
-      if (!email || !firstName || !lastName || !phone || !password || !otpCode) {
+      if (
+        !email ||
+        !firstName ||
+        !lastName ||
+        !phone ||
+        !password ||
+        !otpCode
+      ) {
         return res.status(400).json({ error: "All fields are required" });
       }
 
@@ -758,19 +760,15 @@ export async function setupUnifiedAuth(app: Express) {
       }
       const existingPhone = await storage.getUserByPhone(normalizedPhone);
       if (existingPhone) {
-        return res
-          .status(400)
-          .json({ error: "Phone number already in use" });
+        return res.status(400).json({ error: "Phone number already in use" });
       }
 
       const phoneVerified = await verifyPhoneCode(
         normalizedPhone,
-        String(otpCode)
+        String(otpCode),
       );
       if (!phoneVerified) {
-        return res
-          .status(400)
-          .json({ error: "Phone verification failed" });
+        return res.status(400).json({ error: "Phone verification failed" });
       }
 
       const passwordHash = await bcrypt.hash(password, 10);
@@ -786,14 +784,14 @@ export async function setupUnifiedAuth(app: Express) {
       const user = await storage.upsertUserByAuth(
         "email",
         userData,
-        "customer"
+        "customer",
       );
 
       // Send welcome email asynchronously (don't block registration flow)
       emailService
         .sendWelcomeEmail(user)
         .catch((err) =>
-          console.error("Failed to send customer welcome email:", err)
+          console.error("Failed to send customer welcome email:", err),
         );
       // Send admin signup notification with context asynchronously
       emailService
@@ -801,7 +799,7 @@ export async function setupUnifiedAuth(app: Express) {
           signupMethod: "email",
         })
         .catch((err) =>
-          console.error("Failed to send admin signup notification:", err)
+          console.error("Failed to send admin signup notification:", err),
         );
 
       req.login(user, (err) => {
@@ -810,7 +808,10 @@ export async function setupUnifiedAuth(app: Express) {
             .status(500)
             .json({ error: "Failed to log in after registration" });
         }
-        res.json({ user: sanitizeUser(user), message: "Registration successful" });
+        res.json({
+          user: sanitizeUser(user),
+          message: "Registration successful",
+        });
       });
     } catch (error) {
       console.error("Customer registration error:", error);
@@ -823,7 +824,14 @@ export async function setupUnifiedAuth(app: Express) {
     try {
       const { email, firstName, lastName, phone, password, otpCode } = req.body;
 
-      if (!email || !firstName || !lastName || !phone || !password || !otpCode) {
+      if (
+        !email ||
+        !firstName ||
+        !lastName ||
+        !phone ||
+        !password ||
+        !otpCode
+      ) {
         return res.status(400).json({ error: "All fields are required" });
       }
 
@@ -848,19 +856,15 @@ export async function setupUnifiedAuth(app: Express) {
       }
       const existingPhone = await storage.getUserByPhone(normalizedPhone);
       if (existingPhone) {
-        return res
-          .status(400)
-          .json({ error: "Phone number already in use" });
+        return res.status(400).json({ error: "Phone number already in use" });
       }
 
       const phoneVerified = await verifyPhoneCode(
         normalizedPhone,
-        String(otpCode)
+        String(otpCode),
       );
       if (!phoneVerified) {
-        return res
-          .status(400)
-          .json({ error: "Phone verification failed" });
+        return res.status(400).json({ error: "Phone verification failed" });
       }
 
       const passwordHash = await bcrypt.hash(password, 10);
@@ -876,14 +880,14 @@ export async function setupUnifiedAuth(app: Express) {
       const user = await storage.upsertUserByAuth(
         "email",
         userData,
-        "restaurant_owner"
+        "restaurant_owner",
       );
 
       // Send welcome email asynchronously (don't block registration flow)
       emailService
         .sendWelcomeEmail(user)
         .catch((err) =>
-          console.error("Failed to send restaurant owner welcome email:", err)
+          console.error("Failed to send restaurant owner welcome email:", err),
         );
       // Send admin signup notification with context asynchronously
       emailService
@@ -891,7 +895,7 @@ export async function setupUnifiedAuth(app: Express) {
           signupMethod: "email",
         })
         .catch((err) =>
-          console.error("Failed to send admin signup notification:", err)
+          console.error("Failed to send admin signup notification:", err),
         );
 
       req.login(user, (err) => {
@@ -900,7 +904,10 @@ export async function setupUnifiedAuth(app: Express) {
             .status(500)
             .json({ error: "Failed to log in after registration" });
         }
-        res.json({ user: sanitizeUser(user), message: "Registration successful" });
+        res.json({
+          user: sanitizeUser(user),
+          message: "Registration successful",
+        });
       });
     } catch (error) {
       console.error("Restaurant registration error:", error);
@@ -966,7 +973,7 @@ export async function setupUnifiedAuth(app: Express) {
       console.log(
         `✅ User found: ${user.id}, userType: ${
           user.userType
-        }, hasPassword: ${!!user.passwordHash}`
+        }, hasPassword: ${!!user.passwordHash}`,
       );
 
       if (!user.passwordHash) {
@@ -1032,8 +1039,8 @@ export async function setupUnifiedAuth(app: Express) {
       const roles: string[] | undefined = Array.isArray(decoded.roles)
         ? decoded.roles
         : typeof decoded.role === "string"
-        ? [decoded.role]
-        : undefined;
+          ? [decoded.role]
+          : undefined;
 
       const mapRolesToUserType = (r?: string[]): User["userType"] => {
         if (!r || r.length === 0) return "customer";
@@ -1078,7 +1085,7 @@ export async function setupUnifiedAuth(app: Express) {
         tsUserData,
         userType === "super_admin"
           ? "admin"
-          : (userType as "customer" | "restaurant_owner" | "admin")
+          : (userType as "customer" | "restaurant_owner" | "admin"),
       );
 
       // Establish a standard Passport session using req.login
@@ -1138,7 +1145,7 @@ export async function setupUnifiedAuth(app: Express) {
 
       const passwordMatch = await bcrypt.compare(
         oldPassword,
-        user.passwordHash
+        user.passwordHash,
       );
       if (!passwordMatch) {
         return res.status(401).json({ error: "Current password is incorrect" });
@@ -1225,9 +1232,8 @@ export async function setupUnifiedAuth(app: Express) {
       const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
       // Find token in database
-      const resetToken = await storage.getPasswordResetTokenByTokenHash(
-        tokenHash
-      );
+      const resetToken =
+        await storage.getPasswordResetTokenByTokenHash(tokenHash);
 
       if (!resetToken) {
         return res.json({
@@ -1269,9 +1275,8 @@ export async function setupUnifiedAuth(app: Express) {
       const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
       // Find and validate token
-      const resetToken = await storage.getPasswordResetTokenByTokenHash(
-        tokenHash
-      );
+      const resetToken =
+        await storage.getPasswordResetTokenByTokenHash(tokenHash);
 
       if (!resetToken) {
         return res
@@ -1319,9 +1324,8 @@ export async function setupUnifiedAuth(app: Express) {
       const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
       // Find token in database
-      const setupToken = await storage.getAccountSetupTokenByTokenHash(
-        tokenHash
-      );
+      const setupToken =
+        await storage.getAccountSetupTokenByTokenHash(tokenHash);
 
       if (!setupToken) {
         return res.json({
@@ -1374,9 +1378,8 @@ export async function setupUnifiedAuth(app: Express) {
       const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
       // Find and validate token
-      const setupToken = await storage.getAccountSetupTokenByTokenHash(
-        tokenHash
-      );
+      const setupToken =
+        await storage.getAccountSetupTokenByTokenHash(tokenHash);
 
       if (!setupToken) {
         return res
@@ -1468,7 +1471,7 @@ export const requireRole =
       return res.status(403).json({
         error: "Forbidden",
         message: `This action requires one of the following roles: ${allowedRoles.join(
-          ", "
+          ", ",
         )}`,
         userRole,
       });
@@ -1552,7 +1555,7 @@ export const apiKeyAuth = async (req: any, res: any, next: any) => {
 // Resource ownership verification middleware
 // Ensures user can only modify their own restaurant or data
 export const verifyResourceOwnership = (
-  resourceType: "restaurant" | "deal"
+  resourceType: "restaurant" | "deal",
 ) => {
   return async (req: any, res: any, next: any) => {
     if (!req.user) {

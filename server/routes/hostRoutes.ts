@@ -10,7 +10,7 @@ import {
   hosts,
   eventBookings,
 } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, gte, inArray, lt } from "drizzle-orm";
 import { isAuthenticated } from "../unifiedAuth";
 import Stripe from "stripe";
 import {
@@ -80,6 +80,38 @@ export function registerHostRoutes(app: Express) {
     }
   });
 
+  app.patch("/api/hosts/me", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const host = await getHostByUserId(userId);
+      if (!host) {
+        return res.status(404).json({ message: "Host profile not found" });
+      }
+
+      const amenitiesSchema = z.record(z.boolean()).optional().nullable();
+      const parsedAmenities = amenitiesSchema.parse(req.body?.amenities);
+
+      const [updated] = await db
+        .update(hosts)
+        .set({
+          amenities: parsedAmenities ?? null,
+          updatedAt: new Date(),
+        })
+        .where(eq(hosts.id, host.id))
+        .returning();
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating host profile:", error);
+      if (error instanceof z.ZodError) {
+        return res
+          .status(400)
+          .json({ message: "Invalid amenities data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update host profile" });
+    }
+  });
+
   app.post("/api/hosts/events", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -99,17 +131,33 @@ export function registerHostRoutes(app: Express) {
         });
       }
 
+      const breakfastPriceCents = Number(req.body.breakfastPriceCents || 0);
+      const lunchPriceCents = Number(req.body.lunchPriceCents || 0);
+      const dinnerPriceCents = Number(req.body.dinnerPriceCents || 0);
+      const hasAnySlotPrice =
+        breakfastPriceCents > 0 || lunchPriceCents > 0 || dinnerPriceCents > 0;
+
+      if (!hasAnySlotPrice) {
+        return res.status(400).json({
+          message: "At least one slot price is required.",
+        });
+      }
+
+      const slotSum = breakfastPriceCents + lunchPriceCents + dinnerPriceCents;
+      const dailyPriceCents = slotSum + 1000;
+      const weeklyPriceCents = slotSum * 7 + 1000;
+
       const parsed = insertEventSchema.parse({
         ...req.body,
         requiresPayment: true,
         hostId: host.id,
+        breakfastPriceCents: breakfastPriceCents || null,
+        lunchPriceCents: lunchPriceCents || null,
+        dinnerPriceCents: dinnerPriceCents || null,
+        dailyPriceCents,
+        weeklyPriceCents,
+        hostPriceCents: slotSum,
       });
-
-      if (!parsed.hostPriceCents || parsed.hostPriceCents <= 0) {
-        return res.status(400).json({
-          message: "Parking Pass listings must include a price.",
-        });
-      }
 
       // Validation: Future dates only
       const eventDate = new Date(parsed.date);
@@ -571,11 +619,21 @@ export function registerHostRoutes(app: Express) {
       }
 
       const { eventId } = req.params;
-      const { truckId } = req.body;
+      const { truckId, slotType } = req.body;
       const userId = req.user.id;
 
       if (!truckId) {
         return res.status(400).json({ message: "Truck ID required" });
+      }
+      const allowedSlotTypes = new Set([
+        "breakfast",
+        "lunch",
+        "dinner",
+        "daily",
+        "weekly",
+      ]);
+      if (!slotType || !allowedSlotTypes.has(slotType)) {
+        return res.status(400).json({ message: "Valid slotType required" });
       }
 
       // Verify truck ownership
@@ -632,8 +690,50 @@ export function registerHostRoutes(app: Express) {
         });
       }
 
+      const eventDate = new Date(event.date);
+      const dayStart = new Date(eventDate);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      const existingDayBooking = await db
+        .select({ id: eventBookings.id })
+        .from(eventBookings)
+        .innerJoin(events, eq(eventBookings.eventId, events.id))
+        .where(
+          and(
+            eq(eventBookings.truckId, truckId),
+            eq(eventBookings.hostId, event.hostId),
+            gte(events.date, dayStart),
+            lt(events.date, dayEnd),
+            inArray(eventBookings.status, ["pending", "confirmed"])
+          )
+        )
+        .limit(1);
+
+      if (existingDayBooking.length > 0) {
+        return res.status(400).json({
+          message:
+            "You already have a parking pass for this host on that date.",
+          bookingId: existingDayBooking[0].id,
+        });
+      }
+
       // Calculate pricing: Host price + $10 platform fee
-      const hostPriceCents = event.hostPriceCents || 0;
+      const slotPriceMap: Record<string, number | null | undefined> = {
+        breakfast: event.breakfastPriceCents,
+        lunch: event.lunchPriceCents,
+        dinner: event.dinnerPriceCents,
+        daily: event.dailyPriceCents,
+        weekly: event.weeklyPriceCents,
+      };
+      const selectedPrice = slotPriceMap[slotType];
+      if (!selectedPrice || selectedPrice <= 0) {
+        return res.status(400).json({
+          message: "Selected slot is not available for this listing.",
+        });
+      }
+      const hostPriceCents = selectedPrice;
       const platformFeeCents = 1000; // Always $10
       const totalCents = hostPriceCents + platformFeeCents;
 
@@ -650,6 +750,7 @@ export function registerHostRoutes(app: Express) {
           status: "pending",
           stripeApplicationFeeAmount: platformFeeCents,
           stripeTransferDestination: host.stripeConnectAccountId,
+          slotType,
         })
         .returning();
 

@@ -23,6 +23,11 @@ interface ParkingPassEvent {
   status: string;
   requiresPayment?: boolean;
   hostPriceCents?: number;
+  breakfastPriceCents?: number | null;
+  lunchPriceCents?: number | null;
+  dinnerPriceCents?: number | null;
+  dailyPriceCents?: number | null;
+  weeklyPriceCents?: number | null;
   host: Host;
 }
 
@@ -36,6 +41,7 @@ export default function ParkingPassPage() {
   const [selectedEvent, setSelectedEvent] = useState<ParkingPassEvent | null>(
     null,
   );
+  const [selectedSlotType, setSelectedSlotType] = useState<string | null>(null);
   const [paymentOpen, setPaymentOpen] = useState(false);
 
   useEffect(() => {
@@ -90,7 +96,7 @@ export default function ParkingPassPage() {
     };
   }, [isAuthenticated, toast]);
 
-  const handleSelect = (event: ParkingPassEvent) => {
+  const handleSelect = (event: ParkingPassEvent, slotType: string) => {
     if (!truckId) {
       toast({
         title: "Truck Profile Required",
@@ -100,11 +106,13 @@ export default function ParkingPassPage() {
       return;
     }
     setSelectedEvent(event);
+    setSelectedSlotType(slotType);
     setPaymentOpen(true);
   };
 
   const handleSuccess = () => {
     setSelectedEvent(null);
+    setSelectedSlotType(null);
     setPaymentOpen(false);
     toast({
       title: "Parking Pass Booked",
@@ -137,34 +145,79 @@ export default function ParkingPassPage() {
           ) : (
             <div className="space-y-3">
               {events.map((event) => {
-                const totalPrice =
-                  ((event.hostPriceCents || 0) + 1000) / 100;
+                const slotOptions: Array<{
+                  label: string;
+                  type: string;
+                  priceCents?: number | null;
+                }> = [
+                  {
+                    label: "Breakfast",
+                    type: "breakfast",
+                    priceCents: event.breakfastPriceCents,
+                  },
+                  {
+                    label: "Lunch",
+                    type: "lunch",
+                    priceCents: event.lunchPriceCents,
+                  },
+                  {
+                    label: "Dinner",
+                    type: "dinner",
+                    priceCents: event.dinnerPriceCents,
+                  },
+                  {
+                    label: "Daily",
+                    type: "daily",
+                    priceCents: event.dailyPriceCents,
+                  },
+                  {
+                    label: "Weekly",
+                    type: "weekly",
+                    priceCents: event.weeklyPriceCents,
+                  },
+                ].filter((slot) => (slot.priceCents || 0) > 0);
+
                 return (
-                  <button
+                  <div
                     key={event.id}
-                    type="button"
-                    onClick={() => handleSelect(event)}
-                    className="w-full text-left rounded-xl border border-gray-200 bg-white px-4 py-3 hover:border-orange-500 hover:bg-orange-50 transition-colors"
+                    className="w-full text-left rounded-xl border border-gray-200 bg-white px-4 py-3 space-y-2"
                   >
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between">
                       <span className="font-semibold text-gray-900">
                         {event.host.businessName}
                       </span>
-                      <span className="font-semibold text-orange-600">
-                        ${totalPrice.toFixed(2)}
+                      <span className="text-xs text-gray-500">
+                        {format(new Date(event.date), "EEE, MMM d")}
                       </span>
                     </div>
-                    <div className="text-xs text-gray-600 space-y-1">
+                    <div className="text-xs text-gray-600">
                       <p>{event.host.address}</p>
                       <p>
-                        {format(new Date(event.date), "EEEE, MMM d")} -{" "}
                         {event.startTime} - {event.endTime}
                       </p>
-                      <p className="text-[11px] text-gray-500">
-                        Includes $10 MealScout fee
-                      </p>
                     </div>
-                  </button>
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      {slotOptions.map((slot) => {
+                        const totalPrice =
+                          ((slot.priceCents || 0) + 1000) / 100;
+                        return (
+                          <Button
+                            key={slot.type}
+                            variant="outline"
+                            size="sm"
+                            className="justify-between"
+                            onClick={() => handleSelect(event, slot.type)}
+                          >
+                            <span>{slot.label}</span>
+                            <span>${totalPrice.toFixed(2)}</span>
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-gray-500">
+                      Prices include the $10 MealScout fee.
+                    </p>
+                  </div>
                 );
               })}
             </div>
@@ -172,12 +225,13 @@ export default function ParkingPassPage() {
         </CardContent>
       </Card>
 
-      {selectedEvent && truckId && (
+      {selectedEvent && truckId && selectedSlotType && (
         <BookingPaymentModal
           open={paymentOpen}
           onOpenChange={setPaymentOpen}
           eventId={selectedEvent.id}
           truckId={truckId}
+          slotType={selectedSlotType}
           eventDetails={{
             name: "Parking Pass",
             date: format(new Date(selectedEvent.date), "MMMM d, yyyy"),

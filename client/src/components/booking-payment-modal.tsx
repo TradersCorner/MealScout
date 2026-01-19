@@ -27,6 +27,7 @@ interface BookingPaymentModalProps {
   onOpenChange: (open: boolean) => void;
   eventId: string;
   truckId: string;
+  slotType: string;
   eventDetails: {
     name: string;
     date: string;
@@ -174,6 +175,7 @@ export function BookingPaymentModal({
   onOpenChange,
   eventId,
   truckId,
+  slotType,
   eventDetails,
   onSuccess,
 }: BookingPaymentModalProps) {
@@ -198,7 +200,7 @@ export function BookingPaymentModal({
       const res = await fetch(`/api/events/${eventId}/book`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ truckId }),
+        body: JSON.stringify({ truckId, slotType }),
       });
 
       if (!res.ok) {

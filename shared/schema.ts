@@ -2070,6 +2070,11 @@ export const events = pgTable(
     hardCapEnabled: boolean("hard_cap_enabled").default(false),
     // Pricing for Parking Pass
     hostPriceCents: integer("host_price_cents"), // Host sets this, NULL = free
+    breakfastPriceCents: integer("breakfast_price_cents"),
+    lunchPriceCents: integer("lunch_price_cents"),
+    dinnerPriceCents: integer("dinner_price_cents"),
+    dailyPriceCents: integer("daily_price_cents"),
+    weeklyPriceCents: integer("weekly_price_cents"),
     requiresPayment: boolean("requires_payment").default(false),
     stripeProductId: varchar("stripe_product_id"),
     stripePriceId: varchar("stripe_price_id"),
@@ -2169,6 +2174,7 @@ export const eventBookings = pgTable(
     // Pricing (locked at booking time so changes don't affect existing bookings)
     hostPriceCents: integer("host_price_cents").notNull(), // What host set
     platformFeeCents: integer("platform_fee_cents").notNull().default(1000), // Always $10
+    slotType: varchar("slot_type"),
     totalCents: integer("total_cents").notNull(), // host_price + platform_fee (what truck pays)
     // Payment status
     status: varchar("status").notNull().default("pending"), // 'pending' | 'confirmed' | 'cancelled' | 'refunded'

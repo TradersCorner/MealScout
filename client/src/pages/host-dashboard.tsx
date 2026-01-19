@@ -20,16 +20,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
 interface HostProfile {
-  id: number;
+  id: string;
   businessName: string;
   address: string;
   locationType: string;
   stripeChargesEnabled?: boolean;
   stripeOnboardingCompleted?: boolean;
+  amenities?: Record<string, boolean> | null;
 }
 
 interface Event {
-  id: number;
+  id: string;
   date: string;
   startTime: string;
   endTime: string;
@@ -39,6 +40,11 @@ interface Event {
   status: string;
   requiresPayment?: boolean;
   hostPriceCents?: number;
+  breakfastPriceCents?: number | null;
+  lunchPriceCents?: number | null;
+  dinnerPriceCents?: number | null;
+  dailyPriceCents?: number | null;
+  weeklyPriceCents?: number | null;
 }
 
 function HostDashboard() {
@@ -53,10 +59,21 @@ function HostDashboard() {
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [anyTime, setAnyTime] = useState(false);
   const [maxTrucks, setMaxTrucks] = useState(1);
   const [hardCapEnabled, setHardCapEnabled] = useState(false);
   const [createError, setCreateError] = useState("");
-  const [priceDollars, setPriceDollars] = useState("");
+  const [breakfastPrice, setBreakfastPrice] = useState("");
+  const [lunchPrice, setLunchPrice] = useState("");
+  const [dinnerPrice, setDinnerPrice] = useState("");
+  const [amenities, setAmenities] = useState<Record<string, boolean>>({
+    water: false,
+    electric: false,
+    bathrooms: false,
+    wifi: false,
+    seating: false,
+  });
+  const [isSavingAmenities, setIsSavingAmenities] = useState(false);
 
   useEffect(() => {
     if (isLoading) {
@@ -85,6 +102,10 @@ function HostDashboard() {
         }
         const hostData = await hostRes.json();
         setHost(hostData);
+        setAmenities((current) => ({
+          ...current,
+          ...(hostData.amenities ?? {}),
+        }));
 
         const eventsRes = await fetch("/api/hosts/events");
         if (eventsRes.ok) {
@@ -104,9 +125,15 @@ function HostDashboard() {
   const handleCreateEvent = async (event: React.FormEvent) => {
     event.preventDefault();
     setCreateError("");
-    const parsedPrice = Number(priceDollars);
-    if (!parsedPrice || parsedPrice <= 0) {
-      setCreateError("Parking pass price must be greater than $0.");
+    const finalStartTime = anyTime ? "00:00" : startTime;
+    const finalEndTime = anyTime ? "23:59" : endTime;
+    const breakfast = Number(breakfastPrice || 0);
+    const lunch = Number(lunchPrice || 0);
+    const dinner = Number(dinnerPrice || 0);
+    const hasSlotPrice = breakfast > 0 || lunch > 0 || dinner > 0;
+
+    if (!hasSlotPrice) {
+      setCreateError("At least one slot price is required.");
       return;
     }
 
@@ -116,12 +143,14 @@ function HostDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           date,
-          startTime,
-          endTime,
+          startTime: finalStartTime,
+          endTime: finalEndTime,
           maxTrucks: Number(maxTrucks),
           hardCapEnabled,
           requiresPayment: true,
-          hostPriceCents: Math.round(parsedPrice * 100),
+          breakfastPriceCents: breakfast ? Math.round(breakfast * 100) : 0,
+          lunchPriceCents: lunch ? Math.round(lunch * 100) : 0,
+          dinnerPriceCents: dinner ? Math.round(dinner * 100) : 0,
         }),
       });
 
@@ -136,13 +165,60 @@ function HostDashboard() {
       setDate("");
       setStartTime("");
       setEndTime("");
+      setAnyTime(false);
       setMaxTrucks(1);
       setHardCapEnabled(false);
-      setPriceDollars("");
+      setBreakfastPrice("");
+      setLunchPrice("");
+      setDinnerPrice("");
     } catch (error: any) {
       setCreateError(error.message);
     }
   };
+
+  const handleAmenitiesSave = async () => {
+    if (!host) {
+      return;
+    }
+    setIsSavingAmenities(true);
+    try {
+      const res = await fetch("/api/hosts/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amenities }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to update amenities");
+      }
+
+      const updatedHost = await res.json();
+      setHost(updatedHost);
+      toast({
+        title: "Amenities updated",
+        description: "Your parking pass amenities are saved.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingAmenities(false);
+    }
+  };
+
+  const formatCents = (value?: number | null) =>
+    value && value > 0 ? `$${(value / 100).toFixed(2)}` : "—";
+
+  const breakfastValue = Number(breakfastPrice || 0);
+  const lunchValue = Number(lunchPrice || 0);
+  const dinnerValue = Number(dinnerPrice || 0);
+  const slotSum = breakfastValue + lunchValue + dinnerValue;
+  const dailyEstimate = slotSum ? slotSum + 10 : 0;
+  const weeklyEstimate = slotSum ? slotSum * 7 + 10 : 0;
 
   const handleEnablePayments = async () => {
     try {
@@ -215,6 +291,53 @@ function HostDashboard() {
         </Button>
       </div>
 
+      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-8">
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              On-site Amenities
+            </h2>
+            <p className="text-sm text-slate-500">
+              Share what trucks can expect at your location.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={handleAmenitiesSave}
+            disabled={isSavingAmenities}
+          >
+            {isSavingAmenities ? "Saving..." : "Save amenities"}
+          </Button>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3 mt-4">
+          {[
+            { key: "water", label: "Water" },
+            { key: "electric", label: "Electric" },
+            { key: "bathrooms", label: "Bathrooms" },
+            { key: "wifi", label: "Wi-Fi" },
+            { key: "seating", label: "Seating" },
+          ].map((amenity) => (
+            <label
+              key={amenity.key}
+              className="flex items-center gap-2 text-sm text-slate-700"
+            >
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={amenities[amenity.key] ?? false}
+                onChange={(event) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    [amenity.key]: event.target.checked,
+                  }))
+                }
+              />
+              {amenity.label}
+            </label>
+          ))}
+        </div>
+      </div>
+
       {isCreating && (
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-8 animate-in fade-in slide-in-from-top-4">
           <h2 className="text-lg font-semibold mb-4">
@@ -247,6 +370,7 @@ function HostDashboard() {
                   type="time"
                   value={startTime}
                   onChange={(event) => setStartTime(event.target.value)}
+                  disabled={anyTime}
                   required
                 />
               </div>
@@ -258,6 +382,7 @@ function HostDashboard() {
                   type="time"
                   value={endTime}
                   onChange={(event) => setEndTime(event.target.value)}
+                  disabled={anyTime}
                   required
                 />
               </div>
@@ -276,21 +401,78 @@ function HostDashboard() {
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-3">
+              <input
+                id="anyTime"
+                type="checkbox"
+                className="h-4 w-4"
+                checked={anyTime}
+                onChange={(event) => setAnyTime(event.target.checked)}
+              />
+              <Label htmlFor="anyTime" className="text-sm text-slate-700">
+                Any time (trucks can park at any hour)
+              </Label>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="price">Parking Pass Price (USD)</Label>
+                <Label htmlFor="breakfastPrice">Breakfast Slot (USD)</Label>
                 <Input
-                  id="price"
+                  id="breakfastPrice"
                   type="number"
-                  min="1"
+                  min="0"
                   step="0.01"
-                  value={priceDollars}
-                  onChange={(event) => setPriceDollars(event.target.value)}
-                  required
+                  value={breakfastPrice}
+                  onChange={(event) => setBreakfastPrice(event.target.value)}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="lunchPrice">Lunch Slot (USD)</Label>
+                <Input
+                  id="lunchPrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={lunchPrice}
+                  onChange={(event) => setLunchPrice(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dinnerPrice">Dinner Slot (USD)</Label>
+                <Input
+                  id="dinnerPrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={dinnerPrice}
+                  onChange={(event) => setDinnerPrice(event.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
               <div className="rounded-md border border-orange-200 bg-orange-50 p-3 text-xs text-orange-800">
-                Trucks pay your price + $10 MealScout fee.
+                Daily rate: slot total + $10. Weekly rate: (slot total x 7) + $10.
+              </div>
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                <div className="flex items-center justify-between">
+                  <span>Slot total</span>
+                  <span className="font-semibold">
+                    {slotSum ? `$${slotSum.toFixed(2)}` : "—"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Daily estimate</span>
+                  <span className="font-semibold">
+                    {dailyEstimate ? `$${dailyEstimate.toFixed(2)}` : "—"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Weekly estimate</span>
+                  <span className="font-semibold">
+                    {weeklyEstimate ? `$${weeklyEstimate.toFixed(2)}` : "—"}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -385,23 +567,22 @@ function HostDashboard() {
                           <div className="flex items-center gap-4 text-sm text-slate-600 mb-1">
                             <span className="flex items-center gap-1">
                               <Clock className="h-4 w-4" />
-                              {event.startTime} - {event.endTime}
+                              {event.startTime === "00:00" &&
+                              event.endTime === "23:59"
+                                ? "Any time"
+                                : `${event.startTime} - ${event.endTime}`}
                             </span>
                             <span className="flex items-center gap-1">
                               <Truck className="h-4 w-4" />
                               {event.maxTrucks} Truck
                               {event.maxTrucks !== 1 ? "s" : ""}
                             </span>
-                            {event.requiresPayment &&
-                              event.hostPriceCents !== undefined && (
-                                <span className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded-full px-2 py-0.5">
-                                  ${(
-                                    (event.hostPriceCents + 1000) /
-                                    100
-                                  ).toFixed(2)}{" "}
-                                  total
-                                </span>
-                              )}
+                            {event.requiresPayment && (
+                              <span className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded-full px-2 py-0.5">
+                                Daily {formatCents(event.dailyPriceCents)} / Weekly{" "}
+                                {formatCents(event.weeklyPriceCents)}
+                              </span>
+                            )}
                             {event.hardCapEnabled && (
                               <span
                                 title="Capacity Guard v2.2 Enabled"

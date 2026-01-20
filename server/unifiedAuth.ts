@@ -89,6 +89,16 @@ export async function setupUnifiedAuth(app: Express) {
     await emailService.sendEmailVerificationEmail(user, verifyUrl);
   };
 
+  // Ensure configured super admin email is upgraded
+  const superAdminEmail =
+    process.env.ADMIN_EMAIL || "info.mealscout@gmail.com";
+  if (superAdminEmail) {
+    const existing = await storage.getUserByEmail(superAdminEmail);
+    if (existing && existing.userType !== "super_admin") {
+      await storage.updateUserType(existing.id, "super_admin");
+    }
+  }
+
   // Set up passport serialization for email/password auth
   passport.serializeUser((user: any, done) => {
     done(null, user.id);

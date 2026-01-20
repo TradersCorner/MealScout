@@ -149,13 +149,29 @@ export function registerHostRoutes(app: Express) {
         return res.status(404).json({ message: "Host profile not found" });
       }
 
-      const amenitiesSchema = z.record(z.boolean()).optional().nullable();
-      const parsedAmenities = amenitiesSchema.parse(req.body?.amenities);
+      const updateSchema = z.object({
+        businessName: z.string().min(1).optional(),
+        address: z.string().min(1).optional(),
+        city: z.string().min(1).optional(),
+        state: z.string().min(2).optional(),
+        locationType: z.string().min(1).optional(),
+        contactPhone: z.string().min(5).optional(),
+        notes: z.string().optional().nullable(),
+        amenities: z.record(z.boolean()).optional().nullable(),
+      });
+      const parsed = updateSchema.parse(req.body || {});
 
       const [updated] = await db
         .update(hosts)
         .set({
-          amenities: parsedAmenities ?? null,
+          businessName: parsed.businessName ?? host.businessName,
+          address: parsed.address ?? host.address,
+          city: parsed.city ?? host.city,
+          state: parsed.state ?? host.state,
+          locationType: parsed.locationType ?? host.locationType,
+          contactPhone: parsed.contactPhone ?? host.contactPhone,
+          notes: parsed.notes ?? host.notes,
+          amenities: parsed.amenities ?? host.amenities ?? null,
           updatedAt: new Date(),
         })
         .where(eq(hosts.id, host.id))
@@ -340,6 +356,38 @@ export function registerHostRoutes(app: Express) {
       today.setHours(0, 0, 0, 0);
       const horizon = new Date(today);
       horizon.setDate(horizon.getDate() + 30);
+
+      // Remove future parking pass events without bookings to enforce one pass per address.
+      const bookedEventRows = await db
+        .select({ eventId: eventBookings.eventId })
+        .from(eventBookings)
+        .where(
+          and(
+            eq(eventBookings.hostId, host.id),
+            inArray(eventBookings.status, ["pending", "confirmed"]),
+          ),
+        );
+      const bookedEventIds = new Set(bookedEventRows.map((row) => row.eventId));
+
+      const removableEvents = await db
+        .select({ id: events.id })
+        .from(events)
+        .where(
+          and(
+            eq(events.hostId, host.id),
+            gte(events.date, today),
+            lt(events.date, horizon),
+            eq(events.requiresPayment, true),
+          ),
+        );
+
+      const removableIds = removableEvents
+        .map((row) => row.id)
+        .filter((id) => !bookedEventIds.has(id));
+
+      if (removableIds.length > 0) {
+        await db.delete(events).where(inArray(events.id, removableIds));
+      }
 
       const existingEvents = await db
         .select({

@@ -275,7 +275,7 @@ function ManualUserCreation({ adminUser }: { adminUser?: any }) {
             {formData.userType === "event_coordinator" &&
               "Event coordinator - organize events (NO PAYMENTS through us)"}
             {formData.userType === "host" &&
-              "Host - rent parking spots/lots to food trucks (hourly/daily/weekly/monthly + $10 booking fee)"}
+              "Host - rent parking spots/lots to food trucks (hourly/daily/weekly/monthly)"}
           </p>
         </div>
 

@@ -23,7 +23,10 @@ interface HostProfile {
   id: string;
   businessName: string;
   address: string;
+  city?: string;
+  state?: string;
   locationType: string;
+  contactPhone?: string | null;
   stripeChargesEnabled?: boolean;
   stripeOnboardingCompleted?: boolean;
   amenities?: Record<string, boolean> | null;
@@ -79,6 +82,16 @@ function HostDashboard() {
   const [blackoutDateInput, setBlackoutDateInput] = useState("");
   const [blackoutDates, setBlackoutDates] = useState<string[]>([]);
   const [isSavingBlackout, setIsSavingBlackout] = useState(false);
+  const [newLocationForm, setNewLocationForm] = useState({
+    businessName: "",
+    address: "",
+    city: "",
+    state: "",
+    locationType: "other",
+    contactPhone: "",
+  });
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
 
   useEffect(() => {
     if (isLoading) {
@@ -177,6 +190,105 @@ function HostDashboard() {
     };
     fetchBlackouts();
   }, [hosts, selectedHostId]);
+
+  const handleCreateLocation = async () => {
+    if (!newLocationForm.businessName || !newLocationForm.address) {
+      toast({
+        title: "Missing details",
+        description: "Business name and address are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!newLocationForm.city || !newLocationForm.state) {
+      toast({
+        title: "Missing city/state",
+        description: "City and state are required to save a location.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingLocation(true);
+    try {
+      const res = await fetch("/api/hosts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName: newLocationForm.businessName,
+          address: newLocationForm.address,
+          city: newLocationForm.city,
+          state: newLocationForm.state,
+          locationType: newLocationForm.locationType,
+          contactPhone: newLocationForm.contactPhone || null,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to create host location");
+      }
+      const created = await res.json();
+      setHosts((current) => [created, ...current]);
+      setSelectedHostId(created.id);
+      setNewLocationForm({
+        businessName: "",
+        address: "",
+        city: "",
+        state: "",
+        locationType: "other",
+        contactPhone: "",
+      });
+      toast({
+        title: "Location added",
+        description: "You can edit this location any time.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Unable to save location",
+        description: error.message || "Failed to create location.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingLocation(false);
+    }
+  };
+
+  const handleUpdateLocation = async () => {
+    if (!host) return;
+    setIsUpdatingLocation(true);
+    try {
+      const res = await fetch(`/api/hosts/${host.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName: host.businessName,
+          address: host.address,
+          city: host.city,
+          state: host.state,
+          locationType: host.locationType,
+          contactPhone: host.contactPhone || null,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to update location");
+      }
+      const updated = await res.json();
+      setHosts((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setHost(updated);
+      toast({
+        title: "Location updated",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: error.message || "Failed to update location.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingLocation(false);
+    }
+  };
 
   const handleCreateEvent = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -381,8 +493,7 @@ function HostDashboard() {
             <AlertDescription className="text-orange-800">
               <p className="mb-3">
                 Set up payments to receive booking fees from trucks. You set
-                your price ($0-$5,000), MealScout adds a fixed $10 coordination
-                fee.
+                your price per slot and get paid automatically.
               </p>
               <Button
                 onClick={handleEnablePayments}
@@ -394,14 +505,14 @@ function HostDashboard() {
           </Alert>
         )}
 
-      <div className="flex flex-col gap-4 mb-8 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">
-            {host.businessName}
-          </h1>
-          <p className="text-slate-600">{host.address}</p>
-        </div>
-        {hosts.length > 1 && (
+        <div className="flex flex-col gap-4 mb-8 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">
+              {host.businessName}
+            </h1>
+            <p className="text-slate-600">{host.address}</p>
+          </div>
+          {hosts.length > 1 && (
           <div className="flex items-center gap-2">
             <Label htmlFor="hostSelect" className="text-sm text-slate-600">
               Property
@@ -419,11 +530,11 @@ function HostDashboard() {
               ))}
             </select>
           </div>
-        )}
-        <Button onClick={() => setIsCreating(!isCreating)}>
-          {isCreating ? (
-            "Cancel"
-          ) : (
+          )}
+          <Button onClick={() => setIsCreating(!isCreating)}>
+            {isCreating ? (
+              "Cancel"
+            ) : (
             <>
               <Plus className="mr-2 h-4 w-4" /> New Parking Pass
             </>
@@ -448,6 +559,210 @@ function HostDashboard() {
           >
             {isSavingAmenities ? "Saving..." : "Save amenities"}
           </Button>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-8 space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Location details
+              </h2>
+              <p className="text-sm text-slate-500">
+                Keep each parking address accurate for trucks.
+              </p>
+            </div>
+            <Button onClick={handleUpdateLocation} disabled={isUpdatingLocation}>
+              {isUpdatingLocation ? "Saving..." : "Save location"}
+            </Button>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="hostBusinessName">Location name</Label>
+              <Input
+                id="hostBusinessName"
+                value={host.businessName}
+                onChange={(event) =>
+                  setHost((current) =>
+                    current
+                      ? { ...current, businessName: event.target.value }
+                      : current,
+                  )
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hostContactPhone">Contact phone</Label>
+              <Input
+                id="hostContactPhone"
+                value={host.contactPhone || ""}
+                onChange={(event) =>
+                  setHost((current) =>
+                    current
+                      ? { ...current, contactPhone: event.target.value }
+                      : current,
+                  )
+                }
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="hostAddress">Address</Label>
+              <Input
+                id="hostAddress"
+                value={host.address}
+                onChange={(event) =>
+                  setHost((current) =>
+                    current ? { ...current, address: event.target.value } : current,
+                  )
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hostCity">City</Label>
+              <Input
+                id="hostCity"
+                value={host.city || ""}
+                onChange={(event) =>
+                  setHost((current) =>
+                    current ? { ...current, city: event.target.value } : current,
+                  )
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hostState">State</Label>
+              <Input
+                id="hostState"
+                value={host.state || ""}
+                onChange={(event) =>
+                  setHost((current) =>
+                    current ? { ...current, state: event.target.value } : current,
+                  )
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hostType">Location type</Label>
+              <select
+                id="hostType"
+                value={host.locationType || "other"}
+                onChange={(event) =>
+                  setHost((current) =>
+                    current
+                      ? { ...current, locationType: event.target.value }
+                      : current,
+                  )
+                }
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
+              >
+                <option value="office">Office</option>
+                <option value="bar">Bar</option>
+                <option value="brewery">Brewery</option>
+                <option value="restaurant">Restaurant</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+            <p className="text-sm font-semibold text-slate-900">
+              Add another parking location
+            </p>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="newHostName">Location name</Label>
+                <Input
+                  id="newHostName"
+                  value={newLocationForm.businessName}
+                  onChange={(event) =>
+                    setNewLocationForm((current) => ({
+                      ...current,
+                      businessName: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newHostPhone">Contact phone</Label>
+                <Input
+                  id="newHostPhone"
+                  value={newLocationForm.contactPhone}
+                  onChange={(event) =>
+                    setNewLocationForm((current) => ({
+                      ...current,
+                      contactPhone: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="newHostAddress">Address</Label>
+                <Input
+                  id="newHostAddress"
+                  value={newLocationForm.address}
+                  onChange={(event) =>
+                    setNewLocationForm((current) => ({
+                      ...current,
+                      address: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newHostCity">City</Label>
+                <Input
+                  id="newHostCity"
+                  value={newLocationForm.city}
+                  onChange={(event) =>
+                    setNewLocationForm((current) => ({
+                      ...current,
+                      city: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newHostState">State</Label>
+                <Input
+                  id="newHostState"
+                  value={newLocationForm.state}
+                  onChange={(event) =>
+                    setNewLocationForm((current) => ({
+                      ...current,
+                      state: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newHostType">Location type</Label>
+                <select
+                  id="newHostType"
+                  value={newLocationForm.locationType}
+                  onChange={(event) =>
+                    setNewLocationForm((current) => ({
+                      ...current,
+                      locationType: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="office">Office</option>
+                  <option value="bar">Bar</option>
+                  <option value="brewery">Brewery</option>
+                  <option value="restaurant">Restaurant</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div className="flex items-end">
+                <Button
+                  variant="outline"
+                  onClick={handleCreateLocation}
+                  disabled={isSavingLocation}
+                >
+                  {isSavingLocation ? "Saving..." : "Add location"}
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
         <div className="grid sm:grid-cols-2 gap-3 mt-4">
           {[
@@ -681,7 +996,7 @@ function HostDashboard() {
                   </div>
                 </div>
                 <p className="mt-4 text-xs text-orange-800">
-                  Trucks pay your slot price plus the $10 MealScout fee.
+                  Trucks see your full payout per slot.
                 </p>
               </div>
             </div>

@@ -1,5 +1,8 @@
-import { TransactionalEmailsApi, TransactionalEmailsApiApiKeys } from '@getbrevo/brevo';
-import type { User, Restaurant } from '@shared/schema';
+import {
+  TransactionalEmailsApi,
+  TransactionalEmailsApiApiKeys,
+} from "@getbrevo/brevo";
+import type { User, Restaurant } from "@shared/schema";
 
 // Initialize Brevo with API key validation
 const transactionalEmailsApi = new TransactionalEmailsApi();
@@ -8,24 +11,29 @@ const transactionalEmailsApi = new TransactionalEmailsApi();
 export const isEmailConfigured = (): boolean => {
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) {
-    console.warn('BREVO_API_KEY environment variable is not set. Email functionality will be disabled.');
+    console.warn(
+      "BREVO_API_KEY environment variable is not set. Email functionality will be disabled.",
+    );
     return false;
   }
-  
+
   try {
-    transactionalEmailsApi.setApiKey(TransactionalEmailsApiApiKeys.apiKey, apiKey);
+    transactionalEmailsApi.setApiKey(
+      TransactionalEmailsApiApiKeys.apiKey,
+      apiKey,
+    );
     return true;
   } catch (error) {
-    console.error('Failed to configure Brevo:', error);
+    console.error("Failed to configure Brevo:", error);
     return false;
   }
 };
 
 // Email configuration
 const EMAIL_CONFIG = {
-  fromEmail: 'info.mealscout@gmail.com',
-  fromName: 'MealScout',
-  adminEmail: 'info.mealscout@gmail.com', // Admin notifications will be sent here
+  fromEmail: "info.mealscout@gmail.com",
+  fromName: "MealScout",
+  adminEmail: "info.mealscout@gmail.com", // Admin notifications will be sent here
 };
 
 // Base email interface
@@ -216,12 +224,15 @@ class EmailTemplates {
 </html>`;
   }
 
-  static getCustomerWelcomeTemplate(user: User): { html: string; text: string } {
+  static getCustomerWelcomeTemplate(user: User): {
+    html: string;
+    text: string;
+  } {
     const content = `
       <h2>Welcome to Your Food Adventure! 🎉</h2>
-      <p>Hey ${user.firstName || 'Food Explorer'}!</p>
+      <p>Hey ${user.firstName || "Food Explorer"}!</p>
       <p>Welcome to MealScout – your personal guide to discovering incredible food deals around you! We're thrilled to have you join our community of savvy food lovers.</p>
-      
+
       <div class="highlight-box">
         <strong>🎯 What makes MealScout special?</strong><br>
         We connect you with exclusive deals from local restaurants, food trucks, and cafes that you won't find anywhere else!
@@ -259,13 +270,13 @@ class EmailTemplates {
       </div>
 
       <p><strong>Ready to start saving?</strong> Open the MealScout app and start exploring delicious deals in your area. Your taste buds (and wallet) will thank you!</p>
-      
+
       <p>Happy eating!<br>
       The MealScout Team 🍽️</p>
     `;
 
-    const html = this.getBaseTemplate('Welcome to MealScout!', content);
-    const text = `Welcome to MealScout, ${user.firstName || 'Food Explorer'}!
+    const html = this.getBaseTemplate("Welcome to MealScout!", content);
+    const text = `Welcome to MealScout, ${user.firstName || "Food Explorer"}!
 
 We're thrilled to have you join our community of savvy food lovers. MealScout connects you with exclusive deals from local restaurants, food trucks, and cafes.
 
@@ -285,12 +296,15 @@ The MealScout Team
     return { html, text };
   }
 
-  static getRestaurantOwnerWelcomeTemplate(user: User): { html: string; text: string } {
+  static getRestaurantOwnerWelcomeTemplate(user: User): {
+    html: string;
+    text: string;
+  } {
     const content = `
       <h2>Welcome to MealScout Business! 🚀</h2>
-      <p>Hello ${user.firstName || 'Business Owner'}!</p>
+      <p>Hello ${user.firstName || "Business Owner"}!</p>
       <p>Congratulations on joining MealScout! You're now part of a powerful platform that connects local restaurants with hungry customers looking for amazing deals.</p>
-      
+
       <div class="highlight-box">
         <strong>🎯 Grow Your Business with MealScout</strong><br>
         Our platform helps you attract new customers, fill empty tables during slow hours, and boost your revenue with strategic deal campaigns.
@@ -331,15 +345,18 @@ The MealScout Team
       <p>1. Complete your restaurant profile with photos and details<br>
       2. Create your first deal to attract customers<br>
       3. Monitor performance and optimize your campaigns</p>
-      
+
       <p>Our support team is here to help you succeed. If you have any questions, don't hesitate to reach out!</p>
-      
+
       <p>Here's to your business growth!<br>
       The MealScout Business Team 💼</p>
     `;
 
-    const html = this.getBaseTemplate('Welcome to MealScout Business!', content);
-    const text = `Welcome to MealScout Business, ${user.firstName || 'Business Owner'}!
+    const html = this.getBaseTemplate(
+      "Welcome to MealScout Business!",
+      content,
+    );
+    const text = `Welcome to MealScout Business, ${user.firstName || "Business Owner"}!
 
 Congratulations on joining MealScout! You're now part of a powerful platform that connects local restaurants with hungry customers.
 
@@ -367,9 +384,9 @@ The MealScout Business Team
   static getAdminWelcomeTemplate(user: User): { html: string; text: string } {
     const content = `
       <h2>Admin Access Granted 🔐</h2>
-      <p>Hello ${user.firstName || 'Admin'}!</p>
+      <p>Hello ${user.firstName || "Admin"}!</p>
       <p>Your MealScout admin account has been created successfully. You now have access to the administrative dashboard and all management features.</p>
-      
+
       <div class="highlight-box">
         <strong>🛠️ Admin Capabilities</strong><br>
         Monitor platform activity, manage users and restaurants, review verification requests, and oversee system operations.
@@ -400,15 +417,15 @@ The MealScout Business Team
       </div>
 
       <p>Access your admin dashboard to get started with platform management.</p>
-      
+
       <p>Best regards,<br>
       The MealScout Development Team ⚙️</p>
     `;
 
-    const html = this.getBaseTemplate('MealScout Admin Access', content);
+    const html = this.getBaseTemplate("MealScout Admin Access", content);
     const text = `MealScout Admin Access Granted
 
-Hello ${user.firstName || 'Admin'}!
+Hello ${user.firstName || "Admin"}!
 
 Your MealScout admin account has been created successfully. You now have access to the administrative dashboard and all management features.
 
@@ -427,21 +444,26 @@ The MealScout Development Team
     return { html, text };
   }
 
-  static getPaymentConfirmationTemplate(user: User, amount: number, interval: string, subscriptionId: string): { html: string; text: string } {
+  static getPaymentConfirmationTemplate(
+    user: User,
+    amount: number,
+    interval: string,
+    subscriptionId: string,
+  ): { html: string; text: string } {
     const content = `
       <h2>Payment Confirmation 💳</h2>
-      <p>Hello ${user.firstName || 'Valued Customer'}!</p>
+      <p>Hello ${user.firstName || "Valued Customer"}!</p>
       <p>Thank you for your payment! Your MealScout subscription has been successfully processed.</p>
-      
+
       <div class="highlight-box">
         <strong>Payment Details</strong><br>
         Amount: $${(amount / 100).toFixed(2)}<br>
-        Billing Cycle: ${interval === 'month' ? 'Monthly' : interval === '3-month' ? 'Quarterly' : 'Yearly'}<br>
+        Billing Cycle: ${interval === "month" ? "Monthly" : interval === "3-month" ? "Quarterly" : "Yearly"}<br>
         Subscription ID: ${subscriptionId}
       </div>
 
       <p>Your premium features are now active and you can enjoy:</p>
-      
+
       <div class="features">
         <div class="feature">
           <div class="feature-icon">🎯</div>
@@ -467,21 +489,24 @@ The MealScout Development Team
       </div>
 
       <p>If you have any questions about your subscription or need assistance, please don't hesitate to contact our support team.</p>
-      
+
       <p>Thank you for being a valued MealScout member!<br>
       The MealScout Team 💖</p>
     `;
 
-    const html = this.getBaseTemplate('Payment Confirmation - MealScout', content);
+    const html = this.getBaseTemplate(
+      "Payment Confirmation - MealScout",
+      content,
+    );
     const text = `MealScout Payment Confirmation
 
-Hello ${user.firstName || 'Valued Customer'}!
+Hello ${user.firstName || "Valued Customer"}!
 
 Thank you for your payment! Your MealScout subscription has been successfully processed.
 
 Payment Details:
 Amount: $${(amount / 100).toFixed(2)}
-Billing Cycle: ${interval === 'month' ? 'Monthly' : interval === '3-month' ? 'Quarterly' : 'Yearly'}
+Billing Cycle: ${interval === "month" ? "Monthly" : interval === "3-month" ? "Quarterly" : "Yearly"}
 Subscription ID: ${subscriptionId}
 
 Your premium features are now active:
@@ -497,29 +522,37 @@ The MealScout Team
     return { html, text };
   }
 
-  static getAdminNotificationTemplate(user: User, restaurant?: Restaurant): { html: string; text: string } {
-    const userTypeDisplay = user.userType === 'customer' ? 'Customer' : user.userType === 'restaurant_owner' ? 'Restaurant Owner' : 'Admin';
-    
-    let locationInfo = '';
+  static getAdminNotificationTemplate(
+    user: User,
+    restaurant?: Restaurant,
+  ): { html: string; text: string } {
+    const userTypeDisplay =
+      user.userType === "customer"
+        ? "Customer"
+        : user.userType === "restaurant_owner"
+          ? "Restaurant Owner"
+          : "Admin";
+
+    let locationInfo = "";
     if (restaurant) {
       locationInfo = `
         <strong>Restaurant Details:</strong><br>
         Name: ${restaurant.name}<br>
         Address: ${restaurant.address}<br>
-        Phone: ${restaurant.phone || 'Not provided'}<br>
+        Phone: ${restaurant.phone || "Not provided"}<br>
         Business Type: ${restaurant.businessType}<br>
-        Cuisine: ${restaurant.cuisineType || 'Not specified'}<br>
-        ${restaurant.isFoodTruck ? 'Food Truck: Yes' : ''}
+        Cuisine: ${restaurant.cuisineType || "Not specified"}<br>
+        ${restaurant.isFoodTruck ? "Food Truck: Yes" : ""}
       `;
     }
 
     const content = `
       <h2>New User Registration Alert 🔔</h2>
       <p>A new user has joined MealScout!</p>
-      
+
       <div class="highlight-box">
         <strong>User Information:</strong><br>
-        Name: ${user.firstName || ''} ${user.lastName || ''}<br>
+        Name: ${user.firstName || ""} ${user.lastName || ""}<br>
         Email: ${user.email}<br>
         User Type: ${userTypeDisplay}<br>
         Registration Date: ${new Date().toLocaleDateString()}<br>
@@ -529,24 +562,31 @@ The MealScout Team
       <p>This notification was generated automatically by the MealScout system.</p>
     `;
 
-    const html = this.getBaseTemplate('New User Registration - MealScout Admin', content);
+    const html = this.getBaseTemplate(
+      "New User Registration - MealScout Admin",
+      content,
+    );
     const text = `New User Registration Alert
 
 A new user has joined MealScout!
 
 User Information:
-Name: ${user.firstName || ''} ${user.lastName || ''}
+Name: ${user.firstName || ""} ${user.lastName || ""}
 Email: ${user.email}
 User Type: ${userTypeDisplay}
 Registration Date: ${new Date().toLocaleDateString()}
 
-${restaurant ? `Restaurant Details:
+${
+  restaurant
+    ? `Restaurant Details:
 Name: ${restaurant.name}
 Address: ${restaurant.address}
-Phone: ${restaurant.phone || 'Not provided'}
+Phone: ${restaurant.phone || "Not provided"}
 Business Type: ${restaurant.businessType}
-Cuisine: ${restaurant.cuisineType || 'Not specified'}
-${restaurant.isFoodTruck ? 'Food Truck: Yes' : ''}` : ''}
+Cuisine: ${restaurant.cuisineType || "Not specified"}
+${restaurant.isFoodTruck ? "Food Truck: Yes" : ""}`
+    : ""
+}
 
 This notification was generated automatically by the MealScout system.
 
@@ -555,11 +595,19 @@ This notification was generated automatically by the MealScout system.
     return { html, text };
   }
 
-  static getAdminSignupNotificationTemplate(user: User, context?: { signupMethod?: string; restaurant?: Restaurant }): { html: string; text: string } {
-    const userTypeDisplay = user.userType === 'customer' ? 'Customer' : user.userType === 'restaurant_owner' ? 'Restaurant Owner' : 'Admin';
-    const signupMethod = context?.signupMethod || 'Email';
-    
-    let restaurantInfo = '';
+  static getAdminSignupNotificationTemplate(
+    user: User,
+    context?: { signupMethod?: string; restaurant?: Restaurant },
+  ): { html: string; text: string } {
+    const userTypeDisplay =
+      user.userType === "customer"
+        ? "Customer"
+        : user.userType === "restaurant_owner"
+          ? "Restaurant Owner"
+          : "Admin";
+    const signupMethod = context?.signupMethod || "Email";
+
+    let restaurantInfo = "";
     if (context?.restaurant) {
       restaurantInfo = `
         <div class="feature">
@@ -569,11 +617,11 @@ This notification was generated automatically by the MealScout system.
             <div class="feature-desc">
               <strong>Name:</strong> ${context.restaurant.name}<br>
               <strong>Address:</strong> ${context.restaurant.address}<br>
-              <strong>Phone:</strong> ${context.restaurant.phone || 'Not provided'}<br>
+              <strong>Phone:</strong> ${context.restaurant.phone || "Not provided"}<br>
               <strong>Business Type:</strong> ${context.restaurant.businessType}<br>
-              <strong>Cuisine Type:</strong> ${context.restaurant.cuisineType || 'Not specified'}<br>
-              ${context.restaurant.isFoodTruck ? '<strong>Food Truck:</strong> Yes<br>' : ''}
-              <strong>Verified:</strong> ${context.restaurant.isVerified ? 'Yes' : 'Pending'}
+              <strong>Cuisine Type:</strong> ${context.restaurant.cuisineType || "Not specified"}<br>
+              ${context.restaurant.isFoodTruck ? "<strong>Food Truck:</strong> Yes<br>" : ""}
+              <strong>Verified:</strong> ${context.restaurant.isVerified ? "Yes" : "Pending"}
             </div>
           </div>
         </div>
@@ -583,10 +631,10 @@ This notification was generated automatically by the MealScout system.
     const content = `
       <h2>New MealScout Signup 🎉</h2>
       <p>A new user has registered for MealScout and requires admin attention.</p>
-      
+
       <div class="highlight-box">
         <strong>📋 User Summary</strong><br>
-        <strong>Name:</strong> ${user.firstName || ''} ${user.lastName || ''}<br>
+        <strong>Name:</strong> ${user.firstName || ""} ${user.lastName || ""}<br>
         <strong>Email:</strong> ${user.email}<br>
         <strong>User Type:</strong> ${userTypeDisplay}<br>
         <strong>Signup Method:</strong> ${signupMethod}<br>
@@ -599,53 +647,61 @@ This notification was generated automatically by the MealScout system.
           <div class="feature-text">
             <div class="feature-title">Account Details</div>
             <div class="feature-desc">
-              <strong>User ID:</strong> ${user.id || 'Pending'}<br>
+              <strong>User ID:</strong> ${user.id || "Pending"}<br>
               <strong>Account Status:</strong> Active<br>
-              <strong>Email Verified:</strong> ${user.emailVerified ? 'Yes' : 'Pending'}
+              <strong>Email Verified:</strong> ${user.emailVerified ? "Yes" : "Pending"}
             </div>
           </div>
         </div>
         ${restaurantInfo}
       </div>
 
-      ${user.userType === 'restaurant_owner' ? `
+      ${
+        user.userType === "restaurant_owner"
+          ? `
         <div class="highlight-box" style="border-left-color: #f7931e;">
           <strong>⚠️ Action Required</strong><br>
           This restaurant owner account may require verification review before full platform access is granted.
         </div>
-      ` : ''}
+      `
+          : ""
+      }
 
       <p>You can manage this user account through the MealScout admin dashboard.</p>
-      
+
       <p>For questions or support, contact our development team.<br>
       <strong>MealScout Admin System</strong> 🛠️</p>
     `;
 
-    const html = this.getBaseTemplate('New MealScout Signup', content);
+    const html = this.getBaseTemplate("New MealScout Signup", content);
     const text = `New MealScout Signup
 
 A new user has registered for MealScout:
 
 User Information:
-Name: ${user.firstName || ''} ${user.lastName || ''}
+Name: ${user.firstName || ""} ${user.lastName || ""}
 Email: ${user.email}
 User Type: ${userTypeDisplay}
 Signup Method: ${signupMethod}
 Registration Date: ${new Date().toLocaleDateString()}
-User ID: ${user.id || 'Pending'}
+User ID: ${user.id || "Pending"}
 Account Status: Active
-Email Verified: ${user.emailVerified ? 'Yes' : 'Pending'}
+Email Verified: ${user.emailVerified ? "Yes" : "Pending"}
 
-${context?.restaurant ? `Restaurant Details:
+${
+  context?.restaurant
+    ? `Restaurant Details:
 Name: ${context.restaurant.name}
 Address: ${context.restaurant.address}
-Phone: ${context.restaurant.phone || 'Not provided'}
+Phone: ${context.restaurant.phone || "Not provided"}
 Business Type: ${context.restaurant.businessType}
-Cuisine Type: ${context.restaurant.cuisineType || 'Not specified'}
-${context.restaurant.isFoodTruck ? 'Food Truck: Yes' : ''}
-Verified: ${context.restaurant.isVerified ? 'Yes' : 'Pending'}` : ''}
+Cuisine Type: ${context.restaurant.cuisineType || "Not specified"}
+${context.restaurant.isFoodTruck ? "Food Truck: Yes" : ""}
+Verified: ${context.restaurant.isVerified ? "Yes" : "Pending"}`
+    : ""
+}
 
-${user.userType === 'restaurant_owner' ? 'ACTION REQUIRED: This restaurant owner account may require verification review.' : ''}
+${user.userType === "restaurant_owner" ? "ACTION REQUIRED: This restaurant owner account may require verification review." : ""}
 
 You can manage this user account through the MealScout admin dashboard.
 
@@ -656,12 +712,15 @@ MealScout Admin System
     return { html, text };
   }
 
-  static getPasswordResetTemplate(user: User, resetUrl: string): { html: string; text: string } {
+  static getPasswordResetTemplate(
+    user: User,
+    resetUrl: string,
+  ): { html: string; text: string } {
     const content = `
       <h2>Reset Your MealScout Password 🔐</h2>
-      <p>Hello ${user.firstName || 'MealScout User'}!</p>
+      <p>Hello ${user.firstName || "MealScout User"}!</p>
       <p>We received a request to reset the password for your MealScout account. If you made this request, click the button below to create a new password.</p>
-      
+
       <div style="text-align: center; margin: 30px 0;">
         <a href="${resetUrl}" class="cta-button" style="display: inline-block;">Reset My Password</a>
       </div>
@@ -700,15 +759,15 @@ MealScout Admin System
 
       <p><strong>Can't click the button?</strong> Copy and paste this link into your browser:<br>
       <span style="word-break: break-all; color: #ff6b35; font-size: 14px;">${resetUrl}</span></p>
-      
+
       <p>Best regards,<br>
       The MealScout Security Team 🔐</p>
     `;
 
-    const html = this.getBaseTemplate('Reset Your MealScout Password', content);
+    const html = this.getBaseTemplate("Reset Your MealScout Password", content);
     const text = `Reset Your MealScout Password
 
-Hello ${user.firstName || 'MealScout User'}!
+Hello ${user.firstName || "MealScout User"}!
 
 We received a request to reset the password for your MealScout account. If you made this request, use the link below to create a new password.
 
@@ -737,15 +796,19 @@ The MealScout Security Team
     return { html, text };
   }
 
-  static getAccountSetupTemplate(user: User, setupUrl: string, createdByName?: string): { html: string; text: string } {
-    const greeting = user.firstName || user.email?.split('@')[0] || 'there';
-    const createdByText = createdByName ? ` by ${createdByName}` : '';
-    
+  static getAccountSetupTemplate(
+    user: User,
+    setupUrl: string,
+    createdByName?: string,
+  ): { html: string; text: string } {
+    const greeting = user.firstName || user.email?.split("@")[0] || "there";
+    const createdByText = createdByName ? ` by ${createdByName}` : "";
+
     const content = `
       <h2>Welcome to MealScout! 🎉</h2>
       <p>Hello ${greeting}!</p>
       <p>Your MealScout account has been created${createdByText}. Let's get you set up! Click the button below to complete your profile:</p>
-      
+
       <div style="text-align: center; margin: 30px 0;">
         <a href="${setupUrl}" class="cta-button" style="display: inline-block;">Complete My Profile</a>
       </div>
@@ -783,19 +846,19 @@ The MealScout Security Team
 
       <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
         <p style="margin: 0; font-size: 14px; color: #666;">
-          <strong>⏰ This setup link expires in 7 days</strong> for your security. 
+          <strong>⏰ This setup link expires in 7 days</strong> for your security.
           If you need a new link, contact our support team at info.mealscout@gmail.com
         </p>
       </div>
 
       <p><strong>Can't click the button?</strong> Copy and paste this link into your browser:<br>
       <span style="word-break: break-all; color: #ff6b35; font-size: 14px;">${setupUrl}</span></p>
-      
+
       <p>Looking forward to helping you discover amazing food!<br>
       The MealScout Team 🍔🌮🍕</p>
     `;
 
-    const html = this.getBaseTemplate('Welcome to MealScout!', content);
+    const html = this.getBaseTemplate("Welcome to MealScout!", content);
     const text = `Welcome to MealScout!
 
 Hello ${greeting}!
@@ -827,21 +890,21 @@ The MealScout Team
     return { html, text };
   }
 
-  static getBugReportTemplate(data: { 
-    userEmail?: string; 
-    userName?: string; 
-    userAgent: string; 
-    currentUrl: string; 
+  static getBugReportTemplate(data: {
+    userEmail?: string;
+    userName?: string;
+    userAgent: string;
+    currentUrl: string;
     timestamp: string;
     screenshotUrl?: string;
   }): { html: string; text: string } {
-    const userName = data.userName || 'Anonymous User';
-    const userEmail = data.userEmail || 'Not logged in';
-    
+    const userName = data.userName || "Anonymous User";
+    const userEmail = data.userEmail || "Not logged in";
+
     const content = `
       <h2>🐛 Bug Report Received</h2>
       <p>A bug report has been submitted from the MealScout beta application.</p>
-      
+
       <div class="highlight-box">
         <strong>📋 Report Details</strong><br>
         <strong>Submitted by:</strong> ${userName}<br>
@@ -858,7 +921,9 @@ The MealScout Team
             <div class="feature-desc">${data.userAgent}</div>
           </div>
         </div>
-        ${data.screenshotUrl ? `
+        ${
+          data.screenshotUrl
+            ? `
         <div class="feature">
           <div class="feature-icon">📸</div>
           <div class="feature-text">
@@ -866,23 +931,29 @@ The MealScout Team
             <div class="feature-desc">A screenshot has been attached to this report showing the page state when the bug was reported.</div>
           </div>
         </div>
-        ` : ''}
+        `
+            : ""
+        }
       </div>
 
-      ${data.screenshotUrl ? `
+      ${
+        data.screenshotUrl
+          ? `
       <div class="highlight-box" style="border-left-color: #10b981;">
         <strong>📎 Screenshot Attached</strong><br>
         A screenshot of the page has been attached to this email as "bug-report-screenshot.png"
       </div>
-      ` : ''}
-      
+      `
+          : ""
+      }
+
       <p>This report was automatically generated by the MealScout beta bug reporting system.</p>
-      
+
       <p>Best regards,<br>
       MealScout Beta Bug Reporting System 🔧</p>
     `;
 
-    const html = this.getBaseTemplate('Bug Report - MealScout Beta', content);
+    const html = this.getBaseTemplate("Bug Report - MealScout Beta", content);
     const text = `Bug Report - MealScout Beta
 
 A bug report has been submitted from the MealScout beta application.
@@ -896,7 +967,7 @@ Page URL: ${data.currentUrl}
 Browser Information:
 ${data.userAgent}
 
-${data.screenshotUrl ? 'Screenshot: Attached to this email' : 'No screenshot attached'}
+${data.screenshotUrl ? "Screenshot: Attached to this email" : "No screenshot attached"}
 
 This report was automatically generated by the MealScout beta bug reporting system.
 
@@ -933,9 +1004,11 @@ export class EmailService {
 
     try {
       const emailData: any = {
-        to: [{ 
-          email: params.to 
-        }],
+        to: [
+          {
+            email: params.to,
+          },
+        ],
         sender: {
           email: EMAIL_CONFIG.fromEmail,
           name: EMAIL_CONFIG.fromName,
@@ -951,7 +1024,7 @@ export class EmailService {
       }
 
       await transactionalEmailsApi.sendTransacEmail(emailData);
-      
+
       console.log(`Email sent successfully to ${params.to}: ${params.subject}`);
       return true;
     } catch (error) {
@@ -960,13 +1033,18 @@ export class EmailService {
     }
   }
 
-  async sendBasicEmail(to: string, subject: string, html: string, text?: string): Promise<boolean> {
+  async sendBasicEmail(
+    to: string,
+    subject: string,
+    html: string,
+    text?: string,
+  ): Promise<boolean> {
     return this.sendEmail({ to, subject, html, text });
   }
 
   async sendEmailVerificationEmail(
     user: User,
-    verifyUrl: string
+    verifyUrl: string,
   ): Promise<boolean> {
     const subject = "Verify your MealScout email";
     const html = `
@@ -992,17 +1070,18 @@ export class EmailService {
     let subject: string;
 
     switch (user.userType) {
-      case 'customer':
+      case "customer":
         template = EmailTemplates.getCustomerWelcomeTemplate(user);
-        subject = 'Welcome to MealScout - Start Discovering Amazing Food Deals! 🍽️';
+        subject =
+          "Welcome to MealScout - Start Discovering Amazing Food Deals! 🍽️";
         break;
-      case 'restaurant_owner':
+      case "restaurant_owner":
         template = EmailTemplates.getRestaurantOwnerWelcomeTemplate(user);
-        subject = 'Welcome to MealScout Business - Grow Your Restaurant! 🚀';
+        subject = "Welcome to MealScout Business - Grow Your Restaurant! 🚀";
         break;
-      case 'admin':
+      case "admin":
         template = EmailTemplates.getAdminWelcomeTemplate(user);
-        subject = 'MealScout Admin Access Granted 🔐';
+        subject = "MealScout Admin Access Granted 🔐";
         break;
       default:
         console.warn(`Unknown user type: ${user.userType}`);
@@ -1018,36 +1097,58 @@ export class EmailService {
   }
 
   // Send payment confirmation email
-  async sendPaymentConfirmation(user: User, amount: number, interval: string, subscriptionId: string): Promise<boolean> {
-    const template = EmailTemplates.getPaymentConfirmationTemplate(user, amount, interval, subscriptionId);
-    
+  async sendPaymentConfirmation(
+    user: User,
+    amount: number,
+    interval: string,
+    subscriptionId: string,
+  ): Promise<boolean> {
+    const template = EmailTemplates.getPaymentConfirmationTemplate(
+      user,
+      amount,
+      interval,
+      subscriptionId,
+    );
+
     return await this.sendEmail({
       to: user.email!,
-      subject: 'Payment Confirmation - MealScout Subscription 💳',
+      subject: "Payment Confirmation - MealScout Subscription 💳",
       html: template.html,
       text: template.text,
     });
   }
 
   // Send admin notification when new user signs up
-  async sendAdminNotification(user: User, restaurant?: Restaurant): Promise<boolean> {
-    const template = EmailTemplates.getAdminNotificationTemplate(user, restaurant);
-    
+  async sendAdminNotification(
+    user: User,
+    restaurant?: Restaurant,
+  ): Promise<boolean> {
+    const template = EmailTemplates.getAdminNotificationTemplate(
+      user,
+      restaurant,
+    );
+
     return await this.sendEmail({
       to: EMAIL_CONFIG.adminEmail,
-      subject: `New ${user.userType === 'customer' ? 'Customer' : user.userType === 'restaurant_owner' ? 'Restaurant Owner' : 'Admin'} Registration - ${user.firstName || ''} ${user.lastName || ''}`,
+      subject: `New ${user.userType === "customer" ? "Customer" : user.userType === "restaurant_owner" ? "Restaurant Owner" : "Admin"} Registration - ${user.firstName || ""} ${user.lastName || ""}`,
       html: template.html,
       text: template.text,
     });
   }
 
   // Send admin signup notification with enhanced details
-  async sendAdminSignupNotification(user: User, context?: { signupMethod?: string; restaurant?: Restaurant }): Promise<boolean> {
-    const template = EmailTemplates.getAdminSignupNotificationTemplate(user, context);
-    
+  async sendAdminSignupNotification(
+    user: User,
+    context?: { signupMethod?: string; restaurant?: Restaurant },
+  ): Promise<boolean> {
+    const template = EmailTemplates.getAdminSignupNotificationTemplate(
+      user,
+      context,
+    );
+
     return await this.sendEmail({
       to: EMAIL_CONFIG.adminEmail,
-      subject: `New MealScout Signup - ${user.firstName || ''} ${user.lastName || ''} (${user.userType})`,
+      subject: `New MealScout Signup - ${user.firstName || ""} ${user.lastName || ""} (${user.userType})`,
       html: template.html,
       text: template.text,
     });
@@ -1056,38 +1157,46 @@ export class EmailService {
   // Send password reset email
   async sendPasswordResetEmail(user: User, resetUrl: string): Promise<boolean> {
     const template = EmailTemplates.getPasswordResetTemplate(user, resetUrl);
-    
+
     return await this.sendEmail({
       to: user.email!,
-      subject: 'Reset your MealScout password 🔐',
+      subject: "Reset your MealScout password 🔐",
       html: template.html,
       text: template.text,
     });
   }
 
   // Send account setup email for new users
-  async sendAccountSetupEmail(user: User, setupUrl: string, createdByName?: string): Promise<boolean> {
-    const template = EmailTemplates.getAccountSetupTemplate(user, setupUrl, createdByName);
-    
+  async sendAccountSetupEmail(
+    user: User,
+    setupUrl: string,
+    createdByName?: string,
+  ): Promise<boolean> {
+    const template = EmailTemplates.getAccountSetupTemplate(
+      user,
+      setupUrl,
+      createdByName,
+    );
+
     return await this.sendEmail({
       to: user.email!,
-      subject: 'Welcome to MealScout! Complete your profile 🎉',
+      subject: "Welcome to MealScout! Complete your profile 🎉",
       html: template.html,
       text: template.text,
     });
   }
 
   // Send bug report email
-  async sendBugReport(data: { 
-    userEmail?: string; 
-    userName?: string; 
-    userAgent: string; 
-    currentUrl: string; 
+  async sendBugReport(data: {
+    userEmail?: string;
+    userName?: string;
+    userAgent: string;
+    currentUrl: string;
     timestamp: string;
     screenshotUrl?: string;
   }): Promise<boolean> {
     const template = EmailTemplates.getBugReportTemplate(data);
-    
+
     const emailParams: BaseEmailParams = {
       to: EMAIL_CONFIG.adminEmail,
       subject: `🐛 Bug Report - ${data.currentUrl.substring(0, 50)}`,
@@ -1098,24 +1207,28 @@ export class EmailService {
     // If screenshot is provided, extract base64 data and add as attachment
     if (data.screenshotUrl) {
       // Extract base64 data from data URL (format: data:image/png;base64,XXXXX)
-      const base64Match = data.screenshotUrl.match(/^data:image\/\w+;base64,(.+)$/);
+      const base64Match = data.screenshotUrl.match(
+        /^data:image\/\w+;base64,(.+)$/,
+      );
       if (base64Match && base64Match[1]) {
-        emailParams.attachments = [{
-          content: base64Match[1],
-          name: 'bug-report-screenshot.png',
-        }];
+        emailParams.attachments = [
+          {
+            content: base64Match[1],
+            name: "bug-report-screenshot.png",
+          },
+        ];
       }
     }
-    
+
     return await this.sendEmail(emailParams);
   }
 
   // Send interest notification to host
   async sendInterestNotification(
-    hostEmail: string, 
-    hostName: string, 
-    truckName: string, 
-    eventDate: string
+    hostEmail: string,
+    hostName: string,
+    truckName: string,
+    eventDate: string,
   ): Promise<boolean> {
     const title = `New Interest from ${truckName}!`;
     const content = `
@@ -1126,7 +1239,7 @@ export class EmailService {
         <a href="https://mealscout.io/host/dashboard" style="background-color: #e11d48; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Dashboard</a>
       </div>
     `;
-    
+
     const html = EmailTemplates.getBaseTemplate(title, content);
     const text = `Hi ${hostName}, ${truckName} is interested in your event on ${eventDate}. Log in to view details: https://mealscout.io/host/dashboard`;
 
@@ -1134,7 +1247,7 @@ export class EmailService {
       to: hostEmail,
       subject: `🚚 New Interest: ${truckName} wants to join your event!`,
       html,
-      text
+      text,
     });
   }
 
@@ -1144,12 +1257,14 @@ export class EmailService {
     truckName: string,
     hostName: string,
     eventDate: string,
-    status: 'accepted' | 'declined'
+    status: "accepted" | "declined",
   ): Promise<boolean> {
-    const isAccepted = status === 'accepted';
-    const title = isAccepted ? `You're In! ${hostName} Accepted Your Request` : `Update on your request for ${hostName}`;
-    
-    const content = isAccepted 
+    const isAccepted = status === "accepted";
+    const title = isAccepted
+      ? `You're In! ${hostName} Accepted Your Request`
+      : `Update on your request for ${hostName}`;
+
+    const content = isAccepted
       ? `
         <p>Hi ${truckName},</p>
         <p>Great news! <strong>${hostName}</strong> has accepted your request to join their event on <strong>${eventDate}</strong>.</p>
@@ -1166,7 +1281,7 @@ export class EmailService {
           <a href="https://mealscout.io/truck/discovery" style="background-color: #e11d48; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Find More Events</a>
         </div>
       `;
-    
+
     const html = EmailTemplates.getBaseTemplate(title, content);
     const text = isAccepted
       ? `Hi ${truckName}, ${hostName} has accepted your request for ${eventDate}!`
@@ -1174,9 +1289,11 @@ export class EmailService {
 
     return await this.sendEmail({
       to: truckEmail,
-      subject: isAccepted ? `🎉 You're In! ${hostName} Accepted Your Request` : `Update on your request for ${hostName}`,
+      subject: isAccepted
+        ? `🎉 You're In! ${hostName} Accepted Your Request`
+        : `Update on your request for ${hostName}`,
       html,
-      text
+      text,
     });
   }
 
@@ -1189,36 +1306,45 @@ export class EmailService {
       weekEnd: string;
       events: { name: string; date: string; accepted: number; max: number }[];
       pendingCount: number;
-      capacityAlerts: { eventName: string; date: string; accepted: number; max: number }[];
-    }
+      capacityAlerts: {
+        eventName: string;
+        date: string;
+        accepted: number;
+        max: number;
+      }[];
+    },
   ): Promise<boolean> {
     const title = `Your MealScout Week at a Glance`;
-    
-    let eventsHtml = '';
+
+    let eventsHtml = "";
     if (data.events.length > 0) {
       eventsHtml = `
         <h3 style="color: #1e293b; margin-top: 20px;">📅 Upcoming Events</h3>
         <ul style="padding-left: 0; list-style: none;">
-          ${data.events.map(e => `
+          ${data.events
+            .map(
+              (e) => `
             <li style="margin-bottom: 12px; padding: 12px; background-color: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
               <div style="font-weight: bold; color: #0f172a;">${e.date} - ${e.name}</div>
               <div style="font-size: 14px; color: #64748b; margin-top: 4px;">
                 Capacity: ${e.accepted} / ${e.max} trucks
               </div>
             </li>
-          `).join('')}
+          `,
+            )
+            .join("")}
         </ul>
       `;
     }
 
-    let alertsHtml = '';
+    let alertsHtml = "";
     if (data.capacityAlerts.length > 0) {
       alertsHtml = `
         <div style="margin-top: 20px; padding: 16px; background-color: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px;">
           <h3 style="color: #92400e; margin-top: 0; font-size: 16px;">⚠️ Capacity Alerts</h3>
           <p style="color: #b45309; font-size: 14px; margin-bottom: 8px;">The following events are at or over capacity:</p>
           <ul style="padding-left: 20px; margin-bottom: 0; color: #92400e;">
-            ${data.capacityAlerts.map(a => `<li>${a.date}: ${a.eventName} (${a.accepted}/${a.max})</li>`).join('')}
+            ${data.capacityAlerts.map((a) => `<li>${a.date}: ${a.eventName} (${a.accepted}/${a.max})</li>`).join("")}
           </ul>
         </div>
       `;
@@ -1227,13 +1353,17 @@ export class EmailService {
     const content = `
       <p>Hi ${data.hostName},</p>
       <p>Here is your summary for the week of <strong>${data.weekStart}</strong> to <strong>${data.weekEnd}</strong>.</p>
-      
-      ${data.pendingCount > 0 ? `
+
+      ${
+        data.pendingCount > 0
+          ? `
         <div style="margin: 20px 0; padding: 16px; background-color: #eff6ff; border-radius: 6px; border-left: 4px solid #3b82f6;">
-          <div style="font-size: 18px; font-weight: bold; color: #1e40af;">${data.pendingCount} Pending Interest${data.pendingCount !== 1 ? 's' : ''}</div>
+          <div style="font-size: 18px; font-weight: bold; color: #1e40af;">${data.pendingCount} Pending Interest${data.pendingCount !== 1 ? "s" : ""}</div>
           <div style="color: #1e3a8a;">Trucks are waiting for your response.</div>
         </div>
-      ` : ''}
+      `
+          : ""
+      }
 
       ${alertsHtml}
       ${eventsHtml}
@@ -1241,7 +1371,7 @@ export class EmailService {
       <div style="text-align: center; margin: 30px 0;">
         <a href="https://mealscout.io/host/dashboard" style="background-color: #e11d48; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Go to Dashboard</a>
       </div>
-      
+
       <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-top: 30px;">
         This is an informational summary. Actions available in your dashboard.
       </p>
@@ -1254,7 +1384,7 @@ export class EmailService {
       to: hostEmail,
       subject: title,
       html,
-      text
+      text,
     });
   }
 
@@ -1274,23 +1404,26 @@ export class EmailService {
     truckEmail: string,
     truckName: string,
     seriesName: string,
-    affectedDates: string[]
+    affectedDates: string[],
   ): Promise<boolean> {
     if (!this.isConfigured) {
-      console.warn('Email service not configured. Skipping series cancellation notification.');
+      console.warn(
+        "Email service not configured. Skipping series cancellation notification.",
+      );
       return false;
     }
 
-    const dateList = affectedDates.length <= 5 
-      ? affectedDates.map(d => `<li>${d}</li>`).join('')
-      : `<li>${affectedDates[0]}</li><li>${affectedDates[1]}</li><li>${affectedDates[2]}</li><li>... and ${affectedDates.length - 3} more dates</li>`;
+    const dateList =
+      affectedDates.length <= 5
+        ? affectedDates.map((d) => `<li>${d}</li>`).join("")
+        : `<li>${affectedDates[0]}</li><li>${affectedDates[1]}</li><li>${affectedDates[2]}</li><li>... and ${affectedDates.length - 3} more dates</li>`;
 
     const title = `Event Series Cancelled: ${seriesName}`;
     const content = `
       <p>Hi ${truckName} Team,</p>
-    
+
       <p>We wanted to let you know that the event series <strong>"${seriesName}"</strong> has been cancelled by the host.</p>
-    
+
       <div style="margin: 20px 0; padding: 16px; background-color: #fef2f2; border-radius: 6px; border-left: 4px solid #ef4444;">
         <div style="font-size: 18px; font-weight: bold; color: #991b1b;">Series Cancelled</div>
         <div style="color: #7f1d1d; margin-top: 8px;">The following dates are affected:</div>
@@ -1298,15 +1431,15 @@ export class EmailService {
           ${dateList}
         </ul>
       </div>
-    
+
       <p>If you had marked interest or accepted any of these events, they have been automatically removed from your schedule.</p>
-    
+
       <p>We appreciate your understanding and look forward to connecting you with other great hosting opportunities!</p>
-    
+
       <div style="text-align: center; margin: 30px 0;">
         <a href="https://mealscout.io/truck/dashboard" style="background-color: #e11d48; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Available Events</a>
       </div>
-    
+
       <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-top: 30px;">
         Questions? Reply to this email or contact support@mealscout.io
       </p>
@@ -1318,7 +1451,7 @@ export class EmailService {
 The event series "${seriesName}" has been cancelled by the host.
 
 Affected dates:
-${affectedDates.join('\n')}
+${affectedDates.join("\n")}
 
 If you had marked interest or accepted any of these events, they have been removed from your schedule.
 
@@ -1328,16 +1461,22 @@ View other available events: https://mealscout.io/truck/dashboard`;
       to: truckEmail,
       subject: title,
       html,
-      text
+      text,
     });
   }
 }
 
-export function renderAdminSignupEmail(user: User, context?: { signupMethod?: string; restaurant?: Restaurant }): { html: string; text: string } {
+export function renderAdminSignupEmail(
+  user: User,
+  context?: { signupMethod?: string; restaurant?: Restaurant },
+): { html: string; text: string } {
   return EmailTemplates.getAdminSignupNotificationTemplate(user, context);
 }
 
-export function renderPasswordResetEmail(user: User, resetUrl: string): { html: string; text: string } {
+export function renderPasswordResetEmail(
+  user: User,
+  resetUrl: string,
+): { html: string; text: string } {
   return EmailTemplates.getPasswordResetTemplate(user, resetUrl);
 }
 

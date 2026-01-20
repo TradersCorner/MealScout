@@ -3889,6 +3889,12 @@ export class DatabaseStorage implements IStorage {
     if (location.mobileOnline !== undefined) {
       updateData.mobileOnline = location.mobileOnline;
     }
+    if (location.city) {
+      updateData.city = location.city;
+    }
+    if (location.state) {
+      updateData.state = location.state;
+    }
 
     const [restaurant] = await db
       .update(restaurants)

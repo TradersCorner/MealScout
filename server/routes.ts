@@ -152,6 +152,7 @@ import incidentManager, {
 } from "./incidentManager";
 import { vacEvaluateRestaurantSignup } from "./vacLite";
 import { broadcastLocationUpdate, broadcastStatusUpdate } from "./websocket";
+import { reverseGeocode } from "./utils/geocoding";
 import { db } from "./db";
 import { and, inArray, eq, sql, gte, desc, like } from "drizzle-orm";
 import { registerStoryCronJobs } from "./storiesCronJobs";
@@ -2019,9 +2020,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const locationData = updateRestaurantLocationSchema.parse(req.body);
+        const resolvedLocation = await reverseGeocode(
+          locationData.latitude,
+          locationData.longitude,
+        );
         const updatedRestaurant = await storage.updateRestaurantLocation(
           restaurantId,
-          locationData,
+          {
+            ...locationData,
+            city: resolvedLocation.city,
+            state: resolvedLocation.state,
+          },
         );
 
         // Broadcast location update via WebSocket

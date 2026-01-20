@@ -24,8 +24,9 @@ const accountSetupSchema = z
   .object({
     password: z.string().min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
-    firstName: z.string().optional(),
-    lastName: z.string().optional(),
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    phone: z.string().min(5, "Phone number is required"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -56,6 +57,7 @@ export default function AccountSetup() {
       confirmPassword: "",
       firstName: "",
       lastName: "",
+      phone: "",
     },
   });
 
@@ -69,6 +71,7 @@ export default function AccountSetup() {
     userEmail?: string;
     firstName?: string;
     lastName?: string;
+    phone?: string;
     error?: string;
   }>({
     queryKey: ["/api/auth/validate-setup-token", token],
@@ -97,6 +100,9 @@ export default function AccountSetup() {
     if (tokenValidation?.lastName) {
       form.setValue("lastName", tokenValidation.lastName);
     }
+    if (tokenValidation?.phone) {
+      form.setValue("phone", tokenValidation.phone);
+    }
   }, [tokenValidation, form]);
 
   const setupMutation = useMutation({
@@ -106,12 +112,13 @@ export default function AccountSetup() {
         password: data.password,
         firstName: data.firstName,
         lastName: data.lastName,
+        phone: data.phone,
       });
     },
     onSuccess: () => {
       setSetupComplete(true);
       toast({
-        title: "Account Setup Complete! 🎉",
+        title: "Account Setup Complete!",
         description: "Your account is ready. You can now log in.",
       });
       // Redirect to login after 2 seconds
@@ -255,7 +262,7 @@ export default function AccountSetup() {
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Welcome to MealScout! 🎉</CardTitle>
+            <CardTitle>Welcome to MealScout!</CardTitle>
             <CardDescription>
               Complete your profile to get started
               {tokenValidation?.userEmail && (
@@ -269,23 +276,50 @@ export default function AccountSetup() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name (Optional)</Label>
+                  <Label htmlFor="firstName">First Name</Label>
                   <Input
                     id="firstName"
                     {...form.register("firstName")}
                     placeholder="John"
                     disabled={setupMutation.isPending}
                   />
+                  {form.formState.errors.firstName && (
+                    <p className="text-sm text-red-600">
+                      {form.formState.errors.firstName.message}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name (Optional)</Label>
+                  <Label htmlFor="lastName">Last Name</Label>
                   <Input
                     id="lastName"
                     {...form.register("lastName")}
                     placeholder="Doe"
                     disabled={setupMutation.isPending}
                   />
+                  {form.formState.errors.lastName && (
+                    <p className="text-sm text-red-600">
+                      {form.formState.errors.lastName.message}
+                    </p>
+                  )}
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">
+                  Phone Number <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="phone"
+                  {...form.register("phone")}
+                  placeholder="(555) 123-4567"
+                  disabled={setupMutation.isPending}
+                />
+                {form.formState.errors.phone && (
+                  <p className="text-sm text-red-600">
+                    {form.formState.errors.phone.message}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -385,3 +419,6 @@ export default function AccountSetup() {
     </div>
   );
 }
+
+
+

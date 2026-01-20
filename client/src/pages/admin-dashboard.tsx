@@ -67,7 +67,7 @@ interface PendingRestaurant {
 }
 
 // Manual User/Host Creation Component (Combined)
-function ManualUserCreation() {
+function ManualUserCreation({ adminUser }: { adminUser?: any }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
@@ -92,8 +92,7 @@ function ManualUserCreation() {
       | "host",
   });
   const [geocoding, setGeocoding] = useState(false);
-  const [tempPassword, setTempPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [inviteSentEmail, setInviteSentEmail] = useState("");
 
   const createUser = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -101,13 +100,11 @@ function ManualUserCreation() {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      setTempPassword(data.tempPassword);
-      setShowPassword(true);
+      setInviteSentEmail(formData.email);
       toast({
         title: "Account Created",
-        description: `${
-          formData.userType === "host" ? "Host" : "User"
-        } has been created with a temporary password.`,
+        description:
+          "Setup link sent. The user will complete their profile and password.",
       });
       // Reset form
       setFormData({
@@ -226,39 +223,17 @@ function ManualUserCreation() {
 
   return (
     <div className="space-y-4">
-      {showPassword && tempPassword && (
-        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg space-y-2">
-          <p className="font-semibold text-yellow-800">
-            Temporary Password Created
-          </p>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 p-2 bg-white rounded font-mono text-sm">
-              {tempPassword}
-            </code>
-            <Button
-              size="sm"
-              onClick={() => {
-                navigator.clipboard.writeText(tempPassword);
-                toast({
-                  title: "Copied!",
-                  description: "Password copied to clipboard",
-                });
-              }}
-            >
-              Copy
-            </Button>
-          </div>
-          <p className="text-sm text-yellow-700">
-            Share this password securely with the user. They'll be required to
-            change it on first login.
+      {inviteSentEmail && (
+        <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-2">
+          <p className="font-semibold text-green-800">Setup Email Sent</p>
+          <p className="text-sm text-green-700">
+            Invite sent to {inviteSentEmail}. The user will finish their profile
+            and set a password from the link.
           </p>
           <Button
             size="sm"
             variant="outline"
-            onClick={() => {
-              setShowPassword(false);
-              setTempPassword("");
-            }}
+            onClick={() => setInviteSentEmail("")}
           >
             Dismiss
           </Button>
@@ -280,6 +255,13 @@ function ManualUserCreation() {
             <option value="host">Host (Parking/Events)</option>
             <option value="event_coordinator">Event Coordinator</option>
             <option value="staff">Staff</option>
+            {(adminUser?.userType === "admin" ||
+              adminUser?.userType === "super_admin") && (
+              <option value="admin">Admin</option>
+            )}
+            {adminUser?.userType === "super_admin" && (
+              <option value="super_admin">Super Admin</option>
+            )}
           </select>
           <p className="text-xs text-muted-foreground mt-1">
             {formData.userType === "food_truck" &&
@@ -317,7 +299,6 @@ function ManualUserCreation() {
             <label className="text-sm font-medium">First Name</label>
             <input
               type="text"
-              required
               value={formData.firstName}
               onChange={(e) =>
                 setFormData({ ...formData, firstName: e.target.value })
@@ -330,7 +311,6 @@ function ManualUserCreation() {
             <label className="text-sm font-medium">Last Name</label>
             <input
               type="text"
-              required
               value={formData.lastName}
               onChange={(e) =>
                 setFormData({ ...formData, lastName: e.target.value })
@@ -344,7 +324,6 @@ function ManualUserCreation() {
           <label className="text-sm font-medium">Phone</label>
           <input
             type="tel"
-            required
             value={formData.phone}
             onChange={(e) =>
               setFormData({ ...formData, phone: e.target.value })
@@ -1684,12 +1663,22 @@ export default function AdminDashboard() {
                             disabled={updateUserType.isPending}
                           >
                             <option value="customer">Customer</option>
+                            <option value="food_truck">Food Truck</option>
                             <option value="restaurant_owner">
                               Restaurant Owner
                             </option>
+                            <option value="host">Host</option>
+                            <option value="event_coordinator">
+                              Event Coordinator
+                            </option>
                             <option value="staff">Staff</option>
-                            <option value="admin">Admin</option>
-                            <option value="super_admin">Super Admin</option>
+                            {(adminUser?.userType === "admin" ||
+                              adminUser?.userType === "super_admin") && (
+                              <option value="admin">Admin</option>
+                            )}
+                            {adminUser?.userType === "super_admin" && (
+                              <option value="super_admin">Super Admin</option>
+                            )}
                           </select>
                         </div>
                         <Button
@@ -2049,12 +2038,12 @@ export default function AdminDashboard() {
                   </CardTitle>
                   <CardDescription>
                     Manually onboard a new user, host, event coordinator,
-                    restaurant owner, or staff member. They'll receive a
-                    temporary password that must be changed on first login.
+                    restaurant owner, or staff member. We'll email a setup link
+                    so they can finish their profile and set a password.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ManualUserCreation />
+                  <ManualUserCreation adminUser={adminUser} />
                 </CardContent>
               </Card>
             </div>

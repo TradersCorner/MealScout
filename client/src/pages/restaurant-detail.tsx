@@ -449,27 +449,50 @@ export default function RestaurantDetailPage() {
             ) : scheduleItems.length > 0 ? (
               <div className="space-y-3">
                 {scheduleItems.map((item: any) => (
-                  <Card key={`${item.type}-${item.event.id}`}>
+                  <Card
+                    key={
+                      item.type === "manual"
+                        ? `manual-${item.manual.id}`
+                        : `${item.type}-${item.event.id}`
+                    }
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
-                        <div>
-                          <p className="font-semibold text-foreground">
-                            {new Date(item.event.date).toLocaleDateString()} -{" "}
-                            {item.event.startTime} - {item.event.endTime}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {item.host.businessName} - {item.host.address}
-                          </p>
-                          {item.slotType && (
-                            <p className="text-xs text-muted-foreground">
-                              Slots: {formatSlotSummary(String(item.slotType))}
+                        {item.type === "manual" ? (
+                          <div>
+                            <p className="font-semibold text-foreground">
+                              {new Date(item.manual.date).toLocaleDateString()}{" "}
+                              - {item.manual.startTime} - {item.manual.endTime}
                             </p>
-                          )}
-                        </div>
+                            <p className="text-sm text-muted-foreground">
+                              {item.manual.locationName
+                                ? `${item.manual.locationName} - `
+                                : ""}
+                              {item.manual.address}
+                            </p>
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="font-semibold text-foreground">
+                              {new Date(item.event.date).toLocaleDateString()} -{" "}
+                              {item.event.startTime} - {item.event.endTime}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {item.host.businessName} - {item.host.address}
+                            </p>
+                            {item.slotType && (
+                              <p className="text-xs text-muted-foreground">
+                                Slots: {formatSlotSummary(String(item.slotType))}
+                              </p>
+                            )}
+                          </div>
+                        )}
                         <Badge variant="secondary">
-                          {item.type === "booking"
-                            ? "Booked"
-                            : "Accepted"}
+                          {item.type === "manual"
+                            ? "Manual"
+                            : item.type === "booking"
+                              ? "Booked"
+                              : "Accepted"}
                         </Badge>
                       </div>
                     </CardContent>

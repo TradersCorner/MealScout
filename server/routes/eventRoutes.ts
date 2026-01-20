@@ -34,7 +34,7 @@ export function registerEventRoutes(app: Express) {
   });
 
   // Parking Pass listings (paid parking spots only)
-  app.get("/api/parking-pass", isAuthenticated, async (req: any, res) => {
+  app.get("/api/parking-pass", async (req: any, res) => {
     try {
       const events = await storage.getAllUpcomingEvents();
       res.json(events.filter((event) => event.requiresPayment));

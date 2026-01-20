@@ -69,6 +69,26 @@ export async function setupUnifiedAuth(app: Express) {
   };
   const baseUrl = getBaseUrl().replace(/\/+$/, ""); // Remove trailing slashes to prevent double slashes in callback URLs
 
+  const sendEmailVerification = async (user: User, req: any) => {
+    if (!user.email) return;
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await storage.createEmailVerificationToken({
+      userId: user.id,
+      tokenHash,
+      expiresAt,
+      requestIp: req.ip || req.connection.remoteAddress || undefined,
+      userAgent: req.get("User-Agent") || undefined,
+    });
+
+    const verifyUrl = `${
+      process.env.PUBLIC_BASE_URL || "http://localhost:5000"
+    }/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+    await emailService.sendEmailVerificationEmail(user, verifyUrl);
+  };
+
   // Set up passport serialization for email/password auth
   passport.serializeUser((user: any, done) => {
     done(null, user.id);
@@ -789,12 +809,10 @@ export async function setupUnifiedAuth(app: Express) {
         "customer",
       );
 
-      // Send welcome email asynchronously (don't block registration flow)
-      emailService
-        .sendWelcomeEmail(user)
-        .catch((err) =>
-          console.error("Failed to send customer welcome email:", err),
-        );
+      // Send email verification first, then welcome after verification
+      sendEmailVerification(user, req).catch((err) =>
+        console.error("Failed to send email verification:", err),
+      );
       // Send admin signup notification with context asynchronously
       emailService
         .sendAdminSignupNotification(user, {
@@ -885,12 +903,10 @@ export async function setupUnifiedAuth(app: Express) {
         "restaurant_owner",
       );
 
-      // Send welcome email asynchronously (don't block registration flow)
-      emailService
-        .sendWelcomeEmail(user)
-        .catch((err) =>
-          console.error("Failed to send restaurant owner welcome email:", err),
-        );
+      // Send email verification first, then welcome after verification
+      sendEmailVerification(user, req).catch((err) =>
+        console.error("Failed to send email verification:", err),
+      );
       // Send admin signup notification with context asynchronously
       emailService
         .sendAdminSignupNotification(user, {
@@ -1352,6 +1368,7 @@ export async function setupUnifiedAuth(app: Express) {
         userEmail: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        phone: user.phone,
       });
     } catch (error) {
       console.error("Token validation error:", error);
@@ -1362,12 +1379,12 @@ export async function setupUnifiedAuth(app: Express) {
   // Complete account setup with token
   app.post("/api/auth/complete-setup", async (req, res) => {
     try {
-      const { token, password, firstName, lastName } = req.body;
+      const { token, password, firstName, lastName, phone } = req.body;
 
-      if (!token || !password) {
+      if (!token || !password || !phone || !firstName || !lastName) {
         return res
           .status(400)
-          .json({ error: "Token and password are required" });
+          .json({ error: "Profile details and password are required" });
       }
 
       if (password.length < 8) {
@@ -1411,19 +1428,65 @@ export async function setupUnifiedAuth(app: Express) {
       const passwordHash = await bcrypt.hash(password, 12);
 
       // Update user with password and optional name fields
-      const updateData: any = { passwordHash };
-      if (firstName) updateData.firstName = firstName;
-      if (lastName) updateData.lastName = lastName;
+      const updateData: any = {
+        passwordHash,
+        firstName,
+        lastName,
+        phone,
+      };
 
       await storage.updateUser(user.id, updateData);
 
       // Mark token as used
       await storage.markAccountSetupTokenUsed(setupToken.id);
 
+      // Send email verification after profile completion
+      sendEmailVerification(user, req).catch((err) =>
+        console.error("Failed to send email verification:", err),
+      );
+
       res.json({ message: "Account setup completed successfully" });
     } catch (error) {
       console.error("Account setup error:", error);
       res.status(500).json({ error: "Unable to complete account setup" });
+    }
+  });
+
+  // Verify email address
+  app.get("/api/auth/verify-email", async (req, res) => {
+    try {
+      const { token } = req.query;
+      if (!token || typeof token !== "string") {
+        return res.status(400).json({ error: "Invalid token" });
+      }
+
+      const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+      const verificationToken =
+        await storage.getEmailVerificationTokenByTokenHash(tokenHash);
+
+      if (!verificationToken) {
+        return res.status(400).json({ error: "Invalid or expired token" });
+      }
+
+      const user = await storage.getUser(verificationToken.userId);
+      if (!user) {
+        return res.status(400).json({ error: "User not found" });
+      }
+
+      await storage.updateUser(user.id, { emailVerified: true });
+      await storage.markEmailVerificationTokenUsed(verificationToken.id);
+
+      emailService.sendWelcomeEmail(user).catch((err) =>
+        console.error("Failed to send welcome email after verification:", err),
+      );
+
+      const redirectUrl = `${
+        process.env.PUBLIC_BASE_URL || "http://localhost:5000"
+      }/login?verified=1`;
+      res.redirect(redirectUrl);
+    } catch (error) {
+      console.error("Email verification error:", error);
+      res.status(500).json({ error: "Unable to verify email" });
     }
   });
 }

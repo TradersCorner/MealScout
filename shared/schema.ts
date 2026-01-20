@@ -631,6 +631,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   addresses: many(userAddresses),
   passwordResetTokens: many(passwordResetTokens),
   accountSetupTokens: many(accountSetupTokens),
+  emailVerificationTokens: many(emailVerificationTokens),
   apiKeys: many(apiKeys),
 }));
 
@@ -963,6 +964,7 @@ export const restaurantsRelations = relations(restaurants, ({ one, many }) => ({
   foodTruckLocations: many(foodTruckLocations),
   favorites: many(restaurantFavorites),
   recommendations: many(restaurantRecommendations),
+  manualSchedules: many(truckManualSchedules),
 }));
 
 export const dealsRelations = relations(deals, ({ one, many }) => ({
@@ -2009,6 +2011,31 @@ export const hosts = pgTable(
   ],
 );
 
+// Email verification tokens for new accounts
+export const emailVerificationTokens = pgTable(
+  "email_verification_tokens",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    usedAt: timestamp("used_at"),
+    requestIp: varchar("request_ip"),
+    userAgent: varchar("user_agent"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_email_verification_user").on(table.userId, table.createdAt),
+    index("idx_email_verification_token").on(table.tokenHash),
+    index("idx_email_verification_expires").on(table.expiresAt),
+    index("idx_email_verification_used").on(table.usedAt),
+  ],
+);
+
 export const hostBlackoutDates = pgTable(
   "host_blackout_dates",
   {
@@ -2226,6 +2253,33 @@ export const eventBookings = pgTable(
     index("idx_bookings_created").on(table.createdAt),
     // One booking per truck per event
     unique("uq_bookings_event_truck").on(table.eventId, table.truckId),
+  ],
+);
+
+// Manual schedule entries for food trucks (non-MealScout spots)
+export const truckManualSchedules = pgTable(
+  "truck_manual_schedules",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    truckId: varchar("truck_id")
+      .notNull()
+      .references(() => restaurants.id, { onDelete: "cascade" }),
+    date: timestamp("date").notNull(),
+    startTime: varchar("start_time").notNull(),
+    endTime: varchar("end_time").notNull(),
+    locationName: varchar("location_name"),
+    address: varchar("address").notNull(),
+    city: varchar("city"),
+    state: varchar("state"),
+    notes: text("notes"),
+    isPublic: boolean("is_public").default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_truck_manual_schedule_truck").on(table.truckId, table.date),
   ],
 );
 
@@ -2800,6 +2854,16 @@ export const eventBookingsRelations = relations(eventBookings, ({ one }) => ({
   }),
 }));
 
+export const truckManualSchedulesRelations = relations(
+  truckManualSchedules,
+  ({ one }) => ({
+    truck: one(restaurants, {
+      fields: [truckManualSchedules.truckId],
+      references: [restaurants.id],
+    }),
+  }),
+);
+
 export const referralsRelations = relations(referrals, ({ one }) => ({
   affiliateUser: one(users, {
     fields: [referrals.affiliateUserId],
@@ -3214,6 +3278,31 @@ export const insertEventBookingSchema = createInsertSchema(eventBookings).omit({
 
 export type EventBooking = typeof eventBookings.$inferSelect;
 export type InsertEventBooking = z.infer<typeof insertEventBookingSchema>;
+
+export const insertTruckManualScheduleSchema = createInsertSchema(
+  truckManualSchedules,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type TruckManualSchedule = typeof truckManualSchedules.$inferSelect;
+export type InsertTruckManualSchedule = z.infer<
+  typeof insertTruckManualScheduleSchema
+>;
+
+export const insertEmailVerificationTokenSchema = createInsertSchema(
+  emailVerificationTokens,
+).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type EmailVerificationToken = typeof emailVerificationTokens.$inferSelect;
+export type InsertEmailVerificationToken = z.infer<
+  typeof insertEmailVerificationTokenSchema
+>;
 
 // Telemetry: Generic event tracking for analytics
 export const telemetryEvents = pgTable(

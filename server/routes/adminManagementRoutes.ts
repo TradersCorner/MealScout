@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import Stripe from "stripe";
 import { storage } from "../storage";
-import { isAuthenticated, isAdmin } from "../unifiedAuth";
+import { isAuthenticated, isStaffOrAdmin } from "../unifiedAuth";
 import { sanitizeUser, sanitizeUsers } from "../utils/sanitize";
 import { sendAccountSetupInvite } from "../utils/accountSetup";
 
@@ -15,7 +15,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.post(
     "/api/admin/users/create",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         const {
@@ -34,20 +34,29 @@ export function registerAdminManagementRoutes(app: Express) {
           userType,
         } = req.body;
 
+        if (req.user?.userType === "staff") {
+          if (userType === "admin" || userType === "super_admin") {
+            return res.status(403).json({
+              message: "Staff cannot create admin or super admin accounts",
+            });
+          }
+        }
+
         // Validate required fields
-        if (!email || !firstName || !lastName || !phone || !userType) {
+        const normalizedEmail = email?.trim().toLowerCase();
+
+        if (!normalizedEmail || !userType) {
           return res.status(400).json({
-            message:
-              "Email, firstName, lastName, phone, and userType are required",
+            message: "Email and userType are required",
           });
         }
 
         // Create user account (invite link flow)
         const user = await storage.createUserInvite({
-          email,
-          firstName,
-          lastName,
-          phone,
+          email: normalizedEmail,
+          firstName: firstName?.trim() || null,
+          lastName: lastName?.trim() || null,
+          phone: phone?.trim() || null,
           userType,
         });
 
@@ -147,7 +156,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.get(
     "/api/admin/stats",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         const stats = await storage.getAdminStats();
@@ -163,7 +172,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.post(
     "/api/admin/subscriptions/sync",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         if (!stripe) {
@@ -266,7 +275,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.get(
     "/api/admin/restaurants/pending",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         const restaurants = await storage.getPendingRestaurants();
@@ -283,7 +292,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.post(
     "/api/admin/restaurants/:id/approve",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         await storage.approveRestaurant(req.params.id);
@@ -298,7 +307,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.delete(
     "/api/admin/restaurants/:id",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         await storage.deleteRestaurant(req.params.id);
@@ -313,7 +322,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.get(
     "/api/admin/users",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         const users = await storage.getAllUsers();
@@ -328,7 +337,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.patch(
     "/api/admin/users/:id/status",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         const { isActive } = req.body;
@@ -344,7 +353,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.patch(
     "/api/admin/users/:id/type",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         const { userType } = req.body;
@@ -375,7 +384,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.delete(
     "/api/admin/users/:id",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         await storage.deleteUser(req.params.id);
@@ -390,7 +399,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.get(
     "/api/admin/users/:userId/addresses",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         const addresses = await storage.getUserAddresses(req.params.userId);
@@ -405,7 +414,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.get(
     "/api/admin/deals",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         const deals = await storage.getAllDealsWithRestaurants();
@@ -420,7 +429,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.get(
     "/api/admin/deals/:dealId/stats",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         const dealId = req.params.dealId;
@@ -447,7 +456,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.delete(
     "/api/admin/deals/:dealId",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         await storage.deleteDeal(req.params.dealId);
@@ -462,7 +471,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.post(
     "/api/admin/deals/:dealId/clone",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         const clonedDeal = await storage.duplicateDeal(req.params.dealId);
@@ -477,7 +486,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.patch(
     "/api/admin/deals/:dealId/status",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         const { isActive } = req.body;
@@ -493,7 +502,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.patch(
     "/api/admin/deals/:dealId/extend",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         const { days } = req.body;
@@ -528,7 +537,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.get(
     "/api/admin/verifications",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         const { status } = req.query;
@@ -555,7 +564,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.post(
     "/api/admin/verifications/:id/approve",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         const user = req.user;
@@ -574,7 +583,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.post(
     "/api/admin/verifications/:id/reject",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         const user = req.user;
@@ -602,7 +611,7 @@ export function registerAdminManagementRoutes(app: Express) {
   app.get(
     "/api/admin/oauth/status",
     isAuthenticated,
-    isAdmin,
+    isStaffOrAdmin,
     async (req: any, res) => {
       try {
         const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:5000";

@@ -182,6 +182,15 @@ type EventLocation = {
   hostAddress?: string | null;
 };
 
+type ParkingPassLocation = {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+  host: HostLocation & { city?: string | null; state?: string | null };
+};
+
 type MapLocationsResponse = {
   hostLocations: HostLocation[];
   eventLocations: EventLocation[];
@@ -216,6 +225,20 @@ const eventIcon = new L.Icon({
   iconSize: [30, 30],
   iconAnchor: [15, 30],
   popupAnchor: [0, -26],
+});
+
+const parkingPassIcon = new L.Icon({
+  iconUrl:
+    "data:image/svg+xml;base64," +
+    btoa(`
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="15" cy="15" r="13" fill="#F97316" stroke="white" stroke-width="3"/>
+        <path d="M12 8h5a4 4 0 0 1 0 8h-5v6h-3V8h3zm0 3v3h4a1.5 1.5 0 0 0 0-3h-4z" fill="white"/>
+      </svg>
+    `),
+  iconSize: [30, 30],
+  iconAnchor: [15, 30],
+  popupAnchor: [0, -24],
 });
 
 const liveTruckIcon = new L.Icon({
@@ -286,6 +309,9 @@ export default function MapPage() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [hostCoords, setHostCoords] = useState<Record<string, GeoPoint>>({});
   const [eventCoords, setEventCoords] = useState<Record<string, GeoPoint>>({});
+  const [parkingCoords, setParkingCoords] = useState<Record<string, GeoPoint>>(
+    {},
+  );
   const [geocodingQueue, setGeocodingQueue] = useState<string[]>([]);
 
   // Get user location
@@ -389,6 +415,16 @@ export default function MapPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: parkingPassLocations = [] } = useQuery<ParkingPassLocation[]>({
+    queryKey: ["/api/parking-pass"],
+    queryFn: async () => {
+      const res = await fetch("/api/parking-pass");
+      if (!res.ok) throw new Error("Failed to load parking pass listings");
+      return res.json();
+    },
+    staleTime: 2 * 60 * 1000,
+  });
+
   // Build a geocoding work list for any host/event without coordinates yet
   useEffect(() => {
     const queue: string[] = [];
@@ -408,11 +444,19 @@ export default function MapPage() {
       }
     });
 
+    parkingPassLocations.forEach((event) => {
+      if (!parkingCoords[event.id] && event.host?.address) {
+        queue.push(`parking:${event.id}`);
+        addressByKey[`parking:${event.id}`] = event.host.address;
+      }
+    });
+
     if (queue.length) {
       setGeocodingQueue(queue);
       (async () => {
         const newHostCoords: Record<string, GeoPoint> = {};
         const newEventCoords: Record<string, GeoPoint> = {};
+        const newParkingCoords: Record<string, GeoPoint> = {};
 
         for (const key of queue) {
           const address = addressByKey[key];
@@ -423,6 +467,8 @@ export default function MapPage() {
             newHostCoords[key.replace("host:", "")] = point;
           } else if (key.startsWith("event:")) {
             newEventCoords[key.replace("event:", "")] = point;
+          } else if (key.startsWith("parking:")) {
+            newParkingCoords[key.replace("parking:", "")] = point;
           }
           // small delay to avoid hammering the free geocoder
           await new Promise((r) => setTimeout(r, 150));
@@ -434,10 +480,13 @@ export default function MapPage() {
         if (Object.keys(newEventCoords).length) {
           setEventCoords((prev) => ({ ...prev, ...newEventCoords }));
         }
+        if (Object.keys(newParkingCoords).length) {
+          setParkingCoords((prev) => ({ ...prev, ...newParkingCoords }));
+        }
         setGeocodingQueue([]);
       })();
     }
-  }, [mapLocations, hostCoords, eventCoords]);
+  }, [mapLocations, parkingPassLocations, hostCoords, eventCoords, parkingCoords]);
 
   const handleCenterOnUser = () => {
     if (userLocation) {
@@ -468,6 +517,7 @@ export default function MapPage() {
   const liveTruckPins = liveTrucks.length;
   const hostPins = mapLocations?.hostLocations?.length || 0;
   const eventPins = mapLocations?.eventLocations?.length || 0;
+  const parkingPins = parkingPassLocations.length;
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
@@ -486,13 +536,16 @@ export default function MapPage() {
               {isLocating
                 ? "Finding nearby food trucks..."
                 : hasLocation && liveTruckPins > 0
-                ? "Food trucks and hosts near you"
+                ? "Food trucks and parking spots near you"
                 : hasLocation && hasDeals
                 ? "Deals near you"
                 : hasLocation &&
                   !hasDeals &&
-                  (hostPins > 0 || eventPins > 0 || liveTruckPins > 0)
-                ? "Hosts and events near you"
+                  (hostPins > 0 ||
+                    eventPins > 0 ||
+                    liveTruckPins > 0 ||
+                    parkingPins > 0)
+                ? "Hosts and parking spots near you"
                 : hasLocation && !hasDeals
                 ? "No food trucks nearby right now"
                 : "Set your location to see trucks nearby"}
@@ -733,6 +786,59 @@ export default function MapPage() {
                           }}
                         >
                           View & book slot
+                        </Button>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+
+              {/* Parking Pass Markers */}
+              {parkingPassLocations.map((event) => {
+                const coords =
+                  parkingCoords[event.id] ||
+                  (event.host?.latitude && event.host?.longitude
+                    ? {
+                        lat: Number(event.host.latitude),
+                        lng: Number(event.host.longitude),
+                      }
+                    : null);
+                if (!coords) return null;
+                return (
+                  <Marker
+                    key={`parking-${event.id}`}
+                    position={[coords.lat, coords.lng]}
+                    icon={parkingPassIcon}
+                  >
+                    <Popup>
+                      <div className="min-w-52 space-y-1 rounded-xl bg-orange-600 text-white p-3 shadow-lg">
+                        <div className="font-semibold text-sm">
+                          Parking Pass
+                        </div>
+                        <div className="text-xs text-orange-100">
+                          {event.host?.businessName}
+                        </div>
+                        <div className="text-xs text-orange-100">
+                          {event.host?.address}
+                        </div>
+                        <div className="text-xs text-orange-100">
+                          {new Date(event.date).toLocaleDateString()} -{" "}
+                          {event.startTime === "00:00" &&
+                          event.endTime === "23:59"
+                            ? "Any time"
+                            : `${event.startTime} - ${event.endTime}`}
+                        </div>
+                        <Button
+                          size="sm"
+                          className="w-full mt-2 bg-white text-orange-700 hover:bg-orange-50"
+                          onClick={() => {
+                            const day = new Date(event.date)
+                              .toISOString()
+                              .split("T")[0];
+                            window.location.href = `/parking-pass?date=${day}`;
+                          }}
+                        >
+                          View spots
                         </Button>
                       </div>
                     </Popup>

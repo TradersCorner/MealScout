@@ -143,6 +143,7 @@ export default function Navigation() {
   const sharedNavItems: NavItem[] = [
     { path: "/", icon: UtensilsCrossed, label: "Food" },
     { path: "/map", icon: MapPin, label: "Map" },
+    { path: "/video", icon: Clapperboard, label: "Video" },
     // If logged out, send users to the auth funnel instead of a dead profile page
     {
       path: user ? "/profile" : "/login",
@@ -152,12 +153,10 @@ export default function Navigation() {
   ];
 
   const customerExtras: NavItem[] = [
-    { path: "/video", icon: Clapperboard, label: "Video" },
     { path: "/favorites", icon: Heart, label: "Favorites" },
   ];
 
   const unauthenticatedExtras: NavItem[] = [
-    { path: "/video", icon: Clapperboard, label: "Video" },
     { path: "/customer-signup", icon: UserPlus, label: "Create Account" },
   ];
 

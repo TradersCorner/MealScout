@@ -565,9 +565,9 @@ router.post("/users/create", isAdmin, async (req: any, res) => {
     const { email, firstName, lastName, phone, userType, tempPassword } =
       req.body;
 
-    if (!email || !firstName || !lastName || !userType) {
+    if (!email || !userType) {
       return res.status(400).json({
-        message: "Email, firstName, lastName, and userType are required",
+        message: "Email and userType are required",
       });
     }
 
@@ -953,9 +953,9 @@ router.post("/users/create", isAdmin, async (req: any, res) => {
     const { email, firstName, lastName, phone, userType, tempPassword } =
       req.body;
 
-    if (!email || !firstName || !lastName || !userType) {
+    if (!email || !userType) {
       return res.status(400).json({
-        message: "Email, firstName, lastName, and userType are required",
+        message: "Email and userType are required",
       });
     }
 

@@ -16,6 +16,7 @@ import {
   passwordResetTokens,
   phoneVerificationTokens,
   accountSetupTokens,
+  emailVerificationTokens,
   dealFeedback,
   apiKeys,
   type User,
@@ -52,6 +53,8 @@ import {
   type InsertPhoneVerificationToken,
   type AccountSetupToken,
   type InsertAccountSetupToken,
+  type EmailVerificationToken,
+  type InsertEmailVerificationToken,
   type DealFeedback,
   type InsertDealFeedback,
   type GoogleUserData,
@@ -68,6 +71,9 @@ import {
   hostBlackoutDates,
   type HostBlackoutDate,
   type InsertHostBlackoutDate,
+  truckManualSchedules,
+  type TruckManualSchedule,
+  type InsertTruckManualSchedule,
   type Event,
   type InsertEvent,
   type EventSeries,
@@ -212,6 +218,11 @@ export interface IStorage {
         | "stripeCustomerId"
         | "stripeSubscriptionId"
         | "subscriptionSignupDate"
+        | "emailVerified"
+        | "firstName"
+        | "lastName"
+        | "phone"
+        | "passwordHash"
       >
     >
   ): Promise<User>;
@@ -238,6 +249,14 @@ export interface IStorage {
     restaurantId: string,
     userId: string
   ): Promise<boolean>;
+  createTruckManualSchedule(
+    schedule: InsertTruckManualSchedule
+  ): Promise<TruckManualSchedule>;
+  getTruckManualSchedules(truckId: string): Promise<TruckManualSchedule[]>;
+  deleteTruckManualSchedule(
+    scheduleId: string,
+    truckId?: string
+  ): Promise<void>;
 
   // Deal operations
   createDeal(deal: InsertDeal): Promise<Deal>;
@@ -551,6 +570,17 @@ export interface IStorage {
   markAccountSetupTokenUsed(id: string): Promise<AccountSetupToken>;
   deleteUserSetupTokens(userId: string): Promise<void>;
   deleteExpiredSetupTokens(): Promise<number>;
+
+  // Email verification token operations
+  createEmailVerificationToken(
+    tokenData: InsertEmailVerificationToken
+  ): Promise<EmailVerificationToken>;
+  getEmailVerificationTokenByTokenHash(
+    tokenHash: string
+  ): Promise<EmailVerificationToken | undefined>;
+  markEmailVerificationTokenUsed(
+    id: string
+  ): Promise<EmailVerificationToken>;
 
   // API Key operations
   getActiveApiKeys(): Promise<any[]>;
@@ -918,6 +948,10 @@ export class DatabaseStorage implements IStorage {
         | "stripeSubscriptionId"
         | "passwordHash"
         | "subscriptionSignupDate"
+        | "emailVerified"
+        | "firstName"
+        | "lastName"
+        | "phone"
       >
     >
   ): Promise<User> {
@@ -1694,6 +1728,43 @@ export class DatabaseStorage implements IStorage {
     return restaurant?.ownerId === userId;
   }
 
+  async createTruckManualSchedule(
+    schedule: InsertTruckManualSchedule
+  ): Promise<TruckManualSchedule> {
+    const [created] = await db
+      .insert(truckManualSchedules)
+      .values({
+        ...schedule,
+        updatedAt: new Date(),
+      })
+      .returning();
+    return created;
+  }
+
+  async getTruckManualSchedules(
+    truckId: string
+  ): Promise<TruckManualSchedule[]> {
+    return await db
+      .select()
+      .from(truckManualSchedules)
+      .where(eq(truckManualSchedules.truckId, truckId))
+      .orderBy(asc(truckManualSchedules.date));
+  }
+
+  async deleteTruckManualSchedule(
+    scheduleId: string,
+    truckId?: string
+  ): Promise<void> {
+    const whereClause = truckId
+      ? and(
+          eq(truckManualSchedules.id, scheduleId),
+          eq(truckManualSchedules.truckId, truckId)
+        )
+      : eq(truckManualSchedules.id, scheduleId);
+
+    await db.delete(truckManualSchedules).where(whereClause);
+  }
+
   // Deal operations
   async createDeal(deal: InsertDeal): Promise<Deal> {
     const [newDeal] = await db.insert(deals).values(deal).returning();
@@ -1726,7 +1797,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteDeal(id: string): Promise<void> {
-    await db.delete(deals).where(eq(deals.id, id));
+    await db.transaction(async (tx: any) => {
+      await tx.delete(dealClaims).where(eq(dealClaims.dealId, id));
+      await tx.delete(dealViews).where(eq(dealViews.dealId, id));
+      await tx.delete(dealFeedback).where(eq(dealFeedback.dealId, id));
+      await tx.delete(deals).where(eq(deals.id, id));
+    });
   }
 
   async duplicateDeal(id: string): Promise<Deal> {
@@ -3803,15 +3879,20 @@ export class DatabaseStorage implements IStorage {
     restaurantId: string,
     location: UpdateRestaurantLocation
   ): Promise<Restaurant> {
+    const updateData: any = {
+      currentLatitude: location.latitude.toString(),
+      currentLongitude: location.longitude.toString(),
+      lastBroadcastAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    if (location.mobileOnline !== undefined) {
+      updateData.mobileOnline = location.mobileOnline;
+    }
+
     const [restaurant] = await db
       .update(restaurants)
-      .set({
-        currentLatitude: location.latitude.toString(),
-        currentLongitude: location.longitude.toString(),
-        mobileOnline: location.mobileOnline,
-        lastBroadcastAt: new Date(),
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(restaurants.id, restaurantId))
       .returning();
     return restaurant;
@@ -4617,7 +4698,29 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Cannot delete super admin account");
     }
 
-    await db.delete(users).where(eq(users.id, userId));
+    try {
+      await db.delete(users).where(eq(users.id, userId));
+    } catch (error) {
+      const deletedEmail = `deleted+${userId}@mealscout.invalid`;
+      await db
+        .update(users)
+        .set({
+          isDisabled: true,
+          email: deletedEmail,
+          firstName: null,
+          lastName: null,
+          phone: null,
+          passwordHash: null,
+          facebookId: null,
+          facebookAccessToken: null,
+          googleId: null,
+          googleAccessToken: null,
+          tradescoutId: null,
+          profileImageUrl: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId));
+    }
   }
 
   // Password reset token operations
@@ -4812,6 +4915,44 @@ export class DatabaseStorage implements IStorage {
 
     // Return the number of deleted rows
     return result.rowCount || 0;
+  }
+
+  // Email verification token operations
+  async createEmailVerificationToken(
+    tokenData: InsertEmailVerificationToken
+  ): Promise<EmailVerificationToken> {
+    const [token] = await db
+      .insert(emailVerificationTokens)
+      .values(tokenData)
+      .returning();
+    return token;
+  }
+
+  async getEmailVerificationTokenByTokenHash(
+    tokenHash: string
+  ): Promise<EmailVerificationToken | undefined> {
+    const [token] = await db
+      .select()
+      .from(emailVerificationTokens)
+      .where(
+        and(
+          eq(emailVerificationTokens.tokenHash, tokenHash),
+          gte(emailVerificationTokens.expiresAt, new Date()),
+          isNull(emailVerificationTokens.usedAt)
+        )
+      );
+    return token;
+  }
+
+  async markEmailVerificationTokenUsed(
+    id: string
+  ): Promise<EmailVerificationToken> {
+    const [token] = await db
+      .update(emailVerificationTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(emailVerificationTokens.id, id))
+      .returning();
+    return token;
   }
 
   // API Key operations

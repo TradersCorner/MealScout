@@ -2398,8 +2398,8 @@ export default function RestaurantOwnerDashboard() {
                   </div>
 
                   {/* Current Restaurant Location */}
-                  {currentRestaurant?.latitude &&
-                    currentRestaurant?.longitude && (
+                  {currentRestaurant?.currentLatitude &&
+                    currentRestaurant?.currentLongitude && (
                       <div className="text-sm">
                         <span className="text-muted-foreground">
                           Current Location:
@@ -2408,9 +2408,8 @@ export default function RestaurantOwnerDashboard() {
                           className="font-medium"
                           data-testid="text-restaurant-location"
                         >
-                          {currentRestaurant.city || "Unknown Location"}
-                          {currentRestaurant.state &&
-                            `, ${currentRestaurant.state}`}
+                          {Number(currentRestaurant.currentLatitude).toFixed(5)},{" "}
+                          {Number(currentRestaurant.currentLongitude).toFixed(5)}
                         </p>
                       </div>
                     )}

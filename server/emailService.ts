@@ -964,6 +964,28 @@ export class EmailService {
     return this.sendEmail({ to, subject, html, text });
   }
 
+  async sendEmailVerificationEmail(
+    user: User,
+    verifyUrl: string
+  ): Promise<boolean> {
+    const subject = "Verify your MealScout email";
+    const html = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
+        <h2 style="margin-bottom: 8px;">Verify your email</h2>
+        <p>Thanks for joining MealScout. Please verify your email to activate your account.</p>
+        <p style="margin: 16px 0;">
+          <a href="${verifyUrl}" style="background: #f97316; color: #fff; text-decoration: none; padding: 12px 16px; border-radius: 8px; display: inline-block;">
+            Verify Email
+          </a>
+        </p>
+        <p>If the button does not work, paste this link into your browser:</p>
+        <p style="word-break: break-all; color: #f97316;">${verifyUrl}</p>
+      </div>
+    `;
+    const text = `Verify your MealScout email: ${verifyUrl}`;
+    return this.sendEmail({ to: user.email || "", subject, html, text });
+  }
+
   // Send welcome email based on user type
   async sendWelcomeEmail(user: User): Promise<boolean> {
     let template: { html: string; text: string };

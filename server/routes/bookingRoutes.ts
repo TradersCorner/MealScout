@@ -258,7 +258,127 @@ export function registerBookingRoutes(app: Express) {
     },
   );
 
-  // Public profile schedule (booked + accepted events)
+  // Truck manual schedule (public or owner view)
+  app.get(
+    "/api/trucks/:truckId/manual-schedule",
+    async (req: any, res) => {
+      try {
+        const { truckId } = req.params;
+        const [truck] = await db
+          .select({ id: restaurants.id })
+          .from(restaurants)
+          .where(eq(restaurants.id, truckId));
+
+        if (!truck) {
+          return res.status(404).json({ message: "Truck not found" });
+        }
+
+        let includePrivate = false;
+        if (req.isAuthenticated?.()) {
+          includePrivate = await storage.verifyRestaurantOwnership(
+            truckId,
+            req.user.id
+          );
+        }
+
+        const entries = await storage.getTruckManualSchedules(truckId);
+        const filtered = includePrivate
+          ? entries
+          : entries.filter((entry) => entry.isPublic);
+
+        res.json(filtered);
+      } catch (error) {
+        console.error("Error fetching manual schedule:", error);
+        res.status(500).json({ message: "Failed to fetch schedule" });
+      }
+    }
+  );
+
+  // Create manual schedule entry (owner only)
+  app.post(
+    "/api/trucks/:truckId/manual-schedule",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { truckId } = req.params;
+        const isAuthorized = await storage.verifyRestaurantOwnership(
+          truckId,
+          req.user.id
+        );
+        if (!isAuthorized) {
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only update schedules for trucks you own",
+          });
+        }
+
+        const schema = z.object({
+          date: z.string().min(1),
+          startTime: z.string().min(1),
+          endTime: z.string().min(1),
+          address: z.string().min(1),
+          locationName: z.string().optional(),
+          city: z.string().optional(),
+          state: z.string().optional(),
+          notes: z.string().optional(),
+          isPublic: z.boolean().optional(),
+        });
+
+        const parsed = schema.parse(req.body);
+        const parsedDate = new Date(`${parsed.date}T00:00:00`);
+        if (Number.isNaN(parsedDate.getTime())) {
+          return res.status(400).json({ message: "Invalid date" });
+        }
+
+        const created = await storage.createTruckManualSchedule({
+          truckId,
+          date: parsedDate,
+          startTime: parsed.startTime,
+          endTime: parsed.endTime,
+          locationName: parsed.locationName || null,
+          address: parsed.address,
+          city: parsed.city || null,
+          state: parsed.state || null,
+          notes: parsed.notes || null,
+          isPublic: parsed.isPublic ?? true,
+        });
+
+        res.json(created);
+      } catch (error) {
+        console.error("Error creating manual schedule:", error);
+        res.status(500).json({ message: "Failed to create schedule entry" });
+      }
+    }
+  );
+
+  // Delete manual schedule entry (owner only)
+  app.delete(
+    "/api/trucks/:truckId/manual-schedule/:scheduleId",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { truckId, scheduleId } = req.params;
+        const isAuthorized = await storage.verifyRestaurantOwnership(
+          truckId,
+          req.user.id
+        );
+        if (!isAuthorized) {
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only update schedules for trucks you own",
+          });
+        }
+
+        await storage.deleteTruckManualSchedule(scheduleId, truckId);
+        res.json({ message: "Schedule entry deleted" });
+      } catch (error) {
+        console.error("Error deleting manual schedule:", error);
+        res.status(500).json({ message: "Failed to delete schedule entry" });
+      }
+    }
+  );
+
+  // Public profile schedule (booked + accepted events + manual)
   app.get(
     "/api/bookings/truck/:truckId/schedule",
     async (req: any, res) => {
@@ -373,9 +493,42 @@ export function registerBookingRoutes(app: Express) {
             })),
         ];
 
+        const manualEntries = await storage.getTruckManualSchedules(truckId);
+        const manualSchedule = manualEntries
+          .filter((entry) => entry.isPublic)
+          .filter((entry) => entry.date >= today)
+          .map((entry) => ({
+            type: "manual",
+            status: "manual",
+            createdAt: entry.createdAt,
+            manual: {
+              id: entry.id,
+              date: entry.date,
+              startTime: entry.startTime,
+              endTime: entry.endTime,
+              locationName: entry.locationName,
+              address: entry.address,
+              city: entry.city,
+              state: entry.state,
+              notes: entry.notes,
+            },
+          }));
+
+        const combined = [...schedule, ...manualSchedule].sort((a, b) => {
+          const dateA =
+            a.type === "manual"
+              ? new Date(a.manual.date).getTime()
+              : new Date(a.event.date).getTime();
+          const dateB =
+            b.type === "manual"
+              ? new Date(b.manual.date).getTime()
+              : new Date(b.event.date).getTime();
+          return dateB - dateA;
+        });
+
         res.json({
           truck: { id: truck.id, name: truck.name },
-          schedule,
+          schedule: combined,
         });
       } catch (error) {
         console.error("Error fetching truck schedule:", error);

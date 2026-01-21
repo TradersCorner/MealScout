@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -947,6 +947,10 @@ export default function AdminDashboard() {
   const [selectedTab, setSelectedTab] = useState("overview");
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [userDetailsOpen, setUserDetailsOpen] = useState(false);
+  const [userSortKey, setUserSortKey] = useState<"name" | "type" | "created">(
+    "type",
+  );
+  const [userSortDir, setUserSortDir] = useState<"asc" | "desc">("asc");
   const [selectedDeal, setSelectedDeal] = useState<any>(null);
   const [dealDetailsOpen, setDealDetailsOpen] = useState(false);
   const [extendDays, setExtendDays] = useState(7);
@@ -981,6 +985,45 @@ export default function AdminDashboard() {
     queryKey: ["/api/admin/users"],
     enabled: !!adminUser && selectedTab === "users",
   });
+
+  const sortedUsers = useMemo(() => {
+    const typeOrder = [
+      "super_admin",
+      "admin",
+      "staff",
+      "restaurant_owner",
+      "food_truck",
+      "host",
+      "event_coordinator",
+      "customer",
+    ];
+    const orderMap = new Map(typeOrder.map((type, index) => [type, index]));
+
+    const normalized = [...users];
+    normalized.sort((a, b) => {
+      const dir = userSortDir === "asc" ? 1 : -1;
+      if (userSortKey === "type") {
+        const aRank = orderMap.get(a.userType) ?? 999;
+        const bRank = orderMap.get(b.userType) ?? 999;
+        if (aRank !== bRank) return (aRank - bRank) * dir;
+      }
+      if (userSortKey === "created") {
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        if (aTime !== bTime) return (aTime - bTime) * dir;
+      }
+
+      const aName = `${a.firstName || ""} ${a.lastName || ""}`
+        .trim()
+        .toLowerCase();
+      const bName = `${b.firstName || ""} ${b.lastName || ""}`
+        .trim()
+        .toLowerCase();
+      return aName.localeCompare(bName) * dir;
+    });
+
+    return normalized;
+  }, [users, userSortDir, userSortKey]);
 
   // Fetch selected user's addresses
   const { data: userAddresses = [] } = useQuery<any[]>({
@@ -1192,6 +1235,28 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: error.message || "Failed to update user type.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resendVerificationEmail = useMutation({
+    mutationFn: async (userId: string) => {
+      return await apiRequest(
+        "POST",
+        `/api/admin/users/${userId}/resend-verification`,
+      );
+    },
+    onSuccess: () => {
+      toast({
+        title: "Verification Sent",
+        description: "Verification email has been resent.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to resend verification email.",
         variant: "destructive",
       });
     },
@@ -1622,8 +1687,36 @@ export default function AdminDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {users.map((user: any) => (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    Sorting affects the full user list.
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <select
+                      value={userSortKey}
+                      onChange={(e) =>
+                        setUserSortKey(e.target.value as typeof userSortKey)
+                      }
+                      className="text-xs px-2 py-1 border rounded-md bg-background"
+                    >
+                      <option value="type">Sort by Type</option>
+                      <option value="name">Sort by Name</option>
+                      <option value="created">Sort by Created</option>
+                    </select>
+                    <select
+                      value={userSortDir}
+                      onChange={(e) =>
+                        setUserSortDir(e.target.value as typeof userSortDir)
+                      }
+                      className="text-xs px-2 py-1 border rounded-md bg-background"
+                    >
+                      <option value="asc">Ascending</option>
+                      <option value="desc">Descending</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-3 mt-3">
+                  {sortedUsers.map((user: any) => (
                     <div
                       key={user.id}
                       className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -1680,6 +1773,20 @@ export default function AdminDashboard() {
                               <option value="super_admin">Super Admin</option>
                             )}
                           </select>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => resendVerificationEmail.mutate(user.id)}
+                            disabled={
+                              resendVerificationEmail.isPending ||
+                              !user.email ||
+                              user.emailVerified
+                            }
+                            data-testid={`button-resend-verify-${user.id}`}
+                          >
+                            <Mail className="w-3 h-3 mr-1" />
+                            {user.emailVerified ? "Verified" : "Resend Verify"}
+                          </Button>
                         </div>
                         <Button
                           size="sm"

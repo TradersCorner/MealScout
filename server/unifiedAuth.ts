@@ -83,9 +83,13 @@ export async function setupUnifiedAuth(app: Express) {
       userAgent: req.get("User-Agent") || undefined,
     });
 
-    const verifyUrl = `${
-      process.env.PUBLIC_BASE_URL || "http://localhost:5000"
-    }/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+    const apiBaseUrl =
+      `${req.protocol}://${req.get("host")}` ||
+      process.env.PUBLIC_BASE_URL ||
+      "http://localhost:5000";
+    const verifyUrl = `${apiBaseUrl}/api/auth/verify-email?token=${encodeURIComponent(
+      token,
+    )}`;
     await emailService.sendEmailVerificationEmail(user, verifyUrl);
   };
 
@@ -1489,9 +1493,11 @@ export async function setupUnifiedAuth(app: Express) {
         console.error("Failed to send welcome email after verification:", err),
       );
 
-      const redirectUrl = `${
-        process.env.PUBLIC_BASE_URL || "http://localhost:5000"
-      }/login?verified=1`;
+      const redirectBase =
+        process.env.CLIENT_ORIGIN ||
+        process.env.PUBLIC_BASE_URL ||
+        "http://localhost:5000";
+      const redirectUrl = `${redirectBase}/login?verified=1`;
       res.redirect(redirectUrl);
     } catch (error) {
       console.error("Email verification error:", error);

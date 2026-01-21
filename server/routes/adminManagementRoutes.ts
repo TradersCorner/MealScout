@@ -1,9 +1,11 @@
 import type { Express } from "express";
 import Stripe from "stripe";
+import crypto from "crypto";
 import { storage } from "../storage";
 import { isAuthenticated, isStaffOrAdmin } from "../unifiedAuth";
 import { sanitizeUser, sanitizeUsers } from "../utils/sanitize";
 import { sendAccountSetupInvite } from "../utils/accountSetup";
+import { emailService } from "../emailService";
 
 // Optional Stripe integration (mirrors server/routes.ts)
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -330,6 +332,57 @@ export function registerAdminManagementRoutes(app: Express) {
       } catch (error) {
         console.error("Error fetching users:", error);
         res.status(500).json({ message: "Failed to fetch users" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/admin/users/:id/resend-verification",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.params.id);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        if (!user.email) {
+          return res.status(400).json({ message: "User has no email address" });
+        }
+        if (user.emailVerified) {
+          return res
+            .status(400)
+            .json({ message: "Email is already verified" });
+        }
+
+        const token = crypto.randomBytes(32).toString("hex");
+        const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        await storage.createEmailVerificationToken({
+          userId: user.id,
+          tokenHash,
+          expiresAt,
+          requestIp: req.ip || req.connection.remoteAddress || undefined,
+          userAgent: req.get("User-Agent") || undefined,
+        });
+
+        const apiBaseUrl =
+          `${req.protocol}://${req.get("host")}` ||
+          process.env.PUBLIC_BASE_URL ||
+          "http://localhost:5000";
+        const verifyUrl = `${apiBaseUrl}/api/auth/verify-email?token=${encodeURIComponent(
+          token,
+        )}`;
+
+        await emailService.sendEmailVerificationEmail(user, verifyUrl);
+
+        res.json({ message: "Verification email sent" });
+      } catch (error: any) {
+        console.error("Error resending verification email:", error);
+        res.status(500).json({
+          message: error.message || "Failed to resend verification email",
+        });
       }
     }
   );

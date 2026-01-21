@@ -1,10 +1,29 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/api";
 
+async function getErrorMessage(res: Response) {
+  const text = (await res.text()) || "";
+  if (!text) {
+    return res.statusText || "Request failed";
+  }
+  try {
+    const json = JSON.parse(text);
+    return (
+      json?.message ||
+      json?.error ||
+      json?.errors?.[0]?.message ||
+      res.statusText ||
+      "Request failed"
+    );
+  } catch {
+    return text;
+  }
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    const message = await getErrorMessage(res);
+    throw new Error(message);
   }
 }
 

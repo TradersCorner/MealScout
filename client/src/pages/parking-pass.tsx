@@ -448,7 +448,7 @@ export default function ParkingPassPage() {
             </div>
           </div>
           <div className="grid gap-4 lg:grid-cols-[1.35fr_0.9fr]">
-            <div className="space-y-4">
+            <div className="space-y-4 order-1 lg:order-none">
               <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-2">
                 <p className="text-xs font-semibold text-gray-700">
                   Pick a day to book
@@ -678,7 +678,7 @@ export default function ParkingPassPage() {
               )}
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 order-2 lg:order-none">
               {cartItems.length > 0 && (
                 <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
                   <div className="flex items-center justify-between">

@@ -10,7 +10,7 @@ const allowedRoles = new Set([
   "staff",
 ]);
 
-const isEventCoordinatorOrAdmin = (req: any, res: any, next: any) => {
+const isEventCoordinator = (req: any, res: any, next: any) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Authentication required" });
   }
@@ -25,7 +25,7 @@ const isEventCoordinatorOrAdmin = (req: any, res: any, next: any) => {
 export function registerEventCoordinatorRoutes(app: Express) {
   app.get(
     "/api/event-coordinator/events",
-    isEventCoordinatorOrAdmin,
+    isEventCoordinator,
     async (req: any, res) => {
       try {
         const host = await storage.getHostByUserId(req.user.id);
@@ -51,7 +51,7 @@ export function registerEventCoordinatorRoutes(app: Express) {
 
   app.post(
     "/api/event-coordinator/events",
-    isEventCoordinatorOrAdmin,
+    isEventCoordinator,
     async (req: any, res) => {
       try {
         const schema = z.object({

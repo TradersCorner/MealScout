@@ -357,19 +357,7 @@ export function registerHostRoutes(app: Express) {
       const horizon = new Date(today);
       horizon.setDate(horizon.getDate() + 30);
 
-      // Remove future parking pass events without bookings to enforce one pass per address.
-      const bookedEventRows = await db
-        .select({ eventId: eventBookings.eventId })
-        .from(eventBookings)
-        .where(
-          and(
-            eq(eventBookings.hostId, host.id),
-            inArray(eventBookings.status, ["pending", "confirmed"]),
-          ),
-        );
-      const bookedEventIds = new Set(bookedEventRows.map((row) => row.eventId));
-
-      const removableEvents = await db
+      const existingPaidEvents = await db
         .select({ id: events.id })
         .from(events)
         .where(
@@ -381,12 +369,11 @@ export function registerHostRoutes(app: Express) {
           ),
         );
 
-      const removableIds = removableEvents
-        .map((row) => row.id)
-        .filter((id) => !bookedEventIds.has(id));
-
-      if (removableIds.length > 0) {
-        await db.delete(events).where(inArray(events.id, removableIds));
+      if (existingPaidEvents.length > 0) {
+        return res.status(409).json({
+          message:
+            "You already have a parking pass for this address. Edit your existing listing.",
+        });
       }
 
       const existingEvents = await db

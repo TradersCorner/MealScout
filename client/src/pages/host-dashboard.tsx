@@ -290,9 +290,23 @@ function HostDashboard() {
     }
   };
 
+  const hasActivePass = events.some((item) => {
+    if (!item.requiresPayment) return false;
+    const itemDate = new Date(item.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return itemDate >= today;
+  });
+
   const handleCreateEvent = async (event: React.FormEvent) => {
     event.preventDefault();
     setCreateError("");
+    if (hasActivePass) {
+      setCreateError(
+        "You already have a parking pass for this address. Edit the existing listing.",
+      );
+      return;
+    }
     const finalStartTime = anyTime ? "00:00" : startTime;
     const finalEndTime = anyTime ? "23:59" : endTime;
     const breakfast = Number(breakfastPrice || 0);
@@ -864,6 +878,12 @@ function HostDashboard() {
                 {createError}
               </div>
             )}
+            {hasActivePass && (
+              <div className="p-3 bg-amber-50 text-amber-700 rounded-md text-sm">
+                You already have a parking pass for this address. Edit the
+                existing listing instead of creating a new one.
+              </div>
+            )}
 
             <div className="grid gap-4 md:grid-cols-[1.2fr_1fr]">
               <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
@@ -1077,7 +1097,7 @@ function HostDashboard() {
               <p className="text-xs text-slate-500">
                 You can edit times later if plans change.
               </p>
-              <Button type="submit" className="px-6">
+              <Button type="submit" className="px-6" disabled={hasActivePass}>
                 Publish Parking Pass
               </Button>
             </div>

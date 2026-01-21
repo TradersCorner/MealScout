@@ -999,6 +999,16 @@ app.use((req, res, next) => {
   if (app.get("env") === "development") {
     const { setupVite } = await import("./vite");
     await setupVite(app, server);
+  } else {
+    const distPath = path.resolve(process.cwd(), "dist", "public");
+    if (fs.existsSync(distPath)) {
+      const { serveStatic } = await import("./vite");
+      serveStatic(app);
+    } else {
+      console.warn(
+        "No frontend build detected at dist/public; serving API-only."
+      );
+    }
   }
   // Production: frontend is served by Vercel, backend is API-only
 

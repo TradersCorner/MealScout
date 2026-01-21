@@ -37,7 +37,7 @@ import {
   UserMinus,
 } from "lucide-react";
 import { Link } from "wouter";
-import { QuickDashboardAccess } from "@/components/dashboard-switcher";
+import QuickDashboardAccess from "@/components/quick-dashboard-access";
 import {
   Dialog,
   DialogContent,

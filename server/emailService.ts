@@ -31,9 +31,15 @@ export const isEmailConfigured = (): boolean => {
 
 // Email configuration
 const EMAIL_CONFIG = {
-  fromEmail: "info.mealscout@gmail.com",
-  fromName: "MealScout",
-  adminEmail: "info.mealscout@gmail.com", // Admin notifications will be sent here
+  fromEmail:
+    process.env.EMAIL_FROM ||
+    process.env.ADMIN_EMAIL ||
+    "info.mealscout@gmail.com",
+  fromName: process.env.EMAIL_FROM_NAME || "MealScout",
+  adminEmail:
+    process.env.ADMIN_EMAIL ||
+    process.env.EMAIL_FROM ||
+    "info.mealscout@gmail.com", // Admin notifications will be sent here
 };
 
 // Base email interface

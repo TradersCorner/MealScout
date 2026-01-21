@@ -246,4 +246,21 @@
       display: none;
     }
   }
+
+  @media (min-width: 1024px) {
+    .desktop-full-width .container,
+    .desktop-full-width .max-w-xs,
+    .desktop-full-width .max-w-sm,
+    .desktop-full-width .max-w-md,
+    .desktop-full-width .max-w-lg,
+    .desktop-full-width .max-w-xl,
+    .desktop-full-width .max-w-2xl,
+    .desktop-full-width .max-w-3xl,
+    .desktop-full-width .max-w-4xl,
+    .desktop-full-width .max-w-5xl,
+    .desktop-full-width .max-w-6xl,
+    .desktop-full-width .max-w-7xl {
+      max-width: 100%;
+    }
+  }
 }

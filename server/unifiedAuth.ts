@@ -23,6 +23,7 @@ import { sanitizeUser } from "./utils/sanitize";
 declare module "express-session" {
   interface SessionData {
     fbAppContext?: "mealscout" | "tradescout";
+    oauthUserType?: User["userType"];
   }
 }
 
@@ -93,6 +94,25 @@ export async function setupUnifiedAuth(app: Express) {
     await emailService.sendEmailVerificationEmail(user, verifyUrl);
   };
 
+  const oauthUserTypeAllowList = new Set<User["userType"]>([
+    "customer",
+    "restaurant_owner",
+    "food_truck",
+    "host",
+    "event_coordinator",
+  ]);
+
+  const getOauthUserType = (
+    req: any,
+    fallback: User["userType"],
+  ): User["userType"] => {
+    const desired = req?.session?.oauthUserType;
+    if (desired && oauthUserTypeAllowList.has(desired)) {
+      return desired;
+    }
+    return fallback;
+  };
+
   // Ensure configured super admin email is upgraded
   const superAdminEmail =
     process.env.ADMIN_EMAIL || "info.mealscout@gmail.com";
@@ -157,8 +177,10 @@ export async function setupUnifiedAuth(app: Express) {
           clientID: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
           callbackURL: `${baseUrl}/api/auth/google/customer/callback`,
+          passReqToCallback: true,
         },
         async (
+          req: any,
           accessToken: string,
           refreshToken: string,
           profile: any,
@@ -212,6 +234,7 @@ export async function setupUnifiedAuth(app: Express) {
               userData,
               "customer",
             );
+            req.session.oauthUserType = undefined;
             console.log(
               "✅ Google customer user created/updated successfully:",
               { userId: user.id, email: user.email },
@@ -235,6 +258,11 @@ export async function setupUnifiedAuth(app: Express) {
               .catch((err) =>
                 console.error("Failed to send customer welcome email:", err),
               );
+            if (user.email && !user.emailVerified) {
+              sendEmailVerification(user, req).catch((err) =>
+                console.error("Failed to send email verification:", err),
+              );
+            }
             // Send admin signup notification with context asynchronously
             emailService
               .sendAdminSignupNotification(user, {
@@ -260,8 +288,10 @@ export async function setupUnifiedAuth(app: Express) {
           clientID: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
           callbackURL: `${baseUrl}/api/auth/google/restaurant/callback`,
+          passReqToCallback: true,
         },
         async (
+          req: any,
           accessToken: string,
           refreshToken: string,
           profile: any,
@@ -310,11 +340,13 @@ export async function setupUnifiedAuth(app: Express) {
               hasProfileImage: !!userData.profileImageUrl,
             });
 
+            const userType = getOauthUserType(req, "restaurant_owner");
             const user = await storage.upsertUserByAuth(
               "google",
               userData,
-              "restaurant_owner",
+              userType === "customer" ? "restaurant_owner" : userType,
             );
+            req.session.oauthUserType = undefined;
             console.log(
               "✅ Google restaurant user created/updated successfully:",
               { userId: user.id, email: user.email },
@@ -345,6 +377,11 @@ export async function setupUnifiedAuth(app: Express) {
                   err,
                 ),
               );
+            if (user.email && !user.emailVerified) {
+              sendEmailVerification(user, req).catch((err) =>
+                console.error("Failed to send email verification:", err),
+              );
+            }
             // Send admin signup notification with context asynchronously
             emailService
               .sendAdminSignupNotification(user, {
@@ -365,6 +402,7 @@ export async function setupUnifiedAuth(app: Express) {
 
     // Google OAuth routes for customers
     app.get("/api/auth/google/customer", (req, res, next) => {
+      req.session.oauthUserType = "customer";
       passport.authenticate("google-customer", {
         scope: ["profile", "email"],
       })(req, res, next);
@@ -400,6 +438,15 @@ export async function setupUnifiedAuth(app: Express) {
 
     // Google OAuth routes for restaurant owners
     app.get("/api/auth/google/restaurant", (req, res, next) => {
+      const desiredType =
+        typeof req.query.userType === "string"
+          ? req.query.userType
+          : "restaurant_owner";
+      req.session.oauthUserType = oauthUserTypeAllowList.has(
+        desiredType as User["userType"],
+      )
+        ? (desiredType as User["userType"])
+        : "restaurant_owner";
       passport.authenticate("google-restaurant", {
         scope: ["profile", "email"],
       })(req, res, next);
@@ -540,12 +587,14 @@ export async function setupUnifiedAuth(app: Express) {
             const appContext = (req.session?.fbAppContext || "mealscout") as
               | "mealscout"
               | "tradescout";
+            const userType = getOauthUserType(req, "customer");
             const user = await storage.upsertUserByAuth(
               "facebook",
               userData,
-              "customer",
+              userType,
               appContext,
             );
+            req.session.oauthUserType = undefined;
             console.log("✅ Facebook user created/updated successfully:", {
               userId: user.id,
               email: user.email,
@@ -570,6 +619,11 @@ export async function setupUnifiedAuth(app: Express) {
               .catch((err) =>
                 console.error("Failed to send customer welcome email:", err),
               );
+            if (user.email && !user.emailVerified) {
+              sendEmailVerification(user, req).catch((err) =>
+                console.error("Failed to send email verification:", err),
+              );
+            }
             // Send admin signup notification with context asynchronously
             emailService
               .sendAdminSignupNotification(user, {
@@ -604,6 +658,15 @@ export async function setupUnifiedAuth(app: Express) {
 
         // Store app context in session for callback retrieval
         req.session.fbAppContext = appContext as "mealscout" | "tradescout";
+        const desiredUserType =
+          typeof req.query.userType === "string"
+            ? req.query.userType
+            : "customer";
+        req.session.oauthUserType = oauthUserTypeAllowList.has(
+          desiredUserType as User["userType"],
+        )
+          ? (desiredUserType as User["userType"])
+          : "customer";
         console.log(
           `🔵 Starting Facebook OAuth flow with app context: ${appContext}`,
         );

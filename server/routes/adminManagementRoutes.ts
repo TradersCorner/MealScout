@@ -1,14 +1,22 @@
 import type { Express } from "express";
 import Stripe from "stripe";
 import crypto from "crypto";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { storage } from "../storage";
 import { isAuthenticated, isStaffOrAdmin } from "../unifiedAuth";
 import { sanitizeUser, sanitizeUsers } from "../utils/sanitize";
 import { sendAccountSetupInvite } from "../utils/accountSetup";
 import { emailService } from "../emailService";
 import { db } from "../db";
-import { events } from "@shared/schema";
+import {
+  deals,
+  eventBookings,
+  eventSeries,
+  events,
+  hosts,
+  restaurants,
+  userAddresses,
+} from "@shared/schema";
 
 // Optional Stripe integration (mirrors server/routes.ts)
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -16,6 +24,24 @@ const stripe = process.env.STRIPE_SECRET_KEY
   : null;
 
 export function registerAdminManagementRoutes(app: Express) {
+  const denyStaffEdits = (req: any, res: any) => {
+    if (req.user?.userType === "staff") {
+      res.status(403).json({ message: "Staff cannot modify existing data" });
+      return true;
+    }
+    return false;
+  };
+  const requireAdminUser = (req: any, res: any) => {
+    if (
+      req.user?.userType !== "admin" &&
+      req.user?.userType !== "super_admin"
+    ) {
+      res.status(403).json({ message: "Admin access required" });
+      return false;
+    }
+    return true;
+  };
+
   // Manual User/Host Creation
   app.post(
     "/api/admin/users/create",
@@ -344,6 +370,7 @@ export function registerAdminManagementRoutes(app: Express) {
     isAuthenticated,
     isStaffOrAdmin,
     async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
       try {
         const user = await storage.getUser(req.params.id);
         if (!user) {
@@ -390,11 +417,78 @@ export function registerAdminManagementRoutes(app: Express) {
     }
   );
 
+  app.post(
+    "/api/admin/users/:id/verify",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (!requireAdminUser(req, res)) return;
+      try {
+        const user = await storage.getUser(req.params.id);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        const updated = await storage.updateUser(user.id, {
+          emailVerified: true,
+        });
+        res.json(sanitizeUser(updated, { includeStripe: true }));
+      } catch (error: any) {
+        console.error("Error verifying user:", error);
+        res.status(500).json({
+          message: error.message || "Failed to verify user",
+        });
+      }
+    }
+  );
+
+  app.post(
+    "/api/admin/users/:id/send-subscription-link",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
+      try {
+        const user = await storage.getUser(req.params.id);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        if (!user.email) {
+          return res.status(400).json({ message: "User has no email address" });
+        }
+
+        const baseUrl =
+          process.env.CLIENT_ORIGIN ||
+          process.env.PUBLIC_BASE_URL ||
+          "http://localhost:5000";
+        const subscribeUrl = `${baseUrl}/subscribe`;
+        const subject = "MealScout Monthly Subscription";
+        const html = `
+          <p>Hi ${user.firstName || "there"},</p>
+          <p>Use the link below to sign up for MealScout monthly subscriptions:</p>
+          <p><a href="${subscribeUrl}">Subscribe now</a></p>
+          <p>If the link doesn't work, copy and paste this URL:</p>
+          <p>${subscribeUrl}</p>
+        `;
+        const text = `Use this link to sign up for MealScout monthly subscriptions: ${subscribeUrl}`;
+
+        await emailService.sendBasicEmail(user.email, subject, html, text);
+        res.json({ message: "Subscription link sent" });
+      } catch (error: any) {
+        console.error("Error sending subscription link:", error);
+        res.status(500).json({
+          message: error.message || "Failed to send subscription link",
+        });
+      }
+    }
+  );
+
   app.patch(
     "/api/admin/users/:id",
     isAuthenticated,
     isStaffOrAdmin,
     async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
       try {
         const userId = req.params.id;
         const {
@@ -517,6 +611,7 @@ export function registerAdminManagementRoutes(app: Express) {
     isAuthenticated,
     isStaffOrAdmin,
     async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
       try {
         const eventId = req.params.id;
         const event = await storage.getEvent(eventId);
@@ -602,6 +697,7 @@ export function registerAdminManagementRoutes(app: Express) {
     isAuthenticated,
     isStaffOrAdmin,
     async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
       try {
         const { isActive } = req.body;
         await storage.updateUserStatus(req.params.id, isActive);
@@ -618,6 +714,7 @@ export function registerAdminManagementRoutes(app: Express) {
     isAuthenticated,
     isStaffOrAdmin,
     async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
       try {
         const { userType } = req.body;
         const allowedTypes = [
@@ -649,6 +746,7 @@ export function registerAdminManagementRoutes(app: Express) {
     isAuthenticated,
     isStaffOrAdmin,
     async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
       try {
         await storage.deleteUser(req.params.id);
         res.json({ message: "User deleted successfully" });
@@ -670,6 +768,569 @@ export function registerAdminManagementRoutes(app: Express) {
       } catch (error) {
         console.error("Error fetching user addresses:", error);
         res.status(500).json({ message: "Failed to fetch user addresses" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/admin/users/:userId/addresses",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
+      try {
+        const address = await storage.createUserAddress({
+          userId: req.params.userId,
+          label: req.body?.label || "Address",
+          address: req.body?.address,
+          city: req.body?.city,
+          state: req.body?.state,
+          postalCode: req.body?.postalCode,
+          latitude: req.body?.latitude,
+          longitude: req.body?.longitude,
+          type: req.body?.type || "other",
+          isDefault: !!req.body?.isDefault,
+        });
+
+        if (req.body?.isDefault) {
+          await storage.setDefaultAddress(req.params.userId, address.id);
+        }
+
+        res.json(address);
+      } catch (error: any) {
+        console.error("Error creating user address:", error);
+        res.status(500).json({ message: "Failed to create address" });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/admin/users/:userId/addresses/:addressId",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
+      try {
+        const updated = await storage.updateUserAddress(req.params.addressId, {
+          label: req.body?.label,
+          address: req.body?.address,
+          city: req.body?.city,
+          state: req.body?.state,
+          postalCode: req.body?.postalCode,
+          latitude: req.body?.latitude,
+          longitude: req.body?.longitude,
+          type: req.body?.type,
+        });
+
+        if (req.body?.isDefault) {
+          await storage.setDefaultAddress(req.params.userId, updated.id);
+        }
+
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error updating user address:", error);
+        res.status(500).json({ message: "Failed to update address" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/admin/users/:userId/addresses/:addressId/default",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
+      try {
+        await storage.setDefaultAddress(req.params.userId, req.params.addressId);
+        res.json({ message: "Default address updated" });
+      } catch (error) {
+        console.error("Error setting default address:", error);
+        res.status(500).json({ message: "Failed to set default address" });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/admin/users/:userId/addresses/:addressId",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
+      try {
+        await storage.deleteUserAddress(req.params.addressId);
+        res.json({ message: "Address deleted" });
+      } catch (error) {
+        console.error("Error deleting user address:", error);
+        res.status(500).json({ message: "Failed to delete address" });
+      }
+    }
+  );
+
+  app.get(
+    "/api/admin/users/:id/hosts",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const hostsForUser = await storage.getHostsByUserId(req.params.id);
+        res.json(hostsForUser);
+      } catch (error) {
+        console.error("Error fetching user hosts:", error);
+        res.status(500).json({ message: "Failed to fetch hosts" });
+      }
+    }
+  );
+
+  app.get(
+    "/api/admin/users/:id/restaurants",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const restaurantsForUser = await storage.getRestaurantsByOwner(
+          req.params.id,
+        );
+        res.json(restaurantsForUser);
+      } catch (error) {
+        console.error("Error fetching user restaurants:", error);
+        res.status(500).json({ message: "Failed to fetch restaurants" });
+      }
+    }
+  );
+
+  app.get(
+    "/api/admin/users/:id/deals",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const ownedRestaurants = await storage.getRestaurantsByOwner(
+          req.params.id,
+        );
+        if (!ownedRestaurants.length) {
+          return res.json([]);
+        }
+        const restaurantIds = ownedRestaurants.map((r) => r.id);
+        const userDeals = await db
+          .select()
+          .from(deals)
+          .where(inArray(deals.restaurantId, restaurantIds))
+          .orderBy(deals.createdAt);
+        res.json(userDeals);
+      } catch (error) {
+        console.error("Error fetching user deals:", error);
+        res.status(500).json({ message: "Failed to fetch deals" });
+      }
+    }
+  );
+
+  app.get(
+    "/api/admin/users/:id/events",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const hostsForUser = await storage.getHostsByUserId(req.params.id);
+        if (!hostsForUser.length) {
+          return res.json([]);
+        }
+        const hostIds = hostsForUser.map((h) => h.id);
+        const userEvents = await db
+          .select()
+          .from(events)
+          .where(inArray(events.hostId, hostIds))
+          .orderBy(events.date);
+        res.json(userEvents);
+      } catch (error) {
+        console.error("Error fetching user events:", error);
+        res.status(500).json({ message: "Failed to fetch events" });
+      }
+    }
+  );
+
+  app.get(
+    "/api/admin/users/:id/event-series",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const hostsForUser = await storage.getHostsByUserId(req.params.id);
+        if (!hostsForUser.length) {
+          return res.json([]);
+        }
+        const hostIds = hostsForUser.map((h) => h.id);
+        const userSeries = await db
+          .select()
+          .from(eventSeries)
+          .where(inArray(eventSeries.hostId, hostIds))
+          .orderBy(eventSeries.createdAt);
+        res.json(userSeries);
+      } catch (error) {
+        console.error("Error fetching event series:", error);
+        res.status(500).json({ message: "Failed to fetch event series" });
+      }
+    }
+  );
+
+  app.get(
+    "/api/admin/users/:id/parking-pass-bookings",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const userId = req.params.id;
+        const bookingsAsTruck = await db
+          .select()
+          .from(eventBookings)
+          .innerJoin(restaurants, eq(eventBookings.truckId, restaurants.id))
+          .where(eq(restaurants.ownerId, userId));
+
+        const hostRows = await db
+          .select({ id: hosts.id })
+          .from(hosts)
+          .where(eq(hosts.userId, userId));
+        const hostIds = hostRows.map((row) => row.id);
+        const bookingsAsHost = hostIds.length
+          ? await db
+              .select()
+              .from(eventBookings)
+              .where(inArray(eventBookings.hostId, hostIds))
+          : [];
+
+        res.json({ bookingsAsTruck, bookingsAsHost });
+      } catch (error) {
+        console.error("Error fetching parking pass bookings:", error);
+        res.status(500).json({ message: "Failed to fetch bookings" });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/admin/hosts/:id",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
+      try {
+        const updates: any = {
+          businessName: req.body?.businessName,
+          address: req.body?.address,
+          city: req.body?.city,
+          state: req.body?.state,
+          latitude: req.body?.latitude,
+          longitude: req.body?.longitude,
+          locationType: req.body?.locationType,
+          expectedFootTraffic: req.body?.expectedFootTraffic,
+          amenities: req.body?.amenities,
+          contactPhone: req.body?.contactPhone,
+          notes: req.body?.notes,
+          isVerified: req.body?.isVerified,
+        };
+
+        Object.keys(updates).forEach((key) => {
+          if (updates[key] === undefined) {
+            delete updates[key];
+          }
+        });
+
+        const [updated] = await db
+          .update(hosts)
+          .set({ ...updates, updatedAt: new Date() })
+          .where(eq(hosts.id, req.params.id))
+          .returning();
+
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error updating host:", error);
+        res.status(500).json({ message: "Failed to update host" });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/admin/restaurants/:id",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
+      try {
+        const updates: any = {
+          name: req.body?.name,
+          address: req.body?.address,
+          phone: req.body?.phone,
+          businessType: req.body?.businessType,
+          cuisineType: req.body?.cuisineType,
+          promoCode: req.body?.promoCode,
+          city: req.body?.city,
+          state: req.body?.state,
+          latitude: req.body?.latitude,
+          longitude: req.body?.longitude,
+          isActive: req.body?.isActive,
+          isVerified: req.body?.isVerified,
+          description: req.body?.description,
+          websiteUrl: req.body?.websiteUrl,
+          instagramUrl: req.body?.instagramUrl,
+          facebookPageUrl: req.body?.facebookPageUrl,
+          amenities: req.body?.amenities,
+        };
+
+        Object.keys(updates).forEach((key) => {
+          if (updates[key] === undefined) {
+            delete updates[key];
+          }
+        });
+
+        const updated = await storage.updateRestaurant(req.params.id, updates);
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error updating restaurant:", error);
+        res.status(500).json({ message: "Failed to update restaurant" });
+      }
+    }
+  );
+
+  app.get(
+    "/api/admin/restaurants/:id/deals",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const restaurantDeals = await storage.getDealsByRestaurant(
+          req.params.id,
+        );
+        res.json(restaurantDeals);
+      } catch (error) {
+        console.error("Error fetching restaurant deals:", error);
+        res.status(500).json({ message: "Failed to fetch deals" });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/admin/deals/:id",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
+      try {
+        const updates: any = {
+          title: req.body?.title,
+          description: req.body?.description,
+          dealType: req.body?.dealType,
+          discountValue:
+            req.body?.discountValue !== undefined
+              ? Number(req.body.discountValue)
+              : undefined,
+          minOrderAmount:
+            req.body?.minOrderAmount !== undefined
+              ? Number(req.body.minOrderAmount)
+              : undefined,
+          imageUrl: req.body?.imageUrl,
+          startDate: req.body?.startDate
+            ? new Date(req.body.startDate)
+            : undefined,
+          endDate: req.body?.endDate ? new Date(req.body.endDate) : undefined,
+          startTime: req.body?.startTime,
+          endTime: req.body?.endTime,
+          availableDuringBusinessHours: req.body?.availableDuringBusinessHours,
+          isOngoing: req.body?.isOngoing,
+          totalUsesLimit:
+            req.body?.totalUsesLimit !== undefined
+              ? Number(req.body.totalUsesLimit)
+              : undefined,
+          perCustomerLimit:
+            req.body?.perCustomerLimit !== undefined
+              ? Number(req.body.perCustomerLimit)
+              : undefined,
+          isActive: req.body?.isActive,
+        };
+
+        Object.keys(updates).forEach((key) => {
+          if (updates[key] === undefined) {
+            delete updates[key];
+          }
+        });
+
+        const updated = await storage.updateDeal(req.params.id, updates);
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error updating deal:", error);
+        res.status(500).json({ message: "Failed to update deal" });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/admin/events/:id",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
+      try {
+        const eventId = req.params.id;
+        const event = await storage.getEvent(eventId);
+        if (!event) {
+          return res.status(404).json({ message: "Event not found" });
+        }
+
+        const updates: any = {
+          name: req.body?.name,
+          description: req.body?.description,
+          date: req.body?.date ? new Date(req.body.date) : undefined,
+          startTime: req.body?.startTime,
+          endTime: req.body?.endTime,
+          maxTrucks:
+            req.body?.maxTrucks !== undefined
+              ? Number(req.body.maxTrucks)
+              : undefined,
+          status: req.body?.status,
+          hardCapEnabled: req.body?.hardCapEnabled,
+          requiresPayment: req.body?.requiresPayment,
+          breakfastPriceCents:
+            req.body?.breakfastPriceCents !== undefined
+              ? Number(req.body.breakfastPriceCents)
+              : undefined,
+          lunchPriceCents:
+            req.body?.lunchPriceCents !== undefined
+              ? Number(req.body.lunchPriceCents)
+              : undefined,
+          dinnerPriceCents:
+            req.body?.dinnerPriceCents !== undefined
+              ? Number(req.body.dinnerPriceCents)
+              : undefined,
+        };
+
+        Object.keys(updates).forEach((key) => {
+          if (updates[key] === undefined) {
+            delete updates[key];
+          }
+        });
+
+        if (updates.startTime && updates.endTime) {
+          const [startHour, startMinute] = String(updates.startTime)
+            .split(":")
+            .map(Number);
+          const [endHour, endMinute] = String(updates.endTime)
+            .split(":")
+            .map(Number);
+          const startMinutes = startHour * 60 + startMinute;
+          const endMinutes = endHour * 60 + endMinute;
+          if (endMinutes <= startMinutes) {
+            return res
+              .status(400)
+              .json({ message: "End time must be after start time" });
+          }
+        }
+
+        const breakfast = Number(
+          updates.breakfastPriceCents ?? event.breakfastPriceCents ?? 0,
+        );
+        const lunch = Number(
+          updates.lunchPriceCents ?? event.lunchPriceCents ?? 0,
+        );
+        const dinner = Number(
+          updates.dinnerPriceCents ?? event.dinnerPriceCents ?? 0,
+        );
+        const slotSum = breakfast + lunch + dinner;
+        updates.hostPriceCents = slotSum;
+        updates.dailyPriceCents = slotSum + 1000;
+        updates.weeklyPriceCents = slotSum * 7 + 1000;
+        updates.updatedAt = new Date();
+
+        const [updated] = await db
+          .update(events)
+          .set(updates)
+          .where(eq(events.id, eventId))
+          .returning();
+
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error updating event:", error);
+        res.status(500).json({ message: "Failed to update event" });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/admin/event-series/:id",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
+      try {
+        const updates: any = {
+          name: req.body?.name,
+          description: req.body?.description,
+          timezone: req.body?.timezone,
+          recurrenceRule: req.body?.recurrenceRule,
+          startDate: req.body?.startDate
+            ? new Date(req.body.startDate)
+            : undefined,
+          endDate: req.body?.endDate ? new Date(req.body.endDate) : undefined,
+          defaultStartTime: req.body?.defaultStartTime,
+          defaultEndTime: req.body?.defaultEndTime,
+          defaultMaxTrucks:
+            req.body?.defaultMaxTrucks !== undefined
+              ? Number(req.body.defaultMaxTrucks)
+              : undefined,
+          defaultHardCapEnabled: req.body?.defaultHardCapEnabled,
+          status: req.body?.status,
+        };
+
+        Object.keys(updates).forEach((key) => {
+          if (updates[key] === undefined) {
+            delete updates[key];
+          }
+        });
+
+        const [updated] = await db
+          .update(eventSeries)
+          .set({ ...updates, updatedAt: new Date() })
+          .where(eq(eventSeries.id, req.params.id))
+          .returning();
+
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error updating event series:", error);
+        res.status(500).json({ message: "Failed to update event series" });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/admin/parking-pass-bookings/:id",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
+      try {
+        const updates: any = {
+          status: req.body?.status,
+          refundStatus: req.body?.refundStatus,
+          refundAmountCents:
+            req.body?.refundAmountCents !== undefined
+              ? Number(req.body.refundAmountCents)
+              : undefined,
+          cancellationReason: req.body?.cancellationReason,
+          refundReason: req.body?.refundReason,
+        };
+
+        Object.keys(updates).forEach((key) => {
+          if (updates[key] === undefined) {
+            delete updates[key];
+          }
+        });
+
+        const [updated] = await db
+          .update(eventBookings)
+          .set({ ...updates, updatedAt: new Date() })
+          .where(eq(eventBookings.id, req.params.id))
+          .returning();
+
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error updating booking:", error);
+        res.status(500).json({ message: "Failed to update booking" });
       }
     }
   );

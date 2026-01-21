@@ -57,6 +57,7 @@ export default function ParkingPassPage() {
   const [events, setEvents] = useState<ParkingPassEvent[]>([]);
   const [truckId, setTruckId] = useState<string | null>(null);
   const [truck, setTruck] = useState<any | null>(null);
+  const [hasHostProfile, setHasHostProfile] = useState(false);
   const [manualSchedules, setManualSchedules] = useState<ManualScheduleEntry[]>(
     [],
   );
@@ -124,6 +125,15 @@ export default function ParkingPassPage() {
               setTruckId(foodTruck.id);
               setTruck(foodTruck);
             }
+          }
+          const hostRes = await fetch("/api/hosts");
+          if (hostRes.ok) {
+            const hosts = await hostRes.json();
+            if (!cancelled && Array.isArray(hosts) && hosts.length > 0) {
+              setHasHostProfile(true);
+            }
+          } else if (!cancelled) {
+            setHasHostProfile(false);
           }
         }
 
@@ -640,6 +650,8 @@ export default function ParkingPassPage() {
     slot.charAt(0).toUpperCase() + slot.slice(1);
 
   const isFoodTruckUser = user?.userType === "food_truck";
+  const canManageParkingPass =
+    isAuthenticated && (hasHostProfile || !!truckId);
   const normalizedCityQuery = cityQuery.trim().toLowerCase();
   const filteredEvents = events
     .filter((event) => {
@@ -680,6 +692,24 @@ export default function ParkingPassPage() {
                 Book available parking spots by day and time.
               </p>
           </div>
+          {canManageParkingPass && (
+            <div className="rounded-2xl border border-orange-200 bg-orange-50/80 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-orange-900">
+                  Manage your parking pass bookings
+                </p>
+                <p className="text-xs text-orange-700">
+                  Hosts and trucks can review bookings and confirmations.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => setLocation("/parking-pass-manage")}
+              >
+                Open manager
+              </Button>
+            </div>
+          )}
           {isFoodTruckUser && (
             <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-4">
               <div className="flex items-center justify-between gap-3">

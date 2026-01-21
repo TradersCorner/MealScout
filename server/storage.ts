@@ -200,7 +200,7 @@ export interface IStorage {
       | EmailUserData
       | FacebookUserData
       | TradeScoutUserData,
-    userType?: "customer" | "restaurant_owner" | "admin",
+    userType?: User["userType"],
     appContext?: "mealscout" | "tradescout"
   ): Promise<User>;
   updateUserStripeInfo(
@@ -1064,7 +1064,7 @@ export class DatabaseStorage implements IStorage {
       | EmailUserData
       | FacebookUserData
       | TradeScoutUserData,
-    userType: "customer" | "restaurant_owner" | "admin" = "customer",
+    userType: User["userType"] = "customer",
     appContext: "mealscout" | "tradescout" = "mealscout"
   ): Promise<User> {
     try {

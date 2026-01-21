@@ -958,6 +958,24 @@ export default function AdminDashboard() {
   const [parkingPassEdits, setParkingPassEdits] = useState<
     Record<string, any>
   >({});
+  const [addressEdits, setAddressEdits] = useState<Record<string, any>>({});
+  const [hostEdits, setHostEdits] = useState<Record<string, any>>({});
+  const [restaurantEdits, setRestaurantEdits] = useState<Record<string, any>>(
+    {},
+  );
+  const [dealEdits, setDealEdits] = useState<Record<string, any>>({});
+  const [eventEdits, setEventEdits] = useState<Record<string, any>>({});
+  const [seriesEdits, setSeriesEdits] = useState<Record<string, any>>({});
+  const [bookingEdits, setBookingEdits] = useState<Record<string, any>>({});
+  const [newAddress, setNewAddress] = useState<any>({
+    label: "",
+    address: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    type: "other",
+    isDefault: false,
+  });
   const handleLogout = async () => {
     try {
       await apiRequest("POST", "/api/auth/logout");
@@ -971,6 +989,9 @@ export default function AdminDashboard() {
     queryKey: ["/api/auth/admin/verify"],
     retry: false,
   });
+  const isStaff = adminUser?.userType === "staff";
+  const isAdminOrSuper =
+    adminUser?.userType === "admin" || adminUser?.userType === "super_admin";
 
   // Fetch dashboard stats
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
@@ -992,6 +1013,36 @@ export default function AdminDashboard() {
 
   const { data: parkingPasses = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/users", selectedUser?.id, "parking-pass"],
+    enabled: !!adminUser && !!selectedUser?.id && userDetailsOpen,
+  });
+
+  const { data: userHosts = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/users", selectedUser?.id, "hosts"],
+    enabled: !!adminUser && !!selectedUser?.id && userDetailsOpen,
+  });
+
+  const { data: userRestaurants = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/users", selectedUser?.id, "restaurants"],
+    enabled: !!adminUser && !!selectedUser?.id && userDetailsOpen,
+  });
+
+  const { data: userDeals = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/users", selectedUser?.id, "deals"],
+    enabled: !!adminUser && !!selectedUser?.id && userDetailsOpen,
+  });
+
+  const { data: userEvents = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/users", selectedUser?.id, "events"],
+    enabled: !!adminUser && !!selectedUser?.id && userDetailsOpen,
+  });
+
+  const { data: userEventSeries = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/users", selectedUser?.id, "event-series"],
+    enabled: !!adminUser && !!selectedUser?.id && userDetailsOpen,
+  });
+
+  const { data: userParkingBookings } = useQuery<any>({
+    queryKey: ["/api/admin/users", selectedUser?.id, "parking-pass-bookings"],
     enabled: !!adminUser && !!selectedUser?.id && userDetailsOpen,
   });
 
@@ -1047,7 +1098,7 @@ export default function AdminDashboard() {
       postalCode: selectedUser.postalCode || "",
       birthYear: selectedUser.birthYear || "",
       gender: selectedUser.gender || "",
-      isActive: !!selectedUser.isActive,
+      isActive: !selectedUser.isDisabled,
       emailVerified: !!selectedUser.emailVerified,
       userType: selectedUser.userType || "customer",
     });
@@ -1072,6 +1123,183 @@ export default function AdminDashboard() {
     });
     setParkingPassEdits(nextEdits);
   }, [parkingPasses]);
+
+  useEffect(() => {
+    if (!userAddresses.length) {
+      setAddressEdits({});
+      return;
+    }
+    const nextEdits: Record<string, any> = {};
+    userAddresses.forEach((address: any) => {
+      nextEdits[address.id] = {
+        label: address.label || "",
+        address: address.address || "",
+        city: address.city || "",
+        state: address.state || "",
+        postalCode: address.postalCode || "",
+        type: address.type || "other",
+        isDefault: !!address.isDefault,
+      };
+    });
+    setAddressEdits(nextEdits);
+  }, [userAddresses]);
+
+  useEffect(() => {
+    if (!userHosts.length) {
+      setHostEdits({});
+      return;
+    }
+    const nextEdits: Record<string, any> = {};
+    userHosts.forEach((host: any) => {
+      nextEdits[host.id] = {
+        businessName: host.businessName || "",
+        address: host.address || "",
+        city: host.city || "",
+        state: host.state || "",
+        latitude: host.latitude || "",
+        longitude: host.longitude || "",
+        locationType: host.locationType || "other",
+        expectedFootTraffic: host.expectedFootTraffic ?? "",
+        contactPhone: host.contactPhone || "",
+        notes: host.notes || "",
+        isVerified: !!host.isVerified,
+        amenitiesText: host.amenities ? JSON.stringify(host.amenities) : "",
+      };
+    });
+    setHostEdits(nextEdits);
+  }, [userHosts]);
+
+  useEffect(() => {
+    if (!userRestaurants.length) {
+      setRestaurantEdits({});
+      return;
+    }
+    const nextEdits: Record<string, any> = {};
+    userRestaurants.forEach((restaurant: any) => {
+      nextEdits[restaurant.id] = {
+        name: restaurant.name || "",
+        address: restaurant.address || "",
+        phone: restaurant.phone || "",
+        businessType: restaurant.businessType || "restaurant",
+        cuisineType: restaurant.cuisineType || "",
+        promoCode: restaurant.promoCode || "",
+        city: restaurant.city || "",
+        state: restaurant.state || "",
+        latitude: restaurant.latitude || "",
+        longitude: restaurant.longitude || "",
+        description: restaurant.description || "",
+        websiteUrl: restaurant.websiteUrl || "",
+        instagramUrl: restaurant.instagramUrl || "",
+        facebookPageUrl: restaurant.facebookPageUrl || "",
+        isActive: !!restaurant.isActive,
+        isVerified: !!restaurant.isVerified,
+        amenitiesText: restaurant.amenities
+          ? JSON.stringify(restaurant.amenities)
+          : "",
+      };
+    });
+    setRestaurantEdits(nextEdits);
+  }, [userRestaurants]);
+
+  useEffect(() => {
+    if (!userDeals.length) {
+      setDealEdits({});
+      return;
+    }
+    const nextEdits: Record<string, any> = {};
+    userDeals.forEach((deal: any) => {
+      nextEdits[deal.id] = {
+        title: deal.title || "",
+        description: deal.description || "",
+        dealType: deal.dealType || "percentage",
+        discountValue: deal.discountValue ?? "",
+        minOrderAmount: deal.minOrderAmount ?? "",
+        imageUrl: deal.imageUrl || "",
+        startDate: deal.startDate ? deal.startDate.slice(0, 10) : "",
+        endDate: deal.endDate ? deal.endDate.slice(0, 10) : "",
+        startTime: deal.startTime || "",
+        endTime: deal.endTime || "",
+        availableDuringBusinessHours: !!deal.availableDuringBusinessHours,
+        isOngoing: !!deal.isOngoing,
+        totalUsesLimit: deal.totalUsesLimit ?? "",
+        perCustomerLimit: deal.perCustomerLimit ?? "",
+        isActive: !!deal.isActive,
+      };
+    });
+    setDealEdits(nextEdits);
+  }, [userDeals]);
+
+  useEffect(() => {
+    if (!userEvents.length) {
+      setEventEdits({});
+      return;
+    }
+    const nextEdits: Record<string, any> = {};
+    userEvents.forEach((event: any) => {
+      nextEdits[event.id] = {
+        name: event.name || "",
+        description: event.description || "",
+        date: event.date ? event.date.slice(0, 10) : "",
+        startTime: event.startTime || "",
+        endTime: event.endTime || "",
+        maxTrucks: event.maxTrucks ?? 1,
+        status: event.status || "open",
+        hardCapEnabled: !!event.hardCapEnabled,
+        requiresPayment: !!event.requiresPayment,
+        breakfastPriceCents: event.breakfastPriceCents ?? 0,
+        lunchPriceCents: event.lunchPriceCents ?? 0,
+        dinnerPriceCents: event.dinnerPriceCents ?? 0,
+      };
+    });
+    setEventEdits(nextEdits);
+  }, [userEvents]);
+
+  useEffect(() => {
+    if (!userEventSeries.length) {
+      setSeriesEdits({});
+      return;
+    }
+    const nextEdits: Record<string, any> = {};
+    userEventSeries.forEach((series: any) => {
+      nextEdits[series.id] = {
+        name: series.name || "",
+        description: series.description || "",
+        timezone: series.timezone || "America/New_York",
+        recurrenceRule: series.recurrenceRule || "",
+        startDate: series.startDate ? series.startDate.slice(0, 10) : "",
+        endDate: series.endDate ? series.endDate.slice(0, 10) : "",
+        defaultStartTime: series.defaultStartTime || "",
+        defaultEndTime: series.defaultEndTime || "",
+        defaultMaxTrucks: series.defaultMaxTrucks ?? 1,
+        defaultHardCapEnabled: !!series.defaultHardCapEnabled,
+        status: series.status || "draft",
+      };
+    });
+    setSeriesEdits(nextEdits);
+  }, [userEventSeries]);
+
+  useEffect(() => {
+    const bookingRows = [
+      ...(userParkingBookings?.bookingsAsTruck || []),
+      ...(userParkingBookings?.bookingsAsHost || []),
+    ];
+    if (!bookingRows.length) {
+      setBookingEdits({});
+      return;
+    }
+    const nextEdits: Record<string, any> = {};
+    bookingRows.forEach((row: any) => {
+      const booking = row.event_bookings || row;
+      nextEdits[booking.id] = {
+        status: booking.status || "pending",
+        refundStatus: booking.refundStatus || "none",
+        refundAmountCents: booking.refundAmountCents ?? "",
+        cancellationReason: booking.cancellationReason || "",
+        refundReason: booking.refundReason || "",
+      };
+    });
+    setBookingEdits(nextEdits);
+  }, [userParkingBookings]);
 
   // Fetch selected user's addresses
   const { data: userAddresses = [] } = useQuery<any[]>({
@@ -1310,6 +1538,49 @@ export default function AdminDashboard() {
     },
   });
 
+  const verifyUserEmail = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest("POST", `/api/admin/users/${userId}/verify`);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({
+        title: "User Verified",
+        description: "Email verification marked as complete.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to verify user.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendSubscriptionLink = useMutation({
+    mutationFn: async (userId: string) => {
+      return await apiRequest(
+        "POST",
+        `/api/admin/users/${userId}/send-subscription-link`,
+      );
+    },
+    onSuccess: () => {
+      toast({
+        title: "Subscription Link Sent",
+        description: "Monthly subscription link has been emailed.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send subscription link.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const updateUserInfo = useMutation({
     mutationFn: async (payload: { userId: string; updates: any }) => {
       const res = await apiRequest(
@@ -1358,6 +1629,248 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: error.message || "Failed to update parking pass.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createAddress = useMutation({
+    mutationFn: async (payload: { userId: string; data: any }) => {
+      const res = await apiRequest(
+        "POST",
+        `/api/admin/users/${payload.userId}/addresses`,
+        payload.data,
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", selectedUser?.id, "addresses"],
+      });
+      setNewAddress({
+        label: "",
+        address: "",
+        city: "",
+        state: "",
+        postalCode: "",
+        type: "other",
+        isDefault: false,
+      });
+      toast({ title: "Address Added" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add address.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateAddress = useMutation({
+    mutationFn: async (payload: {
+      userId: string;
+      addressId: string;
+      updates: any;
+    }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/admin/users/${payload.userId}/addresses/${payload.addressId}`,
+        payload.updates,
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", selectedUser?.id, "addresses"],
+      });
+      toast({ title: "Address Updated" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update address.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteAddress = useMutation({
+    mutationFn: async (payload: { userId: string; addressId: string }) => {
+      return await apiRequest(
+        "DELETE",
+        `/api/admin/users/${payload.userId}/addresses/${payload.addressId}`,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", selectedUser?.id, "addresses"],
+      });
+      toast({ title: "Address Deleted" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete address.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const setDefaultAddress = useMutation({
+    mutationFn: async (payload: { userId: string; addressId: string }) => {
+      return await apiRequest(
+        "POST",
+        `/api/admin/users/${payload.userId}/addresses/${payload.addressId}/default`,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", selectedUser?.id, "addresses"],
+      });
+      toast({ title: "Default Address Updated" });
+    },
+  });
+
+  const updateHost = useMutation({
+    mutationFn: async (payload: { hostId: string; updates: any }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/admin/hosts/${payload.hostId}`,
+        payload.updates,
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", selectedUser?.id, "hosts"],
+      });
+      toast({ title: "Host Updated" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update host.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateRestaurant = useMutation({
+    mutationFn: async (payload: { restaurantId: string; updates: any }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/admin/restaurants/${payload.restaurantId}`,
+        payload.updates,
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", selectedUser?.id, "restaurants"],
+      });
+      toast({ title: "Restaurant Updated" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update restaurant.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateDeal = useMutation({
+    mutationFn: async (payload: { dealId: string; updates: any }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/admin/deals/${payload.dealId}`,
+        payload.updates,
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", selectedUser?.id, "deals"],
+      });
+      toast({ title: "Deal Updated" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update deal.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateEvent = useMutation({
+    mutationFn: async (payload: { eventId: string; updates: any }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/admin/events/${payload.eventId}`,
+        payload.updates,
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", selectedUser?.id, "events"],
+      });
+      toast({ title: "Event Updated" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update event.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateEventSeries = useMutation({
+    mutationFn: async (payload: { seriesId: string; updates: any }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/admin/event-series/${payload.seriesId}`,
+        payload.updates,
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", selectedUser?.id, "event-series"],
+      });
+      toast({ title: "Open Call Updated" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update open call.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateBooking = useMutation({
+    mutationFn: async (payload: { bookingId: string; updates: any }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/admin/parking-pass-bookings/${payload.bookingId}`,
+        payload.updates,
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", selectedUser?.id, "parking-pass-bookings"],
+      });
+      toast({ title: "Booking Updated" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update booking.",
         variant: "destructive",
       });
     },
@@ -1820,7 +2333,7 @@ export default function AdminDashboard() {
                   {sortedUsers.map((user: any) => (
                     <div
                       key={user.id}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                      className="flex flex-col gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="flex-1">
                         <div className="font-medium">
@@ -1843,7 +2356,7 @@ export default function AdminDashboard() {
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center space-x-3">
+                      <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
                         <div className="flex flex-col gap-2">
                           <select
                             value={user.userType}
@@ -1854,7 +2367,7 @@ export default function AdminDashboard() {
                               })
                             }
                             className="text-xs px-2 py-1 border rounded-md"
-                            disabled={updateUserType.isPending}
+                            disabled={updateUserType.isPending || isStaff}
                           >
                             <option value="customer">Customer</option>
                             <option value="food_truck">Food Truck</option>
@@ -1880,6 +2393,7 @@ export default function AdminDashboard() {
                             onClick={() => resendVerificationEmail.mutate(user.id)}
                             disabled={
                               resendVerificationEmail.isPending ||
+                              isStaff ||
                               !user.email ||
                               user.emailVerified
                             }
@@ -1887,6 +2401,35 @@ export default function AdminDashboard() {
                           >
                             <Mail className="w-3 h-3 mr-1" />
                             {user.emailVerified ? "Verified" : "Resend Verify"}
+                          </Button>
+                          {isAdminOrSuper && !user.emailVerified && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => verifyUserEmail.mutate(user.id)}
+                              disabled={verifyUserEmail.isPending}
+                              data-testid={`button-verify-user-${user.id}`}
+                            >
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Auto Verify
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => sendSubscriptionLink.mutate(user.id)}
+                            disabled={
+                              sendSubscriptionLink.isPending ||
+                              isStaff ||
+                              !user.email ||
+                              !["restaurant_owner", "food_truck"].includes(
+                                user.userType,
+                              )
+                            }
+                            data-testid={`button-send-subscription-${user.id}`}
+                          >
+                            <DollarSign className="w-3 h-3 mr-1" />
+                            Send Monthly Link
                           </Button>
                         </div>
                         <Button
@@ -1901,34 +2444,36 @@ export default function AdminDashboard() {
                           <Eye className="w-4 h-4 mr-1" />
                           Details
                         </Button>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={user.isActive}
-                            onCheckedChange={(checked) =>
-                              toggleUserStatus.mutate({
-                                userId: user.id,
-                                isActive: checked,
-                              })
-                            }
-                            data-testid={`switch-user-${user.id}`}
-                          />
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => {
-                              if (
-                                confirm(
-                                  `Are you sure you want to permanently delete ${user.firstName} ${user.lastName}? This cannot be undone.`,
-                                )
-                              ) {
-                                deleteUser.mutate(user.id);
+                        {!isStaff && (
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={!user.isDisabled}
+                              onCheckedChange={(checked) =>
+                                toggleUserStatus.mutate({
+                                  userId: user.id,
+                                  isActive: checked,
+                                })
                               }
-                            }}
-                            disabled={deleteUser.isPending}
-                          >
-                            <UserMinus className="w-4 h-4" />
-                          </Button>
-                        </div>
+                              data-testid={`switch-user-${user.id}`}
+                            />
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                if (
+                                  confirm(
+                                    `Are you sure you want to permanently delete ${user.firstName} ${user.lastName}? This cannot be undone.`,
+                                  )
+                                ) {
+                                  deleteUser.mutate(user.id);
+                                }
+                              }}
+                              disabled={deleteUser.isPending}
+                            >
+                              <UserMinus className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -2291,7 +2836,7 @@ export default function AdminDashboard() {
           {selectedUser && (
             <div className="space-y-6 mt-4">
               {/* Edit User */}
-              {userEdits && (
+              {!isStaff && userEdits && (
                 <div>
                   <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
                     <Settings className="w-4 h-4 mr-2" />
@@ -2460,7 +3005,7 @@ export default function AdminDashboard() {
                           updates: userEdits,
                         })
                       }
-                      disabled={updateUserInfo.isPending}
+                      disabled={updateUserInfo.isPending || isStaff}
                       data-testid="button-save-user"
                     >
                       Save User Changes
@@ -2527,10 +3072,10 @@ export default function AdminDashboard() {
                     </p>
                     <Badge
                       variant={
-                        selectedUser.isActive ? "default" : "destructive"
+                        !selectedUser.isDisabled ? "default" : "destructive"
                       }
                     >
-                      {selectedUser.isActive ? "Active" : "Inactive"}
+                      {!selectedUser.isDisabled ? "Active" : "Inactive"}
                     </Badge>
                   </div>
                 </div>
@@ -2700,19 +3245,21 @@ export default function AdminDashboard() {
               </div>
 
               {/* Saved Addresses */}
-              {userAddresses && userAddresses.length > 0 && (
-                <div>
-                  <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
-                    <MapPin className="w-4 h-4 mr-2" />
-                    SAVED ADDRESSES ({userAddresses.length})
-                  </h3>
-                  <div className="space-y-3">
-                    {userAddresses.map((address: any) => (
+              <div>
+                <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                  <MapPin className="w-4 h-4 mr-2" />
+                  SAVED ADDRESSES ({userAddresses.length})
+                </h3>
+                <div className="space-y-3">
+                  {userAddresses.map((address: any) => {
+                    const edits = addressEdits[address.id];
+                    if (!edits) return null;
+                    return (
                       <div
                         key={address.id}
-                        className="border rounded-lg p-3 bg-muted/30"
+                        className="border rounded-lg p-3 bg-muted/30 space-y-3"
                       >
-                        <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="capitalize">
                               {address.type}
@@ -2723,20 +3270,967 @@ export default function AdminDashboard() {
                               </Badge>
                             )}
                           </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                setDefaultAddress.mutate({
+                                  userId: selectedUser.id,
+                                  addressId: address.id,
+                                })
+                              }
+                              disabled={isStaff}
+                            >
+                              Set Default
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() =>
+                                deleteAddress.mutate({
+                                  userId: selectedUser.id,
+                                  addressId: address.id,
+                                })
+                              }
+                              disabled={isStaff}
+                            >
+                              Delete
+                            </Button>
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <p className="font-medium text-sm">{address.label}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {address.address}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {address.city}
-                            {address.state && `, ${address.state}`}
-                            {address.postalCode && ` ${address.postalCode}`}
-                          </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <input
+                            className="w-full px-2 py-1 border rounded-md text-sm"
+                            placeholder="Label"
+                            value={edits.label}
+                            onChange={(e) =>
+                              setAddressEdits({
+                                ...addressEdits,
+                                [address.id]: {
+                                  ...edits,
+                                  label: e.target.value,
+                                },
+                              })
+                            }
+                          />
+                          <select
+                            className="w-full px-2 py-1 border rounded-md text-sm bg-background"
+                            value={edits.type}
+                            onChange={(e) =>
+                              setAddressEdits({
+                                ...addressEdits,
+                                [address.id]: {
+                                  ...edits,
+                                  type: e.target.value,
+                                },
+                              })
+                            }
+                          >
+                            <option value="home">Home</option>
+                            <option value="work">Work</option>
+                            <option value="other">Other</option>
+                          </select>
+                          <input
+                            className="w-full px-2 py-1 border rounded-md text-sm"
+                            placeholder="Address"
+                            value={edits.address}
+                            onChange={(e) =>
+                              setAddressEdits({
+                                ...addressEdits,
+                                [address.id]: {
+                                  ...edits,
+                                  address: e.target.value,
+                                },
+                              })
+                            }
+                          />
+                          <input
+                            className="w-full px-2 py-1 border rounded-md text-sm"
+                            placeholder="City"
+                            value={edits.city}
+                            onChange={(e) =>
+                              setAddressEdits({
+                                ...addressEdits,
+                                [address.id]: {
+                                  ...edits,
+                                  city: e.target.value,
+                                },
+                              })
+                            }
+                          />
+                          <input
+                            className="w-full px-2 py-1 border rounded-md text-sm"
+                            placeholder="State"
+                            value={edits.state}
+                            onChange={(e) =>
+                              setAddressEdits({
+                                ...addressEdits,
+                                [address.id]: {
+                                  ...edits,
+                                  state: e.target.value,
+                                },
+                              })
+                            }
+                          />
+                          <input
+                            className="w-full px-2 py-1 border rounded-md text-sm"
+                            placeholder="Postal Code"
+                            value={edits.postalCode}
+                            onChange={(e) =>
+                              setAddressEdits({
+                                ...addressEdits,
+                                [address.id]: {
+                                  ...edits,
+                                  postalCode: e.target.value,
+                                },
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              updateAddress.mutate({
+                                userId: selectedUser.id,
+                                addressId: address.id,
+                                updates: edits,
+                              })
+                            }
+                            disabled={isStaff}
+                          >
+                            Save Address
+                          </Button>
                         </div>
                       </div>
-                    ))}
+                    );
+                  })}
+                  <div className="border rounded-lg p-3 space-y-3">
+                    <div className="text-sm font-medium">Add New Address</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-sm"
+                        placeholder="Label"
+                        value={newAddress.label}
+                        onChange={(e) =>
+                          setNewAddress({ ...newAddress, label: e.target.value })
+                        }
+                      />
+                      <select
+                        className="w-full px-2 py-1 border rounded-md text-sm bg-background"
+                        value={newAddress.type}
+                        onChange={(e) =>
+                          setNewAddress({ ...newAddress, type: e.target.value })
+                        }
+                      >
+                        <option value="home">Home</option>
+                        <option value="work">Work</option>
+                        <option value="other">Other</option>
+                      </select>
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-sm"
+                        placeholder="Address"
+                        value={newAddress.address}
+                        onChange={(e) =>
+                          setNewAddress({
+                            ...newAddress,
+                            address: e.target.value,
+                          })
+                        }
+                      />
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-sm"
+                        placeholder="City"
+                        value={newAddress.city}
+                        onChange={(e) =>
+                          setNewAddress({ ...newAddress, city: e.target.value })
+                        }
+                      />
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-sm"
+                        placeholder="State"
+                        value={newAddress.state}
+                        onChange={(e) =>
+                          setNewAddress({ ...newAddress, state: e.target.value })
+                        }
+                      />
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-sm"
+                        placeholder="Postal Code"
+                        value={newAddress.postalCode}
+                        onChange={(e) =>
+                          setNewAddress({
+                            ...newAddress,
+                            postalCode: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={newAddress.isDefault}
+                        onChange={(e) =>
+                          setNewAddress({
+                            ...newAddress,
+                            isDefault: e.target.checked,
+                          })
+                        }
+                      />
+                      Set as default
+                    </label>
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        createAddress.mutate({
+                          userId: selectedUser.id,
+                          data: newAddress,
+                        })
+                      }
+                      disabled={createAddress.isPending || isStaff}
+                    >
+                      Add Address
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Host Profiles */}
+              {userHosts.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    HOST PROFILES ({userHosts.length})
+                  </h3>
+                  <div className="space-y-4">
+                    {userHosts.map((host: any) => {
+                      const edits = hostEdits[host.id];
+                      if (!edits) return null;
+                      return (
+                        <div
+                          key={host.id}
+                          className="border rounded-lg p-3 bg-muted/30 space-y-3"
+                        >
+                          <div className="text-sm font-medium">
+                            {host.businessName}
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              value={edits.businessName}
+                              onChange={(e) =>
+                                setHostEdits({
+                                  ...hostEdits,
+                                  [host.id]: {
+                                    ...edits,
+                                    businessName: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              value={edits.address}
+                              onChange={(e) =>
+                                setHostEdits({
+                                  ...hostEdits,
+                                  [host.id]: {
+                                    ...edits,
+                                    address: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="City"
+                              value={edits.city}
+                              onChange={(e) =>
+                                setHostEdits({
+                                  ...hostEdits,
+                                  [host.id]: {
+                                    ...edits,
+                                    city: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="State"
+                              value={edits.state}
+                              onChange={(e) =>
+                                setHostEdits({
+                                  ...hostEdits,
+                                  [host.id]: {
+                                    ...edits,
+                                    state: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="Latitude"
+                              value={edits.latitude}
+                              onChange={(e) =>
+                                setHostEdits({
+                                  ...hostEdits,
+                                  [host.id]: {
+                                    ...edits,
+                                    latitude: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="Longitude"
+                              value={edits.longitude}
+                              onChange={(e) =>
+                                setHostEdits({
+                                  ...hostEdits,
+                                  [host.id]: {
+                                    ...edits,
+                                    longitude: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <select
+                              className="w-full px-2 py-1 border rounded-md text-sm bg-background"
+                              value={edits.locationType}
+                              onChange={(e) =>
+                                setHostEdits({
+                                  ...hostEdits,
+                                  [host.id]: {
+                                    ...edits,
+                                    locationType: e.target.value,
+                                  },
+                                })
+                              }
+                            >
+                              <option value="private_residence">
+                                Private Residence
+                              </option>
+                              <option value="business">Business</option>
+                              <option value="parking_lot">Parking Lot</option>
+                              <option value="event_space">Event Space</option>
+                              <option value="public_park">Public Park</option>
+                              <option value="other">Other</option>
+                            </select>
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="Foot Traffic"
+                              value={edits.expectedFootTraffic}
+                              onChange={(e) =>
+                                setHostEdits({
+                                  ...hostEdits,
+                                  [host.id]: {
+                                    ...edits,
+                                    expectedFootTraffic: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="Contact Phone"
+                              value={edits.contactPhone}
+                              onChange={(e) =>
+                                setHostEdits({
+                                  ...hostEdits,
+                                  [host.id]: {
+                                    ...edits,
+                                    contactPhone: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <textarea
+                              className="w-full px-2 py-1 border rounded-md text-sm sm:col-span-2"
+                              placeholder="Amenities JSON"
+                              value={edits.amenitiesText}
+                              onChange={(e) =>
+                                setHostEdits({
+                                  ...hostEdits,
+                                  [host.id]: {
+                                    ...edits,
+                                    amenitiesText: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <textarea
+                              className="w-full px-2 py-1 border rounded-md text-sm sm:col-span-2"
+                              placeholder="Notes"
+                              value={edits.notes}
+                              onChange={(e) =>
+                                setHostEdits({
+                                  ...hostEdits,
+                                  [host.id]: {
+                                    ...edits,
+                                    notes: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <input
+                                type="checkbox"
+                                checked={edits.isVerified}
+                                onChange={(e) =>
+                                  setHostEdits({
+                                    ...hostEdits,
+                                    [host.id]: {
+                                      ...edits,
+                                      isVerified: e.target.checked,
+                                    },
+                                  })
+                                }
+                              />
+                              Verified
+                            </label>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              let amenities: any = undefined;
+                              if (edits.amenitiesText) {
+                                try {
+                                  amenities = JSON.parse(edits.amenitiesText);
+                                } catch {
+                                  toast({
+                                    title: "Invalid JSON",
+                                    description:
+                                      "Amenities must be valid JSON.",
+                                    variant: "destructive",
+                                  });
+                                  return;
+                                }
+                              }
+                              updateHost.mutate({
+                                hostId: host.id,
+                                updates: {
+                                  ...edits,
+                                  amenities,
+                                },
+                              });
+                            }}
+                            disabled={isStaff}
+                          >
+                            Save Host
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Restaurants */}
+              {userRestaurants.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                    <Store className="w-4 h-4 mr-2" />
+                    RESTAURANTS ({userRestaurants.length})
+                  </h3>
+                  <div className="space-y-4">
+                    {userRestaurants.map((restaurant: any) => {
+                      const edits = restaurantEdits[restaurant.id];
+                      if (!edits) return null;
+                      return (
+                        <div
+                          key={restaurant.id}
+                          className="border rounded-lg p-3 bg-muted/30 space-y-3"
+                        >
+                          <div className="text-sm font-medium">
+                            {restaurant.name}
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              value={edits.name}
+                              onChange={(e) =>
+                                setRestaurantEdits({
+                                  ...restaurantEdits,
+                                  [restaurant.id]: {
+                                    ...edits,
+                                    name: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              value={edits.address}
+                              onChange={(e) =>
+                                setRestaurantEdits({
+                                  ...restaurantEdits,
+                                  [restaurant.id]: {
+                                    ...edits,
+                                    address: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="Phone"
+                              value={edits.phone}
+                              onChange={(e) =>
+                                setRestaurantEdits({
+                                  ...restaurantEdits,
+                                  [restaurant.id]: {
+                                    ...edits,
+                                    phone: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="Cuisine Type"
+                              value={edits.cuisineType}
+                              onChange={(e) =>
+                                setRestaurantEdits({
+                                  ...restaurantEdits,
+                                  [restaurant.id]: {
+                                    ...edits,
+                                    cuisineType: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <select
+                              className="w-full px-2 py-1 border rounded-md text-sm bg-background"
+                              value={edits.businessType}
+                              onChange={(e) =>
+                                setRestaurantEdits({
+                                  ...restaurantEdits,
+                                  [restaurant.id]: {
+                                    ...edits,
+                                    businessType: e.target.value,
+                                  },
+                                })
+                              }
+                            >
+                              <option value="restaurant">Restaurant</option>
+                              <option value="bar">Bar</option>
+                              <option value="food_truck">Food Truck</option>
+                            </select>
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="Promo Code"
+                              value={edits.promoCode}
+                              onChange={(e) =>
+                                setRestaurantEdits({
+                                  ...restaurantEdits,
+                                  [restaurant.id]: {
+                                    ...edits,
+                                    promoCode: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="City"
+                              value={edits.city}
+                              onChange={(e) =>
+                                setRestaurantEdits({
+                                  ...restaurantEdits,
+                                  [restaurant.id]: {
+                                    ...edits,
+                                    city: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="State"
+                              value={edits.state}
+                              onChange={(e) =>
+                                setRestaurantEdits({
+                                  ...restaurantEdits,
+                                  [restaurant.id]: {
+                                    ...edits,
+                                    state: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <textarea
+                              className="w-full px-2 py-1 border rounded-md text-sm sm:col-span-2"
+                              placeholder="Description"
+                              value={edits.description}
+                              onChange={(e) =>
+                                setRestaurantEdits({
+                                  ...restaurantEdits,
+                                  [restaurant.id]: {
+                                    ...edits,
+                                    description: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="Website URL"
+                              value={edits.websiteUrl}
+                              onChange={(e) =>
+                                setRestaurantEdits({
+                                  ...restaurantEdits,
+                                  [restaurant.id]: {
+                                    ...edits,
+                                    websiteUrl: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="Instagram URL"
+                              value={edits.instagramUrl}
+                              onChange={(e) =>
+                                setRestaurantEdits({
+                                  ...restaurantEdits,
+                                  [restaurant.id]: {
+                                    ...edits,
+                                    instagramUrl: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="Facebook Page URL"
+                              value={edits.facebookPageUrl}
+                              onChange={(e) =>
+                                setRestaurantEdits({
+                                  ...restaurantEdits,
+                                  [restaurant.id]: {
+                                    ...edits,
+                                    facebookPageUrl: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <textarea
+                              className="w-full px-2 py-1 border rounded-md text-sm sm:col-span-2"
+                              placeholder="Amenities JSON"
+                              value={edits.amenitiesText}
+                              onChange={(e) =>
+                                setRestaurantEdits({
+                                  ...restaurantEdits,
+                                  [restaurant.id]: {
+                                    ...edits,
+                                    amenitiesText: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <input
+                                type="checkbox"
+                                checked={edits.isActive}
+                                onChange={(e) =>
+                                  setRestaurantEdits({
+                                    ...restaurantEdits,
+                                    [restaurant.id]: {
+                                      ...edits,
+                                      isActive: e.target.checked,
+                                    },
+                                  })
+                                }
+                              />
+                              Active
+                            </label>
+                            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <input
+                                type="checkbox"
+                                checked={edits.isVerified}
+                                onChange={(e) =>
+                                  setRestaurantEdits({
+                                    ...restaurantEdits,
+                                    [restaurant.id]: {
+                                      ...edits,
+                                      isVerified: e.target.checked,
+                                    },
+                                  })
+                                }
+                              />
+                              Verified
+                            </label>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              let amenities: any = undefined;
+                              if (edits.amenitiesText) {
+                                try {
+                                  amenities = JSON.parse(edits.amenitiesText);
+                                } catch {
+                                  toast({
+                                    title: "Invalid JSON",
+                                    description:
+                                      "Amenities must be valid JSON.",
+                                    variant: "destructive",
+                                  });
+                                  return;
+                                }
+                              }
+                              updateRestaurant.mutate({
+                                restaurantId: restaurant.id,
+                                updates: {
+                                  ...edits,
+                                  amenities,
+                                },
+                              });
+                            }}
+                            disabled={isStaff}
+                          >
+                            Save Restaurant
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Deals */}
+              {userDeals.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                    <DollarSign className="w-4 h-4 mr-2" />
+                    DEALS ({userDeals.length})
+                  </h3>
+                  <div className="space-y-4">
+                    {userDeals.map((deal: any) => {
+                      const edits = dealEdits[deal.id];
+                      if (!edits) return null;
+                      return (
+                        <div
+                          key={deal.id}
+                          className="border rounded-lg p-3 bg-muted/30 space-y-3"
+                        >
+                          <div className="text-sm font-medium">
+                            {deal.title}
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              value={edits.title}
+                              onChange={(e) =>
+                                setDealEdits({
+                                  ...dealEdits,
+                                  [deal.id]: {
+                                    ...edits,
+                                    title: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <select
+                              className="w-full px-2 py-1 border rounded-md text-sm bg-background"
+                              value={edits.dealType}
+                              onChange={(e) =>
+                                setDealEdits({
+                                  ...dealEdits,
+                                  [deal.id]: {
+                                    ...edits,
+                                    dealType: e.target.value,
+                                  },
+                                })
+                              }
+                            >
+                              <option value="percentage">Percentage</option>
+                              <option value="fixed">Fixed</option>
+                            </select>
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="Discount Value"
+                              value={edits.discountValue}
+                              onChange={(e) =>
+                                setDealEdits({
+                                  ...dealEdits,
+                                  [deal.id]: {
+                                    ...edits,
+                                    discountValue: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="Min Order Amount"
+                              value={edits.minOrderAmount}
+                              onChange={(e) =>
+                                setDealEdits({
+                                  ...dealEdits,
+                                  [deal.id]: {
+                                    ...edits,
+                                    minOrderAmount: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="Image URL"
+                              value={edits.imageUrl}
+                              onChange={(e) =>
+                                setDealEdits({
+                                  ...dealEdits,
+                                  [deal.id]: {
+                                    ...edits,
+                                    imageUrl: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              type="date"
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              value={edits.startDate}
+                              onChange={(e) =>
+                                setDealEdits({
+                                  ...dealEdits,
+                                  [deal.id]: {
+                                    ...edits,
+                                    startDate: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              type="date"
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              value={edits.endDate}
+                              onChange={(e) =>
+                                setDealEdits({
+                                  ...dealEdits,
+                                  [deal.id]: {
+                                    ...edits,
+                                    endDate: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              type="time"
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              value={edits.startTime}
+                              onChange={(e) =>
+                                setDealEdits({
+                                  ...dealEdits,
+                                  [deal.id]: {
+                                    ...edits,
+                                    startTime: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              type="time"
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              value={edits.endTime}
+                              onChange={(e) =>
+                                setDealEdits({
+                                  ...dealEdits,
+                                  [deal.id]: {
+                                    ...edits,
+                                    endTime: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <textarea
+                              className="w-full px-2 py-1 border rounded-md text-sm sm:col-span-2"
+                              placeholder="Description"
+                              value={edits.description}
+                              onChange={(e) =>
+                                setDealEdits({
+                                  ...dealEdits,
+                                  [deal.id]: {
+                                    ...edits,
+                                    description: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <input
+                                type="checkbox"
+                                checked={edits.availableDuringBusinessHours}
+                                onChange={(e) =>
+                                  setDealEdits({
+                                    ...dealEdits,
+                                    [deal.id]: {
+                                      ...edits,
+                                      availableDuringBusinessHours:
+                                        e.target.checked,
+                                    },
+                                  })
+                                }
+                              />
+                              Business Hours Only
+                            </label>
+                            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <input
+                                type="checkbox"
+                                checked={edits.isOngoing}
+                                onChange={(e) =>
+                                  setDealEdits({
+                                    ...dealEdits,
+                                    [deal.id]: {
+                                      ...edits,
+                                      isOngoing: e.target.checked,
+                                    },
+                                  })
+                                }
+                              />
+                              Ongoing
+                            </label>
+                            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <input
+                                type="checkbox"
+                                checked={edits.isActive}
+                                onChange={(e) =>
+                                  setDealEdits({
+                                    ...dealEdits,
+                                    [deal.id]: {
+                                      ...edits,
+                                      isActive: e.target.checked,
+                                    },
+                                  })
+                                }
+                              />
+                              Active
+                            </label>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              updateDeal.mutate({
+                                dealId: deal.id,
+                                updates: edits,
+                              })
+                            }
+                            disabled={isStaff}
+                          >
+                            Save Deal
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -2930,7 +4424,7 @@ export default function AdminDashboard() {
                                   updates: edits,
                                 })
                               }
-                              disabled={updateParkingPass.isPending}
+                              disabled={updateParkingPass.isPending || isStaff}
                               data-testid={`button-save-parking-pass-${pass.id}`}
                             >
                               Save Parking Pass

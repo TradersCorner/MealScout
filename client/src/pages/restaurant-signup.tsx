@@ -81,7 +81,6 @@ const restaurantSchema = z.object({
   hasParking: z.boolean().default(false),
   hasWifi: z.boolean().default(false),
   hasOutdoorSeating: z.boolean().default(false),
-  promoCode: z.string().optional(),
   acceptTerms: z
     .boolean()
     .refine(
@@ -236,7 +235,6 @@ export default function RestaurantSignup() {
       hasParking: false,
       hasWifi: false,
       hasOutdoorSeating: false,
-      promoCode: "",
       acceptTerms: false,
     };
 
@@ -370,7 +368,6 @@ export default function RestaurantSignup() {
               wifi: data.hasWifi,
               outdoor_seating: data.hasOutdoorSeating,
             },
-            promoCode: data.promoCode,
           },
           subscriptionPlan: "month",
         };
@@ -404,7 +401,6 @@ export default function RestaurantSignup() {
               wifi: data.hasWifi,
               outdoor_seating: data.hasOutdoorSeating,
             },
-            promoCode: data.promoCode,
           },
           subscriptionPlan: "month",
         };
@@ -473,37 +469,13 @@ export default function RestaurantSignup() {
   });
 
   const onSubmit = async (data: RestaurantFormData) => {
-    const { acceptTerms, promoCode, ...restaurantData } = data;
+    const { acceptTerms, ...restaurantData } = data;
 
     try {
       // Create restaurant first
       const restaurant = await createRestaurantMutation.mutateAsync(
         restaurantData
       );
-
-      // If promo code is provided, create subscription with promo code
-      if (promoCode) {
-        const subscriptionData = {
-          billingInterval: "month",
-          promoCode: promoCode.toUpperCase(),
-        };
-
-        const response = await apiRequest(
-          "POST",
-          "/api/create-subscription",
-          subscriptionData
-        );
-        const result = await response.json();
-
-        if (result.betaAccess) {
-          toast({
-            title: COPY.notifications.betaAccess.title,
-            description: COPY.notifications.betaAccess.description,
-          });
-          setLocation("/deal-creation");
-          return;
-        }
-      }
 
       // Normal flow continues to verification step
       setCreatedRestaurant(restaurant);
@@ -512,6 +484,15 @@ export default function RestaurantSignup() {
       console.error("Error in restaurant signup:", error);
       // Error handling is already done in the mutation
     }
+  };
+
+  const handleRestaurantInvalid = (errors: Record<string, any>) => {
+    const firstError = Object.values(errors)[0] as any;
+    toast({
+      title: "Check the form",
+      description: firstError?.message || "Please fix the highlighted fields.",
+      variant: "destructive",
+    });
   };
 
   const handleVerificationSubmit = () => {
@@ -1508,7 +1489,7 @@ export default function RestaurantSignup() {
           <div className="bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-xl p-8">
             <Form {...form}>
               <form
-                onSubmit={form.handleSubmit(onSubmit)}
+                onSubmit={form.handleSubmit(onSubmit, handleRestaurantInvalid)}
                 className="space-y-8"
               >
                 <FormField
@@ -2053,39 +2034,6 @@ export default function RestaurantSignup() {
                   </div>
                 </div>
 
-                {/* Promo Code Field */}
-                <FormField
-                  control={form.control}
-                  name="promoCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel
-                        className="text-lg font-semibold text-gray-900"
-                        data-testid="label-promo-code"
-                      >
-                        {COPY.forms.restaurant.promoLabel}{" "}
-                        <span className="text-sm font-normal text-gray-500">
-                          {COPY.forms.restaurant.promoOptionalSuffix}
-                        </span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder={COPY.promo.helperText}
-                          {...field}
-                          className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200 uppercase"
-                          data-testid="input-promo-code"
-                          onChange={(e) =>
-                            field.onChange(e.target.value.toUpperCase())
-                          }
-                        />
-                      </FormControl>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {COPY.promo.betaNote}
-                      </p>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
                 {/* NORTH STAR: Pricing Lock Notice */}
                 <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-6">

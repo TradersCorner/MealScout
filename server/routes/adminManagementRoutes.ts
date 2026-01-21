@@ -1,11 +1,14 @@
 import type { Express } from "express";
 import Stripe from "stripe";
 import crypto from "crypto";
+import { eq } from "drizzle-orm";
 import { storage } from "../storage";
 import { isAuthenticated, isStaffOrAdmin } from "../unifiedAuth";
 import { sanitizeUser, sanitizeUsers } from "../utils/sanitize";
 import { sendAccountSetupInvite } from "../utils/accountSetup";
 import { emailService } from "../emailService";
+import { db } from "../db";
+import { events } from "@shared/schema";
 
 // Optional Stripe integration (mirrors server/routes.ts)
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -382,6 +385,213 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error resending verification email:", error);
         res.status(500).json({
           message: error.message || "Failed to resend verification email",
+        });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/admin/users/:id",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const userId = req.params.id;
+        const {
+          email,
+          firstName,
+          lastName,
+          phone,
+          postalCode,
+          birthYear,
+          gender,
+          isActive,
+          emailVerified,
+          userType,
+        } = req.body || {};
+
+        const updates: any = {};
+        if (email !== undefined) {
+          updates.email = String(email).trim().toLowerCase();
+        }
+        if (firstName !== undefined) {
+          updates.firstName = String(firstName).trim();
+        }
+        if (lastName !== undefined) {
+          updates.lastName = String(lastName).trim();
+        }
+        if (phone !== undefined) {
+          updates.phone = String(phone).trim();
+        }
+        if (postalCode !== undefined) {
+          updates.postalCode = String(postalCode).trim();
+        }
+        if (birthYear !== undefined && birthYear !== null && birthYear !== "") {
+          updates.birthYear = Number(birthYear);
+        }
+        if (gender !== undefined) {
+          updates.gender = String(gender).trim() || null;
+        }
+        if (isActive !== undefined) {
+          updates.isActive = Boolean(isActive);
+        }
+        if (emailVerified !== undefined) {
+          updates.emailVerified = Boolean(emailVerified);
+        }
+
+        if (userType) {
+          const allowedTypes = [
+            "customer",
+            "restaurant_owner",
+            "food_truck",
+            "host",
+            "event_coordinator",
+            "staff",
+            "admin",
+            "super_admin",
+          ];
+          if (!allowedTypes.includes(userType)) {
+            return res.status(400).json({ message: "Invalid user type" });
+          }
+          if (req.user?.userType === "staff") {
+            if (userType === "admin" || userType === "super_admin") {
+              return res.status(403).json({
+                message: "Staff cannot assign admin roles",
+              });
+            }
+          }
+          await storage.updateUserType(userId, userType);
+        }
+
+        const updated = Object.keys(updates).length
+          ? await storage.updateUser(userId, updates)
+          : await storage.getUser(userId);
+
+        if (!updated) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json(sanitizeUser(updated, { includeStripe: true }));
+      } catch (error: any) {
+        console.error("Error updating user info:", error);
+        if (error?.code === "23505") {
+          return res.status(409).json({
+            message: "Email or phone already in use",
+          });
+        }
+        res.status(500).json({
+          message: error.message || "Failed to update user",
+        });
+      }
+    }
+  );
+
+  app.get(
+    "/api/admin/users/:id/parking-pass",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const hosts = await storage.getHostsByUserId(req.params.id);
+        if (!hosts.length) {
+          return res.json([]);
+        }
+
+        const allEvents = await Promise.all(
+          hosts.map((host) => storage.getEventsByHost(host.id)),
+        );
+        const parkingPassEvents = allEvents
+          .flat()
+          .filter((event) => event.requiresPayment);
+
+        res.json(parkingPassEvents);
+      } catch (error) {
+        console.error("Error fetching parking pass listings:", error);
+        res.status(500).json({ message: "Failed to fetch parking pass listings" });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/admin/parking-pass/:id",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const eventId = req.params.id;
+        const event = await storage.getEvent(eventId);
+        if (!event) {
+          return res.status(404).json({ message: "Parking pass not found" });
+        }
+
+        const updates: any = {};
+        const fields = [
+          "startTime",
+          "endTime",
+          "maxTrucks",
+          "status",
+          "breakfastPriceCents",
+          "lunchPriceCents",
+          "dinnerPriceCents",
+        ];
+        for (const field of fields) {
+          if (req.body?.[field] !== undefined) {
+            updates[field] =
+              typeof req.body[field] === "number"
+                ? req.body[field]
+                : Number(req.body[field]);
+          }
+        }
+
+        if (updates.startTime && updates.endTime) {
+          const [startHour, startMinute] = String(updates.startTime)
+            .split(":")
+            .map(Number);
+          const [endHour, endMinute] = String(updates.endTime)
+            .split(":")
+            .map(Number);
+          const startMinutes = startHour * 60 + startMinute;
+          const endMinutes = endHour * 60 + endMinute;
+          if (endMinutes <= startMinutes) {
+            return res
+              .status(400)
+              .json({ message: "End time must be after start time" });
+          }
+        }
+
+        if (updates.maxTrucks !== undefined && updates.maxTrucks < 1) {
+          return res
+            .status(400)
+            .json({ message: "Max trucks must be at least 1" });
+        }
+
+        const breakfast = Number(
+          updates.breakfastPriceCents ?? event.breakfastPriceCents ?? 0,
+        );
+        const lunch = Number(
+          updates.lunchPriceCents ?? event.lunchPriceCents ?? 0,
+        );
+        const dinner = Number(
+          updates.dinnerPriceCents ?? event.dinnerPriceCents ?? 0,
+        );
+        const slotSum = breakfast + lunch + dinner;
+        updates.hostPriceCents = slotSum;
+        updates.dailyPriceCents = slotSum + 1000;
+        updates.weeklyPriceCents = slotSum * 7 + 1000;
+        updates.requiresPayment = true;
+        updates.updatedAt = new Date();
+
+        const [updated] = await db
+          .update(events)
+          .set(updates)
+          .where(eq(events.id, eventId))
+          .returning();
+
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error updating parking pass:", error);
+        res.status(500).json({
+          message: error.message || "Failed to update parking pass",
         });
       }
     }

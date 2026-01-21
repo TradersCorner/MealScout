@@ -952,6 +952,11 @@ export class DatabaseStorage implements IStorage {
         | "firstName"
         | "lastName"
         | "phone"
+        | "email"
+        | "postalCode"
+        | "birthYear"
+        | "gender"
+        | "isActive"
       >
     >
   ): Promise<User> {

@@ -1045,6 +1045,10 @@ export default function AdminDashboard() {
     queryKey: ["/api/admin/users", selectedUser?.id, "parking-pass-bookings"],
     enabled: !!adminUser && !!selectedUser?.id && userDetailsOpen,
   });
+  const { data: userAddresses = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/users", selectedUser?.id, "addresses"],
+    enabled: !!adminUser && !!selectedUser?.id && userDetailsOpen,
+  });
 
   const sortedUsers = useMemo(() => {
     const typeOrder = [
@@ -1300,12 +1304,6 @@ export default function AdminDashboard() {
     });
     setBookingEdits(nextEdits);
   }, [userParkingBookings]);
-
-  // Fetch selected user's addresses
-  const { data: userAddresses = [] } = useQuery<any[]>({
-    queryKey: ["/api/admin/users", selectedUser?.id, "addresses"],
-    enabled: !!adminUser && !!selectedUser?.id && userDetailsOpen,
-  });
 
   // Fetch selected deal's performance stats
   const { data: dealStats } = useQuery<any>({

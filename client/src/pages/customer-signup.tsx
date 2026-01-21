@@ -50,8 +50,7 @@ export default function CustomerSignup() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
-  const requirePhoneVerification =
-    import.meta.env.VITE_REQUIRE_PHONE_VERIFICATION !== "false";
+  const requirePhoneVerification = false;
 
   const searchParams = new URLSearchParams(window.location.search);
   const role = searchParams.get("role");

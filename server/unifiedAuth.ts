@@ -667,8 +667,7 @@ export async function setupUnifiedAuth(app: Express) {
   }
 
   const normalizePhone = (phone: string) => phone.replace(/\D/g, "");
-  const requirePhoneVerification =
-    process.env.REQUIRE_PHONE_VERIFICATION !== "false";
+  const requirePhoneVerification = false;
 
   const verifyPhoneCode = async (phone: string, code: string) => {
     const tokenHash = crypto.createHash("sha256").update(code).digest("hex");

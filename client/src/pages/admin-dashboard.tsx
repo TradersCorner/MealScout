@@ -951,6 +951,8 @@ export default function AdminDashboard() {
     "type",
   );
   const [userSortDir, setUserSortDir] = useState<"asc" | "desc">("asc");
+  const [userSearch, setUserSearch] = useState("");
+  const [userTypeFilter, setUserTypeFilter] = useState("all");
   const [selectedDeal, setSelectedDeal] = useState<any>(null);
   const [dealDetailsOpen, setDealDetailsOpen] = useState(false);
   const [extendDays, setExtendDays] = useState(7);
@@ -1088,6 +1090,25 @@ export default function AdminDashboard() {
 
     return normalized;
   }, [users, userSortDir, userSortKey]);
+  const filteredUsers = useMemo(() => {
+    const search = userSearch.trim().toLowerCase();
+    return sortedUsers.filter((user: any) => {
+      if (userTypeFilter !== "all" && user.userType !== userTypeFilter) {
+        return false;
+      }
+      if (!search) return true;
+      const name = `${user.firstName || ""} ${user.lastName || ""}`
+        .trim()
+        .toLowerCase();
+      const email = `${user.email || ""}`.toLowerCase();
+      const phone = `${user.phone || ""}`.toLowerCase();
+      return (
+        name.includes(search) ||
+        email.includes(search) ||
+        phone.includes(search)
+      );
+    });
+  }, [sortedUsers, userSearch, userTypeFilter]);
 
   useEffect(() => {
     if (!selectedUser) {
@@ -2304,6 +2325,32 @@ export default function AdminDashboard() {
                     Sorting affects the full user list.
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <input
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      placeholder="Search name, email, phone"
+                      className="text-xs px-2 py-1 border rounded-md bg-background"
+                    />
+                    <select
+                      value={userTypeFilter}
+                      onChange={(e) => setUserTypeFilter(e.target.value)}
+                      className="text-xs px-2 py-1 border rounded-md bg-background"
+                    >
+                      <option value="all">All Types</option>
+                      <option value="customer">Customer</option>
+                      <option value="food_truck">Food Truck</option>
+                      <option value="restaurant_owner">Restaurant Owner</option>
+                      <option value="host">Host</option>
+                      <option value="event_coordinator">Event Coordinator</option>
+                      <option value="staff">Staff</option>
+                      {(adminUser?.userType === "admin" ||
+                        adminUser?.userType === "super_admin") && (
+                        <option value="admin">Admin</option>
+                      )}
+                      {adminUser?.userType === "super_admin" && (
+                        <option value="super_admin">Super Admin</option>
+                      )}
+                    </select>
                     <select
                       value={userSortKey}
                       onChange={(e) =>
@@ -2328,7 +2375,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 <div className="space-y-3 mt-3">
-                  {sortedUsers.map((user: any) => (
+                  {filteredUsers.map((user: any) => (
                     <div
                       key={user.id}
                       className="flex flex-col gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors sm:flex-row sm:items-center sm:justify-between"

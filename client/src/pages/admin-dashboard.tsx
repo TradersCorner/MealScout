@@ -954,6 +954,10 @@ export default function AdminDashboard() {
   const [selectedDeal, setSelectedDeal] = useState<any>(null);
   const [dealDetailsOpen, setDealDetailsOpen] = useState(false);
   const [extendDays, setExtendDays] = useState(7);
+  const [userEdits, setUserEdits] = useState<any>(null);
+  const [parkingPassEdits, setParkingPassEdits] = useState<
+    Record<string, any>
+  >({});
   const handleLogout = async () => {
     try {
       await apiRequest("POST", "/api/auth/logout");
@@ -984,6 +988,11 @@ export default function AdminDashboard() {
   const { data: users = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/users"],
     enabled: !!adminUser && selectedTab === "users",
+  });
+
+  const { data: parkingPasses = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/users", selectedUser?.id, "parking-pass"],
+    enabled: !!adminUser && !!selectedUser?.id && userDetailsOpen,
   });
 
   const sortedUsers = useMemo(() => {
@@ -1024,6 +1033,45 @@ export default function AdminDashboard() {
 
     return normalized;
   }, [users, userSortDir, userSortKey]);
+
+  useEffect(() => {
+    if (!selectedUser) {
+      setUserEdits(null);
+      return;
+    }
+    setUserEdits({
+      email: selectedUser.email || "",
+      firstName: selectedUser.firstName || "",
+      lastName: selectedUser.lastName || "",
+      phone: selectedUser.phone || "",
+      postalCode: selectedUser.postalCode || "",
+      birthYear: selectedUser.birthYear || "",
+      gender: selectedUser.gender || "",
+      isActive: !!selectedUser.isActive,
+      emailVerified: !!selectedUser.emailVerified,
+      userType: selectedUser.userType || "customer",
+    });
+  }, [selectedUser]);
+
+  useEffect(() => {
+    if (!parkingPasses.length) {
+      setParkingPassEdits({});
+      return;
+    }
+    const nextEdits: Record<string, any> = {};
+    parkingPasses.forEach((pass: any) => {
+      nextEdits[pass.id] = {
+        startTime: pass.startTime || "",
+        endTime: pass.endTime || "",
+        maxTrucks: pass.maxTrucks ?? 1,
+        status: pass.status || "open",
+        breakfastPriceCents: pass.breakfastPriceCents ?? 0,
+        lunchPriceCents: pass.lunchPriceCents ?? 0,
+        dinnerPriceCents: pass.dinnerPriceCents ?? 0,
+      };
+    });
+    setParkingPassEdits(nextEdits);
+  }, [parkingPasses]);
 
   // Fetch selected user's addresses
   const { data: userAddresses = [] } = useQuery<any[]>({
@@ -1257,6 +1305,59 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: error.message || "Failed to resend verification email.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateUserInfo = useMutation({
+    mutationFn: async (payload: { userId: string; updates: any }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/admin/users/${payload.userId}`,
+        payload.updates,
+      );
+      return await res.json();
+    },
+    onSuccess: (updatedUser) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setSelectedUser(updatedUser);
+      toast({
+        title: "User Updated",
+        description: "User information has been updated.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update user.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateParkingPass = useMutation({
+    mutationFn: async (payload: { eventId: string; updates: any }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/admin/parking-pass/${payload.eventId}`,
+        payload.updates,
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", selectedUser?.id, "parking-pass"],
+      });
+      toast({
+        title: "Parking Pass Updated",
+        description: "Parking pass listing updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update parking pass.",
         variant: "destructive",
       });
     },
@@ -2189,6 +2290,184 @@ export default function AdminDashboard() {
 
           {selectedUser && (
             <div className="space-y-6 mt-4">
+              {/* Edit User */}
+              {userEdits && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                    <Settings className="w-4 h-4 mr-2" />
+                    EDIT USER
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Email</p>
+                      <input
+                        type="email"
+                        className="w-full px-3 py-2 border rounded-md text-sm"
+                        value={userEdits.email}
+                        onChange={(e) =>
+                          setUserEdits({ ...userEdits, email: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">User Type</p>
+                      <select
+                        className="w-full px-3 py-2 border rounded-md text-sm bg-background"
+                        value={userEdits.userType}
+                        onChange={(e) =>
+                          setUserEdits({
+                            ...userEdits,
+                            userType: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="customer">Customer</option>
+                        <option value="food_truck">Food Truck</option>
+                        <option value="restaurant_owner">Restaurant Owner</option>
+                        <option value="host">Host</option>
+                        <option value="event_coordinator">Event Coordinator</option>
+                        <option value="staff">Staff</option>
+                        {(adminUser?.userType === "admin" ||
+                          adminUser?.userType === "super_admin") && (
+                          <option value="admin">Admin</option>
+                        )}
+                        {adminUser?.userType === "super_admin" && (
+                          <option value="super_admin">Super Admin</option>
+                        )}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">First Name</p>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border rounded-md text-sm"
+                        value={userEdits.firstName}
+                        onChange={(e) =>
+                          setUserEdits({
+                            ...userEdits,
+                            firstName: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Last Name</p>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border rounded-md text-sm"
+                        value={userEdits.lastName}
+                        onChange={(e) =>
+                          setUserEdits({
+                            ...userEdits,
+                            lastName: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Phone</p>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border rounded-md text-sm"
+                        value={userEdits.phone}
+                        onChange={(e) =>
+                          setUserEdits({
+                            ...userEdits,
+                            phone: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Postal Code</p>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border rounded-md text-sm"
+                        value={userEdits.postalCode}
+                        onChange={(e) =>
+                          setUserEdits({
+                            ...userEdits,
+                            postalCode: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Birth Year</p>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-2 border rounded-md text-sm"
+                        value={userEdits.birthYear}
+                        onChange={(e) =>
+                          setUserEdits({
+                            ...userEdits,
+                            birthYear: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Gender</p>
+                      <select
+                        className="w-full px-3 py-2 border rounded-md text-sm bg-background"
+                        value={userEdits.gender}
+                        onChange={(e) =>
+                          setUserEdits({
+                            ...userEdits,
+                            gender: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">Unspecified</option>
+                        <option value="female">Female</option>
+                        <option value="male">Male</option>
+                        <option value="non_binary">Non-binary</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-muted-foreground">
+                        Active
+                      </label>
+                      <Switch
+                        checked={!!userEdits.isActive}
+                        onCheckedChange={(checked) =>
+                          setUserEdits({ ...userEdits, isActive: checked })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-muted-foreground">
+                        Email Verified
+                      </label>
+                      <Switch
+                        checked={!!userEdits.emailVerified}
+                        onCheckedChange={(checked) =>
+                          setUserEdits({
+                            ...userEdits,
+                            emailVerified: checked,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        updateUserInfo.mutate({
+                          userId: selectedUser.id,
+                          updates: userEdits,
+                        })
+                      }
+                      disabled={updateUserInfo.isPending}
+                      data-testid="button-save-user"
+                    >
+                      Save User Changes
+                    </Button>
+                  </div>
+                </div>
+              )}
               {/* Basic Information */}
               <div>
                 <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
@@ -2475,6 +2754,192 @@ export default function AdminDashboard() {
                     className="w-24 h-24 rounded-full object-cover border-2"
                     data-testid="img-user-profile"
                   />
+                </div>
+              )}
+
+              {/* Parking Pass Listings */}
+              {parkingPasses.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    PARKING PASS LISTINGS ({parkingPasses.length})
+                  </h3>
+                  <div className="space-y-4">
+                    {parkingPasses.map((pass: any) => {
+                      const edits = parkingPassEdits[pass.id];
+                      if (!edits) return null;
+                      return (
+                        <div
+                          key={pass.id}
+                          className="border rounded-lg p-3 bg-muted/30 space-y-3"
+                        >
+                          <div className="text-sm font-medium">
+                            {pass.name || "Parking Pass"} ·{" "}
+                            {new Date(pass.date).toLocaleDateString()}
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground">
+                                Start Time
+                              </p>
+                              <input
+                                type="time"
+                                className="w-full px-2 py-1 border rounded-md text-sm"
+                                value={edits.startTime}
+                                onChange={(e) =>
+                                  setParkingPassEdits({
+                                    ...parkingPassEdits,
+                                    [pass.id]: {
+                                      ...edits,
+                                      startTime: e.target.value,
+                                    },
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground">
+                                End Time
+                              </p>
+                              <input
+                                type="time"
+                                className="w-full px-2 py-1 border rounded-md text-sm"
+                                value={edits.endTime}
+                                onChange={(e) =>
+                                  setParkingPassEdits({
+                                    ...parkingPassEdits,
+                                    [pass.id]: {
+                                      ...edits,
+                                      endTime: e.target.value,
+                                    },
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground">
+                                Max Trucks
+                              </p>
+                              <input
+                                type="number"
+                                min={1}
+                                className="w-full px-2 py-1 border rounded-md text-sm"
+                                value={edits.maxTrucks}
+                                onChange={(e) =>
+                                  setParkingPassEdits({
+                                    ...parkingPassEdits,
+                                    [pass.id]: {
+                                      ...edits,
+                                      maxTrucks: e.target.value,
+                                    },
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground">
+                                Status
+                              </p>
+                              <select
+                                className="w-full px-2 py-1 border rounded-md text-sm bg-background"
+                                value={edits.status}
+                                onChange={(e) =>
+                                  setParkingPassEdits({
+                                    ...parkingPassEdits,
+                                    [pass.id]: {
+                                      ...edits,
+                                      status: e.target.value,
+                                    },
+                                  })
+                                }
+                              >
+                                <option value="open">Open</option>
+                                <option value="booked">Booked</option>
+                                <option value="cancelled">Cancelled</option>
+                                <option value="completed">Completed</option>
+                              </select>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground">
+                                Breakfast (cents)
+                              </p>
+                              <input
+                                type="number"
+                                min={0}
+                                className="w-full px-2 py-1 border rounded-md text-sm"
+                                value={edits.breakfastPriceCents}
+                                onChange={(e) =>
+                                  setParkingPassEdits({
+                                    ...parkingPassEdits,
+                                    [pass.id]: {
+                                      ...edits,
+                                      breakfastPriceCents: e.target.value,
+                                    },
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground">
+                                Lunch (cents)
+                              </p>
+                              <input
+                                type="number"
+                                min={0}
+                                className="w-full px-2 py-1 border rounded-md text-sm"
+                                value={edits.lunchPriceCents}
+                                onChange={(e) =>
+                                  setParkingPassEdits({
+                                    ...parkingPassEdits,
+                                    [pass.id]: {
+                                      ...edits,
+                                      lunchPriceCents: e.target.value,
+                                    },
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground">
+                                Dinner (cents)
+                              </p>
+                              <input
+                                type="number"
+                                min={0}
+                                className="w-full px-2 py-1 border rounded-md text-sm"
+                                value={edits.dinnerPriceCents}
+                                onChange={(e) =>
+                                  setParkingPassEdits({
+                                    ...parkingPassEdits,
+                                    [pass.id]: {
+                                      ...edits,
+                                      dinnerPriceCents: e.target.value,
+                                    },
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                updateParkingPass.mutate({
+                                  eventId: pass.id,
+                                  updates: edits,
+                                })
+                              }
+                              disabled={updateParkingPass.isPending}
+                              data-testid={`button-save-parking-pass-${pass.id}`}
+                            >
+                              Save Parking Pass
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 

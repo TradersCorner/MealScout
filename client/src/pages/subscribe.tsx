@@ -29,7 +29,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { BackHeader } from "@/components/back-header";
 import {
@@ -183,97 +182,34 @@ const PlanSelector = ({
   onPromoCodeChange,
   onContinue,
 }: {
-  billingInterval: "month" | "quarter" | "year";
+  billingInterval: "month";
   promoCode: string;
-  onBillingIntervalChange: (value: "month" | "quarter" | "year") => void;
+  onBillingIntervalChange: (value: "month") => void;
   onPromoCodeChange: (value: string) => void;
   onContinue: () => void;
 }) => {
-  const getPricingDisplay = (interval: string) => {
-    if (interval === "quarter") {
-      return "$100/3 months";
-    } else if (interval === "year") {
-      return "$450/year";
-    } else {
-      return "$50/month";
-    }
-  };
-
-  const getPricingAmount = (interval: string) => {
-    if (interval === "quarter") {
-      return "$100";
-    } else if (interval === "year") {
-      return "$450";
-    } else {
-      return "$50";
-    }
-  };
+  const getPricingDisplay = () => "$25/month";
+  const getPricingAmount = () => "$25";
 
   return (
     <div className="space-y-6">
-      {/* Billing Interval Selection */}
+      {/* Monthly Only */}
       <Card className="bg-gradient-to-r from-green-50 to-teal-50 border-green-200">
         <CardContent className="p-6">
           <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">
-            Billing Frequency
+            Monthly Plan
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Monthly */}
+          <div className="grid grid-cols-1 gap-4">
             <div
-              className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 text-center ${
-                billingInterval === "month"
-                  ? "border-green-500 bg-green-50 shadow-md"
-                  : "border-gray-200 bg-white hover:border-green-300"
-              }`}
+              className="border rounded-lg p-4 text-center border-green-500 bg-green-50 shadow-md"
               onClick={() => onBillingIntervalChange("month")}
               data-testid="card-billing-monthly"
             >
               <div className="font-semibold text-gray-900 mb-1">Monthly</div>
-              <div className="text-2xl font-bold text-green-600 mb-2">$50</div>
+              <div className="text-2xl font-bold text-green-600 mb-2">
+                <span className="line-through text-gray-400 mr-2">$50</span>$25
+              </div>
               <div className="text-sm text-gray-600">per month</div>
-            </div>
-
-            {/* Yearly */}
-            <div
-              className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 text-center relative ${
-                billingInterval === "year"
-                  ? "border-green-500 bg-green-50 shadow-md"
-                  : "border-gray-200 bg-white hover:border-green-300"
-              }`}
-              onClick={() => onBillingIntervalChange("year")}
-              data-testid="card-billing-yearly"
-            >
-              <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                Save 25%
-              </div>
-              <div className="font-semibold text-gray-900 mb-1">Yearly</div>
-              <div className="text-2xl font-bold text-green-600 mb-2">$450</div>
-              <div className="text-sm text-gray-600">for 12 months</div>
-            </div>
-
-            {/* Special 3-Month Offer (New Users Only) */}
-            <div
-              className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 text-center relative ${
-                billingInterval === "quarter"
-                  ? "border-green-500 bg-green-50 shadow-md"
-                  : "border-gray-200 bg-white hover:border-green-300"
-              }`}
-              onClick={() => {
-                onBillingIntervalChange("quarter");
-              }}
-              data-testid="card-billing-quarterly"
-            >
-              <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                New Users
-              </div>
-              <div className="font-semibold text-gray-900 mb-1">
-                3-Month Deal
-              </div>
-              <div className="text-2xl font-bold text-green-600 mb-2">$100</div>
-              <div className="text-sm text-gray-600">for 3 months</div>
-              <div className="text-xs text-gray-500 mt-1">
-                First-time users!
-              </div>
             </div>
           </div>
         </CardContent>
@@ -312,13 +248,13 @@ const PlanSelector = ({
             </h3>
             <div className="flex justify-center items-center space-x-2 mb-2">
               <Check className="w-5 h-5 text-green-600" />
-              <span className="font-semibold">MealScout Restaurant Plan</span>
+              <span className="font-semibold">MealScout Premium Plan</span>
             </div>
             <div className="text-3xl font-bold text-blue-600 mb-2">
-              {getPricingAmount(billingInterval)}
+              {getPricingAmount()}
             </div>
             <div className="text-sm text-gray-600 mb-4">
-              {getPricingDisplay(billingInterval)}
+              {getPricingDisplay()}
             </div>
             {promoCode && (
               <div className="text-sm text-green-600 mb-4">
@@ -355,40 +291,15 @@ const SubscriptionManagement = () => {
   });
 
   const [showCancelDialog, setShowCancelDialog] = useState(false);
-  const [keepAdsLive, setKeepAdsLive] = useState(true);
-
-  const pauseMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest("POST", "/api/subscription/pause");
-    },
-    onSuccess: () => {
-      toast({
-        title: "Subscription Paused",
-        description: "Your subscription is paused. You can resume anytime.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/subscription/status"] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Pause Failed",
-        description: error.message || "Failed to pause subscription",
-        variant: "destructive",
-      });
-    },
-  });
 
   const cancelMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("POST", "/api/subscription/cancel", {
-        keepAdsLive,
-      });
+      return await apiRequest("POST", "/api/subscription/cancel");
     },
     onSuccess: () => {
       toast({
         title: "Subscription Cancelled",
-        description: keepAdsLive
-          ? "Your subscription will end at billing period end. Your deals remain live until then."
-          : "Your subscription will end at billing period end. Your deals will be removed immediately.",
+        description: "Your subscription has been cancelled.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/subscription/status"] });
       setShowCancelDialog(false);
@@ -520,87 +431,45 @@ const SubscriptionManagement = () => {
           {subscriptionStatus?.status === "active" &&
             !subscriptionStatus.cancelAtPeriodEnd && (
               <div className="pt-4 space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => pauseMutation.mutate()}
-                    disabled={pauseMutation.isPending}
-                    data-testid="button-pause-subscription"
-                  >
-                    {pauseMutation.isPending ? "Pausing..." : "Pause"}
-                  </Button>
-                  <Dialog
-                    open={showCancelDialog}
-                    onOpenChange={setShowCancelDialog}
-                  >
-                    <DialogTrigger asChild>
+                <Dialog
+                  open={showCancelDialog}
+                  onOpenChange={setShowCancelDialog}
+                >
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      className="w-full"
+                      data-testid="button-cancel-subscription"
+                    >
+                      Cancel Subscription
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Cancel Subscription</DialogTitle>
+                      <DialogDescription>
+                        This will cancel your subscription immediately.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowCancelDialog(false)}
+                      >
+                        Keep Subscription
+                      </Button>
                       <Button
                         variant="destructive"
-                        className="w-full"
-                        data-testid="button-cancel-subscription"
+                        onClick={() => cancelMutation.mutate()}
+                        disabled={cancelMutation.isPending}
                       >
-                        Cancel
+                        {cancelMutation.isPending
+                          ? "Cancelling..."
+                          : "Yes, Cancel Now"}
                       </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Cancel Subscription</DialogTitle>
-                        <DialogDescription>
-                          Your subscription will end at the current billing
-                          period end (
-                          {subscriptionStatus?.currentPeriodEnd
-                            ? formatDate(subscriptionStatus.currentPeriodEnd)
-                            : "N/A"}
-                          ).
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="py-4">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="keep-ads-live"
-                            checked={keepAdsLive}
-                            onCheckedChange={(checked) =>
-                              setKeepAdsLive(checked as boolean)
-                            }
-                          />
-                          <label
-                            htmlFor="keep-ads-live"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            Keep my deals visible until billing period ends
-                          </label>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {keepAdsLive
-                            ? "Your deals will remain active and discoverable until your subscription officially ends."
-                            : "Your deals will be removed immediately upon cancellation."}
-                        </p>
-                      </div>
-                      <DialogFooter>
-                        <Button
-                          variant="outline"
-                          onClick={() => setShowCancelDialog(false)}
-                        >
-                          Keep Subscription
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          onClick={() => cancelMutation.mutate()}
-                          disabled={cancelMutation.isPending}
-                        >
-                          {cancelMutation.isPending
-                            ? "Cancelling..."
-                            : "Cancel Subscription"}
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-                <p className="text-xs text-center text-muted-foreground">
-                  Pause: Temporarily stop billing. Cancel: End subscription at
-                  period end.
-                </p>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             )}
         </CardContent>
@@ -629,9 +498,8 @@ export default function Subscribe() {
   const [, setLocation] = useLocation();
 
   // Plan selection state
-  const [billingInterval, setBillingInterval] = useState<
-    "month" | "quarter" | "year"
-  >("month");
+  const [billingInterval, setBillingInterval] =
+    useState<"month">("month");
   const [promoCode, setPromoCode] = useState("");
   const [creditsToApply, setCreditsToApply] = useState("");
 
@@ -1017,12 +885,7 @@ export default function Subscribe() {
                       Complete Your Payment
                     </h3>
                     <p className="text-sm text-gray-600">
-                      MealScout Restaurant Plan •{" "}
-                      {billingInterval === "quarter"
-                        ? "$100/3 months"
-                        : billingInterval === "year"
-                        ? "$450/year"
-                        : "$50/month"}
+                      MealScout Restaurant Plan • $25/month
                     </p>
                   </CardContent>
                 </Card>

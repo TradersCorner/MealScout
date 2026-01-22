@@ -3732,7 +3732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Billing Interval:", billingInterval);
 
       // Validate billing interval
-      const validIntervals = ["month", "quarter", "year"];
+      const validIntervals = ["month"];
       const interval = validIntervals.includes(billingInterval)
         ? billingInterval
         : "month";
@@ -3942,8 +3942,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .json({ error: { message: "Payment processing is not configured" } });
       }
 
-      // Support monthly, quarterly, and yearly billing
-      const validIntervals = ["month", "quarter", "year"];
+      // Support monthly only
+      const validIntervals = ["month"];
       const interval = validIntervals.includes(billingInterval)
         ? billingInterval
         : "month";
@@ -4048,7 +4048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Select Stripe Price by stored signup date
         const { locked, priceId, label } = await getLockedPriceForUser(user.id);
-        const amount = locked ? 2500 : 5000; // for email display only
+        const amount = 2500; // for email display only
 
         const subscription = await stripe.subscriptions.create({
           customer: customerId,
@@ -4740,28 +4740,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         const user = req.user;
-        const { keepAdsLive } = req.body;
-
         if (!user.stripeSubscriptionId) {
           return res.status(400).json({ message: "No active subscription" });
         }
 
-        const subscription = await stripe.subscriptions.update(
+        const subscription = await stripe.subscriptions.cancel(
           user.stripeSubscriptionId,
-          { cancel_at_period_end: true },
         );
 
-        // If keepAdsLive is false, deactivate deals immediately
-        if (!keepAdsLive) {
-          await storage.deactivateUserDeals(user.id);
-        }
+        await storage.updateUser(user.id, {
+          stripeSubscriptionId: null,
+          subscriptionBillingInterval: null,
+        });
+
+        await storage.deactivateUserDeals(user.id);
 
         res.json({
-          message: keepAdsLive
-            ? "Subscription will be cancelled at the end of the billing period. Your deals remain active until then."
-            : "Subscription will be cancelled at the end of the billing period. Your deals have been deactivated.",
+          message: "Subscription cancelled immediately.",
           cancelAt: subscription.cancel_at,
-          keepAdsLive,
         });
       } catch (error: any) {
         console.error("Cancel subscription error:", error);

@@ -264,7 +264,7 @@ ${url}`,
     example: {
       title: 'Example',
       scenario:
-        'You recommend Joe\'s Pizza. They subscribe for $25 this month (limited-time price). You earn 20% ($5) for signup, then 10% ($2.50) for each month they stay subscribed. After March 1, the monthly price is $50 and your 10% becomes $5.00 per month.',
+        'You recommend Joe\'s Pizza. They subscribe for $25 this month. You earn 20% ($5) for signup, then 10% ($2.50) for each month they stay subscribed.',
     },
   },
 

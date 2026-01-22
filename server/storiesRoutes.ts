@@ -103,7 +103,7 @@ export default function setupStoriesRoutes(app: Express) {
               hasDealScheduling: false,
             });
             return res.status(403).json({
-              message: 'A paid plan is required to post restaurant videos. Current plan: $25/mo limited-time (normally $50).',
+              message: 'A paid plan is required to post restaurant videos. Current plan: $25/mo.',
             });
           }
 
@@ -113,7 +113,7 @@ export default function setupStoriesRoutes(app: Express) {
 
           if (!hasLifetime && !isPaidTier) {
             return res.status(403).json({
-              message: 'Restaurant subscription does not allow video posts. Upgrade to Monthly ($25 limited-time, normally $50).',
+              message: 'Restaurant subscription does not allow video posts. Upgrade to Monthly ($25).',
             });
           }
 

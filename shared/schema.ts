@@ -2640,7 +2640,7 @@ export const restaurantSubscriptions = pgTable(
       .notNull()
       .references(() => restaurants.id, { onDelete: "cascade" }),
     tier: varchar("tier").notNull().default("free"), // 'free' | 'monthly' | 'quarterly' | 'yearly'
-    // Pricing (USD): Monthly only — $25/mo for signups before 2026-03-01 (locked in for life), $50/mo for signups after
+    // Pricing (USD): Monthly only — $25/mo (was $50)
     status: varchar("status").notNull().default("active"), // 'active' | 'canceled' | 'past_due'
     priceCents: integer("price_cents").default(0),
     billingInterval: varchar("billing_interval").default("monthly"), // 'monthly' | 'quarterly' | 'yearly'

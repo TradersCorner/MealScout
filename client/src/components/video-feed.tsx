@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useReducer } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { VIDEO_FEED_COPY as COPY } from '@/copy/videoFeed.copy';
+import ShareButton from '@/components/share-button';
 
 /**
  * Video Feed v1 — COPY + TYPE LOCK
@@ -234,6 +235,16 @@ function UserVideoCard({ video, isVisible }: UserVideoCardProps) {
             💬 {COPY.userVideo.actions.comment}
           </button>
         </div>
+        <div className="mt-3">
+          <ShareButton
+            url={`/video/${video.videoId}`}
+            title={video.title || "Food recommendation"}
+            description={video.description || "Watch this food recommendation on MealScout."}
+            size="sm"
+            variant="outline"
+            className="w-full justify-center"
+          />
+        </div>
 
         {/* Comments Section */}
         {showComments && (
@@ -288,6 +299,14 @@ function RestaurantAdCard({ video }: RestaurantAdCardProps) {
             {video.ctaText || COPY.restaurantAd.learnMore}
           </a>
         </div>
+        <ShareButton
+          url={`/video/${video.videoId}`}
+          title={video.title || "Food video"}
+          description="Watch this video on MealScout."
+          size="sm"
+          variant="outline"
+          className="w-full justify-center"
+        />
       </div>
     </div>
   );

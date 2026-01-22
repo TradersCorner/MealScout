@@ -115,22 +115,27 @@ export default function CustomerSignup() {
   const customerSignupMutation = useMutation({
     mutationFn: async (data: SignupFormData) => {
       const { confirmPassword, ...signupData } = data;
-      return await apiRequest(
+      const res = await apiRequest(
         "POST",
         "/api/auth/customer/register",
         signupData
       );
+      return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: async (payload: any) => {
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(SIGNUP_DRAFT_KEY);
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      if (payload?.user) {
+        queryClient.setQueryData(["/api/auth/user"], payload.user);
+      }
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
       toast({
         title: "Welcome to MealScout!",
         description: "Account created successfully. You're now logged in!",
       });
-      setLocation("/");
+      window.location.href = "/";
     },
     onError: (error) => {
       toast({
@@ -144,23 +149,28 @@ export default function CustomerSignup() {
   const businessSignupMutation = useMutation({
     mutationFn: async (data: SignupFormData) => {
       const { confirmPassword, ...signupData } = data;
-      return await apiRequest(
+      const res = await apiRequest(
         "POST",
         "/api/auth/restaurant/register",
         signupData
       );
+      return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: async (payload: any) => {
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(SIGNUP_DRAFT_KEY);
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      if (payload?.user) {
+        queryClient.setQueryData(["/api/auth/user"], payload.user);
+      }
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
       toast({
         title: "Welcome to MealScout for Business!",
         description:
           "Account created successfully. Let's finish setting up your restaurant.",
       });
-      setLocation("/restaurant-signup");
+      window.location.href = "/restaurant-signup";
     },
     onError: (error) => {
       toast({

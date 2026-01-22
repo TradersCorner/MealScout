@@ -24,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import ShareButton from "@/components/share-button";
 
 export default function RestaurantDetailPage() {
   const { id: restaurantId } = useParams();
@@ -255,6 +256,15 @@ export default function RestaurantDetailPage() {
                 {(restaurant as any)?.cuisineType}
               </Badge>
             )}
+          </div>
+          <div className="mb-3">
+            <ShareButton
+              url={`/restaurant/${restaurantId}`}
+              title={`Check out ${(restaurant as any)?.name || "this spot"} on MealScout`}
+              description={(restaurant as any)?.description || "Discover this location on MealScout."}
+              size="sm"
+              variant="outline"
+            />
           </div>
           
           {/* Rating */}

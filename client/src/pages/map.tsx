@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import DealCard from "@/components/deal-card";
 import { SEOHead } from "@/components/seo-head";
+import ShareButton from "@/components/share-button";
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -720,6 +721,16 @@ export default function MapPage() {
                             {host.locationType}
                           </div>
                         )}
+                        <div className="pt-2">
+                          <ShareButton
+                            url={`/map?host=${host.id}`}
+                            title={`Host location: ${host.name}`}
+                            description={host.address}
+                            size="sm"
+                            variant="outline"
+                            className="w-full justify-center text-blue-700"
+                          />
+                        </div>
                         {host.expectedFootTraffic && (
                           <div className="text-xs text-blue-100">
                             Expected foot traffic: {host.expectedFootTraffic}
@@ -828,6 +839,16 @@ export default function MapPage() {
                             ? "Any time"
                             : `${event.startTime} - ${event.endTime}`}
                         </div>
+                        <ShareButton
+                          url={`/parking-pass?date=${encodeURIComponent(
+                            new Date(event.date).toISOString().split("T")[0],
+                          )}&pass=${event.id}`}
+                          title={`Parking Pass at ${event.host?.businessName || "Host"}`}
+                          description={event.host?.address || "Parking pass location"}
+                          size="sm"
+                          variant="outline"
+                          className="w-full justify-center text-orange-700"
+                        />
                         <Button
                           size="sm"
                           className="w-full mt-2 bg-white text-orange-700 hover:bg-orange-50"

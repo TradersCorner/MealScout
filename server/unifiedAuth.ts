@@ -914,9 +914,16 @@ export async function setupUnifiedAuth(app: Express) {
             .status(500)
             .json({ error: "Failed to log in after registration" });
         }
-        res.json({
-          user: sanitizeUser(user),
-          message: "Registration successful",
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            return res
+              .status(500)
+              .json({ error: "Failed to persist session" });
+          }
+          res.json({
+            user: sanitizeUser(user),
+            message: "Registration successful",
+          });
         });
       });
     } catch (error) {
@@ -1007,9 +1014,16 @@ export async function setupUnifiedAuth(app: Express) {
             .status(500)
             .json({ error: "Failed to log in after registration" });
         }
-        res.json({
-          user: sanitizeUser(user),
-          message: "Registration successful",
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            return res
+              .status(500)
+              .json({ error: "Failed to persist session" });
+          }
+          res.json({
+            user: sanitizeUser(user),
+            message: "Registration successful",
+          });
         });
       });
     } catch (error) {
@@ -1045,7 +1059,14 @@ export async function setupUnifiedAuth(app: Express) {
         if (err) {
           return res.status(500).json({ error: "Failed to log in" });
         }
-        res.json({ user: sanitizeUser(user), message: "Login successful" });
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            return res
+              .status(500)
+              .json({ error: "Failed to persist session" });
+          }
+          res.json({ user: sanitizeUser(user), message: "Login successful" });
+        });
       });
     } catch (error) {
       console.error("Restaurant login error:", error);
@@ -1099,8 +1120,15 @@ export async function setupUnifiedAuth(app: Express) {
           console.error("❌ Session login error:", err);
           return res.status(500).json({ error: "Failed to establish session" });
         }
-        console.log(`✅ Login successful for: ${email}`);
-        res.json({ user: sanitizeUser(user), message: "Login successful" });
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            return res
+              .status(500)
+              .json({ error: "Failed to persist session" });
+          }
+          console.log(`✅ Login successful for: ${email}`);
+          res.json({ user: sanitizeUser(user), message: "Login successful" });
+        });
       });
     } catch (error) {
       console.error("❌ Login error:", error);

@@ -1,12 +1,13 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { BetaDisclaimer } from "@/components/beta-disclaimer";
 import Navigation from "@/components/navigation";
+import { apiUrl } from "@/lib/api";
 
 // Eager load only critical pages (home, login) - everything else lazy loads
 import NotFound from "@/pages/not-found";
@@ -119,6 +120,39 @@ function DashboardSwitcherPage() {
 
 function Router() {
   const { authState, isAuthenticated } = useAuth();
+  const [location] = useLocation();
+  const [affiliateTag, setAffiliateTag] = useState<string>("");
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setAffiliateTag("");
+      return;
+    }
+    let cancelled = false;
+    fetch(apiUrl("/api/affiliate/tag"), { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.tag) setAffiliateTag(data.tag);
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!affiliateTag) return;
+    if (typeof window === "undefined") return;
+
+    const url = new URL(window.location.href);
+    if (url.pathname.startsWith("/ref/")) return;
+    if (url.searchParams.has("ref")) return;
+
+    url.searchParams.set("ref", affiliateTag);
+    window.history.replaceState({}, "", url.toString());
+  }, [affiliateTag, location]);
 
   // Canonical guard: never redirect until authState resolves
   if (authState === "loading") {

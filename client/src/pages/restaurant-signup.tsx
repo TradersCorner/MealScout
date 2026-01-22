@@ -300,19 +300,24 @@ export default function RestaurantSignup() {
   const signupMutation = useMutation({
     mutationFn: async (data: SignupFormData) => {
       const { confirmPassword, ...signupData } = data;
-      return await apiRequest(
+      const res = await apiRequest(
         "POST",
         "/api/auth/restaurant/register",
         signupData
       );
+      return await res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    onSuccess: async (payload: any) => {
+      if (payload?.user) {
+        queryClient.setQueryData(["/api/auth/user"], payload.user);
+      }
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
       toast({
         title: COPY.notifications.signup.successTitle,
         description: COPY.notifications.signup.successDescription,
       });
-      // Reload to update auth state
+      // Reload to ensure auth state is consistent across the app
       window.location.reload();
     },
     onError: (error) => {

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import ShareButton from "@/components/share-button";
 
 interface Host {
   id: string;
@@ -109,6 +110,14 @@ export default function ParkingPassPage() {
   useEffect(() => {
     setSelectedSlotsByEvent({});
   }, [selectedDate]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const passId = params.get("pass");
+    if (passId) {
+      setActiveEventId(passId);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -906,6 +915,19 @@ export default function ParkingPassPage() {
                                 : "Fully booked"}
                             </p>
                           )}
+                          <div className="mt-2">
+                            <ShareButton
+                              url={`/parking-pass?date=${encodeURIComponent(
+                                event.date?.split("T")[0] || selectedDate,
+                              )}&pass=${event.id}`}
+                              title={`Parking Pass at ${event.host.businessName}`}
+                              description={`${event.host.address}${
+                                event.host.city ? `, ${event.host.city}` : ""
+                              }${event.host.state ? `, ${event.host.state}` : ""}`}
+                              size="sm"
+                              variant="outline"
+                            />
+                          </div>
                         </div>
                       </button>
                     ))}
@@ -1005,6 +1027,19 @@ export default function ParkingPassPage() {
                                 : "Fully booked"}
                             </p>
                           )}
+                        </div>
+                        <div>
+                          <ShareButton
+                            url={`/parking-pass?date=${encodeURIComponent(
+                              event.date?.split("T")[0] || selectedDate,
+                            )}&pass=${event.id}`}
+                            title={`Parking Pass at ${event.host.businessName}`}
+                            description={`${event.host.address}${
+                              event.host.city ? `, ${event.host.city}` : ""
+                            }${event.host.state ? `, ${event.host.state}` : ""}`}
+                            size="sm"
+                            variant="outline"
+                          />
                         </div>
                         <div className="grid grid-cols-2 gap-2 pt-1">
                           {slotOptions.map((slot) => {

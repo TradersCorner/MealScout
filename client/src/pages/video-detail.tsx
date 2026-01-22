@@ -10,6 +10,7 @@ import { generateVideoSchema } from "@/lib/schema-helpers";
 import { Video, MapPin, User, Calendar, Heart, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import ShareButton from "@/components/share-button";
 
 export default function VideoDetailPage() {
   const { id: videoId } = useParams();
@@ -162,6 +163,16 @@ export default function VideoDetailPage() {
               {videoData.description}
             </p>
           )}
+          <div className="mt-3">
+            <ShareButton
+              url={`/video/${videoId}`}
+              title={videoTitle}
+              description={videoDescription}
+              size="sm"
+              variant="outline"
+              className="w-full justify-center"
+            />
+          </div>
         </div>
 
         {/* Metadata */}

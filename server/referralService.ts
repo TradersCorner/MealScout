@@ -1,23 +1,29 @@
 /**
  * PHASE 1 + 2: Referral Service
- * 
+ *
  * Tracks referrals:
  * 1. Records every click on affiliate link (Phase 1)
  * 2. Attaches referral to restaurant signup (Phase 2)
  * 3. Creates commissions when restaurant pays (Phase 3)
  */
 
-import { db } from './db';
-import { referrals, referralClicks, restaurants, affiliateCommissionLedger } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { db } from "./db";
+import {
+  referrals,
+  referralClicks,
+  restaurants,
+  affiliateCommissionLedger,
+} from "@shared/schema";
+import { eq } from "drizzle-orm";
+import { resolveAffiliateUserId } from "./affiliateTagService";
 
 /**
  * PHASE 1: Record a click on an affiliate link
- * 
+ *
  * Called when:
- * - User clicks shared link with ?ref=<affiliateUserId>
+ * - User clicks shared link with ?ref=<affiliateTag>
  * - Link leads to restaurant signup page
- * 
+ *
  * Returns referral ID (stored in cookie or session)
  */
 export async function recordReferralClick(
@@ -27,85 +33,122 @@ export async function recordReferralClick(
   ip?: string,
 ) {
   try {
-    const clickRecord = await db.insert(referralClicks).values({
-      affiliateUserId,
-      url,
-      userAgent,
-      ip,
-    }).returning();
+    const clickRecord = await db
+      .insert(referralClicks)
+      .values({
+        affiliateUserId,
+        url,
+        userAgent,
+        ip,
+      })
+      .returning();
 
     if (!clickRecord[0]) {
-      throw new Error('Failed to record referral click');
+      throw new Error("Failed to record referral click");
     }
 
     // Also create a referral record in 'clicked' status
-    const referralRecord = await db.insert(referrals).values({
-      affiliateUserId,
-      clickedAt: new Date(),
-      status: 'clicked',
-    }).returning();
+    const referralRecord = await db
+      .insert(referrals)
+      .values({
+        affiliateUserId,
+        clickedAt: new Date(),
+        status: "clicked",
+      })
+      .returning();
 
     return {
       clickId: clickRecord[0].id,
       referralId: referralRecord[0].id,
     };
   } catch (error) {
-    console.error('[referralService] Error recording click:', error);
+    console.error("[referralService] Error recording click:", error);
     throw error;
   }
 }
 
 /**
  * PHASE 2: Attach referral to restaurant signup
- * 
+ *
  * Called when a restaurant completes their signup/registration
- * 
- * @param referralId - ID from referralClicks or referrals table (from cookie/query param)
+ *
+ * @param referralIdOrTag - referral ID or affiliate tag
  * @param newRestaurantId - ID of the newly created restaurant account
  */
 export async function attachReferralToSignup(
-  referralId: string,
+  referralIdOrTag: string,
   newRestaurantId: string,
 ) {
   try {
-    // Find the referral record
-    const referral = (await db
-      .select()
-      .from(referrals)
-      .where(eq(referrals.id, referralId))
-      .limit(1))[0];
+    // If this is an actual referral ID, attach it directly.
+    const referral = (
+      await db
+        .select()
+        .from(referrals)
+        .where(eq(referrals.id, referralIdOrTag))
+        .limit(1)
+    )[0];
 
-    if (!referral) {
-      console.warn(`[referralService] Referral ${referralId} not found`);
+    if (referral) {
+      const updated = await db
+        .update(referrals)
+        .set({
+          referredRestaurantId: newRestaurantId,
+          signedUpAt: new Date(),
+          status: "signed_up",
+        })
+        .where(eq(referrals.id, referral.id))
+        .returning();
+
+      return updated[0];
+    }
+
+    const affiliateUserId = await resolveAffiliateUserId(referralIdOrTag);
+    if (!affiliateUserId) {
+      console.warn(`[referralService] Referral ${referralIdOrTag} not found`);
       return null;
     }
 
-    // Update referral with restaurant ID and mark as signed_up
-    const updated = await db.update(referrals)
-      .set({
+    const [restaurant] = await db
+      .select({ id: restaurants.id })
+      .from(restaurants)
+      .where(eq(restaurants.id, newRestaurantId))
+      .limit(1);
+
+    if (!restaurant) {
+      console.warn(
+        `[referralService] Restaurant ${newRestaurantId} not found`,
+      );
+      return null;
+    }
+
+    const created = await db
+      .insert(referrals)
+      .values({
+        affiliateUserId,
         referredRestaurantId: newRestaurantId,
+        clickedAt: new Date(),
         signedUpAt: new Date(),
-        status: 'signed_up',
+        status: "signed_up",
       })
-      .where(eq(referrals.id, referralId))
       .returning();
 
-    return updated[0];
+    return created[0];
   } catch (error) {
-    console.error('[referralService] Error attaching referral to signup:', error);
+    console.error("[referralService] Error attaching referral to signup:", error);
     throw error;
   }
 }
 
 /**
  * PHASE 1: Parse referral ID from URL
- * 
- * Extracts ?ref=<affiliateUserId> from any shared URL
+ *
+ * Extracts ?ref=<affiliateTag> from any shared URL
  */
 export function extractReferralIdFromUrl(url: string): string | null {
   try {
-    const urlObj = new URL(url, 'http://localhost'); // Use base URL if relative
-    return urlObj.searchParams.get('ref');
+    const urlObj = new URL(url, "http://localhost"); // Use base URL if relative
+    return urlObj.searchParams.get("ref");
   } catch {
     return null;
   }
@@ -113,17 +156,17 @@ export function extractReferralIdFromUrl(url: string): string | null {
 
 /**
  * PHASE 1: Append referral parameter to any URL
- * 
+ *
  * Used by share middleware (Phase 7)
  */
-export function appendReferralParam(url: string, affiliateUserId: string): string {
-  if (!affiliateUserId) return url;
-  
+export function appendReferralParam(url: string, affiliateTag: string): string {
+  if (!affiliateTag) return url;
+
   try {
-    const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}ref=${affiliateUserId}`;
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}ref=${affiliateTag}`;
   } catch (error) {
-    console.error('[referralService] Error appending referral param:', error);
+    console.error("[referralService] Error appending referral param:", error);
     return url;
   }
 }
@@ -148,24 +191,25 @@ export async function getAffiliateReferralStats(affiliateUserId: string) {
     };
 
     allReferrals.forEach((ref: any) => {
-      if (ref.status === 'clicked') stats.totalClicks++;
-      if (ref.status === 'signed_up' || ['activated', 'paid'].includes(ref.status)) stats.signedUp++;
-      if (ref.status === 'activated' || ref.status === 'paid') stats.activated++;
-      if (ref.status === 'paid') stats.paid++;
+      if (ref.status === "clicked") stats.totalClicks++;
+      if (ref.status === "signed_up" || ["activated", "paid"].includes(ref.status))
+        stats.signedUp++;
+      if (ref.status === "activated" || ref.status === "paid") stats.activated++;
+      if (ref.status === "paid") stats.paid++;
     });
 
     return stats;
   } catch (error) {
-    console.error('[referralService] Error getting referral stats:', error);
+    console.error("[referralService] Error getting referral stats:", error);
     throw error;
   }
 }
 
 /**
  * PHASE 3: Create commission when restaurant becomes a paying customer
- * 
+ *
  * Called by Stripe webhook when invoice.payment_succeeded
- * 
+ *
  * @param restaurantId - ID of the restaurant that paid
  * @param invoiceAmount - Amount paid on the invoice (in cents, converted to dollars)
  * @param invoiceId - Stripe invoice ID for tracking
@@ -178,11 +222,13 @@ export async function createCommissionForRestaurantPayment(
 ) {
   try {
     // Find the referral for this restaurant
-    const referral = (await db
-      .select()
-      .from(referrals)
-      .where(eq(referrals.referredRestaurantId, restaurantId))
-      .limit(1))[0];
+    const referral = (
+      await db
+        .select()
+        .from(referrals)
+        .where(eq(referrals.referredRestaurantId, restaurantId))
+        .limit(1)
+    )[0];
 
     if (!referral) {
       console.log(`[Phase 3] No referral found for restaurant ${restaurantId}`);
@@ -193,38 +239,45 @@ export async function createCommissionForRestaurantPayment(
     const commissionAmount = (invoiceAmount / 100) * 0.1; // invoiceAmount is in cents, convert and take 10%
 
     // Create commission ledger entry
-    const commission = await db.insert(affiliateCommissionLedger).values({
-      affiliateUserId: referral.affiliateUserId,
-      referralId: referral.id,
-      restaurantId,
-      amount: commissionAmount.toString(),
-      commissionSource: 'subscription_payment',
-      stripeInvoiceId: invoiceId,
-    }).returning();
+    const commission = await db
+      .insert(affiliateCommissionLedger)
+      .values({
+        affiliateUserId: referral.affiliateUserId,
+        referralId: referral.id,
+        restaurantId,
+        amount: commissionAmount.toString(),
+        commissionSource: "subscription_payment",
+        stripeInvoiceId: invoiceId,
+      })
+      .returning();
 
     // Update referral status to 'paid'
-    await db.update(referrals)
+    await db
+      .update(referrals)
       .set({
         activatedAt: new Date(),
         commissionEligibleAt: new Date(),
-        status: 'paid',
+        status: "paid",
       })
       .where(eq(referrals.id, referral.id));
 
     // PHASE 3 + 4 Integration: Create credit from commission
     try {
-      const { createCreditFromCommission } = await import('./creditService');
+      const { createCreditFromCommission } = await import("./creditService");
       await createCreditFromCommission(
         referral.affiliateUserId,
         commission[0].id,
         commissionAmount,
       );
     } catch (creditError) {
-      console.error('[Phase 4] Error creating credit from commission:', creditError);
+      console.error(
+        "[Phase 4] Error creating credit from commission:",
+        creditError,
+      );
       // Don't fail if credit creation fails
     }
 
-    console.log('[Phase 3] Commission created:', {
+    console.log("[Phase 3] Commission created:", {
       affiliateUserId: referral.affiliateUserId,
       restaurantId,
       amount: commissionAmount,
@@ -233,7 +286,7 @@ export async function createCommissionForRestaurantPayment(
 
     return commission[0];
   } catch (error) {
-    console.error('[referralService] Error creating commission:', error);
+    console.error("[referralService] Error creating commission:", error);
     throw error;
   }
 }

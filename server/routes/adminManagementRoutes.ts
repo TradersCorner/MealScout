@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import Stripe from "stripe";
 import crypto from "crypto";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, or, sql } from "drizzle-orm";
 import { storage } from "../storage";
 import { isAuthenticated, isStaffOrAdmin } from "../unifiedAuth";
 import { sanitizeUser, sanitizeUsers } from "../utils/sanitize";
@@ -15,7 +15,10 @@ import {
   events,
   hosts,
   restaurants,
+  users,
   userAddresses,
+  affiliateShareEvents,
+  affiliateCommissionLedger,
 } from "@shared/schema";
 
 // Optional Stripe integration (mirrors server/routes.ts)
@@ -363,6 +366,209 @@ export function registerAdminManagementRoutes(app: Express) {
         res.status(500).json({ message: "Failed to fetch users" });
       }
     }
+  );
+
+  app.get(
+    "/api/admin/affiliates/users",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const allUsers = await db
+          .select({
+            id: users.id,
+            email: users.email,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            userType: users.userType,
+            affiliateTag: users.affiliateTag,
+            affiliatePercent: users.affiliatePercent,
+            affiliateCloserUserId: users.affiliateCloserUserId,
+            affiliateBookerUserId: users.affiliateBookerUserId,
+            stripeSubscriptionId: users.stripeSubscriptionId,
+          })
+          .from(users)
+          .orderBy(users.createdAt);
+
+        const shareCounts = await db
+          .select({
+            affiliateUserId: affiliateShareEvents.affiliateUserId,
+            count: sql<number>`count(*)`,
+          })
+          .from(affiliateShareEvents)
+          .groupBy(affiliateShareEvents.affiliateUserId);
+
+        const shareCountMap = new Map(
+          shareCounts.map((row) => [row.affiliateUserId, Number(row.count)]),
+        );
+
+        const commissionSums = await db
+          .select({
+            affiliateUserId: affiliateCommissionLedger.affiliateUserId,
+            earnedCents: sql<number>`coalesce(sum(${affiliateCommissionLedger.amount}), 0)`,
+            revenueCents: sql<number>`coalesce(sum(${affiliateCommissionLedger.sourceAmountCents}), 0)`,
+            subscriptionRevenueCents: sql<number>`coalesce(sum(case when ${affiliateCommissionLedger.commissionSource} = 'subscription_payment' then ${affiliateCommissionLedger.sourceAmountCents} else 0 end), 0)`,
+            bookingRevenueCents: sql<number>`coalesce(sum(case when ${affiliateCommissionLedger.commissionSource} in ('booking_fee_host', 'booking_fee_truck') then ${affiliateCommissionLedger.sourceAmountCents} else 0 end), 0)`,
+          })
+          .from(affiliateCommissionLedger)
+          .groupBy(affiliateCommissionLedger.affiliateUserId);
+
+        const commissionMap = new Map(
+          commissionSums.map((row) => [row.affiliateUserId, row]),
+        );
+
+        const referralRows = await db
+          .select({
+            id: users.id,
+            affiliateCloserUserId: users.affiliateCloserUserId,
+            affiliateBookerUserId: users.affiliateBookerUserId,
+            stripeSubscriptionId: users.stripeSubscriptionId,
+          })
+          .from(users)
+          .where(
+            or(
+              sql`${users.affiliateCloserUserId} is not null`,
+              sql`${users.affiliateBookerUserId} is not null`,
+            ),
+          );
+
+        const truckOwnerRows = await db
+          .select({ ownerId: restaurants.ownerId })
+          .from(eventBookings)
+          .innerJoin(restaurants, eq(eventBookings.truckId, restaurants.id));
+
+        const hostOwnerRows = await db
+          .select({ ownerId: hosts.userId })
+          .from(eventBookings)
+          .innerJoin(hosts, eq(eventBookings.hostId, hosts.id));
+
+        const bookingOwnerIds = new Set<string>();
+        for (const row of truckOwnerRows) {
+          if (row.ownerId) bookingOwnerIds.add(row.ownerId);
+        }
+        for (const row of hostOwnerRows) {
+          if (row.ownerId) bookingOwnerIds.add(row.ownerId);
+        }
+
+        const referredMap = new Map<string, Set<string>>();
+        const paidMap = new Map<string, Set<string>>();
+        for (const row of referralRows) {
+          const referrerIds = [row.affiliateCloserUserId, row.affiliateBookerUserId]
+            .filter((value): value is string => Boolean(value));
+          if (referrerIds.length === 0) continue;
+
+          for (const referrerId of referrerIds) {
+            if (!referredMap.has(referrerId)) {
+              referredMap.set(referrerId, new Set());
+            }
+            referredMap.get(referrerId)?.add(row.id);
+
+            const isPaid =
+              Boolean(row.stripeSubscriptionId) || bookingOwnerIds.has(row.id);
+            if (isPaid) {
+              if (!paidMap.has(referrerId)) {
+                paidMap.set(referrerId, new Set());
+              }
+              paidMap.get(referrerId)?.add(row.id);
+            }
+          }
+        }
+
+        const payload = allUsers.map((user) => {
+          const commissions = commissionMap.get(user.id);
+          const referred = referredMap.get(user.id);
+          const paid = paidMap.get(user.id);
+
+          return {
+            ...user,
+            linksShared: shareCountMap.get(user.id) ?? 0,
+            peopleReferred: referred?.size ?? 0,
+            paidReferrals: paid?.size ?? 0,
+            affiliateEarningsCents: Number(commissions?.earnedCents ?? 0),
+            mealScoutRevenueCents: Number(commissions?.revenueCents ?? 0),
+            subscriptionRevenueCents: Number(
+              commissions?.subscriptionRevenueCents ?? 0,
+            ),
+            bookingRevenueCents: Number(commissions?.bookingRevenueCents ?? 0),
+          };
+        });
+
+        res.json(payload);
+      } catch (error: any) {
+        console.error("Error fetching affiliate users:", error);
+        res.status(500).json({ message: "Failed to fetch affiliate users" });
+      }
+    },
+  );
+
+  app.patch(
+    "/api/admin/affiliates/users/:id",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (!requireAdminUser(req, res)) return;
+      try {
+        const targetUserId = req.params.id;
+        const {
+          affiliatePercent,
+          affiliateCloserUserId,
+          affiliateBookerUserId,
+        } = req.body || {};
+
+        const updates: any = {};
+        if (affiliatePercent !== undefined) {
+          const parsed = Number(affiliatePercent);
+          if (Number.isNaN(parsed) || parsed < 0 || parsed > 100) {
+            return res
+              .status(400)
+              .json({ message: "affiliatePercent must be 0-100" });
+          }
+          updates.affiliatePercent = parsed;
+        }
+
+        if (affiliateCloserUserId !== undefined) {
+          updates.affiliateCloserUserId =
+            affiliateCloserUserId === null || affiliateCloserUserId === ""
+              ? null
+              : String(affiliateCloserUserId);
+        }
+
+        if (affiliateBookerUserId !== undefined) {
+          updates.affiliateBookerUserId =
+            affiliateBookerUserId === null || affiliateBookerUserId === ""
+              ? null
+              : String(affiliateBookerUserId);
+        }
+
+        if (Object.keys(updates).length === 0) {
+          return res
+            .status(400)
+            .json({ message: "No affiliate fields to update" });
+        }
+
+        updates.updatedAt = new Date();
+
+        const [updated] = await db
+          .update(users)
+          .set(updates)
+          .where(eq(users.id, targetUserId))
+          .returning();
+
+        if (!updated) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json({
+          id: updated.id,
+          affiliatePercent: updated.affiliatePercent,
+          affiliateCloserUserId: updated.affiliateCloserUserId,
+          affiliateBookerUserId: updated.affiliateBookerUserId,
+        });
+      } catch (error: any) {
+        console.error("Error updating affiliate settings:", error);
+        res.status(500).json({ message: "Failed to update affiliate settings" });
+      }
+    },
   );
 
   app.post(

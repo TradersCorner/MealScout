@@ -17,8 +17,48 @@ import emptyCountyService from './emptyCountyService';
 import { logAudit } from './auditLogger';
 import { eq, desc } from 'drizzle-orm';
 import { affiliateWithdrawals, affiliateLinks, affiliateCommissions, affiliateWallet } from '@shared/schema';
+import { ensureAffiliateTag, setAffiliateTag } from "./affiliateTagService";
 
 const router = Router();
+
+/**
+ * GET /api/affiliate/tag
+ * Get or create the user's affiliate tag
+ */
+router.get('/tag', isAuthenticated, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const tag = await ensureAffiliateTag(userId);
+    res.json({ tag, sharePath: `/ref/${tag}` });
+  } catch (error: any) {
+    console.error('Failed to fetch affiliate tag:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch tag' });
+  }
+});
+
+/**
+ * PUT /api/affiliate/tag
+ * Update the user's affiliate tag
+ */
+router.put('/tag', isAuthenticated, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { tag } = req.body;
+    if (!userId || !tag) {
+      return res.status(400).json({ error: 'Tag is required' });
+    }
+
+    const updated = await setAffiliateTag(userId, tag);
+    res.json({ tag: updated, sharePath: `/ref/${updated}` });
+  } catch (error: any) {
+    console.error('Failed to update affiliate tag:', error);
+    res.status(400).json({ error: error.message || 'Failed to update tag' });
+  }
+});
 
 /**
  * POST /api/affiliate/generate-link

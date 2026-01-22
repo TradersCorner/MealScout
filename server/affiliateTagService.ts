@@ -1,0 +1,132 @@
+import { db } from "./db";
+import { users } from "@shared/schema";
+import { eq } from "drizzle-orm";
+
+const DEFAULT_PREFIX = "user";
+const MIN_TAG_LEN = 3;
+const MAX_TAG_LEN = 24;
+const RESERVED_TAGS = new Set([
+  "admin",
+  "support",
+  "staff",
+  "mealscout",
+  "tradescout",
+  "help",
+  "about",
+  "login",
+  "signup",
+  "register",
+  "ref",
+  "affiliate",
+]);
+
+const PROFANITY = [
+  "fuck",
+  "shit",
+  "bitch",
+  "asshole",
+  "nigger",
+  "cunt",
+];
+
+export function normalizeAffiliateTag(input: string): string {
+  return input.trim().toLowerCase();
+}
+
+export function isAffiliateTagValid(tag: string): boolean {
+  if (!tag) return false;
+  if (tag.length < MIN_TAG_LEN || tag.length > MAX_TAG_LEN) return false;
+  if (!/^[a-z0-9-]+$/.test(tag)) return false;
+  if (tag.startsWith("-") || tag.endsWith("-")) return false;
+  if (RESERVED_TAGS.has(tag)) return false;
+  if (PROFANITY.some((word) => tag.includes(word))) return false;
+  return true;
+}
+
+async function isAffiliateTagAvailable(tag: string, userId?: string) {
+  const existing = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.affiliateTag, tag))
+    .limit(1);
+
+  if (existing.length === 0) return true;
+  return existing[0].id === userId;
+}
+
+export async function ensureAffiliateTag(userId: string): Promise<string> {
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  if (user.affiliateTag) {
+    return user.affiliateTag;
+  }
+
+  let tag = "";
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const suffix = Math.floor(1000 + Math.random() * 9000);
+    tag = `${DEFAULT_PREFIX}${suffix}`;
+    if (!(await isAffiliateTagAvailable(tag))) continue;
+    break;
+  }
+
+  if (!tag) {
+    throw new Error("Unable to generate affiliate tag");
+  }
+
+  const [updated] = await db
+    .update(users)
+    .set({ affiliateTag: tag, updatedAt: new Date() })
+    .where(eq(users.id, userId))
+    .returning();
+
+  if (!updated?.affiliateTag) {
+    throw new Error("Failed to set affiliate tag");
+  }
+
+  return updated.affiliateTag;
+}
+
+export async function resolveAffiliateUserId(ref: string): Promise<string | null> {
+  if (!ref) return null;
+
+  const [user] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.affiliateTag, ref))
+    .limit(1);
+
+  if (user?.id) return user.id;
+
+  const [byId] = await db.select({ id: users.id }).from(users).where(eq(users.id, ref)).limit(1);
+  return byId?.id || null;
+}
+
+export async function setAffiliateTag(
+  userId: string,
+  rawTag: string,
+): Promise<string> {
+  const tag = normalizeAffiliateTag(rawTag);
+  if (!isAffiliateTagValid(tag)) {
+    throw new Error("Invalid affiliate tag");
+  }
+
+  const available = await isAffiliateTagAvailable(tag, userId);
+  if (!available) {
+    throw new Error("Affiliate tag already taken");
+  }
+
+  const [updated] = await db
+    .update(users)
+    .set({ affiliateTag: tag, updatedAt: new Date() })
+    .where(eq(users.id, userId))
+    .returning();
+
+  if (!updated?.affiliateTag) {
+    throw new Error("Failed to update affiliate tag");
+  }
+
+  return updated.affiliateTag;
+}

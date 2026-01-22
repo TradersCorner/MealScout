@@ -14,6 +14,7 @@
  */
 
 import { appendReferralParam } from './referralService';
+import { ensureAffiliateTag } from "./affiliateTagService";
 
 /**
  * Generate shareable URL with affiliate param
@@ -29,7 +30,7 @@ import { appendReferralParam } from './referralService';
 export function generateShareableUrl(
   path: string,
   baseUrl: string,
-  userId?: string,
+  affiliateTag?: string,
 ): string {
   // Build full URL
   const fullUrl = baseUrl.startsWith('http')
@@ -37,11 +38,11 @@ export function generateShareableUrl(
     : `${baseUrl}${path}`;
 
   // Append affiliate param if user is logged in
-  if (!userId) {
+  if (!affiliateTag) {
     return fullUrl;
   }
 
-  return appendReferralParam(fullUrl, userId);
+  return appendReferralParam(fullUrl, affiliateTag);
 }
 
 /**
@@ -54,12 +55,14 @@ export function shareUrlMiddleware(req: any, res: any, next: any) {
   const baseUrl = `${req.protocol}://${req.get('host')}`;
 
   res.locals.generateShareableUrl = (path: string) => {
-    return generateShareableUrl(path, baseUrl, req.user?.id);
+    const tag = req.user?.affiliateTag || req.user?.id;
+    return generateShareableUrl(path, baseUrl, tag);
   };
 
   res.locals.appendAffiliateParam = (url: string) => {
-    if (!req.user?.id) return url;
-    return appendReferralParam(url, req.user.id);
+    const tag = req.user?.affiliateTag || req.user?.id;
+    if (!tag) return url;
+    return appendReferralParam(url, tag);
   };
 
   next();
@@ -78,7 +81,8 @@ export async function generateShareLink(
   shareLink: string;
   shortPath: string;
 }> {
-  const shareLink = generateShareableUrl(path, baseUrl, userId);
+  const tag = userId ? await ensureAffiliateTag(userId) : undefined;
+  const shareLink = generateShareableUrl(path, baseUrl, tag);
 
   return {
     shareLink,

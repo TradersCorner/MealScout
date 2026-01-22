@@ -65,6 +65,45 @@ export async function addCredit(
   }
 }
 
+export async function debitCredit(
+  userId: string,
+  amount: number,
+  sourceType: string,
+  sourceId: string,
+  redeemedFor?: string,
+) {
+  if (amount <= 0) {
+    throw new Error("Debit amount must be positive");
+  }
+
+  try {
+    const credit = await db
+      .insert(creditLedger)
+      .values({
+        userId,
+        amount: (-amount).toString(),
+        sourceType,
+        sourceId,
+        redeemedAt: new Date(),
+        redeemedFor: redeemedFor || null,
+      })
+      .returning();
+
+    console.log("[Phase 4] Credit debited:", {
+      userId,
+      amount,
+      sourceType,
+      sourceId,
+      redeemedFor,
+    });
+
+    return credit[0];
+  } catch (error) {
+    console.error("[creditService] Error debiting credit:", error);
+    throw error;
+  }
+}
+
 /**
  * Mark credits as redeemed
  * 
@@ -184,6 +223,7 @@ export async function processPendingCommissionsToCredits() {
 export default {
   getUserCreditBalance,
   addCredit,
+  debitCredit,
   redeemCredits,
   getUserCreditHistory,
   createCreditFromCommission,

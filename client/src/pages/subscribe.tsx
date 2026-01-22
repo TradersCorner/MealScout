@@ -633,6 +633,7 @@ export default function Subscribe() {
     "month" | "quarter" | "year"
   >("month");
   const [promoCode, setPromoCode] = useState("");
+  const [creditsToApply, setCreditsToApply] = useState("");
 
   // Subscription flow state
   const [subscriptionState, setSubscriptionState] = useState<SubscriptionState>(
@@ -652,6 +653,11 @@ export default function Subscribe() {
   // Check current subscription status to determine which view to show
   const { data: currentSubscription } = useQuery<ApiSubscriptionStatus>({
     queryKey: ["/api/subscription/status"],
+    enabled: !!user,
+  });
+
+  const { data: creditBalanceData } = useQuery<{ balance: number }>({
+    queryKey: ["/api/payout/balance"],
     enabled: !!user,
   });
 
@@ -708,6 +714,10 @@ export default function Subscribe() {
           {
             billingInterval,
             promoCode: promoCode || undefined,
+            applyCreditsCents: Math.max(
+              0,
+              Math.floor(Number(creditsToApply || 0) * 100),
+            ),
           }
         );
         const createData = await createResp.json();
@@ -907,6 +917,35 @@ export default function Subscribe() {
                 </CardContent>
               </Card>
             )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Apply Credits</CardTitle>
+                <CardDescription>
+                  Credits can reduce your next subscription invoice.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-sm text-gray-700">
+                  Available: ${Number(creditBalanceData?.balance || 0).toFixed(2)}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="credit-apply">Credits to apply</Label>
+                  <Input
+                    id="credit-apply"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={creditsToApply}
+                    onChange={(e) => setCreditsToApply(e.target.value)}
+                    placeholder="0.00"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Credits apply to the upcoming invoice only.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
 
             <PlanSelector
               billingInterval={billingInterval}

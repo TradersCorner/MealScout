@@ -49,6 +49,9 @@ const AdminModerationAppeals = lazy(
 );
 const AdminAuditLogs = lazy(() => import("@/pages/AdminAuditLogs"));
 const AdminTelemetry = lazy(() => import("@/pages/admin-telemetry"));
+const AdminAffiliateManagement = lazy(
+  () => import("@/pages/AdminAffiliateManagement"),
+);
 const AffiliateEarnings = lazy(() => import("@/pages/AffiliateEarnings"));
 const EmptyCountyExperience = lazy(
   () => import("@/pages/EmptyCountyExperience"),
@@ -87,9 +90,11 @@ const HostDashboard = lazy(() => import("@/pages/host-dashboard"));
 const EventCoordinatorDashboard = lazy(
   () => import("@/pages/event-coordinator-dashboard"),
 );
+const DashboardRouter = lazy(() => import("@/pages/dashboard-router"));
 const TruckDiscovery = lazy(() => import("@/pages/truck-discovery"));
 const EventSignup = lazy(() => import("@/pages/event-signup"));
 const EventsPage = lazy(() => import("@/pages/events"));
+const EventsRouter = lazy(() => import("@/pages/events-router"));
 const ForFoodTrucks = lazy(() => import("@/pages/for-food-trucks"));
 const ForRestaurants = lazy(() => import("@/pages/for-restaurants"));
 const ForBars = lazy(() => import("@/pages/for-bars"));
@@ -155,7 +160,9 @@ function Router() {
             <Route path="/for-bars" component={ForBars} />
             <Route path="/find-food" component={FindFood} />
             <Route path="/event-signup" component={EventSignup} />
-            <Route path="/events" component={EventsPage} />
+            <Route path="/events" component={EventsRouter} />
+            <Route path="/events/public" component={EventsPage} />
+            <Route path="/dashboard" component={DashboardRouter} />
             <Route path="/food-trucks/:citySlug" component={CityLanding} />
             <Route path="/truck-landing" component={TruckLanding} />
             <Route path="/sitemap" component={Sitemap} />
@@ -192,6 +199,7 @@ function Router() {
               path="/restaurant/dashboard"
               component={RestaurantOwnerDashboard}
             />
+            <Route path="/dashboard" component={DashboardRouter} />
             <Route path="/user-dashboard" component={UserDashboard} />
         <Route path="/host/dashboard" component={HostDashboard} />
         <Route
@@ -235,6 +243,7 @@ function Router() {
             />
             <Route path="/admin/audit-logs" component={AdminAuditLogs} />
             <Route path="/admin/telemetry" component={AdminTelemetry} />
+            <Route path="/admin/affiliates" component={AdminAffiliateManagement} />
             <Route path="/admin/switcher" component={DashboardSwitcherPage} />
             <Route path="/category/:category" component={CategoryPage} />
             <Route path="/deals" component={FeaturedDealsPage} />
@@ -249,6 +258,8 @@ function Router() {
             <Route path="/contact" component={Contact} />
             <Route path="/host-signup" component={HostSignup} />
             <Route path="/event-signup" component={EventSignup} />
+            <Route path="/events" component={EventsRouter} />
+            <Route path="/events/public" component={EventsPage} />
             <Route path="/sitemap" component={Sitemap} />
             <Route path="/truck-landing" component={TruckLanding} />
             <Route path="/status" component={StatusPage} />

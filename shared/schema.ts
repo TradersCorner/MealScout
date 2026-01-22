@@ -70,10 +70,23 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   phone: varchar("phone"),
   profileImageUrl: varchar("profile_image_url"),
+  affiliateTag: varchar("affiliate_tag"),
+  affiliatePercent: integer("affiliate_percent").default(5),
+  affiliateCloserUserId: varchar("affiliate_closer_user_id").references(
+    () => users.id,
+    { onDelete: "set null" },
+  ),
+  affiliateBookerUserId: varchar("affiliate_booker_user_id").references(
+    () => users.id,
+    { onDelete: "set null" },
+  ),
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   subscriptionBillingInterval: varchar("subscription_billing_interval"), // 'month' | '3-month' | 'year'
   subscriptionSignupDate: timestamp("subscription_signup_date"), // Track when user first subscribed for price lock-in
+  trialStartedAt: timestamp("trial_started_at"),
+  trialEndsAt: timestamp("trial_ends_at"),
+  trialUsed: boolean("trial_used").default(false),
   // Optional demographics for aggregated analytics insights (privacy-conscious)
   birthYear: integer("birth_year"),
   gender: varchar("gender"), // 'male' | 'female' | 'other' | 'prefer_not_to_say'
@@ -88,7 +101,10 @@ export const users = pgTable("users", {
   appContext: varchar("app_context").default("mealscout"), // 'mealscout' | 'tradescout' | 'both'
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_users_affiliate_tag").on(table.affiliateTag),
+  unique("uq_users_affiliate_tag").on(table.affiliateTag),
+]);
 
 // Security audit log table for all critical actions
 export const securityAuditLog = pgTable(
@@ -1994,6 +2010,7 @@ export const hosts = pgTable(
     notes: text("notes"),
     isVerified: boolean("is_verified").default(false),
     adminCreated: boolean("admin_created").default(false),
+    spotCount: integer("spot_count").notNull().default(1),
     // Stripe Connect for receiving payments
     stripeConnectAccountId: varchar("stripe_connect_account_id"),
     stripeConnectStatus: varchar("stripe_connect_status").default("pending"),
@@ -2010,6 +2027,25 @@ export const hosts = pgTable(
     index("idx_hosts_verified").on(table.isVerified),
     index("idx_hosts_location").on(table.latitude, table.longitude),
     index("idx_hosts_stripe_account").on(table.stripeConnectAccountId),
+  ],
+);
+
+// Track every link shared by a user (for affiliate analytics)
+export const affiliateShareEvents = pgTable(
+  "affiliate_share_events",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    affiliateUserId: varchar("affiliate_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourcePath: text("source_path").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_affiliate_share_user").on(table.affiliateUserId),
+    index("idx_affiliate_share_created").on(table.createdAt),
   ],
 );
 
@@ -2240,6 +2276,7 @@ export const eventBookings = pgTable(
     refundedAt: timestamp("refunded_at"),
     refundReason: text("refund_reason"),
     // Metadata
+    spotNumber: integer("spot_number"),
     bookingConfirmedAt: timestamp("booking_confirmed_at"),
     cancelledAt: timestamp("cancelled_at"),
     cancellationReason: text("cancellation_reason"),
@@ -2351,6 +2388,8 @@ export const affiliateCommissionLedger = pgTable(
       onDelete: "set null",
     }),
     amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+    commissionPercent: integer("commission_percent"),
+    sourceAmountCents: integer("source_amount_cents"),
     commissionSource: varchar("commission_source").notNull(), // 'subscription_payment' | 'restaurant_signup' etc
     stripeInvoiceId: varchar("stripe_invoice_id"), // For referencing the invoice that triggered this
     createdAt: timestamp("created_at").defaultNow(),
@@ -3210,6 +3249,7 @@ export const insertHostSchema = createInsertSchema(hosts)
   .extend({
     city: z.string().min(1, "City is required"),
     state: z.string().min(2, "State is required"),
+    spotCount: z.number().int().min(1, "Number of spots must be at least 1").optional(),
   });
 
 export type Host = typeof hosts.$inferSelect;

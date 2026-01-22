@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { getAffiliateShareUrl } from '@/lib/share';
 
 interface ShareButtonProps {
   title: string;
@@ -17,34 +18,41 @@ interface ShareButtonProps {
 
 export function ShareButton({ title, description, url, imageUrl }: ShareButtonProps) {
   const { toast } = useToast();
-  const fullUrl = `${window.location.origin}${url}`;
+  const getShareUrl = async () => getAffiliateShareUrl(url);
 
   const shareToFacebook = () => {
-    window.open(
-      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`,
-      '_blank',
-      'width=600,height=400'
-    );
+    getShareUrl().then((shareUrl) => {
+      window.open(
+        `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+        '_blank',
+        'width=600,height=400'
+      );
+    });
   };
 
   const shareToTwitter = () => {
-    window.open(
-      `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(fullUrl)}`,
-      '_blank',
-      'width=600,height=400'
-    );
+    getShareUrl().then((shareUrl) => {
+      window.open(
+        `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(shareUrl)}`,
+        '_blank',
+        'width=600,height=400'
+      );
+    });
   };
 
   const shareToWhatsApp = () => {
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(`${title} - ${fullUrl}`)}`,
-      '_blank'
-    );
+    getShareUrl().then((shareUrl) => {
+      window.open(
+        `https://wa.me/?text=${encodeURIComponent(`${title} - ${shareUrl}`)}`,
+        '_blank'
+      );
+    });
   };
 
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(fullUrl);
+      const shareUrl = await getShareUrl();
+      await navigator.clipboard.writeText(shareUrl);
       toast({
         title: 'Link copied!',
         description: 'Share link has been copied to clipboard',
@@ -61,10 +69,11 @@ export function ShareButton({ title, description, url, imageUrl }: ShareButtonPr
   const nativeShare = async () => {
     if (navigator.share) {
       try {
+        const shareUrl = await getShareUrl();
         await navigator.share({
           title,
           text: description,
-          url: fullUrl,
+          url: shareUrl,
         });
       } catch (error) {
         // User cancelled or error occurred

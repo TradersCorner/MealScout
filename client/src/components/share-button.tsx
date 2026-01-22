@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { getAffiliateShareUrl } from '@/lib/share';
 
 interface ShareButtonProps {
   url: string;
@@ -26,11 +27,11 @@ export default function ShareButton({
   className = '',
 }: ShareButtonProps) {
   const { toast } = useToast();
-
-  const shareUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`;
+  const getShareUrl = async () => getAffiliateShareUrl(url);
 
   const handleCopyLink = async () => {
     try {
+      const shareUrl = await getShareUrl();
       await navigator.clipboard.writeText(shareUrl);
       toast({
         title: 'Link copied!',
@@ -46,31 +47,40 @@ export default function ShareButton({
   };
 
   const handleShareFacebook = () => {
-    const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
-    window.open(fbUrl, '_blank', 'width=600,height=400');
+    getShareUrl().then((shareUrl) => {
+      const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+      window.open(fbUrl, '_blank', 'width=600,height=400');
+    });
   };
 
   const handleShareTwitter = () => {
     const text = description || title;
-    const twitterUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
-    window.open(twitterUrl, '_blank', 'width=600,height=400');
+    getShareUrl().then((shareUrl) => {
+      const twitterUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
+      window.open(twitterUrl, '_blank', 'width=600,height=400');
+    });
   };
 
   const handleShareWhatsApp = () => {
-    const text = `${title}\n${shareUrl}`;
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(whatsappUrl, '_blank');
+    getShareUrl().then((shareUrl) => {
+      const text = `${title}\n${shareUrl}`;
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      window.open(whatsappUrl, '_blank');
+    });
   };
 
   const handleShareEmail = () => {
-    const subject = encodeURIComponent(title);
-    const body = encodeURIComponent(`Check this out:\n\n${title}\n${description || ''}\n\n${shareUrl}`);
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    getShareUrl().then((shareUrl) => {
+      const subject = encodeURIComponent(title);
+      const body = encodeURIComponent(`Check this out:\n\n${title}\n${description || ''}\n\n${shareUrl}`);
+      window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    });
   };
 
   const handleNativeShare = async () => {
     if (navigator.share) {
       try {
+        const shareUrl = await getShareUrl();
         await navigator.share({
           title,
           text: description || title,

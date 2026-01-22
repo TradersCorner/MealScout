@@ -154,7 +154,7 @@ import { vacEvaluateRestaurantSignup } from "./vacLite";
 import { broadcastLocationUpdate, broadcastStatusUpdate } from "./websocket";
 import { reverseGeocode } from "./utils/geocoding";
 import { db } from "./db";
-import { and, inArray, eq, sql, gte, desc, like } from "drizzle-orm";
+import { and, inArray, eq, sql, gte, desc, like, asc } from "drizzle-orm";
 import { registerStoryCronJobs } from "./storiesCronJobs";
 
 // Optional Stripe integration
@@ -178,6 +178,47 @@ if (process.env.NODE_ENV === "production" && BETA_MODE) {
 
 // Pricing helpers: lock-in logic + Stripe Price IDs
 const PROMO_DEADLINE = new Date("2026-03-01T00:00:00Z");
+
+function isTrialActive(user: User | null): boolean {
+  if (!user?.trialEndsAt) return false;
+  return user.trialEndsAt.getTime() > Date.now();
+}
+
+async function ensureTrialForUser(user: User): Promise<User> {
+  if (isTrialActive(user) || user.trialUsed || hydratedUser.stripeSubscriptionId) {
+    return user;
+  }
+
+  const eligibleTrialUserTypes = new Set(["restaurant_owner", "food_truck"]);
+  if (!eligibleTrialUserTypes.has(user.userType)) {
+    return user;
+  }
+
+  const restaurantsForUser = await storage.getRestaurantsByOwner(user.id);
+  const hasBusiness =
+    user.userType === "food_truck" ||
+    restaurantsForUser.some(
+      (restaurant) =>
+        restaurant.businessType === "restaurant" ||
+        restaurant.businessType === "bar" ||
+        restaurant.isFoodTruck,
+    );
+
+  if (!hasBusiness) {
+    return user;
+  }
+
+  const startedAt = new Date();
+  const endsAt = new Date(startedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const updated = await storage.updateUser(user.id, {
+    trialStartedAt: startedAt,
+    trialEndsAt: endsAt,
+    trialUsed: true,
+    subscriptionBillingInterval: "trial",
+  });
+
+  return updated || user;
+}
 
 async function getLockedPriceForUser(userId: string): Promise<{
   locked: boolean;
@@ -306,19 +347,28 @@ async function validateAnalyticsAccess(userId: string): Promise<{
       return { hasAccess: false, error: "User not found" };
     }
 
+    const hydratedUser = await ensureTrialForUser(user);
+
     // During beta testing, all users get free access to analytics
     if (BETA_MODE) {
       return { hasAccess: true, subscriptionTier: "beta" };
     }
 
+    if (isTrialActive(hydratedUser)) {
+      return { hasAccess: true, subscriptionTier: "trial" };
+    }
+
     // Check if user has beta access (free analytics for beta users)
-    if (user.subscriptionBillingInterval && !user.stripeSubscriptionId) {
+    if (
+      hydratedUser.subscriptionBillingInterval &&
+      !hydratedUser.stripeSubscriptionId
+    ) {
       // Beta user - allow analytics access
       return { hasAccess: true, subscriptionTier: "beta" };
     }
 
     // Check if user has active subscription
-    if (!stripe || !user.stripeSubscriptionId) {
+    if (!stripe || !hydratedUser.stripeSubscriptionId) {
       return {
         hasAccess: false,
         error:
@@ -329,7 +379,7 @@ async function validateAnalyticsAccess(userId: string): Promise<{
 
     // Verify subscription status with Stripe
     const subscription = await stripe.subscriptions.retrieve(
-      user.stripeSubscriptionId,
+      hydratedUser.stripeSubscriptionId,
     );
     if (!subscription || subscription.status !== "active") {
       return {
@@ -371,6 +421,8 @@ async function validateSubscriptionLimits(
       return { isValid: false, error: "User not found" };
     }
 
+    const hydratedUser = await ensureTrialForUser(user);
+
     console.log("🔍 validateSubscriptionLimits - BETA_MODE:", BETA_MODE);
     console.log("🔍 validateSubscriptionLimits - User ID:", userId);
 
@@ -380,8 +432,12 @@ async function validateSubscriptionLimits(
       return { isValid: true, currentCount: 0, maxDeals: 999 };
     }
 
+    if (isTrialActive(hydratedUser)) {
+      return { isValid: true, currentCount: 0, maxDeals: 999 };
+    }
+
     // Check if user has beta access (free)
-    if (user.subscriptionBillingInterval && !user.stripeSubscriptionId) {
+    if (hydratedUser.subscriptionBillingInterval && !hydratedUser.stripeSubscriptionId) {
       // Beta user - allow unlimited deals for now
       return { isValid: true, currentCount: 0, maxDeals: 999 };
     }
@@ -397,7 +453,7 @@ async function validateSubscriptionLimits(
       };
     }
 
-    const subscriptionId = user.stripeSubscriptionId || user.stripeCustomerId;
+    const subscriptionId = hydratedUser.stripeSubscriptionId || hydratedUser.stripeCustomerId;
 
     // Removed legacy billing interval checks
     // Only monthly billing supported
@@ -1081,7 +1137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           googleAccessToken: user.googleAccessToken,
           stripeCustomerId: user.stripeCustomerId,
           stripeSubscriptionId: user.stripeSubscriptionId,
-          subscriptionBillingInterval: user.subscriptionBillingInterval,
+          subscriptionBillingInterval: hydratedUser.subscriptionBillingInterval,
           birthYear: user.birthYear,
           gender: user.gender,
           postalCode: user.postalCode,
@@ -2815,6 +2871,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      if (referralId && user?.id) {
+        try {
+          const { resolveAffiliateUserId } = await import(
+            "./affiliateTagService"
+          );
+          const affiliateUserId = await resolveAffiliateUserId(referralId);
+          if (affiliateUserId && affiliateUserId !== user.id) {
+            const [existingUser] = await db
+              .select({ affiliateCloserUserId: users.affiliateCloserUserId })
+              .from(users)
+              .where(eq(users.id, user.id))
+              .limit(1);
+
+            if (!existingUser?.affiliateCloserUserId) {
+              await db
+                .update(users)
+                .set({
+                  affiliateCloserUserId: affiliateUserId,
+                  updatedAt: new Date(),
+                })
+                .where(eq(users.id, user.id));
+            }
+          }
+        } catch (err) {
+          console.error("[Phase 2] Error attaching user referral:", err);
+        }
+      }
+
       res.json({
         user,
         restaurant,
@@ -3669,6 +3753,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? billingInterval
         : "month";
 
+      const hydratedUser = await ensureTrialForUser(user);
+      if (isTrialActive(hydratedUser)) {
+        return res.send({
+          status: "active",
+          subscriptionId: null,
+          trialAccess: true,
+          message: "Your 30-day premium trial is active. We'll prompt you to pay before it ends.",
+        });
+      }
+
       // Check for BETA promo code
       if (promoCode.toUpperCase() === "BETA") {
         console.log("✅ BETA code detected, granting free access");
@@ -3758,6 +3852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasMultipleDealsAddon,
         promoCode,
         billingInterval = "month",
+        applyCreditsCents,
       } = req.body; // boolean for multiple deals addon, billing interval
 
       // Check for valid promo codes first (skip payment for beta users)
@@ -3931,6 +4026,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           customerId = customer.id;
         }
 
+        let creditAppliedCents = 0;
+        const requestedCreditCents = Number(applyCreditsCents || 0);
+        if (requestedCreditCents > 0) {
+          const { getUserCreditBalance, debitCredit } = await import(
+            "./creditService"
+          );
+          const balance = await getUserCreditBalance(user.id);
+          const availableCents = Math.max(0, Math.floor(balance * 100));
+          creditAppliedCents = Math.min(requestedCreditCents, availableCents);
+
+          if (creditAppliedCents > 0) {
+            const balanceTx = await stripe.customers.createBalanceTransaction(
+              customerId,
+              {
+                amount: -creditAppliedCents,
+                currency: "usd",
+                description: "MealScout credits applied",
+              },
+            );
+            await debitCredit(
+              user.id,
+              creditAppliedCents / 100,
+              "subscription_credit",
+              balanceTx.id,
+              "subscription",
+            );
+          }
+        }
+
         // Record signup date at first actual subscription creation
         if (!user.subscriptionSignupDate) {
           await storage.updateUser(user.id, {
@@ -3947,6 +4071,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           items: [{ price: priceId }],
           payment_behavior: "default_incomplete",
           expand: ["latest_invoice.payment_intent"],
+          metadata:
+            creditAppliedCents > 0
+              ? { creditAppliedCents: creditAppliedCents.toString() }
+              : undefined,
         });
 
         await storage.updateUserStripeInfo(
@@ -4009,15 +4137,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(401).json({ status: "none", hasAccess: false });
+      }
+
+      const hydratedUser = await ensureTrialForUser(user);
+      if (isTrialActive(hydratedUser)) {
+        return res.json({
+          status: "active",
+          hasAccess: true,
+          trialAccess: true,
+          trialEndsAt: hydratedUser.trialEndsAt,
+          message: "30-day premium trial active",
+        });
+      }
+
       if (!stripe) {
         return res.status(503).json({ message: "Payment service unavailable" });
       }
 
       try {
-        const user = req.user;
 
         // Check for BETA users (have billing interval but no Stripe subscription)
-        if (!user.stripeSubscriptionId && user.subscriptionBillingInterval) {
+        if (!hydratedUser.stripeSubscriptionId && hydratedUser.subscriptionBillingInterval) {
           return res.json({
             status: "active",
             hasAccess: true,
@@ -4026,7 +4169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        if (!user.stripeSubscriptionId) {
+        if (!hydratedUser.stripeSubscriptionId) {
           return res.json({ status: "none", hasAccess: false });
         }
 
@@ -4035,7 +4178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Only Stripe subscription status can confirm actual payment
 
         const subscription = await stripe.subscriptions.retrieve(
-          user.stripeSubscriptionId,
+          hydratedUser.stripeSubscriptionId,
           {
             expand: ["latest_invoice.payment_intent"],
           },
@@ -4059,7 +4202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
               // Check subscription status after payment
               const refreshedSubscription = await stripe.subscriptions.retrieve(
-                user.stripeSubscriptionId,
+                hydratedUser.stripeSubscriptionId,
               );
               console.log(
                 `After paying invoice, subscription status: ${refreshedSubscription.status}`,
@@ -4175,31 +4318,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 subscription.id,
               );
 
-              // PHASE 3: Process affiliate commissions when restaurant pays
-              if (user && user.userType === "restaurant_owner") {
+              if (user) {
                 try {
-                  // Find restaurant owned by this user
-                  const ownedRestaurants = await storage.getRestaurantsByOwner(
+                  const { createAffiliateCommissionsForSubscription } =
+                    await import("./affiliateCommissionService");
+                  await createAffiliateCommissionsForSubscription(
                     user.id,
+                    invoice.total,
+                    invoice.id,
                   );
-                  if (ownedRestaurants.length > 0) {
-                    const { createCommissionForRestaurantPayment } =
-                      await import("./referralService");
-                    for (const restaurant of ownedRestaurants) {
-                      // Create commission for this restaurant payment
-                      await createCommissionForRestaurantPayment(
-                        restaurant.id,
-                        invoice.total, // Total in cents
-                        invoice.id,
-                      );
-                    }
-                  }
                 } catch (commissionError) {
                   console.error(
                     "[WEBHOOK] Error processing affiliate commissions:",
                     commissionError,
                   );
-                  // Don't fail the webhook if commission processing fails
                 }
               }
 
@@ -4237,92 +4369,302 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case "payment_intent.succeeded":
           const paymentIntent = event.data.object;
           console.log(
-            `[WEBHOOK] PaymentIntent ${paymentIntent.id} succeeded for booking ${paymentIntent.metadata.bookingId}`,
+            `[WEBHOOK] PaymentIntent ${paymentIntent.id} succeeded`,
           );
 
-          // Update booking status if this is for an event booking
-          if (paymentIntent.metadata.bookingId) {
+          try {
+            const { eventBookings, events, restaurants, hosts } = await import(
+              "@shared/schema"
+            );
+            const metadata = paymentIntent.metadata || {};
+            const passId = metadata.passId;
+            const truckId = metadata.truckId;
+
+            if (!passId || !truckId) {
+              break;
+            }
+
+            const existingByIntent = await db
+              .select()
+              .from(eventBookings)
+              .where(eq(eventBookings.stripePaymentIntentId, paymentIntent.id))
+              .limit(1);
+
+            if (existingByIntent.length > 0) {
+              break;
+            }
+
+            const existingByTruck = await db
+              .select()
+              .from(eventBookings)
+              .where(eq(eventBookings.eventId, passId))
+              .where(eq(eventBookings.truckId, truckId))
+              .limit(1);
+
+            const amountCents =
+              Number(metadata.totalCents) || Number(paymentIntent.amount || 0);
+
+            if (existingByTruck.length > 0) {
+              const [truck] = await db
+                .select({ ownerId: restaurants.ownerId })
+                .from(restaurants)
+                .where(eq(restaurants.id, truckId));
+
+              if (truck?.ownerId) {
+                const { addCredit } = await import("./creditService");
+                await addCredit(
+                  truck.ownerId,
+                  amountCents / 100,
+                  "parking_pass_duplicate",
+                  paymentIntent.id,
+                );
+              }
+              break;
+            }
+
+            const [eventRow] = await db
+              .select()
+              .from(events)
+              .where(eq(events.id, passId));
+
+            if (!eventRow || !eventRow.requiresPayment) {
+              break;
+            }
+
+            const [host] = await db
+              .select()
+              .from(hosts)
+              .where(eq(hosts.id, eventRow.hostId));
+
+            const slotTypes = String(metadata.slotTypes || "")
+              .split(",")
+              .map((value) => value.trim())
+              .filter((value) => value.length > 0);
+
+            const hostPriceCents = Number(metadata.hostPriceCents || 0);
+            const platformFeeCents = Number(metadata.platformFeeCents || 0);
+
+            const confirmedBookings = await db
+              .select({
+                id: eventBookings.id,
+                spotNumber: eventBookings.spotNumber,
+                bookingConfirmedAt: eventBookings.bookingConfirmedAt,
+              })
+              .from(eventBookings)
+              .where(eq(eventBookings.eventId, passId))
+              .where(inArray(eventBookings.status, ["confirmed"]))
+              .orderBy(asc(eventBookings.bookingConfirmedAt));
+
+            if (confirmedBookings.length >= eventRow.maxTrucks) {
+              const [truck] = await db
+                .select({ ownerId: restaurants.ownerId })
+                .from(restaurants)
+                .where(eq(restaurants.id, truckId));
+
+              if (truck?.ownerId) {
+                const { addCredit } = await import("./creditService");
+                await addCredit(
+                  truck.ownerId,
+                  amountCents / 100,
+                  "parking_pass_overbook",
+                  paymentIntent.id,
+                );
+              }
+
+              await db.insert(eventBookings).values({
+                eventId: passId,
+                truckId,
+                hostId: eventRow.hostId,
+                hostPriceCents,
+                platformFeeCents,
+                totalCents: amountCents,
+                status: "cancelled",
+                stripePaymentIntentId: paymentIntent.id,
+                stripePaymentStatus: "succeeded",
+                stripeApplicationFeeAmount: platformFeeCents,
+                stripeTransferDestination: host?.stripeConnectAccountId || null,
+                slotType: slotTypes.join(","),
+                refundStatus: "credit",
+                refundAmountCents: amountCents,
+                refundedAt: new Date(),
+                refundReason: "Overbooked",
+                cancelledAt: new Date(),
+                cancellationReason: "Overbooked - credit issued",
+              });
+
+              break;
+            }
+
+            const usedSpotNumbers = new Set<number>();
+            for (const row of confirmedBookings) {
+              if (row.spotNumber && row.spotNumber > 0) {
+                usedSpotNumbers.add(row.spotNumber);
+              }
+            }
+
+            let spotNumber = 1;
+            while (usedSpotNumbers.has(spotNumber)) {
+              spotNumber += 1;
+            }
+
+            if (spotNumber > eventRow.maxTrucks) {
+              const [truck] = await db
+                .select({ ownerId: restaurants.ownerId })
+                .from(restaurants)
+                .where(eq(restaurants.id, truckId));
+
+              if (truck?.ownerId) {
+                const { addCredit } = await import("./creditService");
+                await addCredit(
+                  truck.ownerId,
+                  amountCents / 100,
+                  "parking_pass_overbook",
+                  paymentIntent.id,
+                );
+              }
+
+              await db.insert(eventBookings).values({
+                eventId: passId,
+                truckId,
+                hostId: eventRow.hostId,
+                hostPriceCents,
+                platformFeeCents,
+                totalCents: amountCents,
+                status: "cancelled",
+                stripePaymentIntentId: paymentIntent.id,
+                stripePaymentStatus: "succeeded",
+                stripeApplicationFeeAmount: platformFeeCents,
+                stripeTransferDestination: host?.stripeConnectAccountId || null,
+                slotType: slotTypes.join(","),
+                refundStatus: "credit",
+                refundAmountCents: amountCents,
+                refundedAt: new Date(),
+                refundReason: "Overbooked",
+                cancelledAt: new Date(),
+                cancellationReason: "Overbooked - credit issued",
+              });
+
+              break;
+            }
+
+            await db.insert(eventBookings).values({
+              eventId: passId,
+              truckId,
+              hostId: eventRow.hostId,
+              hostPriceCents,
+              platformFeeCents,
+              totalCents: amountCents,
+              status: "confirmed",
+              stripePaymentIntentId: paymentIntent.id,
+              stripePaymentStatus: "succeeded",
+              stripeApplicationFeeAmount: platformFeeCents,
+              stripeTransferDestination: host?.stripeConnectAccountId || null,
+              slotType: slotTypes.join(","),
+              paidAt: new Date(),
+              bookingConfirmedAt: new Date(),
+              spotNumber,
+            });
+
             try {
-              const { eventBookings } = await import("@shared/schema");
-              await db
-                .update(eventBookings)
-                .set({
-                  status: "confirmed",
-                  stripePaymentStatus: "succeeded",
-                  paidAt: new Date(),
-                  bookingConfirmedAt: new Date(),
-                })
-                .where(eq(eventBookings.id, paymentIntent.metadata.bookingId));
-
-              console.log(
-                `[WEBHOOK] Booking ${paymentIntent.metadata.bookingId} confirmed`,
+              const creditAppliedCents = Number(
+                metadata.creditAppliedCents || 0,
               );
+              if (creditAppliedCents > 0) {
+                const [truck] = await db
+                  .select({ ownerId: restaurants.ownerId })
+                  .from(restaurants)
+                  .where(eq(restaurants.id, truckId));
 
-              if (paymentIntent.metadata.eventId) {
-                const { events, eventBookings } = await import("@shared/schema");
-                const eventId = paymentIntent.metadata.eventId;
-                const [event] = await db
-                  .select()
-                  .from(events)
-                  .where(eq(events.id, eventId));
-
-                if (event) {
-                  const activeBookings = await db
-                    .select({ id: eventBookings.id })
-                    .from(eventBookings)
-                    .where(eq(eventBookings.eventId, eventId))
-                    .where(
-                      inArray(eventBookings.status, ["pending", "confirmed"]),
-                    );
-
-                  const newStatus =
-                    activeBookings.length >= event.maxTrucks
-                      ? "filled"
-                      : "open";
-
-                  await db
-                    .update(events)
-                    .set({
-                      status: newStatus,
-                      bookedRestaurantId: null,
-                    })
-                    .where(eq(events.id, eventId));
-
-                  console.log(
-                    `[WEBHOOK] Event ${eventId} updated to status ${newStatus}`,
+                if (truck?.ownerId) {
+                  const { debitCredit, getUserCreditBalance } = await import(
+                    "./creditService"
                   );
+                  const balance = await getUserCreditBalance(truck.ownerId);
+                  const availableCents = Math.max(
+                    0,
+                    Math.floor(balance * 100),
+                  );
+                  const debitCents = Math.min(
+                    creditAppliedCents,
+                    availableCents,
+                  );
+                  if (debitCents > 0) {
+                    await debitCredit(
+                      truck.ownerId,
+                      debitCents / 100,
+                      "booking_credit",
+                      paymentIntent.id,
+                      "booking",
+                    );
+                  }
                 }
               }
-            } catch (error) {
-              console.error("[WEBHOOK] Error confirming booking:", error);
+            } catch (creditError) {
+              console.error(
+                "[WEBHOOK] Error debiting booking credits:",
+                creditError,
+              );
             }
+
+            try {
+              const [truckOwner] = await db
+                .select({ ownerId: restaurants.ownerId })
+                .from(restaurants)
+                .where(eq(restaurants.id, truckId));
+
+              if (host?.userId && truckOwner?.ownerId) {
+                const { createAffiliateCommissionsForBooking } = await import(
+                  "./affiliateCommissionService"
+                );
+                await createAffiliateCommissionsForBooking({
+                  hostOwnerId: host.userId,
+                  truckOwnerId: truckOwner.ownerId,
+                  platformFeeCents,
+                  paymentIntentId: paymentIntent.id,
+                  truckRestaurantId: truckId,
+                });
+              }
+            } catch (commissionError) {
+              console.error(
+                "[WEBHOOK] Error processing booking affiliate commissions:",
+                commissionError,
+              );
+            }
+
+            const totalConfirmed = confirmedBookings.length + 1;
+            const newStatus =
+              totalConfirmed >= eventRow.maxTrucks ? "filled" : "open";
+
+            await db
+              .update(events)
+              .set({
+                status: newStatus,
+                bookedRestaurantId: null,
+              })
+              .where(eq(events.id, passId));
+          } catch (error) {
+            console.error("[WEBHOOK] Error confirming booking:", error);
           }
           break;
 
         case "payment_intent.payment_failed":
           const failedIntent = event.data.object;
           console.log(
-            `[WEBHOOK] PaymentIntent ${failedIntent.id} failed for booking ${failedIntent.metadata.bookingId}`,
+            `[WEBHOOK] PaymentIntent ${failedIntent.id} failed`,
           );
 
-          if (failedIntent.metadata.bookingId) {
-            try {
-              const { eventBookings } = await import("@shared/schema");
-              await db
-                .update(eventBookings)
-                .set({
-                  status: "cancelled",
-                  stripePaymentStatus: "failed",
-                  cancellationReason: "Payment failed",
-                })
-                .where(eq(eventBookings.id, failedIntent.metadata.bookingId));
-
-              console.log(
-                `[WEBHOOK] Booking ${failedIntent.metadata.bookingId} marked as failed`,
-              );
-            } catch (error) {
-              console.error("[WEBHOOK] Error updating failed booking:", error);
-            }
+          try {
+            const { eventBookings } = await import("@shared/schema");
+            await db
+              .update(eventBookings)
+              .set({
+                status: "cancelled",
+                stripePaymentStatus: "failed",
+                cancellationReason: "Payment failed",
+              })
+              .where(eq(eventBookings.stripePaymentIntentId, failedIntent.id));
+          } catch (error) {
+            console.error("[WEBHOOK] Error updating failed booking:", error);
           }
           break;
 
@@ -5503,6 +5845,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const redemptionRoutes = (await import("./redemptionRoutes")).default;
   app.use("/api/restaurants", redemptionRoutes);
 
+  // Capture affiliate ref tags on any request and store for signup attribution
+  app.use(async (req: any, res: any, next: any) => {
+    const ref = typeof req.query?.ref === "string" ? req.query.ref.trim() : "";
+    if (!ref) {
+      return next();
+    }
+
+    try {
+      const { resolveAffiliateUserId } = await import("./affiliateTagService");
+      const { recordReferralClick } = await import("./referralService");
+      const affiliateUserId = await resolveAffiliateUserId(ref);
+
+      if (affiliateUserId) {
+        await recordReferralClick(
+          affiliateUserId,
+          req.originalUrl || "/",
+          req.get("user-agent") || undefined,
+          req.ip,
+        );
+      }
+    } catch (error) {
+      console.error("[affiliate] Failed to record referral click:", error);
+    }
+
+    res.cookie("referralId", ref, {
+      maxAge: 1000 * 60 * 60 * 24 * 365,
+      httpOnly: false,
+      sameSite: "lax",
+    });
+    return next();
+  });
+
   // Add share middleware (Phase 7) - adds shareUrl helpers to all handlers
   const { shareUrlMiddleware } = await import("./shareMiddleware");
   app.use(shareUrlMiddleware);
@@ -5514,6 +5888,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       (layer: any) => layer.route?.path === "/cron/escalations",
     )?.handle || ((_req, res) => res.status(404).json({ error: "Not found" })),
   );
+
+  // Clean affiliate links: /ref/<tag>
+  app.get("/ref/:tag", (req, res) => {
+    const tag = req.params?.tag || "";
+    const safeTag = encodeURIComponent(tag);
+    res.redirect(`/?ref=${safeTag}`);
+  });
 
   app.post(
     "/api/cron/auto-close",

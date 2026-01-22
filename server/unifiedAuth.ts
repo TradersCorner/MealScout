@@ -18,6 +18,10 @@ import type {
 } from "@shared/schema";
 import crypto from "crypto";
 import { sanitizeUser } from "./utils/sanitize";
+import { db } from "./db";
+import { users } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import { resolveAffiliateUserId } from "./affiliateTagService";
 
 // Extend session to include app context for multi-app OAuth
 declare module "express-session" {
@@ -234,6 +238,7 @@ export async function setupUnifiedAuth(app: Express) {
               userData,
               "customer",
             );
+            await applyAffiliateReferral(req, user);
             req.session.oauthUserType = undefined;
             console.log(
               "✅ Google customer user created/updated successfully:",
@@ -346,6 +351,7 @@ export async function setupUnifiedAuth(app: Express) {
               userData,
               userType === "customer" ? "restaurant_owner" : userType,
             );
+            await applyAffiliateReferral(req, user);
             req.session.oauthUserType = undefined;
             console.log(
               "✅ Google restaurant user created/updated successfully:",
@@ -594,6 +600,7 @@ export async function setupUnifiedAuth(app: Express) {
               userType,
               appContext,
             );
+            await applyAffiliateReferral(req, user);
             req.session.oauthUserType = undefined;
             console.log("✅ Facebook user created/updated successfully:", {
               userId: user.id,
@@ -884,6 +891,7 @@ export async function setupUnifiedAuth(app: Express) {
         userData,
         "customer",
       );
+      await applyAffiliateReferral(req, user);
 
       // Send email verification first, then welcome after verification
       sendEmailVerification(user, req).catch((err) =>
@@ -978,6 +986,7 @@ export async function setupUnifiedAuth(app: Express) {
         userData,
         "restaurant_owner",
       );
+      await applyAffiliateReferral(req, user);
 
       // Send email verification first, then welcome after verification
       sendEmailVerification(user, req).catch((err) =>
@@ -1181,6 +1190,7 @@ export async function setupUnifiedAuth(app: Express) {
           ? "admin"
           : (userType as "customer" | "restaurant_owner" | "admin"),
       );
+      await applyAffiliateReferral(req, user);
 
       // Establish a standard Passport session using req.login
       req.login(user, (err) => {
@@ -1567,6 +1577,28 @@ export async function setupUnifiedAuth(app: Express) {
       res.status(500).json({ error: "Unable to verify email" });
     }
   });
+}
+
+async function applyAffiliateReferral(req: any, user: User) {
+  try {
+    const ref = typeof req.cookies?.referralId === "string"
+      ? req.cookies.referralId.trim()
+      : "";
+    if (!ref) return;
+    if (user.affiliateCloserUserId) return;
+    const affiliateUserId = await resolveAffiliateUserId(ref);
+    if (!affiliateUserId || affiliateUserId === user.id) return;
+
+    await db
+      .update(users)
+      .set({
+        affiliateCloserUserId: affiliateUserId,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
+  } catch (error) {
+    console.error("[affiliate] Failed to apply referral:", error);
+  }
 }
 
 // Middleware to check if user is authenticated

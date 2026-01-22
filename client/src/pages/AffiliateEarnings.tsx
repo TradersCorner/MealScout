@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Copy, Share2, TrendingUp, DollarSign, RefreshCw, Download } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,6 +39,10 @@ export default function AffiliateEarnings() {
   const [withdrawalDialog, setWithdrawalDialog] = useState(false);
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
   const [withdrawalMethod, setWithdrawalMethod] = useState('bank_transfer');
+  const [affiliateTag, setAffiliateTag] = useState('');
+  const [tagInput, setTagInput] = useState('');
+  const [tagSaving, setTagSaving] = useState(false);
+  const [tagError, setTagError] = useState<string | null>(null);
 
   const { data: stats } = useQuery<Stats>({
     queryKey: ['affiliate-stats'],
@@ -51,6 +55,23 @@ export default function AffiliateEarnings() {
     refetchInterval: 30000,
   });
 
+  const { data: tagData } = useQuery<{ tag: string }>({
+    queryKey: ['affiliate-tag'],
+    queryFn: async () => {
+      const res = await fetch(apiUrl('/api/affiliate/tag'), { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch affiliate tag');
+      return res.json();
+    },
+    enabled: isAuthenticated,
+  });
+
+  useEffect(() => {
+    if (tagData?.tag) {
+      setAffiliateTag(tagData.tag);
+      setTagInput(tagData.tag);
+    }
+  }, [tagData?.tag]);
+
   const handleCopyLink = (url: string) => {
     navigator.clipboard.writeText(url);
   };
@@ -61,6 +82,34 @@ export default function AffiliateEarnings() {
       style: 'currency',
       currency: 'USD',
     }).format(num || 0);
+  };
+
+  const handleSaveTag = async () => {
+    if (!tagInput.trim()) {
+      setTagError('Please enter a valid tag.');
+      return;
+    }
+    setTagSaving(true);
+    setTagError(null);
+    try {
+      const res = await fetch(apiUrl('/api/affiliate/tag'), {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag: tagInput.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to update tag');
+      }
+      const data = await res.json();
+      setAffiliateTag(data.tag);
+      setTagInput(data.tag);
+    } catch (error: any) {
+      setTagError(error.message || 'Failed to update tag.');
+    } finally {
+      setTagSaving(false);
+    }
   };
 
   if (authState === 'loading') {
@@ -100,6 +149,38 @@ export default function AffiliateEarnings() {
         </p>
       </div>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Affiliate Tag</CardTitle>
+          <CardDescription>
+            Every link you share uses this tag. You can customize it once or keep the default.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center">
+            <div className="flex-1">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                placeholder="user1234"
+              />
+            </div>
+            <Button onClick={handleSaveTag} disabled={tagSaving}>
+              {tagSaving ? 'Saving...' : 'Save Tag'}
+            </Button>
+          </div>
+          {tagError ? (
+            <p className="text-xs text-red-600">{tagError}</p>
+          ) : (
+            <p className="text-xs text-gray-500">
+              Current tag: <span className="font-medium text-gray-700">{affiliateTag || 'user1234'}</span>
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Earnings Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -127,8 +208,11 @@ export default function AffiliateEarnings() {
               onClick={() => setWithdrawalDialog(true)}
               disabled={!stats || parseFloat(stats.wallet.availableBalance.toString()) < 5}
             >
-              Withdraw
+              Request Cashout
             </Button>
+            <p className="mt-2 text-xs text-green-700">
+              Cashouts are manual. You can also spend credits on bookings or monthly fees.
+            </p>
           </CardContent>
         </Card>
 
@@ -357,9 +441,9 @@ export default function AffiliateEarnings() {
       <Dialog open={withdrawalDialog} onOpenChange={setWithdrawalDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Request Withdrawal</DialogTitle>
+            <DialogTitle>Request Cashout</DialogTitle>
             <DialogDescription>
-              Minimum withdrawal: $5. Available: {formatCurrency(stats?.wallet.availableBalance || 0)}
+              Minimum cashout: $5. Requests are reviewed manually. Available: {formatCurrency(stats?.wallet.availableBalance || 0)}
             </DialogDescription>
           </DialogHeader>
 

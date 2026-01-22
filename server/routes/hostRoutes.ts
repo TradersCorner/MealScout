@@ -158,6 +158,7 @@ export function registerHostRoutes(app: Express) {
         contactPhone: z.string().min(5).optional(),
         notes: z.string().optional().nullable(),
         amenities: z.record(z.boolean()).optional().nullable(),
+        spotCount: z.number().int().min(1).optional(),
       });
       const parsed = updateSchema.parse(req.body || {});
 
@@ -172,6 +173,7 @@ export function registerHostRoutes(app: Express) {
           contactPhone: parsed.contactPhone ?? host.contactPhone,
           notes: parsed.notes ?? host.notes,
           amenities: parsed.amenities ?? host.amenities ?? null,
+          spotCount: parsed.spotCount ?? host.spotCount ?? 1,
           updatedAt: new Date(),
         })
         .where(eq(hosts.id, host.id))
@@ -320,11 +322,26 @@ export function registerHostRoutes(app: Express) {
           .json({ message: "At least one day of week is required." });
       }
 
+      const spotCount = Number(req.body.maxTrucks ?? host.spotCount ?? 1);
+      if (!Number.isFinite(spotCount) || spotCount < 1) {
+        return res
+          .status(400)
+          .json({ message: "Number of spots must be at least 1" });
+      }
+
+      if (host.spotCount !== spotCount) {
+        await db
+          .update(hosts)
+          .set({ spotCount, updatedAt: new Date() })
+          .where(eq(hosts.id, host.id));
+      }
+
       const parsed = insertEventSchema.parse({
         ...req.body,
         date: new Date(),
         requiresPayment: true,
         hostId: host.id,
+        maxTrucks: spotCount,
         breakfastPriceCents: breakfastPriceCents || null,
         lunchPriceCents: lunchPriceCents || null,
         dinnerPriceCents: dinnerPriceCents || null,
@@ -517,7 +534,19 @@ export function registerHostRoutes(app: Express) {
         const updates: any = {};
         if (startTime !== undefined) updates.startTime = startTime;
         if (endTime !== undefined) updates.endTime = endTime;
-        if (maxTrucks !== undefined) updates.maxTrucks = maxTrucks;
+        let shouldSyncSpotCount = false;
+        if (maxTrucks !== undefined) {
+          const spotCount = Number(maxTrucks);
+          if (!Number.isFinite(spotCount) || spotCount < 1) {
+            return res
+              .status(400)
+              .json({ message: "Number of spots must be at least 1" });
+          }
+          updates.maxTrucks = spotCount;
+          if (event.requiresPayment) {
+            shouldSyncSpotCount = true;
+          }
+        }
         if (hardCapEnabled !== undefined)
           updates.hardCapEnabled = hardCapEnabled;
 
@@ -560,6 +589,24 @@ export function registerHostRoutes(app: Express) {
           .set(updates)
           .where(eq(events.id, eventId))
           .returning();
+
+        if (shouldSyncSpotCount && updates.maxTrucks !== undefined) {
+          await db
+            .update(hosts)
+            .set({ spotCount: updates.maxTrucks, updatedAt: new Date() })
+            .where(eq(hosts.id, host.id));
+
+          await db
+            .update(events)
+            .set({ maxTrucks: updates.maxTrucks, updatedAt: new Date() })
+            .where(
+              and(
+                eq(events.hostId, host.id),
+                eq(events.requiresPayment, true),
+                gte(events.date, today),
+              ),
+            );
+        }
 
         // Telemetry
         await storage.createTelemetryEvent({
@@ -872,15 +919,18 @@ export function registerHostRoutes(app: Express) {
     }
   );
 
-  // Book an event (creates payment intent with $10 platform fee auto-added)
-  app.post("/api/events/:eventId/book", isAuthenticated, async (req: any, res) => {
+  // Book a Parking Pass (creates payment intent with $10 platform fee auto-added)
+  app.post(
+    "/api/parking-pass/:passId/book",
+    isAuthenticated,
+    async (req: any, res) => {
     try {
       if (!stripe) {
         return res.status(500).json({ message: "Stripe not configured" });
       }
 
-      const { eventId } = req.params;
-      const { truckId, slotType, slotTypes } = req.body;
+      const { passId } = req.params;
+      const { truckId, slotType, slotTypes, applyCreditsCents } = req.body;
       const userId = req.user.id;
 
       if (!truckId) {
@@ -918,17 +968,32 @@ export function registerHostRoutes(app: Express) {
       if (!truck || truck.ownerId !== userId) {
         return res.status(403).json({ message: "Not authorized" });
       }
+      if (!truck.isFoodTruck) {
+        return res.status(403).json({
+          message: "Parking Pass bookings are only available for food trucks.",
+        });
+      }
+      if (
+        req.user?.userType &&
+        !["food_truck", "admin", "super_admin", "staff"].includes(
+          req.user.userType,
+        )
+      ) {
+        return res.status(403).json({
+          message: "Only food truck accounts can book Parking Pass slots.",
+        });
+      }
 
       // Get event
-      const event = await storage.getEvent(eventId);
+      const event = await storage.getEvent(passId);
       if (!event) {
-        return res.status(404).json({ message: "Event not found" });
+        return res.status(404).json({ message: "Parking pass not found" });
       }
 
       if (event.status !== "open") {
         return res
           .status(400)
-          .json({ message: "Event not available for booking" });
+          .json({ message: "Parking pass not available for booking" });
       }
 
       if (!event.requiresPayment) {
@@ -956,13 +1021,14 @@ export function registerHostRoutes(app: Express) {
       const existingBooking = await db
         .select()
         .from(eventBookings)
-        .where(eq(eventBookings.eventId, eventId))
+        .where(eq(eventBookings.eventId, passId))
         .where(eq(eventBookings.truckId, truckId))
+        .where(inArray(eventBookings.status, ["confirmed"]))
         .limit(1);
 
       if (existingBooking.length > 0) {
         return res.status(400).json({
-          message: "You already have a booking for this event",
+          message: "You already have a booking for this parking pass",
           bookingId: existingBooking[0].id,
         });
       }
@@ -970,8 +1036,8 @@ export function registerHostRoutes(app: Express) {
       const currentBookings = await db
         .select({ id: eventBookings.id })
         .from(eventBookings)
-        .where(eq(eventBookings.eventId, eventId))
-        .where(inArray(eventBookings.status, ["pending", "confirmed"]));
+        .where(eq(eventBookings.eventId, passId))
+        .where(inArray(eventBookings.status, ["confirmed"]));
 
       if (currentBookings.length >= event.maxTrucks) {
         return res.status(400).json({
@@ -995,7 +1061,7 @@ export function registerHostRoutes(app: Express) {
             eq(eventBookings.hostId, event.hostId),
             gte(events.date, dayStart),
             lt(events.date, dayEnd),
-            inArray(eventBookings.status, ["pending", "confirmed"])
+            inArray(eventBookings.status, ["confirmed"])
           )
         )
         .limit(1);
@@ -1031,32 +1097,28 @@ export function registerHostRoutes(app: Express) {
       );
       const bookingDays = normalizedSlots.includes("weekly") ? 7 : 1;
       const platformFeeCents = 1000 * bookingDays; // $10 per day per host
-      const totalCents = hostPriceCents + platformFeeCents;
 
-      // Create booking record
-      const [booking] = await db
-        .insert(eventBookings)
-        .values({
-          eventId,
-          truckId,
-          hostId: event.hostId,
-          hostPriceCents,
+      let creditAppliedCents = 0;
+      const requestedCreditCents = Number(applyCreditsCents || 0);
+      if (requestedCreditCents > 0) {
+        const { getUserCreditBalance } = await import("../creditService");
+        const creditBalance = await getUserCreditBalance(userId);
+        const availableCents = Math.max(
+          0,
+          Math.floor(creditBalance * 100),
+        );
+        creditAppliedCents = Math.min(
+          requestedCreditCents,
           platformFeeCents,
-          totalCents,
-          status: "pending",
-          stripeApplicationFeeAmount: platformFeeCents,
-          stripeTransferDestination: host.stripeConnectAccountId,
-          slotType: normalizedSlots.join(","),
-        })
-        .returning();
-
-      const updatedCount = currentBookings.length + 1;
-      if (updatedCount >= event.maxTrucks) {
-        await db
-          .update(events)
-          .set({ status: "filled" })
-          .where(eq(events.id, event.id));
+          availableCents,
+        );
       }
+
+      const adjustedPlatformFeeCents = Math.max(
+        platformFeeCents - creditAppliedCents,
+        0,
+      );
+      const totalCents = hostPriceCents + adjustedPlatformFeeCents;
 
       // Create Stripe PaymentIntent as a direct charge on the host's Connect account.
       // Processing fees will be deducted from the host; the platform receives the $10 application fee.
@@ -1066,12 +1128,14 @@ export function registerHostRoutes(app: Express) {
           currency: "usd",
           application_fee_amount: platformFeeCents, // $10 to MealScout (platform)
           metadata: {
-            bookingId: booking.id,
-            eventId: event.id,
+            passId: event.id,
             hostId: host.id,
             truckId,
-            hostPrice: hostPriceCents,
-            platformFee: platformFeeCents,
+            slotTypes: normalizedSlots.join(","),
+            hostPriceCents: hostPriceCents.toString(),
+            platformFeeCents: adjustedPlatformFeeCents.toString(),
+            totalCents: totalCents.toString(),
+            creditAppliedCents: creditAppliedCents.toString(),
           },
         },
         {
@@ -1079,19 +1143,13 @@ export function registerHostRoutes(app: Express) {
         }
       );
 
-      // Save payment intent ID
-      await db
-        .update(eventBookings)
-        .set({ stripePaymentIntentId: paymentIntent.id })
-        .where(eq(eventBookings.id, booking.id));
-
       res.json({
-        bookingId: booking.id,
         clientSecret: paymentIntent.client_secret,
         totalCents,
         breakdown: {
           hostPrice: hostPriceCents,
-          platformFee: platformFeeCents,
+          platformFee: adjustedPlatformFeeCents,
+          creditsApplied: creditAppliedCents,
         },
       });
     } catch (error: any) {

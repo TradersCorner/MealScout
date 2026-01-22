@@ -17,6 +17,7 @@ import {
   Users,
   UtensilsCrossed,
   Calendar,
+  LayoutDashboard,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -96,6 +97,7 @@ export default function Navigation() {
 
   // Check user role
   const isRestaurantOwner = user && user.userType === "restaurant_owner";
+  const isFoodTruck = user && user.userType === "food_truck";
   const isAdmin =
     user && (user.userType === "admin" || user.userType === "super_admin");
   const isStaff = user && user.userType === "staff";
@@ -152,6 +154,7 @@ export default function Navigation() {
   ];
 
   const customerExtras: NavItem[] = [
+    { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/favorites", icon: Heart, label: "Favorites" },
   ];
 
@@ -164,7 +167,6 @@ export default function Navigation() {
     { path: "/events", icon: Calendar, label: "Events" },
     { path: "/host/dashboard", icon: Users, label: "Host" },
     { path: "/host-food", icon: MapPin, label: "Host Food" },
-    { path: "/parking-pass", icon: Search, label: "Parking Pass" },
     { path: "/for-food-trucks", icon: Store, label: "For Trucks" },
     { path: "/for-restaurants", icon: Store, label: "For Restaurants" },
     { path: "/for-bars", icon: Store, label: "For Bars" },
@@ -188,7 +190,7 @@ export default function Navigation() {
   ];
 
   const restaurantOwnerExtras: NavItem[] = [
-    { path: "/restaurant-owner-dashboard", icon: Store, label: "Dashboard" },
+    { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/deal-creation", icon: Plus, label: "Create Special" },
     { path: "/subscription", icon: BarChart3, label: "Subscription" },
   ];
@@ -217,6 +219,7 @@ export default function Navigation() {
   // Admins should see every flow including all business types, host, and event coordinator capabilities
   const adminNavItems: NavItem[] = mergeNavItems(sharedNavItems, [
     { path: "/admin/dashboard", icon: Shield, label: "Admin" },
+    { path: "/admin/affiliates", icon: Users, label: "Affiliates" },
     { path: "/staff", icon: Users, label: "Staff" },
     { path: "/events", icon: Calendar, label: "Events" },
     { path: "/host/dashboard", icon: Users, label: "Host" },
@@ -251,14 +254,19 @@ export default function Navigation() {
 
   const eventCoordinatorExtras: NavItem[] = [
     { path: "/events", icon: Calendar, label: "Events" },
-    { path: "/event-coordinator/dashboard", icon: Calendar, label: "Dashboard" },
-    { path: "/parking-pass", icon: Search, label: "Parking Pass" },
+    { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/for-food-trucks", icon: Store, label: "For Trucks" },
   ];
 
   const eventCoordinatorNavItems: NavItem[] = mergeNavItems(
     sharedNavItems,
     eventCoordinatorExtras,
+  );
+
+  const foodTruckNavItems: NavItem[] = mergeNavItems(
+    sharedNavItems,
+    customerExtras,
+    [{ path: "/parking-pass", icon: Search, label: "Parking Pass" }],
   );
 
   const navItems = !user
@@ -269,11 +277,13 @@ export default function Navigation() {
         ? [...staffNavItems, bugNavItem]
         : isEventCoordinator
           ? [...eventCoordinatorNavItems, bugNavItem]
-          : isRestaurantOwner
-            ? [...restaurantOwnerNavItems, bugNavItem]
-            : isHost
-              ? [...hostNavItems, bugNavItem]
-              : [...customerNavItems, bugNavItem];
+          : isFoodTruck
+            ? [...foodTruckNavItems, bugNavItem]
+            : isRestaurantOwner
+              ? [...restaurantOwnerNavItems, bugNavItem]
+              : isHost
+                ? [...hostNavItems, bugNavItem]
+                : [...customerNavItems, bugNavItem];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 w-full bg-white/95 backdrop-blur-sm border-t border-orange-100/80 px-4 py-2 z-50 shadow-xl">

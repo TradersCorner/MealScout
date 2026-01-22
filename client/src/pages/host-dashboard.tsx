@@ -28,6 +28,7 @@ interface HostProfile {
   locationType: string;
   contactPhone?: string | null;
   stripeChargesEnabled?: boolean;
+  stripePayoutsEnabled?: boolean;
   stripeOnboardingCompleted?: boolean;
   amenities?: Record<string, boolean> | null;
 }
@@ -92,6 +93,7 @@ function HostDashboard() {
   });
   const [isSavingLocation, setIsSavingLocation] = useState(false);
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
+  const [isCheckingStripe, setIsCheckingStripe] = useState(false);
 
   useEffect(() => {
     if (isLoading) {
@@ -485,6 +487,42 @@ function HostDashboard() {
     }
   };
 
+  const refreshStripeStatus = async () => {
+    setIsCheckingStripe(true);
+    try {
+      const res = await fetch("/api/hosts/stripe/status");
+      if (!res.ok) {
+        throw new Error("Failed to check payment status");
+      }
+      const data = await res.json();
+      setHost((prev) =>
+        prev
+          ? {
+              ...prev,
+              stripeChargesEnabled: data.chargesEnabled,
+              stripePayoutsEnabled: data.payoutsEnabled,
+              stripeOnboardingCompleted: data.onboardingCompleted,
+            }
+          : prev,
+      );
+      toast({
+        title: "Stripe status updated",
+        description: data.chargesEnabled
+          ? "Payments are enabled."
+          : "Payments are still pending.",
+      });
+    } catch (error: any) {
+      console.error("Stripe status error:", error);
+      toast({
+        title: "Unable to refresh status",
+        description: error.message || "Please try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCheckingStripe(false);
+    }
+  };
+
   if (isLoading || isLoadingPage) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -497,27 +535,35 @@ function HostDashboard() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">
-      {!host.stripeChargesEnabled &&
-        events.some((event) => event.requiresPayment) && (
-          <Alert className="mb-6 border-orange-200 bg-orange-50">
-            <AlertCircle className="h-4 w-4 text-orange-600" />
-            <AlertTitle className="text-orange-900">
-              Enable Payments to Accept Bookings
-            </AlertTitle>
-            <AlertDescription className="text-orange-800">
-              <p className="mb-3">
-                Set up payments to receive booking fees from trucks. You set
-                your price per slot and get paid automatically.
-              </p>
+      {!host.stripeChargesEnabled && (
+        <Alert className="mb-6 border-orange-200 bg-orange-50">
+          <AlertCircle className="h-4 w-4 text-orange-600" />
+          <AlertTitle className="text-orange-900">
+            Enable Payments to Accept Bookings
+          </AlertTitle>
+          <AlertDescription className="text-orange-800">
+            <p className="mb-3">
+              Set up payments to receive booking fees from trucks. You set your
+              price per slot and get paid automatically.
+            </p>
+            <div className="flex flex-wrap gap-2">
               <Button
                 onClick={handleEnablePayments}
                 className="bg-orange-600 hover:bg-orange-700"
               >
                 Enable Payments with Stripe
               </Button>
-            </AlertDescription>
-          </Alert>
-        )}
+              <Button
+                variant="outline"
+                onClick={refreshStripeStatus}
+                disabled={isCheckingStripe}
+              >
+                {isCheckingStripe ? "Checking..." : "Refresh Stripe Status"}
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
         <div className="flex flex-col gap-4 mb-8 md:flex-row md:items-center md:justify-between">
           <div>

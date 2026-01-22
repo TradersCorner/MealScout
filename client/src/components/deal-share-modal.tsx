@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Share2, Copy, Facebook, Twitter, MessageCircle, Mail, Check } from "lucide-react";
+import { getAffiliateShareUrl } from "@/lib/share";
 
 interface Deal {
   id: string;
@@ -25,10 +26,28 @@ interface DealShareModalProps {
 
 export default function DealShareModal({ isOpen, onClose, deal }: DealShareModalProps) {
   const [copied, setCopied] = useState(false);
+  const [shareUrl, setShareUrl] = useState(() => {
+    if (typeof window === "undefined") return `/deal/${deal.id}`;
+    return `${window.location.origin}/deal/${deal.id}`;
+  });
   const { toast } = useToast();
 
-  // Generate shareable URL
-  const shareUrl = `${window.location.origin}/deal/${deal.id}`;
+  useEffect(() => {
+    if (!isOpen) return;
+    let isActive = true;
+
+    const loadShareUrl = async () => {
+      const url = await getAffiliateShareUrl(`/deal/${deal.id}`);
+      if (isActive) {
+        setShareUrl(url);
+      }
+    };
+
+    loadShareUrl();
+    return () => {
+      isActive = false;
+    };
+  }, [deal.id, isOpen]);
   
   // Create share text
   const shareText = `🍽️ Amazing deal at ${deal.restaurant?.name || 'this restaurant'}!\n\n${deal.title}\n${deal.discountValue}% OFF (Min order: $${deal.minOrderAmount || '15'})\n\nCheck it out on MealScout:`;

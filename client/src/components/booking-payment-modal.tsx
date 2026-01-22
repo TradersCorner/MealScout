@@ -25,7 +25,7 @@ const stripePromise = loadStripe(
 interface BookingPaymentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  eventId: string;
+  passId: string;
   truckId: string;
   slotTypes: string[];
   eventDetails: {
@@ -46,6 +46,7 @@ interface PaymentFormProps {
   breakdown: {
     hostPrice: number;
     platformFee: number;
+    creditsApplied?: number;
   };
   onSuccess: () => void;
   onCancel: () => void;
@@ -89,7 +90,7 @@ function PaymentForm({
         });
       } else {
         toast({
-          title: "Booking Confirmed!",
+          title: "Parking Pass Confirmed!",
           description: "Your parking spot has been reserved.",
         });
         onSuccess();
@@ -115,12 +116,20 @@ function PaymentForm({
             ${(breakdown.hostPrice / 100).toFixed(2)}
           </span>
         </div>
-      <div className="flex items-center justify-between text-gray-700">
-        <span>MealScout Platform Fee (per day)</span>
-        <span className="font-medium">
-          ${(breakdown.platformFee / 100).toFixed(2)}
-        </span>
-      </div>
+        <div className="flex items-center justify-between text-gray-700">
+          <span>MealScout Platform Fee (per day)</span>
+          <span className="font-medium">
+            ${(breakdown.platformFee / 100).toFixed(2)}
+          </span>
+        </div>
+        {breakdown.creditsApplied ? (
+          <div className="flex items-center justify-between text-green-700">
+            <span>Credits Applied</span>
+            <span className="font-medium">
+              -${(breakdown.creditsApplied / 100).toFixed(2)}
+            </span>
+          </div>
+        ) : null}
         <div className="border-t border-gray-300 pt-2 flex items-center justify-between font-semibold text-gray-900">
           <span>Total</span>
           <span className="text-lg">${(totalCents / 100).toFixed(2)}</span>
@@ -173,7 +182,7 @@ function PaymentForm({
 export function BookingPaymentModal({
   open,
   onOpenChange,
-  eventId,
+  passId,
   truckId,
   slotTypes,
   eventDetails,
@@ -183,24 +192,45 @@ export function BookingPaymentModal({
   const [isLoading, setIsLoading] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [bookingData, setBookingData] = useState<{
-    bookingId: string;
     totalCents: number;
-    breakdown: { hostPrice: number; platformFee: number };
+    breakdown: { hostPrice: number; platformFee: number; creditsApplied?: number };
   } | null>(null);
+  const [creditBalance, setCreditBalance] = useState<number | null>(null);
+  const [creditsToApply, setCreditsToApply] = useState("");
 
   useEffect(() => {
     if (open && !clientSecret) {
+      loadCreditBalance();
       initiateBooking();
     }
   }, [open]);
 
+  const loadCreditBalance = async () => {
+    try {
+      const res = await fetch("/api/payout/balance");
+      if (!res.ok) return;
+      const data = await res.json();
+      setCreditBalance(Number(data.balance || 0));
+    } catch (error) {
+      console.error("Failed to load credit balance:", error);
+    }
+  };
+
   const initiateBooking = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/events/${eventId}/book`, {
+      const creditCents = Math.max(
+        0,
+        Math.floor(Number(creditsToApply || 0) * 100),
+      );
+      const res = await fetch(`/api/parking-pass/${passId}/book`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ truckId, slotTypes }),
+        body: JSON.stringify({
+          truckId,
+          slotTypes,
+          applyCreditsCents: creditCents > 0 ? creditCents : undefined,
+        }),
       });
 
       if (!res.ok) {
@@ -211,7 +241,6 @@ export function BookingPaymentModal({
       const data = await res.json();
       setClientSecret(data.clientSecret);
       setBookingData({
-        bookingId: data.bookingId,
         totalCents: data.totalCents,
         breakdown: data.breakdown,
       });
@@ -231,6 +260,7 @@ export function BookingPaymentModal({
   const handleClose = () => {
     setClientSecret(null);
     setBookingData(null);
+    setCreditsToApply("");
     onOpenChange(false);
   };
 
@@ -243,7 +273,7 @@ export function BookingPaymentModal({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Confirm Your Booking</DialogTitle>
+          <DialogTitle>Confirm Parking Pass</DialogTitle>
           <DialogDescription>
             <div className="space-y-1 text-sm text-gray-600 pt-2">
               <p className="font-semibold text-gray-900">{eventDetails.name}</p>
@@ -260,6 +290,48 @@ export function BookingPaymentModal({
             </div>
           </DialogDescription>
         </DialogHeader>
+
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-700">
+                Available Credits
+              </p>
+              <p className="text-lg font-semibold text-gray-900">
+                ${(creditBalance || 0).toFixed(2)}
+              </p>
+            </div>
+            <p className="text-xs text-gray-500 text-right">
+              Credits reduce the platform fee.
+            </p>
+          </div>
+          <div className="mt-3">
+            <label className="text-xs font-medium text-gray-600">
+              Apply Credits
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={creditsToApply}
+              onChange={(e) => setCreditsToApply(e.target.value)}
+              className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+              placeholder="0.00"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              You can refresh pricing after setting credits.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3 w-full"
+            onClick={initiateBooking}
+            disabled={isLoading}
+          >
+            Refresh Pricing
+          </Button>
+        </div>
 
         {isLoading && (
           <div className="flex items-center justify-center py-12">

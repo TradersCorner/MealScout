@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Flame, Clock, Share2, Bookmark, Star } from "lucide-react";
 import { GoldenForkIcon } from "@/components/award-badges";
 import { apiRequest } from "@/lib/queryClient";
+import { getAffiliateShareUrl } from "@/lib/share";
 import DealShareModal from "./deal-share-modal";
 import RestaurantDealsDrawer from "./restaurant-deals-drawer";
 import { useAuth } from "@/hooks/useAuth";
@@ -295,7 +296,7 @@ export default function DealCard({ deal }: DealCardProps) {
     e.preventDefault();
     e.stopPropagation();
 
-    const shareUrl = `${window.location.origin}/deal/${deal.id}`;
+    const shareUrl = await getAffiliateShareUrl(`/deal/${deal.id}`);
     const shareText = `${deal.title} at ${
       deal.restaurant?.name || "this restaurant"
     }`;

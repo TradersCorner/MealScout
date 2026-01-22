@@ -7,6 +7,8 @@
 import type { Express } from 'express';
 import { isAuthenticated } from './unifiedAuth';
 import { generateShareLink } from './shareMiddleware';
+import { db } from "./db";
+import { affiliateShareEvents } from "@shared/schema";
 
 export default function setupShareRoutes(app: Express) {
   /**
@@ -26,6 +28,13 @@ export default function setupShareRoutes(app: Express) {
 
       const baseUrl = `${req.protocol}://${req.get('host')}`;
       const result = await generateShareLink(path, baseUrl, req.user?.id);
+
+      if (req.user?.id) {
+        await db.insert(affiliateShareEvents).values({
+          affiliateUserId: req.user.id,
+          sourcePath: path,
+        });
+      }
 
       res.json({
         ...result,

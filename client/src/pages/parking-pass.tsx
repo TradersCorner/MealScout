@@ -28,6 +28,10 @@ interface ParkingPassEvent {
   endTime: string;
   status: string;
   requiresPayment?: boolean;
+  maxTrucks?: number;
+  spotCount?: number;
+  bookedSpots?: number;
+  availableSpotNumbers?: number[];
   hostPriceCents?: number;
   breakfastPriceCents?: number | null;
   lunchPriceCents?: number | null;
@@ -166,7 +170,356 @@ export default function ParkingPassPage() {
     };
 
     loadData();
-    const activeEvent =
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, toast]);
+
+  useEffect(() => {
+    if (!truckId) {
+      setManualSchedules([]);
+      return;
+    }
+    let cancelled = false;
+    const loadManualSchedules = async () => {
+      try {
+        const res = await fetch(`/api/trucks/${truckId}/manual-schedule`);
+        if (!res.ok) {
+          throw new Error("Failed to load schedule");
+        }
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data)) {
+          setManualSchedules(data);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          toast({
+            title: "Schedule Error",
+            description:
+              error instanceof Error
+                ? error.message
+                : "Failed to load your schedule.",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+
+    loadManualSchedules();
+    return () => {
+      cancelled = true;
+    };
+  }, [truckId, toast]);
+
+  const handleScheduleFieldChange = (
+    field: keyof typeof scheduleForm,
+    value: string | boolean,
+  ) => {
+    setScheduleForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const handleCreateSchedule = async () => {
+    if (!truckId) {
+      toast({
+        title: "Missing truck",
+        description: "Select a food truck before adding a schedule stop.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!scheduleForm.date || !scheduleForm.startTime || !scheduleForm.endTime) {
+      toast({
+        title: "Missing time",
+        description: "Date, start time, and end time are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!scheduleForm.address) {
+      toast({
+        title: "Missing address",
+        description: "Address is required for schedule entries.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingSchedule(true);
+    try {
+      const res = await fetch(`/api/trucks/${truckId}/manual-schedule`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: scheduleForm.date,
+          startTime: scheduleForm.startTime,
+          endTime: scheduleForm.endTime,
+          locationName: scheduleForm.locationName || undefined,
+          address: scheduleForm.address,
+          city: scheduleForm.city || undefined,
+          state: scheduleForm.state || undefined,
+          notes: scheduleForm.notes || undefined,
+          isPublic: scheduleForm.isPublic,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to save schedule");
+      }
+      const created = await res.json();
+      setManualSchedules((prev) => [...prev, created]);
+      setScheduleForm((current) => ({
+        ...current,
+        startTime: "",
+        endTime: "",
+        locationName: "",
+        address: "",
+        city: "",
+        state: "",
+        notes: "",
+      }));
+      toast({
+        title: "Schedule saved",
+        description: "Your stop is now on your schedule.",
+      });
+    } catch (error) {
+      toast({
+        title: "Save failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to save schedule entry.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingSchedule(false);
+    }
+  };
+
+  const handleDeleteSchedule = async (scheduleId: string) => {
+    if (!truckId) return;
+    try {
+      const res = await fetch(
+        `/api/trucks/${truckId}/manual-schedule/${scheduleId}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to delete schedule");
+      }
+      setManualSchedules((prev) =>
+        prev.filter((entry) => entry.id !== scheduleId),
+      );
+      toast({
+        title: "Schedule removed",
+      });
+    } catch (error) {
+      toast({
+        title: "Delete failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to delete schedule entry.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const formatSlotLabel = (slot: string) =>
+    slot.charAt(0).toUpperCase() + slot.slice(1);
+
+  const getFeeCentsForSlots = (slotTypes: string[], slotTotalCents: number) => {
+    if (!slotTypes.length || slotTotalCents <= 0) return 0;
+    return slotTypes.includes("weekly") ? 7000 : 1000;
+  };
+
+  const getCartTotals = () => {
+    return cartItems.reduce(
+      (totals, item) => {
+        const slotTotal = item.slotTypes.reduce((sum, slotType) => {
+          const price =
+            (slotType === "breakfast" && item.event.breakfastPriceCents) ||
+            (slotType === "lunch" && item.event.lunchPriceCents) ||
+            (slotType === "dinner" && item.event.dinnerPriceCents) ||
+            (slotType === "daily" && item.event.dailyPriceCents) ||
+            (slotType === "weekly" && item.event.weeklyPriceCents) ||
+            0;
+          return sum + price;
+        }, 0);
+        const fee = getFeeCentsForSlots(item.slotTypes, slotTotal);
+        totals.hostCents += slotTotal;
+        totals.feeCents += fee;
+        totals.totalCents += slotTotal + fee;
+        return totals;
+      },
+      { hostCents: 0, feeCents: 0, totalCents: 0 },
+    );
+  };
+
+  const handleSelect = (event: ParkingPassEvent, slotType: string) => {
+    setSelectedSlotsByEvent((prev) => {
+      const existing = prev[event.id] || [];
+      const updated = existing.includes(slotType)
+        ? existing.filter((type) => type !== slotType)
+        : [...existing, slotType];
+      return { ...prev, [event.id]: updated };
+    });
+  };
+
+  const handleBookSelected = (event: ParkingPassEvent) => {
+    const slotTypes = selectedSlotsByEvent[event.id] || [];
+    if (slotTypes.length === 0) return;
+
+    setCartItems((prev) => {
+      const rest = prev.filter((item) => item.event.id !== event.id);
+      return [...rest, { event, slotTypes }];
+    });
+  };
+
+  const removeCartItem = (eventId: string) => {
+    setCartItems((prev) => prev.filter((item) => item.event.id !== eventId));
+  };
+
+  const startCheckout = () => {
+    if (cartItems.length === 0) return;
+    const [first, ...rest] = cartItems;
+    setCheckoutQueue(rest);
+    setSelectedEvent(first.event);
+    setSelectedSlotTypes(first.slotTypes);
+    setPaymentOpen(true);
+  };
+
+  const handleSuccess = () => {
+    if (selectedEvent) {
+      removeCartItem(selectedEvent.id);
+    }
+
+    if (checkoutQueue.length > 0) {
+      const [next, ...rest] = checkoutQueue;
+      setCheckoutQueue(rest);
+      setSelectedEvent(next.event);
+      setSelectedSlotTypes(next.slotTypes);
+      setPaymentOpen(true);
+    } else {
+      setPaymentOpen(false);
+      setSelectedEvent(null);
+      setSelectedSlotTypes([]);
+    }
+
+    toast({
+      title: "Parking Pass Booked",
+      description: "Your booking is confirmed.",
+    });
+  };
+
+  const handleShareLocation = async () => {
+    if (!truckId) {
+      toast({
+        title: "Missing truck",
+        description: "Select a food truck before sharing location.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSharingLocation(true);
+    try {
+      if (isLive) {
+        await fetch(`/api/restaurants/${truckId}/mobile-settings`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mobileOnline: false }),
+        });
+        setIsLive(false);
+        toast({ title: "You are offline" });
+        return;
+      }
+
+      if (!navigator.geolocation) {
+        throw new Error("Location services are not available.");
+      }
+
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+        });
+      });
+
+      await fetch(`/api/restaurants/${truckId}/mobile-settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mobileOnline: true }),
+      });
+
+      const locationRes = await fetch(`/api/restaurants/${truckId}/location`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          source: "manual",
+        }),
+      });
+
+      if (!locationRes.ok) {
+        const data = await locationRes.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to share location");
+      }
+
+      setIsLive(true);
+      toast({
+        title: "Live location shared",
+        description: "You are now visible on the map.",
+      });
+    } catch (error) {
+      toast({
+        title: "Location update failed",
+        description:
+          error instanceof Error ? error.message : "Unable to share location.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSharingLocation(false);
+    }
+  };
+
+  const isFoodTruckUser = user?.userType === "food_truck";
+  const showHostParkingPass = isAuthenticated && hasHostProfile;
+  const normalizedCityQuery = cityQuery.trim().toLowerCase();
+  const filteredEvents = events
+    .filter((event) => {
+      const eventDate = new Date(event.date).toISOString().split("T")[0];
+      if (eventDate !== selectedDate) {
+        return false;
+      }
+      if (!normalizedCityQuery) {
+        return true;
+      }
+      const locationText = [
+        event.host.city,
+        event.host.state,
+        event.host.address,
+        event.host.businessName,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return locationText.includes(normalizedCityQuery);
+    })
+    .sort((a, b) => {
+      const cityA = (a.host.city || "").toLowerCase();
+      const cityB = (b.host.city || "").toLowerCase();
+      if (cityA && cityB && cityA !== cityB) {
+        return cityA.localeCompare(cityB);
+      }
+      return a.host.businessName.localeCompare(b.host.businessName);
+    });
+
+  const activeEvent =
     filteredEvents.find((event) => event.id === activeEventId) ||
     filteredEvents[0] ||
     null;
@@ -181,6 +534,22 @@ export default function ParkingPassPage() {
     }
     setActiveEventId(activeEvent.id);
   }, [activeEvent, activeEventId]);
+
+  if (
+    isAuthenticated &&
+    user &&
+    !["food_truck", "admin", "super_admin", "staff"].includes(user.userType)
+  ) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
+        <h1 className="text-2xl font-bold mb-2">Parking Pass is for food trucks only</h1>
+        <p className="text-gray-600 mb-4 max-w-md">
+          Restaurant and bar accounts can’t book parking pass slots. Switch to a food truck profile to access Parking Pass.
+        </p>
+        <Button onClick={() => setLocation("/dashboard")}>Back to Dashboard</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -530,6 +899,13 @@ export default function ParkingPassPage() {
                               ? "Any time"
                               : `${event.startTime} - ${event.endTime}`}
                           </p>
+                          {event.availableSpotNumbers && (
+                            <p className="text-[11px] text-gray-500">
+                              {event.availableSpotNumbers.length > 0
+                                ? `Open spot${event.availableSpotNumbers.length > 1 ? "s" : ""}: ${event.availableSpotNumbers.join(", ")}`
+                                : "Fully booked"}
+                            </p>
+                          )}
                         </div>
                       </button>
                     ))}
@@ -595,6 +971,12 @@ export default function ParkingPassPage() {
                         ? selectedTotalCents + selectedFeeCents
                         : 0;
 
+                    const availableSpots = event.availableSpotNumbers;
+                    const hasAvailability =
+                      availableSpots === undefined
+                        ? event.status === "open"
+                        : availableSpots.length > 0;
+
                     return (
                       <div
                         key={event.id}
@@ -616,6 +998,13 @@ export default function ParkingPassPage() {
                               ? "Any time"
                               : `${event.startTime} - ${event.endTime}`}
                           </p>
+                          {availableSpots && (
+                            <p className="text-[11px] text-gray-500">
+                              {availableSpots.length > 0
+                                ? `Open spot${availableSpots.length > 1 ? "s" : ""}: ${availableSpots.join(", ")}`
+                                : "Fully booked"}
+                            </p>
+                          )}
                         </div>
                         <div className="grid grid-cols-2 gap-2 pt-1">
                           {slotOptions.map((slot) => {
@@ -632,7 +1021,7 @@ export default function ParkingPassPage() {
                                 variant={isSelected ? "default" : "outline"}
                                 size="sm"
                                 className="justify-between"
-                                disabled={event.status !== "open"}
+                                disabled={!hasAvailability}
                                 onClick={() => handleSelect(event, slot.type)}
                               >
                                 <span>{slot.label}</span>
@@ -641,7 +1030,7 @@ export default function ParkingPassPage() {
                             );
                           })}
                         </div>
-                        {event.status === "open" ? (
+                        {hasAvailability ? (
                           <div className="flex items-center justify-between gap-3 pt-2">
                             <p className="text-[11px] text-gray-500">
                               Includes a $10/day MealScout fee per host.
@@ -870,7 +1259,7 @@ export default function ParkingPassPage() {
         <BookingPaymentModal
           open={paymentOpen}
           onOpenChange={setPaymentOpen}
-          eventId={selectedEvent.id}
+          passId={selectedEvent.id}
           truckId={truckId}
           slotTypes={selectedSlotTypes}
           eventDetails={{

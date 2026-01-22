@@ -2,12 +2,14 @@ import type { Express } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
 import { emailService } from "../emailService";
+import { db } from "../db";
 import {
   isAuthenticated,
   isRestaurantOwner,
   isStaffOrAdmin,
 } from "../unifiedAuth";
-import { insertEventInterestSchema } from "@shared/schema";
+import { eventBookings, insertEventInterestSchema } from "@shared/schema";
+import { asc, inArray } from "drizzle-orm";
 
 export function registerEventRoutes(app: Express) {
   // Get all upcoming events (public)
@@ -37,7 +39,71 @@ export function registerEventRoutes(app: Express) {
   app.get("/api/parking-pass", async (req: any, res) => {
     try {
       const events = await storage.getAllUpcomingEvents();
-      res.json(events.filter((event) => event.requiresPayment));
+      const parkingEvents = events.filter((event) => event.requiresPayment);
+      const eventIds = parkingEvents.map((event) => event.id);
+
+      const bookingRows =
+        eventIds.length > 0
+          ? await db
+              .select({
+                eventId: eventBookings.eventId,
+                spotNumber: eventBookings.spotNumber,
+                bookingConfirmedAt: eventBookings.bookingConfirmedAt,
+              })
+              .from(eventBookings)
+              .where(inArray(eventBookings.eventId, eventIds))
+              .where(inArray(eventBookings.status, ["confirmed"]))
+              .orderBy(asc(eventBookings.bookingConfirmedAt))
+          : [];
+
+      const bookingsByEvent = new Map<string, typeof bookingRows>();
+      for (const row of bookingRows) {
+        const list = bookingsByEvent.get(row.eventId) ?? [];
+        list.push(row);
+        bookingsByEvent.set(row.eventId, list);
+      }
+
+      const enhancedEvents = parkingEvents.map((event) => {
+        const rows = bookingsByEvent.get(event.id) ?? [];
+        const maxSpots = event.maxTrucks ?? 1;
+
+        const usedSpotNumbers = new Set<number>();
+        for (const row of rows) {
+          if (row.spotNumber && row.spotNumber > 0) {
+            usedSpotNumbers.add(row.spotNumber);
+          }
+        }
+
+        let nextSpot = 1;
+        for (const row of rows) {
+          if (row.spotNumber && row.spotNumber > 0) {
+            continue;
+          }
+          while (usedSpotNumbers.has(nextSpot) && nextSpot <= maxSpots) {
+            nextSpot += 1;
+          }
+          if (nextSpot <= maxSpots) {
+            usedSpotNumbers.add(nextSpot);
+            nextSpot += 1;
+          }
+        }
+
+        const availableSpotNumbers: number[] = [];
+        for (let spot = 1; spot <= maxSpots; spot += 1) {
+          if (!usedSpotNumbers.has(spot)) {
+            availableSpotNumbers.push(spot);
+          }
+        }
+
+        return {
+          ...event,
+          spotCount: maxSpots,
+          bookedSpots: Math.min(rows.length, maxSpots),
+          availableSpotNumbers,
+        };
+      });
+
+      res.json(enhancedEvents);
     } catch (error: any) {
       console.error("Error fetching parking pass listings:", error);
       res.status(500).json({ message: "Failed to fetch parking pass listings" });

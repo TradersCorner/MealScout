@@ -53,6 +53,10 @@
         }
       ],
       "destination": "https://mealscout.onrender.com/video/:storyId"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }

@@ -6,13 +6,13 @@ import { db } from "../db";
 import {
   insertHostSchema,
   insertEventSchema,
-  insertHostBlackoutDateSchema,
   events,
+  eventSeries,
   hosts,
   eventBookings,
-  hostBlackoutDates,
+  parkingPassBlackoutDates,
 } from "@shared/schema";
-import { and, eq, gte, inArray, lt } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNotNull, lt } from "drizzle-orm";
 import { isAuthenticated } from "../unifiedAuth";
 import Stripe from "stripe";
 import {
@@ -33,6 +33,25 @@ const stripe = process.env.STRIPE_SECRET_KEY
   : null;
 
 export function registerHostRoutes(app: Express) {
+  const getActiveParkingPassSeriesId = async (hostId: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [row] = await db
+      .select({ seriesId: events.seriesId })
+      .from(events)
+      .where(
+        and(
+          eq(events.hostId, hostId),
+          eq(events.requiresPayment, true),
+          gte(events.date, today),
+          isNotNull(events.seriesId),
+        ),
+      )
+      .orderBy(asc(events.date))
+      .limit(1);
+    return row?.seriesId ?? null;
+  };
+
   // Host Profile & Events
   app.post("/api/hosts", isAuthenticated, async (req: any, res) => {
     try {
@@ -202,7 +221,14 @@ export function registerHostRoutes(app: Express) {
         if (!host || host.userId !== userId) {
           return res.status(404).json({ message: "Host profile not found" });
         }
-        const blackoutDates = await storage.getHostBlackoutDates(hostId);
+        const seriesId = await getActiveParkingPassSeriesId(hostId);
+        if (!seriesId) {
+          return res
+            .status(404)
+            .json({ message: "No active parking pass found." });
+        }
+        const blackoutDates =
+          await storage.getParkingPassBlackoutDates(seriesId);
         res.json(blackoutDates);
       } catch (error: any) {
         console.error("Error fetching blackout dates:", error);
@@ -223,20 +249,25 @@ export function registerHostRoutes(app: Express) {
           return res.status(404).json({ message: "Host profile not found" });
         }
 
-        const parsed = insertHostBlackoutDateSchema.parse({
-          hostId,
-          date: new Date(req.body?.date),
-        });
+        const seriesId = await getActiveParkingPassSeriesId(hostId);
+        if (!seriesId) {
+          return res
+            .status(404)
+            .json({ message: "No active parking pass found." });
+        }
 
-        const created = await storage.createHostBlackoutDate(parsed);
+        const date = new Date(req.body?.date);
+        if (Number.isNaN(date.getTime())) {
+          return res.status(400).json({ message: "Valid date required" });
+        }
+
+        const created = await storage.createParkingPassBlackoutDate({
+          seriesId,
+          date,
+        });
         res.status(201).json(created);
       } catch (error: any) {
         console.error("Error creating blackout date:", error);
-        if (error instanceof z.ZodError) {
-          return res
-            .status(400)
-            .json({ message: "Invalid blackout date", errors: error.errors });
-        }
         res.status(500).json({ message: "Failed to create blackout date" });
       }
     },
@@ -266,7 +297,14 @@ export function registerHostRoutes(app: Express) {
           });
         }
 
-        await storage.deleteHostBlackoutDate(hostId, date);
+        const seriesId = await getActiveParkingPassSeriesId(hostId);
+        if (!seriesId) {
+          return res
+            .status(404)
+            .json({ message: "No active parking pass found." });
+        }
+
+        await storage.deleteParkingPassBlackoutDate(seriesId, date);
         res.json({ message: "Blackout date removed" });
       } catch (error: any) {
         console.error("Error deleting blackout date:", error);
@@ -371,9 +409,6 @@ export function registerHostRoutes(app: Express) {
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const horizon = new Date(today);
-      horizon.setDate(horizon.getDate() + 30);
-
       const existingPaidEvents = await db
         .select({ id: events.id })
         .from(events)
@@ -381,7 +416,6 @@ export function registerHostRoutes(app: Express) {
           and(
             eq(events.hostId, host.id),
             gte(events.date, today),
-            lt(events.date, horizon),
             eq(events.requiresPayment, true),
           ),
         );
@@ -392,6 +426,30 @@ export function registerHostRoutes(app: Express) {
             "You already have a parking pass for this address. Edit your existing listing.",
         });
       }
+
+      const horizon = new Date(today);
+      horizon.setDate(horizon.getDate() + 30);
+
+      const [series] = await db
+        .insert(eventSeries)
+        .values({
+          hostId: host.id,
+          name: `Parking Pass - ${host.businessName}`,
+          description: host.address,
+          timezone: "America/New_York",
+          recurrenceRule: null,
+          startDate: today,
+          endDate: horizon,
+          defaultStartTime: parsed.startTime,
+          defaultEndTime: parsed.endTime,
+          defaultMaxTrucks: spotCount,
+          defaultHardCapEnabled: hardCapEnabled,
+          status: "published",
+          publishedAt: new Date(),
+        })
+        .returning();
+
+      const seriesId = series?.id ?? null;
 
       const existingEvents = await db
         .select({
@@ -409,16 +467,18 @@ export function registerHostRoutes(app: Express) {
           ),
         );
 
-      const blackoutRows = await db
-        .select({ date: hostBlackoutDates.date })
-        .from(hostBlackoutDates)
-        .where(
-          and(
-            eq(hostBlackoutDates.hostId, host.id),
-            gte(hostBlackoutDates.date, today),
-            lt(hostBlackoutDates.date, horizon),
-          ),
-        );
+      const blackoutRows = seriesId
+        ? await db
+            .select({ date: parkingPassBlackoutDates.date })
+            .from(parkingPassBlackoutDates)
+            .where(
+              and(
+                eq(parkingPassBlackoutDates.seriesId, seriesId),
+                gte(parkingPassBlackoutDates.date, today),
+                lt(parkingPassBlackoutDates.date, horizon),
+              ),
+            )
+        : [];
 
       const blackoutSet = new Set(
         blackoutRows.map(
@@ -454,6 +514,7 @@ export function registerHostRoutes(app: Express) {
         const eventPayload = {
           ...parsed,
           date: new Date(dateKey),
+          seriesId,
         };
         newEvents.push(eventPayload);
       }

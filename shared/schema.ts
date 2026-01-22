@@ -2074,22 +2074,22 @@ export const emailVerificationTokens = pgTable(
   ],
 );
 
-export const hostBlackoutDates = pgTable(
-  "host_blackout_dates",
+export const parkingPassBlackoutDates = pgTable(
+  "parking_pass_blackout_dates",
   {
     id: varchar("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    hostId: varchar("host_id")
+    seriesId: varchar("series_id")
       .notNull()
-      .references(() => hosts.id, { onDelete: "cascade" }),
+      .references(() => eventSeries.id, { onDelete: "cascade" }),
     date: timestamp("date").notNull(),
     createdAt: timestamp("created_at").defaultNow(),
   },
   (table) => [
-    index("idx_host_blackout_host").on(table.hostId),
-    index("idx_host_blackout_date").on(table.date),
-    unique("uq_host_blackout_date").on(table.hostId, table.date),
+    index("idx_pass_blackout_series").on(table.seriesId),
+    index("idx_pass_blackout_date").on(table.date),
+    unique("uq_pass_blackout_date").on(table.seriesId, table.date),
   ],
 );
 
@@ -2828,7 +2828,6 @@ export const hostsRelations = relations(hosts, ({ one, many }) => ({
   events: many(events),
   reviews: many(hostReviews),
   bookings: many(eventBookings),
-  blackoutDates: many(hostBlackoutDates),
 }));
 
 export const eventInterestsRelations = relations(eventInterests, ({ one }) => ({
@@ -2855,12 +2854,12 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   bookings: many(eventBookings),
 }));
 
-export const hostBlackoutDatesRelations = relations(
-  hostBlackoutDates,
+export const parkingPassBlackoutDatesRelations = relations(
+  parkingPassBlackoutDates,
   ({ one }) => ({
-    host: one(hosts, {
-      fields: [hostBlackoutDates.hostId],
-      references: [hosts.id],
+    series: one(eventSeries, {
+      fields: [parkingPassBlackoutDates.seriesId],
+      references: [eventSeries.id],
     }),
   }),
 );
@@ -3255,16 +3254,17 @@ export const insertHostSchema = createInsertSchema(hosts)
 export type Host = typeof hosts.$inferSelect;
 export type InsertHost = z.infer<typeof insertHostSchema>;
 
-export const insertHostBlackoutDateSchema = createInsertSchema(
-  hostBlackoutDates,
+export const insertParkingPassBlackoutDateSchema = createInsertSchema(
+  parkingPassBlackoutDates,
 ).omit({
   id: true,
   createdAt: true,
 });
 
-export type HostBlackoutDate = typeof hostBlackoutDates.$inferSelect;
-export type InsertHostBlackoutDate = z.infer<
-  typeof insertHostBlackoutDateSchema
+export type ParkingPassBlackoutDate =
+  typeof parkingPassBlackoutDates.$inferSelect;
+export type InsertParkingPassBlackoutDate = z.infer<
+  typeof insertParkingPassBlackoutDateSchema
 >;
 
 export const insertEventSeriesSchema = createInsertSchema(eventSeries).omit({

@@ -83,6 +83,7 @@ function HostDashboard() {
   const [blackoutDateInput, setBlackoutDateInput] = useState("");
   const [blackoutDates, setBlackoutDates] = useState<string[]>([]);
   const [isSavingBlackout, setIsSavingBlackout] = useState(false);
+  const [hasActiveParkingPass, setHasActiveParkingPass] = useState(false);
   const [newLocationForm, setNewLocationForm] = useState({
     businessName: "",
     address: "",
@@ -175,6 +176,11 @@ function HostDashboard() {
         const res = await fetch(
           `/api/hosts/${selectedHostId}/blackout-dates`,
         );
+        if (res.status === 404) {
+          setBlackoutDates([]);
+          setHasActiveParkingPass(false);
+          return;
+        }
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
@@ -184,6 +190,7 @@ function HostDashboard() {
               )
               .sort();
             setBlackoutDates(dates);
+            setHasActiveParkingPass(true);
           }
         }
       } catch (error) {
@@ -404,7 +411,7 @@ function HostDashboard() {
   };
 
   const handleAddBlackout = async () => {
-    if (!host || !blackoutDateInput) return;
+    if (!host || !blackoutDateInput || !hasActiveParkingPass) return;
     setIsSavingBlackout(true);
     try {
       const res = await fetch(`/api/hosts/${host.id}/blackout-dates`, {
@@ -433,7 +440,7 @@ function HostDashboard() {
   };
 
   const handleRemoveBlackout = async (dateKey: string) => {
-    if (!host) return;
+    if (!host || !hasActiveParkingPass) return;
     setIsSavingBlackout(true);
     try {
       const res = await fetch(`/api/hosts/${host.id}/blackout-dates`, {
@@ -870,15 +877,23 @@ function HostDashboard() {
             value={blackoutDateInput}
             onChange={(event) => setBlackoutDateInput(event.target.value)}
             min={new Date().toISOString().split("T")[0]}
+            disabled={!hasActiveParkingPass}
           />
           <Button
             type="button"
             onClick={handleAddBlackout}
-            disabled={!blackoutDateInput || isSavingBlackout}
+            disabled={
+              !hasActiveParkingPass || !blackoutDateInput || isSavingBlackout
+            }
           >
             {isSavingBlackout ? "Saving..." : "Add blackout date"}
           </Button>
         </div>
+        {!hasActiveParkingPass && (
+          <p className="mt-3 text-sm text-slate-500">
+            Create a parking pass to manage blackout dates for that pass.
+          </p>
+        )}
         {blackoutDates.length === 0 ? (
           <p className="mt-4 text-sm text-slate-500">
             No blackout dates set.

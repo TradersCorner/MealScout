@@ -148,6 +148,9 @@ export default function TermsOfService() {
                 <p className="text-gray-700 leading-relaxed mt-4">
                   We reserve the right to suspend accounts pending verification and may request additional documentation at any time. Providing false information may result in immediate account termination.
                 </p>
+                <p className="text-gray-700 leading-relaxed mt-4">
+                  <strong>Compliance responsibility:</strong> Hosts, food trucks, restaurants, and bars are solely responsible for obtaining and maintaining all required local, state, and federal licenses, permits, inspections, health approvals, zoning approvals, and insurance coverage. MealScout does not verify legal compliance beyond the documents we request, does not provide legal or compliance advice, and is not responsible for your operations.
+                </p>
               </section>
 
               <section>
@@ -196,6 +199,9 @@ export default function TermsOfService() {
                 </p>
                 <p className="text-gray-700 leading-relaxed mb-4">
                   IN NO EVENT SHALL MEALSCOUT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, DATA, OR BUSINESS INTERRUPTION, ARISING FROM YOUR USE OF THE SERVICE.
+                </p>
+                <p className="text-gray-700 leading-relaxed mb-4">
+                  MealScout is a marketplace platform only. Hosts and trucks contract directly with each other and are fully responsible for their own operations, staffing, safety, food handling, permits, insurance, taxes, and legal compliance. MealScout is not a party to any on-site arrangement and assumes no liability for performance, accidents, injuries, property damage, regulatory violations, or disputes.
                 </p>
                 <p className="text-gray-700 leading-relaxed mb-4">
                   OUR TOTAL LIABILITY TO YOU FOR ALL CLAIMS ARISING FROM THE SERVICE SHALL NOT EXCEED THE AMOUNT YOU PAID TO US IN THE TWELVE (12) MONTHS PRECEDING THE CLAIM.

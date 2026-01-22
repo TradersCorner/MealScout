@@ -77,6 +77,7 @@ import { z } from "zod";
 import { validateDocuments, checkRateLimit } from "./documentValidation";
 import { randomBytes, timingSafeEqual, createHash } from "crypto";
 import { sanitizeUser } from "./utils/sanitize";
+import { ensureAffiliateTag } from "./affiliateTagService";
 import {
   upload,
   uploadToCloudinary,
@@ -317,6 +318,24 @@ function validateEnvironment() {
   }
   console.log("✅ All required environment variables present");
   return true;
+}
+
+async function ensureAffiliateTagsForExistingUsers() {
+  try {
+    const rows = await db
+      .select({ id: users.id, userType: users.userType })
+      .from(users)
+      .where(sql`${users.affiliateTag} is null`);
+
+    for (const row of rows) {
+      if (row.userType === "admin" || row.userType === "super_admin") {
+        continue;
+      }
+      await ensureAffiliateTag(row.id);
+    }
+  } catch (error) {
+    console.error("[affiliate] Failed to backfill affiliate tags:", error);
+  }
 }
 
 // Subscription validation function for analytics access
@@ -807,6 +826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth middleware
   await setupUnifiedAuth(app);
+  await ensureAffiliateTagsForExistingUsers();
 
   // Auth routes
   app.get("/api/auth/user", async (req: any, res) => {

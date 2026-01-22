@@ -68,9 +68,9 @@ import {
   eventSeries,
   type Host,
   type InsertHost,
-  hostBlackoutDates,
-  type HostBlackoutDate,
-  type InsertHostBlackoutDate,
+  parkingPassBlackoutDates,
+  type ParkingPassBlackoutDate,
+  type InsertParkingPassBlackoutDate,
   truckManualSchedules,
   type TruckManualSchedule,
   type InsertTruckManualSchedule,
@@ -110,6 +110,7 @@ import {
 } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { syncUserToBrevo } from "./brevoCrm";
+import { ensureAffiliateTag } from "./affiliateTagService";
 
 // Interface for storage operations
 export interface IStorage {
@@ -118,12 +119,14 @@ export interface IStorage {
   getHost(id: string): Promise<Host | undefined>;
   getHostByUserId(userId: string): Promise<Host | undefined>;
   getHostsByUserId(userId: string): Promise<Host[]>;
-  getHostBlackoutDates(hostId: string): Promise<HostBlackoutDate[]>;
-  createHostBlackoutDate(
-    blackout: InsertHostBlackoutDate
-  ): Promise<HostBlackoutDate>;
-  deleteHostBlackoutDate(
-    hostId: string,
+  getParkingPassBlackoutDates(
+    seriesId: string
+  ): Promise<ParkingPassBlackoutDate[]>;
+  createParkingPassBlackoutDate(
+    blackout: InsertParkingPassBlackoutDate
+  ): Promise<ParkingPassBlackoutDate>;
+  deleteParkingPassBlackoutDate(
+    seriesId: string,
     date: Date
   ): Promise<void>;
   getAllHosts(): Promise<Host[]>;
@@ -660,6 +663,9 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private shouldAssignAffiliateTag(userType?: string | null) {
+    return userType !== "admin" && userType !== "super_admin";
+  }
   // Host operations
   async createHost(host: InsertHost): Promise<Host> {
     const [newHost] = await db.insert(hosts).values(host).returning();
@@ -715,31 +721,36 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async getHostBlackoutDates(hostId: string): Promise<HostBlackoutDate[]> {
+  async getParkingPassBlackoutDates(
+    seriesId: string,
+  ): Promise<ParkingPassBlackoutDate[]> {
     return await db
       .select()
-      .from(hostBlackoutDates)
-      .where(eq(hostBlackoutDates.hostId, hostId))
-      .orderBy(asc(hostBlackoutDates.date));
+      .from(parkingPassBlackoutDates)
+      .where(eq(parkingPassBlackoutDates.seriesId, seriesId))
+      .orderBy(asc(parkingPassBlackoutDates.date));
   }
 
-  async createHostBlackoutDate(
-    blackout: InsertHostBlackoutDate
-  ): Promise<HostBlackoutDate> {
+  async createParkingPassBlackoutDate(
+    blackout: InsertParkingPassBlackoutDate,
+  ): Promise<ParkingPassBlackoutDate> {
     const [created] = await db
-      .insert(hostBlackoutDates)
+      .insert(parkingPassBlackoutDates)
       .values(blackout)
       .returning();
     return created;
   }
 
-  async deleteHostBlackoutDate(hostId: string, date: Date): Promise<void> {
+  async deleteParkingPassBlackoutDate(
+    seriesId: string,
+    date: Date,
+  ): Promise<void> {
     await db
-      .delete(hostBlackoutDates)
+      .delete(parkingPassBlackoutDates)
       .where(
         and(
-          eq(hostBlackoutDates.hostId, hostId),
-          eq(hostBlackoutDates.date, date),
+          eq(parkingPassBlackoutDates.seriesId, seriesId),
+          eq(parkingPassBlackoutDates.date, date),
         ),
       );
   }
@@ -2087,6 +2098,12 @@ export class DatabaseStorage implements IStorage {
         emailVerified: true, // Admin-created accounts are pre-verified
       })
       .returning();
+
+    if (this.shouldAssignAffiliateTag(user.userType)) {
+      ensureAffiliateTag(user.id).catch((error) =>
+        console.error("[affiliate] Failed to assign tag:", error),
+      );
+    }
 
     void syncUserToBrevo(user).catch(() => {});
     return user;

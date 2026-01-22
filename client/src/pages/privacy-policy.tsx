@@ -57,6 +57,7 @@ export default function PrivacyPolicy() {
                     <li>• Name and email address (from account registration)</li>
                     <li>• Profile information from Google/Facebook OAuth</li>
                     <li>• Business information (for restaurant owners)</li>
+                    <li>• Business compliance documents (permits, licenses, insurance) if provided</li>
                     <li>• Payment information (processed securely via Stripe)</li>
                   </ul>
                 </div>
@@ -89,6 +90,9 @@ export default function PrivacyPolicy() {
                   <li>Personalize and improve your experience</li>
                   <li>Comply with legal obligations and protect our rights</li>
                 </ul>
+                <p className="text-gray-700 leading-relaxed mt-4">
+                  MealScout may review compliance documents for verification purposes only. We do not provide legal or regulatory advice, and each host, truck, restaurant, or bar remains solely responsible for its own licenses, permits, insurance, taxes, and operational compliance.
+                </p>
               </section>
 
               <section>

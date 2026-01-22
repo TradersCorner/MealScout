@@ -176,7 +176,7 @@ if (process.env.NODE_ENV === "production" && BETA_MODE) {
   );
 }
 
-// Pricing helpers: lock-in logic + Stripe Price IDs
+// Pricing helpers: Stripe Price IDs
 const PROMO_DEADLINE = new Date("2026-03-01T00:00:00Z");
 
 function isTrialActive(user: User | null): boolean {
@@ -226,31 +226,15 @@ async function getLockedPriceForUser(userId: string): Promise<{
   label: string;
 }> {
   const price25 = process.env.PRICE_MONTHLY_25;
-  const price50 = process.env.PRICE_MONTHLY_50;
-  if (!price25 || !price50) {
+  if (!price25) {
     throw new Error(
-      "Stripe Price IDs not configured (PRICE_MONTHLY_25 / PRICE_MONTHLY_50)",
+      "Stripe Price IDs not configured (PRICE_MONTHLY_25)",
     );
   }
 
-  // NORTH STAR: Check restaurant pricing lock first (immutable rule)
-  const userRestaurants = await storage.getRestaurantsByOwner(userId);
-  const restaurant = userRestaurants.find((r) => !r.isFoodTruck); // Find the first restaurant (not truck)
-
-  if (restaurant && restaurant.lockedPriceCents) {
-    // Price lock from restaurant entity (stored, never recalculated)
-    const locked = restaurant.lockedPriceCents === 2500;
-    const priceId = locked ? price25 : price50;
-    const label = locked ? "locked-in $25 (early rollout)" : "standard $50";
-    return { locked, priceId, label };
-  }
-
-  // Fallback to legacy user signup date logic
-  const user = await storage.getUser(userId);
-  const signupDate = user?.subscriptionSignupDate || null;
-  const locked = !!(signupDate && signupDate < PROMO_DEADLINE);
-  const priceId = locked ? price25 : price50;
-  const label = locked ? "locked-in $25" : "standard $50";
+  const locked = true;
+  const priceId = price25;
+  const label = "$25 (was $50)";
   return { locked, priceId, label };
 }
 

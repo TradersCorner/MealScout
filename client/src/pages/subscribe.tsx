@@ -188,7 +188,7 @@ const PlanSelector = ({
   onPromoCodeChange: (value: string) => void;
   onContinue: () => void;
 }) => {
-  const getPricingDisplay = () => "$25/month";
+  const getPricingDisplay = () => "$50 -> $25/month";
   const getPricingAmount = () => "$25";
 
   return (
@@ -885,7 +885,7 @@ export default function Subscribe() {
                       Complete Your Payment
                     </h3>
                     <p className="text-sm text-gray-600">
-                      MealScout Restaurant Plan • $25/month
+                      MealScout Restaurant Plan • $50 -> $25/month
                     </p>
                   </CardContent>
                 </Card>

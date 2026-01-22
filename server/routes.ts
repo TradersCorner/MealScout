@@ -3782,6 +3782,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Promo Code:", promoCode);
       console.log("Billing Interval:", billingInterval);
 
+      if (["restaurant_owner", "food_truck"].includes(user?.userType)) {
+        const restaurantsByOwner = await storage.getRestaurantsByOwner(user.id);
+        const hasVerified = restaurantsByOwner.some(
+          (restaurant) => restaurant.isVerified,
+        );
+        if (!hasVerified) {
+          return res.status(403).json({
+            error: {
+              message:
+                "Verification is required before enabling premium features.",
+            },
+          });
+        }
+      }
+
       // Validate billing interval
       const validIntervals = ["month"];
       const interval = validIntervals.includes(billingInterval)
@@ -3889,6 +3904,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         billingInterval = "month",
         applyCreditsCents,
       } = req.body; // boolean for multiple deals addon, billing interval
+
+      if (["restaurant_owner", "food_truck"].includes(user?.userType)) {
+        const restaurantsByOwner = await storage.getRestaurantsByOwner(user.id);
+        const hasVerified = restaurantsByOwner.some(
+          (restaurant) => restaurant.isVerified,
+        );
+        if (!hasVerified) {
+          return res.status(403).json({
+            error: {
+              message:
+                "Verification is required before enabling premium features.",
+            },
+          });
+        }
+      }
 
       // Check for valid promo codes first (skip payment for beta users)
       if (promoCode && promoCode.toUpperCase() === "BETA") {

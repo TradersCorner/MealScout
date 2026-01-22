@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import QuickDashboardAccess from "@/components/quick-dashboard-access";
+import { getOptimizedImageUrl } from "@/lib/images";
 import {
   Dialog,
   DialogContent,
@@ -4288,10 +4289,16 @@ export default function AdminDashboard() {
                     PROFILE IMAGE
                   </h3>
                   <img
-                    src={selectedUser.profileImageUrl}
+                    src={getOptimizedImageUrl(
+                      selectedUser.profileImageUrl,
+                      "large",
+                    )}
                     alt="Profile"
                     className="w-24 h-24 rounded-full object-cover border-2"
                     data-testid="img-user-profile"
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
                   />
                 </div>
               )}

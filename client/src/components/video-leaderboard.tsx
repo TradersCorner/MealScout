@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { getOptimizedImageUrl } from "@/lib/images";
 
 interface TopReviewer {
   userId: string;
@@ -83,9 +84,12 @@ export function TopReviewersLeaderboard() {
             <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
               {reviewer.profileImageUrl && (
                 <img
-                  src={reviewer.profileImageUrl}
+                  src={getOptimizedImageUrl(reviewer.profileImageUrl, "medium")}
                   alt={reviewer.firstName}
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                  referrerPolicy="no-referrer"
                 />
               )}
             </div>

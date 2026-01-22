@@ -1082,6 +1082,15 @@ export function registerHostRoutes(app: Express) {
         });
       }
       if (
+        !truck.isVerified &&
+        !["admin", "super_admin", "staff"].includes(req.user?.userType)
+      ) {
+        return res.status(403).json({
+          message:
+            "Your truck must be verified before booking parking pass slots.",
+        });
+      }
+      if (
         req.user?.userType &&
         !["food_truck", "admin", "super_admin", "staff"].includes(
           req.user.userType,

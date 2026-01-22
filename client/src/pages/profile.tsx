@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
 import { apiUrl } from "@/lib/api";
+import { getOptimizedImageUrl } from "@/lib/images";
 
 export default function ProfilePage() {
   const { user, isAuthenticated } = useAuth();
@@ -147,9 +148,12 @@ export default function ProfilePage() {
             <div className="flex items-center space-x-4">
               {user?.profileImageUrl ? (
                 <img
-                  src={user.profileImageUrl}
+                  src={getOptimizedImageUrl(user.profileImageUrl, "large")}
                   alt="Profile"
                   className="w-16 h-16 rounded-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                  referrerPolicy="no-referrer"
                 />
               ) : (
                 <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">

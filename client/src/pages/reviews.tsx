@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Star, ArrowLeft, User, Calendar, CheckCircle, AlertCircle } from "lucide-react";
+import { getOptimizedImageUrl } from "@/lib/images";
 
 interface Review {
   id: string;
@@ -260,9 +261,15 @@ export default function ReviewsPage() {
                       <div className="flex-shrink-0">
                         {review.user?.profileImageUrl ? (
                           <img
-                            src={review.user.profileImageUrl}
+                            src={getOptimizedImageUrl(
+                              review.user.profileImageUrl,
+                              "medium",
+                            )}
                             alt="User avatar"
                             className="w-10 h-10 rounded-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                            referrerPolicy="no-referrer"
                           />
                         ) : (
                           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">

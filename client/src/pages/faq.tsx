@@ -228,7 +228,7 @@ export default function FAQ() {
         title="Frequently Asked Questions - MealScout Help Center"
         description="Get clear answers about MealScout for diners, trucks, hosts, restaurants, bars, and event coordinators. Local tools, simple flows, full control."
         keywords="mealscout faq, parking pass, food trucks, hosts, local events, restaurant tools, affiliate links"
-        canonicalUrl="https://mealscout.com/faq"
+        canonicalUrl="https://mealscout.us/faq"
         schemaData={schemaData}
       />
       

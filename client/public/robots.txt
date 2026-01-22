@@ -2,9 +2,11 @@ User-agent: *
 Allow: /
 
 # SEO-critical role pages
-Allow: /for-food-trucks
+Allow: /truck-landing
+Allow: /for-hosts
 Allow: /for-restaurants
 Allow: /for-bars
+Allow: /for-events
 Allow: /find-food
 
 # Signup flows

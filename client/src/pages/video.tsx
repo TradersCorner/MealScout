@@ -24,7 +24,7 @@ export default function VideoPage() {
       <SEOHead
         title="Video Stories - MealScout | Local Food Videos"
         description="Watch and share local food recommendation videos from the MealScout community."
-        canonicalUrl="https://mealscout.com/video"
+        canonicalUrl="https://mealscout.us/video"
       />
 
       {/* Header */}

@@ -48,6 +48,21 @@ export function SEOHead({
       link.setAttribute("href", url);
     };
 
+    const resolvedCanonical =
+      canonicalUrl ||
+      (typeof window !== "undefined"
+        ? `${window.location.origin}${window.location.pathname}${window.location.search}`
+        : undefined);
+
+    const resolveOgImage = (imageUrl: string) => {
+      if (!imageUrl) return "";
+      if (imageUrl.startsWith("http")) return imageUrl;
+      if (typeof window === "undefined") return imageUrl;
+      return `${window.location.origin}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
+    };
+
+    const resolvedOgImage = ogImage ? resolveOgImage(ogImage) : "";
+
     // Basic meta tags
     setMetaTag("description", description);
     if (keywords) {
@@ -58,7 +73,10 @@ export function SEOHead({
     if (noIndex) {
       setMetaTag("robots", "noindex, nofollow");
     } else {
-      setMetaTag("robots", "index, follow");
+      setMetaTag(
+        "robots",
+        "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+      );
     }
 
     // Open Graph tags
@@ -66,20 +84,21 @@ export function SEOHead({
     setMetaTag("og:description", description, true);
     setMetaTag("og:type", ogType, true);
     setMetaTag("og:site_name", "MealScout", true);
-    if (ogImage) {
-      setMetaTag("og:image", ogImage, true);
+    if (resolvedOgImage) {
+      setMetaTag("og:image", resolvedOgImage, true);
     }
-    if (canonicalUrl) {
-      setMetaTag("og:url", canonicalUrl, true);
-      setCanonical(canonicalUrl);
+    if (resolvedCanonical) {
+      setMetaTag("og:url", resolvedCanonical, true);
+      setCanonical(resolvedCanonical);
     }
 
     // Twitter Card tags
     setMetaTag("twitter:card", "summary_large_image");
     setMetaTag("twitter:title", title);
     setMetaTag("twitter:description", description);
-    if (ogImage) {
-      setMetaTag("twitter:image", ogImage);
+    setMetaTag("twitter:site", "@mealscout");
+    if (resolvedOgImage) {
+      setMetaTag("twitter:image", resolvedOgImage);
     }
 
     // Structured data (JSON-LD)

@@ -21,7 +21,6 @@ import { validateEnv } from "./utils/env";
 import { healthRouter } from "./routes/health";
 import { videoStories, restaurants } from "@shared/schema";
 import { and, eq } from "drizzle-orm";
-import { startKeepAlive, stopKeepAlive } from "./keepAlive";
 
 validateEnv();
 
@@ -1041,9 +1040,6 @@ app.use((req, res, next) => {
           );
         }
       });
-
-      // Start keep-alive service to prevent Render.com spin-down
-      startKeepAlive();
 
       // Perform database validation after server startup - non-blocking
       setTimeout(async () => {

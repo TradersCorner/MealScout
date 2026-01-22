@@ -160,7 +160,7 @@ export default function HowItWorks() {
         title="How MealScout Works - Local Tools for Every Role"
         description="Choose your role, build a local presence, and use the tools built for diners, food trucks, hosts, restaurants, bars, and event coordinators."
         keywords="how mealscout works, food trucks, parking pass, hosts, local events, restaurant tools, affiliate links"
-        canonicalUrl="https://mealscout.com/how-it-works"
+        canonicalUrl="https://mealscout.us/how-it-works"
         schemaData={schemaData}
       />
       

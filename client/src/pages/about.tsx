@@ -20,14 +20,14 @@ export default function About() {
     "@type": "Organization",
     "name": "MealScout",
     "description": "Discover amazing local food deals and connect with nearby restaurants offering special promotions.",
-    "url": "https://mealscout.com",
-    "logo": "https://mealscout.com/logo.png",
+    "url": "https://mealscout.us",
+    "logo": "https://mealscout.us/logo.png",
     "foundingDate": "2024",
     "sameAs": [],
     "contactPoint": {
       "@type": "ContactPoint",
       "contactType": "customer service",
-      "email": "hello@mealscout.com"
+      "email": "info.mealscout@gmail.com"
     }
   };
 
@@ -67,7 +67,7 @@ export default function About() {
         title="About MealScout - Discover Local Food Deals & Restaurant Promotions"
         description="Learn about MealScout, the leading platform for discovering local food deals, restaurant promotions, and dining experiences. Join thousands of food lovers saving money while supporting local businesses."
         keywords="about mealscout, local food deals, restaurant promotions, food discovery app, dining deals, local restaurants, food savings"
-        canonicalUrl="https://mealscout.com/about"
+        canonicalUrl="https://mealscout.us/about"
         schemaData={schemaData}
       />
       

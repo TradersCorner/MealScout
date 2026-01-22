@@ -71,7 +71,7 @@ export default function Contact() {
         title="Contact MealScout - Email Support"
         description="Email MealScout support for help with accounts, parking passes, events, restaurants, bars, and food trucks."
         keywords="mealscout contact, email support, parking pass help, food truck support, host support"
-        canonicalUrl="https://mealscout.com/contact"
+        canonicalUrl="https://mealscout.us/contact"
         schemaData={schemaData}
       />
       

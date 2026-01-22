@@ -141,17 +141,12 @@ export default function Navigation() {
       isHost,
     });
   }
-  // Shared core nav: Food (home), Map, Profile/Account
+  // Shared core nav: Food (home), Map, Video, Profile (only when logged in)
   const sharedNavItems: NavItem[] = [
     { path: "/", icon: UtensilsCrossed, label: "Food" },
     { path: "/map", icon: MapPin, label: "Map" },
     { path: "/video", icon: Clapperboard, label: "Video" },
-    // If logged out, send users to the auth funnel instead of a dead profile page
-    {
-      path: user ? "/profile" : "/login",
-      icon: User,
-      label: user ? "Profile" : "Account",
-    },
+    ...(user ? [{ path: "/profile", icon: User, label: "Profile" }] : []),
   ];
 
   const customerExtras: NavItem[] = [
@@ -167,7 +162,6 @@ export default function Navigation() {
   const hostExtras: NavItem[] = [
     { path: "/events", icon: Calendar, label: "Events" },
     { path: "/host/dashboard", icon: Users, label: "Host" },
-    { path: "/host-food", icon: MapPin, label: "Host Food" },
     { path: "/for-restaurants", icon: Store, label: "For Restaurants" },
     { path: "/for-bars", icon: Store, label: "For Bars" },
   ];
@@ -184,7 +178,6 @@ export default function Navigation() {
     { path: "/parking-pass", icon: Search, label: "Parking Pass" },
     { path: "/for-restaurants", icon: Store, label: "For Restaurants" },
     { path: "/for-bars", icon: Store, label: "For Bars" },
-    { path: "/host-food", icon: MapPin, label: "Host Food" },
     { path: "/deals/featured", icon: Receipt, label: "Featured Specials" },
   ];
 
@@ -224,7 +217,6 @@ export default function Navigation() {
     { path: "/host/dashboard", icon: Users, label: "Host" },
     ...restaurantOwnerExtras,
     { path: "/parking-pass", icon: Search, label: "Parking Pass" },
-    { path: "/host-food", icon: MapPin, label: "Host Food" },
     ...customerExtras,
   ]);
 
@@ -284,9 +276,9 @@ export default function Navigation() {
                 : [...customerNavItems, bugNavItem];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 w-full bg-white/95 backdrop-blur-sm border-t border-orange-100/80 px-4 py-2 z-50 shadow-xl">
-      <div className="max-w-md mx-auto overflow-x-auto">
-        <div className="flex items-center justify-start space-x-2 min-w-max">
+    <nav className="fixed bottom-0 left-0 right-0 w-full bg-white/95 backdrop-blur-sm border-t border-orange-100/80 px-4 py-2 z-50 shadow-xl md:top-0 md:bottom-auto md:border-b md:border-t-0 md:py-3">
+      <div className="max-w-md mx-auto overflow-x-auto md:max-w-5xl">
+        <div className="flex items-center justify-start space-x-2 min-w-max md:flex-wrap md:justify-center md:gap-3">
           {navItems.map((item) =>
             item.path ? (
               <Link

@@ -36,8 +36,16 @@ export function registerHostRoutes(app: Express) {
   const getActiveParkingPassSeriesId = async (hostId: string) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const [row] = await db
-      .select({ seriesId: events.seriesId })
+    const rows = await db
+      .select({
+        seriesId: events.seriesId,
+        date: events.date,
+        breakfastPriceCents: events.breakfastPriceCents,
+        lunchPriceCents: events.lunchPriceCents,
+        dinnerPriceCents: events.dinnerPriceCents,
+        dailyPriceCents: events.dailyPriceCents,
+        weeklyPriceCents: events.weeklyPriceCents,
+      })
       .from(events)
       .where(
         and(
@@ -48,8 +56,15 @@ export function registerHostRoutes(app: Express) {
         ),
       )
       .orderBy(asc(events.date))
-      .limit(1);
-    return row?.seriesId ?? null;
+      .limit(14);
+    const hasActivePricing = (row: (typeof rows)[number]) =>
+      (row.breakfastPriceCents ?? 0) > 0 ||
+      (row.lunchPriceCents ?? 0) > 0 ||
+      (row.dinnerPriceCents ?? 0) > 0 ||
+      (row.dailyPriceCents ?? 0) > 0 ||
+      (row.weeklyPriceCents ?? 0) > 0;
+    const activeRow = rows.find((row) => hasActivePricing(row));
+    return activeRow?.seriesId ?? null;
   };
 
   // Host Profile & Events
@@ -410,7 +425,15 @@ export function registerHostRoutes(app: Express) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const existingPaidEvents = await db
-        .select({ id: events.id })
+        .select({
+          id: events.id,
+          seriesId: events.seriesId,
+          breakfastPriceCents: events.breakfastPriceCents,
+          lunchPriceCents: events.lunchPriceCents,
+          dinnerPriceCents: events.dinnerPriceCents,
+          dailyPriceCents: events.dailyPriceCents,
+          weeklyPriceCents: events.weeklyPriceCents,
+        })
         .from(events)
         .where(
           and(
@@ -420,11 +443,35 @@ export function registerHostRoutes(app: Express) {
           ),
         );
 
-      if (existingPaidEvents.length > 0) {
+      const hasActivePricing = (row: typeof existingPaidEvents[number]) =>
+        (row.breakfastPriceCents ?? 0) > 0 ||
+        (row.lunchPriceCents ?? 0) > 0 ||
+        (row.dinnerPriceCents ?? 0) > 0 ||
+        (row.dailyPriceCents ?? 0) > 0 ||
+        (row.weeklyPriceCents ?? 0) > 0;
+
+      const activePaidEvents = existingPaidEvents.filter(hasActivePricing);
+      if (activePaidEvents.length > 0) {
         return res.status(409).json({
           message:
             "You already have a parking pass for this address. Edit your existing listing.",
         });
+      }
+      if (existingPaidEvents.length > 0) {
+        const draftEventIds = existingPaidEvents.map((row) => row.id);
+        const draftSeriesIds = Array.from(
+          new Set(
+            existingPaidEvents
+              .map((row) => row.seriesId)
+              .filter((id): id is string => Boolean(id)),
+          ),
+        );
+        await db.delete(events).where(inArray(events.id, draftEventIds));
+        if (draftSeriesIds.length > 0) {
+          await db
+            .delete(eventSeries)
+            .where(inArray(eventSeries.id, draftSeriesIds));
+        }
       }
 
       const horizon = new Date(today);

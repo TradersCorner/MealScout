@@ -18,6 +18,10 @@ import type {
 } from "@shared/schema";
 import crypto from "crypto";
 import { sanitizeUser } from "./utils/sanitize";
+import {
+  isPasswordStrong,
+  PASSWORD_REQUIREMENTS,
+} from "./utils/passwordPolicy";
 import { db } from "./db";
 import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
@@ -837,10 +841,8 @@ export async function setupUnifiedAuth(app: Express) {
         return res.status(400).json({ error: "All fields are required" });
       }
 
-      if (password.length < 6) {
-        return res
-          .status(400)
-          .json({ error: "Password must be at least 6 characters" });
+      if (!isPasswordStrong(password)) {
+        return res.status(400).json({ error: PASSWORD_REQUIREMENTS });
       }
 
       const normalizedPhone = normalizePhone(phone);
@@ -932,10 +934,8 @@ export async function setupUnifiedAuth(app: Express) {
         return res.status(400).json({ error: "All fields are required" });
       }
 
-      if (password.length < 6) {
-        return res
-          .status(400)
-          .json({ error: "Password must be at least 6 characters" });
+      if (!isPasswordStrong(password)) {
+        return res.status(400).json({ error: PASSWORD_REQUIREMENTS });
       }
 
       const normalizedPhone = normalizePhone(phone);
@@ -1236,10 +1236,8 @@ export async function setupUnifiedAuth(app: Express) {
           .json({ error: "Old and new passwords are required" });
       }
 
-      if (newPassword.length < 8) {
-        return res
-          .status(400)
-          .json({ error: "New password must be at least 8 characters" });
+      if (!isPasswordStrong(newPassword)) {
+        return res.status(400).json({ error: PASSWORD_REQUIREMENTS });
       }
 
       const user = req.user as User;
@@ -1369,10 +1367,8 @@ export async function setupUnifiedAuth(app: Express) {
           .json({ error: "Token and password are required" });
       }
 
-      if (password.length < 6) {
-        return res
-          .status(400)
-          .json({ error: "Password must be at least 6 characters" });
+      if (!isPasswordStrong(password)) {
+        return res.status(400).json({ error: PASSWORD_REQUIREMENTS });
       }
 
       // Hash the token to compare with stored hash
@@ -1473,10 +1469,8 @@ export async function setupUnifiedAuth(app: Express) {
           .json({ error: "Profile details and password are required" });
       }
 
-      if (password.length < 8) {
-        return res
-          .status(400)
-          .json({ error: "Password must be at least 8 characters" });
+      if (!isPasswordStrong(password)) {
+        return res.status(400).json({ error: PASSWORD_REQUIREMENTS });
       }
 
       // Hash the token to compare with stored hash

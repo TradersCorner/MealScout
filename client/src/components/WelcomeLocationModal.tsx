@@ -156,19 +156,19 @@ export default function WelcomeLocationModal({
           </Button>
 
           {/* Divider */}
-          <div className="relative">
+          <div className="relative pt-1">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
+              <span className="bg-background px-2 py-0.5 text-muted-foreground">
                 Or enter manually
               </span>
             </div>
           </div>
 
           {/* Manual search */}
-          <div className="space-y-2">
+          <div className="space-y-2 pt-1">
             <div className="flex space-x-2">
               <Input
                 placeholder="Enter city or zip code..."

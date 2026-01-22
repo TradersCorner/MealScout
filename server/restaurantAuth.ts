@@ -5,6 +5,10 @@ import type { Express } from "express";
 import { storage } from "./storage";
 import type { GoogleUserData, EmailUserData } from "@shared/schema";
 import { sanitizeUser } from "./utils/sanitize";
+import {
+  isPasswordStrong,
+  PASSWORD_REQUIREMENTS,
+} from "./utils/passwordPolicy";
 
 export async function setupRestaurantAuth(app: Express) {
   // Check for Google OAuth environment variables
@@ -60,8 +64,8 @@ export async function setupRestaurantAuth(app: Express) {
         return res.status(400).json({ error: "All fields are required" });
       }
 
-      if (password.length < 6) {
-        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      if (!isPasswordStrong(password)) {
+        return res.status(400).json({ error: PASSWORD_REQUIREMENTS });
       }
 
       if (phone.length < 10) {

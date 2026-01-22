@@ -13,9 +13,16 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { BackHeader } from "@/components/back-header";
 import { KeyRound, Eye, EyeOff, CheckCircle, AlertTriangle } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
+import {
+  PASSWORD_REGEX,
+  PASSWORD_REQUIREMENTS,
+} from "@/utils/passwordPolicy";
 
 const resetPasswordSchema = z.object({
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z
+    .string()
+    .min(1, PASSWORD_REQUIREMENTS)
+    .regex(PASSWORD_REGEX, PASSWORD_REQUIREMENTS),
   confirmPassword: z.string().min(1, "Please confirm your password"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",

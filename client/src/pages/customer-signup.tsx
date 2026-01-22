@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { Link, useLocation } from "wouter";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,10 @@ import { Mail, Eye, EyeOff, UserPlus, ArrowLeft } from "lucide-react";
 import { BackHeader } from "@/components/back-header";
 import { SEOHead } from "@/components/seo-head";
 import {
+  PASSWORD_REGEX,
+  PASSWORD_REQUIREMENTS,
+} from "@/utils/passwordPolicy";
+import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
@@ -33,7 +37,10 @@ const signupSchema = z
     lastName: z.string().min(1, "Last name is required"),
     phone: z.string().min(10, "Phone number must be at least 10 digits"),
     otpCode: z.string().optional(),
-    password: z.string().min(6, "Password must be at least 6 characters"),
+    password: z
+      .string()
+      .min(1, PASSWORD_REQUIREMENTS)
+      .regex(PASSWORD_REGEX, PASSWORD_REQUIREMENTS),
     confirmPassword: z.string().min(1, "Please confirm your password"),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -118,6 +125,7 @@ export default function CustomerSignup() {
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(SIGNUP_DRAFT_KEY);
       }
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({
         title: "Welcome to MealScout!",
         description: "Account created successfully. You're now logged in!",
@@ -146,6 +154,7 @@ export default function CustomerSignup() {
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(SIGNUP_DRAFT_KEY);
       }
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({
         title: "Welcome to MealScout for Business!",
         description:

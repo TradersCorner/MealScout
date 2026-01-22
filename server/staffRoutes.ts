@@ -461,14 +461,16 @@ export function registerStaffRoutes(app: Express) {
           return res.status(400).json({ error: "Password reset not required" });
         }
 
-        if (
-          !newPassword ||
-          typeof newPassword !== "string" ||
-          newPassword.length < 8
-        ) {
+        if (!newPassword || typeof newPassword !== "string") {
           return res
             .status(400)
-            .json({ error: "Password must be at least 8 characters" });
+            .json({ error: "Password is required" });
+        }
+        const { isPasswordStrong, PASSWORD_REQUIREMENTS } = await import(
+          "./utils/passwordPolicy"
+        );
+        if (!isPasswordStrong(newPassword)) {
+          return res.status(400).json({ error: PASSWORD_REQUIREMENTS });
         }
 
         const passwordHash = await bcrypt.hash(newPassword, 12);

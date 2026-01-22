@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
 import Navigation from "@/components/navigation";
@@ -21,12 +21,14 @@ import {
   Building2,
   PartyPopper,
   Calendar,
+  Link as LinkIcon,
 } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
 import { apiUrl } from "@/lib/api";
 
 export default function ProfilePage() {
   const { user, isAuthenticated } = useAuth();
+  const [affiliateTag, setAffiliateTag] = useState<string>("");
 
   const [userStats] = useState({
     dealsRedeemed: 0,
@@ -38,6 +40,22 @@ export default function ProfilePage() {
       : null,
     lastActivity: null,
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!isAuthenticated) return;
+    fetch(apiUrl("/api/affiliate/tag"), { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.tag) setAffiliateTag(data.tag);
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   if (!isAuthenticated || !user) {
     return (
@@ -187,6 +205,14 @@ export default function ProfilePage() {
                   <span>{userStats.dealsRedeemed} deals redeemed</span>
                 </div>
               )}
+              {affiliateTag && (
+                <div className="flex items-center gap-2">
+                  <LinkIcon className="w-4 h-4" />
+                  <span className="truncate">
+                    {`${window.location.origin}/ref/${affiliateTag}`}
+                  </span>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -200,30 +226,6 @@ export default function ProfilePage() {
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
               Business Opportunities
             </h3>
-
-            {/* Business Location Host CTA */}
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 transition-all cursor-pointer border border-blue-200">
-              <CardContent className="p-0">
-                <Link href="/host-signup">
-                  <div className="p-5">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-blue-500/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                        <Building2 className="w-6 h-6 text-blue-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-gray-900 font-bold text-base mb-1">
-                          Host Food Trucks at Your Location
-                        </h3>
-                        <p className="text-gray-600 text-sm">
-                          Offices, bars, breweries — bring lunch to your people
-                          →
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              </CardContent>
-            </Card>
 
             {/* Event Organizer CTA */}
             <Card className="bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 transition-all cursor-pointer border border-purple-200">

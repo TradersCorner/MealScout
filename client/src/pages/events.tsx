@@ -45,17 +45,6 @@ export default function EventsPage() {
               gatherings) coordinated by event organizers to help you find food
               trucks.
             </p>
-            <p className="text-sm text-gray-700">
-              <strong>Looking for a parking spot?</strong> Check out our{" "}
-              <a
-                href="/host-food"
-                className="text-blue-600 hover:underline"
-              >
-                Host Locations
-              </a>{" "}
-              - businesses like gas stations, schools, and laundromats offering
-              parking spots for food trucks.
-            </p>
           </div>
         </div>
 
@@ -69,17 +58,6 @@ export default function EventsPage() {
               </h3>
               <p className="text-gray-500 mb-3">
                 No high-volume events are currently listed.
-              </p>
-              <p className="text-sm text-gray-600">
-                Looking for a place to park your food truck? Browse{" "}
-                <a
-                  href="/host-food"
-                  className="text-blue-600 hover:underline"
-                >
-                  Host Locations
-                </a>{" "}
-                - businesses offering parking spots at gas stations, schools,
-                breweries, and more.
               </p>
             </CardContent>
           </Card>

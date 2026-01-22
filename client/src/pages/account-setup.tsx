@@ -19,10 +19,17 @@ import { apiRequest } from "@/lib/queryClient";
 import { Eye, EyeOff, CheckCircle, KeyRound } from "lucide-react";
 import { BackHeader } from "@/components/back-header";
 import { SEOHead } from "@/components/seo-head";
+import {
+  PASSWORD_REGEX,
+  PASSWORD_REQUIREMENTS,
+} from "@/utils/passwordPolicy";
 
 const accountSetupSchema = z
   .object({
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    password: z
+      .string()
+      .min(1, PASSWORD_REQUIREMENTS)
+      .regex(PASSWORD_REGEX, PASSWORD_REQUIREMENTS),
     confirmPassword: z.string().min(1, "Please confirm your password"),
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),

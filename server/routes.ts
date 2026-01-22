@@ -64,6 +64,7 @@ import {
   type InsertEvent,
   deals,
   events,
+  hosts,
   eventSeries,
   insertImageUploadSchema,
   insertAwardHistorySchema,
@@ -78,6 +79,10 @@ import { validateDocuments, checkRateLimit } from "./documentValidation";
 import { randomBytes, timingSafeEqual, createHash } from "crypto";
 import { sanitizeUser } from "./utils/sanitize";
 import { ensureAffiliateTag } from "./affiliateTagService";
+import {
+  isPasswordStrong,
+  PASSWORD_REQUIREMENTS,
+} from "./utils/passwordPolicy";
 import {
   upload,
   uploadToCloudinary,
@@ -155,7 +160,7 @@ import { vacEvaluateRestaurantSignup } from "./vacLite";
 import { broadcastLocationUpdate, broadcastStatusUpdate } from "./websocket";
 import { reverseGeocode } from "./utils/geocoding";
 import { db } from "./db";
-import { and, inArray, eq, sql, gte, desc, like, asc } from "drizzle-orm";
+import { and, inArray, eq, sql, gte, desc, like, asc, isNotNull } from "drizzle-orm";
 import { registerStoryCronJobs } from "./storiesCronJobs";
 
 // Optional Stripe integration
@@ -1064,7 +1069,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate request body
       const schema = z.object({
         token: z.string().min(1, "Token is required"),
-        password: z.string().min(6, "Password must be at least 6 characters"),
+        password: z
+          .string()
+          .min(1, PASSWORD_REQUIREMENTS)
+          .refine(isPasswordStrong, PASSWORD_REQUIREMENTS),
       });
 
       const { token, password } = schema.parse(req.body);
@@ -1192,7 +1200,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currentPassword: z.string().min(1, "Current password is required"),
           newPassword: z
             .string()
-            .min(6, "New password must be at least 6 characters"),
+            .min(1, PASSWORD_REQUIREMENTS)
+            .refine(isPasswordStrong, PASSWORD_REQUIREMENTS),
         });
 
         const { currentPassword, newPassword } = schema.parse(req.body);
@@ -1472,28 +1481,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Public map feed: hosts (open location requests) + upcoming events (hosted slots)
   app.get("/api/map/locations", async (_req, res) => {
     try {
-        const [openLocations, upcomingEvents] = await Promise.all([
-          storage.getOpenLocationRequests(),
-          storage.getAllUpcomingEvents(),
-        ]);
+      const [openLocations, upcomingEvents, hostProfiles] = await Promise.all([
+        storage.getOpenLocationRequests(),
+        storage.getAllUpcomingEvents(),
+        db
+          .select()
+          .from(hosts)
+          .where(isNotNull(hosts.address)),
+      ]);
 
-        const publicEvents = upcomingEvents.filter(
-          (event) => !event.requiresPayment,
-        );
+      const publicEvents = upcomingEvents.filter(
+        (event) => !event.requiresPayment,
+      );
 
-      const hostLocations = openLocations.map((loc) => ({
-        id: loc.id,
-        type: "host_location" as const,
-        name: loc.businessName,
-        address: loc.address,
-        locationType: loc.locationType,
-        expectedFootTraffic: loc.expectedFootTraffic,
-        notes: loc.notes,
-        preferredDates: loc.preferredDates,
-        status: loc.status,
-        latitude: loc.latitude,
-        longitude: loc.longitude,
-      }));
+      const hostLocations = [
+        ...openLocations.map((loc) => ({
+          id: loc.id,
+          type: "host_location" as const,
+          name: loc.businessName,
+          address: loc.address,
+          locationType: loc.locationType,
+          expectedFootTraffic: loc.expectedFootTraffic,
+          notes: loc.notes,
+          preferredDates: loc.preferredDates,
+          status: loc.status,
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+        })),
+        ...hostProfiles.map((host) => ({
+          id: host.id,
+          type: "host_location" as const,
+          name: host.businessName,
+          address: host.address,
+          locationType: host.locationType,
+          expectedFootTraffic: host.expectedFootTraffic,
+          notes: host.notes,
+          preferredDates: [],
+          status: host.isVerified ? "verified" : "active",
+          latitude: host.latitude,
+          longitude: host.longitude,
+        })),
+      ];
 
         const eventLocations = publicEvents.map((event) => ({
         id: event.id,
@@ -2758,7 +2786,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           firstName: z.string().min(1),
           lastName: z.string().min(1),
           phone: z.string().min(10),
-          password: z.string().min(6),
+          password: z
+            .string()
+            .min(1, PASSWORD_REQUIREMENTS)
+            .refine(isPasswordStrong, PASSWORD_REQUIREMENTS),
         });
 
         const validatedUserData = userValidation.parse(userData);

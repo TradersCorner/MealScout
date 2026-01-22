@@ -15,6 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle, CheckCircle, Lock } from "lucide-react";
+import {
+  PASSWORD_REGEX,
+  PASSWORD_REQUIREMENTS,
+} from "@/utils/passwordPolicy";
 
 export default function ChangePassword() {
   const [, setLocation] = useLocation();
@@ -75,8 +79,8 @@ export default function ChangePassword() {
 
     if (!formData.newPassword) {
       newErrors.newPassword = "New password is required";
-    } else if (formData.newPassword.length < 8) {
-      newErrors.newPassword = "Password must be at least 8 characters";
+    } else if (!PASSWORD_REGEX.test(formData.newPassword)) {
+      newErrors.newPassword = PASSWORD_REQUIREMENTS;
     }
 
     if (!formData.confirmPassword) {

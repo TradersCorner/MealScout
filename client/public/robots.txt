@@ -5,7 +5,6 @@ Allow: /
 Allow: /for-food-trucks
 Allow: /for-restaurants
 Allow: /for-bars
-Allow: /host-food
 Allow: /find-food
 
 # Signup flows

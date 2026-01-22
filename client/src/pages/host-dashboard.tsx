@@ -299,8 +299,16 @@ function HostDashboard() {
     }
   };
 
+  const hasPricing = (item: Event) =>
+    (item.breakfastPriceCents ?? 0) > 0 ||
+    (item.lunchPriceCents ?? 0) > 0 ||
+    (item.dinnerPriceCents ?? 0) > 0 ||
+    (item.dailyPriceCents ?? 0) > 0 ||
+    (item.weeklyPriceCents ?? 0) > 0;
+
   const hasActivePass = events.some((item) => {
     if (!item.requiresPayment) return false;
+    if (!hasPricing(item)) return false;
     const itemDate = new Date(item.date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);

@@ -573,6 +573,7 @@ export interface IStorage {
   markAccountSetupTokenUsed(id: string): Promise<AccountSetupToken>;
   deleteUserSetupTokens(userId: string): Promise<void>;
   deleteExpiredSetupTokens(): Promise<number>;
+  ensureDraftParkingPassesForHosts(): Promise<number>;
 
   // Email verification token operations
   createEmailVerificationToken(
@@ -666,6 +667,97 @@ export class DatabaseStorage implements IStorage {
   private shouldAssignAffiliateTag(userType?: string | null) {
     return userType !== "admin" && userType !== "super_admin";
   }
+  private async createDraftParkingPassForHost(
+    host: Host,
+  ): Promise<boolean> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const horizon = new Date(today);
+    horizon.setDate(horizon.getDate() + 30);
+
+    const existing = await db
+      .select({ id: events.id })
+      .from(events)
+      .where(
+        and(
+          eq(events.hostId, host.id),
+          eq(events.requiresPayment, true),
+          gte(events.date, today),
+        ),
+      )
+      .limit(1);
+    if (existing.length > 0) {
+      return false;
+    }
+
+    const defaultStartTime = "09:00";
+    const defaultEndTime = "17:00";
+    const spotCount = host.spotCount ?? 1;
+
+    const [series] = await db
+      .insert(eventSeries)
+      .values({
+        hostId: host.id,
+        name: `Parking Pass - ${host.businessName}`,
+        description: host.address,
+        timezone: "America/New_York",
+        recurrenceRule: null,
+        startDate: today,
+        endDate: horizon,
+        defaultStartTime,
+        defaultEndTime,
+        defaultMaxTrucks: spotCount,
+        defaultHardCapEnabled: false,
+        status: "draft",
+      })
+      .returning();
+
+    const newEvents = [];
+    for (
+      let cursor = new Date(today);
+      cursor < horizon;
+      cursor.setDate(cursor.getDate() + 1)
+    ) {
+      newEvents.push({
+        hostId: host.id,
+        seriesId: series?.id ?? null,
+        name: `Parking Pass - ${host.businessName}`,
+        description: host.address,
+        date: new Date(cursor),
+        startTime: defaultStartTime,
+        endTime: defaultEndTime,
+        maxTrucks: spotCount,
+        hardCapEnabled: false,
+        requiresPayment: true,
+        hostPriceCents: 0,
+        breakfastPriceCents: 0,
+        lunchPriceCents: 0,
+        dinnerPriceCents: 0,
+        dailyPriceCents: 0,
+        weeklyPriceCents: 0,
+      });
+    }
+
+    if (newEvents.length > 0) {
+      await db.insert(events).values(newEvents);
+      return true;
+    }
+    return false;
+  }
+
+  async ensureDraftParkingPassesForHosts(): Promise<number> {
+    const hostList = await db.select().from(hosts);
+    let created = 0;
+    for (const host of hostList) {
+      try {
+        const didCreate = await this.createDraftParkingPassForHost(host);
+        if (didCreate) created += 1;
+      } catch (error) {
+        console.warn("ensureDraftParkingPassForHosts failed:", error);
+      }
+    }
+    return created;
+  }
   // Host operations
   async createHost(host: InsertHost): Promise<Host> {
     const [newHost] = await db.insert(hosts).values(host).returning();
@@ -675,6 +767,11 @@ export class DatabaseStorage implements IStorage {
       }
     } catch (e) {
       console.warn("ensureCityExists failed for host", e);
+    }
+    try {
+      await this.createDraftParkingPassForHost(newHost);
+    } catch (e) {
+      console.warn("createDraftParkingPassForHost failed:", e);
     }
     return newHost;
   }
@@ -2074,7 +2171,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<User[]> {
-    return await db.select().from(users).orderBy(desc(users.createdAt));
+    return await db
+      .select()
+      .from(users)
+      .where(or(eq(users.isDisabled, false), isNull(users.isDisabled)))
+      .orderBy(desc(users.createdAt));
   }
 
   async updateUserStatus(userId: string, isActive: boolean): Promise<void> {

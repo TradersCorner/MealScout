@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,10 @@ import { Store } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
 import mealScoutLogo from "@assets/ChatGPT Image Sep 14, 2025, 09_25_52 AM_1757872111259.png";
 import { HOST_ONBOARDING_COPY as COPY } from "@/copy/hostOnboarding.copy";
+import {
+  PASSWORD_REGEX,
+  PASSWORD_REQUIREMENTS,
+} from "@/utils/passwordPolicy";
 
 /**
  * Host Onboarding v1  COPY LOCK
@@ -95,7 +99,10 @@ const signupSchema = z
     firstName: z.string().min(1, COPY.validation.signup.firstNameRequired),
     lastName: z.string().min(1, COPY.validation.signup.lastNameRequired),
     phone: z.string().min(10, COPY.validation.signup.phoneInvalid),
-    password: z.string().min(6, COPY.validation.signup.passwordTooShort),
+    password: z
+      .string()
+      .min(1, PASSWORD_REQUIREMENTS)
+      .regex(PASSWORD_REGEX, COPY.validation.signup.passwordTooShort),
     confirmPassword: z
       .string()
       .min(1, COPY.validation.signup.confirmPasswordRequired),
@@ -300,6 +307,7 @@ export default function RestaurantSignup() {
       );
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({
         title: COPY.notifications.signup.successTitle,
         description: COPY.notifications.signup.successDescription,
@@ -322,6 +330,7 @@ export default function RestaurantSignup() {
       return await apiRequest("POST", "/api/auth/restaurant/login", data);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({
         title: COPY.notifications.login.successTitle,
         description: COPY.notifications.login.successDescription,

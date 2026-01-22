@@ -38,6 +38,7 @@ export function registerEventRoutes(app: Express) {
   // Parking Pass listings (truck-paid slots only)
   app.get("/api/parking-pass", async (req: any, res) => {
     try {
+      await storage.ensureDraftParkingPassesForHosts();
       const events = await storage.getAllUpcomingEvents();
       const parkingEvents = events.filter((event) => event.requiresPayment);
       const eventIds = parkingEvents.map((event) => event.id);

@@ -97,7 +97,6 @@ const EventsPage = lazy(() => import("@/pages/events"));
 const EventsRouter = lazy(() => import("@/pages/events-router"));
 const ForRestaurants = lazy(() => import("@/pages/for-restaurants"));
 const ForBars = lazy(() => import("@/pages/for-bars"));
-const HostFood = lazy(() => import("@/pages/host-food"));
 const FindFood = lazy(() => import("@/pages/find-food"));
 const VideoPage = lazy(() => import("@/pages/video"));
 const VideoDetailPage = lazy(() => import("@/pages/video-detail"));
@@ -153,7 +152,6 @@ function Router() {
             <Route path="/how-it-works" component={HowItWorks} />
             <Route path="/contact" component={Contact} />
             <Route path="/host-signup" component={HostSignup} />
-            <Route path="/host-food" component={HostFood} />
             <Route path="/for-restaurants" component={ForRestaurants} />
             <Route path="/for-bars" component={ForBars} />
             <Route path="/find-food" component={FindFood} />
@@ -207,7 +205,6 @@ function Router() {
             <Route path="/truck-discovery" component={TruckDiscovery} />
             <Route path="/for-restaurants" component={ForRestaurants} />
             <Route path="/for-bars" component={ForBars} />
-            <Route path="/host-food" component={HostFood} />
             <Route path="/find-food" component={FindFood} />
             <Route path="/search" component={Search} />
             <Route path="/map" component={MapPage} />
@@ -293,7 +290,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <div className="desktop-full-width">
+        <div className="desktop-full-width md:pt-16">
           <Toaster />
           <BetaDisclaimer />
           <Router />

@@ -2,7 +2,8 @@
 
 **Branch:** `chore/cleanup-map`  
 **Created:** 2026-01-02  
-**Status:** Inventory Complete (No Deletions Yet)
+**Status:** Inventory Complete (No Deletions Yet)  
+**Verified against repo state:** 2026-01-22
 
 ---
 
@@ -148,7 +149,8 @@ tw-animate-css
 zod-validation-error
 ```
 
-**Note:** `passport-local` kept for potential future local auth strategy.
+**Note:** `passport-local` kept for potential future local auth strategy.  
+**Note:** `cross-env` is required by `npm run dev:server` (do not remove).
 
 **Action:** Remove from package.json after verifying no dynamic imports.
 
@@ -159,25 +161,21 @@ zod-validation-error
 @tailwindcss/vite
 @types/passport-local
 autoprefixer
-cross-env
 postcss
 ```
 
-**Action:** Remove after confirming no build errors.
+**Action:** Remove after confirming no build errors.  
+**Action:** Do not remove `autoprefixer`/`postcss` until Tailwind/PostCSS pipeline is verified.
 
 ### Missing Dependencies (Add or Remove Imports)
 ```
 drizzle-kit (used in drizzle.config.ts)
 @shared/schema (import path issue)
-nanoid (used in server/vite.ts)
-axios (used in RestaurantCreditRedemptionForm)
 ```
 
 **Action:** 
 - `drizzle-kit` → Already in devDependencies, may need path fix
 - `@shared/schema` → Fix import path to use relative `../shared/schema`
-- `nanoid` → Add to dependencies (it's used)
-- `axios` → Add to dependencies or replace with fetch
 
 ---
 
@@ -214,14 +212,6 @@ git mv QUICK_TEST_REFERENCE.md archive/docs/
 git mv README_TESTING.md archive/docs/
 git mv STRESS_TESTING.md archive/docs/
 ```
-react-icons tw-animate-css zod-validation-error
-npm uninstall -D @replit/vite-plugin-cartographer @replit/vite-plugin-runtime-error-modal @tailwindcss/vite @types/passport-local autoprefixer cross-env postcss
-npm install nanoid axios
-```
-
-**Note:** passport-local kept for potential future auth expansion. uninstall @jridgewell/trace-mapping @sendgrid/mail facebook-nodejs-business-sdk framer-motion memorystore next-themes passport-local react-icons tw-animate-css zod-validation-error
-npm uninstall -D @replit/vite-plugin-cartographer @replit/vite-plugin-runtime-error-modal @tailwindcss/vite @types/passport-local autoprefixer cross-env postcss
-npm install nanoid axios
 ```
 
 ### Phase 3: Fix Import Paths (REQUIRED)

@@ -8,23 +8,23 @@ export default function HelpSupportPage() {
   const faqItems = [
     {
       id: "1",
-      question: "How do I claim a deal?",
-      answer: "Browse deals, tap on one you like, then follow the claim instructions."
+      question: "How do I get started on MealScout?",
+      answer: "Create an account, choose your user type, and complete your profile. You'll immediately see local listings and features for your role."
     },
     {
-      id: "2", 
-      question: "Can I save deals for later?",
-      answer: "Yes! Tap the heart icon on any deal card to save it to your favorites."
+      id: "2",
+      question: "How do parking passes work?",
+      answer: "Hosts list locations. Trucks search and book available slots. Payment confirms the booking instantly—no pending holds."
     },
     {
       id: "3",
-      question: "How do I find deals near me?",
-      answer: "Allow location access and we'll show you deals from nearby restaurants."
+      question: "Where do I manage my profile and settings?",
+      answer: "Use Profile → Settings for account details, notifications, and preferences. Business profiles act like mini websites for your customers."
     },
     {
       id: "4",
-      question: "What if a restaurant doesn't honor my deal?",
-      answer: "Contact us immediately and we'll resolve the issue with the restaurant."
+      question: "How do I contact support?",
+      answer: "Email us and include the page you were on and any screenshots. We’ll get back to you within 24 hours."
     }
   ];
 

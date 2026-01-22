@@ -98,6 +98,8 @@ const EventsPage = lazy(() => import("@/pages/events"));
 const EventsRouter = lazy(() => import("@/pages/events-router"));
 const ForRestaurants = lazy(() => import("@/pages/for-restaurants"));
 const ForBars = lazy(() => import("@/pages/for-bars"));
+const ForHosts = lazy(() => import("@/pages/for-hosts"));
+const ForEvents = lazy(() => import("@/pages/for-events"));
 const FindFood = lazy(() => import("@/pages/find-food"));
 const VideoPage = lazy(() => import("@/pages/video"));
 const VideoDetailPage = lazy(() => import("@/pages/video-detail"));
@@ -188,6 +190,8 @@ function Router() {
             <Route path="/host-signup" component={HostSignup} />
             <Route path="/for-restaurants" component={ForRestaurants} />
             <Route path="/for-bars" component={ForBars} />
+            <Route path="/for-hosts" component={ForHosts} />
+            <Route path="/for-events" component={ForEvents} />
             <Route path="/find-food" component={FindFood} />
             <Route path="/event-signup" component={EventSignup} />
             <Route path="/events" component={EventsRouter} />
@@ -239,6 +243,8 @@ function Router() {
             <Route path="/truck-discovery" component={TruckDiscovery} />
             <Route path="/for-restaurants" component={ForRestaurants} />
             <Route path="/for-bars" component={ForBars} />
+            <Route path="/for-hosts" component={ForHosts} />
+            <Route path="/for-events" component={ForEvents} />
             <Route path="/find-food" component={FindFood} />
             <Route path="/search" component={Search} />
             <Route path="/map" component={MapPage} />

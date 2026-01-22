@@ -4,38 +4,38 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { 
-  MapPin, 
-  Search, 
-  ShoppingBag,
-  Smartphone,
-  Clock,
-  Star,
-  Users,
+  MapPin,
   CheckCircle,
-  ArrowRight
+  ArrowRight,
+  User,
+  Truck,
+  Building2,
+  Store,
+  CalendarDays,
+  ShieldCheck
 } from "lucide-react";
 
 export default function HowItWorks() {
   const schemaData = {
     "@context": "https://schema.org",
     "@type": "HowTo",
-    "name": "How to Use MealScout to Find Local Food Deals",
-    "description": "Learn how to discover, claim, and redeem food deals from local restaurants using MealScout's location-based platform.",
+    "name": "How to Use MealScout",
+    "description": "Choose your role, build your local presence, and use the tools built for your community.",
     "step": [
       {
         "@type": "HowToStep",
-        "name": "Find Deals Near You",
-        "text": "Use your location to discover food deals from restaurants within walking distance."
+        "name": "Choose Your Role",
+        "text": "Pick the role that matches how you use MealScout."
       },
       {
         "@type": "HowToStep", 
-        "name": "Claim Your Favorites",
-        "text": "Tap the claim button on deals you're interested in to save them to your account."
+        "name": "Complete Your Profile",
+        "text": "Add accurate info so locals can find and trust you."
       },
       {
         "@type": "HowToStep",
-        "name": "Redeem at Restaurant",
-        "text": "Show your claimed deal at the restaurant to receive your discount or special offer."
+        "name": "Use Your Tools",
+        "text": "Search, book, publish, and manage everything from your dashboard."
       }
     ]
   };
@@ -43,71 +43,123 @@ export default function HowItWorks() {
   const steps = [
     {
       number: "01",
-      title: "Discover Local Deals",
-      description: "Use your location to find amazing food deals from restaurants within walking distance. Browse by cuisine type, deal value, or restaurant rating.",
-      icon: Search,
+      title: "Choose Your Role",
+      description: "Pick the role that fits how you show up locally. You can add more roles later if you wear multiple hats.",
+      icon: User,
       details: [
-        "Location-based discovery shows nearby restaurants",
-        "Filter by cuisine, price range, or deal type",
-        "See real-time availability and time limits",
-        "Read reviews from other food lovers"
+        "Diner, food truck, host, restaurant/bar, event coordinator, or staff",
+        "Role-based dashboards keep things focused",
+        "Everything is built for local discovery",
+        "You stay in control of what you publish"
       ]
     },
     {
       number: "02", 
-      title: "Claim Your Favorites",
-      description: "Found a deal you love? Simply tap the 'Claim Deal' button to save it to your account. No payment required - claiming is always free!",
-      icon: ShoppingBag,
+      title: "Build a Local Profile",
+      description: "Your profile is your local footprint. Keep it accurate so people can find and trust you fast.",
+      icon: MapPin,
       details: [
-        "One-tap claiming saves deals to your account",
-        "No upfront payment or fees required",
-        "Track expiration times and usage limits",
-        "Get reminders before deals expire"
+        "Business profiles act like mini websites",
+        "Add addresses, hours, and contact details",
+        "Control visibility and updates any time",
+        "Your info powers local search and maps"
       ]
     },
     {
       number: "03",
-      title: "Redeem at Restaurant", 
-      description: "Visit the restaurant and show your claimed deal on your phone. The staff will apply your discount or special offer immediately.",
-      icon: Smartphone,
+      title: "Use Your Tools",
+      description: "Book, post, manage, and connect with locals using the tools built for your role.",
+      icon: CheckCircle,
       details: [
-        "Show your phone screen to restaurant staff",
-        "Deals are verified instantly",
-        "Enjoy your savings on delicious food",
-        "Leave a review to help other diners"
+        "Parking pass bookings are pay-to-confirm",
+        "Events are managed only by coordinators",
+        "Schedules and visibility update in real time",
+        "Every share stays tied to you"
       ]
     }
   ];
 
-  const features = [
+  const guides = [
     {
-      title: "Real-Time Updates",
-      description: "Get instant notifications when restaurants post new deals",
-      icon: Clock
+      title: "Diners",
+      description: "Discover local spots and specials without the noise.",
+      icon: User,
+      details: [
+        "Browse deals, recommendations, and videos",
+        "Save favorites and track activity",
+        "Share links that credit you automatically",
+        "Stay in control of notifications"
+      ],
+      cta: { label: "Explore local food", href: "/" }
     },
     {
-      title: "Quality Verified",
-      description: "All partner restaurants are verified for quality and service",
-      icon: Star
+      title: "Food Trucks",
+      description: "Find places to park, manage your schedule, and get booked locally.",
+      icon: Truck,
+      details: [
+        "Search and book parking pass locations",
+        "Manage your schedule and live location",
+        "Share your profile with one tap",
+        "Optional premium tools when you want them"
+      ],
+      cta: { label: "Go to Parking Pass", href: "/parking-pass" }
     },
     {
-      title: "Community Driven",
-      description: "Read authentic reviews from fellow food enthusiasts",
-      icon: Users
+      title: "Hosts",
+      description: "List locations and control availability by address.",
+      icon: Building2,
+      details: [
+        "One parking pass per address",
+        "Set slot availability and blackout dates",
+        "Track bookings per location",
+        "Keep full host pricing minus processing"
+      ],
+      cta: { label: "Host dashboard", href: "/host-dashboard" }
     },
     {
-      title: "Location Smart",
-      description: "Find deals within walking distance of your current location",
-      icon: MapPin
+      title: "Restaurants & Bars",
+      description: "Build a mini website and promote locally.",
+      icon: Store,
+      details: [
+        "Publish your profile, deals, and specials",
+        "Track performance and engagement",
+        "Keep your info accurate for locals",
+        "Cancel or rejoin monthly any time"
+      ],
+      cta: { label: "Business dashboard", href: "/dashboard" }
+    },
+    {
+      title: "Event Coordinators",
+      description: "Own the event flow and manage bookings directly.",
+      icon: CalendarDays,
+      details: [
+        "Create and manage events",
+        "Coordinate with trucks for bookings",
+        "Events stay separate from parking pass",
+        "Give locals clear, trusted info"
+      ],
+      cta: { label: "Events", href: "/events" }
+    },
+    {
+      title: "Staff & Admin",
+      description: "Support the network and keep everything running clean.",
+      icon: ShieldCheck,
+      details: [
+        "Manage users, affiliates, and content",
+        "Resolve issues fast for local trust",
+        "Keep the system accurate",
+        "Protect the community first"
+      ],
+      cta: { label: "Admin tools", href: "/admin" }
     }
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-indigo-50">
       <SEOHead
-        title="How MealScout Works - Find, Claim & Redeem Local Food Deals"
-        description="Learn how to use MealScout's simple 3-step process to discover local restaurant deals, claim your favorites, and redeem savings. Start saving on food today!"
-        keywords="how mealscout works, food deal process, restaurant promotions guide, local dining deals, claim redeem food offers"
+        title="How MealScout Works - Local Tools for Every Role"
+        description="Choose your role, build a local presence, and use the tools built for diners, food trucks, hosts, restaurants, bars, and event coordinators."
+        keywords="how mealscout works, food trucks, parking pass, hosts, local events, restaurant tools, affiliate links"
         canonicalUrl="https://mealscout.com/how-it-works"
         schemaData={schemaData}
       />
@@ -126,11 +178,10 @@ export default function HowItWorks() {
             <CheckCircle className="w-12 h-12 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-6">
-            Discover Local Food Deals in 3 Simple Steps
+            Built Local. Built By Locals.
           </h1>
           <p className="text-xl text-gray-600 leading-relaxed max-w-3xl mx-auto">
-            MealScout makes finding and using food deals effortless. Follow our simple process to start saving 
-            money at your favorite local restaurants today.
+            MealScout gives every role a clear, focused path—so you can move fast, stay in control, and grow locally.
           </p>
         </div>
 
@@ -184,20 +235,41 @@ export default function HowItWorks() {
           })}
         </div>
 
-        {/* Features Section */}
+        {/* User Guides */}
         <div className="mb-16">
-          <h2 className="text-3xl font-bold text-gray-900 mb-12 text-center">Why Users Love MealScout</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => {
-              const IconComponent = feature.icon;
+          <h2 className="text-3xl font-bold text-gray-900 mb-12 text-center">
+            Guides by User Type
+          </h2>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {guides.map((guide, index) => {
+              const IconComponent = guide.icon;
               return (
-                <Card key={index} className="p-6 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow text-center">
-                  <CardContent className="p-0">
-                    <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <IconComponent className="w-6 h-6 text-blue-600" />
+                <Card key={index} className="p-6 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow">
+                  <CardContent className="p-0 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
+                        <IconComponent className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-semibold text-gray-900">{guide.title}</h3>
+                        <p className="text-sm text-gray-600">{guide.description}</p>
+                      </div>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">{feature.title}</h3>
-                    <p className="text-gray-600 text-sm leading-relaxed">{feature.description}</p>
+                    <div className="space-y-2 text-sm text-gray-700">
+                      {guide.details.map((detail, detailIndex) => (
+                        <div key={detailIndex} className="flex items-center space-x-2">
+                          <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                          <span>{detail}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <Link href={guide.cta.href}>
+                        <Button variant="outline" size="sm">
+                          {guide.cta.label}
+                        </Button>
+                      </Link>
+                    </div>
                   </CardContent>
                 </Card>
               );
@@ -205,38 +277,11 @@ export default function HowItWorks() {
           </div>
         </div>
 
-        {/* Stats Section */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 lg:p-12 shadow-xl mb-16">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Join Thousands of Happy Diners</h2>
-            <p className="text-gray-600 text-lg">See why food lovers choose MealScout for local dining deals</p>
-          </div>
-          
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="text-4xl font-bold text-blue-600 mb-2">500+</div>
-              <div className="text-gray-600">Partner Restaurants</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-blue-600 mb-2">50k+</div>
-              <div className="text-gray-600">Deals Claimed</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-blue-600 mb-2">$2M+</div>
-              <div className="text-gray-600">Total Savings</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-blue-600 mb-2">4.8★</div>
-              <div className="text-gray-600">Average Rating</div>
-            </div>
-          </div>
-        </div>
-
         {/* CTA Section */}
         <div className="bg-gradient-to-r from-green-500 to-blue-500 rounded-3xl p-8 lg:p-12 text-white text-center">
           <h2 className="text-3xl font-bold mb-6">Ready to Start Saving?</h2>
           <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto">
-            Join thousands of food lovers who are already discovering amazing deals in their neighborhood.
+            Start local. Stay in control. Build real relationships through food.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/login">

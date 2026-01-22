@@ -19,7 +19,7 @@ export default function Sitemap() {
     "@type": "WebSite",
     "name": "MealScout Sitemap",
     "description": "Complete site navigation for MealScout - find all pages, features, and sections of our local food deals platform.",
-    "url": "https://mealscout.com/sitemap"
+    "url": "https://mealscout.us/sitemap"
   };
 
   const siteStructure = [
@@ -30,9 +30,15 @@ export default function Sitemap() {
       pages: [
         { title: "Home", href: "/", description: "Discover local food deals near you" },
         { title: "About Us", href: "/about", description: "Learn about MealScout's mission and values" },
-        { title: "How It Works", href: "/how-it-works", description: "Simple 3-step process to find and use deals" },
-        { title: "Contact", href: "/contact", description: "Get in touch with our support team" },
-        { title: "FAQ", href: "/faq", description: "Frequently asked questions and answers" }
+        { title: "How It Works", href: "/how-it-works", description: "Role-based guides for every user type" },
+        { title: "Contact", href: "/contact", description: "Email support for MealScout" },
+        { title: "FAQ", href: "/faq", description: "Frequently asked questions and answers" },
+        { title: "Find Food", href: "/find-food", description: "Local discovery for diners" },
+        { title: "Food Trucks", href: "/truck-landing", description: "MealScout for food trucks" },
+        { title: "Hosts", href: "/for-hosts", description: "MealScout for hosts" },
+        { title: "Restaurants", href: "/for-restaurants", description: "MealScout for restaurants" },
+        { title: "Bars", href: "/for-bars", description: "MealScout for bars" },
+        { title: "Events", href: "/for-events", description: "MealScout for event coordinators" }
       ]
     },
     {
@@ -45,15 +51,18 @@ export default function Sitemap() {
         { title: "Map View", href: "/map", description: "See deals on an interactive map" },
         { title: "Time-Sensitive Deals", href: "/deals/featured", description: "Nearby limited-time offers" },
         { title: "User Dashboard", href: "/user-dashboard", description: "Manage your profile and claimed deals" },
-        { title: "Favorites", href: "/favorites", description: "Your saved restaurants and deals" }
+        { title: "Favorites", href: "/favorites", description: "Your saved restaurants and deals" },
+        { title: "Parking Pass", href: "/parking-pass", description: "Search and book parking pass locations" }
       ]
     },
     {
-      category: "Restaurant Partners",
+      category: "Business & Events",
       icon: Building,
       color: "bg-orange-100 text-orange-600",
       pages: [
         { title: "Restaurant Signup", href: "/customer-signup?role=business", description: "Join MealScout as a restaurant partner" },
+        { title: "Host Signup", href: "/host-signup", description: "Join MealScout as a host" },
+        { title: "Event Signup", href: "/event-signup", description: "Join MealScout as an event coordinator" },
         { title: "Create Deals", href: "/deal-creation", description: "Restaurant dashboard for creating promotions" },
         { title: "Restaurant Dashboard", href: "/restaurant-owner-dashboard", description: "Manage your restaurant profile and deals" },
         { title: "Subscription Plans", href: "/subscribe", description: "Choose the right plan for your business" }
@@ -68,7 +77,7 @@ export default function Sitemap() {
         { title: "American Food", href: "/category/american", description: "American cuisine deals and restaurants" },
         { title: "Italian Food", href: "/category/italian", description: "Italian restaurants and pizza deals" },
         { title: "Asian Food", href: "/category/asian", description: "Asian cuisine including Chinese, Thai, Japanese" },
-        { title: "Mexican Food", href: "/category/mexican", description: "Mexican restaurants and Tex-Mex deals" },
+        { title: "Mexican Food", href: "/category/mexican", description: "Mexican restaurants and Tex-Mex deals" }
       ]
     },
     {
@@ -108,7 +117,7 @@ export default function Sitemap() {
         title="Sitemap - Complete MealScout Navigation & Page Directory"
         description="Browse all MealScout pages, features, and sections. Find deals, account management, restaurant partnerships, support resources, and more in our complete site directory."
         keywords="mealscout sitemap, site navigation, all pages, food deals directory, restaurant features, user account pages"
-        canonicalUrl="https://mealscout.com/sitemap"
+        canonicalUrl="https://mealscout.us/sitemap"
         schemaData={schemaData}
       />
       

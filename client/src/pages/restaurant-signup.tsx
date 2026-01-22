@@ -2043,7 +2043,7 @@ export default function RestaurantSignup() {
                   <p className="text-sm text-orange-800 leading-relaxed">
                     I understand businesses joining before{" "}
                     <strong>March 1, 2026</strong> are locked at{" "}
-                    <strong>$50 -> $25/month forever</strong>. This price lock applies
+                    <strong>$50 -&gt; $25/month forever</strong>. This price lock applies
                     even if I pause or cancel my subscription.
                   </p>
                 </div>

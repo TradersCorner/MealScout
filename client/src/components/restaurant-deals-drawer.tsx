@@ -343,6 +343,9 @@ export default function RestaurantDealsDrawer({
                         }
                         alt={deals[currentDealIndex].title}
                         className="w-full h-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        referrerPolicy="no-referrer"
                       />
 
                       {/* Deal badge */}

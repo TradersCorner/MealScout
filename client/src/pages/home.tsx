@@ -281,6 +281,8 @@ export default function Home() {
                 src={mealScoutLogo}
                 alt="MealScout Logo"
                 className="w-8 h-8 object-contain"
+                loading="lazy"
+                decoding="async"
               />
             </div>
             <div className="hidden xs:block">

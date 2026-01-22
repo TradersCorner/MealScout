@@ -246,6 +246,9 @@ export default function DealDetail() {
               alt={(deal as Deal).title}
               className="w-full h-full object-cover"
               data-testid="img-deal"
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
             />
           ) : (
             <i className="fas fa-utensils text-primary text-4xl"></i>

@@ -452,6 +452,9 @@ export default function DealCard({ deal }: DealCardProps) {
               }
               alt={deal.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
             />
             {/* Gradient overlay for text contrast */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />

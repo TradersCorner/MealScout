@@ -155,6 +155,9 @@ export default function GoldenPlateWinners() {
                             src={winner.logoUrl} 
                             alt={winner.name}
                             className="w-16 h-16 rounded-lg object-cover"
+                            loading="lazy"
+                            decoding="async"
+                            referrerPolicy="no-referrer"
                           />
                         )}
                       </div>

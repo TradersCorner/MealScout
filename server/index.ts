@@ -116,9 +116,6 @@ const gracefulShutdown = (signal: string) => {
   isShuttingDown = true;
   console.log(`🔄 ${signal} received. Initiating graceful shutdown...`);
 
-  // Stop keep-alive service
-  stopKeepAlive();
-
   // Give the server a few seconds to finish processing current requests
   setTimeout(() => {
     console.log("✅ Graceful shutdown completed");
@@ -161,6 +158,12 @@ if (process.env.NODE_ENV === "production") {
           return false;
         }
         return compression.filter(req, res);
+      },
+      brotli: {
+        enabled: true,
+        zlib: {
+          level: 5,
+        },
       },
     })
   );

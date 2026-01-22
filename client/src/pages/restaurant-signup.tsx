@@ -1174,39 +1174,22 @@ export default function RestaurantSignup() {
 
             {/* Single pricing tier */}
             <div className="max-w-2xl mx-auto">
-              <div className="bg-white/70 rounded-2xl p-8 border border-blue-200/30 mb-8">
-                <div className="flex items-center justify-center mb-6">
-                  <span className="text-6xl font-bold text-blue-600">
-                    {COPY.pricing.hero.monthlyPrice}
-                  </span>
-                  <span className="text-gray-600 text-2xl ml-2">
-                    {COPY.pricing.hero.monthlySuffix}
-                  </span>
-                </div>
-                <p className="text-gray-600 text-xl mb-6">
-                  {COPY.pricing.hero.coreLine}
-                </p>
-
-                {/* Special offers */}
-                <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                    <p className="text-green-700 font-semibold">
-                      {COPY.pricing.hero.offerThreeMonths}
-                    </p>
-                    <p className="text-green-600 text-sm">
-                      {COPY.pricing.hero.offerThreeMonthsNote}
-                    </p>
+                <div className="bg-white/70 rounded-2xl p-8 border border-blue-200/30 mb-8">
+                  <div className="flex items-center justify-center mb-6">
+                    <span className="text-4xl font-semibold text-gray-400 line-through mr-3">
+                      {COPY.pricing.hero.originalPrice}
+                    </span>
+                    <span className="text-6xl font-bold text-blue-600">
+                      {COPY.pricing.hero.monthlyPrice}
+                    </span>
+                    <span className="text-gray-600 text-2xl ml-2">
+                      {COPY.pricing.hero.monthlySuffix}
+                    </span>
                   </div>
-                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                    <p className="text-purple-700 font-semibold">
-                      {COPY.pricing.hero.yearlyPrice}
-                    </p>
-                    <p className="text-purple-600 text-sm">
-                      {COPY.pricing.hero.yearlyNote}
-                    </p>
-                  </div>
+                  <p className="text-gray-600 text-xl mb-6">
+                    {COPY.pricing.hero.coreLine}
+                  </p>
                 </div>
-              </div>
 
               <h4 className="font-bold text-gray-900 text-xl mb-6">
                 {COPY.pricing.hero.everythingIncludedTitle}
@@ -2007,6 +1990,9 @@ export default function RestaurantSignup() {
                       {COPY.pricing.formCard.badge}
                     </div>
                     <div className="text-5xl font-bold text-red-600 mb-2">
+                      <span className="text-gray-400 line-through text-3xl mr-2 align-middle">
+                        {COPY.pricing.formCard.originalPrice}
+                      </span>
                       {COPY.pricing.formCard.monthlyPrice}
                     </div>
                     <div className="text-lg text-gray-600 mb-4">

@@ -63,6 +63,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Only load essential fonts - reduced from 25+ families to improve load time -->
     <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap"
+    />
+    <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
@@ -107,10 +112,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <!-- Development banner script which adds a banner on the top of the page when opened in development mode -->
-    <script
-      type="text/javascript"
-      src="https://replit.com/public/js/replit-dev-banner.js"
-    ></script>
   </body>
 </html>

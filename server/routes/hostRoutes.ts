@@ -332,7 +332,7 @@ export function registerHostRoutes(app: Express) {
 
       if (!req.body?.requiresPayment) {
         return res.status(400).json({
-          message: "Hosts can only create paid Parking Pass listings.",
+          message: "Hosts can only create Parking Pass listings.",
         });
       }
 

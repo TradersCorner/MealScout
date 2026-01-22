@@ -846,7 +846,7 @@ export default function ParkingPassPage() {
                 </div>
               ) : events.length === 0 ? (
                 <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-600">
-                  No paid parking pass spots are available right now.
+                  No parking pass spots are available right now.
                 </div>
               ) : viewMode === "map" ? (
                 <div className="space-y-3">

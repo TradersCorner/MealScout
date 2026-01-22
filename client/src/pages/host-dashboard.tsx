@@ -1194,7 +1194,7 @@ function HostDashboard() {
                   No upcoming parking pass listings
                 </h3>
                 <p className="text-slate-500 mb-4">
-                  Create a paid parking pass listing for trucks.
+                  Create a parking pass listing for trucks.
                 </p>
                 <Button variant="outline" onClick={() => setIsCreating(true)}>
                   Create Parking Pass Listing
@@ -1273,7 +1273,7 @@ function HostDashboard() {
                         </div>
                       </div>
 
-                      <Badge variant="secondary">Paid Listing</Badge>
+                      <Badge variant="secondary">Listing</Badge>
                     </div>
                   ))}
               </div>

@@ -1039,9 +1039,19 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Cannot modify super admin account");
     }
 
+    const affiliatePercent =
+      userType === "staff"
+        ? 25
+        : userType === "admin" || userType === "super_admin"
+          ? 0
+          : undefined;
     const [updatedUser] = await db
       .update(users)
-      .set({ userType, updatedAt: new Date() })
+      .set({
+        userType,
+        ...(affiliatePercent !== undefined ? { affiliatePercent } : {}),
+        updatedAt: new Date(),
+      })
       .where(eq(users.id, id))
       .returning();
     void syncUserToBrevo(updatedUser).catch(() => {});
@@ -2084,6 +2094,12 @@ export class DatabaseStorage implements IStorage {
     tempPassword: string;
   }): Promise<User> {
     const hashedPassword = await bcrypt.hash(userData.tempPassword, 10);
+    const affiliatePercent =
+      userData.userType === "staff"
+        ? 25
+        : userData.userType === "admin" || userData.userType === "super_admin"
+          ? 0
+          : undefined;
 
     const [user] = await db
       .insert(users)
@@ -2096,6 +2112,7 @@ export class DatabaseStorage implements IStorage {
         passwordHash: hashedPassword,
         mustResetPassword: true,
         emailVerified: true, // Admin-created accounts are pre-verified
+        ...(affiliatePercent !== undefined ? { affiliatePercent } : {}),
       })
       .returning();
 
@@ -2124,6 +2141,12 @@ export class DatabaseStorage implements IStorage {
       | "admin"
       | "super_admin";
   }): Promise<User> {
+    const affiliatePercent =
+      data.userType === "staff"
+        ? 25
+        : data.userType === "admin" || data.userType === "super_admin"
+          ? 0
+          : undefined;
     const [user] = await db
       .insert(users)
       .values({
@@ -2135,6 +2158,7 @@ export class DatabaseStorage implements IStorage {
         passwordHash: null,
         mustResetPassword: false,
         emailVerified: false,
+        ...(affiliatePercent !== undefined ? { affiliatePercent } : {}),
       })
       .returning();
 

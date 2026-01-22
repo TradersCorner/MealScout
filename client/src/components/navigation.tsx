@@ -18,6 +18,7 @@ import {
   UtensilsCrossed,
   Calendar,
   LayoutDashboard,
+  ParkingSquare,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -167,7 +168,6 @@ export default function Navigation() {
     { path: "/events", icon: Calendar, label: "Events" },
     { path: "/host/dashboard", icon: Users, label: "Host" },
     { path: "/host-food", icon: MapPin, label: "Host Food" },
-    { path: "/for-food-trucks", icon: Store, label: "For Trucks" },
     { path: "/for-restaurants", icon: Store, label: "For Restaurants" },
     { path: "/for-bars", icon: Store, label: "For Bars" },
   ];
@@ -182,7 +182,6 @@ export default function Navigation() {
     { path: "/deal-creation", icon: Plus, label: "Create Special" },
     { path: "/subscription", icon: BarChart3, label: "Subscription" },
     { path: "/parking-pass", icon: Search, label: "Parking Pass" },
-    { path: "/for-food-trucks", icon: Store, label: "For Trucks" },
     { path: "/for-restaurants", icon: Store, label: "For Restaurants" },
     { path: "/for-bars", icon: Store, label: "For Bars" },
     { path: "/host-food", icon: MapPin, label: "Host Food" },
@@ -255,7 +254,6 @@ export default function Navigation() {
   const eventCoordinatorExtras: NavItem[] = [
     { path: "/events", icon: Calendar, label: "Events" },
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { path: "/for-food-trucks", icon: Store, label: "For Trucks" },
   ];
 
   const eventCoordinatorNavItems: NavItem[] = mergeNavItems(
@@ -266,7 +264,7 @@ export default function Navigation() {
   const foodTruckNavItems: NavItem[] = mergeNavItems(
     sharedNavItems,
     customerExtras,
-    [{ path: "/parking-pass", icon: Search, label: "Parking Pass" }],
+    [{ path: "/parking-pass", icon: ParkingSquare, label: "Parking Pass" }],
   );
 
   const navItems = !user

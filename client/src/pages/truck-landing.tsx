@@ -34,9 +34,9 @@ export default function TruckLanding() {
               Get discovered locally.
             </h1>
             <p className="text-lg text-slate-600">
-              Hosts, breweries, and event organizers use MealScout to find and
-              book food trucks nearby. Skip the DMs and keep your schedule in
-              one place.
+              MealScout is the booking layer for food trucks. Build your profile
+              once, show up in local discovery, and get invited to the right
+              spots without chasing leads.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Button asChild className="px-6 py-6 text-base">
@@ -51,7 +51,7 @@ export default function TruckLanding() {
             <div className="flex flex-wrap gap-3 text-xs text-slate-500">
               <span className="inline-flex items-center gap-1">
                 <CheckCircle className="h-3 w-3 text-emerald-600" />
-                Free to list
+                Free to join
               </span>
               <span className="inline-flex items-center gap-1">
                 <CheckCircle className="h-3 w-3 text-emerald-600" />
@@ -59,7 +59,7 @@ export default function TruckLanding() {
               </span>
               <span className="inline-flex items-center gap-1">
                 <CheckCircle className="h-3 w-3 text-emerald-600" />
-                Pay only when booked
+                Full access on sale $25/mo
               </span>
             </div>
           </div>
@@ -72,33 +72,32 @@ export default function TruckLanding() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                      Live Map
+                      Map Preview
                     </p>
                     <p className="text-lg font-semibold text-slate-900">
-                      Downtown pulse
+                      Sample host grid
                     </p>
                   </div>
-                  <div className="flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    Active
+                  <div className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                    Concept map
                   </div>
                 </div>
-                <div className="relative h-44 rounded-2xl bg-[linear-gradient(140deg,_#dff4ff,_#ffffff_60%,_#ffe9d2)] overflow-hidden">
-                  <div className="absolute left-6 top-8 h-3 w-3 rounded-full bg-orange-500 shadow-[0_0_0_6px_rgba(249,115,22,0.15)]" />
-                  <div className="absolute right-10 top-14 h-3 w-3 rounded-full bg-emerald-500 shadow-[0_0_0_6px_rgba(16,185,129,0.15)]" />
-                  <div className="absolute left-16 bottom-10 h-3 w-3 rounded-full bg-slate-700 shadow-[0_0_0_6px_rgba(15,23,42,0.1)]" />
+                <div className="relative h-44 rounded-2xl bg-[linear-gradient(140deg,_#f4efe6,_#fff7ed_55%,_#e8f1ff)] overflow-hidden">
+                  <div className="absolute left-6 top-8 h-3 w-3 rounded-full bg-orange-500 shadow-[0_0_0_6px_rgba(249,115,22,0.18)]" />
+                  <div className="absolute right-10 top-14 h-3 w-3 rounded-full bg-slate-700 shadow-[0_0_0_6px_rgba(15,23,42,0.12)]" />
+                  <div className="absolute left-20 bottom-10 h-3 w-3 rounded-full bg-emerald-500 shadow-[0_0_0_6px_rgba(16,185,129,0.18)]" />
                   <div className="absolute left-5 bottom-5 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-700 shadow">
-                    8 hosts searching
+                    Future host hotspots
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
                     <p className="text-xs text-slate-500">Bookings this week</p>
-                    <p className="text-xl font-semibold text-slate-900">4</p>
+                    <p className="text-xl font-semibold text-slate-900">—</p>
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
                     <p className="text-xs text-slate-500">Next slot</p>
-                    <p className="text-xl font-semibold text-slate-900">Fri 6pm</p>
+                    <p className="text-xl font-semibold text-slate-900">Preview</p>
                   </div>
                 </div>
               </CardContent>
@@ -109,15 +108,15 @@ export default function TruckLanding() {
         <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/80 p-6 text-sm text-slate-600 shadow-lg md:grid-cols-3">
           <div className="flex items-center gap-3">
             <MapPin className="h-5 w-5 text-orange-500" />
-            Used by food trucks and hosts across the region
+            Built for local trucks ready to get booked
           </div>
           <div className="flex items-center gap-3">
             <CheckCircle className="h-5 w-5 text-emerald-600" />
-            Free to list, no contract required
+            Free to join, no contract required
           </div>
           <div className="flex items-center gap-3">
             <Sparkles className="h-5 w-5 text-slate-700" />
-            Pay only when you confirm a booking
+            Full access on sale for $25/month
           </div>
         </section>
 
@@ -181,23 +180,23 @@ export default function TruckLanding() {
           <Card className="border border-emerald-200 bg-emerald-50/70">
             <CardContent className="p-6 space-y-3">
               <p className="text-xs uppercase tracking-[0.2em] text-emerald-700">
-                Pricing
+                Join free
               </p>
               <h3 className="text-2xl font-semibold text-slate-900">
-                Free for food trucks
+                Free to join
               </h3>
               <p className="text-sm text-slate-600">
-                We only make money when you do. Booking fees apply only on
-                confirmed bookings. Premium tools start after your free month.
+                Get started at no cost. Full access is on sale for $25/month
+                after your free month.
               </p>
               <ul className="text-sm text-slate-700 space-y-2">
                 <li className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-emerald-600" />
-                  Listing is free
+                  Signup is free
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-emerald-600" />
-                  No subscriptions to get started
+                  Full access on sale for $25/month
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-emerald-600" />

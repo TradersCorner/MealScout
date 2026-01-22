@@ -8,14 +8,14 @@ const TRUCK_EMAIL = process.env.TEST_TRUCK_EMAIL;
 const TRUCK_PASSWORD = process.env.TEST_TRUCK_PASSWORD;
 
 async function fillWithFallbacks(
-  page: any,
+  context: any,
   selectors: string[],
   value: string,
   label: string,
 ) {
   for (const selector of selectors) {
     try {
-      const locator = page.locator(selector);
+      const locator = context.locator(selector);
       if (await locator.count()) {
         await locator.first().fill(value);
         console.log(`[flow] Filled ${label} using selector: ${selector}`);
@@ -28,30 +28,65 @@ async function fillWithFallbacks(
   return false;
 }
 
+async function fillInAnyFrame(
+  page: any,
+  selectors: string[],
+  value: string,
+  label: string,
+) {
+  const frames = page.frames();
+  for (const frame of frames) {
+    const filled = await fillWithFallbacks(frame, selectors, value, label);
+    if (filled) {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function login(page: any, email?: string, password?: string) {
   if (!email || !password) {
     throw new Error("Missing TEST_* credentials for this flow.");
   }
 
-  await page.goto(`${FRONTEND}/login`, { waitUntil: "domcontentloaded" });
-  const emailToggle = page.getByRole("button", {
-    name: /email|use email|continue with email|sign in with email/i,
+  const apiLogin = await page.request.post(`${FRONTEND}/api/auth/login`, {
+    data: { email, password },
   });
-  if (await emailToggle.count()) {
-    await emailToggle.first().click();
+  if (!apiLogin.ok()) {
+    const body = await apiLogin.text().catch(() => "");
+    throw new Error(
+      `API login failed: ${apiLogin.status()} ${apiLogin.statusText()} ${body}`,
+    );
   }
-  const emailPanelButton = page.getByRole("button", {
-    name: /sign in with email/i,
-  });
-  if (await emailPanelButton.count()) {
-    await emailPanelButton.first().click();
+
+  await page.goto(`${FRONTEND}/login`, { waitUntil: "domcontentloaded" });
+  const emailLoginButton = page.getByTestId("button-email-login");
+  if (await emailLoginButton.count()) {
+    await emailLoginButton.first().click({ force: true });
+  } else {
+    const emailToggleButtons = [
+      page.getByRole("button", {
+        name: /email|use email|continue with email|sign in with email/i,
+      }),
+      page.getByText(/sign in with email/i),
+      page.getByText(/continue with email/i),
+    ];
+    for (const button of emailToggleButtons) {
+      if (await button.count()) {
+        await button.first().click({ force: true });
+        break;
+      }
+    }
   }
   try {
-    await page.waitForSelector("input", { timeout: 5000 });
+    await page.waitForSelector("[data-testid='input-email']", {
+      timeout: 8000,
+    });
   } catch {
     // Continue; we'll collect debug info below if needed.
   }
   const emailSelectors = [
+    "[data-testid='input-email']",
     "label:has-text('Email') >> input",
     "input[type='email']",
     "input[autocomplete='email']",
@@ -64,6 +99,7 @@ async function login(page: any, email?: string, password?: string) {
     "input[type='text'][placeholder*='email' i]",
   ];
   const passwordSelectors = [
+    "[data-testid='input-password']",
     "label:has-text('Password') >> input",
     "input[type='password']",
     "input[autocomplete='current-password']",
@@ -72,13 +108,8 @@ async function login(page: any, email?: string, password?: string) {
     "input[placeholder*='password' i]",
   ];
 
-  const emailFilled = await fillWithFallbacks(
-    page,
-    emailSelectors,
-    email,
-    "email",
-  );
-  const passwordFilled = await fillWithFallbacks(
+  const emailFilled = await fillInAnyFrame(page, emailSelectors, email, "email");
+  const passwordFilled = await fillInAnyFrame(
     page,
     passwordSelectors,
     password,
@@ -86,22 +117,35 @@ async function login(page: any, email?: string, password?: string) {
   );
 
   if (!emailFilled || !passwordFilled) {
+    if (page.isClosed()) {
+      throw new Error("Login page closed before inputs were found.");
+    }
     const inputInfo = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll("input")).map((input) => ({
-        type: input.type,
-        name: input.name,
-        id: input.id,
-        placeholder: input.placeholder,
-        autocomplete: input.autocomplete,
-      }));
+      return {
+        inputs: Array.from(document.querySelectorAll("input")).map((input) => ({
+          type: input.type,
+          name: input.name,
+          id: input.id,
+          placeholder: input.placeholder,
+          autocomplete: input.autocomplete,
+        })),
+        buttons: Array.from(document.querySelectorAll("button")).map((button) =>
+          button.textContent?.trim(),
+        ),
+        iframes: Array.from(document.querySelectorAll("iframe")).map(
+          (iframe) => iframe.src,
+        ),
+      };
     });
-    console.log("[flow] Input fields found:", inputInfo);
+    console.log("[flow] Login debug:", inputInfo);
     throw new Error("Login fields not found with fallback selectors.");
   }
 
-  const loginButton = page.getByRole("button", {
-    name: /log in|sign in|continue|next/i,
-  });
+  const loginButton = page
+    .getByTestId("button-login-submit")
+    .or(
+      page.getByRole("button", { name: /log in|sign in|continue|next/i }),
+    );
   if (await loginButton.count()) {
     await loginButton.first().click();
   }

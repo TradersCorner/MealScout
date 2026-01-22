@@ -95,7 +95,6 @@ const TruckDiscovery = lazy(() => import("@/pages/truck-discovery"));
 const EventSignup = lazy(() => import("@/pages/event-signup"));
 const EventsPage = lazy(() => import("@/pages/events"));
 const EventsRouter = lazy(() => import("@/pages/events-router"));
-const ForFoodTrucks = lazy(() => import("@/pages/for-food-trucks"));
 const ForRestaurants = lazy(() => import("@/pages/for-restaurants"));
 const ForBars = lazy(() => import("@/pages/for-bars"));
 const HostFood = lazy(() => import("@/pages/host-food"));
@@ -155,7 +154,6 @@ function Router() {
             <Route path="/contact" component={Contact} />
             <Route path="/host-signup" component={HostSignup} />
             <Route path="/host-food" component={HostFood} />
-            <Route path="/for-food-trucks" component={ForFoodTrucks} />
             <Route path="/for-restaurants" component={ForRestaurants} />
             <Route path="/for-bars" component={ForBars} />
             <Route path="/find-food" component={FindFood} />
@@ -207,7 +205,6 @@ function Router() {
           component={EventCoordinatorDashboard}
         />
             <Route path="/truck-discovery" component={TruckDiscovery} />
-            <Route path="/for-food-trucks" component={ForFoodTrucks} />
             <Route path="/for-restaurants" component={ForRestaurants} />
             <Route path="/for-bars" component={ForBars} />
             <Route path="/host-food" component={HostFood} />

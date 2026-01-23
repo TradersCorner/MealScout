@@ -345,6 +345,14 @@ export default function MapPage() {
           };
           setUserLocation(location);
           setMapCenter(location);
+          try {
+            localStorage.setItem(
+              "mealscout_last_location",
+              JSON.stringify(location),
+            );
+          } catch {
+            // ignore localStorage issues
+          }
           setIsLocating(false);
           setLocationError(null);
         },
@@ -359,6 +367,14 @@ export default function MapPage() {
             const approx = { lat: ipLocation.lat, lng: ipLocation.lng };
             setUserLocation(approx);
             setMapCenter(approx);
+            try {
+              localStorage.setItem(
+                "mealscout_last_location",
+                JSON.stringify(approx),
+              );
+            } catch {
+              // ignore localStorage issues
+            }
           }
           setIsLocating(false);
         },

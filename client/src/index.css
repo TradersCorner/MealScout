@@ -6,75 +6,72 @@
 @tailwind utilities;
 
 :root {
-  /* DoorDash-inspired Color Palette */
-  --background: hsl(0 0% 98%);
-  --background-gradient: linear-gradient(
-    135deg,
-    hsl(0 0% 99%) 0%,
-    hsl(0 0% 97%) 100%
-  );
-  --foreground: hsl(22 12% 20%);
+  /* Ember-lit Night Palette */
+  --background: hsl(28 9% 11%);
+  --background-gradient:
+    radial-gradient(800px 500px at 70% 20%, rgba(255, 152, 74, 0.08), transparent 60%),
+    radial-gradient(900px 600px at 20% 80%, rgba(255, 110, 64, 0.06), transparent 65%),
+    linear-gradient(180deg, hsl(28 9% 12%) 0%, hsl(28 9% 10%) 100%);
+  --foreground: hsl(33 26% 90%);
 
-  --card: hsl(0 0% 100%);
-  --card-foreground: hsl(22 12% 20%);
+  --card: hsl(30 36% 93%);
+  --card-foreground: hsl(24 18% 18%);
 
-  --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(22 12% 20%);
+  --popover: hsl(30 32% 92%);
+  --popover-foreground: hsl(24 18% 18%);
 
-  /* Orange primary */
-  --primary: hsl(24 95% 53%);
-  --primary-foreground: hsl(0 0% 100%);
+  /* Warm primary CTA */
+  --primary: hsl(27 90% 58%);
+  --primary-foreground: hsl(24 22% 14%);
 
-  /* Clean gray secondary */
-  --secondary: hsl(0 0% 96%);
-  --secondary-foreground: hsl(22 12% 22%);
+  /* Muted secondary surfaces */
+  --secondary: hsl(28 12% 18%);
+  --secondary-foreground: hsl(33 22% 86%);
 
-  /* Light gray backgrounds */
-  --muted: hsl(0 0% 96%);
-  --muted-foreground: hsl(22 10% 38%);
+  --muted: hsl(28 11% 16%);
+  --muted-foreground: hsl(30 12% 62%);
 
-  /* Clean accent */
-  --accent: hsl(24 95% 53%);
-  --accent-foreground: hsl(0 0% 100%);
+  --accent: hsl(24 78% 50%);
+  --accent-foreground: hsl(24 20% 14%);
 
-  --destructive: hsl(0 84% 60%);
-  --destructive-foreground: hsl(0 0% 100%);
+  --destructive: hsl(6 65% 48%);
+  --destructive-foreground: hsl(33 24% 92%);
 
-  --border: hsl(22 15% 86%);
-  --input: hsl(0 0% 97%);
-  --ring: hsl(24 95% 53%);
+  --border: hsl(28 12% 26%);
+  --input: hsl(28 12% 20%);
+  --ring: hsl(27 80% 55%);
 
-  --radius: 12px;
+  --radius: 16px;
 }
 
 .dark {
-  --background: hsl(0 0% 4%);
-  --foreground: hsl(0 0% 96%);
+  --background: hsl(28 9% 11%);
+  --foreground: hsl(33 26% 90%);
 
-  --card: hsl(0 0% 8%);
-  --card-foreground: hsl(0 0% 95%);
+  --card: hsl(30 36% 93%);
+  --card-foreground: hsl(24 18% 18%);
 
-  --popover: hsl(0 0% 6%);
-  --popover-foreground: hsl(0 0% 96%);
+  --popover: hsl(30 32% 92%);
+  --popover-foreground: hsl(24 18% 18%);
 
-  --primary: hsl(24 95% 53%);
-  --primary-foreground: hsl(0 0% 100%);
+  --primary: hsl(27 90% 58%);
+  --primary-foreground: hsl(24 22% 14%);
 
-  --secondary: hsl(0 0% 14%);
-  --secondary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(28 12% 18%);
+  --secondary-foreground: hsl(33 22% 86%);
 
-  --muted: hsl(0 0% 11%);
-  --muted-foreground: hsl(0 0% 54%);
+  --muted: hsl(28 11% 16%);
+  --muted-foreground: hsl(30 12% 62%);
 
-  --accent: hsl(24 95% 53%);
-  --accent-foreground: hsl(0 0% 100%);
+  --accent: hsl(24 78% 50%);
+  --accent-foreground: hsl(24 20% 14%);
 
-  --destructive: hsl(0 84% 60%);
-  --destructive-foreground: hsl(0 0% 100%);
+  --destructive: hsl(6 65% 48%);
+  --destructive-foreground: hsl(33 24% 92%);
 
-  --border: hsl(0 0% 18%);
-  --input: hsl(0 0% 18%);
-  --ring: hsl(24 95% 53%);
+  --border: hsl(28 12% 26%);
+  --input: hsl(28 12% 20%);
+  --ring: hsl(27 80% 55%);
 }
 
 @layer base {
@@ -90,29 +87,23 @@
     min-height: 100vh;
   }
 
-  /* Modern app background */
+  /* Ember-lit app background */
   .app-background {
-    background: linear-gradient(
-      135deg,
-      hsl(0 0% 99%) 0%,
-      hsl(0 0% 97%) 50%,
-      hsl(0 0% 95%) 100%
-    );
+    background:
+      radial-gradient(700px 420px at 18% 15%, rgba(255, 148, 84, 0.08), transparent 65%),
+      radial-gradient(800px 520px at 78% 85%, rgba(255, 98, 62, 0.06), transparent 65%),
+      linear-gradient(180deg, hsl(28 9% 12%) 0%, hsl(28 9% 10%) 100%);
     min-height: 100vh;
   }
 
-  /* Animated gradient background */
+  /* Cinematic glow background */
   .animated-gradient-bg {
-    background: linear-gradient(
-      -45deg,
-      hsl(0 72% 51%),
-      hsl(14 88% 55%),
-      hsl(28 76% 47%),
-      hsl(45 93% 58%),
-      hsl(0 72% 51%)
-    );
-    background-size: 400% 400%;
-    animation: gradientShift 15s ease infinite;
+    background:
+      radial-gradient(900px 600px at 68% 22%, rgba(255, 162, 92, 0.12), transparent 65%),
+      radial-gradient(1000px 700px at 12% 78%, rgba(255, 110, 64, 0.1), transparent 70%),
+      linear-gradient(180deg, hsl(28 10% 12%) 0%, hsl(28 9% 10%) 100%);
+    background-size: 100% 100%;
+    animation: glowBreathe 10s ease-in-out infinite;
     min-height: 100vh;
     position: relative;
   }
@@ -124,24 +115,19 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.1) 0%,
-      rgba(255, 255, 255, 0.05) 50%,
-      rgba(0, 0, 0, 0.05) 100%
-    );
+    background:
+      radial-gradient(1200px 800px at 50% 50%, rgba(255, 255, 255, 0.02), transparent 70%);
     pointer-events: none;
+    opacity: 0.7;
   }
 
-  @keyframes gradientShift {
-    0% {
-      background-position: 0% 50%;
+  @keyframes glowBreathe {
+    0%,
+    100% {
+      filter: brightness(0.98);
     }
     50% {
-      background-position: 100% 50%;
-    }
-    100% {
-      background-position: 0% 50%;
+      filter: brightness(1.04);
     }
   }
 
@@ -178,24 +164,25 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(0 0% 80%);
+    background: hsl(28 12% 34%);
     border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(0 0% 70%);
+    background: hsl(28 12% 40%);
   }
 }
 
 @layer utilities {
   /* Clean shadows */
   .shadow-clean {
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 6px 0 rgba(18, 10, 6, 0.25),
+      0 1px 2px 0 rgba(18, 10, 6, 0.18);
   }
 
   .shadow-clean-lg {
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-      0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 18px 28px -10px rgba(16, 8, 4, 0.45),
+      0 8px 14px -6px rgba(16, 8, 4, 0.3);
   }
 
   /* DoorDash-style card hover */
@@ -204,14 +191,14 @@
   }
 
   .card-hover:hover {
-    box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
+    box-shadow: 0 10px 20px -6px rgba(16, 8, 4, 0.35);
   }
 
   /* Glass morphism effects */
   .glass-card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 230, 210, 0.08);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 210, 180, 0.18);
   }
 
   /* Floating animation for background elements */

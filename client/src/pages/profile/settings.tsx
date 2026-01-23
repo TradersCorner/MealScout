@@ -44,7 +44,7 @@ export default function SettingsPage() {
   return (
     <div className="max-w-md mx-auto bg-[var(--bg-app)] min-h-screen relative pb-20">
       {/* Header */}
-      <header className="px-6 py-6 bg-white border-b border-border">
+      <header className="px-6 py-6 bg-[hsl(var(--background))] border-b border-white/5">
         <div className="flex items-center mb-2">
           <Link href="/profile">
             <Button variant="ghost" size="sm" className="mr-3 -ml-2" data-testid="button-back-settings">

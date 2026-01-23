@@ -2244,6 +2244,7 @@ export const events = pgTable(
     requiresPayment: boolean("requires_payment").default(false),
     stripeProductId: varchar("stripe_product_id"),
     stripePriceId: varchar("stripe_price_id"),
+    unbookedNotificationSentAt: timestamp("unbooked_notification_sent_at"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },

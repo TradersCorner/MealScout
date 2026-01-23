@@ -61,7 +61,7 @@ export default function ProfilePage() {
   if (!isAuthenticated || !user) {
     return (
       <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">
-        <header className="px-6 py-6 bg-white border-b border-border">
+      <header className="px-6 py-6 bg-[hsl(var(--background))] border-b border-white/5">
           <h1 className="text-2xl font-bold text-foreground flex items-center">
             <User className="w-6 h-6 text-primary mr-3" />
             Profile
@@ -136,14 +136,14 @@ export default function ProfilePage() {
         noIndex={true}
       />
       {/* Header */}
-      <header className="px-6 py-6 bg-gradient-to-br from-primary/10 to-primary/5 border-b border-border">
+      <header className="px-6 py-6 bg-gradient-to-br from-primary/10 to-primary/5 border-b border-white/5">
         <h1 className="text-2xl font-bold text-foreground flex items-center mb-6">
           <User className="w-6 h-6 text-primary mr-3" />
           Profile
         </h1>
 
         {/* User Info Card */}
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+        <Card className="bg-[hsl(var(--surface))] border border-white/5 shadow-lg">
           <CardContent className="p-6">
             <div className="flex items-center space-x-4">
               {user?.profileImageUrl ? (
@@ -259,7 +259,7 @@ export default function ProfilePage() {
         <div className="space-y-2">
           {menuItems.map((item, index) => (
             <Link key={index} href={item.href}>
-              <Card className="bg-white hover:bg-gray-50 transition-colors cursor-pointer border-0 shadow-md">
+              <Card className="bg-[hsl(var(--surface))] hover:bg-[hsl(var(--surface-hover))] transition-colors cursor-pointer border border-white/5 shadow-md">
                 <CardContent className="p-4">
                   <div
                     className="flex items-center justify-between"
@@ -290,7 +290,7 @@ export default function ProfilePage() {
           {/* Restaurant Owner Option (de-emphasized in menu) */}
           {user?.userType === "customer" && (
             <Link href="/restaurant-signup">
-              <Card className="bg-white hover:bg-gray-50 transition-colors cursor-pointer border-0 shadow-md">
+              <Card className="bg-[hsl(var(--surface))] hover:bg-[hsl(var(--surface-hover))] transition-colors cursor-pointer border border-white/5 shadow-md">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -308,7 +308,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Logout Button */}
-        <Card className="bg-white hover:bg-red-50 transition-colors cursor-pointer border-0 shadow-md mt-6">
+        <Card className="bg-[hsl(var(--surface))] hover:bg-[hsl(var(--surface-hover))] transition-colors cursor-pointer border border-white/5 shadow-md mt-6">
           <CardContent className="p-4">
             <button
               onClick={async () => {

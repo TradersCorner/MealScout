@@ -37,7 +37,7 @@ export default function HelpSupportPage() {
         subtitle="Get help when you need it"
         fallbackHref="/profile"
         icon={HelpCircle}
-        className="bg-white border-b border-border"
+        className="bg-[hsl(var(--background))] border-b border-white/5"
       />
 
       {/* Content */}

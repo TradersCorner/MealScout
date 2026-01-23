@@ -191,7 +191,7 @@ export default function AddressesPage() {
             Add
           </Button>
         }
-        className="bg-white border-b border-border"
+        className="bg-[hsl(var(--background))] border-b border-white/5"
       />
 
       {/* Content */}

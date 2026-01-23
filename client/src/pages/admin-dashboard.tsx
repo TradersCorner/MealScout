@@ -2185,7 +2185,7 @@ export default function AdminDashboard() {
   return (
     <div className="max-w-7xl mx-auto min-h-screen bg-[var(--bg-app)] pb-20">
       {/* Header */}
-      <header className="px-4 sm:px-6 py-4 sm:py-6 bg-white border-b border-border">
+      <header className="px-4 sm:px-6 py-4 sm:py-6 bg-[hsl(var(--background))] border-b border-white/5">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center space-x-3">
             <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />

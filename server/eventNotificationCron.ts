@@ -1,6 +1,6 @@
 import { db } from './db';
 import { events, hosts, restaurants, eventInterests, users } from '@shared/schema';
-import { and, eq, gte, lte, lt, sql, isNull } from 'drizzle-orm';
+import { and, eq, gte, lte, sql, isNull } from 'drizzle-orm';
 import { emailService } from './emailService';
 import auditLogger from './auditLogger';
 
@@ -58,6 +58,34 @@ export async function notifyUnbookedEvents(): Promise<{
 
     for (const { event, host } of upcomingUnbookedEvents) {
       try {
+        if (event.unbookedNotificationSentAt) {
+          auditLogger.info('Unbooked event notification skipped', {
+            eventId: event.id,
+            reason: 'already_notified',
+            lastSentAt: event.unbookedNotificationSentAt,
+          });
+          continue;
+        }
+
+        const [claimed] = await db
+          .update(events)
+          .set({ unbookedNotificationSentAt: now })
+          .where(
+            and(
+              eq(events.id, event.id),
+              isNull(events.unbookedNotificationSentAt),
+            ),
+          )
+          .returning({ id: events.id });
+
+        if (!claimed) {
+          auditLogger.info('Unbooked event notification skipped', {
+            eventId: event.id,
+            reason: 'already_claimed',
+          });
+          continue;
+        }
+
         // Get all trucks that have already expressed interest in this event
         const existingInterests = await db
           .select({ truckId: eventInterests.truckId })

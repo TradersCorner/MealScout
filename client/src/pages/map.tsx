@@ -1,6 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
 import L from "leaflet";
 import Navigation from "@/components/navigation";
 import { Button } from "@/components/ui/button";
@@ -128,6 +135,15 @@ function MapControls({
   );
 }
 
+function ZoomWatcher({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
+  useMapEvents({
+    zoomend: (event) => {
+      onZoomChange(event.target.getZoom());
+    },
+  });
+  return null;
+}
+
 interface Restaurant {
   id: string;
   name: string;
@@ -181,6 +197,8 @@ type EventLocation = {
   status: string;
   hostName?: string | null;
   hostAddress?: string | null;
+  hostLatitude?: number | string | null;
+  hostLongitude?: number | string | null;
 };
 
 type ParkingPassLocation = {
@@ -200,6 +218,45 @@ type MapLocationsResponse = {
 type GeoPoint = { lat: number; lng: number };
 type GeocodeCacheEntry = { lat: number; lng: number; ts: number };
 type GeocodeFailureEntry = { ts: number };
+
+const escapeHtml = (value: string) =>
+  value.replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case '"':
+        return "&quot;";
+      case "'":
+        return "&#39;";
+      default:
+        return char;
+    }
+  });
+
+const toNumberOrNull = (value?: number | string | null) => {
+  if (value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const haversineKm = (a: GeoPoint, b: GeoPoint) => {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const sinLat = Math.sin(dLat / 2);
+  const sinLng = Math.sin(dLng / 2);
+  const h =
+    sinLat * sinLat +
+    Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng;
+  return 2 * earthRadiusKm * Math.asin(Math.sqrt(h));
+};
 
 const hostIcon = new L.Icon({
   iconUrl:
@@ -470,6 +527,54 @@ export default function MapPage() {
 
   const liveTrucks = Array.isArray(liveTrucksData) ? liveTrucksData : [];
 
+  const truckCoords = useMemo(() => {
+    return liveTrucks
+      .map((truck) => {
+        const lat = toNumberOrNull(truck.currentLatitude);
+        const lng = toNumberOrNull(truck.currentLongitude);
+        if (lat === null || lng === null) return null;
+        return { id: truck.id, lat, lng };
+      })
+      .filter(Boolean) as Array<{ id: string; lat: number; lng: number }>;
+  }, [liveTrucks]);
+
+  const hasTruckNearby = (coords: GeoPoint, radiusKm = 0.12) => {
+    return truckCoords.some((truck) => {
+      return (
+        haversineKm(coords, { lat: truck.lat, lng: truck.lng }) <= radiusKm
+      );
+    });
+  };
+
+  const getLiveTruckIcon = (truck: LiveTruck) => {
+    if (zoomLevel < 15) return liveTruckIcon;
+    const label = escapeHtml(truck.name || "Food truck");
+    const detail = zoomLevel >= 17 ? "Tap for profile" : "Live now";
+    const size = zoomLevel >= 17 ? [160, 52] : [120, 44];
+    return L.divIcon({
+      className: "live-truck-marker",
+      html: `
+        <div style="display:flex;align-items:center;gap:8px;background:#ffffff;border:2px solid #10B981;border-radius:14px;padding:6px 10px;box-shadow:0 8px 18px rgba(0,0,0,0.15);font-family:inherit;">
+          <div style="width:14px;height:14px;border-radius:50%;background:#10B981;box-shadow:0 0 0 3px rgba(16,185,129,0.25);"></div>
+          <div style="display:flex;flex-direction:column;">
+            <div style="font-weight:700;font-size:12px;color:#0f172a;line-height:1.1;">${label}</div>
+            <div style="font-size:10px;color:#059669;">${detail}</div>
+          </div>
+        </div>
+      `,
+      iconSize: size as [number, number],
+      iconAnchor: [size[0] / 2, size[1]],
+      popupAnchor: [0, -size[1]],
+    });
+  };
+
+  const getParkingPassIcon = (coords: GeoPoint | null) => {
+    if (coords && hasTruckNearby(coords)) {
+      return liveTruckIcon;
+    }
+    return parkingPassIcon;
+  };
+
   // Fetch host + event locations for map
   const { data: mapLocations } = useQuery<MapLocationsResponse>({
     queryKey: ["/api/map/locations"],
@@ -491,6 +596,55 @@ export default function MapPage() {
     staleTime: 2 * 60 * 1000,
   });
 
+  useEffect(() => {
+    if (
+      !mapLocations?.hostLocations?.length &&
+      !mapLocations?.eventLocations?.length
+    ) {
+      return;
+    }
+
+    const nextHosts: Record<string, GeoPoint> = {};
+    mapLocations?.hostLocations.forEach((host) => {
+      const lat = toNumberOrNull(host.latitude);
+      const lng = toNumberOrNull(host.longitude);
+      if (lat !== null && lng !== null) {
+        nextHosts[host.id] = { lat, lng };
+      }
+    });
+
+    const nextEvents: Record<string, GeoPoint> = {};
+    mapLocations?.eventLocations.forEach((event) => {
+      const lat = toNumberOrNull(event.hostLatitude);
+      const lng = toNumberOrNull(event.hostLongitude);
+      if (lat !== null && lng !== null) {
+        nextEvents[event.id] = { lat, lng };
+      }
+    });
+
+    if (Object.keys(nextHosts).length) {
+      setHostCoords((prev) => ({ ...prev, ...nextHosts }));
+    }
+    if (Object.keys(nextEvents).length) {
+      setEventCoords((prev) => ({ ...prev, ...nextEvents }));
+    }
+  }, [mapLocations]);
+
+  useEffect(() => {
+    if (!parkingPassLocations.length) return;
+    const nextParking: Record<string, GeoPoint> = {};
+    parkingPassLocations.forEach((event) => {
+      const lat = toNumberOrNull(event.host?.latitude);
+      const lng = toNumberOrNull(event.host?.longitude);
+      if (lat !== null && lng !== null) {
+        nextParking[event.id] = { lat, lng };
+      }
+    });
+    if (Object.keys(nextParking).length) {
+      setParkingCoords((prev) => ({ ...prev, ...nextParking }));
+    }
+  }, [parkingPassLocations]);
+
   // Build a geocoding work list for any host/event without coordinates yet
   useEffect(() => {
     const queue: string[] = [];
@@ -499,6 +653,11 @@ export default function MapPage() {
     const failureCooldownMs = 6 * 60 * 60 * 1000;
 
     mapLocations?.hostLocations.forEach((host) => {
+      const lat = toNumberOrNull(host.latitude);
+      const lng = toNumberOrNull(host.longitude);
+      if (lat !== null && lng !== null) {
+        return;
+      }
       if (!hostCoords[host.id]) {
         queue.push(`host:${host.id}`);
         addressByKey[`host:${host.id}`] = host.address;
@@ -506,6 +665,11 @@ export default function MapPage() {
     });
 
     mapLocations?.eventLocations.forEach((event) => {
+      const lat = toNumberOrNull(event.hostLatitude);
+      const lng = toNumberOrNull(event.hostLongitude);
+      if (lat !== null && lng !== null) {
+        return;
+      }
       if (!eventCoords[event.id] && event.hostAddress) {
         queue.push(`event:${event.id}`);
         addressByKey[`event:${event.id}`] = event.hostAddress;
@@ -513,6 +677,11 @@ export default function MapPage() {
     });
 
     parkingPassLocations.forEach((event) => {
+      const lat = toNumberOrNull(event.host?.latitude);
+      const lng = toNumberOrNull(event.host?.longitude);
+      if (lat !== null && lng !== null) {
+        return;
+      }
       if (!parkingCoords[event.id] && event.host?.address) {
         queue.push(`parking:${event.id}`);
         addressByKey[`parking:${event.id}`] = event.host.address;
@@ -758,18 +927,14 @@ export default function MapPage() {
 
               {/* Live Truck Markers */}
               {liveTrucks.map((truck) => {
-                const lat = truck.currentLatitude
-                  ? Number(truck.currentLatitude)
-                  : null;
-                const lng = truck.currentLongitude
-                  ? Number(truck.currentLongitude)
-                  : null;
+                const lat = toNumberOrNull(truck.currentLatitude);
+                const lng = toNumberOrNull(truck.currentLongitude);
                 if (!lat || !lng) return null;
                 return (
                   <Marker
                     key={`live-${truck.id}`}
                     position={[lat, lng]}
-                    icon={liveTruckIcon}
+                    icon={getLiveTruckIcon(truck)}
                   >
                     <Popup>
                       <div className="min-w-48 rounded-xl bg-emerald-600 text-white p-3 shadow-lg space-y-1">
@@ -801,13 +966,21 @@ export default function MapPage() {
 
               {/* Host Location Markers (open requests) */}
               {mapLocations?.hostLocations.map((host) => {
-                const coords = hostCoords[host.id];
+                const coords =
+                  hostCoords[host.id] ||
+                  (toNumberOrNull(host.latitude) !== null &&
+                  toNumberOrNull(host.longitude) !== null
+                    ? {
+                        lat: Number(host.latitude),
+                        lng: Number(host.longitude),
+                      }
+                    : null);
                 if (!coords) return null;
                 return (
                   <Marker
                     key={`host-${host.id}`}
                     position={[coords.lat, coords.lng]}
-                    icon={hostIcon}
+                    icon={hasTruckNearby(coords) ? liveTruckIcon : hostIcon}
                   >
                     <Popup>
                       <div className="min-w-52 space-y-1 rounded-xl bg-blue-600 text-white p-3 shadow-lg">
@@ -866,7 +1039,15 @@ export default function MapPage() {
 
               {/* Event Markers */}
               {mapLocations?.eventLocations.map((event) => {
-                const coords = eventCoords[event.id];
+                const coords =
+                  eventCoords[event.id] ||
+                  (toNumberOrNull(event.hostLatitude) !== null &&
+                  toNumberOrNull(event.hostLongitude) !== null
+                    ? {
+                        lat: Number(event.hostLatitude),
+                        lng: Number(event.hostLongitude),
+                      }
+                    : null);
                 if (!coords) return null;
                 return (
                   <Marker
@@ -912,7 +1093,8 @@ export default function MapPage() {
               {parkingPassLocations.map((event) => {
                 const coords =
                   parkingCoords[event.id] ||
-                  (event.host?.latitude && event.host?.longitude
+                  (toNumberOrNull(event.host?.latitude) !== null &&
+                  toNumberOrNull(event.host?.longitude) !== null
                     ? {
                         lat: Number(event.host.latitude),
                         lng: Number(event.host.longitude),
@@ -923,7 +1105,7 @@ export default function MapPage() {
                   <Marker
                     key={`parking-${event.id}`}
                     position={[coords.lat, coords.lng]}
-                    icon={parkingPassIcon}
+                    icon={getParkingPassIcon(coords)}
                   >
                     <Popup>
                       <div className="min-w-52 space-y-1 rounded-xl bg-orange-600 text-white p-3 shadow-lg">
@@ -979,6 +1161,7 @@ export default function MapPage() {
                 userLocation={userLocation}
                 zoomLevel={zoomLevel}
               />
+              <ZoomWatcher onZoomChange={setZoomLevel} />
             </MapContainer>
           )}
 

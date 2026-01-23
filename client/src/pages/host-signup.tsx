@@ -16,6 +16,22 @@ const locationTypeOptions = [
   { value: "other", label: "Other" },
 ];
 
+async function geocodeAddress(address: string) {
+  if (!address) return null;
+  const response = await fetch(
+    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+      address,
+    )}&limit=1`,
+    {
+      headers: { "Accept-Language": "en", "User-Agent": "MealScout/1.0" },
+    },
+  );
+  if (!response.ok) return null;
+  const data = (await response.json()) as Array<{ lat: string; lon: string }>;
+  if (!data.length) return null;
+  return { lat: Number(data[0].lat), lng: Number(data[0].lon) };
+}
+
 function HostSignup() {
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
@@ -135,6 +151,12 @@ function HostSignup() {
 
     setIsSubmitting(true);
     try {
+      const fullAddress = [address, city, state]
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .join(", ");
+      const coords = await geocodeAddress(fullAddress).catch(() => null);
+
       const response = await fetch("/api/hosts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -148,6 +170,8 @@ function HostSignup() {
           contactPhone,
           locationType,
           description,
+          latitude: coords?.lat,
+          longitude: coords?.lng,
         }),
       });
 

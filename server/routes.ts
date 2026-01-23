@@ -72,6 +72,8 @@ import {
   passwordResetTokens,
   users,
   restaurants,
+  truckImportListings,
+  truckClaimRequests,
   awardHistory,
 } from "@shared/schema";
 import { z } from "zod";
@@ -2944,6 +2946,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error in restaurant signup:", error);
       res.status(400).json({
         message: error.message || "Failed to create restaurant account",
+      });
+    }
+  });
+
+  app.get("/api/truck-claims/search", isAuthenticated, async (req: any, res) => {
+    try {
+      const query = String(req.query?.q || "").trim();
+      if (!query) {
+        return res.json([]);
+      }
+
+      const externalMatch = await db
+        .select({
+          id: truckImportListings.id,
+          name: truckImportListings.name,
+          address: truckImportListings.address,
+          city: truckImportListings.city,
+          state: truckImportListings.state,
+          externalId: truckImportListings.externalId,
+          confidenceScore: truckImportListings.confidenceScore,
+        })
+        .from(truckImportListings)
+        .where(
+          and(
+            eq(truckImportListings.externalId, query),
+            eq(truckImportListings.status, "unclaimed"),
+          ),
+        )
+        .limit(10);
+
+      if (externalMatch.length > 0) {
+        return res.json(externalMatch);
+      }
+
+      const searchValue = `%${query.toLowerCase()}%`;
+      const matches = await db
+        .select({
+          id: truckImportListings.id,
+          name: truckImportListings.name,
+          address: truckImportListings.address,
+          city: truckImportListings.city,
+          state: truckImportListings.state,
+          externalId: truckImportListings.externalId,
+          confidenceScore: truckImportListings.confidenceScore,
+        })
+        .from(truckImportListings)
+        .where(
+          and(
+            eq(truckImportListings.status, "unclaimed"),
+            sql`lower(${truckImportListings.name}) like ${searchValue}`,
+          ),
+        )
+        .orderBy(desc(truckImportListings.confidenceScore))
+        .limit(10);
+
+      res.json(matches);
+    } catch (error) {
+      console.error("Error searching truck listings:", error);
+      res.status(500).json({ message: "Failed to search truck listings" });
+    }
+  });
+
+  app.post("/api/truck-claims", isAuthenticated, async (req: any, res) => {
+    try {
+      const payloadSchema = z.object({
+        listingId: z.string().min(1),
+        restaurantData: insertRestaurantSchema
+          .omit({ ownerId: true })
+          .partial(),
+      });
+      const { listingId, restaurantData } = payloadSchema.parse(req.body);
+
+      const [listing] = await db
+        .select()
+        .from(truckImportListings)
+        .where(eq(truckImportListings.id, listingId))
+        .limit(1);
+
+      if (!listing || listing.status !== "unclaimed") {
+        return res
+          .status(404)
+          .json({ message: "Truck listing is not available to claim" });
+      }
+
+      const mergedRestaurant = {
+        name: restaurantData.name || listing.name,
+        address: restaurantData.address || listing.address,
+        city: restaurantData.city || listing.city,
+        state: restaurantData.state || listing.state,
+        phone: restaurantData.phone || listing.phone,
+        cuisineType: restaurantData.cuisineType || listing.cuisineType,
+        websiteUrl: restaurantData.websiteUrl || listing.websiteUrl,
+        instagramUrl: restaurantData.instagramUrl || listing.instagramUrl,
+        facebookPageUrl:
+          restaurantData.facebookPageUrl || listing.facebookPageUrl,
+        latitude: restaurantData.latitude || listing.latitude,
+        longitude: restaurantData.longitude || listing.longitude,
+        description: restaurantData.description || null,
+        amenities: restaurantData.amenities || null,
+      };
+
+      if (!mergedRestaurant.name || !mergedRestaurant.address) {
+        return res.status(400).json({
+          message: "Name and address are required to claim this listing",
+        });
+      }
+
+      const restaurant = await storage.createRestaurant({
+        ownerId: req.user.id,
+        name: mergedRestaurant.name,
+        address: mergedRestaurant.address,
+        phone: mergedRestaurant.phone || null,
+        businessType: "food_truck",
+        cuisineType: mergedRestaurant.cuisineType || null,
+        city: mergedRestaurant.city || null,
+        state: mergedRestaurant.state || null,
+        websiteUrl: mergedRestaurant.websiteUrl || null,
+        instagramUrl: mergedRestaurant.instagramUrl || null,
+        facebookPageUrl: mergedRestaurant.facebookPageUrl || null,
+        latitude: mergedRestaurant.latitude || null,
+        longitude: mergedRestaurant.longitude || null,
+        description: mergedRestaurant.description || null,
+        amenities: mergedRestaurant.amenities || null,
+        isFoodTruck: true,
+        isActive: false,
+        isVerified: false,
+        claimedFromImportId: listing.id,
+      });
+
+      const [claimRequest] = await db
+        .insert(truckClaimRequests)
+        .values({
+          listingId: listing.id,
+          restaurantId: restaurant.id,
+          userId: req.user.id,
+        })
+        .returning();
+
+      await db
+        .update(truckImportListings)
+        .set({
+          status: "claim_requested",
+          updatedAt: new Date(),
+        })
+        .where(eq(truckImportListings.id, listing.id));
+
+      const notificationEmail = "notifications@mealscout.us";
+      await emailService.sendBasicEmail(
+        notificationEmail,
+        "Food Truck Claim Submitted",
+        `
+          <p>A food truck claim was submitted.</p>
+          <p><strong>Truck:</strong> ${restaurant.name}</p>
+          <p><strong>Listing ID:</strong> ${listing.id}</p>
+          <p><strong>User ID:</strong> ${req.user.id}</p>
+          <p><strong>Email:</strong> ${req.user.email || "Unknown"}</p>
+        `,
+      );
+
+      res.json({
+        restaurant,
+        claimRequestId: claimRequest?.id,
+      });
+    } catch (error: any) {
+      console.error("Error creating truck claim:", error);
+      res.status(400).json({
+        message: error.message || "Failed to claim truck listing",
       });
     }
   });

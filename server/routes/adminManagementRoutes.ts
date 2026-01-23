@@ -1,13 +1,15 @@
 import type { Express } from "express";
 import Stripe from "stripe";
 import crypto from "crypto";
-import { eq, and, inArray, or, sql } from "drizzle-orm";
+import { eq, and, inArray, or, sql, desc } from "drizzle-orm";
 import { storage } from "../storage";
 import { isAuthenticated, isStaffOrAdmin } from "../unifiedAuth";
 import { sanitizeUser, sanitizeUsers } from "../utils/sanitize";
 import { sendAccountSetupInvite } from "../utils/accountSetup";
 import { emailService } from "../emailService";
 import { db } from "../db";
+import multer from "multer";
+import { parseTruckImportFile } from "../utils/truckImport";
 import {
   deals,
   eventBookings,
@@ -15,6 +17,10 @@ import {
   events,
   hosts,
   restaurants,
+  verificationRequests,
+  truckImportBatches,
+  truckImportListings,
+  truckClaimRequests,
   users,
   userAddresses,
   affiliateShareEvents,
@@ -25,6 +31,13 @@ import {
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
+
+const truckImportUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 20 * 1024 * 1024,
+  },
+});
 
 export function registerAdminManagementRoutes(app: Express) {
   const denyStaffEdits = (req: any, res: any) => {
@@ -366,6 +379,162 @@ export function registerAdminManagementRoutes(app: Express) {
         res.status(500).json({ message: "Failed to fetch users" });
       }
     }
+  );
+
+  app.get(
+    "/api/admin/truck-imports",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (!requireAdminUser(req, res)) return;
+      try {
+        const batches = await db
+          .select()
+          .from(truckImportBatches)
+          .orderBy(desc(truckImportBatches.createdAt))
+          .limit(50);
+        res.json(batches);
+      } catch (error) {
+        console.error("Error fetching truck import batches:", error);
+        res.status(500).json({ message: "Failed to fetch import batches" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/truck-imports",
+    isAuthenticated,
+    isStaffOrAdmin,
+    truckImportUpload.single("file"),
+    async (req: any, res) => {
+      if (!requireAdminUser(req, res)) return;
+      try {
+        const file = req.file;
+        if (!file) {
+          return res.status(400).json({ message: "File is required" });
+        }
+
+        const source = String(req.body?.source || "").trim() || null;
+        const { rows } = await parseTruckImportFile(
+          file.buffer,
+          file.originalname || "import.csv",
+        );
+
+        const [batch] = await db
+          .insert(truckImportBatches)
+          .values({
+            source,
+            fileName: file.originalname,
+            uploadedBy: req.user?.id,
+            totalRows: rows.length,
+          })
+          .returning();
+
+        let importedRows = 0;
+        let missingRows = 0;
+        let duplicateRows = 0;
+
+        const listingsToInsert: Array<typeof truckImportListings.$inferInsert> =
+          [];
+
+        for (const row of rows) {
+          const name = row.name?.trim();
+          const address = row.address?.trim();
+          if (!name || !address) {
+            missingRows += 1;
+            continue;
+          }
+
+          const externalId = row.externalId?.trim() || null;
+          let duplicate = false;
+          if (externalId) {
+            const existing = await db
+              .select({ id: truckImportListings.id })
+              .from(truckImportListings)
+              .where(eq(truckImportListings.externalId, externalId))
+              .limit(1);
+            duplicate = existing.length > 0;
+          } else {
+            const existing = await db
+              .select({ id: truckImportListings.id })
+              .from(truckImportListings)
+              .where(
+                and(
+                  eq(truckImportListings.name, name),
+                  eq(truckImportListings.address, address),
+                  row.state
+                    ? eq(truckImportListings.state, row.state)
+                    : sql`${truckImportListings.state} is null`,
+                ),
+              )
+              .limit(1);
+            duplicate = existing.length > 0;
+          }
+
+          if (duplicate) {
+            duplicateRows += 1;
+            continue;
+          }
+
+          listingsToInsert.push({
+            batchId: batch?.id,
+            source: source || null,
+            externalId,
+            name,
+            address,
+            city: row.city || null,
+            state: row.state || null,
+            phone: row.phone || null,
+            cuisineType: row.cuisineType || null,
+            websiteUrl: row.websiteUrl || null,
+            instagramUrl: row.instagramUrl || null,
+            facebookPageUrl: row.facebookPageUrl || null,
+            latitude: row.latitude || null,
+            longitude: row.longitude || null,
+            confidenceScore: row.confidenceScore || 0,
+            status: "unclaimed",
+            rawData: row.rawData || null,
+          });
+        }
+
+        const chunkSize = 250;
+        for (let i = 0; i < listingsToInsert.length; i += chunkSize) {
+          const chunk = listingsToInsert.slice(i, i + chunkSize);
+          if (chunk.length === 0) continue;
+          await db.insert(truckImportListings).values(chunk);
+          importedRows += chunk.length;
+        }
+
+        const skippedRows = Math.max(
+          0,
+          rows.length - importedRows - duplicateRows - missingRows,
+        );
+
+        await db
+          .update(truckImportBatches)
+          .set({
+            importedRows,
+            skippedRows,
+            updatedAt: new Date(),
+          })
+          .where(eq(truckImportBatches.id, batch.id));
+
+        res.json({
+          batchId: batch.id,
+          totalRows: rows.length,
+          importedRows,
+          skippedRows,
+          missingRows,
+          duplicateRows,
+        });
+      } catch (error: any) {
+        console.error("Error importing truck listings:", error);
+        res.status(500).json({
+          message:
+            error.message || "Failed to import truck listings",
+        });
+      }
+    },
   );
 
   app.get(
@@ -1700,6 +1869,69 @@ export function registerAdminManagementRoutes(app: Express) {
         const user = req.user;
         const { id } = req.params;
         await storage.approveVerificationRequest(id, user.id);
+
+        const [claimContext] = await db
+          .select({
+            restaurantId: restaurants.id,
+            claimedFromImportId: restaurants.claimedFromImportId,
+            ownerId: restaurants.ownerId,
+            ownerEmail: users.email,
+          })
+          .from(verificationRequests)
+          .innerJoin(restaurants, eq(verificationRequests.restaurantId, restaurants.id))
+          .innerJoin(users, eq(restaurants.ownerId, users.id))
+          .where(eq(verificationRequests.id, id))
+          .limit(1);
+
+        if (claimContext?.claimedFromImportId) {
+          await db
+            .update(truckImportListings)
+            .set({
+              status: "claimed",
+              updatedAt: new Date(),
+            })
+            .where(eq(truckImportListings.id, claimContext.claimedFromImportId));
+
+          await db
+            .update(truckClaimRequests)
+            .set({
+              status: "approved",
+              reviewerId: user.id,
+              reviewedAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(truckClaimRequests.restaurantId, claimContext.restaurantId));
+
+          await db
+            .update(restaurants)
+            .set({
+              isActive: true,
+              updatedAt: new Date(),
+            })
+            .where(eq(restaurants.id, claimContext.restaurantId));
+
+          const notificationEmail = "notifications@mealscout.us";
+          if (claimContext.ownerEmail) {
+            await emailService.sendBasicEmail(
+              claimContext.ownerEmail,
+              "Your food truck claim was approved",
+              `
+                <p>Your food truck claim has been approved.</p>
+                <p><strong>Restaurant ID:</strong> ${claimContext.restaurantId}</p>
+              `,
+            );
+          }
+          await emailService.sendBasicEmail(
+            notificationEmail,
+            "Food Truck Claim Approved",
+            `
+              <p>A food truck claim was approved.</p>
+              <p><strong>Restaurant ID:</strong> ${claimContext.restaurantId}</p>
+              <p><strong>Owner ID:</strong> ${claimContext.ownerId}</p>
+            `,
+          );
+        }
+
         res.json({ success: true, message: "Verification request approved" });
       } catch (error) {
         console.error("Error approving verification request:", error);
@@ -1727,6 +1959,64 @@ export function registerAdminManagementRoutes(app: Express) {
         }
 
         await storage.rejectVerificationRequest(id, user.id, reason);
+
+        const [claimContext] = await db
+          .select({
+            restaurantId: restaurants.id,
+            claimedFromImportId: restaurants.claimedFromImportId,
+            ownerId: restaurants.ownerId,
+            ownerEmail: users.email,
+          })
+          .from(verificationRequests)
+          .innerJoin(restaurants, eq(verificationRequests.restaurantId, restaurants.id))
+          .innerJoin(users, eq(restaurants.ownerId, users.id))
+          .where(eq(verificationRequests.id, id))
+          .limit(1);
+
+        if (claimContext?.claimedFromImportId) {
+          await db
+            .update(truckImportListings)
+            .set({
+              status: "rejected",
+              updatedAt: new Date(),
+            })
+            .where(eq(truckImportListings.id, claimContext.claimedFromImportId));
+
+          await db
+            .update(truckClaimRequests)
+            .set({
+              status: "rejected",
+              reviewerId: user.id,
+              reviewedAt: new Date(),
+              rejectionReason: reason,
+              updatedAt: new Date(),
+            })
+            .where(eq(truckClaimRequests.restaurantId, claimContext.restaurantId));
+
+          const notificationEmail = "notifications@mealscout.us";
+          if (claimContext.ownerEmail) {
+            await emailService.sendBasicEmail(
+              claimContext.ownerEmail,
+              "Your food truck claim was rejected",
+              `
+                <p>Your food truck claim was rejected.</p>
+                <p><strong>Reason:</strong> ${reason}</p>
+                <p><strong>Restaurant ID:</strong> ${claimContext.restaurantId}</p>
+              `,
+            );
+          }
+          await emailService.sendBasicEmail(
+            notificationEmail,
+            "Food Truck Claim Rejected",
+            `
+              <p>A food truck claim was rejected.</p>
+              <p><strong>Restaurant ID:</strong> ${claimContext.restaurantId}</p>
+              <p><strong>Owner ID:</strong> ${claimContext.ownerId}</p>
+              <p><strong>Reason:</strong> ${reason}</p>
+            `,
+          );
+        }
+
         res.json({ success: true, message: "Verification request rejected" });
       } catch (error) {
         console.error("Error rejecting verification request:", error);

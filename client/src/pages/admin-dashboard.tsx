@@ -67,6 +67,145 @@ interface PendingRestaurant {
   isActive: boolean;
 }
 
+function TruckImportPanel({ enabled }: { enabled: boolean }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [source, setSource] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [lastResult, setLastResult] = useState<any | null>(null);
+
+  const { data: batches = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/truck-imports"],
+    enabled,
+  });
+
+  const uploadImport = useMutation({
+    mutationFn: async () => {
+      if (!file) {
+        throw new Error("Please select a file to upload.");
+      }
+      const formData = new FormData();
+      formData.append("file", file);
+      if (source.trim()) {
+        formData.append("source", source.trim());
+      }
+
+      const res = await fetch("/api/admin/truck-imports", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Failed to upload import file.");
+      }
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      setLastResult(data);
+      setFile(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/truck-imports"] });
+      toast({
+        title: "Import queued",
+        description: `Imported ${data.importedRows} rows.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Import failed",
+        description: error.message || "Unable to import file.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Package className="w-5 h-5" />
+          Food Truck Imports
+        </CardTitle>
+        <CardDescription>
+          Upload CSV or XLSX lists to preload food trucks for claims.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm font-medium">Source</label>
+            <input
+              type="text"
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md"
+              placeholder="State registry, county export, etc."
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">File</label>
+            <input
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              className="w-full px-3 py-2 border rounded-md"
+            />
+          </div>
+          <Button
+            type="button"
+            onClick={() => uploadImport.mutate()}
+            disabled={uploadImport.isPending}
+            data-testid="button-import-trucks"
+          >
+            {uploadImport.isPending ? "Uploading..." : "Upload Import"}
+          </Button>
+        </div>
+
+        {lastResult && (
+          <div className="p-3 rounded-md bg-muted/40 text-sm">
+            <div>Batch: {lastResult.batchId}</div>
+            <div>Imported: {lastResult.importedRows}</div>
+            <div>Duplicates: {lastResult.duplicateRows}</div>
+            <div>Missing Required: {lastResult.missingRows}</div>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <div className="text-sm font-semibold">Recent Imports</div>
+          {batches.length === 0 ? (
+            <div className="text-xs text-muted-foreground">
+              No import batches yet.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {batches.slice(0, 5).map((batch: any) => (
+                <div
+                  key={batch.id}
+                  className="flex items-center justify-between rounded-md border px-3 py-2 text-xs"
+                >
+                  <div>
+                    <div className="font-semibold">{batch.fileName}</div>
+                    <div className="text-muted-foreground">
+                      {batch.source || "Unspecified source"}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div>Imported: {batch.importedRows}</div>
+                    <div className="text-muted-foreground">
+                      Skipped: {batch.skippedRows}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // Manual User/Host Creation Component (Combined)
 function ManualUserCreation({ adminUser }: { adminUser?: any }) {
   const { toast } = useToast();
@@ -2845,6 +2984,8 @@ export default function AdminDashboard() {
                   <ManualUserCreation adminUser={adminUser} />
                 </CardContent>
               </Card>
+
+              <TruckImportPanel enabled={selectedTab === "onboarding"} />
             </div>
 
             {/* Existing Hosts Management */}

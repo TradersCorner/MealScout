@@ -212,6 +212,11 @@ export default function RestaurantSignup() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [claimQuery, setClaimQuery] = useState("");
+  const [claimResults, setClaimResults] = useState<any[]>([]);
+  const [claimLoading, setClaimLoading] = useState(false);
+  const [claimSelection, setClaimSelection] = useState<any | null>(null);
+  const [claimError, setClaimError] = useState("");
   const [onboardingState, dispatchOnboarding] = useReducer(
     hostOnboardingTransition,
     {
@@ -281,6 +286,17 @@ export default function RestaurantSignup() {
       password: "",
     },
   });
+
+  const selectedBusinessType = form.watch("businessType");
+
+  useEffect(() => {
+    if (selectedBusinessType !== "food_truck" && claimSelection) {
+      setClaimSelection(null);
+      setClaimResults([]);
+      setClaimQuery("");
+      setClaimError("");
+    }
+  }, [selectedBusinessType, claimSelection]);
 
   // Persist restaurant business details so owners can resume onboarding
   useEffect(() => {
@@ -354,6 +370,14 @@ export default function RestaurantSignup() {
 
   const createRestaurantMutation = useMutation({
     mutationFn: async (data: Omit<RestaurantFormData, "acceptTerms">) => {
+      if (claimSelection && data.businessType === "food_truck") {
+        const res = await apiRequest("POST", "/api/truck-claims", {
+          listingId: claimSelection.id,
+          restaurantData: data,
+        });
+        const payload = await res.json();
+        return payload?.restaurant || payload;
+      }
       // Check if user is already authenticated
       if (isAuthenticated && user) {
         // For authenticated users, use existing user data
@@ -385,7 +409,13 @@ export default function RestaurantSignup() {
           },
           subscriptionPlan: "month",
         };
-        return await apiRequest("POST", "/api/restaurants/signup", requestData);
+        const res = await apiRequest(
+          "POST",
+          "/api/restaurants/signup",
+          requestData,
+        );
+        const payload = await res.json();
+        return payload?.restaurant || payload;
       } else {
         // For new registrations, get user data from signup form
         const signupData = signupForm.getValues();
@@ -418,7 +448,13 @@ export default function RestaurantSignup() {
           },
           subscriptionPlan: "month",
         };
-        return await apiRequest("POST", "/api/restaurants/signup", requestData);
+        const res = await apiRequest(
+          "POST",
+          "/api/restaurants/signup",
+          requestData,
+        );
+        const payload = await res.json();
+        return payload?.restaurant || payload;
       }
     },
     onSuccess: (restaurant) => {
@@ -527,6 +563,44 @@ export default function RestaurantSignup() {
       description: COPY.notifications.verification.skippedDescription,
     });
     setLocation("/subscribe");
+  };
+
+  const handleClaimSearch = async () => {
+    const query = claimQuery.trim();
+    if (!query) {
+      setClaimResults([]);
+      setClaimError("");
+      return;
+    }
+
+    setClaimLoading(true);
+    setClaimError("");
+    try {
+      const res = await apiRequest(
+        "GET",
+        `/api/truck-claims/search?q=${encodeURIComponent(query)}`,
+      );
+      const data = await res.json();
+      setClaimResults(Array.isArray(data) ? data : []);
+      if (!data || data.length === 0) {
+        setClaimError(COPY.forms.restaurant.claimNoResults);
+      }
+    } catch (error: any) {
+      setClaimError(error.message || COPY.forms.restaurant.claimNoResults);
+    } finally {
+      setClaimLoading(false);
+    }
+  };
+
+  const applyClaimSelection = (listing: any) => {
+    setClaimSelection(listing);
+    setClaimResults([]);
+    setClaimQuery(listing.externalId || listing.name || "");
+    form.setValue("name", listing.name || "");
+    form.setValue("address", listing.address || "");
+    form.setValue("city", listing.city || "");
+    form.setValue("state", listing.state || "");
+    form.setValue("phone", listing.phone || "");
   };
 
   const onSignup = (data: SignupFormData) => {
@@ -1551,6 +1625,110 @@ export default function RestaurantSignup() {
                   )}
                 />
 
+                {selectedBusinessType === "food_truck" && (
+                  <div className="space-y-3 rounded-xl border border-orange-200 bg-orange-50/60 p-4">
+                    <div>
+                      <h3 className="text-base font-semibold text-gray-900">
+                        {COPY.forms.restaurant.claimTitle}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {COPY.forms.restaurant.claimDescription}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">
+                        {COPY.forms.restaurant.claimSearchLabel}
+                      </label>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Input
+                          value={claimQuery}
+                          onChange={(e) => setClaimQuery(e.target.value)}
+                          placeholder={
+                            COPY.forms.restaurant.claimSearchPlaceholder
+                          }
+                          className="py-3 px-4 text-base border-0 bg-white/80 focus:bg-white focus:ring-2 focus:ring-orange-400/30 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
+                          data-testid="input-claim-search"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleClaimSearch}
+                          disabled={claimLoading}
+                          data-testid="button-claim-search"
+                        >
+                          {COPY.forms.restaurant.claimSearchButton}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {claimSelection && (
+                      <div className="rounded-lg border border-orange-200 bg-white px-3 py-2 text-sm">
+                        <div className="font-semibold text-gray-900">
+                          {COPY.forms.restaurant.claimSelectedLabel}
+                        </div>
+                        <div className="text-gray-700">
+                          {claimSelection.name}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {claimSelection.address}
+                          {claimSelection.city ? `, ${claimSelection.city}` : ""}
+                          {claimSelection.state
+                            ? `, ${claimSelection.state}`
+                            : ""}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setClaimSelection(null)}
+                          data-testid="button-claim-clear"
+                        >
+                          {COPY.forms.restaurant.claimClearButton}
+                        </Button>
+                      </div>
+                    )}
+
+                    {claimResults.length > 0 && !claimSelection && (
+                      <div className="space-y-2">
+                        {claimResults.map((listing) => (
+                          <div
+                            key={listing.id}
+                            className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <div>
+                              <div className="font-semibold text-gray-900">
+                                {listing.name}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {listing.address}
+                                {listing.city ? `, ${listing.city}` : ""}
+                                {listing.state ? `, ${listing.state}` : ""}
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => applyClaimSelection(listing)}
+                              data-testid={`button-claim-select-${listing.id}`}
+                            >
+                              {COPY.forms.restaurant.claimSelectButton}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {claimError && (
+                      <div className="text-xs text-gray-500">
+                        {claimError}
+                      </div>
+                    )}
+                    <div className="text-xs text-gray-500">
+                      {COPY.forms.restaurant.claimDisclaimer}
+                    </div>
+                  </div>
+                )}
+
                 <FormField
                   control={form.control}
                   name="address"
@@ -2161,15 +2339,21 @@ export default function RestaurantSignup() {
               </Button>
 
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSkipVerification}
-                  className="text-gray-600 hover:text-gray-800"
-                  data-testid="button-skip-verification"
-                >
-                  {COPY.verification.skipButton}
-                </Button>
+                {claimSelection ? (
+                  <div className="text-xs text-gray-500 flex items-center">
+                    {COPY.verification.claimRequiredNote}
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSkipVerification}
+                    className="text-gray-600 hover:text-gray-800"
+                    data-testid="button-skip-verification"
+                  >
+                    {COPY.verification.skipButton}
+                  </Button>
+                )}
                 <Button
                   onClick={handleVerificationSubmit}
                   disabled={

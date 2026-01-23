@@ -193,6 +193,7 @@ export const restaurants = pgTable("restaurants", {
   businessType: varchar("business_type").notNull().default("restaurant"), // 'restaurant' | 'bar' | 'food_truck'
   cuisineType: varchar("cuisine_type"),
   promoCode: varchar("promo_code"), // For tracking beta access and special offers
+  claimedFromImportId: varchar("claimed_from_import_id"),
   latitude: decimal("latitude", { precision: 10, scale: 8 }),
   longitude: decimal("longitude", { precision: 11, scale: 8 }),
   // Food truck specific fields
@@ -228,6 +229,84 @@ export const restaurants = pgTable("restaurants", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+export const truckImportBatches = pgTable(
+  "truck_import_batches",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    source: varchar("source"),
+    fileName: varchar("file_name"),
+    uploadedBy: varchar("uploaded_by").references(() => users.id),
+    totalRows: integer("total_rows").default(0),
+    importedRows: integer("imported_rows").default(0),
+    skippedRows: integer("skipped_rows").default(0),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [index("idx_truck_import_batches_created").on(table.createdAt)],
+);
+
+export const truckImportListings = pgTable(
+  "truck_import_listings",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    batchId: varchar("batch_id").references(() => truckImportBatches.id),
+    source: varchar("source"),
+    externalId: varchar("external_id"),
+    name: varchar("name").notNull(),
+    address: text("address").notNull(),
+    city: varchar("city"),
+    state: varchar("state"),
+    phone: varchar("phone"),
+    cuisineType: varchar("cuisine_type"),
+    websiteUrl: varchar("website_url"),
+    instagramUrl: varchar("instagram_url"),
+    facebookPageUrl: varchar("facebook_page_url"),
+    latitude: decimal("latitude", { precision: 10, scale: 8 }),
+    longitude: decimal("longitude", { precision: 11, scale: 8 }),
+    confidenceScore: integer("confidence_score").default(0),
+    status: varchar("status").notNull().default("unclaimed"), // 'unclaimed' | 'claim_requested' | 'claimed' | 'rejected' | 'duplicate'
+    rawData: jsonb("raw_data"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_truck_import_external").on(table.externalId),
+    index("idx_truck_import_status").on(table.status),
+    index("idx_truck_import_state").on(table.state),
+  ],
+);
+
+export const truckClaimRequests = pgTable(
+  "truck_claim_requests",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    listingId: varchar("listing_id")
+      .notNull()
+      .references(() => truckImportListings.id),
+    restaurantId: varchar("restaurant_id").references(() => restaurants.id),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id),
+    status: varchar("status").notNull().default("pending"), // 'pending' | 'approved' | 'rejected'
+    submittedAt: timestamp("submitted_at").defaultNow(),
+    reviewedAt: timestamp("reviewed_at"),
+    reviewerId: varchar("reviewer_id").references(() => users.id),
+    rejectionReason: text("rejection_reason"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_truck_claim_listing").on(table.listingId),
+    index("idx_truck_claim_status").on(table.status),
+  ],
+);
 
 export const deals = pgTable("deals", {
   id: varchar("id")
@@ -1613,6 +1692,9 @@ export type EmailUserData = {
 };
 export type InsertRestaurant = z.infer<typeof insertRestaurantSchema>;
 export type Restaurant = typeof restaurants.$inferSelect;
+export type TruckImportBatch = typeof truckImportBatches.$inferSelect;
+export type TruckImportListing = typeof truckImportListings.$inferSelect;
+export type TruckClaimRequest = typeof truckClaimRequests.$inferSelect;
 
 // Live location state (computed server-side, exposed to client)
 export type LocationState = "green" | "amber" | "hidden";

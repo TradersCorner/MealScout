@@ -330,7 +330,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <div className="desktop-full-width md:pt-16">
+        <div className="desktop-full-width app-background min-h-screen md:pt-16">
           <Toaster />
           <BetaDisclaimer />
           <Router />

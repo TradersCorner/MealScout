@@ -31,7 +31,7 @@ export default function HelpSupportPage() {
   const supportEmail = "info.mealscout@gmail.com";
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+    <div className="max-w-md mx-auto bg-[var(--bg-app)] min-h-screen relative pb-20">
       <BackHeader
         title="Help & Support"
         subtitle="Get help when you need it"

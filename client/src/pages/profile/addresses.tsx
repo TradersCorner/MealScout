@@ -156,7 +156,7 @@ export default function AddressesPage() {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+      <div className="max-w-md mx-auto bg-[var(--bg-app)] min-h-screen relative pb-20">
         <div className="text-center py-12">
           <MapPin className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Sign in required</h2>
@@ -179,7 +179,7 @@ export default function AddressesPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+    <div className="max-w-md mx-auto bg-[var(--bg-app)] min-h-screen relative pb-20">
       <BackHeader
         title="Addresses"
         subtitle="Manage your saved locations"

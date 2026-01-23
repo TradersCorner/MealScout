@@ -127,7 +127,7 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">
+    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-app)] min-h-screen relative pb-20">
       <SEOHead
         title="My Profile - MealScout | Account Settings"
         description="Manage your MealScout profile, view account settings, update preferences, and access your deal history. Customize your food deal discovery experience."

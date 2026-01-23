@@ -352,7 +352,7 @@ export default function AdminModerationAppealsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto min-h-screen bg-background p-6">
+    <div className="max-w-7xl mx-auto min-h-screen bg-[var(--bg-app)] p-6">
       <AppealsHeader />
 
       <StatusFilter value={statusFilter} onChange={setStatusFilter} />

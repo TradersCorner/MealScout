@@ -2928,6 +2928,10 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
     fields: [events.hostId],
     references: [hosts.id],
   }),
+  series: one(eventSeries, {
+    fields: [events.seriesId],
+    references: [eventSeries.id],
+  }),
   bookedRestaurant: one(restaurants, {
     fields: [events.bookedRestaurantId],
     references: [restaurants.id],

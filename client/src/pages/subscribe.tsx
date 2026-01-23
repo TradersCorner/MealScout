@@ -885,7 +885,7 @@ export default function Subscribe() {
                       Complete Your Payment
                     </h3>
                     <p className="text-sm text-gray-600">
-                      MealScout Restaurant Plan • $50 -> $25/month
+                        MealScout Restaurant Plan • $50 -&gt; $25/month
                     </p>
                   </CardContent>
                 </Card>

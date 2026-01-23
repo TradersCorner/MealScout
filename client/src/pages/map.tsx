@@ -198,6 +198,8 @@ type MapLocationsResponse = {
 };
 
 type GeoPoint = { lat: number; lng: number };
+type GeocodeCacheEntry = { lat: number; lng: number; ts: number };
+type GeocodeFailureEntry = { ts: number };
 
 const hostIcon = new L.Icon({
   iconUrl:
@@ -314,6 +316,53 @@ export default function MapPage() {
     {},
   );
   const [geocodingQueue, setGeocodingQueue] = useState<string[]>([]);
+  const [geocodeCache, setGeocodeCache] = useState<
+    Record<string, GeocodeCacheEntry>
+  >({});
+  const [geocodeFailures, setGeocodeFailures] = useState<
+    Record<string, GeocodeFailureEntry>
+  >({});
+
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem("mealscout_geocode_cache");
+      if (cached) {
+        setGeocodeCache(JSON.parse(cached));
+      }
+    } catch {
+      // ignore localStorage issues
+    }
+    try {
+      const failed = localStorage.getItem("mealscout_geocode_failures");
+      if (failed) {
+        setGeocodeFailures(JSON.parse(failed));
+      }
+    } catch {
+      // ignore localStorage issues
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "mealscout_geocode_cache",
+        JSON.stringify(geocodeCache),
+      );
+    } catch {
+      // ignore localStorage issues
+    }
+  }, [geocodeCache]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "mealscout_geocode_failures",
+        JSON.stringify(geocodeFailures),
+      );
+    } catch {
+      // ignore localStorage issues
+    }
+  }, [geocodeFailures]);
 
   // Get user location
   useEffect(() => {
@@ -446,6 +495,8 @@ export default function MapPage() {
   useEffect(() => {
     const queue: string[] = [];
     const addressByKey: Record<string, string> = {};
+    const now = Date.now();
+    const failureCooldownMs = 6 * 60 * 60 * 1000;
 
     mapLocations?.hostLocations.forEach((host) => {
       if (!hostCoords[host.id]) {
@@ -474,12 +525,34 @@ export default function MapPage() {
         const newHostCoords: Record<string, GeoPoint> = {};
         const newEventCoords: Record<string, GeoPoint> = {};
         const newParkingCoords: Record<string, GeoPoint> = {};
+        const newFailures: Record<string, GeocodeFailureEntry> = {};
 
         for (const key of queue) {
           const address = addressByKey[key];
           if (!address) continue;
+          const cached = geocodeCache[address];
+          if (cached) {
+            const point = { lat: cached.lat, lng: cached.lng };
+            if (key.startsWith("host:")) {
+              newHostCoords[key.replace("host:", "")] = point;
+            } else if (key.startsWith("event:")) {
+              newEventCoords[key.replace("event:", "")] = point;
+            } else if (key.startsWith("parking:")) {
+              newParkingCoords[key.replace("parking:", "")] = point;
+            }
+            continue;
+          }
+
+          const failed = geocodeFailures[address];
+          if (failed && now - failed.ts < failureCooldownMs) {
+            continue;
+          }
+
           const point = await geocodeAddress(address).catch(() => null);
-          if (!point) continue;
+          if (!point) {
+            newFailures[address] = { ts: Date.now() };
+            continue;
+          }
           if (key.startsWith("host:")) {
             newHostCoords[key.replace("host:", "")] = point;
           } else if (key.startsWith("event:")) {
@@ -487,8 +560,12 @@ export default function MapPage() {
           } else if (key.startsWith("parking:")) {
             newParkingCoords[key.replace("parking:", "")] = point;
           }
+          setGeocodeCache((prev) => ({
+            ...prev,
+            [address]: { lat: point.lat, lng: point.lng, ts: Date.now() },
+          }));
           // small delay to avoid hammering the free geocoder
-          await new Promise((r) => setTimeout(r, 150));
+          await new Promise((r) => setTimeout(r, 300));
         }
 
         if (Object.keys(newHostCoords).length) {
@@ -500,10 +577,21 @@ export default function MapPage() {
         if (Object.keys(newParkingCoords).length) {
           setParkingCoords((prev) => ({ ...prev, ...newParkingCoords }));
         }
+        if (Object.keys(newFailures).length) {
+          setGeocodeFailures((prev) => ({ ...prev, ...newFailures }));
+        }
         setGeocodingQueue([]);
       })();
     }
-  }, [mapLocations, parkingPassLocations, hostCoords, eventCoords, parkingCoords]);
+  }, [
+    mapLocations,
+    parkingPassLocations,
+    hostCoords,
+    eventCoords,
+    parkingCoords,
+    geocodeCache,
+    geocodeFailures,
+  ]);
 
   const handleCenterOnUser = () => {
     if (userLocation) {

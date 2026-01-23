@@ -269,12 +269,12 @@ export default function Home() {
   const welcomeName = firstName || "there";
 
   return (
-    <div className="w-full px-4 bg-background min-h-screen relative overflow-hidden">
+    <div className="page relative overflow-hidden">
       <Navigation />
 
       {/* Header with Logo and Navigation */}
-      <header className="bg-white border-b border-gray-100 px-4 sm:px-6 py-2 sticky top-0 z-10 shadow-sm">
-        <div className="flex items-center justify-between">
+      <header className="section section--full bg-[hsl(var(--background))] border-b border-white/5 sticky top-0 z-10 shadow-sm">
+        <div className="content flex items-center justify-between">
           <div className="flex items-center space-x-2 flex-shrink-0">
             <div className="w-8 h-8 flex items-center justify-center">
               <img
@@ -286,7 +286,7 @@ export default function Home() {
               />
             </div>
             <div className="hidden xs:block">
-              <h1 className="text-lg font-bold text-gray-900">MealScout</h1>
+              <h1 className="text-lg font-bold text-foreground">MealScout</h1>
             </div>
           </div>
 
@@ -297,7 +297,7 @@ export default function Home() {
                   variant="ghost"
                   size="icon"
                   onClick={() => setNavigateTo("/login")}
-                  className="text-gray-700 hover:text-orange-600"
+                  className="text-muted-foreground hover:text-[hsl(var(--primary))]"
                   title="Login"
                 >
                   <LogIn className="w-5 h-5" />
@@ -306,7 +306,7 @@ export default function Home() {
                   variant="ghost"
                   size="icon"
                   onClick={() => setNavigateTo("/customer-signup")}
-                  className="text-gray-700 hover:text-orange-600"
+                  className="text-muted-foreground hover:text-[hsl(var(--primary))]"
                   title="Customer Sign Up"
                 >
                   <UserPlus className="w-5 h-5" />
@@ -317,7 +317,7 @@ export default function Home() {
                   onClick={() =>
                     setNavigateTo("/customer-signup?role=business")
                   }
-                  className="text-gray-700 hover:text-orange-600"
+                  className="text-muted-foreground hover:text-[hsl(var(--primary))]"
                   title="Restaurant/Bar/Food Truck Sign Up"
                 >
                   <Store className="w-5 h-5" />
@@ -327,11 +327,11 @@ export default function Home() {
                   size="icon"
                   onClick={retryLocation}
                   disabled={isLoadingLocation}
-                  className="text-gray-700 hover:text-orange-600"
+                  className="text-muted-foreground hover:text-[hsl(var(--primary))]"
                   title="Refresh Location"
                 >
                   {isLoadingLocation ? (
-                    <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <Target className="w-4 h-4" />
                   )}
@@ -339,7 +339,7 @@ export default function Home() {
               </>
             ) : (
               <div className="flex items-center space-x-2">
-                <span className="hidden sm:inline text-sm font-medium text-gray-700">
+                <span className="hidden sm:inline text-sm font-medium text-muted-foreground">
                   {locationName.split(",")[0]}
                 </span>
                 <div
@@ -351,11 +351,11 @@ export default function Home() {
                   size="icon"
                   onClick={retryLocation}
                   disabled={isLoadingLocation}
-                  className="text-gray-700 hover:text-orange-600 w-7 h-7"
+                  className="text-muted-foreground hover:text-[hsl(var(--primary))] w-7 h-7"
                   title="Refresh Location"
                 >
                   {isLoadingLocation ? (
-                    <div className="w-3.5 h-3.5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-3.5 h-3.5 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <Target className="w-3.5 h-3.5" />
                   )}
@@ -367,13 +367,13 @@ export default function Home() {
       </header>
 
       {/* Hero & Search Section */}
-      <div className="py-3 bg-gradient-to-br from-gray-50 via-white to-orange-50 border-b border-orange-100">
-        <div className="mx-auto max-w-[420px] w-full">
+      <section className="section section--full section--surface border-b border-white/5 py-4">
+        <div className="content">
           <div className="mb-3">
-            <h2 className="text-xl font-bold text-gray-900 mb-1">
+            <h2 className="text-xl font-bold text-foreground mb-1">
               {firstName ? `Hey ${firstName}, hungry?` : "Hungry?"}
             </h2>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               See what's happening{" "}
               {shortLocation === "Your Location"
                 ? "near you"
@@ -406,7 +406,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
               >
                 🍕 Pizza
               </Button>
@@ -415,7 +415,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
               >
                 🍔 Burgers
               </Button>
@@ -424,7 +424,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
               >
                 🍣 Sushi
               </Button>
@@ -433,7 +433,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
               >
                 🥡 Chinese
               </Button>
@@ -442,7 +442,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
               >
                 🌮 Tacos
               </Button>
@@ -451,7 +451,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
               >
                 🥐 Breakfast
               </Button>
@@ -460,7 +460,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
               >
                 🦞 Seafood
               </Button>
@@ -469,7 +469,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
               >
                 🍖 BBQ
               </Button>
@@ -478,7 +478,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
               >
                 🍰 Desserts
               </Button>
@@ -487,7 +487,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
               >
                 ☕ Coffee
               </Button>
@@ -496,7 +496,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-white border border-gray-200 hover:bg-gray-50"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
               >
                 🥗 Healthy
               </Button>
@@ -528,15 +528,15 @@ export default function Home() {
             </div>
           )}
         </div>
-      </div>
+      </section>
 
       {/* Food Trucks Nearby - Horizontal Scroll Row */}
-      <div className="py-4 bg-gradient-to-r from-emerald-50 to-green-50 border-y border-emerald-100/50">
-        <div className="mx-auto max-w-[420px] w-full">
+      <section className="section section--full section--surface-2 border-y border-white/5 py-4">
+        <div className="content">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <Truck className="w-4 h-4 text-emerald-600" />
-              <h3 className="text-sm font-bold text-emerald-900">
+              <Truck className="w-4 h-4 text-[hsl(var(--primary))]" />
+              <h3 className="text-sm font-bold text-foreground">
                 Live Trucks:{" "}
                 {shortLocation === "Your Location" ? "Nearby" : shortLocation}
               </h3>
@@ -544,13 +544,13 @@ export default function Home() {
             <Link href="/map">
               <Button
                 variant="link"
-                className="text-emerald-700 hover:text-emerald-800 p-0 h-auto text-xs"
+                className="text-[hsl(var(--primary))] hover:text-[hsl(var(--primary))]/90 p-0 h-auto text-xs"
               >
                 View Map →
               </Button>
             </Link>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6">
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex-shrink-0 w-56">
                 <DealCard
@@ -577,14 +577,14 @@ export default function Home() {
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Featured Deals Section - ORIGINAL LAYOUT */}
-      <div className="py-4 bg-gray-50 border-y border-gray-100">
-        <div className="mx-auto max-w-[420px] w-full">
+      <section className="section section--full border-y border-white/5 py-4">
+        <div className="content">
           <div className="mb-3">
             <h2 className="text-base font-bold text-foreground flex items-center">
-              <Sparkles className="w-4 h-4 text-orange-500 mr-1.5" />
+              <Sparkles className="w-4 h-4 text-[hsl(var(--primary))] mr-1.5" />
               Trending in{" "}
               {shortLocation === "Your Location"
                 ? "Your Neighborhood"
@@ -596,7 +596,7 @@ export default function Home() {
             <Link href="/deals/featured">
               <Button
                 variant="link"
-                className="text-orange-600 hover:text-orange-700 p-0 h-auto mt-1"
+                className="text-[hsl(var(--primary))] hover:text-[hsl(var(--primary))]/90 p-0 h-auto mt-1"
               >
                 See all nearby deals →
               </Button>
@@ -604,7 +604,7 @@ export default function Home() {
           </div>
 
           {featuredLoading ? (
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6">
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
@@ -617,7 +617,7 @@ export default function Home() {
               We couldnt load deals right now. Try again in a bit.
             </div>
           ) : featuredDeals && featuredDeals.length > 0 ? (
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6">
               {featuredDeals.map((deal: Deal) => (
                 <div key={deal.id} className="flex-shrink-0 w-56">
                   <DealCard deal={deal} />
@@ -625,7 +625,7 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-muted-foreground">
               <p className="mb-3">No deals nearby yet</p>
               <Link href="/contact">
                 <Button size="sm" variant="outline">
@@ -635,12 +635,12 @@ export default function Home() {
             </div>
           )}
         </div>
-      </div>
+      </section>
 
       {/* Owner Section - MOVED UP FOR LOGGED OUT USERS */}
       {!user && (
-        <div className="py-2 bg-gradient-to-br from-gray-900 to-gray-800 text-white">
-          <div className="mx-auto max-w-[420px] w-full text-center">
+        <section className="section section--full section--surface-2 py-3 text-white">
+          <div className="content text-center">
             <ChefHat className="w-6 h-6 mx-auto mb-1 text-orange-400" />
             <h3 className="text-base font-bold mb-0.5">
               Bring your restaurant to the neighborhood
@@ -659,78 +659,78 @@ export default function Home() {
               </Button>
             </Link>
           </div>
-        </div>
+        </section>
       )}
 
       {/* TWO-COLUMN SECTIONS - SIDE BY SIDE */}
-      <div className="py-6 bg-white border-y border-gray-100">
-        <div className="mx-auto max-w-[840px] w-full px-4">
+      <section className="section section--full border-y border-white/5 py-6">
+        <div className="content">
           {!user ? (
             /* LOGGED OUT - TWO SECTIONS SIDE BY SIDE */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Stay Connected Section */}
               <div>
                 <div className="text-center mb-6">
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">
-                    Unlock the{" "}
+              <h3 className="text-lg font-bold text-foreground mb-2">
+                Unlock the{" "}
                     {shortLocation === "Your Location"
                       ? "Local"
                       : shortLocation}{" "}
                     Scene
                   </h3>
-                  <p className="text-sm text-gray-600">
-                    Save go-tos, track trucks live, and get a heads-up when
-                    spots reopen
-                  </p>
-                </div>
+              <p className="text-sm text-muted-foreground">
+                Save go-tos, track trucks live, and get a heads-up when
+                spots reopen
+              </p>
+            </div>
 
                 <div className="space-y-2 mb-4">
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Heart className="w-4 h-4 text-orange-600" />
+                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-white/5 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Heart className="w-4 h-4 text-[hsl(var(--primary))]" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 text-xs">
+                      <h4 className="font-semibold text-foreground text-xs">
                         {shortLocation === "Your Location"
                           ? "Neighborhood"
                           : shortLocation}{" "}
                         favorites
                       </h4>
-                      <p className="text-[11px] text-gray-600">
+                      <p className="text-[11px] text-muted-foreground">
                         Keep your go-tos one tap away
                       </p>
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Truck className="w-4 h-4 text-emerald-600" />
+                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-white/5 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Truck className="w-4 h-4 text-[hsl(var(--primary))]" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 text-xs">
+                      <h4 className="font-semibold text-foreground text-xs">
                         Food trucks{" "}
                         {shortLocation === "Your Location"
                           ? "nearby"
                           : `in ${shortLocation}`}
                       </h4>
-                      <p className="text-[11px] text-gray-600">
+                      <p className="text-[11px] text-muted-foreground">
                         Live locations around you
                       </p>
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Bell className="w-4 h-4 text-blue-600" />
+                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-white/5 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Bell className="w-4 h-4 text-[hsl(var(--primary))]" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 text-xs">
+                      <h4 className="font-semibold text-foreground text-xs">
                         Deals{" "}
                         {shortLocation === "Your Location"
                           ? "nearby"
                           : `in ${shortLocation}`}
                       </h4>
-                      <p className="text-[11px] text-gray-600">
+                      <p className="text-[11px] text-muted-foreground">
                         Quick wins close to you
                       </p>
                     </div>
@@ -747,62 +747,62 @@ export default function Home() {
               {/* Community Building Section */}
               <div>
                 <div className="text-center mb-4">
-                  <h3 className="text-base font-bold text-gray-900 mb-1">
+                  <h3 className="text-base font-bold text-foreground mb-1">
                     Promote{" "}
                     {shortLocation === "Your Location"
                       ? "Local"
                       : shortLocation}{" "}
                     Gems
                   </h3>
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-muted-foreground">
                     Pass along great spots and help them stay busy
                   </p>
                 </div>
 
                 <div className="space-y-2 mb-4">
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-start gap-3">
-                    <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-orange-600 font-bold text-xs">
+                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-white/5 flex items-start gap-3">
+                    <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-[hsl(var(--primary))] font-bold text-xs">
                         1
                       </span>
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 text-xs mb-0.5">
+                      <h4 className="font-semibold text-foreground text-xs mb-0.5">
                         Share Your Link
                       </h4>
-                      <p className="text-[11px] text-gray-600">
+                      <p className="text-[11px] text-muted-foreground">
                         Get a unique referral link to share with restaurants
                       </p>
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-start gap-3">
-                    <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-orange-600 font-bold text-xs">
+                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-white/5 flex items-start gap-3">
+                    <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-[hsl(var(--primary))] font-bold text-xs">
                         2
                       </span>
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 text-xs mb-0.5">
+                      <h4 className="font-semibold text-foreground text-xs mb-0.5">
                         Restaurant Subscribes
                       </h4>
-                      <p className="text-[11px] text-gray-600">
+                      <p className="text-[11px] text-muted-foreground">
                         When they join, you become their community partner
                       </p>
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-start gap-3">
-                    <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-orange-600 font-bold text-xs">
+                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-white/5 flex items-start gap-3">
+                    <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-[hsl(var(--primary))] font-bold text-xs">
                         3
                       </span>
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 text-xs mb-0.5">
+                      <h4 className="font-semibold text-foreground text-xs mb-0.5">
                         Earn Recurring Income
                       </h4>
-                      <p className="text-[11px] text-gray-600">
+                      <p className="text-[11px] text-muted-foreground">
                         Receive commission as long as they remain active
                       </p>
                     </div>
@@ -818,8 +818,8 @@ export default function Home() {
             </div>
           ) : (
             /* LOGGED IN - REAL FEATURES */
-            <div className="max-w-[420px] mx-auto">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">
+            <div className="max-w-[520px] mx-auto">
+              <h3 className="text-lg font-bold text-foreground mb-4">
                 Browse by Category
               </h3>
 
@@ -852,7 +852,7 @@ export default function Home() {
                           </Button>
                         </Link>
                       </div>
-                      <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
+                      <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-6 px-6">
                         {buckets.map((bucket: any) => {
                           const restaurantName =
                             bucket.restaurant?.name || "Restaurant";
@@ -930,74 +930,74 @@ export default function Home() {
             </div>
           )}
         </div>
-      </div>
+      </section>
 
       {/* Footer */}
-      <footer className="py-5 bg-gray-50 border-t border-gray-200">
-        <div className="mx-auto max-w-[420px] w-full px-4">
+      <footer className="section section--full border-t border-white/5 py-6">
+        <div className="content">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="space-y-2">
-              <h4 className="font-semibold text-gray-900">Product</h4>
+              <h4 className="font-semibold text-foreground">Product</h4>
               <Link
                 href="/how-it-works"
-                className="block text-gray-600 hover:text-orange-600"
+                className="block text-muted-foreground hover:text-[hsl(var(--primary))]"
               >
                 How It Works
               </Link>
               <Link
                 href="/faq"
-                className="block text-gray-600 hover:text-orange-600"
+                className="block text-muted-foreground hover:text-[hsl(var(--primary))]"
               >
                 FAQ
               </Link>
             </div>
             <div className="space-y-2">
-              <h4 className="font-semibold text-gray-900">Company</h4>
+              <h4 className="font-semibold text-foreground">Company</h4>
               <Link
                 href="/about"
-                className="block text-gray-600 hover:text-orange-600"
+                className="block text-muted-foreground hover:text-[hsl(var(--primary))]"
               >
                 About
               </Link>
               <Link
                 href="/contact"
-                className="block text-gray-600 hover:text-orange-600"
+                className="block text-muted-foreground hover:text-[hsl(var(--primary))]"
               >
                 Contact
               </Link>
             </div>
             <div className="space-y-2">
-              <h4 className="font-semibold text-gray-900">Legal</h4>
+              <h4 className="font-semibold text-foreground">Legal</h4>
               <Link
                 href="/privacy-policy"
-                className="block text-gray-600 hover:text-orange-600"
+                className="block text-muted-foreground hover:text-[hsl(var(--primary))]"
               >
                 Privacy
               </Link>
               <Link
                 href="/terms-of-service"
-                className="block text-gray-600 hover:text-orange-600"
+                className="block text-muted-foreground hover:text-[hsl(var(--primary))]"
               >
                 Terms
               </Link>
             </div>
             <div className="space-y-2">
-              <h4 className="font-semibold text-gray-900">Support</h4>
+              <h4 className="font-semibold text-foreground">Support</h4>
               <Link
                 href="/faq"
-                className="block text-gray-600 hover:text-orange-600"
+                className="block text-muted-foreground hover:text-[hsl(var(--primary))]"
               >
                 Help Center
               </Link>
               <Link
                 href="/status"
-                className="block text-gray-600 hover:text-orange-600"
+                className="block text-muted-foreground hover:text-[hsl(var(--primary))]"
               >
                 Status
               </Link>
             </div>
           </div>
-          <div className="text-center text-xs text-gray-500 border-t border-gray-200 pt-4 mt-5">
+          <div className="text-center text-xs text-muted-foreground border-t border-white/5 pt-4 mt-5">
             <p>&copy; 2026 MealScout. A TradeScout Product.</p>
           </div>
         </div>

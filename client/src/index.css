@@ -106,6 +106,35 @@
     min-height: 100vh;
   }
 
+  /* Layout hierarchy */
+  .page {
+    width: 100%;
+    min-height: 100vh;
+    background: var(--bg-app);
+  }
+
+  .content {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  .section {
+    width: 100%;
+  }
+
+  .section--full {
+    width: 100%;
+  }
+
+  .section--surface {
+    background: hsl(var(--surface));
+  }
+
+  .section--surface-2 {
+    background: hsl(var(--surface-hover));
+  }
+
 
   /* Ember-lit app background */
   .app-background {

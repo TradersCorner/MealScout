@@ -406,6 +406,30 @@ function ThemePreviewToggle() {
   const { user } = useAuth();
   if (user?.userType !== "super_admin") return null;
 
+  const applyAutoTheme = () => {
+    const getHourInTimezone = (timezone: string) => {
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        hour12: false,
+        timeZone: timezone,
+      });
+      return Number(formatter.format(new Date()));
+    };
+
+    const getThemeByHour = (hour: number) => {
+      if (hour >= 16 && hour < 21) return "evening";
+      if (hour >= 21 || hour < 7) return "overnight";
+      return "day";
+    };
+
+    const timezone =
+      Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    const hour = getHourInTimezone(timezone);
+    const theme = getThemeByHour(hour);
+    delete document.documentElement.dataset.themeOverride;
+    document.documentElement.dataset.theme = theme;
+  };
+
   return (
     <div className="fixed bottom-20 right-4 z-[100000] bg-[hsl(var(--surface))] border border-white/10 rounded-xl px-3 py-2 shadow-lg">
       <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">
@@ -442,8 +466,7 @@ function ThemePreviewToggle() {
         <button
           className="px-2 py-1 rounded-md bg-[hsl(var(--primary))] text-xs text-[hsl(var(--primary-foreground))]"
           onClick={() => {
-            delete document.documentElement.dataset.themeOverride;
-            delete document.documentElement.dataset.theme;
+            applyAutoTheme();
           }}
         >
           Auto

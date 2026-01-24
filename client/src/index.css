@@ -45,11 +45,11 @@
   --text-inverse: #1c1a18;
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
-  --action-primary: #f38b2a;
+  --action-primary: #f59c3f;
   --action-primary-text: #1c1a18;
   --action-secondary: #2a2520;
   --action-secondary-text: #ede6dc;
-  --action-hover: #f6a04a;
+  --action-hover: #ffad57;
   --status-success: #7bc08a;
   --status-warning: #e0b35c;
   --status-error: #e07a6a;
@@ -72,7 +72,7 @@
   --popover-foreground: 28 20% 15%;
 
   /* Warm primary CTA */
-  --primary: 29 89% 56%;
+  --primary: 30 91% 63%;
   --primary-foreground: 28 20% 12%;
 
   /* Muted secondary surfaces */
@@ -90,7 +90,7 @@
 
   --border: 30 12% 22%;
   --input: 28 14% 18%;
-  --ring: 29 89% 56%;
+  --ring: 30 91% 63%;
 
   --radius: 16px;
 }
@@ -109,11 +109,11 @@
   --text-inverse: #ffffff;
   --border-subtle: rgba(0, 0, 0, 0.08);
   --border-strong: rgba(0, 0, 0, 0.16);
-  --action-primary: #f38b2a;
+  --action-primary: #f59c3f;
   --action-primary-text: #2b2621;
   --action-secondary: #e8dfd2;
   --action-secondary-text: #2b2621;
-  --action-hover: #f6a04a;
+  --action-hover: #ffad57;
   --status-success: #4e8f5b;
   --status-warning: #d6a645;
   --status-error: #c85a4a;
@@ -141,11 +141,11 @@
   --text-inverse: #241b15;
   --border-subtle: rgba(255, 255, 255, 0.1);
   --border-strong: rgba(255, 255, 255, 0.18);
-  --action-primary: #f38b2a;
+  --action-primary: #f59c3f;
   --action-primary-text: #241b15;
   --action-secondary: #3a2a1e;
   --action-secondary-text: #efe6db;
-  --action-hover: #f6a04a;
+  --action-hover: #ffad57;
   --status-success: #6fb07d;
   --status-warning: #e0b35c;
   --status-error: #e07a6a;

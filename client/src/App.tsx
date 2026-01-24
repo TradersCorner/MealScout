@@ -338,7 +338,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <TimeOfDayBackground />
-        <div className="desktop-full-width app-background min-h-screen md:pt-16">
+        <div className="desktop-full-width app-background min-h-screen md:pt-16 relative z-10">
           <Toaster />
           <BetaDisclaimer />
           <Router />

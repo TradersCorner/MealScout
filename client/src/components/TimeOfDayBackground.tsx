@@ -10,7 +10,7 @@ function clamp(value: number, min = 0, max = 1) {
 
 export function TimeOfDayBackground() {
   return (
-    <div className="fixed inset-0 -z-50 pointer-events-none">
+    <div className="fixed inset-0 z-0 pointer-events-none">
       {/* Base */}
       <div
         className="absolute inset-0"

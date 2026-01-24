@@ -8,6 +8,21 @@
 :root {
   /* Ember-lit Night Palette */
   --bg-app: #1c1a18;
+  --bg-texture:
+    repeating-radial-gradient(
+      circle at 0 0,
+      rgba(255, 255, 255, 0.015),
+      rgba(255, 255, 255, 0.015) 1px,
+      transparent 1px,
+      transparent 2px
+    );
+  --bg-ember:
+    radial-gradient(
+      900px circle at 30% 85%,
+      rgba(255, 140, 50, 0.18),
+      rgba(255, 140, 50, 0.08) 35%,
+      transparent 60%
+    );
   --bg-surface: #231f1b;
   --bg-surface-2: #2a2520;
   --bg-card: #f3ede3;
@@ -64,11 +79,8 @@
 
 :root[data-theme="overnight"] {
   --bg-app:
-    radial-gradient(
-      800px circle at 30% 90%,
-      rgba(255, 140, 50, 0.14),
-      transparent 60%
-    ),
+    var(--bg-texture),
+    var(--bg-ember),
     #1c1a18;
 }
 

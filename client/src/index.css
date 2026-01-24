@@ -147,20 +147,20 @@
   }
 
   .section--surface {
-    background: hsl(var(--surface));
+    background: hsl(var(--surface) / 0.9);
   }
 
   .section--surface-2 {
-    background: hsl(var(--surface-hover));
+    background: hsl(var(--surface-hover) / 0.88);
   }
 
   /* Global surface overrides */
   .bg-white {
-    background-color: hsl(var(--surface));
+    background-color: hsl(var(--surface) / 0.9);
   }
 
   .bg-gray-50 {
-    background-color: hsl(var(--surface-hover));
+    background-color: hsl(var(--surface-hover) / 0.88);
   }
 
   .border-gray-200,

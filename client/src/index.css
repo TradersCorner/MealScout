@@ -11,10 +11,16 @@
   --bg-texture:
     repeating-radial-gradient(
       circle at 0 0,
-      rgba(255, 255, 255, 0.015),
-      rgba(255, 255, 255, 0.015) 1px,
+      rgba(255, 255, 255, 0.012),
+      rgba(255, 255, 255, 0.012) 1px,
       transparent 1px,
       transparent 2px
+    );
+  --bg-evening-glow:
+    radial-gradient(
+      1200px circle at 50% 110%,
+      rgba(255, 150, 90, 0.08),
+      transparent 65%
     );
   --bg-ember:
     radial-gradient(
@@ -70,11 +76,16 @@
 }
 
 :root[data-theme="day"] {
-  --bg-app: linear-gradient(180deg, #241e18 0%, #1c1a18 65%);
+  --bg-app:
+    var(--bg-texture),
+    linear-gradient(180deg, #3a2f25 0%, #241e18 70%);
 }
 
 :root[data-theme="evening"] {
-  --bg-app: linear-gradient(180deg, #2e241a 0%, #1c1a18 55%);
+  --bg-app:
+    var(--bg-texture),
+    var(--bg-evening-glow),
+    linear-gradient(180deg, #3f3226 0%, #231c16 60%);
 }
 
 :root[data-theme="overnight"] {

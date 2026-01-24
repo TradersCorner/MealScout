@@ -327,6 +327,8 @@ function Router() {
 }
 
 function App() {
+  const { user } = useAuth();
+
   useEffect(() => {
     const getHourInTimezone = (timezone: string) => {
       const formatter = new Intl.DateTimeFormat("en-US", {
@@ -373,6 +375,47 @@ function App() {
           <BetaDisclaimer />
           <Router />
           <Navigation />
+          {user?.userType === "super_admin" && (
+            <div className="fixed bottom-20 right-4 z-[100000] bg-[hsl(var(--surface))] border border-white/10 rounded-xl px-3 py-2 shadow-lg">
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">
+                Theme Preview
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  className="px-2 py-1 rounded-md bg-[hsl(var(--surface-hover))] text-xs text-foreground"
+                  onClick={() =>
+                    (document.documentElement.dataset.theme = "day")
+                  }
+                >
+                  Day
+                </button>
+                <button
+                  className="px-2 py-1 rounded-md bg-[hsl(var(--surface-hover))] text-xs text-foreground"
+                  onClick={() =>
+                    (document.documentElement.dataset.theme = "evening")
+                  }
+                >
+                  Evening
+                </button>
+                <button
+                  className="px-2 py-1 rounded-md bg-[hsl(var(--surface-hover))] text-xs text-foreground"
+                  onClick={() =>
+                    (document.documentElement.dataset.theme = "overnight")
+                  }
+                >
+                  Overnight
+                </button>
+                <button
+                  className="px-2 py-1 rounded-md bg-[hsl(var(--primary))] text-xs text-[hsl(var(--primary-foreground))]"
+                  onClick={() => {
+                    delete document.documentElement.dataset.theme;
+                  }}
+                >
+                  Auto
+                </button>
+              </div>
+            </div>
+          )}
           {/* Build canary - shows deployment timestamp */}
           {import.meta.env.PROD && (
             <div

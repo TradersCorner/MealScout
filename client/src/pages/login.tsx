@@ -18,24 +18,13 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [oauthUserType, setOauthUserType] = useState<
-    "customer" | "restaurant_owner" | "food_truck" | "host" | "event_coordinator"
-  >("customer");
 
   const handleGoogleLogin = () => {
-    const route =
-      oauthUserType === "customer"
-        ? "/api/auth/google/customer"
-        : `/api/auth/google/restaurant?userType=${encodeURIComponent(
-            oauthUserType,
-          )}`;
-    window.location.href = route;
+    window.location.href = "/api/auth/google/customer";
   };
 
   const handleFacebookLogin = () => {
-    window.location.href = `/api/auth/facebook?userType=${encodeURIComponent(
-      oauthUserType,
-    )}`;
+    window.location.href = "/api/auth/facebook?userType=customer";
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -132,28 +121,6 @@ export default function Login() {
               Choose your preferred method
             </p>
           </div>
-          <div className="mb-5">
-            <label className="block text-xs font-semibold text-gray-600 mb-2">
-              Sign in as
-            </label>
-            <select
-              value={oauthUserType}
-              onChange={(e) =>
-                setOauthUserType(
-                  e.target.value as typeof oauthUserType,
-                )
-              }
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white text-gray-800 focus:border-red-400 focus:outline-none text-sm"
-              data-testid="select-oauth-user-type"
-            >
-              <option value="customer">Customer</option>
-              <option value="restaurant_owner">Restaurant / Bar</option>
-              <option value="food_truck">Food Truck</option>
-              <option value="host">Host</option>
-              <option value="event_coordinator">Event Coordinator</option>
-            </select>
-          </div>
-
           {/* Google Login */}
           <button
             onClick={handleGoogleLogin}

@@ -144,6 +144,17 @@ function ZoomWatcher({ onZoomChange }: { onZoomChange: (zoom: number) => void })
   return null;
 }
 
+function MapCenterer({ center }: { center: GeoPoint | null }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!center) return;
+    map.setView([center.lat, center.lng], map.getZoom(), { animate: true });
+  }, [center?.lat, center?.lng, map]);
+
+  return null;
+}
+
 interface Restaurant {
   id: string;
   name: string;
@@ -865,6 +876,7 @@ export default function MapPage() {
               style={{ height: "100%", width: "100%" }}
               className="rounded-lg overflow-hidden"
             >
+              <MapCenterer center={mapCenter} />
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

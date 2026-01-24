@@ -271,13 +271,14 @@
   }
 
   body {
+    background-color: #1c1a18;
     background-image:
       url("/backgrounds/noise.png"),
-      url("/backgrounds/light-night.png"),
-      #1c1a18;
-    background-repeat: repeat, no-repeat, no-repeat;
-    background-size: 512px 512px, 1200px 1200px, cover;
-    background-position: top left, center, center;
+      url("/backgrounds/light-night.png");
+    background-repeat: repeat, no-repeat;
+    background-size: 512px 512px, 1400px 1400px;
+    background-position: top left, 30% 80%;
+    background-blend-mode: soft-light, normal;
     color: hsl(var(--foreground));
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
       Ubuntu, Cantarell, sans-serif;
@@ -289,13 +290,14 @@
   .page {
     width: 100%;
     min-height: 100vh;
+    background-color: #1c1a18;
     background-image:
       url("/backgrounds/noise.png"),
-      url("/backgrounds/light-night.png"),
-      #1c1a18;
-    background-repeat: repeat, no-repeat, no-repeat;
-    background-size: 512px 512px, 1200px 1200px, cover;
-    background-position: top left, center, center;
+      url("/backgrounds/light-night.png");
+    background-repeat: repeat, no-repeat;
+    background-size: 512px 512px, 1400px 1400px;
+    background-position: top left, 30% 80%;
+    background-blend-mode: soft-light, normal;
   }
 
   .content {
@@ -432,25 +434,27 @@
 
   /* Ember-lit app background */
   .app-background {
+    background-color: #1c1a18;
     background-image:
       url("/backgrounds/noise.png"),
-      url("/backgrounds/light-night.png"),
-      #1c1a18;
-    background-repeat: repeat, no-repeat, no-repeat;
-    background-size: 512px 512px, 1200px 1200px, cover;
-    background-position: top left, center, center;
+      url("/backgrounds/light-night.png");
+    background-repeat: repeat, no-repeat;
+    background-size: 512px 512px, 1400px 1400px;
+    background-position: top left, 30% 80%;
+    background-blend-mode: soft-light, normal;
     min-height: 100vh;
   }
 
   /* Cinematic glow background */
   .animated-gradient-bg {
+    background-color: #1c1a18;
     background-image:
       url("/backgrounds/noise.png"),
-      url("/backgrounds/light-night.png"),
-      #1c1a18;
-    background-repeat: repeat, no-repeat, no-repeat;
-    background-size: 512px 512px, 1200px 1200px, cover;
-    background-position: top left, center, center;
+      url("/backgrounds/light-night.png");
+    background-repeat: repeat, no-repeat;
+    background-size: 512px 512px, 1400px 1400px;
+    background-position: top left, 30% 80%;
+    background-blend-mode: soft-light, normal;
     min-height: 100vh;
     position: relative;
   }

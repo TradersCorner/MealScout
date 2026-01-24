@@ -175,6 +175,10 @@
     color: hsl(var(--card-foreground));
   }
 
+  .text-muted-foreground {
+    color: hsl(var(--muted-foreground));
+  }
+
 
   /* Ember-lit app background */
   .app-background {

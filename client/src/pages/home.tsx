@@ -273,14 +273,14 @@ export default function Home() {
       <Navigation />
 
       {/* Header with Logo and Navigation */}
-      <header className="section section--full bg-[hsl(var(--background))] border-b border-white/5 sticky top-0 z-10 shadow-sm">
+      <header className="section section--full bg-[hsl(var(--background))] border-b border-white/10 sticky top-0 z-10 shadow-sm">
         <div className="content flex items-center justify-between">
           <div className="flex items-center space-x-2 flex-shrink-0">
-            <div className="w-8 h-8 flex items-center justify-center">
+            <div className="w-10 h-10 flex items-center justify-center">
               <img
                 src={mealScoutLogo}
                 alt="MealScout Logo"
-                className="w-8 h-8 object-contain"
+                className="w-10 h-10 object-contain"
                 loading="lazy"
                 decoding="async"
               />
@@ -396,7 +396,7 @@ export default function Home() {
           <div className="flex space-x-2 overflow-x-auto pb-1">
             <Link href="/deals/featured">
               <Button
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-semibold text-white bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 border-0 shadow-md hover:shadow-lg transition-all"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-semibold text-[#2b1b12] bg-gradient-to-r from-[#f7a552] to-[#e0701a] border border-white/10 shadow-md hover:shadow-lg transition-all"
                 size="sm"
               >
                 <Sparkles className="w-4 h-4 mr-1.5" /> 🔥 Hot Deals
@@ -406,7 +406,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface))] border border-white/12 text-foreground hover:bg-[hsl(var(--surface-hover))]"
               >
                 🍕 Pizza
               </Button>
@@ -415,7 +415,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface))] border border-white/12 text-foreground hover:bg-[hsl(var(--surface-hover))]"
               >
                 🍔 Burgers
               </Button>
@@ -424,7 +424,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface))] border border-white/12 text-foreground hover:bg-[hsl(var(--surface-hover))]"
               >
                 🍣 Sushi
               </Button>
@@ -433,7 +433,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface))] border border-white/12 text-foreground hover:bg-[hsl(var(--surface-hover))]"
               >
                 🥡 Chinese
               </Button>
@@ -442,7 +442,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface))] border border-white/12 text-foreground hover:bg-[hsl(var(--surface-hover))]"
               >
                 🌮 Tacos
               </Button>
@@ -451,7 +451,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface))] border border-white/12 text-foreground hover:bg-[hsl(var(--surface-hover))]"
               >
                 🥐 Breakfast
               </Button>
@@ -460,7 +460,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface))] border border-white/12 text-foreground hover:bg-[hsl(var(--surface-hover))]"
               >
                 🦞 Seafood
               </Button>
@@ -469,7 +469,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface))] border border-white/12 text-foreground hover:bg-[hsl(var(--surface-hover))]"
               >
                 🍖 BBQ
               </Button>
@@ -478,7 +478,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface))] border border-white/12 text-foreground hover:bg-[hsl(var(--surface-hover))]"
               >
                 🍰 Desserts
               </Button>
@@ -487,7 +487,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface))] border border-white/12 text-foreground hover:bg-[hsl(var(--surface-hover))]"
               >
                 ☕ Coffee
               </Button>
@@ -496,7 +496,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface-hover))] border border-white/10 text-foreground hover:bg-[hsl(var(--surface))]"
+                className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium bg-[hsl(var(--surface))] border border-white/12 text-foreground hover:bg-[hsl(var(--surface-hover))]"
               >
                 🥗 Healthy
               </Button>

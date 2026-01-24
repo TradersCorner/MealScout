@@ -344,6 +344,11 @@ function App() {
     };
 
     const applyTheme = () => {
+      const manual = document.documentElement.dataset.themeOverride;
+      if (manual) {
+        document.documentElement.dataset.theme = manual;
+        return;
+      }
       const timezone =
         Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
       const hour = getHourInTimezone(timezone);
@@ -409,25 +414,35 @@ function ThemePreviewToggle() {
       <div className="flex items-center gap-2">
         <button
           className="px-2 py-1 rounded-md bg-[hsl(var(--surface-hover))] text-xs text-foreground"
-          onClick={() => (document.documentElement.dataset.theme = "day")}
+          onClick={() => {
+            document.documentElement.dataset.themeOverride = "day";
+            document.documentElement.dataset.theme = "day";
+          }}
         >
           Day
         </button>
         <button
           className="px-2 py-1 rounded-md bg-[hsl(var(--surface-hover))] text-xs text-foreground"
-          onClick={() => (document.documentElement.dataset.theme = "evening")}
+          onClick={() => {
+            document.documentElement.dataset.themeOverride = "evening";
+            document.documentElement.dataset.theme = "evening";
+          }}
         >
           Evening
         </button>
         <button
           className="px-2 py-1 rounded-md bg-[hsl(var(--surface-hover))] text-xs text-foreground"
-          onClick={() => (document.documentElement.dataset.theme = "overnight")}
+          onClick={() => {
+            document.documentElement.dataset.themeOverride = "overnight";
+            document.documentElement.dataset.theme = "overnight";
+          }}
         >
           Overnight
         </button>
         <button
           className="px-2 py-1 rounded-md bg-[hsl(var(--primary))] text-xs text-[hsl(var(--primary-foreground))]"
           onClick={() => {
+            delete document.documentElement.dataset.themeOverride;
             delete document.documentElement.dataset.theme;
           }}
         >

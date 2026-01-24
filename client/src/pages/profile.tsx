@@ -30,6 +30,9 @@ import { getOptimizedImageUrl } from "@/lib/images";
 export default function ProfilePage() {
   const { user, isAuthenticated } = useAuth();
   const [affiliateTag, setAffiliateTag] = useState<string>("");
+  const [tagInput, setTagInput] = useState("");
+  const [tagSaving, setTagSaving] = useState(false);
+  const [tagError, setTagError] = useState<string | null>(null);
 
   const [userStats] = useState({
     dealsRedeemed: 0,
@@ -49,7 +52,10 @@ export default function ProfilePage() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (cancelled) return;
-        if (data?.tag) setAffiliateTag(data.tag);
+        if (data?.tag) {
+          setAffiliateTag(data.tag);
+          setTagInput(data.tag);
+        }
       })
       .catch(() => {});
 
@@ -125,6 +131,44 @@ export default function ProfilePage() {
       href: "/profile/help",
     },
   ];
+
+  const handleCopyAffiliateLink = async () => {
+    if (!affiliateTag) return;
+    const shareUrl = `${window.location.origin}/ref/${affiliateTag}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+    } catch (error) {
+      console.error("Failed to copy affiliate link:", error);
+    }
+  };
+
+  const handleSaveTag = async () => {
+    if (!tagInput.trim()) {
+      setTagError("Please enter a valid tag.");
+      return;
+    }
+    setTagSaving(true);
+    setTagError(null);
+    try {
+      const res = await fetch(apiUrl("/api/affiliate/tag"), {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tag: tagInput.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to update tag");
+      }
+      const data = await res.json();
+      setAffiliateTag(data.tag);
+      setTagInput(data.tag);
+    } catch (error: any) {
+      setTagError(error.message || "Failed to update tag.");
+    } finally {
+      setTagSaving(false);
+    }
+  };
 
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-app)] min-h-screen relative pb-20">
@@ -221,6 +265,58 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Affiliate Link (Prominent) */}
+      {affiliateTag && (
+        <div className="px-6 pb-2">
+          <Card className="border border-strong bg-[color:var(--bg-card)] shadow-lg">
+            <CardContent className="p-6 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl action-primary flex items-center justify-center">
+                  <LinkIcon className="w-5 h-5 text-[color:var(--action-primary-text)]" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-bold text-primary">
+                    Affiliate Link
+                  </h3>
+                  <p className="text-sm text-secondary">
+                    Customize your tag once and share your referral link.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                <div className="flex-1 flex items-center rounded-md border border-subtle bg-surface-muted px-3 py-2 text-sm text-primary">
+                  <span className="text-secondary mr-1">
+                    {`${window.location.origin}/ref/`}
+                  </span>
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    className="bg-transparent outline-none flex-1"
+                    placeholder="user1234"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    className="action-primary"
+                    onClick={handleSaveTag}
+                    disabled={tagSaving}
+                  >
+                    {tagSaving ? "Saving..." : "Save"}
+                  </Button>
+                  <Button variant="outline" onClick={handleCopyAffiliateLink}>
+                    Copy Link
+                  </Button>
+                </div>
+              </div>
+              {tagError && (
+                <p className="text-xs text-error">{tagError}</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Menu Items */}
       <div className="px-6 pb-6">

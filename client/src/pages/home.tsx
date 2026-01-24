@@ -274,7 +274,7 @@ export default function Home() {
 
       {/* Header with Logo and Navigation */}
       <header className="section section--full bg-[hsl(var(--surface))]/85 backdrop-blur-md border-b border-white/10 sticky top-0 z-10 shadow-sm">
-        <div className="content flex items-center justify-between">
+        <div className="content flex items-center justify-between py-3">
           <div className="flex items-center space-x-2 flex-shrink-0">
             <div className="w-10 h-10 flex items-center justify-center overflow-visible">
               <img
@@ -297,7 +297,7 @@ export default function Home() {
                   variant="ghost"
                   size="icon"
                   onClick={() => setNavigateTo("/login")}
-                  className="text-muted-foreground hover:text-[hsl(var(--primary))]"
+                  className="text-primary hover:text-[color:var(--action-primary)]"
                   title="Login"
                 >
                   <LogIn className="w-5 h-5" />
@@ -306,7 +306,7 @@ export default function Home() {
                   variant="ghost"
                   size="icon"
                   onClick={() => setNavigateTo("/customer-signup")}
-                  className="text-muted-foreground hover:text-[hsl(var(--primary))]"
+                  className="text-primary hover:text-[color:var(--action-primary)]"
                   title="Customer Sign Up"
                 >
                   <UserPlus className="w-5 h-5" />
@@ -317,7 +317,7 @@ export default function Home() {
                   onClick={() =>
                     setNavigateTo("/customer-signup?role=business")
                   }
-                  className="text-muted-foreground hover:text-[hsl(var(--primary))]"
+                  className="text-primary hover:text-[color:var(--action-primary)]"
                   title="Restaurant/Bar/Food Truck Sign Up"
                 >
                   <Store className="w-5 h-5" />
@@ -327,7 +327,7 @@ export default function Home() {
                   size="icon"
                   onClick={retryLocation}
                   disabled={isLoadingLocation}
-                  className="text-muted-foreground hover:text-[hsl(var(--primary))]"
+                  className="text-primary hover:text-[color:var(--action-primary)]"
                   title="Refresh Location"
                 >
                   {isLoadingLocation ? (
@@ -339,7 +339,7 @@ export default function Home() {
               </>
             ) : (
               <div className="flex items-center space-x-2">
-                <span className="hidden sm:inline text-sm font-medium text-muted-foreground">
+                <span className="hidden sm:inline text-sm font-medium text-secondary">
                   {locationName.split(",")[0]}
                 </span>
                 <div
@@ -351,7 +351,7 @@ export default function Home() {
                   size="icon"
                   onClick={retryLocation}
                   disabled={isLoadingLocation}
-                  className="text-muted-foreground hover:text-[hsl(var(--primary))] w-7 h-7"
+                  className="text-primary hover:text-[color:var(--action-primary)] w-7 h-7"
                   title="Refresh Location"
                 >
                   {isLoadingLocation ? (

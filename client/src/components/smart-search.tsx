@@ -147,9 +147,9 @@ export default function SmartSearch({
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
-      <div className="relative flex items-center gap-2 rounded-full border border-orange-200/80 bg-white/95 px-3 py-2 shadow-md ring-1 ring-orange-100/70">
+      <div className="relative flex items-center gap-2 rounded-full border border-subtle bg-[color:var(--bg-card)]/95 px-3 py-2 shadow-md ring-1 ring-[color:var(--border-subtle)]">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500/80 w-5 h-5 z-10" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--action-primary)] w-5 h-5 z-10" />
           <Input
             ref={inputRef}
             type="text"
@@ -158,13 +158,13 @@ export default function SmartSearch({
             onChange={handleInputChange}
             onFocus={handleInputFocus}
             onKeyDown={handleKeyDown}
-            className="w-full pl-11 pr-4 py-3 text-sm sm:text-base rounded-full border border-orange-100/80 bg-transparent shadow-none focus:border-orange-300 focus:ring-2 focus:ring-orange-200 focus:ring-offset-1 focus:ring-offset-white placeholder:text-slate-400"
+            className="w-full pl-11 pr-4 py-3 text-sm sm:text-base rounded-full border border-transparent bg-transparent shadow-none text-primary placeholder:text-secondary focus:border-[color:var(--action-primary)] focus:ring-2 focus:ring-[color:var(--action-hover)] focus:ring-offset-1 focus:ring-offset-transparent"
             data-testid="input-smart-search"
           />
         </div>
         <Button
           onClick={() => handleSearch(value)}
-          className="px-5 sm:px-6 py-2.5 text-sm sm:text-base font-semibold rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-red-600 focus:ring-2 focus:ring-orange-200 focus:ring-offset-2 focus:ring-offset-white"
+          className="px-5 sm:px-6 py-2.5 text-sm sm:text-base font-semibold rounded-full action-primary shadow-lg hover:shadow-xl hover:bg-[color:var(--action-hover)] focus:ring-2 focus:ring-[color:var(--action-hover)] focus:ring-offset-2 focus:ring-offset-transparent"
           data-testid="button-search"
         >
           Search

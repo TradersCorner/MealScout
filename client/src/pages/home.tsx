@@ -269,7 +269,7 @@ export default function Home() {
   const welcomeName = firstName || "there";
 
   return (
-    <div className="page relative overflow-hidden">
+    <div className="page relative overflow-hidden home-cinematic">
       <Navigation />
 
       {/* Header with Logo and Navigation */}

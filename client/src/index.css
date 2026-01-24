@@ -415,6 +415,24 @@
     background-color: var(--status-success);
   }
 
+  .home-cinematic .section--surface,
+  .home-cinematic .section--surface-2 {
+    background-color: transparent !important;
+  }
+
+  .home-cinematic header {
+    background-color: transparent !important;
+    backdrop-filter: none;
+  }
+
+  .home-cinematic .section--full.border-b,
+  .home-cinematic .section--full.border-t,
+  .home-cinematic .section--full.border-y,
+  .home-cinematic .section--surface.border-b,
+  .home-cinematic .section--surface-2.border-y {
+    border-color: transparent !important;
+  }
+
   .text-muted-foreground {
     color: var(--text-muted);
   }

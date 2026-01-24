@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-
 type Factors = {
   morning: number;
   midday: number;
@@ -10,37 +8,13 @@ function clamp(value: number, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
 }
 
-function getTimeFactor(): Factors {
-  const now = new Date();
-  const hour = now.getHours() + now.getMinutes() / 60;
-
-  // Morning 6–10, Midday 10–15, Evening 15–22
-  if (hour < 6) return { morning: 0, midday: 0, evening: 0.6 };
-  if (hour < 10) return { morning: (hour - 6) / 4, midday: 0, evening: 0 };
-  if (hour < 15)
-    return { morning: 1 - (hour - 10) / 5, midday: (hour - 10) / 5, evening: 0 };
-  if (hour < 22)
-    return {
-      morning: 0,
-      midday: 1 - (hour - 15) / 7,
-      evening: (hour - 15) / 7,
-    };
-  return { morning: 0, midday: 0, evening: 1 };
-}
-
 export function TimeOfDayBackground() {
-  const [factors, setFactors] = useState<Factors>(() => getTimeFactor());
-
-  useEffect(() => {
-    const update = () => setFactors(getTimeFactor());
-    const id = window.setInterval(update, 10 * 60 * 1000);
-    return () => window.clearInterval(id);
-  }, []);
+  const factors: Factors = { morning: 0, midday: 0, evening: 1 };
 
   return (
     <div className="fixed inset-0 -z-50 pointer-events-none">
       {/* Base */}
-      <div className="absolute inset-0" style={{ background: "#0E0F12" }} />
+      <div className="absolute inset-0" style={{ background: "#1C1A18" }} />
 
       {/* Morning glow */}
       <div
@@ -79,9 +53,10 @@ export function TimeOfDayBackground() {
           opacity: clamp(factors.evening),
           background: `
             radial-gradient(
-              1000px 700px at 50% 0%,
-              rgba(255, 120, 60, 0.35),
-              rgba(14, 15, 18, 0.85) 70%
+              1100px 800px at 30% 85%,
+              rgba(255, 150, 85, 0.45),
+              rgba(28, 26, 24, 0.85) 65%,
+              rgba(28, 26, 24, 0.98) 85%
             )
           `,
         }}
@@ -95,7 +70,7 @@ export function TimeOfDayBackground() {
             radial-gradient(
               circle at center,
               transparent 55%,
-              rgba(0,0,0,0.55) 100%
+              rgba(0,0,0,0.45) 100%
             )
           `,
         }}

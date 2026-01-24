@@ -8,14 +8,8 @@
 :root {
   /* Ember-lit Night Palette */
   --bg-app: #1c1a18;
-  --bg-texture:
-    repeating-radial-gradient(
-      circle at 0 0,
-      rgba(255, 255, 255, var(--bg-texture-opacity, 0.012)),
-      rgba(255, 255, 255, var(--bg-texture-opacity, 0.012)) 1px,
-      transparent 1px,
-      transparent 2px
-    );
+  --bg-texture: url("/backgrounds/noise.png");
+  --bg-light: url("/backgrounds/light-midday.png");
   --bg-evening-glow:
     radial-gradient(
       1200px circle at 50% 110%,
@@ -35,6 +29,10 @@
       rgba(255, 140, 50, 0.08) 35%,
       transparent 60%
     );
+  --bg-layered:
+    var(--bg-texture),
+    var(--bg-light),
+    var(--bg-app-dynamic, var(--bg-app));
   --bg-surface: #231f1b;
   --bg-surface-muted: #1e1a17;
   --bg-card: #f3ede3;
@@ -166,6 +164,7 @@
 }
 
 :root[data-contrast="light"] {
+  --bg-light: url("/backgrounds/light-morning.png");
   --text-primary: #3a2b21;
   --text-secondary: #6f5d4d;
   --text-muted: #9b8570;
@@ -180,6 +179,7 @@
 }
 
 :root[data-contrast="mid"] {
+  --bg-light: url("/backgrounds/light-midday.png");
   --text-primary: #2f241b;
   --text-secondary: #5f4e3e;
   --text-muted: #8a7562;
@@ -194,6 +194,7 @@
 }
 
 :root[data-contrast="dark"] {
+  --bg-light: url("/backgrounds/light-night.png");
   --text-primary: #ede6dc;
   --text-secondary: #cbb8a4;
   --text-muted: #9f8e7c;
@@ -252,7 +253,10 @@
   }
 
   body {
-    background: var(--bg-app-dynamic, var(--bg-app));
+    background-image: var(--bg-layered);
+    background-repeat: repeat, no-repeat, no-repeat;
+    background-size: 512px 512px, 1200px 1200px, cover;
+    background-position: top left, center, center;
     color: hsl(var(--foreground));
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
       Ubuntu, Cantarell, sans-serif;
@@ -264,7 +268,10 @@
   .page {
     width: 100%;
     min-height: 100vh;
-    background: var(--bg-app-dynamic, var(--bg-app));
+    background-image: var(--bg-layered);
+    background-repeat: repeat, no-repeat, no-repeat;
+    background-size: 512px 512px, 1200px 1200px, cover;
+    background-position: top left, center, center;
   }
 
   .content {
@@ -401,13 +408,19 @@
 
   /* Ember-lit app background */
   .app-background {
-    background: var(--bg-app-dynamic, var(--bg-app));
+    background-image: var(--bg-layered);
+    background-repeat: repeat, no-repeat, no-repeat;
+    background-size: 512px 512px, 1200px 1200px, cover;
+    background-position: top left, center, center;
     min-height: 100vh;
   }
 
   /* Cinematic glow background */
   .animated-gradient-bg {
-    background: var(--bg-app-dynamic, var(--bg-app));
+    background-image: var(--bg-layered);
+    background-repeat: repeat, no-repeat, no-repeat;
+    background-size: 512px 512px, 1200px 1200px, cover;
+    background-position: top left, center, center;
     min-height: 100vh;
     position: relative;
   }

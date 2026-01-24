@@ -394,13 +394,6 @@ function App() {
         `linear-gradient(180deg, ${bgTop} 0%, ${bgBottom} 70%)`
       );
 
-      const nightFactor =
-        hour >= 16 ? Math.min(1, (hour - 16) / 5) : 0;
-      document.documentElement.style.setProperty(
-        "--bg-texture-opacity",
-        `${0.01 + nightFactor * 0.02}`
-      );
-
       const contrast =
         hour >= 7 && hour < 11 ? "light" : hour >= 11 && hour < 17 ? "mid" : "dark";
       document.documentElement.dataset.contrast = contrast;

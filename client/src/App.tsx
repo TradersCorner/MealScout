@@ -8,6 +8,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { BetaDisclaimer } from "@/components/beta-disclaimer";
 import Navigation from "@/components/navigation";
 import { apiUrl } from "@/lib/api";
+import { TimeOfDayBackground } from "@/components/TimeOfDayBackground";
 
 // Eager load only critical pages (home, login) - everything else lazy loads
 import NotFound from "@/pages/not-found";
@@ -336,6 +337,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <TimeOfDayBackground />
         <div className="desktop-full-width app-background min-h-screen md:pt-16">
           <Toaster />
           <BetaDisclaimer />

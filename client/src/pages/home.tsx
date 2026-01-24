@@ -641,11 +641,11 @@ export default function Home() {
       {!user && (
         <section className="section section--full section--surface-2 py-3 text-white">
           <div className="content text-center">
-            <ChefHat className="w-6 h-6 mx-auto mb-1 text-orange-400" />
+            <ChefHat className="w-6 h-6 mx-auto mb-1 text-[color:var(--action-primary)]" />
             <h3 className="text-base font-bold mb-0.5">
               Bring your restaurant to the neighborhood
             </h3>
-            <p className="text-gray-300 mb-2 text-xs">
+            <p className="text-secondary mb-2 text-xs">
               Post real-time deals, broadcast when you're open, reach people
               nearby
             </p>
@@ -841,12 +841,12 @@ export default function Home() {
                   ).map(([cuisine, buckets]) => (
                     <div key={cuisine}>
                       <div className="flex items-center justify-between mb-2 px-1">
-                        <h4 className="font-bold text-gray-900">{cuisine}</h4>
+                        <h4 className="font-bold text-primary">{cuisine}</h4>
                         <Link href={`/search?q=${encodeURIComponent(cuisine)}`}>
                           <Button
                             variant="link"
                             size="sm"
-                            className="text-orange-600 h-auto p-0 text-xs"
+                            className="text-[color:var(--action-primary)] h-auto p-0 text-xs"
                           >
                             View all
                           </Button>
@@ -862,14 +862,14 @@ export default function Home() {
                           return (
                             <div
                               key={bucket.restaurant?.id || Math.random()}
-                              className="flex-shrink-0 w-[280px] rounded-xl border border-gray-200 bg-white shadow-sm p-3"
+                              className="flex-shrink-0 w-[280px] rounded-xl border border-subtle bg-card shadow-sm p-3"
                             >
                               <div className="flex items-center justify-between mb-2">
                                 <div>
-                                  <h3 className="text-sm font-bold text-gray-900 leading-tight truncate max-w-[180px]">
+                                  <h3 className="text-sm font-bold text-primary leading-tight truncate max-w-[180px]">
                                     {restaurantName}
                                   </h3>
-                                  <div className="text-[11px] text-gray-600 flex items-center gap-1">
+                                  <div className="text-[11px] text-secondary flex items-center gap-1">
                                     {distance !== undefined && (
                                       <span>{distance.toFixed(1)} mi</span>
                                     )}
@@ -893,7 +893,7 @@ export default function Home() {
                                     key={deal.id}
                                     className="py-2 flex items-start gap-2"
                                   >
-                                    <div className="px-2 py-1 rounded-md bg-orange-50 text-orange-700 text-[10px] font-semibold leading-none whitespace-nowrap">
+                                    <div className="px-2 py-1 rounded-md bg-[color:var(--bg-surface-muted)] text-secondary text-[10px] font-semibold leading-none whitespace-nowrap">
                                       {deal.dealType === "percentage"
                                         ? `${deal.discountValue}%`
                                         : deal.dealType === "dollar"
@@ -901,7 +901,7 @@ export default function Home() {
                                         : deal.discountValue}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-medium text-gray-900 leading-tight truncate">
+                                      <p className="text-xs font-medium text-primary leading-tight truncate">
                                         {deal.title}
                                       </p>
                                     </div>
@@ -909,7 +909,7 @@ export default function Home() {
                                 ))}
                                 {bucket.deals.length > 3 && (
                                   <div className="pt-2 text-center">
-                                    <span className="text-[10px] text-gray-500">
+                                    <span className="text-[10px] text-muted">
                                       +{bucket.deals.length - 3} more deals
                                     </span>
                                   </div>
@@ -923,7 +923,7 @@ export default function Home() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                <div className="text-center py-8 text-muted bg-surface-muted rounded-lg border border-dashed border-subtle">
                   <p className="text-sm">No categories available yet.</p>
                 </div>
               )}

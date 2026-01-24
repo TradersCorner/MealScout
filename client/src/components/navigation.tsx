@@ -302,7 +302,7 @@ export default function Navigation() {
                 disabled={isReporting}
                 className={`flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
                   item.isBug
-                    ? "text-[#2b1b12] bg-gradient-to-r from-[#F4A261] to-[#D96B2B] hover:from-[#F3A054] hover:to-[#C86227] shadow-lg"
+                    ? "action-primary hover:bg-[color:var(--action-hover)] shadow-lg"
                     : "text-[hsl(var(--foreground))] hover:text-[hsl(var(--primary))] hover:bg-[hsl(var(--surface-hover))]"
                 } ${isReporting ? "opacity-80 cursor-not-allowed" : ""}`}
                 data-testid={`nav-${item.label.toLowerCase()}`}

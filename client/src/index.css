@@ -36,9 +36,23 @@
       transparent 60%
     );
   --bg-surface: #231f1b;
-  --bg-surface-2: #2a2520;
+  --bg-surface-muted: #1e1a17;
   --bg-card: #f3ede3;
+  --bg-popup: #231f1b;
   --text-primary: #ede6dc;
+  --text-secondary: #cbb8a4;
+  --text-muted: #9f8e7c;
+  --text-inverse: #1c1a18;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --action-primary: #f38b2a;
+  --action-primary-text: #1c1a18;
+  --action-secondary: #2a2520;
+  --action-secondary-text: #ede6dc;
+  --action-hover: #f6a04a;
+  --status-success: #7bc08a;
+  --status-warning: #e0b35c;
+  --status-error: #e07a6a;
   --accent-ember: #f38b2a;
 
   --background: 28 20% 10%;
@@ -46,29 +60,29 @@
     radial-gradient(800px 500px at 70% 20%, rgba(255, 152, 74, 0.08), transparent 60%),
     radial-gradient(900px 600px at 20% 80%, rgba(255, 110, 64, 0.06), transparent 65%),
     linear-gradient(180deg, #1c1a18 0%, #171513 100%);
-  --foreground: 38 30% 92%;
+  --foreground: 33 38% 90%;
 
   --card: 30 25% 92%;
   --card-foreground: 28 20% 15%;
 
-  --surface: 28 18% 14%;
-  --surface-hover: 28 18% 18%;
+  --surface: 30 13% 12%;
+  --surface-hover: 30 14% 15%;
 
   --popover: 30 25% 92%;
   --popover-foreground: 28 20% 15%;
 
   /* Warm primary CTA */
-  --primary: 28 90% 56%;
+  --primary: 29 89% 56%;
   --primary-foreground: 28 20% 12%;
 
   /* Muted secondary surfaces */
-  --secondary: 28 18% 16%;
+  --secondary: 30 14% 15%;
   --secondary-foreground: 36 24% 88%;
 
   --muted: 28 16% 14%;
-  --muted-foreground: 32 14% 62%;
+  --muted-foreground: 31 27% 72%;
 
-  --accent: 28 78% 52%;
+  --accent: 29 89% 56%;
   --accent-foreground: 28 20% 12%;
 
   --destructive: 6 65% 48%;
@@ -76,7 +90,7 @@
 
   --border: 30 12% 22%;
   --input: 28 14% 18%;
-  --ring: 28 80% 56%;
+  --ring: 29 89% 56%;
 
   --radius: 16px;
 }
@@ -84,19 +98,64 @@
 :root[data-theme="day"] {
   --bg-app:
     var(--bg-texture),
-    var(--bg-day-glow),
-    linear-gradient(180deg, #56483a 0%, #2e261f 72%);
-  --surface: 28 18% 20%;
-  --surface-hover: 28 18% 24%;
+    linear-gradient(180deg, #f4efe6 0%, #e8dfd2 70%);
+  --bg-surface: #fbf8f2;
+  --bg-surface-muted: #efe6d8;
+  --bg-card: #ffffff;
+  --bg-popup: #fbf8f2;
+  --text-primary: #2b2621;
+  --text-secondary: #6e645a;
+  --text-muted: #9a8f84;
+  --text-inverse: #ffffff;
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.16);
+  --action-primary: #f38b2a;
+  --action-primary-text: #2b2621;
+  --action-secondary: #e8dfd2;
+  --action-secondary-text: #2b2621;
+  --action-hover: #f6a04a;
+  --status-success: #4e8f5b;
+  --status-warning: #d6a645;
+  --status-error: #c85a4a;
+  --background: 39 39% 93%;
+  --foreground: 30 13% 15%;
+  --muted-foreground: 30 10% 39%;
+  --surface: 40 53% 97%;
+  --surface-hover: 35 32% 87%;
+  --secondary: 35 32% 87%;
+  --secondary-foreground: 30 13% 15%;
 }
 
 :root[data-theme="evening"] {
   --bg-app:
     var(--bg-texture),
     var(--bg-evening-glow),
-    linear-gradient(180deg, #5a4737 0%, #2f251d 65%);
-  --surface: 28 18% 18%;
-  --surface-hover: 28 18% 22%;
+    linear-gradient(180deg, #3a2a1e 0%, #241b15 65%);
+  --bg-surface: #2e231b;
+  --bg-surface-muted: #261c16;
+  --bg-card: #f3e8da;
+  --bg-popup: #2e231b;
+  --text-primary: #efe6db;
+  --text-secondary: #cbb8a4;
+  --text-muted: #a99783;
+  --text-inverse: #241b15;
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --action-primary: #f38b2a;
+  --action-primary-text: #241b15;
+  --action-secondary: #3a2a1e;
+  --action-secondary-text: #efe6db;
+  --action-hover: #f6a04a;
+  --status-success: #6fb07d;
+  --status-warning: #e0b35c;
+  --status-error: #e07a6a;
+  --background: 26 32% 17%;
+  --foreground: 33 38% 90%;
+  --muted-foreground: 31 27% 72%;
+  --surface: 25 26% 14%;
+  --surface-hover: 22 27% 12%;
+  --secondary: 26 32% 17%;
+  --secondary-foreground: 33 38% 90%;
 }
 
 :root[data-theme="overnight"] {
@@ -181,32 +240,32 @@
   }
 
   .section--surface {
-    background: hsl(var(--surface) / 0.72);
+    background: var(--bg-surface);
   }
 
   .section--surface-2 {
-    background: hsl(var(--surface-hover) / 0.64);
+    background: var(--bg-surface-muted);
   }
 
   /* Global surface overrides */
   .bg-white {
-    background-color: hsl(var(--surface) / 0.9);
+    background-color: var(--bg-surface);
   }
 
   .bg-gray-50 {
-    background-color: hsl(var(--surface-hover) / 0.88);
+    background-color: var(--bg-surface-muted);
   }
 
   .border-gray-200,
   .border-slate-200,
   .border-gray-100 {
-    border-color: rgba(255, 255, 255, 0.06);
+    border-color: var(--border-subtle);
   }
 
   /* Warm light card surface */
   .card-light {
-    background-color: hsl(var(--card));
-    color: hsl(var(--card-foreground));
+    background-color: var(--bg-card);
+    color: var(--text-primary);
   }
 
   .deal-card-media {
@@ -219,8 +278,82 @@
       );
   }
 
+  .bg-app {
+    background: var(--bg-app);
+  }
+
+  .bg-surface {
+    background: var(--bg-surface);
+  }
+
+  .bg-surface-muted {
+    background: var(--bg-surface-muted);
+  }
+
+  .bg-card {
+    background: var(--bg-card);
+  }
+
+  .bg-popup {
+    background: var(--bg-popup);
+  }
+
+  .text-primary {
+    color: var(--text-primary);
+  }
+
+  .text-secondary {
+    color: var(--text-secondary);
+  }
+
+  .text-muted {
+    color: var(--text-muted);
+  }
+
+  .text-inverse {
+    color: var(--text-inverse);
+  }
+
+  .border-subtle {
+    border-color: var(--border-subtle);
+  }
+
+  .border-strong {
+    border-color: var(--border-strong);
+  }
+
+  .action-primary {
+    background: var(--action-primary);
+    color: var(--action-primary-text);
+  }
+
+  .action-secondary {
+    background: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+
+  .text-success {
+    color: var(--status-success);
+  }
+
+  .text-warning {
+    color: var(--status-warning);
+  }
+
+  .text-error {
+    color: var(--status-error);
+  }
+
+  .bg-success-soft {
+    background-color: color-mix(in srgb, var(--status-success) 18%, transparent);
+  }
+
+  .bg-success {
+    background-color: var(--status-success);
+  }
+
   .text-muted-foreground {
-    color: hsl(var(--muted-foreground));
+    color: var(--text-muted);
   }
 
 

@@ -439,7 +439,7 @@ export default function DealCard({ deal }: DealCardProps) {
     <div>
       <Card
         ref={cardRef}
-        className="card-light bg-[hsl(var(--card))] rounded-2xl hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-200 shadow-md hover:shadow-2xl group overflow-hidden"
+        className="card-light rounded-2xl hover:shadow-xl transition-all duration-300 cursor-pointer border border-subtle shadow-md hover:shadow-2xl group overflow-hidden"
         data-testid={`card-deal-${deal.id}`}
       >
         <CardContent className="p-0">
@@ -460,7 +460,7 @@ export default function DealCard({ deal }: DealCardProps) {
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
 
             {/* Deal Badge - top left */}
-            <div className="absolute top-1.5 left-1.5 bg-orange-600 text-white px-1.5 py-0.5 rounded-lg shadow-lg">
+            <div className="absolute top-1.5 left-1.5 bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)] px-1.5 py-0.5 rounded-lg shadow-lg">
               <span className="font-bold text-sm leading-none">
                 {formatDiscount()} OFF
               </span>
@@ -481,7 +481,7 @@ export default function DealCard({ deal }: DealCardProps) {
             >
               <GoldenForkIcon
                 className={`w-3.5 h-3.5 transition-colors duration-200 ${
-                  forkPressed ? "text-amber-500" : "text-gray-700"
+                  forkPressed ? "text-warning" : "text-secondary"
                 }`}
               />
             </button>
@@ -506,17 +506,17 @@ export default function DealCard({ deal }: DealCardProps) {
           <div className="p-2" onClick={handleCardClick}>
             {/* Deal Title */}
             <p
-              className="text-gray-900 text-xs font-bold mb-1.5 line-clamp-2 leading-tight min-h-[2rem]"
+              className="text-primary text-xs font-bold mb-1.5 line-clamp-2 leading-tight min-h-[2rem]"
               data-testid={`text-restaurant-info-${deal.id}`}
             >
               {deal.title}
             </p>
 
             {/* Rating + Distance */}
-            <div className="flex items-center gap-1.5 mb-1.5 text-[10px] text-gray-600">
+            <div className="flex items-center gap-1.5 mb-1.5 text-[10px] text-secondary">
               {isLiveTruck && (
-                <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <div className="flex items-center gap-1 rounded-full bg-success-soft px-1.5 py-0.5 text-[10px] font-semibold text-success">
+                  <span className="h-1.5 w-1.5 rounded-full bg-success" />
                   Live now
                 </div>
               )}
@@ -541,7 +541,7 @@ export default function DealCard({ deal }: DealCardProps) {
               {deal.minOrderAmount && (
                 <>
                   <span>•</span>
-                  <span className="text-orange-600 font-medium">
+                  <span className="text-[color:var(--action-primary)] font-medium">
                     ${deal.minOrderAmount} min
                   </span>
                 </>
@@ -549,14 +549,14 @@ export default function DealCard({ deal }: DealCardProps) {
             </div>
 
             {/* Meta Line: Time & Popularity */}
-            <div className="flex items-center gap-2 text-[10px] text-gray-500 mb-2">
+            <div className="flex items-center gap-2 text-[10px] text-muted mb-2">
               <div className="flex items-center gap-0.5">
                 <Clock className="w-3 h-3" />
                 <span>Ends in 2h15m</span>
               </div>
               <div className="flex items-center gap-0.5">
-                <Flame className="w-3 h-3 text-orange-500" />
-                <span className="font-medium text-gray-700">
+                <Flame className="w-3 h-3 text-warning" />
+                <span className="font-medium text-secondary">
                   {deal.currentUses || 188} claimed
                 </span>
               </div>
@@ -585,7 +585,7 @@ export default function DealCard({ deal }: DealCardProps) {
 
             {/* Button */}
             <Button
-              className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold h-8 text-xs shadow-sm"
+              className="w-full action-primary hover:bg-[color:var(--action-hover)] font-semibold h-8 text-xs shadow-sm"
               onClick={(e) => {
                 e.stopPropagation();
                 handleCardClick();
@@ -629,14 +629,14 @@ export default function DealCard({ deal }: DealCardProps) {
             </div>
 
             <div className="bg-white px-5 pb-5 pt-4">
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
+              <label className="block text-sm font-semibold text-primary mb-1">
                 Add context (optional)
               </label>
-              <p className="text-xs text-gray-600 mb-2">
+              <p className="text-xs text-secondary mb-2">
                 What makes this spot worth recommending?
               </p>
               <textarea
-                className="w-full rounded-xl border border-gray-200 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200 text-sm p-3 min-h-[96px] resize-none"
+                className="w-full rounded-xl border border-subtle focus:border-[color:var(--action-primary)] focus:ring-2 focus:ring-[color:var(--action-hover)] text-sm p-3 min-h-[96px] resize-none"
                 placeholder="Great food, fair prices, fast service, friendly owner…"
                 value={recommendationText}
                 onChange={(e) => setRecommendationText(e.target.value)}
@@ -664,14 +664,14 @@ export default function DealCard({ deal }: DealCardProps) {
                 className={`mt-4 w-full rounded-xl border transition-all text-left p-3 flex items-center gap-3 ${
                   favoriteSelection
                     ? "border-yellow-400 bg-yellow-50"
-                    : "border-gray-200 bg-gray-50"
+                    : "border-subtle bg-surface-muted"
                 }`}
               >
                 <div
                   className={`w-9 h-9 rounded-lg flex items-center justify-center border ${
                     favoriteSelection
                       ? "bg-white text-yellow-600 border-yellow-300"
-                      : "bg-white text-gray-500 border-gray-200"
+                    : "bg-card text-muted border-subtle"
                   }`}
                 >
                   <Star
@@ -681,17 +681,17 @@ export default function DealCard({ deal }: DealCardProps) {
                   />
                 </div>
                 <div className="flex-1">
-                  <div className="font-semibold text-gray-900 text-sm">
+                  <div className="font-semibold text-primary text-sm">
                     Add to Favorites
                   </div>
-                  <div className="text-xs text-gray-600">
+                  <div className="text-xs text-secondary">
                     Only 3 favorites allowed
                     {favoriteSelection
                       ? " · One of your top 3 restaurants"
                       : ""}
                   </div>
                   {favoriteCount !== null && (
-                    <div className="text-[11px] text-gray-500 mt-0.5">
+                    <div className="text-[11px] text-muted mt-0.5">
                       Currently using {favoriteCount}/{MAX_FAVORITES}
                     </div>
                   )}
@@ -706,7 +706,7 @@ export default function DealCard({ deal }: DealCardProps) {
               <div className="flex justify-end gap-2 mt-5">
                 <Button
                   variant="outline"
-                  className="h-9 text-sm border-gray-200 text-gray-700"
+                  className="h-9 text-sm border-subtle text-secondary"
                   onClick={() => setShowRecommendModal(false)}
                 >
                   Cancel

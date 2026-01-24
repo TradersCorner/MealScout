@@ -44,7 +44,7 @@ export default function BusinessSnapshot({ business }: BusinessSnapshotProps) {
     <div>
       <Card 
         ref={cardRef}
-        className="card-light bg-[hsl(var(--card))] rounded-2xl hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 shadow-sm group overflow-hidden" 
+        className="card-light rounded-2xl hover:shadow-xl transition-all duration-300 cursor-pointer border border-subtle shadow-sm group overflow-hidden" 
         onClick={() => setShowDealsDrawer(true)}
       >
         <CardContent className="p-0">
@@ -65,26 +65,26 @@ export default function BusinessSnapshot({ business }: BusinessSnapshotProps) {
 
           <div className="p-3">
             {/* Business Header (Shown Once) */}
-            <div className="mb-3 pb-2.5 border-b border-gray-100">
+            <div className="mb-3 pb-2.5 border-b border-subtle">
               <div className="flex items-start justify-between mb-1">
-                <h3 className="font-bold text-gray-900 text-base leading-tight flex-1">
+                <h3 className="font-bold text-primary text-base leading-tight flex-1">
                   {business.name}
                 </h3>
                 <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
                   {business.deals.length > 1 && (
-                    <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-semibold rounded-full">
+                    <span className="px-2 py-0.5 bg-[color:var(--bg-surface-muted)] text-secondary text-xs font-semibold rounded-full">
                       {business.deals.length} deals
                     </span>
                   )}
                   {business.isOpen && (
-                    <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                    <span className="px-2 py-0.5 bg-success-soft text-success text-xs font-medium rounded-full">
                       Open now
                     </span>
                   )}
                 </div>
               </div>
               
-              <div className="flex items-center gap-2 text-xs text-gray-600">
+              <div className="flex items-center gap-2 text-xs text-secondary">
                 <div className="flex items-center gap-0.5">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-yellow-500">
                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
@@ -114,24 +114,24 @@ export default function BusinessSnapshot({ business }: BusinessSnapshotProps) {
               {business.deals.slice(0, 3).map((deal) => (
                 <div key={deal.id} className="py-1.5">
                   {/* Price Line */}
-                  <div className="text-orange-600 leading-none mb-1">
+                  <div className="text-[color:var(--action-primary)] leading-none mb-1">
                     <span className="font-semibold text-base">{formatDiscount(deal)} OFF</span>
                     <span className="text-sm ml-1.5">${deal.minOrderAmount || '8'}+</span>
                   </div>
                   
                   {/* Description */}
-                  <p className="text-gray-900 text-sm font-medium mb-1 line-clamp-1">
+                  <p className="text-primary text-sm font-medium mb-1 line-clamp-1">
                     {deal.description}
                   </p>
                   
                   {/* Meta */}
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <div className="flex items-center gap-2 text-xs text-muted">
                     <div className="flex items-center gap-0.5">
                       <Clock className="w-3 h-3" />
                       <span>2h15m</span>
                     </div>
                     <div className="flex items-center gap-0.5">
-                      <Flame className="w-3 h-3 text-orange-500" />
+                      <Flame className="w-3 h-3 text-warning" />
                       <span>{deal.currentUses || 188}</span>
                     </div>
                   </div>
@@ -139,7 +139,7 @@ export default function BusinessSnapshot({ business }: BusinessSnapshotProps) {
               ))}
               
               {business.deals.length > 3 && (
-                <p className="text-xs text-gray-500 pt-1">
+                <p className="text-xs text-muted pt-1">
                   +{business.deals.length - 3} more deals
                 </p>
               )}
@@ -147,7 +147,7 @@ export default function BusinessSnapshot({ business }: BusinessSnapshotProps) {
 
             {/* Primary CTA (Business-Level) */}
             <Button 
-              className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium h-9"
+              className="w-full action-primary hover:bg-[color:var(--action-hover)] font-medium h-9"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowDealsDrawer(true);

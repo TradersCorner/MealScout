@@ -439,7 +439,7 @@ export default function DealCard({ deal }: DealCardProps) {
     <div>
       <Card
         ref={cardRef}
-        className="bg-white rounded-2xl hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-200 shadow-md hover:shadow-2xl group overflow-hidden"
+        className="card-light bg-[hsl(var(--card))] rounded-2xl hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-200 shadow-md hover:shadow-2xl group overflow-hidden"
         data-testid={`card-deal-${deal.id}`}
       >
         <CardContent className="p-0">

@@ -54,6 +54,24 @@
   --radius: 16px;
 }
 
+:root[data-theme="day"] {
+  --bg-app: linear-gradient(180deg, #241e18 0%, #1c1a18 65%);
+}
+
+:root[data-theme="evening"] {
+  --bg-app: linear-gradient(180deg, #2e241a 0%, #1c1a18 55%);
+}
+
+:root[data-theme="overnight"] {
+  --bg-app:
+    radial-gradient(
+      800px circle at 30% 90%,
+      rgba(255, 140, 50, 0.14),
+      transparent 60%
+    ),
+    #1c1a18;
+}
+
 .dark {
   --background: 28 20% 10%;
   --foreground: 38 30% 92%;
@@ -99,11 +117,12 @@
   }
 
   body {
-    background: var(--background-gradient);
+    background: var(--bg-app);
     color: hsl(var(--foreground));
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
       Ubuntu, Cantarell, sans-serif;
     min-height: 100vh;
+    transition: background 1.2s ease-in-out;
   }
 
   /* Layout hierarchy */
@@ -135,24 +154,37 @@
     background: hsl(var(--surface-hover));
   }
 
+  /* Global surface overrides */
+  .bg-white {
+    background-color: hsl(var(--surface));
+  }
+
+  .bg-gray-50 {
+    background-color: hsl(var(--surface-hover));
+  }
+
+  .border-gray-200,
+  .border-slate-200,
+  .border-gray-100 {
+    border-color: rgba(255, 255, 255, 0.06);
+  }
+
+  /* Warm light card surface */
+  .card-light {
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+  }
+
 
   /* Ember-lit app background */
   .app-background {
-    background:
-      radial-gradient(700px 420px at 18% 15%, rgba(255, 148, 84, 0.08), transparent 65%),
-      radial-gradient(800px 520px at 78% 85%, rgba(255, 98, 62, 0.06), transparent 65%),
-      linear-gradient(180deg, #1c1a18 0%, #171513 100%);
+    background: var(--bg-app);
     min-height: 100vh;
   }
 
   /* Cinematic glow background */
   .animated-gradient-bg {
-    background:
-      radial-gradient(900px 600px at 68% 22%, rgba(255, 162, 92, 0.12), transparent 65%),
-      radial-gradient(1000px 700px at 12% 78%, rgba(255, 110, 64, 0.1), transparent 70%),
-      linear-gradient(180deg, hsl(28 10% 12%) 0%, hsl(28 9% 10%) 100%);
-    background-size: 100% 100%;
-    animation: glowBreathe 10s ease-in-out infinite;
+    background: var(--bg-app);
     min-height: 100vh;
     position: relative;
   }

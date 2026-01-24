@@ -44,7 +44,7 @@ export default function BusinessSnapshot({ business }: BusinessSnapshotProps) {
     <div>
       <Card 
         ref={cardRef}
-        className="bg-white rounded-2xl hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 shadow-sm group overflow-hidden" 
+        className="card-light bg-[hsl(var(--card))] rounded-2xl hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 shadow-sm group overflow-hidden" 
         onClick={() => setShowDealsDrawer(true)}
       >
         <CardContent className="p-0">

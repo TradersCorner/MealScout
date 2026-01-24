@@ -327,6 +327,44 @@ function Router() {
 }
 
 function App() {
+  useEffect(() => {
+    const getHourInTimezone = (timezone: string) => {
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        hour12: false,
+        timeZone: timezone,
+      });
+      return Number(formatter.format(new Date()));
+    };
+
+    const getThemeByHour = (hour: number) => {
+      if (hour >= 16 && hour < 21) return "evening";
+      if (hour >= 21 || hour < 7) return "overnight";
+      return "day";
+    };
+
+    const applyTheme = () => {
+      const timezone =
+        Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+      const hour = getHourInTimezone(timezone);
+      const theme = getThemeByHour(hour);
+      document.documentElement.dataset.theme = theme;
+    };
+
+    const scheduleNextUpdate = () => {
+      const now = new Date();
+      const msUntilNextHour =
+        (60 - now.getMinutes()) * 60 * 1000 - now.getSeconds() * 1000;
+      window.setTimeout(() => {
+        applyTheme();
+        scheduleNextUpdate();
+      }, Math.max(msUntilNextHour, 1000));
+    };
+
+    applyTheme();
+    scheduleNextUpdate();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

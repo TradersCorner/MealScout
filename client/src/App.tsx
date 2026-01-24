@@ -352,7 +352,7 @@ function App() {
 
       const palettes = {
         morning: { top: [233, 214, 194], bottom: [200, 171, 144] },
-        midday: { top: [228, 210, 190], bottom: [196, 170, 143] },
+        midday: { top: [131, 120, 109], bottom: [114, 99, 84] },
         night: { top: [28, 26, 24], bottom: [28, 26, 24] },
       };
 

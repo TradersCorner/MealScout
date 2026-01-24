@@ -4,6 +4,7 @@ export function TimeOfDayBackground() {
       <div
         className="absolute inset-0"
         style={{
+          backgroundColor: "#1C1A18",
           backgroundImage: `
             url('/backgrounds/paper-grain.png'),
             url('/backgrounds/ember-specks.png'),
@@ -16,14 +17,13 @@ export function TimeOfDayBackground() {
             ),
             radial-gradient(
               900px circle at 80% 10%,
-              rgba(0,0,0,0.35),
+              rgba(0, 0, 0, 0.35),
               transparent 60%
-            ),
-            #1C1A18
+            )
           `,
-          backgroundRepeat: "repeat, repeat, no-repeat, no-repeat, no-repeat",
-          backgroundSize: "512px 512px, 1024px 1024px, cover, cover, cover",
-          backgroundPosition: "top left, top left, center, center, center",
+          backgroundRepeat: "repeat, repeat, no-repeat, no-repeat",
+          backgroundSize: "512px 512px, 1024px 1024px, cover, cover",
+          backgroundPosition: "top left, top left, center, center",
         }}
       />
     </div>

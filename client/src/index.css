@@ -445,6 +445,20 @@
     min-height: 100vh;
   }
 
+  .app-content {
+    position: relative;
+    z-index: 10;
+    background: transparent;
+  }
+
+  input,
+  button,
+  select,
+  textarea {
+    filter: none !important;
+    backdrop-filter: none !important;
+  }
+
   /* Cinematic glow background */
   .animated-gradient-bg {
     background-color: transparent;

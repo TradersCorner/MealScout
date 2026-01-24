@@ -41,6 +41,33 @@ export function TimeOfDayBackground() {
         }}
       />
 
+      {/* Lens flare streaks */}
+      <div
+        className="absolute inset-0"
+        style={{
+          opacity: 0.45,
+          background: `
+            radial-gradient(
+              140px 140px at 18% 18%,
+              rgba(255, 210, 150, 0.55),
+              rgba(255, 160, 95, 0.25) 45%,
+              transparent 70%
+            ),
+            radial-gradient(
+              90px 90px at 26% 24%,
+              rgba(255, 180, 120, 0.45),
+              transparent 70%
+            ),
+            linear-gradient(
+              115deg,
+              transparent 40%,
+              rgba(255, 190, 130, 0.16) 50%,
+              transparent 60%
+            )
+          `,
+        }}
+      />
+
       {/* Ember bloom */}
       <div
         className="absolute inset-0"
@@ -77,6 +104,16 @@ export function TimeOfDayBackground() {
               180px 120px at 70% 86%,
               rgba(255, 140, 85, 0.18),
               transparent 80%
+            ),
+            radial-gradient(
+              120px 120px at 64% 80%,
+              rgba(255, 190, 120, 0.2),
+              transparent 75%
+            ),
+            radial-gradient(
+              90px 90px at 82% 70%,
+              rgba(255, 150, 95, 0.18),
+              transparent 80%
             )
           `,
         }}
@@ -105,6 +142,22 @@ export function TimeOfDayBackground() {
             `<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'>` +
             `<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4'/></filter>` +
             `<rect width='100%' height='100%' filter='url(%23n)'/></svg>")`,
+        }}
+      />
+
+      {/* Paper fiber texture */}
+      <div
+        className="absolute inset-0"
+        style={{
+          opacity: 0.08,
+          backgroundImage: `url("data:image/svg+xml;utf8,` +
+            `<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'>` +
+            `<filter id='p'>` +
+            `<feTurbulence type='turbulence' baseFrequency='0.35' numOctaves='2' seed='3'/>` +
+            `<feColorMatrix type='saturate' values='0'/>` +
+            `</filter>` +
+            `<rect width='100%' height='100%' filter='url(%23p)'/>` +
+            `</svg>")`,
         }}
       />
     </div>

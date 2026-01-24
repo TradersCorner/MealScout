@@ -48,6 +48,7 @@ interface BaseEmailParams {
   subject: string;
   html: string;
   text?: string;
+  category?: "account" | "general";
   attachments?: Array<{
     content: string;
     name: string;
@@ -1003,6 +1004,14 @@ export class EmailService {
   }
 
   private async sendEmail(params: BaseEmailParams): Promise<boolean> {
+    const notificationMode = process.env.EMAIL_NOTIFICATIONS_MODE || "all";
+    if (notificationMode === "account_only" && params.category !== "account") {
+      console.warn(
+        `Email skipped for ${params.to}: ${params.subject} (category: ${params.category || "general"})`,
+      );
+      return false;
+    }
+
     if (!this.isConfigured) {
       console.warn(`Email not sent to ${params.to}: Brevo not configured`);
       return false;
@@ -1067,7 +1076,13 @@ export class EmailService {
       </div>
     `;
     const text = `Verify your MealScout email: ${verifyUrl}`;
-    return this.sendEmail({ to: user.email || "", subject, html, text });
+    return this.sendEmail({
+      to: user.email || "",
+      subject,
+      html,
+      text,
+      category: "account",
+    });
   }
 
   // Send welcome email based on user type
@@ -1099,6 +1114,7 @@ export class EmailService {
       subject,
       html: template.html,
       text: template.text,
+      category: "account",
     });
   }
 
@@ -1169,6 +1185,7 @@ export class EmailService {
       subject: "Reset your MealScout password 🔐",
       html: template.html,
       text: template.text,
+      category: "account",
     });
   }
 
@@ -1189,6 +1206,7 @@ export class EmailService {
       subject: "Welcome to MealScout! Complete your profile 🎉",
       html: template.html,
       text: template.text,
+      category: "account",
     });
   }
 

@@ -50,7 +50,7 @@ export default function BusinessSnapshot({ business }: BusinessSnapshotProps) {
         <CardContent className="p-0">
           {/* Optional Hero Image (Once, Not Per Deal) */}
           {business.imageUrl && (
-            <div className="relative h-24 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden rounded-t-2xl">
+            <div className="deal-card-media relative h-24 overflow-hidden rounded-t-2xl">
               <img 
                 src={business.imageUrl}
                 alt={business.name}

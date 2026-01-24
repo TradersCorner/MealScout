@@ -273,7 +273,7 @@ export default function Home() {
       <Navigation />
 
       {/* Header with Logo and Navigation */}
-      <header className="section section--full bg-[hsl(var(--background))] border-b border-white/10 sticky top-0 z-10 shadow-sm">
+      <header className="section section--full bg-[hsl(var(--surface))]/85 backdrop-blur-md border-b border-white/10 sticky top-0 z-10 shadow-sm">
         <div className="content flex items-center justify-between">
           <div className="flex items-center space-x-2 flex-shrink-0">
             <div className="w-10 h-10 flex items-center justify-center">
@@ -608,7 +608,7 @@ export default function Home() {
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="flex-shrink-0 w-56 bg-gray-100 rounded-lg h-48 animate-pulse"
+                  className="flex-shrink-0 w-56 bg-[hsl(var(--surface-hover))]/60 rounded-lg h-48 animate-pulse"
                 />
               ))}
             </div>

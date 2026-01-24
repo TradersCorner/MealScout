@@ -444,7 +444,7 @@ export default function DealCard({ deal }: DealCardProps) {
       >
         <CardContent className="p-0">
           {/* Image with gradient overlay - framed inside card */}
-          <div className="relative h-24 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden rounded-t-2xl">
+          <div className="deal-card-media relative h-24 overflow-hidden rounded-t-2xl">
             <img
               src={
                 deal.imageUrl ||

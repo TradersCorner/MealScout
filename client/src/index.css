@@ -22,6 +22,12 @@
       rgba(255, 150, 90, 0.08),
       transparent 65%
     );
+  --bg-day-glow:
+    radial-gradient(
+      1100px circle at 70% 10%,
+      rgba(255, 190, 130, 0.08),
+      transparent 62%
+    );
   --bg-ember:
     radial-gradient(
       900px circle at 30% 85%,
@@ -78,14 +84,19 @@
 :root[data-theme="day"] {
   --bg-app:
     var(--bg-texture),
-    linear-gradient(180deg, #3a2f25 0%, #241e18 70%);
+    var(--bg-day-glow),
+    linear-gradient(180deg, #56483a 0%, #2e261f 72%);
+  --surface: 28 18% 20%;
+  --surface-hover: 28 18% 24%;
 }
 
 :root[data-theme="evening"] {
   --bg-app:
     var(--bg-texture),
     var(--bg-evening-glow),
-    linear-gradient(180deg, #3f3226 0%, #231c16 60%);
+    linear-gradient(180deg, #5a4737 0%, #2f251d 65%);
+  --surface: 28 18% 18%;
+  --surface-hover: 28 18% 22%;
 }
 
 :root[data-theme="overnight"] {
@@ -170,11 +181,11 @@
   }
 
   .section--surface {
-    background: hsl(var(--surface) / 0.9);
+    background: hsl(var(--surface) / 0.72);
   }
 
   .section--surface-2 {
-    background: hsl(var(--surface-hover) / 0.88);
+    background: hsl(var(--surface-hover) / 0.64);
   }
 
   /* Global surface overrides */
@@ -196,6 +207,16 @@
   .card-light {
     background-color: hsl(var(--card));
     color: hsl(var(--card-foreground));
+  }
+
+  .deal-card-media {
+    background:
+      radial-gradient(
+        220px circle at 20% 15%,
+        rgba(255, 240, 220, 0.85),
+        rgba(243, 227, 208, 0.95) 55%,
+        rgba(233, 214, 193, 0.98) 100%
+      );
   }
 
   .text-muted-foreground {

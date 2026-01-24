@@ -328,90 +328,9 @@ function Router() {
 
 function App() {
   useEffect(() => {
-    const getHourInTimezone = (timezone: string) => {
-      const formatter = new Intl.DateTimeFormat("en-US", {
-        hour: "numeric",
-        hour12: false,
-        timeZone: timezone,
-      });
-      return Number(formatter.format(new Date()));
-    };
-
-    const applyTheme = () => {
-      const manual = document.documentElement.dataset.themeOverride;
-      if (manual) {
-        document.documentElement.dataset.theme = manual;
-        document.documentElement.dataset.contrast =
-          manual === "day" ? "light" : "dark";
-        document.documentElement.style.removeProperty("--bg-app-dynamic");
-        return;
-      }
-      const timezone =
-        Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-      const hour = getHourInTimezone(timezone);
-
-      const palettes = {
-        morning: { top: [233, 214, 194], bottom: [200, 171, 144] },
-        midday: { top: [131, 120, 109], bottom: [114, 99, 84] },
-        night: { top: [28, 26, 24], bottom: [28, 26, 24] },
-      };
-
-      const lerp = (a: number, b: number, t: number) =>
-        Math.round(a + (b - a) * t);
-
-      const lerpColor = (c1: number[], c2: number[], t: number) =>
-        `rgb(${lerp(c1[0], c2[0], t)}, ${lerp(c1[1], c2[1], t)}, ${lerp(
-          c1[2],
-          c2[2],
-          t
-        )})`;
-
-      const getProgress = (h: number, start: number, end: number) =>
-        Math.min(1, Math.max(0, (h - start) / (end - start)));
-
-      let from = palettes.morning;
-      let to = palettes.midday;
-      let t = 0;
-
-      if (hour < 12) {
-        from = palettes.morning;
-        to = palettes.midday;
-        t = getProgress(hour, 7, 12);
-      } else if (hour < 21) {
-        from = palettes.midday;
-        to = palettes.night;
-        t = getProgress(hour, 12, 21);
-      } else {
-        from = palettes.night;
-        to = palettes.night;
-        t = 1;
-      }
-
-      const bgTop = lerpColor(from.top, to.top, t);
-      const bgBottom = lerpColor(from.bottom, to.bottom, t);
-      document.documentElement.style.setProperty(
-        "--bg-app-dynamic",
-        `linear-gradient(180deg, ${bgTop} 0%, ${bgBottom} 70%)`
-      );
-
-      const contrast =
-        hour >= 7 && hour < 11 ? "light" : hour >= 11 && hour < 17 ? "mid" : "dark";
-      document.documentElement.dataset.contrast = contrast;
-      document.documentElement.dataset.theme = "evening";
-    };
-
-    const scheduleNextUpdate = () => {
-      const now = new Date();
-      const msUntilNextHour =
-        (60 - now.getMinutes()) * 60 * 1000 - now.getSeconds() * 1000;
-      window.setTimeout(() => {
-        applyTheme();
-        scheduleNextUpdate();
-      }, Math.max(msUntilNextHour, 1000));
-    };
-
-    applyTheme();
-    scheduleNextUpdate();
+    document.documentElement.dataset.theme = "overnight";
+    document.documentElement.dataset.contrast = "dark";
+    document.documentElement.style.removeProperty("--bg-app-dynamic");
   }, []);
 
   return (
@@ -449,6 +368,7 @@ function App() {
 function ThemePreviewToggle() {
   const { user } = useAuth();
   if (user?.userType !== "super_admin") return null;
+  return null;
 
   const applyAutoTheme = () => {
     const getHourInTimezone = (timezone: string) => {

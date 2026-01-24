@@ -96,7 +96,7 @@
 :root[data-theme="day"] {
   --bg-app:
     var(--bg-texture),
-    linear-gradient(180deg, #f4efe6 0%, #e8dfd2 70%);
+    linear-gradient(180deg, #e8d7c6 0%, #c2a68b 70%);
   --bg-surface: #fbf8f2;
   --bg-surface-muted: #efe6d8;
   --bg-card: #ffffff;
@@ -165,11 +165,17 @@
 
 :root[data-contrast="light"] {
   --bg-light: url("/backgrounds/light-morning.png");
+  --bg-surface: #f1e3d4;
+  --bg-surface-muted: #e4d1bf;
+  --bg-card: #f7ebdd;
+  --bg-popup: #f1e3d4;
   --text-primary: #2b2119;
   --text-secondary: #5e4f42;
   --text-muted: #84705c;
   --action-primary: #f59c3f;
   --action-primary-text: #2b1f16;
+  --action-secondary: #e7d6c3;
+  --action-secondary-text: #2b2119;
   --border-subtle: rgba(58, 43, 33, 0.18);
   --foreground: 30 18% 16%;
   --muted-foreground: 30 12% 38%;
@@ -180,11 +186,17 @@
 
 :root[data-contrast="mid"] {
   --bg-light: url("/backgrounds/light-midday.png");
+  --bg-surface: #ecdcca;
+  --bg-surface-muted: #d8c4af;
+  --bg-card: #f6ebdd;
+  --bg-popup: #ecdcca;
   --text-primary: #2f241b;
   --text-secondary: #5f4e3e;
   --text-muted: #8a7562;
   --action-primary: #e57f1e;
   --action-primary-text: #241a12;
+  --action-secondary: #d9c4af;
+  --action-secondary-text: #2f241b;
   --border-subtle: rgba(47, 36, 27, 0.18);
   --foreground: 28 18% 17%;
   --muted-foreground: 28 12% 38%;
@@ -195,11 +207,17 @@
 
 :root[data-contrast="dark"] {
   --bg-light: url("/backgrounds/light-night.png");
+  --bg-surface: #231f1b;
+  --bg-surface-muted: #1e1a17;
+  --bg-card: #f3ede3;
+  --bg-popup: #231f1b;
   --text-primary: #ede6dc;
   --text-secondary: #cbb8a4;
   --text-muted: #9f8e7c;
   --action-primary: #f38b2a;
   --action-primary-text: #1c1a18;
+  --action-secondary: #2a2520;
+  --action-secondary-text: #ede6dc;
   --border-subtle: rgba(255, 255, 255, 0.1);
   --foreground: 33 38% 90%;
   --muted-foreground: 31 27% 72%;
@@ -253,7 +271,10 @@
   }
 
   body {
-    background-image: var(--bg-layered);
+    background-image:
+      url("/backgrounds/noise.png"),
+      url("/backgrounds/light-night.png"),
+      #1c1a18;
     background-repeat: repeat, no-repeat, no-repeat;
     background-size: 512px 512px, 1200px 1200px, cover;
     background-position: top left, center, center;
@@ -268,7 +289,10 @@
   .page {
     width: 100%;
     min-height: 100vh;
-    background-image: var(--bg-layered);
+    background-image:
+      url("/backgrounds/noise.png"),
+      url("/backgrounds/light-night.png"),
+      #1c1a18;
     background-repeat: repeat, no-repeat, no-repeat;
     background-size: 512px 512px, 1200px 1200px, cover;
     background-position: top left, center, center;
@@ -408,7 +432,10 @@
 
   /* Ember-lit app background */
   .app-background {
-    background-image: var(--bg-layered);
+    background-image:
+      url("/backgrounds/noise.png"),
+      url("/backgrounds/light-night.png"),
+      #1c1a18;
     background-repeat: repeat, no-repeat, no-repeat;
     background-size: 512px 512px, 1200px 1200px, cover;
     background-position: top left, center, center;
@@ -417,7 +444,10 @@
 
   /* Cinematic glow background */
   .animated-gradient-bg {
-    background-image: var(--bg-layered);
+    background-image:
+      url("/backgrounds/noise.png"),
+      url("/backgrounds/light-night.png"),
+      #1c1a18;
     background-repeat: repeat, no-repeat, no-repeat;
     background-size: 512px 512px, 1200px 1200px, cover;
     background-position: top left, center, center;

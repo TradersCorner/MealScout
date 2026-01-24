@@ -165,17 +165,17 @@
 
 :root[data-contrast="light"] {
   --bg-light: url("/backgrounds/light-morning.png");
-  --text-primary: #3a2b21;
-  --text-secondary: #6f5d4d;
-  --text-muted: #9b8570;
-  --action-primary: #f38b2a;
+  --text-primary: #2b2119;
+  --text-secondary: #5e4f42;
+  --text-muted: #84705c;
+  --action-primary: #f59c3f;
   --action-primary-text: #2b1f16;
-  --border-subtle: rgba(58, 43, 33, 0.12);
-  --foreground: 30 15% 18%;
-  --muted-foreground: 30 10% 45%;
-  --primary: 29 89% 56%;
-  --primary-foreground: 30 15% 18%;
-  --ring: 29 89% 56%;
+  --border-subtle: rgba(58, 43, 33, 0.18);
+  --foreground: 30 18% 16%;
+  --muted-foreground: 30 12% 38%;
+  --primary: 30 91% 63%;
+  --primary-foreground: 30 18% 16%;
+  --ring: 30 91% 63%;
 }
 
 :root[data-contrast="mid"] {

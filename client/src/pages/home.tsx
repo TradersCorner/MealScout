@@ -276,11 +276,11 @@ export default function Home() {
       <header className="section section--full bg-[hsl(var(--surface))]/85 backdrop-blur-md border-b border-white/10 sticky top-0 z-10 shadow-sm">
         <div className="content flex items-center justify-between">
           <div className="flex items-center space-x-2 flex-shrink-0">
-            <div className="w-10 h-10 flex items-center justify-center">
+            <div className="w-12 h-12 flex items-center justify-center">
               <img
                 src={mealScoutLogo}
                 alt="MealScout Logo"
-                className="w-10 h-10 object-contain"
+                className="w-12 h-12 object-contain"
                 loading="lazy"
                 decoding="async"
               />

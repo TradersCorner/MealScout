@@ -11,8 +11,8 @@
   --bg-texture:
     repeating-radial-gradient(
       circle at 0 0,
-      rgba(255, 255, 255, 0.012),
-      rgba(255, 255, 255, 0.012) 1px,
+      rgba(255, 255, 255, var(--bg-texture-opacity, 0.012)),
+      rgba(255, 255, 255, var(--bg-texture-opacity, 0.012)) 1px,
       transparent 1px,
       transparent 2px
     );
@@ -165,6 +165,48 @@
     #1c1a18;
 }
 
+:root[data-contrast="light"] {
+  --text-primary: #3a2b21;
+  --text-secondary: #6f5d4d;
+  --text-muted: #9b8570;
+  --action-primary: #f38b2a;
+  --action-primary-text: #2b1f16;
+  --border-subtle: rgba(58, 43, 33, 0.12);
+  --foreground: 30 15% 18%;
+  --muted-foreground: 30 10% 45%;
+  --primary: 29 89% 56%;
+  --primary-foreground: 30 15% 18%;
+  --ring: 29 89% 56%;
+}
+
+:root[data-contrast="mid"] {
+  --text-primary: #2f241b;
+  --text-secondary: #5f4e3e;
+  --text-muted: #8a7562;
+  --action-primary: #e57f1e;
+  --action-primary-text: #241a12;
+  --border-subtle: rgba(47, 36, 27, 0.18);
+  --foreground: 28 18% 17%;
+  --muted-foreground: 28 12% 38%;
+  --primary: 28 80% 51%;
+  --primary-foreground: 28 18% 17%;
+  --ring: 28 80% 51%;
+}
+
+:root[data-contrast="dark"] {
+  --text-primary: #ede6dc;
+  --text-secondary: #cbb8a4;
+  --text-muted: #9f8e7c;
+  --action-primary: #f38b2a;
+  --action-primary-text: #1c1a18;
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --foreground: 33 38% 90%;
+  --muted-foreground: 31 27% 72%;
+  --primary: 29 89% 56%;
+  --primary-foreground: 28 20% 12%;
+  --ring: 29 89% 56%;
+}
+
 .dark {
   --background: 28 20% 10%;
   --foreground: 38 30% 92%;
@@ -210,7 +252,7 @@
   }
 
   body {
-    background: var(--bg-app);
+    background: var(--bg-app-dynamic, var(--bg-app));
     color: hsl(var(--foreground));
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
       Ubuntu, Cantarell, sans-serif;
@@ -222,7 +264,7 @@
   .page {
     width: 100%;
     min-height: 100vh;
-    background: var(--bg-app);
+    background: var(--bg-app-dynamic, var(--bg-app));
   }
 
   .content {
@@ -359,13 +401,13 @@
 
   /* Ember-lit app background */
   .app-background {
-    background: var(--bg-app);
+    background: var(--bg-app-dynamic, var(--bg-app));
     min-height: 100vh;
   }
 
   /* Cinematic glow background */
   .animated-gradient-bg {
-    background: var(--bg-app);
+    background: var(--bg-app-dynamic, var(--bg-app));
     min-height: 100vh;
     position: relative;
   }

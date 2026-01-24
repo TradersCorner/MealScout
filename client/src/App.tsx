@@ -337,23 +337,74 @@ function App() {
       return Number(formatter.format(new Date()));
     };
 
-    const getThemeByHour = (hour: number) => {
-      if (hour >= 16 && hour < 21) return "evening";
-      if (hour >= 21 || hour < 7) return "overnight";
-      return "day";
-    };
-
     const applyTheme = () => {
       const manual = document.documentElement.dataset.themeOverride;
       if (manual) {
         document.documentElement.dataset.theme = manual;
+        document.documentElement.dataset.contrast =
+          manual === "day" ? "light" : "dark";
+        document.documentElement.style.removeProperty("--bg-app-dynamic");
         return;
       }
       const timezone =
         Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
       const hour = getHourInTimezone(timezone);
-      const theme = getThemeByHour(hour);
-      document.documentElement.dataset.theme = theme;
+
+      const palettes = {
+        morning: { top: [233, 214, 194], bottom: [200, 171, 144] },
+        midday: { top: [228, 210, 190], bottom: [196, 170, 143] },
+        night: { top: [28, 26, 24], bottom: [28, 26, 24] },
+      };
+
+      const lerp = (a: number, b: number, t: number) =>
+        Math.round(a + (b - a) * t);
+
+      const lerpColor = (c1: number[], c2: number[], t: number) =>
+        `rgb(${lerp(c1[0], c2[0], t)}, ${lerp(c1[1], c2[1], t)}, ${lerp(
+          c1[2],
+          c2[2],
+          t
+        )})`;
+
+      const getProgress = (h: number, start: number, end: number) =>
+        Math.min(1, Math.max(0, (h - start) / (end - start)));
+
+      let from = palettes.morning;
+      let to = palettes.midday;
+      let t = 0;
+
+      if (hour < 12) {
+        from = palettes.morning;
+        to = palettes.midday;
+        t = getProgress(hour, 7, 12);
+      } else if (hour < 21) {
+        from = palettes.midday;
+        to = palettes.night;
+        t = getProgress(hour, 12, 21);
+      } else {
+        from = palettes.night;
+        to = palettes.night;
+        t = 1;
+      }
+
+      const bgTop = lerpColor(from.top, to.top, t);
+      const bgBottom = lerpColor(from.bottom, to.bottom, t);
+      document.documentElement.style.setProperty(
+        "--bg-app-dynamic",
+        `linear-gradient(180deg, ${bgTop} 0%, ${bgBottom} 70%)`
+      );
+
+      const nightFactor =
+        hour >= 16 ? Math.min(1, (hour - 16) / 5) : 0;
+      document.documentElement.style.setProperty(
+        "--bg-texture-opacity",
+        `${0.01 + nightFactor * 0.02}`
+      );
+
+      const contrast =
+        hour >= 7 && hour < 11 ? "light" : hour >= 11 && hour < 17 ? "mid" : "dark";
+      document.documentElement.dataset.contrast = contrast;
+      document.documentElement.dataset.theme = "evening";
     };
 
     const scheduleNextUpdate = () => {
@@ -441,6 +492,7 @@ function ThemePreviewToggle() {
           onClick={() => {
             document.documentElement.dataset.themeOverride = "day";
             document.documentElement.dataset.theme = "day";
+            document.documentElement.dataset.contrast = "light";
           }}
         >
           Day
@@ -450,6 +502,7 @@ function ThemePreviewToggle() {
           onClick={() => {
             document.documentElement.dataset.themeOverride = "evening";
             document.documentElement.dataset.theme = "evening";
+            document.documentElement.dataset.contrast = "dark";
           }}
         >
           Evening
@@ -459,6 +512,7 @@ function ThemePreviewToggle() {
           onClick={() => {
             document.documentElement.dataset.themeOverride = "overnight";
             document.documentElement.dataset.theme = "overnight";
+            document.documentElement.dataset.contrast = "dark";
           }}
         >
           Overnight

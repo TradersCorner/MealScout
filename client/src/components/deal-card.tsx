@@ -439,7 +439,7 @@ export default function DealCard({ deal }: DealCardProps) {
     <div>
       <Card
         ref={cardRef}
-        className="card-light rounded-2xl hover:shadow-xl transition-all duration-300 cursor-pointer border border-subtle shadow-md hover:shadow-2xl group overflow-hidden"
+        className="deal-card transition-all duration-300 cursor-pointer group overflow-hidden"
         data-testid={`card-deal-${deal.id}`}
       >
         <CardContent className="p-0">
@@ -460,7 +460,7 @@ export default function DealCard({ deal }: DealCardProps) {
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
 
             {/* Deal Badge - top left */}
-            <div className="absolute top-1.5 left-1.5 bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)] px-1.5 py-0.5 rounded-lg shadow-lg">
+            <div className="absolute top-1.5 left-1.5 bg-[#F59E0B] text-[#111111] px-1.5 py-0.5 rounded-lg shadow-lg">
               <span className="font-bold text-sm leading-none">
                 {formatDiscount()} OFF
               </span>
@@ -481,7 +481,7 @@ export default function DealCard({ deal }: DealCardProps) {
             >
               <GoldenForkIcon
                 className={`w-3.5 h-3.5 transition-colors duration-200 ${
-                  forkPressed ? "text-warning" : "text-secondary"
+                  forkPressed ? "text-[#F59E0B]" : "text-[#9CA3AF]"
                 }`}
               />
             </button>
@@ -506,17 +506,17 @@ export default function DealCard({ deal }: DealCardProps) {
           <div className="p-2" onClick={handleCardClick}>
             {/* Deal Title */}
             <p
-              className="text-primary text-xs font-bold mb-1.5 line-clamp-2 leading-tight min-h-[2rem]"
+              className="text-[#111827] text-xs font-semibold mb-1.5 line-clamp-2 leading-tight min-h-[2rem]"
               data-testid={`text-restaurant-info-${deal.id}`}
             >
               {deal.title}
             </p>
 
             {/* Rating + Distance */}
-            <div className="flex items-center gap-1.5 mb-1.5 text-[10px] text-secondary">
+            <div className="flex items-center gap-1.5 mb-1.5 text-[10px] text-[#6B7280]">
               {isLiveTruck && (
-                <div className="flex items-center gap-1 rounded-full bg-success-soft px-1.5 py-0.5 text-[10px] font-semibold text-success">
-                  <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                <div className="flex items-center gap-1 rounded-full bg-[rgba(245,158,11,0.15)] px-1.5 py-0.5 text-[10px] font-semibold text-[#F59E0B]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
                   Live now
                 </div>
               )}
@@ -526,7 +526,7 @@ export default function DealCard({ deal }: DealCardProps) {
                   height="10"
                   viewBox="0 0 24 24"
                   fill="currentColor"
-                  className="text-yellow-500"
+                  className="text-[#F59E0B]"
                 >
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                 </svg>
@@ -541,7 +541,7 @@ export default function DealCard({ deal }: DealCardProps) {
               {deal.minOrderAmount && (
                 <>
                   <span>•</span>
-                  <span className="text-[color:var(--action-primary)] font-medium">
+                  <span className="text-[#F59E0B] font-medium">
                     ${deal.minOrderAmount} min
                   </span>
                 </>
@@ -549,14 +549,14 @@ export default function DealCard({ deal }: DealCardProps) {
             </div>
 
             {/* Meta Line: Time & Popularity */}
-            <div className="flex items-center gap-2 text-[10px] text-muted mb-2">
-              <div className="flex items-center gap-0.5">
+            <div className="flex items-center gap-2 text-[10px] text-[#6B7280] mb-2">
+              <div className="flex items-center gap-0.5 text-[#F59E0B]">
                 <Clock className="w-3 h-3" />
                 <span>Ends in 2h15m</span>
               </div>
               <div className="flex items-center gap-0.5">
-                <Flame className="w-3 h-3 text-warning" />
-                <span className="font-medium text-secondary">
+                <Flame className="w-3 h-3 text-[#F59E0B]" />
+                <span className="font-medium text-[#6B7280]">
                   {deal.currentUses || 188} claimed
                 </span>
               </div>
@@ -567,7 +567,7 @@ export default function DealCard({ deal }: DealCardProps) {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 h-7 text-[10px] px-1"
+                className="flex-1 h-7 text-[10px] px-1 border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB]"
                 onClick={(e) => handleSave(e)}
               >
                 {isSaved ? "Bookmarked" : "Bookmark special"}
@@ -576,7 +576,7 @@ export default function DealCard({ deal }: DealCardProps) {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 h-7 text-[10px] px-1"
+                className="flex-1 h-7 text-[10px] px-1 border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB]"
                 onClick={handleShare}
               >
                 Share
@@ -585,7 +585,7 @@ export default function DealCard({ deal }: DealCardProps) {
 
             {/* Button */}
             <Button
-              className="w-full action-primary hover:bg-[color:var(--action-hover)] font-semibold h-8 text-xs shadow-sm"
+              className="w-full h-11 bg-[#F59E0B] text-[#111111] font-semibold text-sm shadow-none hover:bg-[#F59E0B]"
               onClick={(e) => {
                 e.stopPropagation();
                 handleCardClick();

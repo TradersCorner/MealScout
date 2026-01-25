@@ -276,7 +276,7 @@ export default function Navigation() {
                 : [...customerNavItems, bugNavItem];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 w-full bg-[hsl(var(--surface))]/95 backdrop-blur-sm border-t border-white/10 px-4 py-2 z-50 shadow-xl md:top-0 md:bottom-auto md:border-b md:border-t-0 md:py-3">
+    <nav className="fixed bottom-0 left-0 right-0 w-full bg-white border-t border-[#E5E7EB] px-4 py-2 z-50 md:top-0 md:bottom-auto md:border-b md:border-t-0 md:py-3">
       <div className="w-full mx-auto overflow-x-auto md:overflow-visible md:max-w-none md:px-6">
         <div className="flex items-center justify-start space-x-2 min-w-max md:flex-wrap md:justify-center md:gap-3">
           {navItems.map((item) =>
@@ -286,8 +286,8 @@ export default function Navigation() {
                 href={item.path}
                 className={`flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
                   location === item.path
-                    ? "text-[hsl(var(--primary))] bg-[hsl(var(--surface-hover))] ring-1 ring-[hsl(var(--primary))]/30"
-                    : "text-[hsl(var(--foreground))] hover:text-[hsl(var(--primary))] hover:bg-[hsl(var(--surface-hover))]"
+                    ? "text-[#F59E0B]"
+                    : "text-[#9CA3AF] hover:text-[#111827] hover:bg-[#F9FAFB]"
                 }`}
                 data-testid={`nav-${item.label.toLowerCase()}`}
                 aria-label={item.label}
@@ -302,8 +302,8 @@ export default function Navigation() {
                 disabled={isReporting}
                 className={`flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
                   item.isBug
-                    ? "action-primary hover:bg-[color:var(--action-hover)] shadow-lg"
-                    : "text-[hsl(var(--foreground))] hover:text-[hsl(var(--primary))] hover:bg-[hsl(var(--surface-hover))]"
+                    ? "bg-[#F59E0B] text-[#111111] hover:bg-[#F59E0B]"
+                    : "text-[#9CA3AF] hover:text-[#111827] hover:bg-[#F9FAFB]"
                 } ${isReporting ? "opacity-80 cursor-not-allowed" : ""}`}
                 data-testid={`nav-${item.label.toLowerCase()}`}
                 aria-label={item.label}

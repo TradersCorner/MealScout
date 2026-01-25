@@ -147,9 +147,9 @@ export default function SmartSearch({
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
-      <div className="relative flex items-center gap-2 rounded-full border border-subtle bg-[color:var(--bg-card)]/95 px-3 py-2 shadow-md ring-1 ring-[color:var(--border-subtle)]">
+      <div className="smart-search-shell relative flex items-center gap-2 rounded-full px-3 py-2 shadow-md">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--action-primary)] w-5 h-5 z-10" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#F59E0B] w-5 h-5 z-10" />
           <Input
             ref={inputRef}
             type="text"
@@ -158,13 +158,13 @@ export default function SmartSearch({
             onChange={handleInputChange}
             onFocus={handleInputFocus}
             onKeyDown={handleKeyDown}
-            className="w-full pl-11 pr-4 py-3 text-sm sm:text-base rounded-full border border-transparent bg-transparent shadow-none text-primary placeholder:text-secondary focus:border-[color:var(--action-primary)] focus:ring-2 focus:ring-[color:var(--action-hover)] focus:ring-offset-1 focus:ring-offset-transparent"
+            className="smart-search-input w-full pl-11 pr-4 py-3 text-sm sm:text-base rounded-full border border-transparent bg-transparent shadow-none focus:border-transparent focus:ring-2 focus:ring-[#F59E0B]/40 focus:ring-offset-0"
             data-testid="input-smart-search"
           />
         </div>
         <Button
           onClick={() => handleSearch(value)}
-          className="px-5 sm:px-6 py-2.5 text-sm sm:text-base font-semibold rounded-full action-primary shadow-lg hover:shadow-xl hover:bg-[color:var(--action-hover)] focus:ring-2 focus:ring-[color:var(--action-hover)] focus:ring-offset-2 focus:ring-offset-transparent"
+          className="smart-search-button px-5 sm:px-6 py-2.5 text-sm sm:text-base font-semibold rounded-full shadow-lg hover:shadow-xl focus:ring-2 focus:ring-[#F59E0B]/40 focus:ring-offset-0"
           data-testid="button-search"
         >
           Search

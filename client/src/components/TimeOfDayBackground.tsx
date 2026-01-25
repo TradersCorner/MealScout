@@ -4,11 +4,19 @@ export function TimeOfDayBackground() {
       <div
         className="fixed inset-0 z-0 pointer-events-none"
         style={{
-          backgroundColor: "#1C1A18",
-          backgroundImage: "url('/backgrounds/food-truck-night.png')",
+          backgroundColor: "#FAFAF8",
+          backgroundImage: "url('/backgrounds/food-truck-day.jpg')",
           backgroundRepeat: "no-repeat",
           backgroundSize: "cover",
           backgroundPosition: "center",
+          filter: "blur(12px)",
+          transform: "scale(1.03)",
+        }}
+      />
+      <div
+        className="fixed inset-0 z-[1] pointer-events-none"
+        style={{
+          backgroundColor: "rgba(255, 255, 255, 0.85)",
         }}
       />
     </>

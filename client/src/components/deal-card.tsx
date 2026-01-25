@@ -457,7 +457,7 @@ export default function DealCard({ deal }: DealCardProps) {
               referrerPolicy="no-referrer"
             />
             {/* Gradient overlay for text contrast */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
             {/* Deal Badge - top left */}
             <div className="absolute top-1.5 left-1.5 bg-[#F59E0B] text-[#111111] px-1.5 py-0.5 rounded-lg shadow-lg">
@@ -489,13 +489,13 @@ export default function DealCard({ deal }: DealCardProps) {
             {/* Restaurant Name Overlay - bottom */}
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1.5">
               <h3
-                className="font-bold text-white text-xs truncate"
+                className="font-bold text-white text-sm truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]"
                 data-testid={`text-restaurant-name-${deal.id}`}
               >
                 {deal.restaurant?.name || "Restaurant Name"}
               </h3>
               {deal.restaurant?.cuisineType && (
-                <p className="text-white/90 text-[10px] truncate">
+                <p className="text-white/90 text-[11px] truncate drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">
                   {deal.restaurant.cuisineType}
                 </p>
               )}
@@ -506,16 +506,16 @@ export default function DealCard({ deal }: DealCardProps) {
           <div className="p-2" onClick={handleCardClick}>
             {/* Deal Title */}
             <p
-              className="text-primary text-xs font-semibold mb-1.5 line-clamp-2 leading-tight min-h-[2rem]"
+              className="text-primary text-sm font-semibold mb-1.5 line-clamp-2 leading-tight min-h-[2.5rem]"
               data-testid={`text-restaurant-info-${deal.id}`}
             >
               {deal.title}
             </p>
 
             {/* Rating + Distance */}
-            <div className="flex items-center gap-1.5 mb-1.5 text-[10px] text-secondary">
+            <div className="flex items-center gap-1.5 mb-1.5 text-[11px] text-secondary">
               {isLiveTruck && (
-                <div className="flex items-center gap-1 rounded-full bg-[rgba(245,158,11,0.15)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--accent-text)]">
+                <div className="flex items-center gap-1 rounded-full bg-[rgba(245,158,11,0.18)] px-1.5 py-0.5 text-[11px] font-semibold text-[color:var(--accent-text)]">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
                   Live now
                 </div>
@@ -549,7 +549,7 @@ export default function DealCard({ deal }: DealCardProps) {
             </div>
 
             {/* Meta Line: Time & Popularity */}
-            <div className="flex items-center gap-2 text-[10px] text-secondary mb-2">
+            <div className="flex items-center gap-2 text-[11px] text-secondary mb-2">
               <div className="flex items-center gap-0.5 text-[color:var(--accent-text)]">
                 <Clock className="w-3 h-3" />
                 <span>Ends in 2h15m</span>
@@ -567,16 +567,16 @@ export default function DealCard({ deal }: DealCardProps) {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 h-7 text-[10px] px-1 text-secondary hover:bg-[color:var(--bg-surface-muted)]"
+                className="flex-1 h-7 text-[11px] px-1 text-primary border-[color:var(--border-strong)] bg-[color:var(--bg-surface-muted)] hover:bg-[color:var(--bg-surface-muted)]"
                 onClick={(e) => handleSave(e)}
               >
                 {isSaved ? "Bookmarked" : "Bookmark special"}
-                </Button>
+              </Button>
 
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 h-7 text-[10px] px-1 text-secondary hover:bg-[color:var(--bg-surface-muted)]"
+                className="flex-1 h-7 text-[11px] px-1 text-primary border-[color:var(--border-strong)] bg-[color:var(--bg-surface-muted)] hover:bg-[color:var(--bg-surface-muted)]"
                 onClick={handleShare}
               >
                 Share

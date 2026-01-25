@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   MapContainer,
@@ -135,12 +135,28 @@ function MapControls({
   );
 }
 
-function ZoomWatcher({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
-  useMapEvents({
+function MapViewportWatcher({
+  onZoomChange,
+  onBoundsChange,
+}: {
+  onZoomChange: (zoom: number) => void;
+  onBoundsChange: (bounds: L.LatLngBounds) => void;
+}) {
+  const map = useMapEvents({
     zoomend: (event) => {
       onZoomChange(event.target.getZoom());
+      onBoundsChange(event.target.getBounds());
+    },
+    moveend: (event) => {
+      onBoundsChange(event.target.getBounds());
     },
   });
+
+  useEffect(() => {
+    onZoomChange(map.getZoom());
+    onBoundsChange(map.getBounds());
+  }, [map, onZoomChange, onBoundsChange]);
+
   return null;
 }
 
@@ -377,13 +393,14 @@ export default function MapPage() {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(16);
+  const [mapBounds, setMapBounds] = useState<L.LatLngBounds | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [hostCoords, setHostCoords] = useState<Record<string, GeoPoint>>({});
   const [eventCoords, setEventCoords] = useState<Record<string, GeoPoint>>({});
   const [parkingCoords, setParkingCoords] = useState<Record<string, GeoPoint>>(
     {},
   );
-  const [geocodingQueue, setGeocodingQueue] = useState<string[]>([]);
+  const geocodeInFlight = useRef(false);
   const [geocodeCache, setGeocodeCache] = useState<
     Record<string, GeocodeCacheEntry>
   >({});
@@ -549,6 +566,26 @@ export default function MapPage() {
       .filter(Boolean) as Array<{ id: string; lat: number; lng: number }>;
   }, [liveTrucks]);
 
+  const visibleDeals = useMemo(() => {
+    if (!mapBounds) return deals;
+    return deals.filter((deal) => {
+      const lat = toNumberOrNull(deal.restaurant?.latitude);
+      const lng = toNumberOrNull(deal.restaurant?.longitude);
+      if (lat === null || lng === null) return false;
+      return mapBounds.contains([lat, lng]);
+    });
+  }, [deals, mapBounds]);
+
+  const visibleLiveTrucks = useMemo(() => {
+    if (!mapBounds) return liveTrucks;
+    return liveTrucks.filter((truck) => {
+      const lat = toNumberOrNull(truck.currentLatitude);
+      const lng = toNumberOrNull(truck.currentLongitude);
+      if (lat === null || lng === null) return false;
+      return mapBounds.contains([lat, lng]);
+    });
+  }, [liveTrucks, mapBounds]);
+
   const hasTruckNearby = (coords: GeoPoint, radiusKm = 0.12) => {
     return truckCoords.some((truck) => {
       return (
@@ -607,6 +644,57 @@ export default function MapPage() {
     staleTime: 2 * 60 * 1000,
   });
 
+  const visibleHostLocations = useMemo(() => {
+    if (!mapBounds || !mapLocations?.hostLocations?.length) return [];
+    return mapLocations.hostLocations.filter((host) => {
+      const coords =
+        hostCoords[host.id] ||
+        (toNumberOrNull(host.latitude) !== null &&
+        toNumberOrNull(host.longitude) !== null
+          ? {
+              lat: Number(host.latitude),
+              lng: Number(host.longitude),
+            }
+          : null);
+      if (!coords) return false;
+      return mapBounds.contains([coords.lat, coords.lng]);
+    });
+  }, [mapLocations, hostCoords, mapBounds]);
+
+  const visibleEventLocations = useMemo(() => {
+    if (!mapBounds || !mapLocations?.eventLocations?.length) return [];
+    return mapLocations.eventLocations.filter((event) => {
+      const coords =
+        eventCoords[event.id] ||
+        (toNumberOrNull(event.hostLatitude) !== null &&
+        toNumberOrNull(event.hostLongitude) !== null
+          ? {
+              lat: Number(event.hostLatitude),
+              lng: Number(event.hostLongitude),
+            }
+          : null);
+      if (!coords) return false;
+      return mapBounds.contains([coords.lat, coords.lng]);
+    });
+  }, [mapLocations, eventCoords, mapBounds]);
+
+  const visibleParkingLocations = useMemo(() => {
+    if (!mapBounds || !parkingPassLocations.length) return [];
+    return parkingPassLocations.filter((event) => {
+      const coords =
+        parkingCoords[event.id] ||
+        (toNumberOrNull(event.host?.latitude) !== null &&
+        toNumberOrNull(event.host?.longitude) !== null
+          ? {
+              lat: Number(event.host.latitude),
+              lng: Number(event.host.longitude),
+            }
+          : null);
+      if (!coords) return false;
+      return mapBounds.contains([coords.lat, coords.lng]);
+    });
+  }, [parkingPassLocations, parkingCoords, mapBounds]);
+
   useEffect(() => {
     if (
       !mapLocations?.hostLocations?.length &&
@@ -658,10 +746,17 @@ export default function MapPage() {
 
   // Build a geocoding work list for any host/event without coordinates yet
   useEffect(() => {
+    if (!mapBounds || zoomLevel < 12) {
+      return;
+    }
+    if (geocodeInFlight.current) {
+      return;
+    }
     const queue: string[] = [];
     const addressByKey: Record<string, string> = {};
     const now = Date.now();
     const failureCooldownMs = 6 * 60 * 60 * 1000;
+    const maxQueue = zoomLevel >= 16 ? 25 : 10;
 
     mapLocations?.hostLocations.forEach((host) => {
       const lat = toNumberOrNull(host.latitude);
@@ -700,19 +795,41 @@ export default function MapPage() {
     });
 
     if (queue.length) {
-      setGeocodingQueue(queue);
+      const limitedQueue = queue.slice(0, maxQueue);
+      geocodeInFlight.current = true;
       (async () => {
-        const newHostCoords: Record<string, GeoPoint> = {};
-        const newEventCoords: Record<string, GeoPoint> = {};
-        const newParkingCoords: Record<string, GeoPoint> = {};
-        const newFailures: Record<string, GeocodeFailureEntry> = {};
+        try {
+          const newHostCoords: Record<string, GeoPoint> = {};
+          const newEventCoords: Record<string, GeoPoint> = {};
+          const newParkingCoords: Record<string, GeoPoint> = {};
+          const newFailures: Record<string, GeocodeFailureEntry> = {};
 
-        for (const key of queue) {
-          const address = addressByKey[key];
-          if (!address) continue;
-          const cached = geocodeCache[address];
-          if (cached) {
-            const point = { lat: cached.lat, lng: cached.lng };
+          for (const key of limitedQueue) {
+            const address = addressByKey[key];
+            if (!address) continue;
+            const cached = geocodeCache[address];
+            if (cached) {
+              const point = { lat: cached.lat, lng: cached.lng };
+              if (key.startsWith("host:")) {
+                newHostCoords[key.replace("host:", "")] = point;
+              } else if (key.startsWith("event:")) {
+                newEventCoords[key.replace("event:", "")] = point;
+              } else if (key.startsWith("parking:")) {
+                newParkingCoords[key.replace("parking:", "")] = point;
+              }
+              continue;
+            }
+
+            const failed = geocodeFailures[address];
+            if (failed && now - failed.ts < failureCooldownMs) {
+              continue;
+            }
+
+            const point = await geocodeAddress(address).catch(() => null);
+            if (!point) {
+              newFailures[address] = { ts: Date.now() };
+              continue;
+            }
             if (key.startsWith("host:")) {
               newHostCoords[key.replace("host:", "")] = point;
             } else if (key.startsWith("event:")) {
@@ -720,47 +837,29 @@ export default function MapPage() {
             } else if (key.startsWith("parking:")) {
               newParkingCoords[key.replace("parking:", "")] = point;
             }
-            continue;
+            setGeocodeCache((prev) => ({
+              ...prev,
+              [address]: { lat: point.lat, lng: point.lng, ts: Date.now() },
+            }));
+            // small delay to avoid hammering the free geocoder
+            await new Promise((r) => setTimeout(r, 300));
           }
 
-          const failed = geocodeFailures[address];
-          if (failed && now - failed.ts < failureCooldownMs) {
-            continue;
+          if (Object.keys(newHostCoords).length) {
+            setHostCoords((prev) => ({ ...prev, ...newHostCoords }));
           }
-
-          const point = await geocodeAddress(address).catch(() => null);
-          if (!point) {
-            newFailures[address] = { ts: Date.now() };
-            continue;
+          if (Object.keys(newEventCoords).length) {
+            setEventCoords((prev) => ({ ...prev, ...newEventCoords }));
           }
-          if (key.startsWith("host:")) {
-            newHostCoords[key.replace("host:", "")] = point;
-          } else if (key.startsWith("event:")) {
-            newEventCoords[key.replace("event:", "")] = point;
-          } else if (key.startsWith("parking:")) {
-            newParkingCoords[key.replace("parking:", "")] = point;
+          if (Object.keys(newParkingCoords).length) {
+            setParkingCoords((prev) => ({ ...prev, ...newParkingCoords }));
           }
-          setGeocodeCache((prev) => ({
-            ...prev,
-            [address]: { lat: point.lat, lng: point.lng, ts: Date.now() },
-          }));
-          // small delay to avoid hammering the free geocoder
-          await new Promise((r) => setTimeout(r, 300));
+          if (Object.keys(newFailures).length) {
+            setGeocodeFailures((prev) => ({ ...prev, ...newFailures }));
+          }
+        } finally {
+          geocodeInFlight.current = false;
         }
-
-        if (Object.keys(newHostCoords).length) {
-          setHostCoords((prev) => ({ ...prev, ...newHostCoords }));
-        }
-        if (Object.keys(newEventCoords).length) {
-          setEventCoords((prev) => ({ ...prev, ...newEventCoords }));
-        }
-        if (Object.keys(newParkingCoords).length) {
-          setParkingCoords((prev) => ({ ...prev, ...newParkingCoords }));
-        }
-        if (Object.keys(newFailures).length) {
-          setGeocodeFailures((prev) => ({ ...prev, ...newFailures }));
-        }
-        setGeocodingQueue([]);
       })();
     }
   }, [
@@ -771,6 +870,8 @@ export default function MapPage() {
     parkingCoords,
     geocodeCache,
     geocodeFailures,
+    mapBounds,
+    zoomLevel,
   ]);
 
   const handleCenterOnUser = () => {
@@ -798,11 +899,11 @@ export default function MapPage() {
   };
 
   const hasLocation = !!userLocation;
-  const hasDeals = deals.length > 0;
-  const liveTruckPins = liveTrucks.length;
-  const hostPins = mapLocations?.hostLocations?.length || 0;
-  const eventPins = mapLocations?.eventLocations?.length || 0;
-  const parkingPins = parkingPassLocations.length;
+  const hasDeals = visibleDeals.length > 0;
+  const liveTruckPins = visibleLiveTrucks.length;
+  const hostPins = visibleHostLocations.length;
+  const eventPins = visibleEventLocations.length;
+  const parkingPins = visibleParkingLocations.length;
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
@@ -873,6 +974,7 @@ export default function MapPage() {
             <MapContainer
               center={[mapCenter.lat, mapCenter.lng]}
               zoom={zoomLevel}
+              preferCanvas
               style={{ height: "100%", width: "100%" }}
               className="rounded-lg overflow-hidden"
             >
@@ -901,7 +1003,7 @@ export default function MapPage() {
               )}
 
               {/* Deal Markers */}
-              {deals.map((deal: Deal) => {
+              {visibleDeals.map((deal: Deal) => {
                 if (!deal.restaurant) return null;
                 return (
                   <Marker
@@ -938,7 +1040,7 @@ export default function MapPage() {
               })}
 
               {/* Live Truck Markers */}
-              {liveTrucks.map((truck) => {
+              {visibleLiveTrucks.map((truck) => {
                 const lat = toNumberOrNull(truck.currentLatitude);
                 const lng = toNumberOrNull(truck.currentLongitude);
                 if (!lat || !lng) return null;
@@ -977,7 +1079,7 @@ export default function MapPage() {
               })}
 
               {/* Host Location Markers (open requests) */}
-              {mapLocations?.hostLocations.map((host) => {
+              {visibleHostLocations.map((host) => {
                 const coords =
                   hostCoords[host.id] ||
                   (toNumberOrNull(host.latitude) !== null &&
@@ -1050,7 +1152,7 @@ export default function MapPage() {
               })}
 
               {/* Event Markers */}
-              {mapLocations?.eventLocations.map((event) => {
+              {visibleEventLocations.map((event) => {
                 const coords =
                   eventCoords[event.id] ||
                   (toNumberOrNull(event.hostLatitude) !== null &&
@@ -1102,7 +1204,7 @@ export default function MapPage() {
               })}
 
               {/* Parking Pass Markers */}
-              {parkingPassLocations.map((event) => {
+              {visibleParkingLocations.map((event) => {
                 const coords =
                   parkingCoords[event.id] ||
                   (toNumberOrNull(event.host?.latitude) !== null &&
@@ -1173,7 +1275,10 @@ export default function MapPage() {
                 userLocation={userLocation}
                 zoomLevel={zoomLevel}
               />
-              <ZoomWatcher onZoomChange={setZoomLevel} />
+              <MapViewportWatcher
+                onZoomChange={setZoomLevel}
+                onBoundsChange={setMapBounds}
+              />
             </MapContainer>
           )}
 

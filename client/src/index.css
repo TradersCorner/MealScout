@@ -553,10 +553,13 @@
   }
 
   .theme-night .deal-card {
-    background: #111111;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #0f0f0f;
+    border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 18px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 14px 44px rgba(0, 0, 0, 0.7);
+    --text-secondary: #d1d5db;
+    --text-muted: #cbd5e1;
+    --border-subtle: rgba(255, 255, 255, 0.18);
   }
 
   .theme-day .nav-bar {

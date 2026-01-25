@@ -273,7 +273,7 @@ export default function Home() {
       <Navigation />
 
       {/* Header with Logo and Navigation */}
-      <header className="section section--full bg-white border-b border-[#E5E7EB] sticky top-0 z-10 shadow-sm">
+      <header className="section section--full bg-[hsl(var(--surface))]/85 backdrop-blur-md border-b border-[color:var(--border-subtle)] sticky top-0 z-10 shadow-sm">
         <div className="content flex items-center justify-between py-3">
           <div className="flex items-center space-x-2 flex-shrink-0">
             <div className="w-10 h-10 flex items-center justify-center overflow-hidden">
@@ -367,7 +367,7 @@ export default function Home() {
       </header>
 
       {/* Hero & Search Section */}
-      <section className="section section--full section--surface border-b border-[#E5E7EB] py-4">
+      <section className="section section--full section--surface border-b border-[color:var(--border-subtle)] py-4">
         <div className="content">
           <div className="mb-3">
             <h2 className="hero-title text-xl mb-1">
@@ -531,12 +531,12 @@ export default function Home() {
       </section>
 
       {/* Food Trucks Nearby - Horizontal Scroll Row */}
-      <section className="section section--full section--surface-2 border-y border-[#E5E7EB] py-4">
+      <section className="section section--full section--surface-2 border-y border-[color:var(--border-subtle)] py-4">
         <div className="content">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Truck className="w-4 h-4 text-[#F59E0B]" />
-              <h3 className="text-sm font-bold text-[#111827]">
+              <h3 className="text-sm font-bold text-foreground">
                 Live Trucks:{" "}
                 {shortLocation === "Your Location" ? "Nearby" : shortLocation}
               </h3>
@@ -580,17 +580,17 @@ export default function Home() {
       </section>
 
       {/* Featured Deals Section - ORIGINAL LAYOUT */}
-      <section className="section section--full border-y border-[#E5E7EB] py-4">
+      <section className="section section--full border-y border-[color:var(--border-subtle)] py-4">
         <div className="content">
           <div className="mb-3">
-            <h2 className="text-base font-bold text-[#111827] flex items-center">
+            <h2 className="text-base font-bold text-foreground flex items-center">
               <Sparkles className="w-4 h-4 text-[#F59E0B] mr-1.5" />
               Trending in{" "}
               {shortLocation === "Your Location"
                 ? "Your Neighborhood"
                 : shortLocation}
             </h2>
-            <p className="text-xs text-[#6B7280] mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Fast-moving offers from spots around you
             </p>
             <Link href="/deals/featured">
@@ -639,7 +639,7 @@ export default function Home() {
 
       {/* Owner Section - MOVED UP FOR LOGGED OUT USERS */}
       {!user && (
-        <section className="section section--full section--surface-2 py-3 text-[#111827]">
+        <section className="section section--full section--surface-2 py-3 text-foreground">
           <div className="content text-center">
             <ChefHat className="w-6 h-6 mx-auto mb-1 text-[color:var(--action-primary)]" />
             <h3 className="text-base font-bold mb-0.5">
@@ -663,7 +663,7 @@ export default function Home() {
       )}
 
       {/* TWO-COLUMN SECTIONS - SIDE BY SIDE */}
-      <section className="section section--full border-y border-[#E5E7EB] py-6">
+      <section className="section section--full border-y border-[color:var(--border-subtle)] py-6">
         <div className="content">
           {!user ? (
             /* LOGGED OUT - TWO SECTIONS SIDE BY SIDE */
@@ -685,7 +685,7 @@ export default function Home() {
             </div>
 
                 <div className="space-y-2 mb-4">
-                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[#E5E7EB] flex items-center gap-3">
+                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-center gap-3">
                     <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
                       <Heart className="w-4 h-4 text-[hsl(var(--primary))]" />
                     </div>
@@ -702,7 +702,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[#E5E7EB] flex items-center gap-3">
+                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-center gap-3">
                     <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
                       <Truck className="w-4 h-4 text-[hsl(var(--primary))]" />
                     </div>
@@ -719,7 +719,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[#E5E7EB] flex items-center gap-3">
+                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-center gap-3">
                     <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
                       <Bell className="w-4 h-4 text-[hsl(var(--primary))]" />
                     </div>
@@ -760,7 +760,7 @@ export default function Home() {
                 </div>
 
                 <div className="space-y-2 mb-4">
-                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[#E5E7EB] flex items-start gap-3">
+                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-start gap-3">
                     <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
                       <span className="text-[hsl(var(--primary))] font-bold text-xs">
                         1
@@ -776,7 +776,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[#E5E7EB] flex items-start gap-3">
+                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-start gap-3">
                     <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
                       <span className="text-[hsl(var(--primary))] font-bold text-xs">
                         2
@@ -792,7 +792,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[#E5E7EB] flex items-start gap-3">
+                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-start gap-3">
                     <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
                       <span className="text-[hsl(var(--primary))] font-bold text-xs">
                         3
@@ -933,7 +933,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="section section--full border-t border-[#E5E7EB] py-6">
+      <footer className="section section--full border-t border-[color:var(--border-subtle)] py-6">
         <div className="content">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="space-y-2">
@@ -997,7 +997,7 @@ export default function Home() {
               </Link>
             </div>
           </div>
-          <div className="text-center text-xs text-muted-foreground border-t border-[#E5E7EB] pt-4 mt-5">
+          <div className="text-center text-xs text-muted-foreground border-t border-[color:var(--border-subtle)] pt-4 mt-5">
             <p>&copy; 2026 MealScout. A TradeScout Product.</p>
           </div>
         </div>

@@ -71,6 +71,67 @@
   --radius: 16px;
 }
 
+.theme-night {
+  --bg-app: #1c1a18;
+  --bg-texture: url("/backgrounds/noise.png");
+  --bg-light: url("/backgrounds/light-night.png");
+  --bg-evening-glow: none;
+  --bg-day-glow: none;
+  --bg-ember: none;
+  --bg-layered: var(--bg-app);
+  --bg-surface: #171513;
+  --bg-surface-muted: #1f1b18;
+  --bg-card: #111111;
+  --bg-popup: #1c1a18;
+  --text-primary: #ffffff;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --text-inverse: #111111;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --action-primary: #f59e0b;
+  --action-primary-text: #111111;
+  --action-secondary: #2a2520;
+  --action-secondary-text: #ede6dc;
+  --action-hover: #f59e0b;
+  --status-success: #7bc08a;
+  --status-warning: #f59e0b;
+  --status-error: #e07a6a;
+  --accent-ember: #f59e0b;
+
+  --background: 28 20% 10%;
+  --background-gradient: none;
+  --foreground: 0 0% 100%;
+
+  --card: 0 0% 7%;
+  --card-foreground: 0 0% 100%;
+
+  --surface: 30 13% 12%;
+  --surface-hover: 30 14% 15%;
+
+  --popover: 30 18% 12%;
+  --popover-foreground: 0 0% 100%;
+
+  --primary: 38 92% 50%;
+  --primary-foreground: 222 47% 11%;
+
+  --secondary: 30 14% 15%;
+  --secondary-foreground: 36 24% 88%;
+
+  --muted: 28 16% 14%;
+  --muted-foreground: 32 14% 62%;
+
+  --accent: 38 92% 50%;
+  --accent-foreground: 222 47% 11%;
+
+  --destructive: 6 65% 48%;
+  --destructive-foreground: 36 24% 90%;
+
+  --border: 30 12% 22%;
+  --input: 28 14% 18%;
+  --ring: 38 92% 50%;
+}
+
 .dark {
   --background: 28 20% 10%;
   --foreground: 38 30% 92%;
@@ -260,22 +321,40 @@
     background-color: var(--status-success);
   }
 
-  .home-cinematic .section--surface,
-  .home-cinematic .section--surface-2 {
+  .theme-day .home-cinematic .section--surface,
+  .theme-day .home-cinematic .section--surface-2 {
     background-color: var(--bg-surface) !important;
   }
 
-  .home-cinematic header {
+  .theme-night .home-cinematic .section--surface,
+  .theme-night .home-cinematic .section--surface-2 {
+    background-color: transparent !important;
+  }
+
+  .theme-day .home-cinematic header {
     background-color: #ffffff !important;
     backdrop-filter: none;
   }
 
-  .home-cinematic .section--full.border-b,
-  .home-cinematic .section--full.border-t,
-  .home-cinematic .section--full.border-y,
-  .home-cinematic .section--surface.border-b,
-  .home-cinematic .section--surface-2.border-y {
+  .theme-night .home-cinematic header {
+    background-color: rgba(10, 10, 10, 0.75) !important;
+    backdrop-filter: blur(12px);
+  }
+
+  .theme-day .home-cinematic .section--full.border-b,
+  .theme-day .home-cinematic .section--full.border-t,
+  .theme-day .home-cinematic .section--full.border-y,
+  .theme-day .home-cinematic .section--surface.border-b,
+  .theme-day .home-cinematic .section--surface-2.border-y {
     border-color: var(--border-subtle) !important;
+  }
+
+  .theme-night .home-cinematic .section--full.border-b,
+  .theme-night .home-cinematic .section--full.border-t,
+  .theme-night .home-cinematic .section--full.border-y,
+  .theme-night .home-cinematic .section--surface.border-b,
+  .theme-night .home-cinematic .section--surface-2.border-y {
+    border-color: transparent !important;
   }
 
   .text-muted-foreground {
@@ -296,26 +375,51 @@
     background: transparent;
   }
 
-  .hero-title {
+  .theme-day .hero-title {
     color: #111827;
     font-weight: 700;
   }
 
-  .hero-subtitle {
+  .theme-night .hero-title {
+    color: #ffffff;
+    font-weight: 800;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  }
+
+  .theme-day .hero-subtitle {
     color: #6b7280;
   }
 
-  .smart-search-shell {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
+  .theme-night .hero-subtitle {
+    color: rgba(255, 255, 255, 0.78);
   }
 
-  .smart-search-input {
+  .theme-day .smart-search-shell {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    backdrop-filter: none;
+  }
+
+  .theme-night .smart-search-shell {
+    background: rgba(20, 20, 20, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(14px);
+  }
+
+  .theme-day .smart-search-input {
     color: #111827;
   }
 
-  .smart-search-input::placeholder {
+  .theme-night .smart-search-input {
+    color: #ffffff;
+  }
+
+  .theme-day .smart-search-input::placeholder {
     color: #9ca3af;
+  }
+
+  .theme-night .smart-search-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
   }
 
   .smart-search-button {
@@ -416,10 +520,16 @@
     background-image: none !important;
   }
 
-  .filter-pill {
+  .theme-day .filter-pill {
     background: #ffffff;
     color: #374151;
     border: 1px solid #e5e7eb;
+  }
+
+  .theme-night .filter-pill {
+    background: rgba(0, 0, 0, 0.55);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.12);
   }
 
   .filter-pill--active {
@@ -428,11 +538,64 @@
     border-color: transparent;
   }
 
-  .deal-card {
+  .theme-day .deal-card {
     background: #ffffff;
     border: 1px solid #e5e7eb;
     border-radius: 18px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  .theme-night .deal-card {
+    background: #111111;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  }
+
+  .theme-day .nav-bar {
+    background: #ffffff;
+    border-color: #e5e7eb;
+    box-shadow: none;
+  }
+
+  .theme-night .nav-bar {
+    background: rgba(10, 10, 10, 0.9);
+    border-color: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  .theme-day .nav-link--active,
+  .theme-night .nav-link--active {
+    color: #f59e0b;
+  }
+
+  .theme-day .nav-link--inactive,
+  .theme-night .nav-link--inactive {
+    color: #9ca3af;
+  }
+
+  .theme-day .nav-link--inactive:hover {
+    color: #111827;
+    background: #f9fafb;
+  }
+
+  .theme-night .nav-link--inactive:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .theme-day .nav-link--active:hover {
+    background: #f9fafb;
+  }
+
+  .theme-night .nav-link--active:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .nav-bug {
+    background: #f59e0b;
+    color: #111111;
   }
 
   /* Clean shadows */

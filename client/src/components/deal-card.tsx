@@ -481,7 +481,7 @@ export default function DealCard({ deal }: DealCardProps) {
             >
               <GoldenForkIcon
                 className={`w-3.5 h-3.5 transition-colors duration-200 ${
-                  forkPressed ? "text-[#F59E0B]" : "text-[#9CA3AF]"
+                  forkPressed ? "text-[#F59E0B]" : "text-muted"
                 }`}
               />
             </button>
@@ -506,14 +506,14 @@ export default function DealCard({ deal }: DealCardProps) {
           <div className="p-2" onClick={handleCardClick}>
             {/* Deal Title */}
             <p
-              className="text-[#111827] text-xs font-semibold mb-1.5 line-clamp-2 leading-tight min-h-[2rem]"
+              className="text-primary text-xs font-semibold mb-1.5 line-clamp-2 leading-tight min-h-[2rem]"
               data-testid={`text-restaurant-info-${deal.id}`}
             >
               {deal.title}
             </p>
 
             {/* Rating + Distance */}
-            <div className="flex items-center gap-1.5 mb-1.5 text-[10px] text-[#6B7280]">
+            <div className="flex items-center gap-1.5 mb-1.5 text-[10px] text-secondary">
               {isLiveTruck && (
                 <div className="flex items-center gap-1 rounded-full bg-[rgba(245,158,11,0.15)] px-1.5 py-0.5 text-[10px] font-semibold text-[#F59E0B]">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
@@ -549,14 +549,14 @@ export default function DealCard({ deal }: DealCardProps) {
             </div>
 
             {/* Meta Line: Time & Popularity */}
-            <div className="flex items-center gap-2 text-[10px] text-[#6B7280] mb-2">
+            <div className="flex items-center gap-2 text-[10px] text-secondary mb-2">
               <div className="flex items-center gap-0.5 text-[#F59E0B]">
                 <Clock className="w-3 h-3" />
                 <span>Ends in 2h15m</span>
               </div>
               <div className="flex items-center gap-0.5">
                 <Flame className="w-3 h-3 text-[#F59E0B]" />
-                <span className="font-medium text-[#6B7280]">
+                <span className="font-medium text-secondary">
                   {deal.currentUses || 188} claimed
                 </span>
               </div>
@@ -567,7 +567,7 @@ export default function DealCard({ deal }: DealCardProps) {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 h-7 text-[10px] px-1 border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB]"
+                className="flex-1 h-7 text-[10px] px-1 text-secondary hover:bg-[color:var(--bg-surface-muted)]"
                 onClick={(e) => handleSave(e)}
               >
                 {isSaved ? "Bookmarked" : "Bookmark special"}
@@ -576,7 +576,7 @@ export default function DealCard({ deal }: DealCardProps) {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 h-7 text-[10px] px-1 border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB]"
+                className="flex-1 h-7 text-[10px] px-1 text-secondary hover:bg-[color:var(--bg-surface-muted)]"
                 onClick={handleShare}
               >
                 Share

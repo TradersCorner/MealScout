@@ -276,7 +276,7 @@ export default function Navigation() {
                 : [...customerNavItems, bugNavItem];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 w-full bg-white border-t border-[#E5E7EB] px-4 py-2 z-50 md:top-0 md:bottom-auto md:border-b md:border-t-0 md:py-3">
+    <nav className="nav-bar fixed bottom-0 left-0 right-0 w-full border-t px-4 py-2 z-50 md:top-0 md:bottom-auto md:border-b md:border-t-0 md:py-3">
       <div className="w-full mx-auto overflow-x-auto md:overflow-visible md:max-w-none md:px-6">
         <div className="flex items-center justify-start space-x-2 min-w-max md:flex-wrap md:justify-center md:gap-3">
           {navItems.map((item) =>
@@ -284,10 +284,8 @@ export default function Navigation() {
               <Link
                 key={item.path}
                 href={item.path}
-                className={`flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
-                  location === item.path
-                    ? "text-[#F59E0B]"
-                    : "text-[#9CA3AF] hover:text-[#111827] hover:bg-[#F9FAFB]"
+                className={`nav-link flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
+                  location === item.path ? "nav-link--active" : "nav-link--inactive"
                 }`}
                 data-testid={`nav-${item.label.toLowerCase()}`}
                 aria-label={item.label}
@@ -300,10 +298,8 @@ export default function Navigation() {
                 key={item.label}
                 onClick={item.onClick}
                 disabled={isReporting}
-                className={`flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
-                  item.isBug
-                    ? "bg-[#F59E0B] text-[#111111] hover:bg-[#F59E0B]"
-                    : "text-[#9CA3AF] hover:text-[#111827] hover:bg-[#F9FAFB]"
+                className={`nav-link flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
+                  item.isBug ? "nav-bug" : "nav-link--inactive"
                 } ${isReporting ? "opacity-80 cursor-not-allowed" : ""}`}
                 data-testid={`nav-${item.label.toLowerCase()}`}
                 aria-label={item.label}

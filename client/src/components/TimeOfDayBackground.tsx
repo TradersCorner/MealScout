@@ -54,7 +54,7 @@ export function TimeOfDayBackground() {
           backgroundColor: isDay ? "rgba(255, 255, 255, 0.85)" : "transparent",
           backgroundImage: isDay
             ? "none"
-            : "linear-gradient(180deg, rgba(8, 8, 8, 0.65) 0%, rgba(8, 8, 8, 0.35) 50%, rgba(8, 8, 8, 0.55) 100%)",
+            : "linear-gradient(180deg, rgba(8, 8, 8, 0.75) 0%, rgba(8, 8, 8, 0.55) 50%, rgba(8, 8, 8, 0.7) 100%)",
         }}
       />
     </>

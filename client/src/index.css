@@ -86,7 +86,7 @@
   --bg-surface-muted: #1f1b18;
   --bg-card: #111111;
   --bg-popup: #1c1a18;
-  --field-bg: #2a2520;
+  --field-bg: #332d28;
   --text-primary: #ffffff;
   --text-secondary: #9ca3af;
   --text-muted: #6b7280;
@@ -334,7 +334,8 @@
 
   .theme-night .home-cinematic .section--surface,
   .theme-night .home-cinematic .section--surface-2 {
-    background-color: transparent !important;
+    background-color: rgba(17, 17, 17, 0.86) !important;
+    backdrop-filter: blur(12px);
   }
 
   .theme-day .home-cinematic header {
@@ -343,8 +344,8 @@
   }
 
   .theme-night .home-cinematic header {
-    background-color: rgba(10, 10, 10, 0.75) !important;
-    backdrop-filter: blur(12px);
+    background-color: rgba(10, 10, 10, 0.92) !important;
+    backdrop-filter: blur(14px);
   }
 
   .theme-day .home-cinematic .section--full.border-b,
@@ -407,8 +408,8 @@
   }
 
   .theme-night .smart-search-shell {
-    background: rgba(20, 20, 20, 0.75);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(20, 20, 20, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     backdrop-filter: blur(14px);
   }
 

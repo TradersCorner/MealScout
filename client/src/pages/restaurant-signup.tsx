@@ -40,7 +40,7 @@ import DocumentUpload from "@/components/document-upload";
 import { BackHeader } from "@/components/back-header";
 import { Store } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
-import mealScoutLogo from "@assets/ChatGPT Image Sep 14, 2025, 09_25_52 AM_1757872111259.png";
+import mealScoutLogo from "@assets/meal-scout-icon.png";
 import { HOST_ONBOARDING_COPY as COPY } from "@/copy/hostOnboarding.copy";
 import {
   PASSWORD_REGEX,

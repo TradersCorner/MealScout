@@ -39,7 +39,7 @@ import {
   Beef,
   Flame,
 } from "lucide-react";
-import mealScoutLogo from "@assets/ChatGPT Image Sep 14, 2025, 09_25_52 AM_1757872111259.png";
+import mealScoutLogo from "@assets/meal-scout-icon.png";
 import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
 import { getReverseGeocodedLocationName } from "@/utils/locationUtils";
 
@@ -233,33 +233,13 @@ export default function Home() {
       ),
   });
 
-  const groupedFeaturedDeals = featuredDeals?.reduce(
-    (
-      acc: Record<
-        string,
-        { restaurant?: Deal["restaurant"]; deals: Deal[]; distance?: number }
-      >,
-      deal: Deal
-    ) => {
-      const bucket = acc[deal.restaurantId] || {
-        restaurant: deal.restaurant,
-        deals: [],
-        distance: deal.distance,
-      };
-      bucket.deals.push(deal);
-      // prefer the first distance value we see
-      if (bucket.distance === undefined && deal.distance !== undefined) {
-        bucket.distance = deal.distance;
-      }
-      // prefer the first restaurant object we see
-      if (!bucket.restaurant && deal.restaurant) {
-        bucket.restaurant = deal.restaurant;
-      }
-      acc[deal.restaurantId] = bucket;
-      return acc;
-    },
-    {}
-  );
+  const sortedFeaturedDeals = featuredDeals
+    ? [...featuredDeals].sort((a: Deal, b: Deal) => {
+        const aDistance = a.distance ?? Number.POSITIVE_INFINITY;
+        const bDistance = b.distance ?? Number.POSITIVE_INFINITY;
+        return aDistance - bDistance;
+      })
+    : [];
 
   const shortLocation = locationName?.split(",")[0] || "your area";
   const firstName =
@@ -276,17 +256,14 @@ export default function Home() {
       <header className="section section--full bg-[hsl(var(--surface))]/85 backdrop-blur-md border-b border-[color:var(--border-subtle)] sticky top-0 z-10 shadow-sm">
         <div className="content flex items-center justify-between py-3">
           <div className="flex items-center space-x-2 flex-shrink-0">
-            <div className="w-10 h-10 flex items-center justify-center overflow-hidden">
+            <div className="w-16 h-16 flex items-center justify-center overflow-hidden">
               <img
                 src={mealScoutLogo}
                 alt="MealScout Logo"
-                className="w-10 h-10 object-cover object-center"
+                className="w-full h-full object-contain object-center"
                 loading="lazy"
                 decoding="async"
               />
-            </div>
-            <div className="hidden xs:block">
-              <h1 className="text-lg font-bold text-foreground">MealScout</h1>
             </div>
           </div>
 
@@ -297,7 +274,7 @@ export default function Home() {
                   variant="ghost"
                   size="icon"
                   onClick={() => setNavigateTo("/login")}
-                  className="text-primary hover:text-[color:var(--action-primary)]"
+                  className="text-primary hover:text-[color:var(--accent-text-hover)]"
                   title="Login"
                 >
                   <LogIn className="w-5 h-5" />
@@ -306,7 +283,7 @@ export default function Home() {
                   variant="ghost"
                   size="icon"
                   onClick={() => setNavigateTo("/customer-signup")}
-                  className="text-primary hover:text-[color:var(--action-primary)]"
+                  className="text-primary hover:text-[color:var(--accent-text-hover)]"
                   title="Customer Sign Up"
                 >
                   <UserPlus className="w-5 h-5" />
@@ -317,7 +294,7 @@ export default function Home() {
                   onClick={() =>
                     setNavigateTo("/customer-signup?role=business")
                   }
-                  className="text-primary hover:text-[color:var(--action-primary)]"
+                  className="text-primary hover:text-[color:var(--accent-text-hover)]"
                   title="Restaurant/Bar/Food Truck Sign Up"
                 >
                   <Store className="w-5 h-5" />
@@ -327,7 +304,7 @@ export default function Home() {
                   size="icon"
                   onClick={retryLocation}
                   disabled={isLoadingLocation}
-                  className="text-primary hover:text-[color:var(--action-primary)]"
+                  className="text-primary hover:text-[color:var(--accent-text-hover)]"
                   title="Refresh Location"
                 >
                   {isLoadingLocation ? (
@@ -351,7 +328,7 @@ export default function Home() {
                   size="icon"
                   onClick={retryLocation}
                   disabled={isLoadingLocation}
-                  className="text-primary hover:text-[color:var(--action-primary)] w-7 h-7"
+                  className="text-primary hover:text-[color:var(--accent-text-hover)] w-7 h-7"
                   title="Refresh Location"
                 >
                   {isLoadingLocation ? (
@@ -535,7 +512,7 @@ export default function Home() {
         <div className="content">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <Truck className="w-4 h-4 text-[#F59E0B]" />
+              <Truck className="w-4 h-4 text-[color:var(--accent-text)]" />
               <h3 className="text-sm font-bold text-foreground">
                 Live Trucks:{" "}
                 {shortLocation === "Your Location" ? "Nearby" : shortLocation}
@@ -544,7 +521,7 @@ export default function Home() {
             <Link href="/map">
               <Button
                 variant="link"
-                className="text-[#F59E0B] hover:text-[#F59E0B]/90 p-0 h-auto text-xs"
+                className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)] p-0 h-auto text-xs"
               >
                 View Map →
               </Button>
@@ -584,7 +561,7 @@ export default function Home() {
         <div className="content">
           <div className="mb-3">
             <h2 className="text-base font-bold text-foreground flex items-center">
-              <Sparkles className="w-4 h-4 text-[#F59E0B] mr-1.5" />
+              <Sparkles className="w-4 h-4 text-[color:var(--accent-text)] mr-1.5" />
               Trending in{" "}
               {shortLocation === "Your Location"
                 ? "Your Neighborhood"
@@ -596,7 +573,7 @@ export default function Home() {
             <Link href="/deals/featured">
               <Button
                 variant="link"
-                className="text-[#F59E0B] hover:text-[#F59E0B]/90 p-0 h-auto mt-1"
+                className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)] p-0 h-auto mt-1"
               >
                 See all nearby deals →
               </Button>
@@ -616,9 +593,9 @@ export default function Home() {
             <div className="text-center py-8 text-red-500 text-sm">
               We couldnt load deals right now. Try again in a bit.
             </div>
-          ) : featuredDeals && featuredDeals.length > 0 ? (
+          ) : sortedFeaturedDeals.length > 0 ? (
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6">
-              {featuredDeals.map((deal: Deal) => (
+              {sortedFeaturedDeals.map((deal: Deal) => (
                 <div key={deal.id} className="flex-shrink-0 w-56">
                   <DealCard deal={deal} />
                 </div>
@@ -641,7 +618,7 @@ export default function Home() {
       {!user && (
         <section className="section section--full section--surface-2 py-3 text-foreground">
           <div className="content text-center">
-            <ChefHat className="w-6 h-6 mx-auto mb-1 text-[color:var(--action-primary)]" />
+            <ChefHat className="w-6 h-6 mx-auto mb-1 text-[color:var(--accent-text)]" />
             <h3 className="text-base font-bold mb-0.5">
               Bring your restaurant to the neighborhood
             </h3>
@@ -817,114 +794,33 @@ export default function Home() {
               </div>
             </div>
           ) : (
-            /* LOGGED IN - REAL FEATURES */
             <div className="max-w-[520px] mx-auto">
               <h3 className="text-lg font-bold text-foreground mb-4">
-                Browse by Category
+                Deals Nearby
               </h3>
 
-              {/* Category Rows */}
-              {groupedFeaturedDeals &&
-              Object.keys(groupedFeaturedDeals).length > 0 ? (
-                <div className="space-y-6">
-                  {Object.entries(
-                    Object.values(groupedFeaturedDeals).reduce(
-                      (acc: Record<string, any[]>, bucket: any) => {
-                        const cuisine =
-                          bucket.restaurant?.cuisineType || "Other";
-                        if (!acc[cuisine]) acc[cuisine] = [];
-                        acc[cuisine].push(bucket);
-                        return acc;
-                      },
-                      {}
-                    )
-                  ).map(([cuisine, buckets]) => (
-                    <div key={cuisine}>
-                      <div className="flex items-center justify-between mb-2 px-1">
-                        <h4 className="font-bold text-primary">{cuisine}</h4>
-                        <Link href={`/search?q=${encodeURIComponent(cuisine)}`}>
-                          <Button
-                            variant="link"
-                            size="sm"
-                            className="text-[color:var(--action-primary)] h-auto p-0 text-xs"
-                          >
-                            View all
-                          </Button>
-                        </Link>
-                      </div>
-                      <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-6 px-6">
-                        {buckets.map((bucket: any) => {
-                          const restaurantName =
-                            bucket.restaurant?.name || "Restaurant";
-                          const distance = bucket.distance;
-                          const deals = bucket.deals.slice(0, 3); // Limit to 3 deals per card in horizontal view
-
-                          return (
-                            <div
-                              key={bucket.restaurant?.id || Math.random()}
-                              className="flex-shrink-0 w-[280px] rounded-xl border border-subtle bg-card shadow-sm p-3"
-                            >
-                              <div className="flex items-center justify-between mb-2">
-                                <div>
-                                  <h3 className="text-sm font-bold text-primary leading-tight truncate max-w-[180px]">
-                                    {restaurantName}
-                                  </h3>
-                                  <div className="text-[11px] text-secondary flex items-center gap-1">
-                                    {distance !== undefined && (
-                                      <span>{distance.toFixed(1)} mi</span>
-                                    )}
-                                  </div>
-                                </div>
-                                <Link
-                                  href={`/restaurant/${bucket.deals[0].restaurantId}`}
-                                >
-                                  <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    className="px-2 py-1 text-[10px] h-6"
-                                  >
-                                    Visit
-                                  </Button>
-                                </Link>
-                              </div>
-                              <div className="divide-y divide-gray-100">
-                                {deals.map((deal: any) => (
-                                  <div
-                                    key={deal.id}
-                                    className="py-2 flex items-start gap-2"
-                                  >
-                                    <div className="px-2 py-1 rounded-md bg-[color:var(--bg-surface-muted)] text-secondary text-[10px] font-semibold leading-none whitespace-nowrap">
-                                      {deal.dealType === "percentage"
-                                        ? `${deal.discountValue}%`
-                                        : deal.dealType === "dollar"
-                                        ? `$${deal.discountValue}`
-                                        : deal.discountValue}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-medium text-primary leading-tight truncate">
-                                        {deal.title}
-                                      </p>
-                                    </div>
-                                  </div>
-                                ))}
-                                {bucket.deals.length > 3 && (
-                                  <div className="pt-2 text-center">
-                                    <span className="text-[10px] text-muted">
-                                      +{bucket.deals.length - 3} more deals
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+              {featuredLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="h-40 rounded-xl bg-[hsl(var(--surface-hover))]/60 animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : featuredError ? (
+                <div className="text-center py-8 text-red-500 text-sm">
+                  We couldn't load deals right now. Try again in a bit.
+                </div>
+              ) : sortedFeaturedDeals.length > 0 ? (
+                <div className="space-y-3">
+                  {sortedFeaturedDeals.map((deal: Deal) => (
+                    <DealCard key={deal.id} deal={deal} />
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted bg-surface-muted rounded-lg border border-dashed border-subtle">
-                  <p className="text-sm">No categories available yet.</p>
+                  <p className="text-sm">No deals nearby yet.</p>
                 </div>
               )}
             </div>

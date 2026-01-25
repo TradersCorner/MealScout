@@ -114,7 +114,7 @@ export default function BusinessSnapshot({ business }: BusinessSnapshotProps) {
               {business.deals.slice(0, 3).map((deal) => (
                 <div key={deal.id} className="py-1.5">
                   {/* Price Line */}
-                  <div className="text-[color:var(--action-primary)] leading-none mb-1">
+                  <div className="text-[color:var(--accent-text)] leading-none mb-1">
                     <span className="font-semibold text-base">{formatDiscount(deal)} OFF</span>
                     <span className="text-sm ml-1.5">${deal.minOrderAmount || '8'}+</span>
                   </div>

@@ -481,7 +481,7 @@ export default function DealCard({ deal }: DealCardProps) {
             >
               <GoldenForkIcon
                 className={`w-3.5 h-3.5 transition-colors duration-200 ${
-                  forkPressed ? "text-[#F59E0B]" : "text-muted"
+                  forkPressed ? "text-[color:var(--accent-text)]" : "text-muted"
                 }`}
               />
             </button>
@@ -515,7 +515,7 @@ export default function DealCard({ deal }: DealCardProps) {
             {/* Rating + Distance */}
             <div className="flex items-center gap-1.5 mb-1.5 text-[10px] text-secondary">
               {isLiveTruck && (
-                <div className="flex items-center gap-1 rounded-full bg-[rgba(245,158,11,0.15)] px-1.5 py-0.5 text-[10px] font-semibold text-[#F59E0B]">
+                <div className="flex items-center gap-1 rounded-full bg-[rgba(245,158,11,0.15)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--accent-text)]">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
                   Live now
                 </div>
@@ -526,7 +526,7 @@ export default function DealCard({ deal }: DealCardProps) {
                   height="10"
                   viewBox="0 0 24 24"
                   fill="currentColor"
-                  className="text-[#F59E0B]"
+                  className="text-[color:var(--accent-text)]"
                 >
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                 </svg>
@@ -541,7 +541,7 @@ export default function DealCard({ deal }: DealCardProps) {
               {deal.minOrderAmount && (
                 <>
                   <span>•</span>
-                  <span className="text-[#F59E0B] font-medium">
+                  <span className="text-[color:var(--accent-text)] font-medium">
                     ${deal.minOrderAmount} min
                   </span>
                 </>
@@ -550,12 +550,12 @@ export default function DealCard({ deal }: DealCardProps) {
 
             {/* Meta Line: Time & Popularity */}
             <div className="flex items-center gap-2 text-[10px] text-secondary mb-2">
-              <div className="flex items-center gap-0.5 text-[#F59E0B]">
+              <div className="flex items-center gap-0.5 text-[color:var(--accent-text)]">
                 <Clock className="w-3 h-3" />
                 <span>Ends in 2h15m</span>
               </div>
               <div className="flex items-center gap-0.5">
-                <Flame className="w-3 h-3 text-[#F59E0B]" />
+                <Flame className="w-3 h-3 text-[color:var(--accent-text)]" />
                 <span className="font-medium text-secondary">
                   {deal.currentUses || 188} claimed
                 </span>

@@ -18,6 +18,7 @@
   --bg-surface-muted: #f9fafb;
   --bg-card: #ffffff;
   --bg-popup: #ffffff;
+  --field-bg: #ffffff;
   --text-primary: #111827;
   --text-secondary: #6b7280;
   --text-muted: #9ca3af;
@@ -33,6 +34,8 @@
   --status-warning: #f59e0b;
   --status-error: #ef4444;
   --accent-ember: #f59e0b;
+  --accent-text: #b45309;
+  --accent-text-hover: #92400e;
 
   --background: 210 20% 98%;
   --background-gradient: none;
@@ -83,6 +86,7 @@
   --bg-surface-muted: #1f1b18;
   --bg-card: #111111;
   --bg-popup: #1c1a18;
+  --field-bg: #2a2520;
   --text-primary: #ffffff;
   --text-secondary: #9ca3af;
   --text-muted: #6b7280;
@@ -98,6 +102,8 @@
   --status-warning: #f59e0b;
   --status-error: #e07a6a;
   --accent-ember: #f59e0b;
+  --accent-text: #f59e0b;
+  --accent-text-hover: #fbbf24;
 
   --background: 28 20% 10%;
   --background-gradient: none;

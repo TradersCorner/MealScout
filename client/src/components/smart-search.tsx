@@ -149,7 +149,7 @@ export default function SmartSearch({
     <div ref={containerRef} className={cn("relative", className)}>
       <div className="smart-search-shell relative flex items-center gap-2 rounded-full px-3 py-2 shadow-md">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#F59E0B] w-5 h-5 z-10" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--accent-text)] w-5 h-5 z-10" />
           <Input
             ref={inputRef}
             type="text"

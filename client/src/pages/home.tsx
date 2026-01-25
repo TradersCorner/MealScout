@@ -280,7 +280,7 @@ export default function Home() {
               <img
                 src={mealScoutLogo}
                 alt="MealScout Logo"
-                className="w-10 h-10 object-cover object-left scale-150 origin-left"
+                className="w-10 h-10 object-cover object-center"
                 loading="lazy"
                 decoding="async"
               />

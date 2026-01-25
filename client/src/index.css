@@ -7,7 +7,7 @@
 
 :root {
   /* Day Mode Palette */
-  --bg-app: #fafaf8;
+  --bg-app: #f5f3ee;
   --bg-texture: none;
   --bg-light: none;
   --bg-evening-glow: none;
@@ -15,16 +15,16 @@
   --bg-ember: none;
   --bg-layered: var(--bg-app);
   --bg-surface: #ffffff;
-  --bg-surface-muted: #f9fafb;
+  --bg-surface-muted: #f2f2f0;
   --bg-card: #ffffff;
   --bg-popup: #ffffff;
   --field-bg: #ffffff;
   --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
+  --text-secondary: #374151;
+  --text-muted: #4b5563;
   --text-inverse: #111827;
-  --border-subtle: #e5e7eb;
-  --border-strong: #d1d5db;
+  --border-subtle: #d1d5db;
+  --border-strong: #cbd5e1;
   --action-primary: #f59e0b;
   --action-primary-text: #111111;
   --action-secondary: #f3f4f6;
@@ -37,7 +37,7 @@
   --accent-text: #b45309;
   --accent-text-hover: #92400e;
 
-  --background: 210 20% 98%;
+  --background: 45 20% 96%;
   --background-gradient: none;
   --foreground: 222 47% 11%;
 
@@ -58,8 +58,8 @@
   --secondary: 210 16% 96%;
   --secondary-foreground: 222 47% 11%;
 
-  --muted: 210 16% 96%;
-  --muted-foreground: 215 16% 47%;
+  --muted: 45 16% 93%;
+  --muted-foreground: 220 9% 46%;
 
   --accent: 38 92% 50%;
   --accent-foreground: 222 47% 11%;

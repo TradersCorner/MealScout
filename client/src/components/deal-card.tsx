@@ -456,9 +456,6 @@ export default function DealCard({ deal }: DealCardProps) {
               decoding="async"
               referrerPolicy="no-referrer"
             />
-            {/* Gradient overlay for text contrast */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-
             {/* Deal Badge - top left */}
             <div className="absolute top-1.5 left-1.5 bg-[#F59E0B] text-[#111111] px-1.5 py-0.5 rounded-lg shadow-lg">
               <span className="font-bold text-sm leading-none">
@@ -487,15 +484,15 @@ export default function DealCard({ deal }: DealCardProps) {
             </button>
 
             {/* Restaurant Name Overlay - bottom */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1.5">
+            <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-2">
               <h3
-                className="font-bold text-white text-sm truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]"
+                className="font-semibold text-white text-xs truncate"
                 data-testid={`text-restaurant-name-${deal.id}`}
               >
                 {deal.restaurant?.name || "Restaurant Name"}
               </h3>
               {deal.restaurant?.cuisineType && (
-                <p className="text-white/90 text-[11px] truncate drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">
+                <p className="text-white/80 text-[10px] truncate">
                   {deal.restaurant.cuisineType}
                 </p>
               )}

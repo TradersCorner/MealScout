@@ -329,13 +329,13 @@
 
   .theme-day .home-cinematic .section--surface,
   .theme-day .home-cinematic .section--surface-2 {
-    background-color: var(--bg-surface) !important;
+    background-color: transparent !important;
   }
 
   .theme-night .home-cinematic .section--surface,
   .theme-night .home-cinematic .section--surface-2 {
-    background-color: rgba(17, 17, 17, 0.86) !important;
-    backdrop-filter: blur(12px);
+    background-color: transparent !important;
+    backdrop-filter: none;
   }
 
   .theme-day .home-cinematic header {

@@ -577,7 +577,7 @@
 
   .theme-day .nav-link--active,
   .theme-night .nav-link--active {
-    color: #f59e0b;
+    color: var(--accent-text);
   }
 
   .theme-day .nav-link--inactive,
@@ -596,11 +596,27 @@
   }
 
   .theme-day .nav-link--active:hover {
+    color: var(--accent-text-hover);
     background: #f9fafb;
   }
 
   .theme-night .nav-link--active:hover {
     background: rgba(255, 255, 255, 0.06);
+  }
+
+  .theme-day .text-primary,
+  .theme-night .text-primary {
+    color: var(--text-primary);
+  }
+
+  .theme-day .text-secondary,
+  .theme-night .text-secondary {
+    color: var(--text-secondary);
+  }
+
+  .theme-day .text-muted,
+  .theme-night .text-muted {
+    color: var(--text-muted);
   }
 
   .nav-bug {

@@ -276,7 +276,7 @@ export default function Navigation() {
                 : [...customerNavItems, bugNavItem];
 
   return (
-    <nav className="nav-bar fixed bottom-0 left-0 right-0 w-full border-t px-4 py-2 z-50 md:top-0 md:bottom-auto md:border-b md:border-t-0 md:py-3">
+    <nav className="nav-bar fixed bottom-0 left-0 right-0 w-full border-t px-4 py-2 z-50">
       <div className="w-full mx-auto overflow-x-auto md:overflow-visible md:max-w-none md:px-6">
         <div className="flex items-center justify-start space-x-2 min-w-max md:flex-wrap md:justify-center md:gap-3">
           {navItems.map((item) =>

@@ -590,44 +590,6 @@ export default function ParkingPassPage() {
     return { lat, lng };
   };
 
-  useEffect(() => {
-    if (geocodeInFlight.current) return;
-    const queue = filteredEvents
-      .filter((event) => {
-        const hostLat = parseCoord(event.host?.latitude);
-        const hostLng = parseCoord(event.host?.longitude);
-        if (hostLat !== null && hostLng !== null) return false;
-        return !parkingCoords[event.id] && Boolean(buildFullAddress(event));
-      })
-      .slice(0, 8);
-
-    if (!queue.length) return;
-
-    geocodeInFlight.current = true;
-    (async () => {
-      try {
-        for (const event of queue) {
-          const address = buildFullAddress(event);
-          if (!address) continue;
-          const cached = geocodeCache[address];
-          if (cached) {
-            setParkingCoords((prev) => ({ ...prev, [event.id]: cached }));
-            continue;
-          }
-          const point = await geocodeAddress(address).catch(() => null);
-          if (!point) {
-            continue;
-          }
-          setParkingCoords((prev) => ({ ...prev, [event.id]: point }));
-          setGeocodeCache((prev) => ({ ...prev, [address]: point }));
-          await new Promise((r) => setTimeout(r, 300));
-        }
-      } finally {
-        geocodeInFlight.current = false;
-      }
-    })();
-  }, [filteredEvents, parkingCoords, geocodeCache]);
-
   const handleSelect = (event: ParkingPassEvent, slotType: string) => {
     setSelectedSlotsByEvent((prev) => {
       const existing = prev[event.id] || [];
@@ -825,6 +787,44 @@ export default function ParkingPassPage() {
       getEventCoords(activeEvent) || (activeEvent ? parkingCoords[activeEvent.id] : null);
     return activeCoords || mapEvents[0]?.coords || null;
   }, [activeEvent, mapEvents, parkingCoords]);
+
+  useEffect(() => {
+    if (geocodeInFlight.current) return;
+    const queue = filteredEvents
+      .filter((event) => {
+        const hostLat = parseCoord(event.host?.latitude);
+        const hostLng = parseCoord(event.host?.longitude);
+        if (hostLat !== null && hostLng !== null) return false;
+        return !parkingCoords[event.id] && Boolean(buildFullAddress(event));
+      })
+      .slice(0, 8);
+
+    if (!queue.length) return;
+
+    geocodeInFlight.current = true;
+    (async () => {
+      try {
+        for (const event of queue) {
+          const address = buildFullAddress(event);
+          if (!address) continue;
+          const cached = geocodeCache[address];
+          if (cached) {
+            setParkingCoords((prev) => ({ ...prev, [event.id]: cached }));
+            continue;
+          }
+          const point = await geocodeAddress(address).catch(() => null);
+          if (!point) {
+            continue;
+          }
+          setParkingCoords((prev) => ({ ...prev, [event.id]: point }));
+          setGeocodeCache((prev) => ({ ...prev, [address]: point }));
+          await new Promise((r) => setTimeout(r, 300));
+        }
+      } finally {
+        geocodeInFlight.current = false;
+      }
+    })();
+  }, [filteredEvents, parkingCoords, geocodeCache]);
 
   useEffect(() => {
     if (!activeEvent) {

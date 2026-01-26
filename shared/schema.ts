@@ -948,6 +948,92 @@ export const feedAds = pgTable(
   ],
 );
 
+// Geo Ads - Location-based onsite campaigns (map/home/deals)
+export const geoAds = pgTable(
+  "geo_ads",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    name: varchar("name").notNull(),
+    status: varchar("status").notNull().default("draft"),
+    placements: jsonb("placements").notNull().default(sql`'[]'::jsonb`),
+    title: varchar("title").notNull(),
+    body: text("body"),
+    mediaUrl: text("media_url"),
+    targetUrl: text("target_url").notNull(),
+    ctaText: varchar("cta_text").default("Learn more"),
+    pinLat: decimal("pin_lat", { precision: 10, scale: 8 }),
+    pinLng: decimal("pin_lng", { precision: 11, scale: 8 }),
+    geofenceLat: decimal("geofence_lat", { precision: 10, scale: 8 }).notNull(),
+    geofenceLng: decimal("geofence_lng", { precision: 11, scale: 8 }).notNull(),
+    geofenceRadiusM: integer("geofence_radius_m").notNull().default(1000),
+    targetUserTypes: jsonb("target_user_types"),
+    minDailyFootTraffic: integer("min_daily_foot_traffic"),
+    maxDailyFootTraffic: integer("max_daily_foot_traffic"),
+    priority: integer("priority").default(0),
+    startAt: timestamp("start_at"),
+    endAt: timestamp("end_at"),
+    createdByUserId: varchar("created_by_user_id").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_geo_ads_status").on(table.status),
+    index("idx_geo_ads_schedule").on(table.startAt, table.endAt),
+    index("idx_geo_ads_priority").on(table.priority),
+    index("idx_geo_ads_geofence").on(table.geofenceLat, table.geofenceLng),
+  ],
+);
+
+export const geoAdEvents = pgTable(
+  "geo_ad_events",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    adId: varchar("ad_id")
+      .notNull()
+      .references(() => geoAds.id, { onDelete: "cascade" }),
+    userId: varchar("user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    visitorId: varchar("visitor_id"),
+    eventType: varchar("event_type").notNull(), // 'impression' | 'click'
+    placement: varchar("placement").notNull(), // 'map' | 'home' | 'deals'
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_geo_ad_events_ad").on(table.adId),
+    index("idx_geo_ad_events_type").on(table.eventType),
+    index("idx_geo_ad_events_created").on(table.createdAt),
+    index("idx_geo_ad_events_placement").on(table.placement),
+  ],
+);
+
+export const geoLocationPings = pgTable(
+  "geo_location_pings",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    visitorId: varchar("visitor_id"),
+    userType: varchar("user_type"),
+    lat: decimal("lat", { precision: 10, scale: 8 }).notNull(),
+    lng: decimal("lng", { precision: 11, scale: 8 }).notNull(),
+    source: varchar("source"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_geo_location_pings_created").on(table.createdAt),
+    index("idx_geo_location_pings_coords").on(table.lat, table.lng),
+    index("idx_geo_location_pings_visitor").on(table.visitorId),
+  ],
+);
+
 // Story Awards (for golden forks, etc.)
 export const storyAwards = pgTable(
   "story_awards",
@@ -3324,6 +3410,34 @@ export const insertFeedAdSchema = createInsertSchema(feedAds).omit({
 
 export type FeedAd = typeof feedAds.$inferSelect;
 export type InsertFeedAd = z.infer<typeof insertFeedAdSchema>;
+
+// Schemas for geo ads
+export const insertGeoAdSchema = createInsertSchema(geoAds).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type GeoAd = typeof geoAds.$inferSelect;
+export type InsertGeoAd = z.infer<typeof insertGeoAdSchema>;
+
+export const insertGeoAdEventSchema = createInsertSchema(geoAdEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type GeoAdEvent = typeof geoAdEvents.$inferSelect;
+export type InsertGeoAdEvent = z.infer<typeof insertGeoAdEventSchema>;
+
+export const insertGeoLocationPingSchema = createInsertSchema(
+  geoLocationPings,
+).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type GeoLocationPing = typeof geoLocationPings.$inferSelect;
+export type InsertGeoLocationPing = z.infer<typeof insertGeoLocationPingSchema>;
 
 export const insertHostSchema = createInsertSchema(hosts)
   .omit({

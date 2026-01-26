@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import Navigation from "@/components/navigation";
@@ -5,14 +6,75 @@ import DealCard from "@/components/deal-card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Star, SlidersHorizontal, Filter } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
+import { sendGeoPing, trackGeoAdEvent, trackGeoAdImpression } from "@/utils/geoAds";
+
+interface GeoAd {
+  id: string;
+  title: string;
+  body?: string | null;
+  mediaUrl?: string | null;
+  targetUrl: string;
+  ctaText?: string | null;
+}
 
 export default function FeaturedDealsPage() {
+  const [adLocation, setAdLocation] = useState<{ lat: number; lng: number } | null>(
+    null
+  );
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setAdLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      () => {
+        setAdLocation(null);
+      },
+      { enableHighAccuracy: false, timeout: 6000 }
+    );
+  }, []);
+
   const { data: featuredDeals, isLoading } = useQuery({
     queryKey: ["/api/deals/featured"],
     enabled: true,
   });
 
+  const { data: geoAds = [] } = useQuery<GeoAd[]>({
+    queryKey: ["/api/geo-ads", "deals", adLocation?.lat, adLocation?.lng],
+    enabled: !!adLocation,
+    queryFn: async () => {
+      if (!adLocation) return [];
+      const res = await fetch(
+        `/api/geo-ads?placement=deals&lat=${adLocation.lat}&lng=${adLocation.lng}&limit=1`,
+        { credentials: "include" }
+      );
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    if (!adLocation) return;
+    sendGeoPing({ lat: adLocation.lat, lng: adLocation.lng, source: "deals" });
+  }, [adLocation?.lat, adLocation?.lng]);
+
+  useEffect(() => {
+    if (!geoAds.length) return;
+    geoAds.forEach((ad) =>
+      trackGeoAdImpression({ adId: ad.id, placement: "deals" })
+    );
+  }, [geoAds]);
+
   const allDeals = Array.isArray(featuredDeals) ? featuredDeals : [];
+
+  const handleGeoAdClick = (ad: GeoAd) => {
+    trackGeoAdEvent({ adId: ad.id, eventType: "click", placement: "deals" });
+    window.open(ad.targetUrl, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">
@@ -61,6 +123,43 @@ export default function FeaturedDealsPage() {
 
       {/* Content */}
       <div className="px-6 py-6">
+        {geoAds.length > 0 && (
+          <div className="mb-6">
+            {geoAds.map((ad) => (
+              <div
+                key={ad.id}
+                className="rounded-2xl border border-[color:var(--border-subtle)] bg-[color:var(--bg-card)] p-4 shadow-sm"
+              >
+                {ad.mediaUrl && (
+                  <img
+                    src={ad.mediaUrl}
+                    alt={ad.title}
+                    className="w-full h-40 object-cover rounded-xl mb-3"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                )}
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Sponsored
+                </div>
+                <div className="text-base font-semibold text-foreground mt-1">
+                  {ad.title}
+                </div>
+                {ad.body && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {ad.body}
+                  </p>
+                )}
+                <div className="mt-3">
+                  <Button size="sm" onClick={() => handleGeoAdClick(ad)}>
+                    {ad.ctaText || "Learn more"}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (

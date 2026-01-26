@@ -27,6 +27,7 @@ import { registerOpenCallSeriesRoutes } from "./routes/openCallSeriesRoutes";
 import { registerEventRoutes } from "./routes/eventRoutes";
 import { registerEventCoordinatorRoutes } from "./routes/eventCoordinatorRoutes";
 import { registerAdminManagementRoutes } from "./routes/adminManagementRoutes";
+import { registerGeoAdRoutes } from "./routes/geoAdRoutes";
 import { registerBookingRoutes } from "./routes/bookingRoutes";
 import { registerStaffRoutes } from "./staffRoutes";
 import {
@@ -5224,6 +5225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Admin API endpoints
   registerAdminManagementRoutes(app);
+  registerGeoAdRoutes(app);
 
   // Staff management and user creation endpoints
   registerStaffRoutes(app);

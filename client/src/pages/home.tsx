@@ -42,6 +42,7 @@ import {
 import mealScoutLogo from "@assets/meal-scout-icon.png";
 import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
 import { getReverseGeocodedLocationName } from "@/utils/locationUtils";
+import { sendGeoPing, trackGeoAdEvent, trackGeoAdImpression } from "@/utils/geoAds";
 
 // Version marker for deployment verification
 console.log("MealScout Client Loaded - Build: " + new Date().toISOString());
@@ -61,6 +62,15 @@ interface Deal {
     cuisineType?: string;
   };
   distance?: number;
+}
+
+interface GeoAd {
+  id: string;
+  title: string;
+  body?: string | null;
+  mediaUrl?: string | null;
+  targetUrl: string;
+  ctaText?: string | null;
 }
 
 export default function Home() {
@@ -234,12 +244,43 @@ export default function Home() {
       })
     : [];
 
+  const { data: geoAds = [] } = useQuery<GeoAd[]>({
+    queryKey: ["/api/geo-ads", "home", location?.lat, location?.lng],
+    enabled: !!location,
+    queryFn: async () => {
+      if (!location) return [];
+      const res = await fetch(
+        `/api/geo-ads?placement=home&lat=${location.lat}&lng=${location.lng}&limit=1`,
+        { credentials: "include" }
+      );
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    if (!location) return;
+    sendGeoPing({ lat: location.lat, lng: location.lng, source: "home" });
+  }, [location?.lat, location?.lng]);
+
+  useEffect(() => {
+    if (!geoAds.length) return;
+    geoAds.forEach((ad) =>
+      trackGeoAdImpression({ adId: ad.id, placement: "home" })
+    );
+  }, [geoAds]);
+
   const shortLocation = locationName?.split(",")[0] || "your area";
   const firstName =
     (user as any)?.firstName?.trim() ||
     (user as any)?.name?.split?.(" ")?.[0] ||
     "";
   const welcomeName = firstName || "there";
+
+  const handleGeoAdClick = (ad: GeoAd) => {
+    trackGeoAdEvent({ adId: ad.id, eventType: "click", placement: "home" });
+    window.open(ad.targetUrl, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <div className="page relative overflow-hidden home-cinematic">
@@ -361,6 +402,43 @@ export default function Home() {
             className="mb-6 shadow-lg"
             placeholder="Search deals, restaurants..."
           />
+
+          {geoAds.length > 0 && (
+            <div className="mb-5">
+              {geoAds.map((ad) => (
+                <div
+                  key={ad.id}
+                  className="rounded-2xl border border-[color:var(--border-subtle)] bg-[color:var(--bg-card)] p-4 shadow-sm"
+                >
+                  {ad.mediaUrl && (
+                    <img
+                      src={ad.mediaUrl}
+                      alt={ad.title}
+                      className="w-full h-40 object-cover rounded-xl mb-3"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  )}
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Sponsored
+                  </div>
+                  <div className="text-base font-semibold text-foreground mt-1">
+                    {ad.title}
+                  </div>
+                  {ad.body && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {ad.body}
+                    </p>
+                  )}
+                  <div className="mt-3">
+                    <Button size="sm" onClick={() => handleGeoAdClick(ad)}>
+                      {ad.ctaText || "Learn more"}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Filter Chips */}
           <div className="flex space-x-2 overflow-x-auto pb-1">

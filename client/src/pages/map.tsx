@@ -21,6 +21,7 @@ import {
 import DealCard from "@/components/deal-card";
 import { SEOHead } from "@/components/seo-head";
 import mealScoutIcon from "@assets/meal-scout-icon.png";
+import { sendGeoPing, trackGeoAdEvent, trackGeoAdImpression } from "@/utils/geoAds";
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -186,6 +187,17 @@ interface Deal {
   restaurant: Restaurant;
 }
 
+interface GeoAd {
+  id: string;
+  title: string;
+  body?: string | null;
+  mediaUrl?: string | null;
+  targetUrl: string;
+  ctaText?: string | null;
+  pinLat?: number | null;
+  pinLng?: number | null;
+}
+
 type HostLocation = {
   id: string;
   name: string;
@@ -254,9 +266,9 @@ const haversineKm = (a: GeoPoint, b: GeoPoint) => {
 const hostPinIcon = new L.Icon({
   iconUrl: svgToDataUrl(`
     <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#A3B18A" stroke="#1F2937" stroke-width="1.5"/>
-      <circle cx="17" cy="13" r="7" fill="#F8FAFC"/>
-      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="700" fill="#1F2937">P</text>
+      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#3B82F6" stroke="#1D4ED8" stroke-width="1.5"/>
+      <circle cx="17" cy="13" r="7" fill="#EFF6FF"/>
+      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="700" fill="#1D4ED8">P</text>
     </svg>
   `),
   iconSize: [34, 42],
@@ -267,8 +279,8 @@ const hostPinIcon = new L.Icon({
 const foodPinIcon = new L.Icon({
   iconUrl: svgToDataUrl(`
     <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#F59E0B" stroke="#1F2937" stroke-width="1.5"/>
-      <circle cx="17" cy="13" r="7" fill="#FFF7ED"/>
+      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#EF4444" stroke="#991B1B" stroke-width="1.5"/>
+      <circle cx="17" cy="13" r="7" fill="#FEF2F2"/>
     </svg>
   `),
   iconSize: [34, 42],
@@ -282,6 +294,19 @@ const eventPinIcon = new L.Icon({
       <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#8B5CF6" stroke="#312E81" stroke-width="1.5"/>
       <circle cx="17" cy="13" r="7" fill="#F5F3FF"/>
       <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="700" fill="#312E81">E</text>
+    </svg>
+  `),
+  iconSize: [34, 42],
+  iconAnchor: [17, 40],
+  popupAnchor: [0, -34],
+});
+
+const geoAdPinIcon = new L.Icon({
+  iconUrl: svgToDataUrl(`
+    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#14B8A6" stroke="#0F766E" stroke-width="1.5"/>
+      <circle cx="17" cy="13" r="7" fill="#ECFEFF"/>
+      <text x="17" y="17" text-anchor="middle" font-size="8" font-weight="700" fill="#0F766E">AD</text>
     </svg>
   `),
   iconSize: [34, 42],
@@ -526,6 +551,33 @@ export default function MapPage() {
 
   const liveTrucks = Array.isArray(liveTrucksData) ? liveTrucksData : [];
 
+  const adLocation = userLocation || mapCenter;
+  const { data: geoAds = [] } = useQuery<GeoAd[]>({
+    queryKey: ["/api/geo-ads", "map", adLocation?.lat, adLocation?.lng],
+    enabled: !!adLocation,
+    queryFn: async () => {
+      if (!adLocation) return [];
+      const res = await fetch(
+        `/api/geo-ads?placement=map&lat=${adLocation.lat}&lng=${adLocation.lng}&limit=10`,
+        { credentials: "include" }
+      );
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    if (!adLocation) return;
+    sendGeoPing({ lat: adLocation.lat, lng: adLocation.lng, source: "map" });
+  }, [adLocation?.lat, adLocation?.lng]);
+
+  useEffect(() => {
+    if (!geoAds.length) return;
+    geoAds.forEach((ad) =>
+      trackGeoAdImpression({ adId: ad.id, placement: "map" })
+    );
+  }, [geoAds]);
+
   const truckCoords = useMemo(() => {
     return liveTrucks
       .map((truck) => {
@@ -546,6 +598,16 @@ export default function MapPage() {
       return mapBounds.contains([lat, lng]);
     });
   }, [deals, mapBounds]);
+
+  const visibleGeoAds = useMemo(() => {
+    if (!mapBounds) return geoAds;
+    return geoAds.filter((ad) => {
+      const lat = ad.pinLat ?? null;
+      const lng = ad.pinLng ?? null;
+      if (lat === null || lng === null) return false;
+      return mapBounds.contains([lat, lng]);
+    });
+  }, [geoAds, mapBounds]);
 
   const visibleLiveTrucks = useMemo(() => {
     if (!mapBounds) return liveTrucks;
@@ -611,6 +673,11 @@ export default function MapPage() {
       return `${Math.round(distanceKm * 1000)} m`;
     }
     return `${distanceKm.toFixed(1)} km`;
+  };
+
+  const handleGeoAdClick = (ad: GeoAd) => {
+    trackGeoAdEvent({ adId: ad.id, eventType: "click", placement: "map" });
+    window.open(ad.targetUrl, "_blank", "noopener,noreferrer");
   };
 
   // Fetch host + event locations for map
@@ -1002,6 +1069,34 @@ export default function MapPage() {
                   </Popup>
                 </Marker>
               )}
+
+              {/* Geo Ad Markers */}
+              {visibleGeoAds.map((ad: GeoAd) => (
+                <Marker
+                  key={ad.id}
+                  position={[ad.pinLat ?? mapCenter.lat, ad.pinLng ?? mapCenter.lng]}
+                  icon={geoAdPinIcon}
+                >
+                  <Popup>
+                    <div className="min-w-52 rounded-xl bg-white text-slate-900 p-3 shadow-lg space-y-1">
+                      <div className="text-[10px] uppercase tracking-wide text-slate-400">
+                        Sponsored
+                      </div>
+                      <div className="font-semibold text-sm">{ad.title}</div>
+                      {ad.body && (
+                        <div className="text-xs text-slate-500">{ad.body}</div>
+                      )}
+                      <Button
+                        size="sm"
+                        className="w-full mt-2"
+                        onClick={() => handleGeoAdClick(ad)}
+                      >
+                        {ad.ctaText || "Learn more"}
+                      </Button>
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
 
               {/* Deal Markers */}
               {visibleDeals.map((deal: Deal) => {

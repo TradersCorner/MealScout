@@ -21,7 +21,7 @@
   --field-bg: #ffffff;
   --text-primary: #111827;
   --text-secondary: #374151;
-  --text-muted: #374151;
+  --text-muted: #334155;
   --text-inverse: #111827;
   --border-subtle: #d1d5db;
   --border-strong: #cbd5e1;
@@ -59,7 +59,7 @@
   --secondary-foreground: 222 47% 11%;
 
   --muted: 45 16% 93%;
-  --muted-foreground: 220 9% 32%;
+  --muted-foreground: 220 9% 28%;
 
   --accent: 38 92% 50%;
   --accent-foreground: 222 47% 11%;
@@ -650,6 +650,14 @@
     border: 1px solid #e5e7eb;
   }
 
+  .theme-day .text-gray-500 {
+    color: #475569;
+  }
+
+  .theme-day .text-gray-400 {
+    color: #64748b;
+  }
+
   .theme-night .filter-pill {
     background: rgba(0, 0, 0, 0.55);
     color: #ffffff;
@@ -738,6 +746,10 @@
   .theme-day .text-muted,
   .theme-night .text-muted {
     color: var(--text-muted);
+  }
+
+  .theme-day .text-muted-foreground {
+    color: var(--text-secondary);
   }
 
   .nav-bug {

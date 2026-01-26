@@ -94,6 +94,7 @@ function HostDashboard() {
   });
   const [isSavingLocation, setIsSavingLocation] = useState(false);
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
+  const [isDeletingLocation, setIsDeletingLocation] = useState(false);
   const [isCheckingStripe, setIsCheckingStripe] = useState(false);
 
   useEffect(() => {
@@ -299,6 +300,53 @@ function HostDashboard() {
     }
   };
 
+  const handleDeleteLocation = async () => {
+    if (!host) return;
+    const confirmed = window.confirm(
+      `Delete ${host.businessName}? This removes the location and its listings.`,
+    );
+    if (!confirmed) return;
+
+    setIsDeletingLocation(true);
+    try {
+      const res = await fetch(`/api/hosts/${host.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to delete location");
+      }
+
+      const nextHosts = hosts.filter((item) => item.id !== host.id);
+      setHosts(nextHosts);
+
+      if (!nextHosts.length) {
+        setHost(null);
+        setSelectedHostId("");
+        toast({
+          title: "Location deleted",
+          description: "Your test location has been removed.",
+        });
+        setLocation("/host-signup");
+        return;
+      }
+
+      const nextHost = nextHosts[0];
+      setSelectedHostId(nextHost.id);
+      setHost(nextHost);
+      toast({
+        title: "Location deleted",
+        description: "Your test location has been removed.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Delete failed",
+        description: error.message || "Failed to delete location.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingLocation(false);
+    }
+  };
+
   const hasPricing = (item: Event) =>
     (item.breakfastPriceCents ?? 0) > 0 ||
     (item.lunchPriceCents ?? 0) > 0 ||
@@ -314,6 +362,36 @@ function HostDashboard() {
     today.setHours(0, 0, 0, 0);
     return itemDate >= today;
   });
+
+  const groupParkingPassListings = (items: Event[]) => {
+    const sorted = [...items].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
+    const grouped = new Map<string, Event>();
+    sorted.forEach((item) => {
+      const key = item.seriesId || item.id;
+      if (!grouped.has(key)) {
+        grouped.set(key, item);
+      }
+    });
+    return Array.from(grouped.values());
+  };
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const upcomingListings = groupParkingPassListings(
+    events.filter(
+      (event) =>
+        event.requiresPayment && new Date(event.date) >= todayStart,
+    ),
+  );
+
+  const pastListings = groupParkingPassListings(
+    events.filter(
+      (event) => event.requiresPayment && new Date(event.date) < todayStart,
+    ),
+  );
 
   const handleCreateEvent = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -646,9 +724,21 @@ function HostDashboard() {
                 Keep each parking address accurate for trucks.
               </p>
             </div>
-            <Button onClick={handleUpdateLocation} disabled={isUpdatingLocation}>
-              {isUpdatingLocation ? "Saving..." : "Save location"}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                onClick={handleUpdateLocation}
+                disabled={isUpdatingLocation}
+              >
+                {isUpdatingLocation ? "Saving..." : "Save location"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleDeleteLocation}
+                disabled={isDeletingLocation}
+              >
+                {isDeletingLocation ? "Deleting..." : "Delete location"}
+              </Button>
+            </div>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-2">
@@ -1190,12 +1280,7 @@ function HostDashboard() {
           </div>
 
           <TabsContent value="upcoming" className="space-y-4">
-            {events.filter(
-              (event) =>
-                new Date(event.date) >=
-                  new Date(new Date().setHours(0, 0, 0, 0)) &&
-                event.requiresPayment,
-            ).length === 0 ? (
+            {upcomingListings.length === 0 ? (
               <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300">
                 <Calendar className="mx-auto h-12 w-12 text-slate-300 mb-3" />
                 <h3 className="text-lg font-medium text-slate-900">
@@ -1210,14 +1295,7 @@ function HostDashboard() {
               </div>
             ) : (
               <div className="grid gap-4">
-                {events
-                  .filter(
-                    (event) =>
-                      new Date(event.date) >=
-                        new Date(new Date().setHours(0, 0, 0, 0)) &&
-                      event.requiresPayment,
-                  )
-                  .map((event) => (
+                {upcomingListings.map((event) => (
                     <div
                       key={event.id}
                       className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between"
@@ -1289,12 +1367,7 @@ function HostDashboard() {
           </TabsContent>
 
           <TabsContent value="past" className="space-y-4">
-            {events.filter(
-              (event) =>
-                new Date(event.date) <
-                  new Date(new Date().setHours(0, 0, 0, 0)) &&
-                event.requiresPayment,
-            ).length === 0 ? (
+            {pastListings.length === 0 ? (
               <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300">
                 <Clock className="mx-auto h-12 w-12 text-slate-300 mb-3" />
                 <h3 className="text-lg font-medium text-slate-900">
@@ -1306,14 +1379,7 @@ function HostDashboard() {
               </div>
             ) : (
               <div className="grid gap-4 opacity-75">
-                {events
-                  .filter(
-                    (event) =>
-                      new Date(event.date) <
-                        new Date(new Date().setHours(0, 0, 0, 0)) &&
-                      event.requiresPayment,
-                  )
-                  .map((event) => (
+                {pastListings.map((event) => (
                     <div
                       key={event.id}
                       className="bg-slate-50 p-6 rounded-xl border border-slate-200 flex items-center justify-between"

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { Loader2, Share2, Trash2 } from "lucide-react";
@@ -44,6 +44,7 @@ interface ParkingPassEvent {
   dinnerPriceCents?: number | null;
   dailyPriceCents?: number | null;
   weeklyPriceCents?: number | null;
+  monthlyPriceCents?: number | null;
   host: Host;
   bookings?: Array<{
     truckId: string;
@@ -97,6 +98,8 @@ interface TruckScheduleEntry {
     notes?: string | null;
   };
 }
+
+type GeoPoint = { lat: number; lng: number };
 
 const parkingPassPinIcon = new L.Icon({
   iconUrl: mealScoutIcon,
@@ -160,6 +163,13 @@ export default function ParkingPassPage() {
   >([]);
   const [viewMode, setViewMode] = useState<"map" | "list">("map");
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
+  const [parkingCoords, setParkingCoords] = useState<
+    Record<string, GeoPoint>
+  >({});
+  const [geocodeCache, setGeocodeCache] = useState<
+    Record<string, GeoPoint>
+  >({});
+  const geocodeInFlight = useRef(false);
   const [scheduleForm, setScheduleForm] = useState({
     date: new Date().toISOString().split("T")[0],
     startTime: "",
@@ -174,6 +184,31 @@ export default function ParkingPassPage() {
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [isSharingLocation, setIsSharingLocation] = useState(false);
   const [isLive, setIsLive] = useState(false);
+
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem(
+        "mealscout_parking_pass_geocode_cache",
+      );
+      if (cached) {
+        const parsed = JSON.parse(cached) as Record<string, GeoPoint>;
+        setGeocodeCache(parsed);
+      }
+    } catch {
+      // ignore localStorage issues
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "mealscout_parking_pass_geocode_cache",
+        JSON.stringify(geocodeCache),
+      );
+    } catch {
+      // ignore localStorage issues
+    }
+  }, [geocodeCache]);
 
   useEffect(() => {
     setSelectedSlotsByEvent({});
@@ -228,7 +263,7 @@ export default function ParkingPassPage() {
         const data = await eventsRes.json();
         if (!cancelled) {
           const openEvents = Array.isArray(data)
-            ? data.filter((e) => e.status === "open")
+            ? data.filter((e) => e.status === "open" && hasPricing(e))
             : [];
           setEvents(openEvents);
         }
@@ -448,6 +483,14 @@ export default function ParkingPassPage() {
   const formatSlotLabel = (slot: string) =>
     slot.charAt(0).toUpperCase() + slot.slice(1);
 
+  const hasPricing = (event: ParkingPassEvent) =>
+    (event.breakfastPriceCents ?? 0) > 0 ||
+    (event.lunchPriceCents ?? 0) > 0 ||
+    (event.dinnerPriceCents ?? 0) > 0 ||
+    (event.dailyPriceCents ?? 0) > 0 ||
+    (event.weeklyPriceCents ?? 0) > 0 ||
+    (event.monthlyPriceCents ?? 0) > 0;
+
   const buildSlotOptions = (event: ParkingPassEvent) =>
     [
       {
@@ -475,10 +518,16 @@ export default function ParkingPassPage() {
         type: "weekly",
         priceCents: event.weeklyPriceCents,
       },
+      {
+        label: "Monthly",
+        type: "monthly",
+        priceCents: event.monthlyPriceCents,
+      },
     ].filter((slot) => (slot.priceCents || 0) > 0);
 
   const getFeeCentsForSlots = (slotTypes: string[], slotTotalCents: number) => {
     if (!slotTypes.length || slotTotalCents <= 0) return 0;
+    if (slotTypes.includes("monthly")) return 15000;
     return slotTypes.includes("weekly") ? 7000 : 1000;
   };
 
@@ -492,6 +541,7 @@ export default function ParkingPassPage() {
             (slotType === "dinner" && item.event.dinnerPriceCents) ||
             (slotType === "daily" && item.event.dailyPriceCents) ||
             (slotType === "weekly" && item.event.weeklyPriceCents) ||
+            (slotType === "monthly" && item.event.monthlyPriceCents) ||
             0;
           return sum + price;
         }, 0);
@@ -511,6 +561,27 @@ export default function ParkingPassPage() {
     return Number.isFinite(parsed) ? parsed : null;
   };
 
+  const buildFullAddress = (event: ParkingPassEvent) =>
+    [event.host?.address, event.host?.city, event.host?.state]
+      .filter(Boolean)
+      .join(", ");
+
+  const geocodeAddress = async (address: string): Promise<GeoPoint | null> => {
+    if (!address) return null;
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        address,
+      )}&limit=1`,
+      {
+        headers: { "Accept-Language": "en", "User-Agent": "MealScout/1.0" },
+      },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as Array<{ lat: string; lon: string }>;
+    if (!data.length) return null;
+    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  };
+
   const getEventCoords = (event?: ParkingPassEvent | null) => {
     if (!event?.host) return null;
     const lat = parseCoord(event.host.latitude);
@@ -518,6 +589,44 @@ export default function ParkingPassPage() {
     if (lat === null || lng === null) return null;
     return { lat, lng };
   };
+
+  useEffect(() => {
+    if (geocodeInFlight.current) return;
+    const queue = filteredEvents
+      .filter((event) => {
+        const hostLat = parseCoord(event.host?.latitude);
+        const hostLng = parseCoord(event.host?.longitude);
+        if (hostLat !== null && hostLng !== null) return false;
+        return !parkingCoords[event.id] && Boolean(buildFullAddress(event));
+      })
+      .slice(0, 8);
+
+    if (!queue.length) return;
+
+    geocodeInFlight.current = true;
+    (async () => {
+      try {
+        for (const event of queue) {
+          const address = buildFullAddress(event);
+          if (!address) continue;
+          const cached = geocodeCache[address];
+          if (cached) {
+            setParkingCoords((prev) => ({ ...prev, [event.id]: cached }));
+            continue;
+          }
+          const point = await geocodeAddress(address).catch(() => null);
+          if (!point) {
+            continue;
+          }
+          setParkingCoords((prev) => ({ ...prev, [event.id]: point }));
+          setGeocodeCache((prev) => ({ ...prev, [address]: point }));
+          await new Promise((r) => setTimeout(r, 300));
+        }
+      } finally {
+        geocodeInFlight.current = false;
+      }
+    })();
+  }, [filteredEvents, parkingCoords, geocodeCache]);
 
   const handleSelect = (event: ParkingPassEvent, slotType: string) => {
     setSelectedSlotsByEvent((prev) => {
@@ -700,7 +809,7 @@ export default function ParkingPassPage() {
     () =>
       filteredEvents
         .map((event) => {
-          const coords = getEventCoords(event);
+          const coords = getEventCoords(event) || parkingCoords[event.id] || null;
           return coords ? { event, coords } : null;
         })
         .filter(
@@ -712,9 +821,10 @@ export default function ParkingPassPage() {
     [filteredEvents],
   );
   const mapCenter = useMemo(() => {
-    const activeCoords = getEventCoords(activeEvent);
+    const activeCoords =
+      getEventCoords(activeEvent) || (activeEvent ? parkingCoords[activeEvent.id] : null);
     return activeCoords || mapEvents[0]?.coords || null;
-  }, [activeEvent, mapEvents]);
+  }, [activeEvent, mapEvents, parkingCoords]);
 
   useEffect(() => {
     if (!activeEvent) {
@@ -1095,6 +1205,26 @@ export default function ParkingPassPage() {
                             const bookings = Array.isArray(event.bookings)
                               ? event.bookings
                               : [];
+                            const slotOptions = buildSlotOptions(event);
+                            const selectedSlots =
+                              selectedSlotsByEvent[event.id] || [];
+                            const selectedTotalCents = selectedSlots.reduce(
+                              (sum, slot) => {
+                                const price =
+                                  slotOptions.find((item) => item.type === slot)
+                                    ?.priceCents || 0;
+                                return sum + price;
+                              },
+                              0,
+                            );
+                            const selectedFeeCents = getFeeCentsForSlots(
+                              selectedSlots,
+                              selectedTotalCents,
+                            );
+                            const selectedTotalWithFee =
+                              selectedTotalCents > 0
+                                ? selectedTotalCents + selectedFeeCents
+                                : 0;
                             const availability = event.availableSpotNumbers
                               ? event.availableSpotNumbers.length > 0
                                 ? `Open spots: ${event.availableSpotNumbers.join(
@@ -1104,6 +1234,9 @@ export default function ParkingPassPage() {
                               : event.status === "open"
                                 ? "Open"
                                 : "Closed";
+                            const hasAvailability = event.availableSpotNumbers
+                              ? event.availableSpotNumbers.length > 0
+                              : event.status === "open";
 
                             return (
                               <Marker
@@ -1115,7 +1248,7 @@ export default function ParkingPassPage() {
                                 }}
                               >
                                 <Popup>
-                                  <div className="space-y-1 text-xs">
+                                  <div className="space-y-2 text-xs">
                                     <p className="font-semibold text-gray-900">
                                       {event.host.businessName}
                                     </p>
@@ -1136,6 +1269,67 @@ export default function ParkingPassPage() {
                                     <p className="text-gray-600">
                                       {availability}
                                     </p>
+                                    {slotOptions.length > 0 && (
+                                      <div className="space-y-2">
+                                        <div className="grid grid-cols-2 gap-2">
+                                          {slotOptions.map((slot) => {
+                                            const feeCents = getFeeCentsForSlots(
+                                              [slot.type],
+                                              slot.priceCents || 0,
+                                            );
+                                            const totalPrice =
+                                              ((slot.priceCents || 0) +
+                                                feeCents) /
+                                              100;
+                                            const isSelected =
+                                              selectedSlots.includes(slot.type);
+                                            return (
+                                              <Button
+                                                key={slot.type}
+                                                variant={
+                                                  isSelected
+                                                    ? "default"
+                                                    : "outline"
+                                                }
+                                                size="sm"
+                                                className="justify-between text-[11px]"
+                                                disabled={!hasAvailability}
+                                                onClick={() =>
+                                                  handleSelect(event, slot.type)
+                                                }
+                                              >
+                                                <span>{slot.label}</span>
+                                                <span>
+                                                  ${totalPrice.toFixed(2)}
+                                                </span>
+                                              </Button>
+                                            );
+                                          })}
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[11px] text-gray-500">
+                                            Includes $10 MealScout fee.
+                                          </span>
+                                          <Button
+                                            size="sm"
+                                            onClick={() =>
+                                              handleBookSelected(event)
+                                            }
+                                            disabled={selectedSlots.length === 0}
+                                          >
+                                            Book spot
+                                            {selectedTotalWithFee > 0 && (
+                                              <span className="ml-2 text-[11px]">
+                                                ${(
+                                                  (selectedTotalWithFee || 0) /
+                                                  100
+                                                ).toFixed(2)}
+                                              </span>
+                                            )}
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    )}
                                     {bookings.length > 0 ? (
                                       <div className="pt-1 text-[11px] text-gray-500 space-y-1">
                                         {bookings
@@ -1294,8 +1488,10 @@ export default function ParkingPassPage() {
                           {slotOptions.length > 0 && (
                             <div className="grid grid-cols-2 gap-2 pt-1">
                               {slotOptions.map((slot) => {
-                                const feeCents =
-                                  slot.type === "weekly" ? 7000 : 1000;
+                            const feeCents = getFeeCentsForSlots(
+                              [slot.type],
+                              slot.priceCents || 0,
+                            );
                                 const totalPrice =
                                   ((slot.priceCents || 0) + feeCents) / 100;
                                 const isSelected = selectedSlots.includes(
@@ -1444,8 +1640,10 @@ export default function ParkingPassPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-2 pt-1">
                           {slotOptions.map((slot) => {
-                            const feeCents =
-                              slot.type === "weekly" ? 7000 : 1000;
+                            const feeCents = getFeeCentsForSlots(
+                              [slot.type],
+                              slot.priceCents || 0,
+                            );
                             const totalPrice =
                               ((slot.priceCents || 0) + feeCents) / 100;
                             const isSelected = selectedSlots.includes(
@@ -1687,11 +1885,18 @@ export default function ParkingPassPage() {
                               type: "weekly",
                               priceCents: activeEvent.weeklyPriceCents,
                             },
+                            {
+                              label: "Monthly",
+                              type: "monthly",
+                              priceCents: activeEvent.monthlyPriceCents,
+                            },
                           ]
                             .filter((slot) => (slot.priceCents || 0) > 0)
                             .map((slot) => {
-                              const feeCents =
-                                slot.type === "weekly" ? 7000 : 1000;
+                                const feeCents = getFeeCentsForSlots(
+                                  [slot.type],
+                                  slot.priceCents || 0,
+                                );
                               const totalPrice =
                                 ((slot.priceCents || 0) + feeCents) / 100;
                               const selectedSlots =

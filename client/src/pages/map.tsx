@@ -209,6 +209,8 @@ type HostLocation = {
   id: string;
   name: string;
   address: string;
+  city?: string | null;
+  state?: string | null;
   locationType: string;
   expectedFootTraffic?: number;
   notes?: string | null;
@@ -227,6 +229,8 @@ type EventLocation = {
   status: string;
   hostName?: string | null;
   hostAddress?: string | null;
+  hostCity?: string | null;
+  hostState?: string | null;
   hostLatitude?: number | string | null;
   hostLongitude?: number | string | null;
 };
@@ -261,6 +265,13 @@ const toNumberOrNull = (value?: number | string | null) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const buildFullAddress = (
+  address?: string | null,
+  city?: string | null,
+  state?: string | null,
+) =>
+  [address, city, state].filter(Boolean).join(", ");
+
 const haversineKm = (a: GeoPoint, b: GeoPoint) => {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const earthRadiusKm = 6371;
@@ -279,9 +290,23 @@ const haversineKm = (a: GeoPoint, b: GeoPoint) => {
 const hostPinIcon = new L.Icon({
   iconUrl: svgToDataUrl(`
     <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#3B82F6" stroke="#1D4ED8" stroke-width="1.5"/>
-      <circle cx="17" cy="13" r="7" fill="#EFF6FF"/>
-      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="700" fill="#1D4ED8">P</text>
+      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#64748B" stroke="#475569" stroke-width="1.5"/>
+      <circle cx="17" cy="13" r="7" fill="#F8FAFC"/>
+      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="700" fill="#475569">H</text>
+    </svg>
+  `),
+  iconSize: [34, 42],
+  iconAnchor: [17, 40],
+  popupAnchor: [0, -34],
+});
+
+const hostPinActiveIcon = new L.Icon({
+  iconUrl: svgToDataUrl(`
+    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#64748B" stroke="#475569" stroke-width="1.5"/>
+      <circle cx="17" cy="13" r="7" fill="#F8FAFC"/>
+      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="700" fill="#475569">H</text>
+      <circle cx="25" cy="7" r="4" fill="#22C55E" stroke="#16A34A" stroke-width="1"/>
     </svg>
   `),
   iconSize: [34, 42],
@@ -294,6 +319,19 @@ const foodPinIcon = new L.Icon({
     <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#EF4444" stroke="#991B1B" stroke-width="1.5"/>
       <circle cx="17" cy="13" r="7" fill="#FEF2F2"/>
+    </svg>
+  `),
+  iconSize: [34, 42],
+  iconAnchor: [17, 40],
+  popupAnchor: [0, -34],
+});
+
+const truckPinIcon = new L.Icon({
+  iconUrl: svgToDataUrl(`
+    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#2563EB" stroke="#1D4ED8" stroke-width="1.5"/>
+      <circle cx="17" cy="13" r="7" fill="#DBEAFE"/>
+      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="700" fill="#1D4ED8">T</text>
     </svg>
   `),
   iconSize: [34, 42],
@@ -327,29 +365,6 @@ const geoAdPinIcon = new L.Icon({
   popupAnchor: [0, -34],
 });
 
-const truckIcon = new L.Icon({
-  iconUrl: svgToDataUrl(`
-    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="16" cy="16" r="14" fill="#F59E0B" stroke="white" stroke-width="2"/>
-      <path d="M9 18h9l2-4h2.5c.8 0 1.5.7 1.5 1.5V18h-2.2a2 2 0 1 1-4 0H13a2 2 0 1 1-4 0H7v-6h2v6z" fill="#1F2937"/>
-    </svg>
-  `),
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-  popupAnchor: [0, -26],
-});
-
-const truckHostedIcon = new L.Icon({
-  iconUrl: svgToDataUrl(`
-    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="18" cy="18" r="15" fill="#F59E0B" fill-opacity="0.18" stroke="#F59E0B" stroke-width="2"/>
-      <path d="M10 20h11l2-5h3c1 0 2 .9 2 2v3h-2.5a2 2 0 1 1-4 0H15a2 2 0 1 1-4 0H8v-7h2v7z" fill="#F59E0B"/>
-    </svg>
-  `),
-  iconSize: [36, 36],
-  iconAnchor: [18, 34],
-  popupAnchor: [0, -28],
-});
 
 async function geocodeAddress(address: string): Promise<GeoPoint | null> {
   if (!address) return null;
@@ -719,6 +734,20 @@ export default function MapPage() {
     staleTime: 2 * 60 * 1000,
   });
 
+  const uniqueParkingPassLocations = useMemo(() => {
+    const byHost = new Map<string, ParkingPassLocation>();
+    const sorted = [...parkingPassLocations].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
+    sorted.forEach((event) => {
+      const key = event.host?.id || event.host?.address || event.id;
+      if (!byHost.has(key)) {
+        byHost.set(key, event);
+      }
+    });
+    return Array.from(byHost.values());
+  }, [parkingPassLocations]);
+
   const visibleHostLocations = useMemo(() => {
     if (!mapBounds || !mapLocations?.hostLocations?.length) return [];
     return mapLocations.hostLocations.filter((host) => {
@@ -738,13 +767,13 @@ export default function MapPage() {
   }, [mapLocations, eventCoords, mapBounds]);
 
   const visibleParkingLocations = useMemo(() => {
-    if (!mapBounds || !parkingPassLocations.length) return [];
-    return parkingPassLocations.filter((event) => {
+    if (!mapBounds || !uniqueParkingPassLocations.length) return [];
+    return uniqueParkingPassLocations.filter((event) => {
       const coords = resolveParkingCoords(event);
       if (!coords) return false;
       return mapBounds.contains([coords.lat, coords.lng]);
     });
-  }, [parkingPassLocations, parkingCoords, mapBounds]);
+  }, [uniqueParkingPassLocations, parkingCoords, mapBounds]);
 
   const hostedTruckIds = useMemo(() => {
     const ids = new Set<string>();
@@ -816,9 +845,9 @@ export default function MapPage() {
   }, [mapLocations]);
 
   useEffect(() => {
-    if (!parkingPassLocations.length) return;
+    if (!uniqueParkingPassLocations.length) return;
     const nextParking: Record<string, GeoPoint> = {};
-    parkingPassLocations.forEach((event) => {
+    uniqueParkingPassLocations.forEach((event) => {
       const lat = toNumberOrNull(event.host?.latitude);
       const lng = toNumberOrNull(event.host?.longitude);
       if (lat !== null && lng !== null) {
@@ -828,7 +857,7 @@ export default function MapPage() {
     if (Object.keys(nextParking).length) {
       setParkingCoords((prev) => ({ ...prev, ...nextParking }));
     }
-  }, [parkingPassLocations]);
+  }, [uniqueParkingPassLocations]);
 
   // Build a geocoding work list for any host/event without coordinates yet
   useEffect(() => {
@@ -852,7 +881,11 @@ export default function MapPage() {
       }
       if (!hostCoords[host.id]) {
         queue.push(`host:${host.id}`);
-        addressByKey[`host:${host.id}`] = host.address;
+        addressByKey[`host:${host.id}`] = buildFullAddress(
+          host.address,
+          host.city,
+          host.state,
+        );
       }
     });
 
@@ -864,11 +897,15 @@ export default function MapPage() {
       }
       if (!eventCoords[event.id] && event.hostAddress) {
         queue.push(`event:${event.id}`);
-        addressByKey[`event:${event.id}`] = event.hostAddress;
+        addressByKey[`event:${event.id}`] = buildFullAddress(
+          event.hostAddress,
+          event.hostCity,
+          event.hostState,
+        );
       }
     });
 
-    parkingPassLocations.forEach((event) => {
+    uniqueParkingPassLocations.forEach((event) => {
       const lat = toNumberOrNull(event.host?.latitude);
       const lng = toNumberOrNull(event.host?.longitude);
       if (lat !== null && lng !== null) {
@@ -876,7 +913,11 @@ export default function MapPage() {
       }
       if (!parkingCoords[event.id] && event.host?.address) {
         queue.push(`parking:${event.id}`);
-        addressByKey[`parking:${event.id}`] = event.host.address;
+        addressByKey[`parking:${event.id}`] = buildFullAddress(
+          event.host.address,
+          event.host.city,
+          event.host.state,
+        );
       }
     });
 
@@ -950,7 +991,7 @@ export default function MapPage() {
     }
   }, [
     mapLocations,
-    parkingPassLocations,
+    uniqueParkingPassLocations,
     hostCoords,
     eventCoords,
     parkingCoords,
@@ -1170,7 +1211,7 @@ export default function MapPage() {
                   <Marker
                     key={`live-${truck.id}`}
                     position={[lat, lng]}
-                    icon={truckIcon}
+                    icon={truckPinIcon}
                   >
                     <Popup>
                       <div className="min-w-52 rounded-xl bg-white text-slate-900 p-3 shadow-lg space-y-1">
@@ -1229,7 +1270,7 @@ export default function MapPage() {
                   <Marker
                     key={`host-${host.id}`}
                     position={[coords.lat, coords.lng]}
-                    icon={hostedTruck ? truckHostedIcon : hostPinIcon}
+                    icon={hostedTruck ? hostPinActiveIcon : hostPinIcon}
                   >
                     <Popup>
                       <div className="min-w-56 space-y-1 rounded-xl bg-white text-slate-900 p-3 shadow-lg">

@@ -43,7 +43,17 @@ export function registerEventRoutes(app: Express) {
     try {
       await storage.ensureDraftParkingPassesForHosts();
       const events = await storage.getAllUpcomingEvents();
-      const parkingEvents = events.filter((event) => event.requiresPayment);
+      const hasPricing = (event: (typeof events)[number]) =>
+        (event.breakfastPriceCents ?? 0) > 0 ||
+        (event.lunchPriceCents ?? 0) > 0 ||
+        (event.dinnerPriceCents ?? 0) > 0 ||
+        (event.dailyPriceCents ?? 0) > 0 ||
+        (event.weeklyPriceCents ?? 0) > 0 ||
+        (event.monthlyPriceCents ?? 0) > 0;
+
+      const parkingEvents = events.filter(
+        (event) => event.requiresPayment && hasPricing(event),
+      );
       const eventIds = parkingEvents.map((event) => event.id);
 
       const bookingRows =

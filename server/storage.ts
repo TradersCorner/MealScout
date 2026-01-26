@@ -735,6 +735,7 @@ export class DatabaseStorage implements IStorage {
         dinnerPriceCents: 0,
         dailyPriceCents: 0,
         weeklyPriceCents: 0,
+        monthlyPriceCents: 0,
       });
     }
 

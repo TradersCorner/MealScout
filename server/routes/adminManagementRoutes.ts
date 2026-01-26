@@ -1038,6 +1038,9 @@ export function registerAdminManagementRoutes(app: Express) {
           "breakfastPriceCents",
           "lunchPriceCents",
           "dinnerPriceCents",
+          "dailyPriceCents",
+          "weeklyPriceCents",
+          "monthlyPriceCents",
         ];
         for (const field of fields) {
           if (req.body?.[field] === undefined) continue;
@@ -1080,10 +1083,28 @@ export function registerAdminManagementRoutes(app: Express) {
           updates.dinnerPriceCents ?? event.dinnerPriceCents ?? 0,
         );
         const slotSum = breakfast + lunch + dinner;
+        const dailyOverride =
+          updates.dailyPriceCents !== undefined
+            ? Number(updates.dailyPriceCents)
+            : null;
+        const weeklyOverride =
+          updates.weeklyPriceCents !== undefined
+            ? Number(updates.weeklyPriceCents)
+            : null;
+        const monthlyOverride =
+          updates.monthlyPriceCents !== undefined
+            ? Number(updates.monthlyPriceCents)
+            : null;
+        const baseDaily =
+          dailyOverride ?? (slotSum > 0 ? slotSum : event.dailyPriceCents ?? 0);
         const pricingUpdates = {
-          hostPriceCents: slotSum,
-          dailyPriceCents: slotSum + 1000,
-          weeklyPriceCents: slotSum * 7 + 1000,
+          hostPriceCents: slotSum || event.hostPriceCents || 0,
+          dailyPriceCents:
+            baseDaily,
+          weeklyPriceCents:
+            weeklyOverride ?? (baseDaily > 0 ? baseDaily * 7 : event.weeklyPriceCents ?? 0),
+          monthlyPriceCents:
+            monthlyOverride ?? (baseDaily > 0 ? baseDaily * 30 : event.monthlyPriceCents ?? 0),
           requiresPayment: true,
           updatedAt: new Date(),
         };
@@ -1683,8 +1704,9 @@ export function registerAdminManagementRoutes(app: Express) {
         );
         const slotSum = breakfast + lunch + dinner;
         updates.hostPriceCents = slotSum;
-        updates.dailyPriceCents = slotSum + 1000;
-        updates.weeklyPriceCents = slotSum * 7 + 1000;
+        updates.dailyPriceCents = slotSum;
+        updates.weeklyPriceCents = slotSum * 7;
+        updates.monthlyPriceCents = slotSum * 30;
         updates.updatedAt = new Date();
 
         const [updated] = await db

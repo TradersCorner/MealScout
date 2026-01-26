@@ -2327,6 +2327,7 @@ export const events = pgTable(
     dinnerPriceCents: integer("dinner_price_cents"),
     dailyPriceCents: integer("daily_price_cents"),
     weeklyPriceCents: integer("weekly_price_cents"),
+    monthlyPriceCents: integer("monthly_price_cents"),
     requiresPayment: boolean("requires_payment").default(false),
     stripeProductId: varchar("stripe_product_id"),
     stripePriceId: varchar("stripe_price_id"),

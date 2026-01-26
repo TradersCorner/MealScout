@@ -87,6 +87,13 @@ const haversineKm = (aLat: number, aLng: number, bLat: number, bLng: number) => 
   return 2 * earthRadiusKm * Math.asin(Math.sqrt(h));
 };
 
+const isMissingRelationError = (error: unknown, relationName?: string) => {
+  const err = error as { code?: string; message?: string } | null;
+  if (!err || err.code !== "42P01") return false;
+  if (!relationName) return true;
+  return err.message?.includes(`"${relationName}"`) ?? false;
+};
+
 const getFootTrafficCount = async (params: {
   lat: number;
   lng: number;
@@ -100,23 +107,39 @@ const getFootTrafficCount = async (params: {
     radiusKm / (111 * Math.cos((lat * Math.PI) / 180) || 1);
 
   const since = new Date(Date.now() - hours * 60 * 60 * 1000);
-  const rows = await db
-    .select({
-      lat: geoLocationPings.lat,
-      lng: geoLocationPings.lng,
-      userId: geoLocationPings.userId,
-      visitorId: geoLocationPings.visitorId,
-    })
-    .from(geoLocationPings)
-    .where(
-      and(
-        gte(geoLocationPings.createdAt, since),
-        gte(geoLocationPings.lat, lat - latDelta),
-        lte(geoLocationPings.lat, lat + latDelta),
-        gte(geoLocationPings.lng, lng - lngDelta),
-        lte(geoLocationPings.lng, lng + lngDelta)
-      )
-    );
+  let rows: Array<{
+    lat: string | number | null;
+    lng: string | number | null;
+    userId: string | null;
+    visitorId: string | null;
+  }> = [];
+  try {
+    rows = await db
+      .select({
+        lat: geoLocationPings.lat,
+        lng: geoLocationPings.lng,
+        userId: geoLocationPings.userId,
+        visitorId: geoLocationPings.visitorId,
+      })
+      .from(geoLocationPings)
+      .where(
+        and(
+          gte(geoLocationPings.createdAt, since),
+          gte(geoLocationPings.lat, lat - latDelta),
+          lte(geoLocationPings.lat, lat + latDelta),
+          gte(geoLocationPings.lng, lng - lngDelta),
+          lte(geoLocationPings.lng, lng + lngDelta)
+        )
+      );
+  } catch (error) {
+    if (isMissingRelationError(error, "geo_location_pings")) {
+      console.warn(
+        "geo_location_pings missing; skipping foot traffic calculation.",
+      );
+      return 0;
+    }
+    throw error;
+  }
 
   const unique = new Set<string>();
   for (const row of rows) {
@@ -266,14 +289,24 @@ export function registerGeoAdRoutes(app: Express) {
     const userId = req.user?.id || null;
     const userType = req.user?.userType || "guest";
 
-    await db.insert(geoLocationPings).values({
-      userId,
-      visitorId,
-      userType,
-      lat: toDecimalString(roundedLat, 3) || "0",
-      lng: toDecimalString(roundedLng, 3) || "0",
-      source: parsed.data.source || null,
-    });
+    try {
+      await db.insert(geoLocationPings).values({
+        userId,
+        visitorId,
+        userType,
+        lat: toDecimalString(roundedLat, 3) || "0",
+        lng: toDecimalString(roundedLng, 3) || "0",
+        source: parsed.data.source || null,
+      });
+    } catch (error) {
+      if (isMissingRelationError(error, "geo_location_pings")) {
+        console.warn(
+          "geo_location_pings missing; skipping geo ping insert.",
+        );
+        return res.json({ ok: true, skipped: true });
+      }
+      throw error;
+    }
 
     res.json({ ok: true });
   });

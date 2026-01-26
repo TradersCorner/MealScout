@@ -33,6 +33,20 @@ const stripe = process.env.STRIPE_SECRET_KEY
   : null;
 
 export function registerHostRoutes(app: Express) {
+  const normalizeLocationValue = (value?: string | null) =>
+    (value ?? "").trim().toLowerCase();
+
+  const buildLocationKey = (
+    address?: string | null,
+    city?: string | null,
+    state?: string | null,
+  ) =>
+    [
+      normalizeLocationValue(address),
+      normalizeLocationValue(city),
+      normalizeLocationValue(state),
+    ].join("|");
+
   const getActiveParkingPassSeriesId = async (hostId: string) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -45,6 +59,7 @@ export function registerHostRoutes(app: Express) {
         dinnerPriceCents: events.dinnerPriceCents,
         dailyPriceCents: events.dailyPriceCents,
         weeklyPriceCents: events.weeklyPriceCents,
+        monthlyPriceCents: events.monthlyPriceCents,
       })
       .from(events)
       .where(
@@ -62,7 +77,8 @@ export function registerHostRoutes(app: Express) {
       (row.lunchPriceCents ?? 0) > 0 ||
       (row.dinnerPriceCents ?? 0) > 0 ||
       (row.dailyPriceCents ?? 0) > 0 ||
-      (row.weeklyPriceCents ?? 0) > 0;
+      (row.weeklyPriceCents ?? 0) > 0 ||
+      (row.monthlyPriceCents ?? 0) > 0;
     const activeRow = rows.find((row) => hasActivePricing(row));
     return activeRow?.seriesId ?? null;
   };
@@ -81,6 +97,32 @@ export function registerHostRoutes(app: Express) {
         ...req.body,
         userId,
       });
+
+      const existingHosts = await db
+        .select({
+          id: hosts.id,
+          address: hosts.address,
+          city: hosts.city,
+          state: hosts.state,
+        })
+        .from(hosts)
+        .where(eq(hosts.userId, userId));
+
+      const newKey = buildLocationKey(
+        parsed.address,
+        parsed.city ?? null,
+        parsed.state ?? null,
+      );
+      const hasDuplicate = existingHosts.some(
+        (host) =>
+          buildLocationKey(host.address, host.city, host.state) === newKey,
+      );
+      if (hasDuplicate) {
+        return res.status(409).json({
+          message:
+            "You already have a location for this address. Edit the existing location instead.",
+        });
+      }
 
       const host = await storage.createHost(parsed);
 
@@ -196,13 +238,40 @@ export function registerHostRoutes(app: Express) {
       });
       const parsed = updateSchema.parse(req.body || {});
 
+      const nextAddress = parsed.address ?? host.address;
+      const nextCity = parsed.city ?? host.city;
+      const nextState = parsed.state ?? host.state;
+      const nextKey = buildLocationKey(nextAddress, nextCity, nextState);
+
+      const siblingHosts = await db
+        .select({
+          id: hosts.id,
+          address: hosts.address,
+          city: hosts.city,
+          state: hosts.state,
+        })
+        .from(hosts)
+        .where(eq(hosts.userId, userId));
+
+      const hasDuplicate = siblingHosts.some(
+        (item) =>
+          item.id !== host.id &&
+          buildLocationKey(item.address, item.city, item.state) === nextKey,
+      );
+      if (hasDuplicate) {
+        return res.status(409).json({
+          message:
+            "Another location already uses this address. Edit that location instead.",
+        });
+      }
+
       const [updated] = await db
         .update(hosts)
         .set({
           businessName: parsed.businessName ?? host.businessName,
-          address: parsed.address ?? host.address,
-          city: parsed.city ?? host.city,
-          state: parsed.state ?? host.state,
+          address: nextAddress,
+          city: nextCity,
+          state: nextState,
           locationType: parsed.locationType ?? host.locationType,
           contactPhone: parsed.contactPhone ?? host.contactPhone,
           notes: parsed.notes ?? host.notes,
@@ -328,6 +397,36 @@ export function registerHostRoutes(app: Express) {
     },
   );
 
+  app.delete("/api/hosts/:hostId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { hostId } = req.params;
+      const userId = req.user.id;
+      const host = await storage.getHost(hostId);
+      if (!host || host.userId !== userId) {
+        return res.status(404).json({ message: "Host profile not found" });
+      }
+
+      const existingBookings = await db
+        .select({ id: eventBookings.id })
+        .from(eventBookings)
+        .where(eq(eventBookings.hostId, host.id))
+        .limit(1);
+
+      if (existingBookings.length > 0) {
+        return res.status(409).json({
+          message:
+            "This location has bookings and cannot be deleted. Contact support if you need help.",
+        });
+      }
+
+      await db.delete(hosts).where(eq(hosts.id, host.id));
+      res.json({ message: "Location deleted" });
+    } catch (error: any) {
+      console.error("Error deleting host profile:", error);
+      res.status(500).json({ message: "Failed to delete host profile" });
+    }
+  });
+
   app.post("/api/hosts/events", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -364,8 +463,9 @@ export function registerHostRoutes(app: Express) {
       }
 
       const slotSum = breakfastPriceCents + lunchPriceCents + dinnerPriceCents;
-      const dailyPriceCents = slotSum + 1000;
-      const weeklyPriceCents = slotSum * 7 + 1000;
+      const dailyPriceCents = slotSum;
+      const weeklyPriceCents = slotSum * 7;
+      const monthlyPriceCents = slotSum * 30;
 
       const daysOfWeekSchema = z.array(z.number().int().min(0).max(6));
       const daysOfWeek = daysOfWeekSchema.parse(req.body?.daysOfWeek || []);
@@ -400,6 +500,7 @@ export function registerHostRoutes(app: Express) {
         dinnerPriceCents: dinnerPriceCents || null,
         dailyPriceCents,
         weeklyPriceCents,
+        monthlyPriceCents,
         hostPriceCents: slotSum,
       });
 
@@ -433,6 +534,7 @@ export function registerHostRoutes(app: Express) {
           dinnerPriceCents: events.dinnerPriceCents,
           dailyPriceCents: events.dailyPriceCents,
           weeklyPriceCents: events.weeklyPriceCents,
+          monthlyPriceCents: events.monthlyPriceCents,
         })
         .from(events)
         .where(
@@ -448,7 +550,8 @@ export function registerHostRoutes(app: Express) {
         (row.lunchPriceCents ?? 0) > 0 ||
         (row.dinnerPriceCents ?? 0) > 0 ||
         (row.dailyPriceCents ?? 0) > 0 ||
-        (row.weeklyPriceCents ?? 0) > 0;
+        (row.weeklyPriceCents ?? 0) > 0 ||
+        (row.monthlyPriceCents ?? 0) > 0;
 
       const activePaidEvents = existingPaidEvents.filter(hasActivePricing);
       if (activePaidEvents.length > 0) {
@@ -1050,6 +1153,7 @@ export function registerHostRoutes(app: Express) {
         "dinner",
         "daily",
         "weekly",
+        "monthly",
       ]);
       const requestedSlots = Array.isArray(slotTypes)
         ? slotTypes
@@ -1198,6 +1302,7 @@ export function registerHostRoutes(app: Express) {
         dinner: event.dinnerPriceCents,
         daily: event.dailyPriceCents,
         weekly: event.weeklyPriceCents,
+        monthly: event.monthlyPriceCents,
       };
       const selectedPrices = normalizedSlots.map((slot) => ({
         slot,
@@ -1212,8 +1317,12 @@ export function registerHostRoutes(app: Express) {
         (sum, item) => sum + item.price,
         0,
       );
-      const bookingDays = normalizedSlots.includes("weekly") ? 7 : 1;
-      const platformFeeCents = 1000 * bookingDays; // $10 per day per host
+      const bookingDays = normalizedSlots.includes("monthly")
+        ? 30
+        : normalizedSlots.includes("weekly")
+          ? 7
+          : 1;
+      const platformFeeCents = Math.min(1000 * bookingDays, 15000); // $10/day, capped at $150/month
 
       let creditAppliedCents = 0;
       const requestedCreditCents = Number(applyCreditsCents || 0);

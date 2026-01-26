@@ -1284,6 +1284,8 @@ export default function AdminDashboard() {
         breakfastPriceCents: pass.breakfastPriceCents ?? 0,
         lunchPriceCents: pass.lunchPriceCents ?? 0,
         dinnerPriceCents: pass.dinnerPriceCents ?? 0,
+        dailyPriceCents: pass.dailyPriceCents ?? 0,
+        weeklyPriceCents: pass.weeklyPriceCents ?? 0,
       };
     });
     setParkingPassEdits(nextEdits);
@@ -4623,6 +4625,64 @@ export default function AdminDashboard() {
                                     },
                                   })
                                 }
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground">
+                                Daily (cents)
+                              </p>
+                              <input
+                                type="number"
+                                min={0}
+                                className="w-full px-2 py-1 border rounded-md text-sm"
+                                value={edits.dailyPriceCents}
+                                onChange={(e) =>
+                                  setParkingPassEdits({
+                                    ...parkingPassEdits,
+                                    [pass.id]: {
+                                      ...edits,
+                                      dailyPriceCents: e.target.value,
+                                      weeklyPriceCents:
+                                        Number(e.target.value || 0) * 7,
+                                      monthlyPriceCents:
+                                        Number(e.target.value || 0) * 30,
+                                    },
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground">
+                                Weekly (cents)
+                              </p>
+                              <input
+                                type="number"
+                                min={0}
+                                className="w-full px-2 py-1 border rounded-md text-sm"
+                                value={
+                                  Number(edits.dailyPriceCents || 0)
+                                    ? Number(edits.dailyPriceCents || 0) * 7
+                                    : edits.weeklyPriceCents
+                                }
+                                readOnly
+                                disabled
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground">
+                                Monthly (cents)
+                              </p>
+                              <input
+                                type="number"
+                                min={0}
+                                className="w-full px-2 py-1 border rounded-md text-sm"
+                                value={
+                                  Number(edits.dailyPriceCents || 0)
+                                    ? Number(edits.dailyPriceCents || 0) * 30
+                                    : edits.monthlyPriceCents
+                                }
+                                readOnly
+                                disabled
                               />
                             </div>
                           </div>

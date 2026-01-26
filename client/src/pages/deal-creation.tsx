@@ -374,7 +374,7 @@ export default function DealCreation() {
   }
 
   // Check subscription status - redirect to subscribe page if needed
-  // Allow access if: active subscription OR beta mode enabled OR has access flag OR admin/staff
+  // Allow access if: active subscription OR has access flag OR admin/staff
   const isAdminOrStaff =
     user &&
     (user.userType === "admin" ||
@@ -384,7 +384,6 @@ export default function DealCreation() {
     isAdminOrStaff ||
     (subscription &&
       ((subscription as any).status === "active" ||
-        (subscription as any).betaMode === true ||
         (subscription as any).hasAccess === true));
 
   if (!isSubscriptionError && subscription && !hasAccess) {

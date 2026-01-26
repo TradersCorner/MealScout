@@ -4455,14 +4455,33 @@ export default function AdminDashboard() {
                     {parkingPasses.map((pass: any) => {
                       const edits = parkingPassEdits[pass.id];
                       if (!edits) return null;
+                      const hostName =
+                        pass.host?.businessName ?? pass.name ?? "Parking Pass";
+                      const addressParts = [
+                        pass.host?.address,
+                        pass.host?.city,
+                        pass.host?.state,
+                      ].filter(Boolean);
+                      const addressLabel = addressParts.length
+                        ? addressParts.join(", ")
+                        : null;
+                      const nextDate = pass.nextDate ?? pass.date;
                       return (
                         <div
                           key={pass.id}
                           className="border rounded-lg p-3 bg-muted/30 space-y-3"
                         >
                           <div className="text-sm font-medium">
-                            {pass.name || "Parking Pass"} ·{" "}
-                            {new Date(pass.date).toLocaleDateString()}
+                            {hostName}
+                            {addressLabel ? ` · ${addressLabel}` : ""}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Applies to all upcoming dates
+                            {nextDate
+                              ? ` · Next date ${new Date(
+                                  nextDate,
+                                ).toLocaleDateString()}`
+                              : ""}
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div className="space-y-1">

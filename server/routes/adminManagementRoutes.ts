@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import Stripe from "stripe";
 import crypto from "crypto";
-import { eq, and, inArray, or, sql, desc, isNull } from "drizzle-orm";
+import { eq, and, inArray, or, sql, desc, isNull, gte } from "drizzle-orm";
 import { storage } from "../storage";
 import { isAuthenticated, isStaffOrAdmin } from "../unifiedAuth";
 import { sanitizeUser, sanitizeUsers } from "../utils/sanitize";
@@ -977,7 +977,38 @@ export function registerAdminManagementRoutes(app: Express) {
           .flat()
           .filter((event) => event.requiresPayment);
 
-        res.json(parkingPassEvents);
+        const eventsByHost = new Map<string, typeof parkingPassEvents>();
+        for (const event of parkingPassEvents) {
+          const list = eventsByHost.get(event.hostId) ?? [];
+          list.push(event);
+          eventsByHost.set(event.hostId, list);
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const listings = hosts.flatMap((host) => {
+          const hostEvents = eventsByHost.get(host.id) ?? [];
+          if (!hostEvents.length) return [];
+          const sorted = [...hostEvents].sort(
+            (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+          );
+          const upcoming = sorted.find(
+            (event) => new Date(event.date) >= today,
+          );
+          const representative = upcoming ?? sorted[sorted.length - 1];
+
+          return [
+            {
+              ...representative,
+              host,
+              nextDate: upcoming?.date ?? representative.date,
+              occurrenceCount: hostEvents.length,
+            },
+          ];
+        });
+
+        res.json(listings);
       } catch (error) {
         console.error("Error fetching parking pass listings:", error);
         res.status(500).json({ message: "Failed to fetch parking pass listings" });
@@ -1009,11 +1040,11 @@ export function registerAdminManagementRoutes(app: Express) {
           "dinnerPriceCents",
         ];
         for (const field of fields) {
-          if (req.body?.[field] !== undefined) {
-            updates[field] =
-              typeof req.body[field] === "number"
-                ? req.body[field]
-                : Number(req.body[field]);
+          if (req.body?.[field] === undefined) continue;
+          if (field === "startTime" || field === "endTime" || field === "status") {
+            updates[field] = req.body[field];
+          } else {
+            updates[field] = Number(req.body[field]);
           }
         }
 
@@ -1049,19 +1080,59 @@ export function registerAdminManagementRoutes(app: Express) {
           updates.dinnerPriceCents ?? event.dinnerPriceCents ?? 0,
         );
         const slotSum = breakfast + lunch + dinner;
-        updates.hostPriceCents = slotSum;
-        updates.dailyPriceCents = slotSum + 1000;
-        updates.weeklyPriceCents = slotSum * 7 + 1000;
-        updates.requiresPayment = true;
-        updates.updatedAt = new Date();
+        const pricingUpdates = {
+          hostPriceCents: slotSum,
+          dailyPriceCents: slotSum + 1000,
+          weeklyPriceCents: slotSum * 7 + 1000,
+          requiresPayment: true,
+          updatedAt: new Date(),
+        };
 
-        const [updated] = await db
+        if (event.seriesId) {
+          const seriesUpdates: any = { updatedAt: new Date() };
+          if (updates.startTime !== undefined) {
+            seriesUpdates.defaultStartTime = String(updates.startTime);
+          }
+          if (updates.endTime !== undefined) {
+            seriesUpdates.defaultEndTime = String(updates.endTime);
+          }
+          if (updates.maxTrucks !== undefined) {
+            seriesUpdates.defaultMaxTrucks = Number(updates.maxTrucks);
+          }
+          if (Object.keys(seriesUpdates).length > 1) {
+            await db
+              .update(eventSeries)
+              .set(seriesUpdates)
+              .where(eq(eventSeries.id, event.seriesId));
+          }
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const scope = event.seriesId
+          ? eq(events.seriesId, event.seriesId)
+          : eq(events.hostId, event.hostId);
+
+        const updatedEvents = await db
           .update(events)
-          .set(updates)
-          .where(eq(events.id, eventId))
+          .set({ ...updates, ...pricingUpdates })
+          .where(
+            and(scope, gte(events.date, today), eq(events.requiresPayment, true)),
+          )
           .returning();
 
-        res.json(updated);
+        let updated = updatedEvents[0];
+        if (!updated) {
+          const [singleUpdated] = await db
+            .update(events)
+            .set({ ...updates, ...pricingUpdates })
+            .where(eq(events.id, eventId))
+            .returning();
+          updated = singleUpdated;
+        }
+
+        res.json(updated ?? event);
       } catch (error: any) {
         console.error("Error updating parking pass:", error);
         res.status(500).json({

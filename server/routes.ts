@@ -171,20 +171,6 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
 
-// Beta mode flag - when enabled, all users get free access to all features
-// Defaults to false - set BETA_MODE=true to enable (NOT recommended for production)
-const BETA_MODE = process.env.BETA_MODE === "true";
-
-console.log("🎯 BETA_MODE is", BETA_MODE ? "ENABLED ✅" : "DISABLED ❌");
-console.log("🎯 process.env.BETA_MODE =", process.env.BETA_MODE);
-
-// Production safety check: warn if beta mode is enabled in production
-if (process.env.NODE_ENV === "production" && BETA_MODE) {
-  console.warn(
-    "⚠️  WARNING: BETA_MODE is enabled in production environment! All users will have free access to premium features.",
-  );
-}
-
 // Pricing helpers: Stripe Price IDs
 const PROMO_DEADLINE = new Date("2026-03-01T00:00:00Z");
 
@@ -360,22 +346,8 @@ async function validateAnalyticsAccess(userId: string): Promise<{
 
     const hydratedUser = await ensureTrialForUser(user);
 
-    // During beta testing, all users get free access to analytics
-    if (BETA_MODE) {
-      return { hasAccess: true, subscriptionTier: "beta" };
-    }
-
     if (isTrialActive(hydratedUser)) {
       return { hasAccess: true, subscriptionTier: "trial" };
-    }
-
-    // Check if user has beta access (free analytics for beta users)
-    if (
-      hydratedUser.subscriptionBillingInterval &&
-      !hydratedUser.stripeSubscriptionId
-    ) {
-      // Beta user - allow analytics access
-      return { hasAccess: true, subscriptionTier: "beta" };
     }
 
     // Check if user has active subscription
@@ -434,22 +406,9 @@ async function validateSubscriptionLimits(
 
     const hydratedUser = await ensureTrialForUser(user);
 
-    console.log("🔍 validateSubscriptionLimits - BETA_MODE:", BETA_MODE);
     console.log("🔍 validateSubscriptionLimits - User ID:", userId);
 
-    // During beta testing, all users get unlimited deals
-    if (BETA_MODE) {
-      console.log("✅ BETA_MODE enabled - granting unlimited deals");
-      return { isValid: true, currentCount: 0, maxDeals: 999 };
-    }
-
     if (isTrialActive(hydratedUser)) {
-      return { isValid: true, currentCount: 0, maxDeals: 999 };
-    }
-
-    // Check if user has beta access (free)
-    if (hydratedUser.subscriptionBillingInterval && !hydratedUser.stripeSubscriptionId) {
-      // Beta user - allow unlimited deals for now
       return { isValid: true, currentCount: 0, maxDeals: 999 };
     }
 
@@ -3967,12 +3926,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Validate billing interval
-      const validIntervals = ["month"];
-      const interval = validIntervals.includes(billingInterval)
-        ? billingInterval
-        : "month";
-
       const hydratedUser = await ensureTrialForUser(user);
       if (isTrialActive(hydratedUser)) {
         return res.send({
@@ -3981,36 +3934,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           trialAccess: true,
           message: "Your 30-day premium trial is active. We'll prompt you to pay before it ends.",
         });
-      }
-
-      // Check for BETA promo code
-      if (promoCode.toUpperCase() === "BETA") {
-        console.log("✅ BETA code detected, granting free access");
-
-        // Grant free beta access without Stripe subscription
-        try {
-          console.log("Updating user with BETA access...");
-          await storage.updateUser(user.id, {
-            subscriptionBillingInterval: `standard-${interval}`,
-            // We don't set stripeSubscriptionId for beta users
-          });
-          console.log("✅ User updated successfully with BETA access");
-
-          const response = {
-            status: "active",
-            subscriptionId: null,
-            betaAccess: true,
-            message:
-              "BETA access granted! You can now create deals without payment.",
-          };
-          console.log("Sending response:", response);
-          return res.send(response);
-        } catch (error) {
-          console.error("❌ Error granting beta access:", error);
-          return res
-            .status(400)
-            .send({ error: { message: "Failed to grant beta access" } });
-        }
       }
 
       if (!stripe) {
@@ -4087,29 +4010,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 "Verification is required before enabling premium features.",
             },
           });
-        }
-      }
-
-      // Check for valid promo codes first (skip payment for beta users)
-      if (promoCode && promoCode.toUpperCase() === "BETA") {
-        // Grant free beta access without Stripe subscription
-        try {
-          await storage.updateUser(user.id, {
-            subscriptionBillingInterval: `standard-${billingInterval}`,
-            // We don't set stripeSubscriptionId for beta users
-          });
-
-          return res.json({
-            success: true,
-            message:
-              "Beta access granted! You can now create deals without payment.",
-            betaAccess: true,
-          });
-        } catch (error) {
-          console.error("Error granting beta access:", error);
-          return res
-            .status(500)
-            .json({ error: { message: "Failed to grant beta access" } });
         }
       }
 
@@ -4359,19 +4259,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
 
-      // BETA MODE: Grant all users active subscription status
-      if (BETA_MODE) {
-        console.log(
-          "✅ BETA_MODE: Granting active subscription status to all users",
-        );
-        return res.json({
-          status: "active",
-          hasAccess: true,
-          betaMode: true,
-          message: "BETA MODE - Free access for all users",
-        });
-      }
-
       const user = await storage.getUser(req.user.id);
       if (!user) {
         return res.status(401).json({ status: "none", hasAccess: false });
@@ -4393,16 +4280,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       try {
-
-        // Check for BETA users (have billing interval but no Stripe subscription)
-        if (!hydratedUser.stripeSubscriptionId && hydratedUser.subscriptionBillingInterval) {
-          return res.json({
-            status: "active",
-            hasAccess: true,
-            betaAccess: true,
-            message: "BETA user with free access",
-          });
-        }
 
         if (!hydratedUser.stripeSubscriptionId) {
           return res.json({ status: "none", hasAccess: false });

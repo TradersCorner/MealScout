@@ -3,6 +3,7 @@ import { getQueryFn } from "@/lib/queryClient";
 import type { User } from "@shared/schema";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
+import { setAffiliateRef } from "@/lib/share";
 
 export type AuthState = "loading" | "authenticated" | "guest";
 
@@ -39,6 +40,14 @@ export function useAuth() {
       setLocation("/change-password");
     }
   }, [user, setLocation]);
+
+  useEffect(() => {
+    if (user?.affiliateTag || user?.id) {
+      setAffiliateRef(user.affiliateTag || user.id);
+    } else {
+      setAffiliateRef(null);
+    }
+  }, [user?.affiliateTag, user?.id]);
 
   // Check for OAuth redirect completion and refresh auth state
   useEffect(() => {

@@ -1174,11 +1174,14 @@ export class DatabaseStorage implements IStorage {
         : userType === "admin" || userType === "super_admin"
           ? 0
           : undefined;
+    const shouldAutoVerify =
+      userType === "admin" || userType === "super_admin";
     const [updatedUser] = await db
       .update(users)
       .set({
         userType,
         ...(affiliatePercent !== undefined ? { affiliatePercent } : {}),
+        ...(shouldAutoVerify ? { emailVerified: true } : {}),
         updatedAt: new Date(),
       })
       .where(eq(users.id, id))
@@ -2290,6 +2293,8 @@ export class DatabaseStorage implements IStorage {
         : data.userType === "admin" || data.userType === "super_admin"
           ? 0
           : undefined;
+    const shouldAutoVerify =
+      data.userType === "admin" || data.userType === "super_admin";
     const [user] = await db
       .insert(users)
       .values({
@@ -2300,7 +2305,7 @@ export class DatabaseStorage implements IStorage {
         userType: data.userType,
         passwordHash: null,
         mustResetPassword: false,
-        emailVerified: false,
+        emailVerified: shouldAutoVerify,
         ...(affiliatePercent !== undefined ? { affiliatePercent } : {}),
       })
       .returning();

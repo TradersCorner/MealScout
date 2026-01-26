@@ -198,6 +198,21 @@ export async function setupUnifiedAuth(app: Express) {
         }
       }
 
+      if (
+        user &&
+        !user.emailVerified &&
+        (user.userType === "admin" || user.userType === "super_admin")
+      ) {
+        try {
+          user = await storage.updateUser(user.id, { emailVerified: true });
+        } catch (err) {
+          console.warn(
+            "⚠️  Failed to auto-verify admin account email:",
+            err,
+          );
+        }
+      }
+
       done(null, user);
     } catch (error) {
       // For user not found or other errors, return false to clear the session
@@ -1636,7 +1651,9 @@ export const isRestaurantOwner = (req: any, res: any, next: any) => {
     return res.status(401).json({ error: "Authentication required" });
   }
 
-  if (req.user.userType !== "restaurant_owner") {
+  if (
+    !["restaurant_owner", "admin", "super_admin"].includes(req.user.userType)
+  ) {
     return res.status(403).json({ error: "Restaurant owner access required" });
   }
 
@@ -1663,6 +1680,17 @@ export const requireRole =
     }
 
     const userRole = req.user?.userType as UserRole;
+    if (userRole === "super_admin") {
+      return next();
+    }
+
+    if (
+      userRole === "admin" &&
+      allowedRoles.some((role) => role !== "super_admin")
+    ) {
+      return next();
+    }
+
     if (!allowedRoles.includes(userRole)) {
       return res.status(403).json({
         error: "Forbidden",

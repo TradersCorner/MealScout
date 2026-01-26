@@ -7,8 +7,12 @@ import {
   isAuthenticated,
   isRestaurantOwner,
 } from "../unifiedAuth";
-import { eventBookings, insertEventInterestSchema } from "@shared/schema";
-import { asc, inArray } from "drizzle-orm";
+import {
+  eventBookings,
+  insertEventInterestSchema,
+  restaurants,
+} from "@shared/schema";
+import { asc, eq, inArray } from "drizzle-orm";
 
 export function registerEventRoutes(app: Express) {
   // Get all upcoming events (public)
@@ -49,8 +53,15 @@ export function registerEventRoutes(app: Express) {
                 eventId: eventBookings.eventId,
                 spotNumber: eventBookings.spotNumber,
                 bookingConfirmedAt: eventBookings.bookingConfirmedAt,
+                slotType: eventBookings.slotType,
+                truckId: eventBookings.truckId,
+                truckName: restaurants.name,
               })
               .from(eventBookings)
+              .innerJoin(
+                restaurants,
+                eq(eventBookings.truckId, restaurants.id),
+              )
               .where(inArray(eventBookings.eventId, eventIds))
               .where(inArray(eventBookings.status, ["confirmed"]))
               .orderBy(asc(eventBookings.bookingConfirmedAt))
@@ -100,6 +111,13 @@ export function registerEventRoutes(app: Express) {
           spotCount: maxSpots,
           bookedSpots: Math.min(rows.length, maxSpots),
           availableSpotNumbers,
+          bookings: rows.map((row) => ({
+            truckId: row.truckId,
+            truckName: row.truckName,
+            slotType: row.slotType,
+            spotNumber: row.spotNumber,
+            bookingConfirmedAt: row.bookingConfirmedAt,
+          })),
         };
       });
 

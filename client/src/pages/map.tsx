@@ -50,6 +50,13 @@ const userLocationIcon = L.divIcon({
   iconAnchor: [20, 20],
 });
 
+const parkingPassPinIcon = new L.Icon({
+  iconUrl: mealScoutIcon,
+  iconSize: [36, 36],
+  iconAnchor: [18, 36],
+  popupAnchor: [0, -30],
+});
+
 // Component to handle map controls
 function MapControls({
   onZoomIn,
@@ -231,6 +238,12 @@ type ParkingPassLocation = {
   endTime: string;
   status: string;
   host: HostLocation & { city?: string | null; state?: string | null };
+  bookings?: Array<{
+    truckId: string;
+    truckName: string;
+    slotType?: string | null;
+    spotNumber?: number | null;
+  }>;
 };
 
 type MapLocationsResponse = {
@@ -673,6 +686,11 @@ export default function MapPage() {
       return `${Math.round(distanceKm * 1000)} m`;
     }
     return `${distanceKm.toFixed(1)} km`;
+  };
+
+  const formatSlotType = (slot?: string | null) => {
+    if (!slot) return null;
+    return slot.charAt(0).toUpperCase() + slot.slice(1);
   };
 
   const handleGeoAdClick = (ad: GeoAd) => {
@@ -1334,11 +1352,15 @@ export default function MapPage() {
                 const title = hostedTruck ? hostedTruck.truck.name : hostName;
                 const subtitle = hostedTruck ? `At ${hostName}` : "Hosts food trucks";
                 const distanceLabel = formatDistance(coords);
+                const bookings = Array.isArray(event.bookings)
+                  ? event.bookings
+                  : [];
+                const bookingPreview = bookings.slice(0, 3);
                 return (
                   <Marker
                     key={`parking-${event.id}`}
                     position={[coords.lat, coords.lng]}
-                    icon={hostedTruck ? truckHostedIcon : hostPinIcon}
+                    icon={parkingPassPinIcon}
                   >
                     <Popup>
                       <div className="min-w-56 space-y-1 rounded-xl bg-white text-slate-900 p-3 shadow-lg">
@@ -1359,6 +1381,41 @@ export default function MapPage() {
                         {distanceLabel && (
                           <div className="text-xs text-slate-500">
                             {distanceLabel} away
+                          </div>
+                        )}
+                        {bookings.length > 0 ? (
+                          <div className="pt-1 text-xs text-slate-500">
+                            <div className="font-semibold text-slate-700">
+                              Scheduled trucks
+                            </div>
+                            <div className="space-y-1 mt-1">
+                              {bookingPreview.map((booking) => {
+                                const slotLabel = formatSlotType(
+                                  booking.slotType,
+                                );
+                                const spotLabel = booking.spotNumber
+                                  ? `Spot ${booking.spotNumber}`
+                                  : null;
+                                return (
+                                  <div
+                                    key={`${booking.truckId}-${booking.slotType || "slot"}`}
+                                  >
+                                    {booking.truckName}
+                                    {slotLabel ? ` · ${slotLabel}` : ""}
+                                    {spotLabel ? ` · ${spotLabel}` : ""}
+                                  </div>
+                                );
+                              })}
+                              {bookings.length > 3 && (
+                                <div className="text-[11px] text-slate-400">
+                                  +{bookings.length - 3} more
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-slate-500 pt-1">
+                            No bookings yet
                           </div>
                         )}
                         {hostedTruck ? (

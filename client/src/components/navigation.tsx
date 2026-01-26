@@ -145,6 +145,7 @@ export default function Navigation() {
   const sharedNavItems: NavItem[] = [
     { path: "/", icon: UtensilsCrossed, label: "Food" },
     { path: "/map", icon: MapPin, label: "Map" },
+    { path: "/parking-pass", icon: ParkingSquare, label: "Parking Pass" },
     { path: "/video", icon: Clapperboard, label: "Video" },
     ...(user ? [{ path: "/profile", icon: User, label: "Profile" }] : []),
   ];

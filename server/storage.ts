@@ -118,6 +118,7 @@ export interface IStorage {
   createHost(host: InsertHost): Promise<Host>;
   getHost(id: string): Promise<Host | undefined>;
   getHostByUserId(userId: string): Promise<Host | undefined>;
+  ensureDraftParkingPassForHost(hostId: string): Promise<boolean>;
   getHostsByUserId(userId: string): Promise<Host[]>;
   getParkingPassBlackoutDates(
     seriesId: string
@@ -775,6 +776,17 @@ export class DatabaseStorage implements IStorage {
       console.warn("createDraftParkingPassForHost failed:", e);
     }
     return newHost;
+  }
+
+  async ensureDraftParkingPassForHost(hostId: string): Promise<boolean> {
+    const host = await this.getHost(hostId);
+    if (!host) return false;
+    try {
+      return await this.createDraftParkingPassForHost(host);
+    } catch (e) {
+      console.warn("ensureDraftParkingPassForHost failed:", e);
+      return false;
+    }
   }
 
   async getHost(id: string): Promise<Host | undefined> {

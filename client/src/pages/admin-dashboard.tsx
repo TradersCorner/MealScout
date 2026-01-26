@@ -1118,6 +1118,16 @@ export default function AdminDashboard() {
     type: "other",
     isDefault: false,
   });
+  const [newHostLocation, setNewHostLocation] = useState<any>({
+    businessName: "",
+    address: "",
+    city: "",
+    state: "",
+    locationType: "other",
+    expectedFootTraffic: "",
+    contactPhone: "",
+    notes: "",
+  });
   const handleLogout = async () => {
     try {
       await apiRequest("POST", "/api/auth/logout");
@@ -1912,6 +1922,65 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: error.message || "Failed to update host.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createHostLocation = useMutation({
+    mutationFn: async (payload: { userId: string; data: any }) => {
+      const res = await apiRequest(
+        "POST",
+        `/api/admin/users/${payload.userId}/hosts`,
+        payload.data,
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", selectedUser?.id, "hosts"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", selectedUser?.id, "parking-pass"],
+      });
+      setNewHostLocation({
+        businessName: "",
+        address: "",
+        city: "",
+        state: "",
+        locationType: "other",
+        expectedFootTraffic: "",
+        contactPhone: "",
+        notes: "",
+      });
+      toast({ title: "Host Location Added" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add host location.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteHostLocation = useMutation({
+    mutationFn: async (payload: { hostId: string }) => {
+      return await apiRequest("DELETE", `/api/admin/hosts/${payload.hostId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", selectedUser?.id, "hosts"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", selectedUser?.id, "parking-pass"],
+      });
+      toast({ title: "Host Location Deleted" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete host location.",
         variant: "destructive",
       });
     },
@@ -3434,266 +3503,289 @@ export default function AdminDashboard() {
               </div>
 
               {/* Saved Addresses */}
-              <div>
-                <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
-                  <MapPin className="w-4 h-4 mr-2" />
-                  SAVED ADDRESSES ({userAddresses.length})
-                </h3>
-                <div className="space-y-3">
-                  {userAddresses.map((address: any) => {
-                    const edits = addressEdits[address.id];
-                    if (!edits) return null;
-                    return (
-                      <div
-                        key={address.id}
-                        className="border rounded-lg p-3 bg-muted/30 space-y-3"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="capitalize">
-                              {address.type}
-                            </Badge>
-                            {address.isDefault && (
-                              <Badge variant="default" className="text-xs">
-                                Default
+              {selectedUser?.userType !== "host" && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    SAVED ADDRESSES ({userAddresses.length})
+                  </h3>
+                  <div className="space-y-3">
+                    {userAddresses.map((address: any) => {
+                      const edits = addressEdits[address.id];
+                      if (!edits) return null;
+                      return (
+                        <div
+                          key={address.id}
+                          className="border rounded-lg p-3 bg-muted/30 space-y-3"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="capitalize">
+                                {address.type}
                               </Badge>
-                            )}
+                              {address.isDefault && (
+                                <Badge variant="default" className="text-xs">
+                                  Default
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  setDefaultAddress.mutate({
+                                    userId: selectedUser.id,
+                                    addressId: address.id,
+                                  })
+                                }
+                                disabled={isStaff}
+                              >
+                                Set Default
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() =>
+                                  deleteAddress.mutate({
+                                    userId: selectedUser.id,
+                                    addressId: address.id,
+                                  })
+                                }
+                                disabled={isStaff}
+                              >
+                                Delete
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="Label"
+                              value={edits.label}
+                              onChange={(e) =>
+                                setAddressEdits({
+                                  ...addressEdits,
+                                  [address.id]: {
+                                    ...edits,
+                                    label: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <select
+                              className="w-full px-2 py-1 border rounded-md text-sm bg-background"
+                              value={edits.type}
+                              onChange={(e) =>
+                                setAddressEdits({
+                                  ...addressEdits,
+                                  [address.id]: {
+                                    ...edits,
+                                    type: e.target.value,
+                                  },
+                                })
+                              }
+                            >
+                              <option value="home">Home</option>
+                              <option value="work">Work</option>
+                              <option value="other">Other</option>
+                            </select>
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="Address"
+                              value={edits.address}
+                              onChange={(e) =>
+                                setAddressEdits({
+                                  ...addressEdits,
+                                  [address.id]: {
+                                    ...edits,
+                                    address: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="City"
+                              value={edits.city}
+                              onChange={(e) =>
+                                setAddressEdits({
+                                  ...addressEdits,
+                                  [address.id]: {
+                                    ...edits,
+                                    city: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="State"
+                              value={edits.state}
+                              onChange={(e) =>
+                                setAddressEdits({
+                                  ...addressEdits,
+                                  [address.id]: {
+                                    ...edits,
+                                    state: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full px-2 py-1 border rounded-md text-sm"
+                              placeholder="Postal Code"
+                              value={edits.postalCode}
+                              onChange={(e) =>
+                                setAddressEdits({
+                                  ...addressEdits,
+                                  [address.id]: {
+                                    ...edits,
+                                    postalCode: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+                          <div>
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() =>
-                                setDefaultAddress.mutate({
+                                updateAddress.mutate({
                                   userId: selectedUser.id,
                                   addressId: address.id,
+                                  updates: edits,
                                 })
                               }
                               disabled={isStaff}
                             >
-                              Set Default
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() =>
-                                deleteAddress.mutate({
-                                  userId: selectedUser.id,
-                                  addressId: address.id,
-                                })
-                              }
-                              disabled={isStaff}
-                            >
-                              Delete
+                              Save Address
                             </Button>
                           </div>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <input
-                            className="w-full px-2 py-1 border rounded-md text-sm"
-                            placeholder="Label"
-                            value={edits.label}
-                            onChange={(e) =>
-                              setAddressEdits({
-                                ...addressEdits,
-                                [address.id]: {
-                                  ...edits,
-                                  label: e.target.value,
-                                },
-                              })
-                            }
-                          />
-                          <select
-                            className="w-full px-2 py-1 border rounded-md text-sm bg-background"
-                            value={edits.type}
-                            onChange={(e) =>
-                              setAddressEdits({
-                                ...addressEdits,
-                                [address.id]: {
-                                  ...edits,
-                                  type: e.target.value,
-                                },
-                              })
-                            }
-                          >
-                            <option value="home">Home</option>
-                            <option value="work">Work</option>
-                            <option value="other">Other</option>
-                          </select>
-                          <input
-                            className="w-full px-2 py-1 border rounded-md text-sm"
-                            placeholder="Address"
-                            value={edits.address}
-                            onChange={(e) =>
-                              setAddressEdits({
-                                ...addressEdits,
-                                [address.id]: {
-                                  ...edits,
-                                  address: e.target.value,
-                                },
-                              })
-                            }
-                          />
-                          <input
-                            className="w-full px-2 py-1 border rounded-md text-sm"
-                            placeholder="City"
-                            value={edits.city}
-                            onChange={(e) =>
-                              setAddressEdits({
-                                ...addressEdits,
-                                [address.id]: {
-                                  ...edits,
-                                  city: e.target.value,
-                                },
-                              })
-                            }
-                          />
-                          <input
-                            className="w-full px-2 py-1 border rounded-md text-sm"
-                            placeholder="State"
-                            value={edits.state}
-                            onChange={(e) =>
-                              setAddressEdits({
-                                ...addressEdits,
-                                [address.id]: {
-                                  ...edits,
-                                  state: e.target.value,
-                                },
-                              })
-                            }
-                          />
-                          <input
-                            className="w-full px-2 py-1 border rounded-md text-sm"
-                            placeholder="Postal Code"
-                            value={edits.postalCode}
-                            onChange={(e) =>
-                              setAddressEdits({
-                                ...addressEdits,
-                                [address.id]: {
-                                  ...edits,
-                                  postalCode: e.target.value,
-                                },
-                              })
-                            }
-                          />
-                        </div>
-                        <div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              updateAddress.mutate({
-                                userId: selectedUser.id,
-                                addressId: address.id,
-                                updates: edits,
-                              })
-                            }
-                            disabled={isStaff}
-                          >
-                            Save Address
-                          </Button>
-                        </div>
+                      );
+                    })}
+                    <div className="border rounded-lg p-3 space-y-3">
+                      <div className="text-sm font-medium">Add New Address</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <input
+                          className="w-full px-2 py-1 border rounded-md text-sm"
+                          placeholder="Label"
+                          value={newAddress.label}
+                          onChange={(e) =>
+                            setNewAddress({
+                              ...newAddress,
+                              label: e.target.value,
+                            })
+                          }
+                        />
+                        <select
+                          className="w-full px-2 py-1 border rounded-md text-sm bg-background"
+                          value={newAddress.type}
+                          onChange={(e) =>
+                            setNewAddress({
+                              ...newAddress,
+                              type: e.target.value,
+                            })
+                          }
+                        >
+                          <option value="home">Home</option>
+                          <option value="work">Work</option>
+                          <option value="other">Other</option>
+                        </select>
+                        <input
+                          className="w-full px-2 py-1 border rounded-md text-sm"
+                          placeholder="Address"
+                          value={newAddress.address}
+                          onChange={(e) =>
+                            setNewAddress({
+                              ...newAddress,
+                              address: e.target.value,
+                            })
+                          }
+                        />
+                        <input
+                          className="w-full px-2 py-1 border rounded-md text-sm"
+                          placeholder="City"
+                          value={newAddress.city}
+                          onChange={(e) =>
+                            setNewAddress({
+                              ...newAddress,
+                              city: e.target.value,
+                            })
+                          }
+                        />
+                        <input
+                          className="w-full px-2 py-1 border rounded-md text-sm"
+                          placeholder="State"
+                          value={newAddress.state}
+                          onChange={(e) =>
+                            setNewAddress({
+                              ...newAddress,
+                              state: e.target.value,
+                            })
+                          }
+                        />
+                        <input
+                          className="w-full px-2 py-1 border rounded-md text-sm"
+                          placeholder="Postal Code"
+                          value={newAddress.postalCode}
+                          onChange={(e) =>
+                            setNewAddress({
+                              ...newAddress,
+                              postalCode: e.target.value,
+                            })
+                          }
+                        />
                       </div>
-                    );
-                  })}
-                  <div className="border rounded-lg p-3 space-y-3">
-                    <div className="text-sm font-medium">Add New Address</div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input
-                        className="w-full px-2 py-1 border rounded-md text-sm"
-                        placeholder="Label"
-                        value={newAddress.label}
-                        onChange={(e) =>
-                          setNewAddress({ ...newAddress, label: e.target.value })
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <input
+                          type="checkbox"
+                          checked={newAddress.isDefault}
+                          onChange={(e) =>
+                            setNewAddress({
+                              ...newAddress,
+                              isDefault: e.target.checked,
+                            })
+                          }
+                        />
+                        Set as default
+                      </label>
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          createAddress.mutate({
+                            userId: selectedUser.id,
+                            data: newAddress,
+                          })
                         }
-                      />
-                      <select
-                        className="w-full px-2 py-1 border rounded-md text-sm bg-background"
-                        value={newAddress.type}
-                        onChange={(e) =>
-                          setNewAddress({ ...newAddress, type: e.target.value })
-                        }
+                        disabled={createAddress.isPending || isStaff}
                       >
-                        <option value="home">Home</option>
-                        <option value="work">Work</option>
-                        <option value="other">Other</option>
-                      </select>
-                      <input
-                        className="w-full px-2 py-1 border rounded-md text-sm"
-                        placeholder="Address"
-                        value={newAddress.address}
-                        onChange={(e) =>
-                          setNewAddress({
-                            ...newAddress,
-                            address: e.target.value,
-                          })
-                        }
-                      />
-                      <input
-                        className="w-full px-2 py-1 border rounded-md text-sm"
-                        placeholder="City"
-                        value={newAddress.city}
-                        onChange={(e) =>
-                          setNewAddress({ ...newAddress, city: e.target.value })
-                        }
-                      />
-                      <input
-                        className="w-full px-2 py-1 border rounded-md text-sm"
-                        placeholder="State"
-                        value={newAddress.state}
-                        onChange={(e) =>
-                          setNewAddress({ ...newAddress, state: e.target.value })
-                        }
-                      />
-                      <input
-                        className="w-full px-2 py-1 border rounded-md text-sm"
-                        placeholder="Postal Code"
-                        value={newAddress.postalCode}
-                        onChange={(e) =>
-                          setNewAddress({
-                            ...newAddress,
-                            postalCode: e.target.value,
-                          })
-                        }
-                      />
+                        Add Address
+                      </Button>
                     </div>
-                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <input
-                        type="checkbox"
-                        checked={newAddress.isDefault}
-                        onChange={(e) =>
-                          setNewAddress({
-                            ...newAddress,
-                            isDefault: e.target.checked,
-                          })
-                        }
-                      />
-                      Set as default
-                    </label>
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        createAddress.mutate({
-                          userId: selectedUser.id,
-                          data: newAddress,
-                        })
-                      }
-                      disabled={createAddress.isPending || isStaff}
-                    >
-                      Add Address
-                    </Button>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Host Profiles */}
-              {userHosts.length > 0 && (
+              {(selectedUser?.userType === "host" || userHosts.length > 0) && (
                 <div>
-                  <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
+                  <h3 className="font-semibold mb-2 flex items-center text-sm text-muted-foreground">
                     <MapPin className="w-4 h-4 mr-2" />
-                    HOST PROFILES ({userHosts.length})
+                    HOST LOCATIONS (PARKING PASS) ({userHosts.length})
                   </h3>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    These addresses power Parking Pass listings. Edit here to
+                    update them everywhere.
+                  </p>
                   <div className="space-y-4">
+                    {userHosts.length === 0 && (
+                      <div className="text-sm text-muted-foreground">
+                        No host locations yet.
+                      </div>
+                    )}
                     {userHosts.map((host: any) => {
                       const edits = hostEdits[host.id];
                       if (!edits) return null;
@@ -3883,39 +3975,178 @@ export default function AdminDashboard() {
                               Verified
                             </label>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              let amenities: any = undefined;
-                              if (edits.amenitiesText) {
-                                try {
-                                  amenities = JSON.parse(edits.amenitiesText);
-                                } catch {
-                                  toast({
-                                    title: "Invalid JSON",
-                                    description:
-                                      "Amenities must be valid JSON.",
-                                    variant: "destructive",
-                                  });
-                                  return;
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                let amenities: any = undefined;
+                                if (edits.amenitiesText) {
+                                  try {
+                                    amenities = JSON.parse(edits.amenitiesText);
+                                  } catch {
+                                    toast({
+                                      title: "Invalid JSON",
+                                      description:
+                                        "Amenities must be valid JSON.",
+                                      variant: "destructive",
+                                    });
+                                    return;
+                                  }
                                 }
+                                updateHost.mutate({
+                                  hostId: host.id,
+                                  updates: {
+                                    ...edits,
+                                    amenities,
+                                  },
+                                });
+                              }}
+                              disabled={isStaff}
+                            >
+                              Save Host
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() =>
+                                deleteHostLocation.mutate({ hostId: host.id })
                               }
-                              updateHost.mutate({
-                                hostId: host.id,
-                                updates: {
-                                  ...edits,
-                                  amenities,
-                                },
-                              });
-                            }}
-                            disabled={isStaff}
-                          >
-                            Save Host
-                          </Button>
+                              disabled={isStaff}
+                            >
+                              Delete Location
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}
+                    <div className="border rounded-lg p-3 space-y-3">
+                      <div className="text-sm font-medium">
+                        Add Host Location
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <input
+                          className="w-full px-2 py-1 border rounded-md text-sm"
+                          placeholder="Location name"
+                          value={newHostLocation.businessName}
+                          onChange={(e) =>
+                            setNewHostLocation({
+                              ...newHostLocation,
+                              businessName: e.target.value,
+                            })
+                          }
+                        />
+                        <input
+                          className="w-full px-2 py-1 border rounded-md text-sm"
+                          placeholder="Address"
+                          value={newHostLocation.address}
+                          onChange={(e) =>
+                            setNewHostLocation({
+                              ...newHostLocation,
+                              address: e.target.value,
+                            })
+                          }
+                        />
+                        <input
+                          className="w-full px-2 py-1 border rounded-md text-sm"
+                          placeholder="City"
+                          value={newHostLocation.city}
+                          onChange={(e) =>
+                            setNewHostLocation({
+                              ...newHostLocation,
+                              city: e.target.value,
+                            })
+                          }
+                        />
+                        <input
+                          className="w-full px-2 py-1 border rounded-md text-sm"
+                          placeholder="State"
+                          value={newHostLocation.state}
+                          onChange={(e) =>
+                            setNewHostLocation({
+                              ...newHostLocation,
+                              state: e.target.value,
+                            })
+                          }
+                        />
+                        <select
+                          className="w-full px-2 py-1 border rounded-md text-sm bg-background"
+                          value={newHostLocation.locationType}
+                          onChange={(e) =>
+                            setNewHostLocation({
+                              ...newHostLocation,
+                              locationType: e.target.value,
+                            })
+                          }
+                        >
+                          <option value="private_residence">
+                            Private Residence
+                          </option>
+                          <option value="business">Business</option>
+                          <option value="parking_lot">Parking Lot</option>
+                          <option value="event_space">Event Space</option>
+                          <option value="public_park">Public Park</option>
+                          <option value="other">Other</option>
+                        </select>
+                        <input
+                          className="w-full px-2 py-1 border rounded-md text-sm"
+                          placeholder="Foot Traffic"
+                          value={newHostLocation.expectedFootTraffic}
+                          onChange={(e) =>
+                            setNewHostLocation({
+                              ...newHostLocation,
+                              expectedFootTraffic: e.target.value,
+                            })
+                          }
+                        />
+                        <input
+                          className="w-full px-2 py-1 border rounded-md text-sm"
+                          placeholder="Contact Phone"
+                          value={newHostLocation.contactPhone}
+                          onChange={(e) =>
+                            setNewHostLocation({
+                              ...newHostLocation,
+                              contactPhone: e.target.value,
+                            })
+                          }
+                        />
+                        <textarea
+                          className="w-full px-2 py-1 border rounded-md text-sm sm:col-span-2"
+                          placeholder="Notes"
+                          value={newHostLocation.notes}
+                          onChange={(e) =>
+                            setNewHostLocation({
+                              ...newHostLocation,
+                              notes: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          if (
+                            !newHostLocation.businessName.trim() ||
+                            !newHostLocation.address.trim()
+                          ) {
+                            toast({
+                              title: "Missing fields",
+                              description:
+                                "Location name and address are required.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          createHostLocation.mutate({
+                            userId: selectedUser.id,
+                            data: newHostLocation,
+                          });
+                        }}
+                        disabled={createHostLocation.isPending || isStaff}
+                      >
+                        Add Location
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -4459,24 +4690,13 @@ export default function AdminDashboard() {
                       if (!edits) return null;
                       const hostName =
                         pass.host?.businessName ?? pass.name ?? "Parking Pass";
-                      const addressParts = [
-                        pass.host?.address,
-                        pass.host?.city,
-                        pass.host?.state,
-                      ].filter(Boolean);
-                      const addressLabel = addressParts.length
-                        ? addressParts.join(", ")
-                        : null;
                       const nextDate = pass.nextDate ?? pass.date;
                       return (
                         <div
                           key={pass.id}
                           className="border rounded-lg p-3 bg-muted/30 space-y-3"
                         >
-                          <div className="text-sm font-medium">
-                            {hostName}
-                            {addressLabel ? ` · ${addressLabel}` : ""}
-                          </div>
+                          <div className="text-sm font-medium">{hostName}</div>
                           <div className="text-xs text-muted-foreground">
                             Applies to all upcoming dates
                             {nextDate

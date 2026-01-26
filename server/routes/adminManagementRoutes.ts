@@ -16,6 +16,7 @@ import {
   eventSeries,
   events,
   hosts,
+  insertHostSchema,
   restaurants,
   verificationRequests,
   truckImportBatches,
@@ -31,6 +32,15 @@ import {
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
+
+const buildLocationKey = (
+  address?: string | null,
+  city?: string | null,
+  state?: string | null,
+) =>
+  `${(address || "").trim().toLowerCase()}|${(city || "")
+    .trim()
+    .toLowerCase()}|${(state || "").trim().toLowerCase()}`;
 
 const truckImportUpload = multer({
   storage: multer.memoryStorage(),
@@ -1337,6 +1347,92 @@ export function registerAdminManagementRoutes(app: Express) {
     }
   );
 
+  app.post(
+    "/api/admin/users/:userId/hosts",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
+      try {
+        const userId = req.params.userId;
+        const address = req.body?.address?.trim();
+        const businessName = req.body?.businessName?.trim();
+
+        if (!businessName || !address) {
+          return res.status(400).json({
+            message: "Business name and address are required.",
+          });
+        }
+
+        const city = req.body?.city?.trim() || null;
+        const state = req.body?.state?.trim() || null;
+        const newKey = buildLocationKey(address, city, state);
+        const existingHosts = await db
+          .select({
+            address: hosts.address,
+            city: hosts.city,
+            state: hosts.state,
+          })
+          .from(hosts)
+          .where(eq(hosts.userId, userId));
+        const hasDuplicate = existingHosts.some(
+          (host) => buildLocationKey(host.address, host.city, host.state) === newKey,
+        );
+        if (hasDuplicate) {
+          return res.status(409).json({
+            message:
+              "This user already has a host location for that address.",
+          });
+        }
+
+        const expectedFootTraffic =
+          req.body?.expectedFootTraffic !== undefined &&
+          req.body?.expectedFootTraffic !== null &&
+          req.body?.expectedFootTraffic !== ""
+            ? Number(req.body.expectedFootTraffic)
+            : undefined;
+        const spotCount =
+          req.body?.spotCount !== undefined &&
+          req.body?.spotCount !== null &&
+          req.body?.spotCount !== ""
+            ? Number(req.body.spotCount)
+            : undefined;
+
+        const parsed = insertHostSchema.parse({
+          userId,
+          businessName,
+          address,
+          city,
+          state,
+          locationType: req.body?.locationType || "other",
+          expectedFootTraffic: Number.isFinite(expectedFootTraffic)
+            ? expectedFootTraffic
+            : undefined,
+          contactPhone: req.body?.contactPhone || null,
+          notes: req.body?.notes || null,
+          amenities: req.body?.amenities,
+          spotCount: Number.isFinite(spotCount) ? spotCount : undefined,
+          isVerified: true,
+          adminCreated: true,
+          latitude:
+            req.body?.latitude !== undefined && req.body?.latitude !== null
+              ? req.body.latitude.toString()
+              : undefined,
+          longitude:
+            req.body?.longitude !== undefined && req.body?.longitude !== null
+              ? req.body.longitude.toString()
+              : undefined,
+        });
+
+        const host = await storage.createHost(parsed);
+        res.status(201).json(host);
+      } catch (error: any) {
+        console.error("Error creating host location:", error);
+        res.status(500).json({ message: "Failed to create host location" });
+      }
+    },
+  );
+
   app.get(
     "/api/admin/users/:id/hosts",
     isAuthenticated,
@@ -1510,12 +1606,49 @@ export function registerAdminManagementRoutes(app: Express) {
           .where(eq(hosts.id, req.params.id))
           .returning();
 
+        await storage.ensureDraftParkingPassForHost(updated.id);
+
         res.json(updated);
       } catch (error: any) {
         console.error("Error updating host:", error);
         res.status(500).json({ message: "Failed to update host" });
       }
     }
+  );
+
+  app.delete(
+    "/api/admin/hosts/:hostId",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
+      try {
+        const hostId = req.params.hostId;
+        const host = await storage.getHost(hostId);
+        if (!host) {
+          return res.status(404).json({ message: "Host location not found" });
+        }
+
+        const existingBookings = await db
+          .select({ id: eventBookings.id })
+          .from(eventBookings)
+          .where(eq(eventBookings.hostId, hostId))
+          .limit(1);
+
+        if (existingBookings.length > 0) {
+          return res.status(409).json({
+            message:
+              "This location has bookings and cannot be deleted.",
+          });
+        }
+
+        await db.delete(hosts).where(eq(hosts.id, hostId));
+        res.json({ message: "Host location deleted" });
+      } catch (error: any) {
+        console.error("Error deleting host location:", error);
+        res.status(500).json({ message: "Failed to delete host location" });
+      }
+    },
   );
 
   app.patch(

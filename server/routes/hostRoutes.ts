@@ -282,6 +282,8 @@ export function registerHostRoutes(app: Express) {
         .where(eq(hosts.id, host.id))
         .returning();
 
+      await storage.ensureDraftParkingPassForHost(updated.id);
+
       res.json(updated);
     } catch (error: any) {
       console.error("Error updating host profile:", error);

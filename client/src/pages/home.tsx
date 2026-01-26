@@ -380,204 +380,206 @@ export default function Home() {
       {/* Hero & Search Section */}
       <section className="section section--full section--surface border-b border-[color:var(--border-subtle)] py-4">
         <div className="content">
-          <div className="mb-3">
-            <h2 className="hero-title text-xl mb-1">
-              {firstName ? `Hey ${firstName}, hungry?` : "Hungry?"}
-            </h2>
-            <p className="hero-subtitle text-sm">
-              See what's happening{" "}
-              {shortLocation === "Your Location"
-                ? "near you"
-                : `in ${shortLocation}`}
-              . Fresh deals and local favorites.
-            </p>
-          </div>
-
-          <SmartSearch
-            value={searchQuery}
-            onChange={setSearchQuery}
-            onSearch={(query) =>
-              setNavigateTo(`/search?q=${encodeURIComponent(query)}`)
-            }
-            className="mb-6 shadow-lg"
-            placeholder="Search deals, restaurants..."
-          />
-
-          {geoAds.length > 0 && (
-            <div className="mb-5">
-              {geoAds.map((ad) => (
-                <div
-                  key={ad.id}
-                  className="rounded-2xl border border-[color:var(--border-subtle)] bg-[color:var(--bg-card)] p-4 shadow-sm"
-                >
-                  {ad.mediaUrl && (
-                    <img
-                      src={ad.mediaUrl}
-                      alt={ad.title}
-                      className="w-full h-40 object-cover rounded-xl mb-3"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  )}
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Sponsored
-                  </div>
-                  <div className="text-base font-semibold text-foreground mt-1">
-                    {ad.title}
-                  </div>
-                  {ad.body && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {ad.body}
-                    </p>
-                  )}
-                  <div className="mt-3">
-                    <Button size="sm" onClick={() => handleGeoAdClick(ad)}>
-                      {ad.ctaText || "Learn more"}
-                    </Button>
-                  </div>
-                </div>
-              ))}
+          <div className="home-hero-panel">
+            <div className="mb-3">
+              <h2 className="hero-title text-xl mb-1">
+                {firstName ? `Hey ${firstName}, hungry?` : "Hungry?"}
+              </h2>
+              <p className="hero-subtitle text-sm">
+                See what's happening{" "}
+                {shortLocation === "Your Location"
+                  ? "near you"
+                  : `in ${shortLocation}`}
+                . Fresh deals and local favorites.
+              </p>
             </div>
-          )}
 
-          {/* Filter Chips */}
-          <div className="flex space-x-2 overflow-x-auto pb-1">
-            <Link href="/deals/featured">
-              <Button
-                className="filter-pill filter-pill--active flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-semibold shadow-md hover:shadow-lg transition-all"
-                size="sm"
-              >
-                <Sparkles className="w-4 h-4 mr-1.5" /> 🔥 Hot Deals
-              </Button>
-            </Link>
-            <Link href="/category/pizza">
-              <Button
-                variant="outline"
-                size="sm"
-                className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
-              >
-                🍕 Pizza
-              </Button>
-            </Link>
-            <Link href="/category/burgers">
-              <Button
-                variant="outline"
-                size="sm"
-                className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
-              >
-                🍔 Burgers
-              </Button>
-            </Link>
-            <Link href="/category/sushi">
-              <Button
-                variant="outline"
-                size="sm"
-                className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
-              >
-                🍣 Sushi
-              </Button>
-            </Link>
-            <Link href="/category/chinese">
-              <Button
-                variant="outline"
-                size="sm"
-                className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
-              >
-                🥡 Chinese
-              </Button>
-            </Link>
-            <Link href="/category/mexican">
-              <Button
-                variant="outline"
-                size="sm"
-                className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
-              >
-                🌮 Tacos
-              </Button>
-            </Link>
-            <Link href="/category/breakfast">
-              <Button
-                variant="outline"
-                size="sm"
-                className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
-              >
-                🥐 Breakfast
-              </Button>
-            </Link>
-            <Link href="/category/seafood">
-              <Button
-                variant="outline"
-                size="sm"
-                className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
-              >
-                🦞 Seafood
-              </Button>
-            </Link>
-            <Link href="/category/bbq">
-              <Button
-                variant="outline"
-                size="sm"
-                className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
-              >
-                🍖 BBQ
-              </Button>
-            </Link>
-            <Link href="/category/dessert">
-              <Button
-                variant="outline"
-                size="sm"
-                className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
-              >
-                🍰 Desserts
-              </Button>
-            </Link>
-            <Link href="/category/coffee">
-              <Button
-                variant="outline"
-                size="sm"
-                className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
-              >
-                ☕ Coffee
-              </Button>
-            </Link>
-            <Link href="/category/healthy">
-              <Button
-                variant="outline"
-                size="sm"
-                className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
-              >
-                🥗 Healthy
-              </Button>
-            </Link>
-          </div>
+            <SmartSearch
+              value={searchQuery}
+              onChange={setSearchQuery}
+              onSearch={(query) =>
+                setNavigateTo(`/search?q=${encodeURIComponent(query)}`)
+              }
+              className="mb-6 shadow-lg"
+              placeholder="Search deals, restaurants..."
+            />
 
-          {/* Manual location input (only when we don't have a location) */}
-          {!location && !showWelcomeModal && (
-            <div className="mt-4 w-full max-w-md">
-              <div className="manual-location-shell">
-                <Input
-                  type="text"
-                  placeholder="Enter city or zip"
-                  value={manualLocation}
-                  onChange={(e) => setManualLocation(e.target.value)}
-                  className="manual-location-input"
-                  onKeyPress={(e) =>
-                    e.key === "Enter" && handleManualLocation()
-                  }
-                />
-                <Button
-                  onClick={handleManualLocation}
-                  disabled={!manualLocation.trim() || isLoadingLocation}
-                  className="manual-location-button"
-                >
-                  {isLoadingLocation ? "..." : "Go"}
-                </Button>
+            {geoAds.length > 0 && (
+              <div className="mb-5">
+                {geoAds.map((ad) => (
+                  <div
+                    key={ad.id}
+                    className="rounded-2xl border border-[color:var(--border-subtle)] bg-[color:var(--bg-card)] p-4 shadow-sm"
+                  >
+                    {ad.mediaUrl && (
+                      <img
+                        src={ad.mediaUrl}
+                        alt={ad.title}
+                        className="w-full h-40 object-cover rounded-xl mb-3"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    )}
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Sponsored
+                    </div>
+                    <div className="text-base font-semibold text-foreground mt-1">
+                      {ad.title}
+                    </div>
+                    {ad.body && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {ad.body}
+                      </p>
+                    )}
+                    <div className="mt-3">
+                      <Button size="sm" onClick={() => handleGeoAdClick(ad)}>
+                        {ad.ctaText || "Learn more"}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              {locationError && (
-                <p className="manual-location-error">{locationError}</p>
-              )}
+            )}
+
+            {/* Filter Chips */}
+            <div className="flex space-x-2 overflow-x-auto pb-1">
+              <Link href="/deals/featured">
+                <Button
+                  className="filter-pill filter-pill--active flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-semibold shadow-md hover:shadow-lg transition-all"
+                  size="sm"
+                >
+                  <Sparkles className="w-4 h-4 mr-1.5" /> 🔥 Hot Deals
+                </Button>
+              </Link>
+              <Link href="/category/pizza">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
+                >
+                  🍕 Pizza
+                </Button>
+              </Link>
+              <Link href="/category/burgers">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
+                >
+                  🍔 Burgers
+                </Button>
+              </Link>
+              <Link href="/category/sushi">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
+                >
+                  🍣 Sushi
+                </Button>
+              </Link>
+              <Link href="/category/chinese">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
+                >
+                  🥡 Chinese
+                </Button>
+              </Link>
+              <Link href="/category/mexican">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
+                >
+                  🌮 Tacos
+                </Button>
+              </Link>
+              <Link href="/category/breakfast">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
+                >
+                  🥐 Breakfast
+                </Button>
+              </Link>
+              <Link href="/category/seafood">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
+                >
+                  🦞 Seafood
+                </Button>
+              </Link>
+              <Link href="/category/bbq">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
+                >
+                  🍖 BBQ
+                </Button>
+              </Link>
+              <Link href="/category/dessert">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
+                >
+                  🍰 Desserts
+                </Button>
+              </Link>
+              <Link href="/category/coffee">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
+                >
+                  ☕ Coffee
+                </Button>
+              </Link>
+              <Link href="/category/healthy">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
+                >
+                  🥗 Healthy
+                </Button>
+              </Link>
             </div>
-          )}
+
+            {/* Manual location input (only when we don't have a location) */}
+            {!location && !showWelcomeModal && (
+              <div className="mt-4 w-full max-w-md">
+                <div className="manual-location-shell">
+                  <Input
+                    type="text"
+                    placeholder="Enter city or zip"
+                    value={manualLocation}
+                    onChange={(e) => setManualLocation(e.target.value)}
+                    className="manual-location-input"
+                    onKeyPress={(e) =>
+                      e.key === "Enter" && handleManualLocation()
+                    }
+                  />
+                  <Button
+                    onClick={handleManualLocation}
+                    disabled={!manualLocation.trim() || isLoadingLocation}
+                    className="manual-location-button"
+                  >
+                    {isLoadingLocation ? "..." : "Go"}
+                  </Button>
+                </div>
+                {locationError && (
+                  <p className="manual-location-error">{locationError}</p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 

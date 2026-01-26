@@ -37,13 +37,16 @@ L.Icon.Default.mergeOptions({
 const svgToDataUrl = (svg: string) =>
   "data:image/svg+xml;base64," + btoa(svg);
 
-// Custom user location icon
+// Custom user location icon (person silhouette, not a pin)
 const userLocationIcon = L.divIcon({
   className: "map-user-marker",
   html: `
     <div class="map-user-marker__pulse"></div>
     <div class="map-user-marker__logo">
-      <img src="${mealScoutIcon}" alt="MealScout" />
+      <svg class="map-user-marker__person" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="11" r="5.2" fill="#0F172A" />
+        <path d="M6 28c0-5.2 4.5-9.4 10-9.4s10 4.2 10 9.4" fill="#0F172A" />
+      </svg>
     </div>
   `,
   iconSize: [40, 40],
@@ -288,30 +291,23 @@ const haversineKm = (a: GeoPoint, b: GeoPoint) => {
 };
 
 const hostPinIcon = new L.Icon({
-  iconUrl: svgToDataUrl(`
-    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#64748B" stroke="#475569" stroke-width="1.5"/>
-      <circle cx="17" cy="13" r="7" fill="#F8FAFC"/>
-      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="700" fill="#475569">H</text>
-    </svg>
-  `),
-  iconSize: [34, 42],
-  iconAnchor: [17, 40],
-  popupAnchor: [0, -34],
+  iconUrl: mealScoutIcon,
+  iconSize: [36, 36],
+  iconAnchor: [18, 36],
+  popupAnchor: [0, -30],
 });
 
-const hostPinActiveIcon = new L.Icon({
-  iconUrl: svgToDataUrl(`
-    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#64748B" stroke="#475569" stroke-width="1.5"/>
-      <circle cx="17" cy="13" r="7" fill="#F8FAFC"/>
-      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="700" fill="#475569">H</text>
-      <circle cx="25" cy="7" r="4" fill="#22C55E" stroke="#16A34A" stroke-width="1"/>
-    </svg>
-  `),
-  iconSize: [34, 42],
-  iconAnchor: [17, 40],
-  popupAnchor: [0, -34],
+const hostPinActiveIcon = L.divIcon({
+  className: "map-host-marker",
+  html: `
+    <div class="map-host-marker__logo">
+      <img src="${mealScoutIcon}" alt="MealScout host" />
+    </div>
+    <div class="map-host-marker__dot" aria-hidden="true"></div>
+  `,
+  iconSize: [36, 36],
+  iconAnchor: [18, 36],
+  popupAnchor: [0, -30],
 });
 
 const foodPinIcon = new L.Icon({

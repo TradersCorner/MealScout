@@ -101,6 +101,68 @@ interface TruckScheduleEntry {
 
 type GeoPoint = { lat: number; lng: number };
 
+const formatSlotLabel = (slot: string) =>
+  slot.charAt(0).toUpperCase() + slot.slice(1);
+
+const hasPricing = (event: ParkingPassEvent) =>
+  (event.breakfastPriceCents ?? 0) > 0 ||
+  (event.lunchPriceCents ?? 0) > 0 ||
+  (event.dinnerPriceCents ?? 0) > 0 ||
+  (event.dailyPriceCents ?? 0) > 0 ||
+  (event.weeklyPriceCents ?? 0) > 0 ||
+  (event.monthlyPriceCents ?? 0) > 0;
+
+const buildSlotOptions = (event: ParkingPassEvent) =>
+  [
+    {
+      label: "Breakfast",
+      type: "breakfast",
+      priceCents: event.breakfastPriceCents,
+    },
+    {
+      label: "Lunch",
+      type: "lunch",
+      priceCents: event.lunchPriceCents,
+    },
+    {
+      label: "Dinner",
+      type: "dinner",
+      priceCents: event.dinnerPriceCents,
+    },
+    {
+      label: "Daily",
+      type: "daily",
+      priceCents: event.dailyPriceCents,
+    },
+    {
+      label: "Weekly",
+      type: "weekly",
+      priceCents: event.weeklyPriceCents,
+    },
+    {
+      label: "Monthly",
+      type: "monthly",
+      priceCents: event.monthlyPriceCents,
+    },
+  ].filter((slot) => (slot.priceCents || 0) > 0);
+
+const getFeeCentsForSlots = (slotTypes: string[], slotTotalCents: number) => {
+  if (!slotTypes.length || slotTotalCents <= 0) return 0;
+  if (slotTypes.includes("monthly")) return 15000;
+  return slotTypes.includes("weekly") ? 7000 : 1000;
+};
+
+const parseCoord = (value: number | string | null | undefined) => {
+  if (value === null || value === undefined) return null;
+  const parsed = typeof value === "string" ? Number.parseFloat(value) : value;
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const buildFullAddress = (event: ParkingPassEvent) =>
+  [event.host?.address, event.host?.city, event.host?.state]
+    .filter(Boolean)
+    .join(", ");
+
 const parkingPassPinIcon = new L.Icon({
   iconUrl: mealScoutIcon,
   iconSize: [36, 36],
@@ -480,57 +542,6 @@ export default function ParkingPassPage() {
     }
   };
 
-  const formatSlotLabel = (slot: string) =>
-    slot.charAt(0).toUpperCase() + slot.slice(1);
-
-  const hasPricing = (event: ParkingPassEvent) =>
-    (event.breakfastPriceCents ?? 0) > 0 ||
-    (event.lunchPriceCents ?? 0) > 0 ||
-    (event.dinnerPriceCents ?? 0) > 0 ||
-    (event.dailyPriceCents ?? 0) > 0 ||
-    (event.weeklyPriceCents ?? 0) > 0 ||
-    (event.monthlyPriceCents ?? 0) > 0;
-
-  const buildSlotOptions = (event: ParkingPassEvent) =>
-    [
-      {
-        label: "Breakfast",
-        type: "breakfast",
-        priceCents: event.breakfastPriceCents,
-      },
-      {
-        label: "Lunch",
-        type: "lunch",
-        priceCents: event.lunchPriceCents,
-      },
-      {
-        label: "Dinner",
-        type: "dinner",
-        priceCents: event.dinnerPriceCents,
-      },
-      {
-        label: "Daily",
-        type: "daily",
-        priceCents: event.dailyPriceCents,
-      },
-      {
-        label: "Weekly",
-        type: "weekly",
-        priceCents: event.weeklyPriceCents,
-      },
-      {
-        label: "Monthly",
-        type: "monthly",
-        priceCents: event.monthlyPriceCents,
-      },
-    ].filter((slot) => (slot.priceCents || 0) > 0);
-
-  const getFeeCentsForSlots = (slotTypes: string[], slotTotalCents: number) => {
-    if (!slotTypes.length || slotTotalCents <= 0) return 0;
-    if (slotTypes.includes("monthly")) return 15000;
-    return slotTypes.includes("weekly") ? 7000 : 1000;
-  };
-
   const getCartTotals = () => {
     return cartItems.reduce(
       (totals, item) => {
@@ -554,17 +565,6 @@ export default function ParkingPassPage() {
       { hostCents: 0, feeCents: 0, totalCents: 0 },
     );
   };
-
-  const parseCoord = (value: number | string | null | undefined) => {
-    if (value === null || value === undefined) return null;
-    const parsed = typeof value === "string" ? Number.parseFloat(value) : value;
-    return Number.isFinite(parsed) ? parsed : null;
-  };
-
-  const buildFullAddress = (event: ParkingPassEvent) =>
-    [event.host?.address, event.host?.city, event.host?.state]
-      .filter(Boolean)
-      .join(", ");
 
   const geocodeAddress = async (address: string): Promise<GeoPoint | null> => {
     if (!address) return null;

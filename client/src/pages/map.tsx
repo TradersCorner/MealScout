@@ -264,6 +264,31 @@ const hostPinIcon = new L.Icon({
   popupAnchor: [0, -34],
 });
 
+const foodPinIcon = new L.Icon({
+  iconUrl: svgToDataUrl(`
+    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#F59E0B" stroke="#1F2937" stroke-width="1.5"/>
+      <circle cx="17" cy="13" r="7" fill="#FFF7ED"/>
+    </svg>
+  `),
+  iconSize: [34, 42],
+  iconAnchor: [17, 40],
+  popupAnchor: [0, -34],
+});
+
+const eventPinIcon = new L.Icon({
+  iconUrl: svgToDataUrl(`
+    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#8B5CF6" stroke="#312E81" stroke-width="1.5"/>
+      <circle cx="17" cy="13" r="7" fill="#F5F3FF"/>
+      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="700" fill="#312E81">E</text>
+    </svg>
+  `),
+  iconSize: [34, 42],
+  iconAnchor: [17, 40],
+  popupAnchor: [0, -34],
+});
+
 const truckIcon = new L.Icon({
   iconUrl: svgToDataUrl(`
     <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -988,7 +1013,7 @@ export default function MapPage() {
                       deal.restaurant.latitude,
                       deal.restaurant.longitude,
                     ]}
-                    icon={hostPinIcon}
+                    icon={foodPinIcon}
                     eventHandlers={{
                       click: () => handleDealClick(deal),
                     }}
@@ -1156,11 +1181,8 @@ export default function MapPage() {
               {visibleEventLocations.map((event) => {
                 const coords = resolveEventCoords(event);
                 if (!coords) return null;
-                const hostedTruck = findNearbyTruck(coords);
-                const title = hostedTruck ? hostedTruck.truck.name : event.name;
-                const subtitle = hostedTruck
-                  ? `At ${event.hostName || "event location"}`
-                  : event.hostName
+                const title = event.name;
+                const subtitle = event.hostName
                   ? `Event at ${event.hostName}`
                   : "Event location";
                 const distanceLabel = formatDistance(coords);
@@ -1168,7 +1190,7 @@ export default function MapPage() {
                   <Marker
                     key={`event-${event.id}`}
                     position={[coords.lat, coords.lng]}
-                    icon={hostedTruck ? truckHostedIcon : hostPinIcon}
+                    icon={eventPinIcon}
                   >
                     <Popup>
                       <div className="min-w-56 space-y-1 rounded-xl bg-white text-slate-900 p-3 shadow-lg">
@@ -1188,47 +1210,20 @@ export default function MapPage() {
                             {distanceLabel} away
                           </div>
                         )}
-                        {hostedTruck ? (
-                          <div className="grid grid-cols-2 gap-2 pt-2">
-                            <Button
-                              size="sm"
-                              className="w-full"
-                              onClick={() => {
-                                window.location.href = `/restaurant/${hostedTruck.truck.id}`;
-                              }}
-                            >
-                              View menu
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => {
-                                window.open(
-                                  `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
-                                  "_blank",
-                                );
-                              }}
-                            >
-                              Directions
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="pt-2">
-                            <Button
-                              size="sm"
-                              className="w-full"
-                              onClick={() => {
-                                window.open(
-                                  `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
-                                  "_blank",
-                                );
-                              }}
-                            >
-                              Directions
-                            </Button>
-                          </div>
-                        )}
+                        <div className="pt-2">
+                          <Button
+                            size="sm"
+                            className="w-full"
+                            onClick={() => {
+                              window.open(
+                                `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
+                                "_blank",
+                              );
+                            }}
+                          >
+                            Directions
+                          </Button>
+                        </div>
                       </div>
                     </Popup>
                   </Marker>

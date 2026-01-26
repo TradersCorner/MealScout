@@ -71,7 +71,6 @@ export default function Home() {
   const [locationName, setLocationName] = useState("Your Location");
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
-  const [showLocationInput, setShowLocationInput] = useState(false);
   const [manualLocation, setManualLocation] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [, setNavigateTo] = useLocation();
@@ -134,7 +133,6 @@ export default function Home() {
         setLocationError(
           "Unable to detect location automatically. Please set your location."
         );
-        setShowLocationInput(true);
       } finally {
         setIsLoadingLocation(false);
       }
@@ -154,9 +152,6 @@ export default function Home() {
   const handleLocationErrorUpdate = (error: string | null) => {
     setLocationError(error);
     setIsLoadingLocation(false);
-    if (error) {
-      setShowLocationInput(true);
-    }
   };
 
   const handleManualLocation = async () => {
@@ -179,7 +174,6 @@ export default function Home() {
         setLocation(newLocation);
         setLocationName(data[0].display_name);
         setLocationError(null);
-        setShowLocationInput(false);
         queryClient.invalidateQueries({ queryKey: ["/api/deals/nearby"] });
       } else {
         setLocationError(
@@ -195,7 +189,6 @@ export default function Home() {
 
   const retryLocation = () => {
     setLocationError(null);
-    setShowLocationInput(false);
     setIsLoadingLocation(true);
     handleLocationDetection();
   };
@@ -480,16 +473,16 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Location Error and Manual Input */}
-          {locationError && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex space-x-2">
+          {/* Manual location input (only when we don't have a location) */}
+          {!location && !showWelcomeModal && (
+            <div className="mt-4 w-full max-w-md">
+              <div className="manual-location-shell">
                 <Input
                   type="text"
                   placeholder="Enter city or zip"
                   value={manualLocation}
                   onChange={(e) => setManualLocation(e.target.value)}
-                  className="flex-1"
+                  className="manual-location-input"
                   onKeyPress={(e) =>
                     e.key === "Enter" && handleManualLocation()
                   }
@@ -497,11 +490,14 @@ export default function Home() {
                 <Button
                   onClick={handleManualLocation}
                   disabled={!manualLocation.trim() || isLoadingLocation}
-                  size="sm"
+                  className="manual-location-button"
                 >
                   {isLoadingLocation ? "..." : "Go"}
                 </Button>
               </div>
+              {locationError && (
+                <p className="manual-location-error">{locationError}</p>
+              )}
             </div>
           )}
         </div>

@@ -44,6 +44,21 @@ export default function ProfilePage() {
       : null,
     lastActivity: null,
   });
+  const isEventCoordinator = user?.userType === "event_coordinator";
+  const showEventCta = user?.userType === "customer" || isEventCoordinator;
+  const eventCta = isEventCoordinator
+    ? {
+        href: "/event-coordinator/dashboard",
+        title: "Manage Your Events",
+        description: "View and update your upcoming events →",
+        Icon: Calendar,
+      }
+    : {
+        href: "/event-signup",
+        title: "Book Trucks for Your Event",
+        description: "Festivals, concerts, markets — connect with vendors →",
+        Icon: PartyPopper,
+      };
 
   useEffect(() => {
     let cancelled = false;
@@ -312,8 +327,8 @@ export default function ProfilePage() {
 
       {/* Menu Items */}
       <div className="px-6 pb-6">
-        {/* Business Opportunities Section (Only for customers) */}
-        {user?.userType === "customer" && (
+        {/* Business Opportunities Section */}
+        {showEventCta && (
           <div className="mb-6 space-y-4">
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
               Business Opportunities
@@ -322,18 +337,18 @@ export default function ProfilePage() {
             {/* Event Organizer CTA */}
             <Card className="bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 transition-all cursor-pointer border border-purple-200">
               <CardContent className="p-0">
-                <Link href="/event-signup">
+                <Link href={eventCta.href}>
                   <div className="p-5">
                     <div className="flex items-center space-x-4">
                       <div className="w-12 h-12 bg-purple-500/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                        <PartyPopper className="w-6 h-6 text-purple-600" />
+                        <eventCta.Icon className="w-6 h-6 text-purple-600" />
                       </div>
                       <div className="flex-1">
                         <h3 className="text-gray-900 font-bold text-base mb-1">
-                          Book Trucks for Your Event
+                          {eventCta.title}
                         </h3>
                         <p className="text-gray-600 text-sm">
-                          Festivals, concerts, markets — connect with vendors →
+                          {eventCta.description}
                         </p>
                       </div>
                     </div>

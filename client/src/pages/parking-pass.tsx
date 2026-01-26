@@ -719,8 +719,12 @@ export default function ParkingPassPage() {
     }
   };
 
-  const isFoodTruckUser = user?.userType === "food_truck";
-  const showHostParkingPass = isAuthenticated && hasHostProfile;
+  const isAdminOrStaff = ["admin", "super_admin", "staff"].includes(
+    user?.userType || "",
+  );
+  const isTruckViewUser = user?.userType === "food_truck" || isAdminOrStaff;
+  const showHostParkingPass =
+    isAuthenticated && hasHostProfile && !isAdminOrStaff;
   const normalizedCityQuery = cityQuery.trim().toLowerCase();
   const filteredEvents = events
     .filter((event) => {
@@ -878,7 +882,7 @@ export default function ParkingPassPage() {
           </div>
         )}
 
-        {isFoodTruckUser && (
+        {isTruckViewUser && (
           <Card className="rounded-2xl border border-gray-200 bg-white">
             <CardContent className="p-5 space-y-4">
               <div className="flex items-center justify-between gap-3">
@@ -931,7 +935,7 @@ export default function ParkingPassPage() {
           </Card>
         )}
 
-        {isFoodTruckUser && (
+        {isTruckViewUser && (
           <Card className="rounded-2xl border border-gray-200 bg-white">
             <CardContent className="p-5 space-y-4">
               <div>

@@ -563,9 +563,10 @@
   }
 
   .theme-day .nav-bar {
-    background: #ffffff;
-    border-color: #e5e7eb;
-    box-shadow: none;
+    background: rgba(255, 255, 255, 0.35);
+    border-color: rgba(15, 23, 42, 0.12);
+    backdrop-filter: blur(18px) saturate(140%);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
   }
 
   .theme-night .nav-bar {
@@ -580,9 +581,12 @@
     color: var(--accent-text);
   }
 
-  .theme-day .nav-link--inactive,
+  .theme-day .nav-link--inactive {
+    color: #374151;
+  }
+
   .theme-night .nav-link--inactive {
-    color: #9ca3af;
+    color: #e5e7eb;
   }
 
   .theme-day .nav-link--inactive:hover {

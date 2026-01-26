@@ -231,13 +231,38 @@ class EmailTemplates {
 </html>`;
   }
 
-  static getCustomerWelcomeTemplate(user: User): {
+  static getVerificationBlock(verifyUrl: string): {
     html: string;
     text: string;
   } {
+    return {
+      html: `
+        <div class="highlight-box">
+          <strong>Verify your email</strong><br>
+          Please confirm your email to activate your account.
+          <p style="margin: 16px 0;">
+            <a href="${verifyUrl}" style="background: #f97316; color: #fff; text-decoration: none; padding: 12px 16px; border-radius: 8px; display: inline-block;">
+              Verify Email
+            </a>
+          </p>
+          <p style="word-break: break-all; color: #f97316;">${verifyUrl}</p>
+        </div>
+      `,
+      text: `Verify your email to activate your account: ${verifyUrl}`,
+    };
+  }
+
+  static getCustomerWelcomeTemplate(user: User, verifyUrl?: string): {
+    html: string;
+    text: string;
+  } {
+    const verification = verifyUrl
+      ? this.getVerificationBlock(verifyUrl)
+      : null;
     const content = `
       <h2>Welcome to Your Food Adventure! 🎉</h2>
       <p>Hey ${user.firstName || "Food Explorer"}!</p>
+      ${verification ? verification.html : ""}
       <p>Welcome to MealScout – your personal guide to discovering incredible food deals around you! We're thrilled to have you join our community of savvy food lovers.</p>
 
       <div class="highlight-box">
@@ -284,6 +309,7 @@ class EmailTemplates {
 
     const html = this.getBaseTemplate("Welcome to MealScout!", content);
     const text = `Welcome to MealScout, ${user.firstName || "Food Explorer"}!
+${verification ? `\n${verification.text}\n` : ""}
 
 We're thrilled to have you join our community of savvy food lovers. MealScout connects you with exclusive deals from local restaurants, food trucks, and cafes.
 
@@ -303,13 +329,17 @@ The MealScout Team
     return { html, text };
   }
 
-  static getRestaurantOwnerWelcomeTemplate(user: User): {
+  static getRestaurantOwnerWelcomeTemplate(user: User, verifyUrl?: string): {
     html: string;
     text: string;
   } {
+    const verification = verifyUrl
+      ? this.getVerificationBlock(verifyUrl)
+      : null;
     const content = `
       <h2>Welcome to MealScout Business! 🚀</h2>
       <p>Hello ${user.firstName || "Business Owner"}!</p>
+      ${verification ? verification.html : ""}
       <p>Congratulations on joining MealScout! You're now part of a powerful platform that connects local restaurants with hungry customers looking for amazing deals.</p>
 
       <div class="highlight-box">
@@ -364,6 +394,7 @@ The MealScout Team
       content,
     );
     const text = `Welcome to MealScout Business, ${user.firstName || "Business Owner"}!
+${verification ? `\n${verification.text}\n` : ""}
 
 Congratulations on joining MealScout! You're now part of a powerful platform that connects local restaurants with hungry customers.
 
@@ -388,10 +419,17 @@ The MealScout Business Team
     return { html, text };
   }
 
-  static getAdminWelcomeTemplate(user: User): { html: string; text: string } {
+  static getAdminWelcomeTemplate(
+    user: User,
+    verifyUrl?: string,
+  ): { html: string; text: string } {
+    const verification = verifyUrl
+      ? this.getVerificationBlock(verifyUrl)
+      : null;
     const content = `
       <h2>Admin Access Granted 🔐</h2>
       <p>Hello ${user.firstName || "Admin"}!</p>
+      ${verification ? verification.html : ""}
       <p>Your MealScout admin account has been created successfully. You now have access to the administrative dashboard and all management features.</p>
 
       <div class="highlight-box">
@@ -431,6 +469,8 @@ The MealScout Business Team
 
     const html = this.getBaseTemplate("MealScout Admin Access", content);
     const text = `MealScout Admin Access Granted
+
+${verification ? `${verification.text}\n` : ""}
 
 Hello ${user.firstName || "Admin"}!
 
@@ -1086,22 +1126,25 @@ export class EmailService {
   }
 
   // Send welcome email based on user type
-  async sendWelcomeEmail(user: User): Promise<boolean> {
+  async sendWelcomeEmail(user: User, verifyUrl?: string): Promise<boolean> {
     let template: { html: string; text: string };
     let subject: string;
 
     switch (user.userType) {
       case "customer":
-        template = EmailTemplates.getCustomerWelcomeTemplate(user);
+        template = EmailTemplates.getCustomerWelcomeTemplate(user, verifyUrl);
         subject =
           "Welcome to MealScout - Start Discovering Amazing Food Deals! 🍽️";
         break;
       case "restaurant_owner":
-        template = EmailTemplates.getRestaurantOwnerWelcomeTemplate(user);
+        template = EmailTemplates.getRestaurantOwnerWelcomeTemplate(
+          user,
+          verifyUrl,
+        );
         subject = "Welcome to MealScout Business - Grow Your Restaurant! 🚀";
         break;
       case "admin":
-        template = EmailTemplates.getAdminWelcomeTemplate(user);
+        template = EmailTemplates.getAdminWelcomeTemplate(user, verifyUrl);
         subject = "MealScout Admin Access Granted 🔐";
         break;
       default:

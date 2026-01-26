@@ -256,7 +256,9 @@ export default function CategoryPage() {
               <config.icon className="w-3.5 h-3.5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">
+              <h1
+                className={`text-xl font-bold bg-gradient-to-r ${config.gradient} text-transparent bg-clip-text`}
+              >
                 {config.title}
               </h1>
               <p className="text-sm text-muted-foreground">
@@ -315,7 +317,9 @@ export default function CategoryPage() {
             >
               <config.icon className="w-6 h-6 text-white" />
             </div>
-            <h3 className="font-bold text-lg text-foreground mb-2">
+            <h3
+              className={`font-bold text-lg bg-gradient-to-r ${config.gradient} text-transparent bg-clip-text mb-2`}
+            >
               No {config.title} deals yet
             </h3>
             <p className="text-muted-foreground mb-6">

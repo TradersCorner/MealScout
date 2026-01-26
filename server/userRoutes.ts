@@ -5,7 +5,7 @@
  */
 
 import { Router, Request, Response } from "express";
-import { ilike } from "drizzle-orm";
+import { and, eq, ilike, isNull, or } from "drizzle-orm";
 import { db } from "./db";
 import { users } from "@shared/schema";
 import { getUserCreditBalance } from "./creditService";
@@ -59,7 +59,12 @@ router.get("/search", async (req: Request, res: Response) => {
         lastName: users.lastName,
       })
       .from(users)
-      .where(ilike(users.email, `%${q}%`))
+      .where(
+        and(
+          ilike(users.email, `%${q}%`),
+          or(eq(users.isDisabled, false), isNull(users.isDisabled))
+        )
+      )
       .limit(parsedLimit);
 
     const mapped = results.map(

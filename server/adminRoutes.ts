@@ -20,7 +20,7 @@ import {
   incidents,
   users,
 } from "@shared/schema";
-import { eq, desc, and, or, gte, lte, like } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, like, isNull } from "drizzle-orm";
 import { isAdmin } from "./unifiedAuth";
 import { logAudit } from "./auditLogger";
 import { storage } from "./storage";
@@ -51,6 +51,7 @@ router.get("/stats", isAdmin, async (req, res) => {
       db
         .select()
         .from(users)
+        .where(or(eq(users.isDisabled, false), isNull(users.isDisabled)))
         .then((u: any[]) => u.length),
       db
         .select()

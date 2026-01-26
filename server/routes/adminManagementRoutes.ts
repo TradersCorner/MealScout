@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import Stripe from "stripe";
 import crypto from "crypto";
-import { eq, and, inArray, or, sql, desc } from "drizzle-orm";
+import { eq, and, inArray, or, sql, desc, isNull } from "drizzle-orm";
 import { storage } from "../storage";
 import { isAuthenticated, isStaffOrAdmin } from "../unifiedAuth";
 import { sanitizeUser, sanitizeUsers } from "../utils/sanitize";
@@ -557,6 +557,7 @@ export function registerAdminManagementRoutes(app: Express) {
             stripeSubscriptionId: users.stripeSubscriptionId,
           })
           .from(users)
+          .where(or(eq(users.isDisabled, false), isNull(users.isDisabled)))
           .orderBy(users.createdAt);
 
         const shareCounts = await db
@@ -595,10 +596,13 @@ export function registerAdminManagementRoutes(app: Express) {
           })
           .from(users)
           .where(
-            or(
-              sql`${users.affiliateCloserUserId} is not null`,
-              sql`${users.affiliateBookerUserId} is not null`,
-            ),
+            and(
+              or(eq(users.isDisabled, false), isNull(users.isDisabled)),
+              or(
+                sql`${users.affiliateCloserUserId} is not null`,
+                sql`${users.affiliateBookerUserId} is not null`,
+              )
+            )
           );
 
         const truckOwnerRows = await db

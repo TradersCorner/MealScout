@@ -1082,7 +1082,15 @@ export class DatabaseStorage implements IStorage {
   // User operations
   // (IMPORTANT) these user operations are mandatory for authentication.
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.id, id),
+          or(eq(users.isDisabled, false), isNull(users.isDisabled))
+        )
+      );
     return user;
   }
 
@@ -1102,17 +1110,41 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.email, email),
+          or(eq(users.isDisabled, false), isNull(users.isDisabled))
+        )
+      );
     return user;
   }
 
   async getUserByPhone(phone: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.phone, phone));
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.phone, phone),
+          or(eq(users.isDisabled, false), isNull(users.isDisabled))
+        )
+      );
     return user;
   }
 
   async getUserById(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.id, id),
+          or(eq(users.isDisabled, false), isNull(users.isDisabled))
+        )
+      );
     return user;
   }
 
@@ -1161,7 +1193,12 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.stripeCustomerId, stripeCustomerId));
+      .where(
+        and(
+          eq(users.stripeCustomerId, stripeCustomerId),
+          or(eq(users.isDisabled, false), isNull(users.isDisabled))
+        )
+      );
     return user;
   }
 
@@ -1171,7 +1208,12 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.stripeSubscriptionId, stripeSubscriptionId));
+      .where(
+        and(
+          eq(users.stripeSubscriptionId, stripeSubscriptionId),
+          or(eq(users.isDisabled, false), isNull(users.isDisabled))
+        )
+      );
     return user;
   }
 

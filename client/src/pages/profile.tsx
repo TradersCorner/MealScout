@@ -253,14 +253,6 @@ export default function ProfilePage() {
                   <span>{userStats.dealsRedeemed} deals redeemed</span>
                 </div>
               )}
-              {affiliateTag && (
-                <div className="flex items-center gap-2">
-                  <LinkIcon className="w-4 h-4" />
-                  <span className="truncate">
-                    {`${window.location.origin}/ref/${affiliateTag}`}
-                  </span>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>

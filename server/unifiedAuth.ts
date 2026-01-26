@@ -78,8 +78,8 @@ export async function setupUnifiedAuth(app: Express) {
   };
   const baseUrl = getBaseUrl().replace(/\/+$/, ""); // Remove trailing slashes to prevent double slashes in callback URLs
 
-  const sendEmailVerification = async (user: User, req: any) => {
-    if (!user.email) return;
+  const createEmailVerificationUrl = async (user: User, req: any) => {
+    if (!user.email) return null;
     const token = crypto.randomBytes(32).toString("hex");
     const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -99,7 +99,46 @@ export async function setupUnifiedAuth(app: Express) {
     const verifyUrl = `${apiBaseUrl}/api/auth/verify-email?token=${encodeURIComponent(
       token,
     )}`;
-    await emailService.sendEmailVerificationEmail(user, verifyUrl);
+    return verifyUrl;
+  };
+
+  const sendWelcomeOrVerification = async (
+    user: User,
+    req: any,
+    welcomeLabel: string,
+  ) => {
+    try {
+      const verifyUrl =
+        user.email && !user.emailVerified
+          ? await createEmailVerificationUrl(user, req)
+          : null;
+      const supportsWelcome =
+        user.userType === "customer" ||
+        user.userType === "restaurant_owner" ||
+        user.userType === "admin";
+
+      if (supportsWelcome) {
+        emailService
+          .sendWelcomeEmail(user, verifyUrl ?? undefined)
+          .catch((err) =>
+            console.error(`Failed to send ${welcomeLabel} welcome email:`, err),
+          );
+        return;
+      }
+
+      if (verifyUrl) {
+        emailService
+          .sendEmailVerificationEmail(user, verifyUrl)
+          .catch((err) =>
+            console.error("Failed to send email verification:", err),
+          );
+      }
+    } catch (error) {
+      console.error(
+        `Failed to prepare ${welcomeLabel} welcome email:`,
+        error,
+      );
+    }
   };
 
   const oauthUserTypeAllowList = new Set<User["userType"]>([
@@ -261,17 +300,8 @@ export async function setupUnifiedAuth(app: Express) {
               })
               .catch((err) => console.error("Failed to emit LISA claim:", err));
 
-            // Send welcome email asynchronously (don't block auth flow)
-            emailService
-              .sendWelcomeEmail(user)
-              .catch((err) =>
-                console.error("Failed to send customer welcome email:", err),
-              );
-            if (user.email && !user.emailVerified) {
-              sendEmailVerification(user, req).catch((err) =>
-                console.error("Failed to send email verification:", err),
-              );
-            }
+            // Send welcome email with verification link (don't block auth flow)
+            void sendWelcomeOrVerification(user, req, "customer");
             // Send admin signup notification with context asynchronously
             emailService
               .sendAdminSignupNotification(user, {
@@ -378,20 +408,8 @@ export async function setupUnifiedAuth(app: Express) {
               })
               .catch((err) => console.error("Failed to emit LISA claim:", err));
 
-            // Send welcome email asynchronously (don't block auth flow)
-            emailService
-              .sendWelcomeEmail(user)
-              .catch((err) =>
-                console.error(
-                  "Failed to send restaurant owner welcome email:",
-                  err,
-                ),
-              );
-            if (user.email && !user.emailVerified) {
-              sendEmailVerification(user, req).catch((err) =>
-                console.error("Failed to send email verification:", err),
-              );
-            }
+            // Send welcome email with verification link (don't block auth flow)
+            void sendWelcomeOrVerification(user, req, "restaurant owner");
             // Send admin signup notification with context asynchronously
             emailService
               .sendAdminSignupNotification(user, {
@@ -624,17 +642,8 @@ export async function setupUnifiedAuth(app: Express) {
               })
               .catch((err) => console.error("Failed to emit LISA claim:", err));
 
-            // Send welcome email asynchronously (don't block auth flow)
-            emailService
-              .sendWelcomeEmail(user)
-              .catch((err) =>
-                console.error("Failed to send customer welcome email:", err),
-              );
-            if (user.email && !user.emailVerified) {
-              sendEmailVerification(user, req).catch((err) =>
-                console.error("Failed to send email verification:", err),
-              );
-            }
+            // Send welcome email with verification link (don't block auth flow)
+            void sendWelcomeOrVerification(user, req, "customer");
             // Send admin signup notification with context asynchronously
             emailService
               .sendAdminSignupNotification(user, {
@@ -895,10 +904,8 @@ export async function setupUnifiedAuth(app: Express) {
       );
       await applyAffiliateReferral(req, user);
 
-      // Send email verification first, then welcome after verification
-      sendEmailVerification(user, req).catch((err) =>
-        console.error("Failed to send email verification:", err),
-      );
+      // Send welcome email with verification link (don't block auth flow)
+      void sendWelcomeOrVerification(user, req, "customer");
       // Send admin signup notification with context asynchronously
       emailService
         .sendAdminSignupNotification(user, {
@@ -995,10 +1002,8 @@ export async function setupUnifiedAuth(app: Express) {
       );
       await applyAffiliateReferral(req, user);
 
-      // Send email verification first, then welcome after verification
-      sendEmailVerification(user, req).catch((err) =>
-        console.error("Failed to send email verification:", err),
-      );
+      // Send welcome email with verification link (don't block auth flow)
+      void sendWelcomeOrVerification(user, req, "restaurant owner");
       // Send admin signup notification with context asynchronously
       emailService
         .sendAdminSignupNotification(user, {
@@ -1548,10 +1553,8 @@ export async function setupUnifiedAuth(app: Express) {
       // Mark token as used
       await storage.markAccountSetupTokenUsed(setupToken.id);
 
-      // Send email verification after profile completion
-      sendEmailVerification(user, req).catch((err) =>
-        console.error("Failed to send email verification:", err),
-      );
+      // Send welcome email with verification link after profile completion
+      void sendWelcomeOrVerification(user, req, "account setup");
 
       res.json({ message: "Account setup completed successfully" });
     } catch (error) {
@@ -1583,10 +1586,6 @@ export async function setupUnifiedAuth(app: Express) {
 
       await storage.updateUser(user.id, { emailVerified: true });
       await storage.markEmailVerificationTokenUsed(verificationToken.id);
-
-      emailService.sendWelcomeEmail(user).catch((err) =>
-        console.error("Failed to send welcome email after verification:", err),
-      );
 
       const redirectBase =
         process.env.CLIENT_ORIGIN ||

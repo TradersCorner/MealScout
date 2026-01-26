@@ -17,14 +17,11 @@ import Navigation from "@/components/navigation";
 import { Calendar, MapPin, Users } from "lucide-react";
 
 export default function EventSignup() {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading, refetch } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const isStaffOrAdmin =
-    user?.userType === "staff" ||
-    user?.userType === "admin" ||
-    user?.userType === "super_admin";
+  const isEventCoordinator = user?.userType === "event_coordinator";
 
   const [formData, setFormData] = useState({
     eventName: "",
@@ -64,9 +61,21 @@ export default function EventSignup() {
         throw new Error("Failed to submit event request");
       }
 
+      const data = await response.json();
+      const isCoordinator = data?.userType === "event_coordinator";
+      if (isCoordinator) {
+        await refetch();
+        toast({
+          title: "Request submitted",
+          description: "You can now post events from your dashboard.",
+        });
+        setLocation("/event-coordinator/dashboard");
+        return;
+      }
+
       toast({
-        title: "Event request submitted!",
-        description: "We'll match you with food trucks soon.",
+        title: "Request submitted",
+        description: "We will follow up soon.",
       });
 
       setLocation("/");
@@ -87,16 +96,15 @@ export default function EventSignup() {
       <Navigation />
 
       <div className="container max-w-2xl mx-auto px-4 py-12">
-        {!isStaffOrAdmin ? (
+        {isLoading ? null : !isAuthenticated ? (
           <Card>
             <CardHeader>
               <CardTitle className="text-3xl flex items-center gap-2">
                 <Calendar className="w-8 h-8 text-blue-600" />
-                Event coordinator access required
+                Log in to request event access
               </CardTitle>
               <CardDescription className="text-lg">
-                This form is currently limited to staff and admin accounts while
-                we finish testing.
+                You will submit a request to become an event coordinator.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -109,16 +117,36 @@ export default function EventSignup() {
               </Button>
             </CardContent>
           </Card>
+        ) : isEventCoordinator ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-3xl flex items-center gap-2">
+                <Calendar className="w-8 h-8 text-blue-600" />
+                You are already an event coordinator
+              </CardTitle>
+              <CardDescription className="text-lg">
+                Go to your dashboard to post events.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={() => setLocation("/event-coordinator/dashboard")}
+              >
+                Open dashboard
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
         <Card>
           <CardHeader>
             <CardTitle className="text-3xl flex items-center gap-2">
               <Calendar className="w-8 h-8 text-blue-600" />
-              Need trucks for an event?
+              Request event coordinator access
             </CardTitle>
             <CardDescription className="text-lg">
-              Event organizers never pay fees. We connect you with food trucks
-              for free.
+              Share your event details and we will follow up.
             </CardDescription>
           </CardHeader>
           <CardContent>

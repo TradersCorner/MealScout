@@ -6,7 +6,6 @@ import { db } from "../db";
 import {
   isAuthenticated,
   isRestaurantOwner,
-  isStaffOrAdmin,
 } from "../unifiedAuth";
 import { eventBookings, insertEventInterestSchema } from "@shared/schema";
 import { asc, inArray } from "drizzle-orm";
@@ -229,7 +228,7 @@ export function registerEventRoutes(app: Express) {
     }
   );
 
-  app.post("/api/events/signup", isStaffOrAdmin, async (req: any, res) => {
+  app.post("/api/events/signup", isAuthenticated, async (req: any, res) => {
     try {
       const schema = z.object({
         eventName: z.string().min(1),
@@ -242,6 +241,14 @@ export function registerEventRoutes(app: Express) {
       });
 
       const parsed = schema.parse(req.body);
+      let updatedUserType = req.user?.userType;
+      if (req.user?.userType === "customer") {
+        const updatedUser = await storage.updateUserType(
+          req.user.id,
+          "event_coordinator"
+        );
+        updatedUserType = updatedUser.userType;
+      }
 
       const adminEmail =
         process.env.ADMIN_ALERT_EMAIL || "info.mealscout@gmail.com";
@@ -270,7 +277,7 @@ export function registerEventRoutes(app: Express) {
         },
       });
 
-      res.json({ message: "Request submitted" });
+      res.json({ message: "Request submitted", userType: updatedUserType });
     } catch (error: any) {
       console.error("Error submitting event coordinator request:", error);
       if (error instanceof z.ZodError) {

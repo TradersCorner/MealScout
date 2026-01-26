@@ -2252,6 +2252,16 @@ export default function AdminDashboard() {
   };
 
   const dashboardStats = stats || defaultStats;
+  const toDollars = (value: number | string | null | undefined) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return 0;
+    return parsed / 100;
+  };
+  const toCents = (value: string | number) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return 0;
+    return Math.round(parsed * 100);
+  };
 
   return (
     <div className="max-w-7xl mx-auto min-h-screen bg-[var(--bg-app)] pb-20">
@@ -4789,19 +4799,22 @@ export default function AdminDashboard() {
                             </div>
                             <div className="space-y-1">
                               <p className="text-xs text-muted-foreground">
-                                Breakfast (cents)
+                                Breakfast ($)
                               </p>
                               <input
                                 type="number"
                                 min={0}
+                                step={1}
                                 className="w-full px-2 py-1 border rounded-md text-sm"
-                                value={edits.breakfastPriceCents}
+                                value={toDollars(edits.breakfastPriceCents)}
                                 onChange={(e) =>
                                   setParkingPassEdits({
                                     ...parkingPassEdits,
                                     [pass.id]: {
                                       ...edits,
-                                      breakfastPriceCents: e.target.value,
+                                      breakfastPriceCents: toCents(
+                                        e.target.value,
+                                      ),
                                     },
                                   })
                                 }
@@ -4809,19 +4822,20 @@ export default function AdminDashboard() {
                             </div>
                             <div className="space-y-1">
                               <p className="text-xs text-muted-foreground">
-                                Lunch (cents)
+                                Lunch ($)
                               </p>
                               <input
                                 type="number"
                                 min={0}
+                                step={1}
                                 className="w-full px-2 py-1 border rounded-md text-sm"
-                                value={edits.lunchPriceCents}
+                                value={toDollars(edits.lunchPriceCents)}
                                 onChange={(e) =>
                                   setParkingPassEdits({
                                     ...parkingPassEdits,
                                     [pass.id]: {
                                       ...edits,
-                                      lunchPriceCents: e.target.value,
+                                      lunchPriceCents: toCents(e.target.value),
                                     },
                                   })
                                 }
@@ -4829,19 +4843,20 @@ export default function AdminDashboard() {
                             </div>
                             <div className="space-y-1">
                               <p className="text-xs text-muted-foreground">
-                                Dinner (cents)
+                                Dinner ($)
                               </p>
                               <input
                                 type="number"
                                 min={0}
+                                step={1}
                                 className="w-full px-2 py-1 border rounded-md text-sm"
-                                value={edits.dinnerPriceCents}
+                                value={toDollars(edits.dinnerPriceCents)}
                                 onChange={(e) =>
                                   setParkingPassEdits({
                                     ...parkingPassEdits,
                                     [pass.id]: {
                                       ...edits,
-                                      dinnerPriceCents: e.target.value,
+                                      dinnerPriceCents: toCents(e.target.value),
                                     },
                                   })
                                 }
@@ -4849,23 +4864,24 @@ export default function AdminDashboard() {
                             </div>
                             <div className="space-y-1">
                               <p className="text-xs text-muted-foreground">
-                                Daily (cents)
+                                Daily ($)
                               </p>
                               <input
                                 type="number"
                                 min={0}
+                                step={1}
                                 className="w-full px-2 py-1 border rounded-md text-sm"
-                                value={edits.dailyPriceCents}
+                                value={toDollars(edits.dailyPriceCents)}
                                 onChange={(e) =>
                                   setParkingPassEdits({
                                     ...parkingPassEdits,
                                     [pass.id]: {
                                       ...edits,
-                                      dailyPriceCents: e.target.value,
+                                      dailyPriceCents: toCents(e.target.value),
                                       weeklyPriceCents:
-                                        Number(e.target.value || 0) * 7,
+                                        toCents(e.target.value) * 7,
                                       monthlyPriceCents:
-                                        Number(e.target.value || 0) * 30,
+                                        toCents(e.target.value) * 30,
                                     },
                                   })
                                 }
@@ -4873,16 +4889,19 @@ export default function AdminDashboard() {
                             </div>
                             <div className="space-y-1">
                               <p className="text-xs text-muted-foreground">
-                                Weekly (cents)
+                                Weekly ($)
                               </p>
                               <input
                                 type="number"
                                 min={0}
+                                step={1}
                                 className="w-full px-2 py-1 border rounded-md text-sm"
                                 value={
                                   Number(edits.dailyPriceCents || 0)
-                                    ? Number(edits.dailyPriceCents || 0) * 7
-                                    : edits.weeklyPriceCents
+                                    ? toDollars(
+                                        Number(edits.dailyPriceCents || 0) * 7,
+                                      )
+                                    : toDollars(edits.weeklyPriceCents)
                                 }
                                 readOnly
                                 disabled
@@ -4890,16 +4909,19 @@ export default function AdminDashboard() {
                             </div>
                             <div className="space-y-1">
                               <p className="text-xs text-muted-foreground">
-                                Monthly (cents)
+                                Monthly ($)
                               </p>
                               <input
                                 type="number"
                                 min={0}
+                                step={1}
                                 className="w-full px-2 py-1 border rounded-md text-sm"
                                 value={
                                   Number(edits.dailyPriceCents || 0)
-                                    ? Number(edits.dailyPriceCents || 0) * 30
-                                    : edits.monthlyPriceCents
+                                    ? toDollars(
+                                        Number(edits.dailyPriceCents || 0) * 30,
+                                      )
+                                    : toDollars(edits.monthlyPriceCents)
                                 }
                                 readOnly
                                 disabled

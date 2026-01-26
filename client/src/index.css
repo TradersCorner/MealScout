@@ -21,7 +21,7 @@
   --field-bg: #ffffff;
   --text-primary: #111827;
   --text-secondary: #374151;
-  --text-muted: #4b5563;
+  --text-muted: #374151;
   --text-inverse: #111827;
   --border-subtle: #d1d5db;
   --border-strong: #cbd5e1;
@@ -59,7 +59,7 @@
   --secondary-foreground: 222 47% 11%;
 
   --muted: 45 16% 93%;
-  --muted-foreground: 220 9% 46%;
+  --muted-foreground: 220 9% 32%;
 
   --accent: 38 92% 50%;
   --accent-foreground: 222 47% 11%;
@@ -89,7 +89,7 @@
   --field-bg: #332d28;
   --text-primary: #ffffff;
   --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
+  --text-muted: #cbd5e1;
   --text-inverse: #111111;
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
@@ -125,7 +125,7 @@
   --secondary-foreground: 36 24% 88%;
 
   --muted: 28 16% 14%;
-  --muted-foreground: 32 14% 62%;
+  --muted-foreground: 32 14% 72%;
 
   --accent: 38 92% 50%;
   --accent-foreground: 222 47% 11%;
@@ -594,6 +594,27 @@
   input,
   textarea {
     font-size: 16px;
+  }
+
+  input,
+  select,
+  textarea {
+    color: var(--text-primary);
+    background-color: var(--field-bg);
+    border-color: var(--border-strong);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--text-secondary);
+    opacity: 1;
+  }
+
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    color: var(--text-secondary);
+    opacity: 0.85;
   }
 
   /* Custom scrollbar */

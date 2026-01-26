@@ -51,6 +51,12 @@ interface Event {
   weeklyPriceCents?: number | null;
 }
 
+const normalizeDollar = (value: string | number) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.round(parsed);
+};
+
 function HostDashboard() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const { toast } = useToast();
@@ -404,9 +410,9 @@ function HostDashboard() {
     }
     const finalStartTime = anyTime ? "00:00" : startTime;
     const finalEndTime = anyTime ? "23:59" : endTime;
-    const breakfast = Number(breakfastPrice || 0);
-    const lunch = Number(lunchPrice || 0);
-    const dinner = Number(dinnerPrice || 0);
+    const breakfast = normalizeDollar(breakfastPrice);
+    const lunch = normalizeDollar(lunchPrice);
+    const dinner = normalizeDollar(dinnerPrice);
     const hasSlotPrice = breakfast > 0 || lunch > 0 || dinner > 0;
 
     if (!hasSlotPrice) {
@@ -430,9 +436,9 @@ function HostDashboard() {
           maxTrucks: Number(maxTrucks),
           hardCapEnabled,
           requiresPayment: true,
-          breakfastPriceCents: breakfast ? Math.round(breakfast * 100) : 0,
-          lunchPriceCents: lunch ? Math.round(lunch * 100) : 0,
-          dinnerPriceCents: dinner ? Math.round(dinner * 100) : 0,
+          breakfastPriceCents: breakfast ? breakfast * 100 : 0,
+          lunchPriceCents: lunch ? lunch * 100 : 0,
+          dinnerPriceCents: dinner ? dinner * 100 : 0,
         }),
       });
 
@@ -555,9 +561,9 @@ function HostDashboard() {
   const formatCents = (value?: number | null) =>
     value && value > 0 ? `$${(value / 100).toFixed(2)}` : "—";
 
-  const breakfastValue = Number(breakfastPrice || 0);
-  const lunchValue = Number(lunchPrice || 0);
-  const dinnerValue = Number(dinnerPrice || 0);
+  const breakfastValue = normalizeDollar(breakfastPrice);
+  const lunchValue = normalizeDollar(lunchPrice);
+  const dinnerValue = normalizeDollar(dinnerPrice);
   const slotSum = breakfastValue + lunchValue + dinnerValue;
   const dailyEstimate = slotSum ? slotSum + 10 : 0;
   const weeklyEstimate = slotSum ? slotSum * 7 + 10 : 0;
@@ -1194,10 +1200,11 @@ function HostDashboard() {
                     id="breakfastPrice"
                     type="number"
                     min="0"
-                    step="0.01"
+                    step="1"
+                    inputMode="numeric"
                     value={breakfastPrice}
                     onChange={(event) => setBreakfastPrice(event.target.value)}
-                    placeholder="0.00"
+                    placeholder="0"
                   />
                   <p className="text-xs text-slate-500">Early shift pricing.</p>
                 </div>
@@ -1207,10 +1214,11 @@ function HostDashboard() {
                     id="lunchPrice"
                     type="number"
                     min="0"
-                    step="0.01"
+                    step="1"
+                    inputMode="numeric"
                     value={lunchPrice}
                     onChange={(event) => setLunchPrice(event.target.value)}
-                    placeholder="0.00"
+                    placeholder="0"
                   />
                   <p className="text-xs text-slate-500">Peak traffic slot.</p>
                 </div>
@@ -1220,10 +1228,11 @@ function HostDashboard() {
                     id="dinnerPrice"
                     type="number"
                     min="0"
-                    step="0.01"
+                    step="1"
+                    inputMode="numeric"
                     value={dinnerPrice}
                     onChange={(event) => setDinnerPrice(event.target.value)}
-                    placeholder="0.00"
+                    placeholder="0"
                   />
                   <p className="text-xs text-slate-500">Evening coverage.</p>
                 </div>

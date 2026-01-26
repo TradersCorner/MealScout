@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -39,6 +40,7 @@ export default function EventCoordinatorDashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState("");
+  const inputClassName = "event-form-field";
 
   const [formData, setFormData] = useState({
     organizationName: "",
@@ -176,7 +178,7 @@ export default function EventCoordinatorDashboard() {
       </div>
 
       {isCreating && (
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-8">
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-8 event-form">
           <h2 className="text-lg font-semibold mb-4">Create Event</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             {createError && (
@@ -194,6 +196,7 @@ export default function EventCoordinatorDashboard() {
                   onChange={(e) =>
                     setFormData({ ...formData, organizationName: e.target.value })
                   }
+                  className={inputClassName}
                   required
                 />
               </div>
@@ -205,6 +208,7 @@ export default function EventCoordinatorDashboard() {
                   onChange={(e) =>
                     setFormData({ ...formData, contactPhone: e.target.value })
                   }
+                  className={inputClassName}
                   required
                 />
               </div>
@@ -219,6 +223,7 @@ export default function EventCoordinatorDashboard() {
                   onChange={(e) =>
                     setFormData({ ...formData, address: e.target.value })
                   }
+                  className={inputClassName}
                   required
                 />
               </div>
@@ -230,6 +235,7 @@ export default function EventCoordinatorDashboard() {
                   onChange={(e) =>
                     setFormData({ ...formData, city: e.target.value })
                   }
+                  className={inputClassName}
                   required
                 />
               </div>
@@ -241,6 +247,7 @@ export default function EventCoordinatorDashboard() {
                   onChange={(e) =>
                     setFormData({ ...formData, state: e.target.value })
                   }
+                  className={inputClassName}
                   required
                 />
               </div>
@@ -255,16 +262,17 @@ export default function EventCoordinatorDashboard() {
                   onChange={(e) =>
                     setFormData({ ...formData, eventName: e.target.value })
                   }
+                  className={inputClassName}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="maxTrucks">Max Trucks</Label>
+                <Label htmlFor="maxTrucks">Trucks Needed</Label>
                 <Input
                   id="maxTrucks"
                   type="number"
                   min="1"
-                  max="20"
+                  max="50"
                   value={formData.maxTrucks}
                   onChange={(e) =>
                     setFormData({
@@ -272,6 +280,8 @@ export default function EventCoordinatorDashboard() {
                       maxTrucks: Number(e.target.value),
                     })
                   }
+                  placeholder="10"
+                  className={inputClassName}
                   required
                 />
               </div>
@@ -287,6 +297,7 @@ export default function EventCoordinatorDashboard() {
                   onChange={(e) =>
                     setFormData({ ...formData, date: e.target.value })
                   }
+                  className={inputClassName}
                   required
                 />
               </div>
@@ -299,6 +310,7 @@ export default function EventCoordinatorDashboard() {
                   onChange={(e) =>
                     setFormData({ ...formData, startTime: e.target.value })
                   }
+                  className={inputClassName}
                   required
                 />
               </div>
@@ -311,6 +323,7 @@ export default function EventCoordinatorDashboard() {
                   onChange={(e) =>
                     setFormData({ ...formData, endTime: e.target.value })
                   }
+                  className={inputClassName}
                   required
                 />
               </div>
@@ -318,13 +331,15 @@ export default function EventCoordinatorDashboard() {
 
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Input
+              <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
                 placeholder="Event details, expectations, vendor notes"
+                className={inputClassName}
+                rows={4}
               />
             </div>
 

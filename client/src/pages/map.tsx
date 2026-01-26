@@ -16,15 +16,11 @@ import {
   MapPin,
   Navigation as NavigationIcon,
   List,
-  Filter,
   X,
-  Star,
-  Calendar,
-  Building2,
 } from "lucide-react";
 import DealCard from "@/components/deal-card";
 import { SEOHead } from "@/components/seo-head";
-import ShareButton from "@/components/share-button";
+import mealScoutIcon from "@assets/meal-scout-icon.png";
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -37,32 +33,20 @@ L.Icon.Default.mergeOptions({
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-shadow.png",
 });
 
-// Custom user location icon
-const userLocationIcon = new L.Icon({
-  iconUrl:
-    "data:image/svg+xml;base64," +
-    btoa(`
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="8" fill="#3B82F6" stroke="white" stroke-width="3"/>
-      <circle cx="12" cy="12" r="3" fill="white"/>
-    </svg>
-  `),
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
-});
+const svgToDataUrl = (svg: string) =>
+  "data:image/svg+xml;base64," + btoa(svg);
 
-// Custom deal marker icon
-const dealMarkerIcon = new L.Icon({
-  iconUrl:
-    "data:image/svg+xml;base64," +
-    btoa(`
-    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="16" cy="16" r="14" fill="#EF4444" stroke="white" stroke-width="3"/>
-      <text x="16" y="20" text-anchor="middle" fill="white" font-size="14" font-weight="bold">%</text>
-    </svg>
-  `),
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
+// Custom user location icon
+const userLocationIcon = L.divIcon({
+  className: "map-user-marker",
+  html: `
+    <div class="map-user-marker__pulse"></div>
+    <div class="map-user-marker__logo">
+      <img src="${mealScoutIcon}" alt="MealScout" />
+    </div>
+  `,
+  iconSize: [40, 40],
+  iconAnchor: [20, 20],
 });
 
 // Component to handle map controls
@@ -99,11 +83,11 @@ function MapControls({
   };
 
   return (
-    <div className="absolute top-4 right-4 flex flex-col space-y-2 z-[1000]">
+    <div className="absolute top-5 right-5 flex flex-col space-y-2 z-[1000]">
       <Button
         variant="secondary"
         size="sm"
-        className="w-8 h-8 p-0 bg-white border shadow-sm"
+        className="w-9 h-9 p-0 rounded-full bg-white/90 border border-white/60 shadow-lg backdrop-blur"
         onClick={handleZoomIn}
         data-testid="button-zoom-in"
         title="Zoom in"
@@ -113,7 +97,7 @@ function MapControls({
       <Button
         variant="secondary"
         size="sm"
-        className="w-8 h-8 p-0 bg-white border shadow-sm"
+        className="w-9 h-9 p-0 rounded-full bg-white/90 border border-white/60 shadow-lg backdrop-blur"
         onClick={handleZoomOut}
         data-testid="button-zoom-out"
         title="Zoom out"
@@ -123,7 +107,7 @@ function MapControls({
       <Button
         variant="secondary"
         size="sm"
-        className="w-8 h-8 p-0 bg-white border shadow-sm"
+        className="w-9 h-9 p-0 rounded-full bg-white/90 border border-white/60 shadow-lg backdrop-blur"
         onClick={handleCenterUser}
         disabled={!userLocation}
         data-testid="button-center-location"
@@ -246,24 +230,6 @@ type GeoPoint = { lat: number; lng: number };
 type GeocodeCacheEntry = { lat: number; lng: number; ts: number };
 type GeocodeFailureEntry = { ts: number };
 
-const escapeHtml = (value: string) =>
-  value.replace(/[&<>"']/g, (char) => {
-    switch (char) {
-      case "&":
-        return "&amp;";
-      case "<":
-        return "&lt;";
-      case ">":
-        return "&gt;";
-      case '"':
-        return "&quot;";
-      case "'":
-        return "&#39;";
-      default:
-        return char;
-    }
-  });
-
 const toNumberOrNull = (value?: number | string | null) => {
   if (value === null || value === undefined) return null;
   const parsed = Number(value);
@@ -285,61 +251,41 @@ const haversineKm = (a: GeoPoint, b: GeoPoint) => {
   return 2 * earthRadiusKm * Math.asin(Math.sqrt(h));
 };
 
-const hostIcon = new L.Icon({
-  iconUrl:
-    "data:image/svg+xml;base64," +
-    btoa(`
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="14" cy="14" r="12" fill="#2563EB" stroke="white" stroke-width="3"/>
-        <path d="M14 7l5 4v8h-3v-4h-4v4H9v-8l5-4z" fill="white"/>
-      </svg>
-    `),
-  iconSize: [28, 28],
-  iconAnchor: [14, 28],
-  popupAnchor: [0, -24],
+const hostPinIcon = new L.Icon({
+  iconUrl: svgToDataUrl(`
+    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#A3B18A" stroke="#1F2937" stroke-width="1.5"/>
+      <circle cx="17" cy="13" r="7" fill="#F8FAFC"/>
+      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="700" fill="#1F2937">P</text>
+    </svg>
+  `),
+  iconSize: [34, 42],
+  iconAnchor: [17, 40],
+  popupAnchor: [0, -34],
 });
 
-const eventIcon = new L.Icon({
-  iconUrl:
-    "data:image/svg+xml;base64," +
-    btoa(`
-      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="3" y="5" width="24" height="20" rx="4" fill="#7C3AED" stroke="white" stroke-width="3"/>
-        <path d="M9 3v4M21 3v4" stroke="white" stroke-width="3" stroke-linecap="round"/>
-        <path d="M7 12h16" stroke="white" stroke-width="3"/>
-      </svg>
-    `),
-  iconSize: [30, 30],
-  iconAnchor: [15, 30],
+const truckIcon = new L.Icon({
+  iconUrl: svgToDataUrl(`
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="16" cy="16" r="14" fill="#F59E0B" stroke="white" stroke-width="2"/>
+      <path d="M9 18h9l2-4h2.5c.8 0 1.5.7 1.5 1.5V18h-2.2a2 2 0 1 1-4 0H13a2 2 0 1 1-4 0H7v-6h2v6z" fill="#1F2937"/>
+    </svg>
+  `),
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
   popupAnchor: [0, -26],
 });
 
-const parkingPassIcon = new L.Icon({
-  iconUrl:
-    "data:image/svg+xml;base64," +
-    btoa(`
-      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="15" cy="15" r="13" fill="#F97316" stroke="white" stroke-width="3"/>
-        <path d="M12 8h5a4 4 0 0 1 0 8h-5v6h-3V8h3zm0 3v3h4a1.5 1.5 0 0 0 0-3h-4z" fill="white"/>
-      </svg>
-    `),
-  iconSize: [30, 30],
-  iconAnchor: [15, 30],
-  popupAnchor: [0, -24],
-});
-
-const liveTruckIcon = new L.Icon({
-  iconUrl:
-    "data:image/svg+xml;base64," +
-    btoa(`
-      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="15" cy="15" r="13" fill="#10B981" stroke="white" stroke-width="3"/>
-        <path d="M8 17h9l2-4h2.5c.8 0 1.5.7 1.5 1.5V17h-2.5a2 2 0 1 1-4 0H12a2 2 0 1 1-4 0H6v-6h2v6z" fill="white"/>
-      </svg>
-    `),
-  iconSize: [30, 30],
-  iconAnchor: [15, 30],
-  popupAnchor: [0, -24],
+const truckHostedIcon = new L.Icon({
+  iconUrl: svgToDataUrl(`
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="18" cy="18" r="15" fill="#F59E0B" fill-opacity="0.18" stroke="#F59E0B" stroke-width="2"/>
+      <path d="M10 20h11l2-5h3c1 0 2 .9 2 2v3h-2.5a2 2 0 1 1-4 0H15a2 2 0 1 1-4 0H8v-7h2v7z" fill="#F59E0B"/>
+    </svg>
+  `),
+  iconSize: [36, 36],
+  iconAnchor: [18, 34],
+  popupAnchor: [0, -28],
 });
 
 async function geocodeAddress(address: string): Promise<GeoPoint | null> {
@@ -586,41 +532,60 @@ export default function MapPage() {
     });
   }, [liveTrucks, mapBounds]);
 
-  const hasTruckNearby = (coords: GeoPoint, radiusKm = 0.12) => {
-    return truckCoords.some((truck) => {
-      return (
-        haversineKm(coords, { lat: truck.lat, lng: truck.lng }) <= radiusKm
-      );
-    });
-  };
+  const hostedRadiusKm = 0.12;
 
-  const getLiveTruckIcon = (truck: LiveTruck) => {
-    if (zoomLevel < 15) return liveTruckIcon;
-    const label = escapeHtml(truck.name || "Food truck");
-    const detail = zoomLevel >= 17 ? "Tap for profile" : "Live now";
-    const size = zoomLevel >= 17 ? [160, 52] : [120, 44];
-    return L.divIcon({
-      className: "live-truck-marker",
-      html: `
-        <div style="display:flex;align-items:center;gap:8px;background:#ffffff;border:2px solid #10B981;border-radius:14px;padding:6px 10px;box-shadow:0 8px 18px rgba(0,0,0,0.15);font-family:inherit;">
-          <div style="width:14px;height:14px;border-radius:50%;background:#10B981;box-shadow:0 0 0 3px rgba(16,185,129,0.25);"></div>
-          <div style="display:flex;flex-direction:column;">
-            <div style="font-weight:700;font-size:12px;color:#0f172a;line-height:1.1;">${label}</div>
-            <div style="font-size:10px;color:#059669;">${detail}</div>
-          </div>
-        </div>
-      `,
-      iconSize: size as [number, number],
-      iconAnchor: [size[0] / 2, size[1]],
-      popupAnchor: [0, -size[1]],
-    });
-  };
+  const liveTruckById = useMemo(() => {
+    return new Map(liveTrucks.map((truck) => [truck.id, truck]));
+  }, [liveTrucks]);
 
-  const getParkingPassIcon = (coords: GeoPoint | null) => {
-    if (coords && hasTruckNearby(coords)) {
-      return liveTruckIcon;
+  const findNearbyTruck = (coords: GeoPoint, radiusKm = hostedRadiusKm) => {
+    let nearest: { truck: LiveTruck; distance: number } | null = null;
+    for (const truck of truckCoords) {
+      const distance = haversineKm(coords, { lat: truck.lat, lng: truck.lng });
+      if (distance > radiusKm) continue;
+      const truckData = liveTruckById.get(truck.id);
+      if (!truckData) continue;
+      if (!nearest || distance < nearest.distance) {
+        nearest = { truck: truckData, distance };
+      }
     }
-    return parkingPassIcon;
+    return nearest;
+  };
+
+  const resolveHostCoords = (host: HostLocation) => {
+    const lat = toNumberOrNull(host.latitude);
+    const lng = toNumberOrNull(host.longitude);
+    if (lat !== null && lng !== null) {
+      return { lat, lng };
+    }
+    return hostCoords[host.id] ?? null;
+  };
+
+  const resolveEventCoords = (event: EventLocation) => {
+    const lat = toNumberOrNull(event.hostLatitude);
+    const lng = toNumberOrNull(event.hostLongitude);
+    if (lat !== null && lng !== null) {
+      return { lat, lng };
+    }
+    return eventCoords[event.id] ?? null;
+  };
+
+  const resolveParkingCoords = (event: ParkingPassLocation) => {
+    const lat = toNumberOrNull(event.host?.latitude);
+    const lng = toNumberOrNull(event.host?.longitude);
+    if (lat !== null && lng !== null) {
+      return { lat, lng };
+    }
+    return parkingCoords[event.id] ?? null;
+  };
+
+  const formatDistance = (coords: GeoPoint) => {
+    if (!userLocation) return null;
+    const distanceKm = haversineKm(userLocation, coords);
+    if (distanceKm < 1) {
+      return `${Math.round(distanceKm * 1000)} m`;
+    }
+    return `${distanceKm.toFixed(1)} km`;
   };
 
   // Fetch host + event locations for map
@@ -647,15 +612,7 @@ export default function MapPage() {
   const visibleHostLocations = useMemo(() => {
     if (!mapBounds || !mapLocations?.hostLocations?.length) return [];
     return mapLocations.hostLocations.filter((host) => {
-      const coords =
-        hostCoords[host.id] ||
-        (toNumberOrNull(host.latitude) !== null &&
-        toNumberOrNull(host.longitude) !== null
-          ? {
-              lat: Number(host.latitude),
-              lng: Number(host.longitude),
-            }
-          : null);
+      const coords = resolveHostCoords(host);
       if (!coords) return false;
       return mapBounds.contains([coords.lat, coords.lng]);
     });
@@ -664,15 +621,7 @@ export default function MapPage() {
   const visibleEventLocations = useMemo(() => {
     if (!mapBounds || !mapLocations?.eventLocations?.length) return [];
     return mapLocations.eventLocations.filter((event) => {
-      const coords =
-        eventCoords[event.id] ||
-        (toNumberOrNull(event.hostLatitude) !== null &&
-        toNumberOrNull(event.hostLongitude) !== null
-          ? {
-              lat: Number(event.hostLatitude),
-              lng: Number(event.hostLongitude),
-            }
-          : null);
+      const coords = resolveEventCoords(event);
       if (!coords) return false;
       return mapBounds.contains([coords.lat, coords.lng]);
     });
@@ -681,19 +630,46 @@ export default function MapPage() {
   const visibleParkingLocations = useMemo(() => {
     if (!mapBounds || !parkingPassLocations.length) return [];
     return parkingPassLocations.filter((event) => {
-      const coords =
-        parkingCoords[event.id] ||
-        (toNumberOrNull(event.host?.latitude) !== null &&
-        toNumberOrNull(event.host?.longitude) !== null
-          ? {
-              lat: Number(event.host.latitude),
-              lng: Number(event.host.longitude),
-            }
-          : null);
+      const coords = resolveParkingCoords(event);
       if (!coords) return false;
       return mapBounds.contains([coords.lat, coords.lng]);
     });
   }, [parkingPassLocations, parkingCoords, mapBounds]);
+
+  const hostedTruckIds = useMemo(() => {
+    const ids = new Set<string>();
+    visibleHostLocations.forEach((host) => {
+      const coords = resolveHostCoords(host);
+      if (!coords) return;
+      const nearby = findNearbyTruck(coords);
+      if (nearby) ids.add(nearby.truck.id);
+    });
+    visibleParkingLocations.forEach((event) => {
+      const coords = resolveParkingCoords(event);
+      if (!coords) return;
+      const nearby = findNearbyTruck(coords);
+      if (nearby) ids.add(nearby.truck.id);
+    });
+    visibleEventLocations.forEach((event) => {
+      const coords = resolveEventCoords(event);
+      if (!coords) return;
+      const nearby = findNearbyTruck(coords);
+      if (nearby) ids.add(nearby.truck.id);
+    });
+    return ids;
+  }, [
+    visibleHostLocations,
+    visibleParkingLocations,
+    visibleEventLocations,
+    resolveHostCoords,
+    resolveParkingCoords,
+    resolveEventCoords,
+    findNearbyTruck,
+  ]);
+
+  const visibleUnhostedTrucks = useMemo(() => {
+    return visibleLiveTrucks.filter((truck) => !hostedTruckIds.has(truck.id));
+  }, [visibleLiveTrucks, hostedTruckIds]);
 
   useEffect(() => {
     if (
@@ -899,11 +875,18 @@ export default function MapPage() {
   };
 
   const hasLocation = !!userLocation;
-  const hasDeals = visibleDeals.length > 0;
   const liveTruckPins = visibleLiveTrucks.length;
   const hostPins = visibleHostLocations.length;
   const eventPins = visibleEventLocations.length;
   const parkingPins = visibleParkingLocations.length;
+  const activityPins = liveTruckPins + hostPins + eventPins + parkingPins;
+  const headerSubtitle = isLocating
+    ? "Locating live trucks and host spots..."
+    : hasLocation && activityPins > 0
+    ? "Live trucks and host locations nearby"
+    : hasLocation
+    ? "No live trucks or hosts nearby right now"
+    : "Set your location to see live trucks and hosts.";
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
@@ -914,28 +897,22 @@ export default function MapPage() {
         canonicalUrl="https://mealscout.us/map"
       />
       {/* Header */}
-      <header className="px-6 py-6 bg-white border-b border-border relative z-10">
+      <header className="px-6 py-5 bg-white/90 backdrop-blur border-b border-border relative z-10">
         <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Map View</h1>
-            <p className="text-sm text-muted-foreground">
-              {isLocating
-                ? "Finding nearby food trucks..."
-                : hasLocation && liveTruckPins > 0
-                ? "Food trucks and parking spots near you"
-                : hasLocation && hasDeals
-                ? "Deals near you"
-                : hasLocation &&
-                  !hasDeals &&
-                  (hostPins > 0 ||
-                    eventPins > 0 ||
-                    liveTruckPins > 0 ||
-                    parkingPins > 0)
-                ? "Hosts and parking spots near you"
-                : hasLocation && !hasDeals
-                ? "No food trucks nearby right now"
-                : "Set your location to see trucks nearby"}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
+              <img
+                src={mealScoutIcon}
+                alt="MealScout"
+                className="w-7 h-7"
+              />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-foreground">
+                MealScout Map
+              </h1>
+              <p className="text-sm text-muted-foreground">{headerSubtitle}</p>
+            </div>
           </div>
           <div className="flex space-x-2">
             <Button
@@ -980,8 +957,8 @@ export default function MapPage() {
             >
               <MapCenterer center={mapCenter} />
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
               />
 
               {/* User Location Marker */}
@@ -991,12 +968,11 @@ export default function MapPage() {
                   icon={userLocationIcon}
                 >
                   <Popup>
-                    <div className="text-center rounded-xl bg-blue-600 text-white px-3 py-2 shadow-lg">
-                      <div className="font-semibold text-sm">You are here</div>
-                      <div className="text-xs text-blue-100">
-                        {userLocation.lat.toFixed(4)},{" "}
-                        {userLocation.lng.toFixed(4)}
+                    <div className="text-center rounded-xl bg-slate-900 text-white px-3 py-2 shadow-lg">
+                      <div className="text-xs uppercase tracking-wide text-slate-300">
+                        MealScout
                       </div>
+                      <div className="font-semibold text-sm">You are here</div>
                     </div>
                   </Popup>
                 </Marker>
@@ -1012,27 +988,34 @@ export default function MapPage() {
                       deal.restaurant.latitude,
                       deal.restaurant.longitude,
                     ]}
-                    icon={dealMarkerIcon}
+                    icon={hostPinIcon}
                     eventHandlers={{
                       click: () => handleDealClick(deal),
                     }}
                   >
                     <Popup>
-                      <div className="min-w-48 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 text-white p-3 shadow-lg space-y-1">
+                      <div className="min-w-52 rounded-xl bg-white text-slate-900 p-3 shadow-lg space-y-1">
                         <div className="font-semibold text-sm">
-                          {deal.title}
-                        </div>
-                        <div className="text-xs text-red-100">
                           {deal.restaurant.name}
                         </div>
-                        <div className="flex items-center justify-between pt-1">
-                          <span className="font-bold text-sm">
+                        <div className="text-xs text-slate-500">
+                          Deal available
+                        </div>
+                        <div className="flex items-center justify-between pt-1 text-xs">
+                          <span className="font-semibold text-amber-600">
                             {deal.discountValue}% OFF
                           </span>
-                          <span className="text-xs text-orange-100">
-                            Min order: ${deal.minOrderAmount}
+                          <span className="text-slate-500">
+                            Min ${deal.minOrderAmount}
                           </span>
                         </div>
+                        <Button
+                          size="sm"
+                          className="w-full mt-2"
+                          onClick={() => handleDealClick(deal)}
+                        >
+                          View deal
+                        </Button>
                       </div>
                     </Popup>
                   </Marker>
@@ -1040,38 +1023,54 @@ export default function MapPage() {
               })}
 
               {/* Live Truck Markers */}
-              {visibleLiveTrucks.map((truck) => {
+              {visibleUnhostedTrucks.map((truck) => {
                 const lat = toNumberOrNull(truck.currentLatitude);
                 const lng = toNumberOrNull(truck.currentLongitude);
                 if (!lat || !lng) return null;
+                const distanceLabel = formatDistance({ lat, lng });
                 return (
                   <Marker
                     key={`live-${truck.id}`}
                     position={[lat, lng]}
-                    icon={getLiveTruckIcon(truck)}
+                    icon={truckIcon}
                   >
                     <Popup>
-                      <div className="min-w-48 rounded-xl bg-emerald-600 text-white p-3 shadow-lg space-y-1">
+                      <div className="min-w-52 rounded-xl bg-white text-slate-900 p-3 shadow-lg space-y-1">
                         <div className="font-semibold text-sm">
                           {truck.name}
                         </div>
-                        <div className="text-xs text-emerald-100">
-                          Live now
+                        <div className="text-xs text-slate-500">
+                          Food Truck • Live now
                         </div>
-                        {typeof truck.distance === "number" && (
-                          <div className="text-xs text-emerald-100">
-                            {truck.distance.toFixed(1)} km away
+                        {distanceLabel && (
+                          <div className="text-xs text-slate-500">
+                            {distanceLabel} away
                           </div>
                         )}
-                        <Button
-                          size="sm"
-                          className="w-full mt-2 bg-white text-emerald-700 hover:bg-emerald-50"
-                          onClick={() => {
-                            window.location.href = `/restaurant/${truck.id}`;
-                          }}
-                        >
-                          View truck
-                        </Button>
+                        <div className="grid grid-cols-2 gap-2 pt-2">
+                          <Button
+                            size="sm"
+                            className="w-full"
+                            onClick={() => {
+                              window.location.href = `/restaurant/${truck.id}`;
+                            }}
+                          >
+                            View menu
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => {
+                              window.open(
+                                `https://maps.google.com/?q=${lat},${lng}`,
+                                "_blank",
+                              );
+                            }}
+                          >
+                            Directions
+                          </Button>
+                        </div>
                       </div>
                     </Popup>
                   </Marker>
@@ -1080,71 +1079,73 @@ export default function MapPage() {
 
               {/* Host Location Markers (open requests) */}
               {visibleHostLocations.map((host) => {
-                const coords =
-                  hostCoords[host.id] ||
-                  (toNumberOrNull(host.latitude) !== null &&
-                  toNumberOrNull(host.longitude) !== null
-                    ? {
-                        lat: Number(host.latitude),
-                        lng: Number(host.longitude),
-                      }
-                    : null);
+                const coords = resolveHostCoords(host);
                 if (!coords) return null;
+                const hostedTruck = findNearbyTruck(coords);
+                const title = hostedTruck ? hostedTruck.truck.name : host.name;
+                const subtitle = hostedTruck
+                  ? `At ${host.name}`
+                  : "Hosts food trucks";
+                const distanceLabel = formatDistance(coords);
                 return (
                   <Marker
                     key={`host-${host.id}`}
                     position={[coords.lat, coords.lng]}
-                    icon={hasTruckNearby(coords) ? liveTruckIcon : hostIcon}
+                    icon={hostedTruck ? truckHostedIcon : hostPinIcon}
                   >
                     <Popup>
-                      <div className="min-w-52 space-y-1 rounded-xl bg-blue-600 text-white p-3 shadow-lg">
-                        <div className="flex items-center space-x-2">
-                          <Building2 className="w-4 h-4 text-blue-100" />
-                          <div className="font-semibold text-sm">
-                            {host.name}
-                          </div>
-                        </div>
-                        <div className="text-xs text-blue-100">
+                      <div className="min-w-56 space-y-1 rounded-xl bg-white text-slate-900 p-3 shadow-lg">
+                        <div className="font-semibold text-sm">{title}</div>
+                        <div className="text-xs text-slate-500">{subtitle}</div>
+                        <div className="text-xs text-slate-500">
                           {host.address}
                         </div>
-                        {host.locationType && (
-                          <div className="text-[11px] uppercase tracking-wide text-blue-200 font-semibold">
-                            {host.locationType}
+                        {distanceLabel && (
+                          <div className="text-xs text-slate-500">
+                            {distanceLabel} away
                           </div>
                         )}
-                        <div className="pt-2">
-                          <ShareButton
-                            url={`/map?host=${host.id}`}
-                            title={`Host location: ${host.name}`}
-                            description={host.address}
-                            size="sm"
-                            variant="outline"
-                            className="w-full justify-center text-blue-700"
-                          />
-                        </div>
-                        {host.expectedFootTraffic && (
-                          <div className="text-xs text-blue-100">
-                            Expected foot traffic: {host.expectedFootTraffic}
+                        {hostedTruck ? (
+                          <div className="grid grid-cols-2 gap-2 pt-2">
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              onClick={() => {
+                                window.location.href = `/restaurant/${hostedTruck.truck.id}`;
+                              }}
+                            >
+                              View menu
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => {
+                                window.open(
+                                  `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
+                                  "_blank",
+                                );
+                              }}
+                            >
+                              Directions
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="pt-2">
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              onClick={() => {
+                                window.open(
+                                  `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
+                                  "_blank",
+                                );
+                              }}
+                            >
+                              Directions
+                            </Button>
                           </div>
                         )}
-                        {host.preferredDates?.length ? (
-                          <div className="text-xs text-blue-100 flex items-center space-x-1">
-                            <Calendar className="w-3 h-3" />
-                            <span>
-                              {host.preferredDates.slice(0, 3).join(", ")}
-                            </span>
-                          </div>
-                        ) : null}
-                        <Button
-                          size="sm"
-                          className="w-full mt-2 bg-white text-blue-700 hover:bg-blue-50"
-                          onClick={() => {
-                            // Send truck owners to dashboard to book/express interest
-                            window.location.href = `/restaurant-owner-dashboard?locationRequestId=${host.id}`;
-                          }}
-                        >
-                          Request to book
-                        </Button>
                       </div>
                     </Popup>
                   </Marker>
@@ -1153,50 +1154,81 @@ export default function MapPage() {
 
               {/* Event Markers */}
               {visibleEventLocations.map((event) => {
-                const coords =
-                  eventCoords[event.id] ||
-                  (toNumberOrNull(event.hostLatitude) !== null &&
-                  toNumberOrNull(event.hostLongitude) !== null
-                    ? {
-                        lat: Number(event.hostLatitude),
-                        lng: Number(event.hostLongitude),
-                      }
-                    : null);
+                const coords = resolveEventCoords(event);
                 if (!coords) return null;
+                const hostedTruck = findNearbyTruck(coords);
+                const title = hostedTruck ? hostedTruck.truck.name : event.name;
+                const subtitle = hostedTruck
+                  ? `At ${event.hostName || "event location"}`
+                  : event.hostName
+                  ? `Event at ${event.hostName}`
+                  : "Event location";
+                const distanceLabel = formatDistance(coords);
                 return (
                   <Marker
                     key={`event-${event.id}`}
                     position={[coords.lat, coords.lng]}
-                    icon={eventIcon}
+                    icon={hostedTruck ? truckHostedIcon : hostPinIcon}
                   >
                     <Popup>
-                      <div className="min-w-52 space-y-1 rounded-xl bg-purple-600 text-white p-3 shadow-lg">
-                        <div className="font-semibold text-sm">
-                          {event.name}
-                        </div>
-                        {event.hostName && (
-                          <div className="text-xs text-purple-100">
-                            Host: {event.hostName}
-                          </div>
-                        )}
+                      <div className="min-w-56 space-y-1 rounded-xl bg-white text-slate-900 p-3 shadow-lg">
+                        <div className="font-semibold text-sm">{title}</div>
+                        <div className="text-xs text-slate-500">{subtitle}</div>
                         {event.hostAddress && (
-                          <div className="text-xs text-purple-100">
+                          <div className="text-xs text-slate-500">
                             {event.hostAddress}
                           </div>
                         )}
-                        <div className="text-xs text-purple-100">
+                        <div className="text-xs text-slate-500">
                           {new Date(event.date).toLocaleDateString()} •{" "}
                           {event.startTime} - {event.endTime}
                         </div>
-                        <Button
-                          size="sm"
-                          className="w-full mt-2 bg-white text-purple-700 hover:bg-purple-50"
-                          onClick={() => {
-                            window.location.href = `/restaurant-owner-dashboard?eventId=${event.id}`;
-                          }}
-                        >
-                          View & book slot
-                        </Button>
+                        {distanceLabel && (
+                          <div className="text-xs text-slate-500">
+                            {distanceLabel} away
+                          </div>
+                        )}
+                        {hostedTruck ? (
+                          <div className="grid grid-cols-2 gap-2 pt-2">
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              onClick={() => {
+                                window.location.href = `/restaurant/${hostedTruck.truck.id}`;
+                              }}
+                            >
+                              View menu
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => {
+                                window.open(
+                                  `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
+                                  "_blank",
+                                );
+                              }}
+                            >
+                              Directions
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="pt-2">
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              onClick={() => {
+                                window.open(
+                                  `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
+                                  "_blank",
+                                );
+                              }}
+                            >
+                              Directions
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </Popup>
                   </Marker>
@@ -1205,62 +1237,81 @@ export default function MapPage() {
 
               {/* Parking Pass Markers */}
               {visibleParkingLocations.map((event) => {
-                const coords =
-                  parkingCoords[event.id] ||
-                  (toNumberOrNull(event.host?.latitude) !== null &&
-                  toNumberOrNull(event.host?.longitude) !== null
-                    ? {
-                        lat: Number(event.host.latitude),
-                        lng: Number(event.host.longitude),
-                      }
-                    : null);
+                const coords = resolveParkingCoords(event);
                 if (!coords) return null;
+                const hostedTruck = findNearbyTruck(coords);
+                const hostName = event.host?.businessName || "Host location";
+                const title = hostedTruck ? hostedTruck.truck.name : hostName;
+                const subtitle = hostedTruck ? `At ${hostName}` : "Hosts food trucks";
+                const distanceLabel = formatDistance(coords);
                 return (
                   <Marker
                     key={`parking-${event.id}`}
                     position={[coords.lat, coords.lng]}
-                    icon={getParkingPassIcon(coords)}
+                    icon={hostedTruck ? truckHostedIcon : hostPinIcon}
                   >
                     <Popup>
-                      <div className="min-w-52 space-y-1 rounded-xl bg-orange-600 text-white p-3 shadow-lg">
-                        <div className="font-semibold text-sm">
-                          Parking Pass
-                        </div>
-                        <div className="text-xs text-orange-100">
-                          {event.host?.businessName}
-                        </div>
-                        <div className="text-xs text-orange-100">
-                          {event.host?.address}
-                        </div>
-                        <div className="text-xs text-orange-100">
-                          {new Date(event.date).toLocaleDateString()} -{" "}
+                      <div className="min-w-56 space-y-1 rounded-xl bg-white text-slate-900 p-3 shadow-lg">
+                        <div className="font-semibold text-sm">{title}</div>
+                        <div className="text-xs text-slate-500">{subtitle}</div>
+                        {event.host?.address && (
+                          <div className="text-xs text-slate-500">
+                            {event.host.address}
+                          </div>
+                        )}
+                        <div className="text-xs text-slate-500">
+                          {new Date(event.date).toLocaleDateString()} •{" "}
                           {event.startTime === "00:00" &&
                           event.endTime === "23:59"
                             ? "Any time"
                             : `${event.startTime} - ${event.endTime}`}
                         </div>
-                        <ShareButton
-                          url={`/parking-pass?date=${encodeURIComponent(
-                            new Date(event.date).toISOString().split("T")[0],
-                          )}&pass=${event.id}`}
-                          title={`Parking Pass at ${event.host?.businessName || "Host"}`}
-                          description={event.host?.address || "Parking pass location"}
-                          size="sm"
-                          variant="outline"
-                          className="w-full justify-center text-orange-700"
-                        />
-                        <Button
-                          size="sm"
-                          className="w-full mt-2 bg-white text-orange-700 hover:bg-orange-50"
-                          onClick={() => {
-                            const day = new Date(event.date)
-                              .toISOString()
-                              .split("T")[0];
-                            window.location.href = `/parking-pass?date=${day}`;
-                          }}
-                        >
-                          View spots
-                        </Button>
+                        {distanceLabel && (
+                          <div className="text-xs text-slate-500">
+                            {distanceLabel} away
+                          </div>
+                        )}
+                        {hostedTruck ? (
+                          <div className="grid grid-cols-2 gap-2 pt-2">
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              onClick={() => {
+                                window.location.href = `/restaurant/${hostedTruck.truck.id}`;
+                              }}
+                            >
+                              View menu
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => {
+                                window.open(
+                                  `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
+                                  "_blank",
+                                );
+                              }}
+                            >
+                              Directions
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="pt-2">
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              onClick={() => {
+                                window.open(
+                                  `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
+                                  "_blank",
+                                );
+                              }}
+                            >
+                              Directions
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </Popup>
                   </Marker>

@@ -256,7 +256,10 @@ export default function Navigation() {
   const foodTruckNavItems: NavItem[] = mergeNavItems(
     sharedNavItems,
     customerExtras,
-    [{ path: "/parking-pass", icon: ParkingSquare, label: "Parking Pass" }],
+    [
+      { path: "/events", icon: Calendar, label: "Events" },
+      { path: "/parking-pass", icon: ParkingSquare, label: "Parking Pass" },
+    ],
   );
 
   const navItems = !user

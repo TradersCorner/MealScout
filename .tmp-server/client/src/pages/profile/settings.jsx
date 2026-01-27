@@ -1,0 +1,170 @@
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import Navigation from "@/components/navigation";
+import NotificationSettings from "@/components/notification-settings";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Settings, Globe, Shield, Bell } from "lucide-react";
+import { Link } from "wouter";
+export default function SettingsPage() {
+    var _a = useAuth(), user = _a.user, isAuthenticated = _a.isAuthenticated;
+    var _b = useState({
+        language: "english",
+        currency: "usd",
+        locationServices: true,
+        analytics: true,
+        marketing: false,
+    }), settings = _b[0], setSettings = _b[1];
+    if (!isAuthenticated || !user) {
+        return (<div className="max-w-md mx-auto bg-[var(--bg-app)] min-h-screen relative pb-20">
+        <div className="text-center py-12">
+          <Settings className="w-16 h-16 text-muted-foreground mx-auto mb-4"/>
+          <h2 className="text-xl font-semibold mb-2">Sign in required</h2>
+          <p className="text-muted-foreground">Log in to access your settings</p>
+        </div>
+        <Navigation />
+      </div>);
+    }
+    var handleToggle = function (key) {
+        setSettings(function (prev) {
+            var _a;
+            return (__assign(__assign({}, prev), (_a = {}, _a[key] = !prev[key], _a)));
+        });
+    };
+    var handleSelectChange = function (key, value) {
+        setSettings(function (prev) {
+            var _a;
+            return (__assign(__assign({}, prev), (_a = {}, _a[key] = value, _a)));
+        });
+    };
+    return (<div className="max-w-md mx-auto bg-[var(--bg-app)] min-h-screen relative pb-20">
+      {/* Header */}
+      <header className="px-6 py-6 bg-[hsl(var(--background))] border-b border-white/5">
+        <div className="flex items-center mb-2">
+          <Link href="/profile">
+            <Button variant="ghost" size="sm" className="mr-3 -ml-2" data-testid="button-back-settings">
+              <ArrowLeft className="w-4 h-4"/>
+            </Button>
+          </Link>
+          <div className="flex items-center">
+            <Settings className="w-6 h-6 text-primary mr-3"/>
+            <h1 className="text-xl font-bold text-foreground">Settings</h1>
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground">Customize your MealScout experience</p>
+      </header>
+
+      {/* Tabbed Content */}
+      <div className="px-6 py-6">
+        <Tabs defaultValue="general" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="general" data-testid="tab-general">General</TabsTrigger>
+            <TabsTrigger value="notifications" data-testid="tab-notifications">
+              <Bell className="w-4 h-4 mr-1"/>
+              Alerts
+            </TabsTrigger>
+            <TabsTrigger value="privacy" data-testid="tab-privacy">Privacy</TabsTrigger>
+          </TabsList>
+
+          {/* General Settings */}
+          <TabsContent value="general" className="space-y-6">
+
+            {/* Regional */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center">
+                  <Globe className="w-5 h-5 mr-2"/>
+                  Regional
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="font-medium mb-2">Language</p>
+                  <Select value={settings.language} onValueChange={function (value) { return handleSelectChange('language', value); }}>
+                    <SelectTrigger data-testid="select-language">
+                      <SelectValue placeholder="Select language"/>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="english">English</SelectItem>
+                      <SelectItem value="spanish">Español</SelectItem>
+                      <SelectItem value="french">Français</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <p className="font-medium mb-2">Currency</p>
+                  <Select value={settings.currency} onValueChange={function (value) { return handleSelectChange('currency', value); }}>
+                    <SelectTrigger data-testid="select-currency">
+                      <SelectValue placeholder="Select currency"/>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="usd">USD ($)</SelectItem>
+                      <SelectItem value="eur">EUR (€)</SelectItem>
+                      <SelectItem value="gbp">GBP (£)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Notification Settings */}
+          <TabsContent value="notifications">
+            <NotificationSettings />
+          </TabsContent>
+
+          {/* Privacy Settings */}
+          <TabsContent value="privacy" className="space-y-6">
+            {/* Privacy */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center">
+                  <Shield className="w-5 h-5 mr-2"/>
+                  Privacy
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Location Services</p>
+                    <p className="text-sm text-muted-foreground">Allow location access for nearby deals</p>
+                  </div>
+                  <Switch checked={settings.locationServices} onCheckedChange={function () { return handleToggle('locationServices'); }} data-testid="switch-location"/>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Analytics</p>
+                    <p className="text-sm text-muted-foreground">Help improve MealScout</p>
+                  </div>
+                  <Switch checked={settings.analytics} onCheckedChange={function () { return handleToggle('analytics'); }} data-testid="switch-analytics"/>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Marketing Communications</p>
+                    <p className="text-sm text-muted-foreground">Receive promotional emails</p>
+                  </div>
+                  <Switch checked={settings.marketing} onCheckedChange={function () { return handleToggle('marketing'); }} data-testid="switch-marketing"/>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      <Navigation />
+    </div>);
+}

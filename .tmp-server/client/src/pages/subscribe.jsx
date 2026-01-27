@@ -1,0 +1,748 @@
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __generator = (this && this.__generator) || function (thisArg, body) {
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
+    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (g && (g = 0, op[0] && (_ = 0)), _) try {
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+    }
+};
+import { useStripe, Elements, PaymentElement, useElements, } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
+import { useState } from "react";
+import { Link, useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { BackHeader } from "@/components/back-header";
+import { CreditCard, Check, Calendar, AlertCircle, CheckCircle, } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+// Make sure to call `loadStripe` outside of a component's render to avoid
+// recreating the `Stripe` object on every render.
+var getStripePromise = function () {
+    return import.meta.env.VITE_STRIPE_PUBLIC_KEY
+        ? loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
+        : null;
+};
+var stripePromise = getStripePromise();
+var PaymentForm = function (_a) {
+    var clientSecret = _a.clientSecret, _b = _a.intentType, intentType = _b === void 0 ? "payment" : _b, onSuccess = _a.onSuccess;
+    var stripe = useStripe();
+    var elements = useElements();
+    var toast = useToast().toast;
+    var _c = useState(false), isProcessing = _c[0], setIsProcessing = _c[1];
+    var handleSubmit = function (e) { return __awaiter(void 0, void 0, void 0, function () {
+        var result, paymentIntentId, error_1;
+        var _a, _b;
+        return __generator(this, function (_c) {
+            switch (_c.label) {
+                case 0:
+                    e.preventDefault();
+                    if (!stripe || !elements) {
+                        return [2 /*return*/];
+                    }
+                    setIsProcessing(true);
+                    _c.label = 1;
+                case 1:
+                    _c.trys.push([1, 6, 7, 8]);
+                    result = void 0;
+                    if (!(intentType === "setup")) return [3 /*break*/, 3];
+                    return [4 /*yield*/, stripe.confirmSetup({
+                            elements: elements,
+                            confirmParams: {
+                                return_url: window.location.origin + "/deal-creation",
+                            },
+                            redirect: "if_required",
+                        })];
+                case 2:
+                    result = _c.sent();
+                    return [3 /*break*/, 5];
+                case 3: return [4 /*yield*/, stripe.confirmPayment({
+                        elements: elements,
+                        confirmParams: {
+                            return_url: window.location.origin + "/deal-creation",
+                        },
+                        redirect: "if_required",
+                    })];
+                case 4:
+                    result = _c.sent();
+                    _c.label = 5;
+                case 5:
+                    if (result.error) {
+                        toast({
+                            title: intentType === "setup" ? "Setup Failed" : "Payment Failed",
+                            description: result.error.message,
+                            variant: "destructive",
+                        });
+                    }
+                    else {
+                        toast({
+                            title: intentType === "setup"
+                                ? "Setup Successful!"
+                                : "Payment Successful!",
+                            description: "Welcome to MealScout! You can now create deals.",
+                        });
+                        paymentIntentId = intentType === "setup"
+                            ? "setupIntent" in result
+                                ? (_a = result.setupIntent) === null || _a === void 0 ? void 0 : _a.id
+                                : undefined
+                            : "paymentIntent" in result
+                                ? (_b = result.paymentIntent) === null || _b === void 0 ? void 0 : _b.id
+                                : undefined;
+                        if (paymentIntentId) {
+                            onSuccess(paymentIntentId);
+                        }
+                    }
+                    return [3 /*break*/, 8];
+                case 6:
+                    error_1 = _c.sent();
+                    toast({
+                        title: intentType === "setup" ? "Setup Error" : "Payment Error",
+                        description: error_1.message || "An unexpected error occurred",
+                        variant: "destructive",
+                    });
+                    return [3 /*break*/, 8];
+                case 7:
+                    setIsProcessing(false);
+                    return [7 /*endfinally*/];
+                case 8: return [2 /*return*/];
+            }
+        });
+    }); };
+    return (<form onSubmit={handleSubmit} className="space-y-6">
+      <div className="bg-white border border-border rounded-lg p-4">
+        <PaymentElement options={{
+            layout: "tabs",
+        }}/>
+      </div>
+
+      <Button type="submit" className="w-full py-3 font-semibold text-sm" disabled={!stripe || !elements || isProcessing} data-testid="button-pay-now">
+        {isProcessing ? "Processing..." : "Complete Payment"}
+      </Button>
+    </form>);
+};
+var PlanSelector = function (_a) {
+    var billingInterval = _a.billingInterval, promoCode = _a.promoCode, onBillingIntervalChange = _a.onBillingIntervalChange, onPromoCodeChange = _a.onPromoCodeChange, onContinue = _a.onContinue;
+    var getPricingDisplay = function () { return "$50 -> $25/month"; };
+    var getPricingAmount = function () { return "$25"; };
+    return (<div className="space-y-6">
+      {/* Monthly Only */}
+      <Card className="bg-gradient-to-r from-green-50 to-teal-50 border-green-200">
+        <CardContent className="p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">
+            Monthly Plan
+          </h3>
+          <div className="grid grid-cols-1 gap-4">
+            <div className="border rounded-lg p-4 text-center border-green-500 bg-green-50 shadow-md" onClick={function () { return onBillingIntervalChange("month"); }} data-testid="card-billing-monthly">
+              <div className="font-semibold text-gray-900 mb-1">Monthly</div>
+              <div className="text-2xl font-bold text-green-600 mb-2">
+                <span className="line-through text-gray-400 mr-2">$50</span>$25
+              </div>
+              <div className="text-sm text-gray-600">per month</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Promo Code */}
+      <Card>
+        <CardContent className="p-6">
+          <Label htmlFor="promoCode" className="text-base font-semibold text-gray-900 mb-2 block">
+            Promo Code (Optional)
+          </Label>
+          <Input id="promoCode" type="text" placeholder="Enter promo code" value={promoCode} onChange={function (e) { return onPromoCodeChange(e.target.value.toUpperCase()); }} className="text-center font-mono" data-testid="input-promo-code"/>
+          <p className="text-sm text-muted-foreground mt-2 text-center">
+            If you received a promo code from MealScout, enter it above.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Summary and Continue */}
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+        <CardContent className="p-6">
+          <div className="text-center">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
+              Plan Summary
+            </h3>
+            <div className="flex justify-center items-center space-x-2 mb-2">
+              <Check className="w-5 h-5 text-green-600"/>
+              <span className="font-semibold">MealScout Premium Plan</span>
+            </div>
+            <div className="text-3xl font-bold text-blue-600 mb-2">
+              {getPricingAmount()}
+            </div>
+            <div className="text-sm text-gray-600 mb-4">
+              {getPricingDisplay()}
+            </div>
+            {promoCode && (<div className="text-sm text-green-600 mb-4">
+                Promo code: {promoCode}
+              </div>)}
+            <Button onClick={onContinue} className="w-full py-3 font-semibold text-sm" data-testid="button-continue-to-payment">
+              Continue to Payment
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>);
+};
+var SubscriptionManagement = function () {
+    var user = useAuth().user;
+    var toast = useToast().toast;
+    var _a = useQuery({
+        queryKey: ["/api/subscription/status"],
+        enabled: !!user,
+        retry: false,
+        refetchOnWindowFocus: false,
+    }), subscriptionStatus = _a.data, isLoading = _a.isLoading, isError = _a.isError;
+    var _b = useState(false), showCancelDialog = _b[0], setShowCancelDialog = _b[1];
+    var cancelMutation = useMutation({
+        mutationFn: function () { return __awaiter(void 0, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, apiRequest("POST", "/api/subscription/cancel")];
+                    case 1: return [2 /*return*/, _a.sent()];
+                }
+            });
+        }); },
+        onSuccess: function () {
+            toast({
+                title: "Subscription Cancelled",
+                description: "Your subscription has been cancelled.",
+            });
+            queryClient.invalidateQueries({ queryKey: ["/api/subscription/status"] });
+            setShowCancelDialog(false);
+        },
+        onError: function (error) {
+            toast({
+                title: "Cancellation Failed",
+                description: error.message || "Failed to cancel subscription",
+                variant: "destructive",
+            });
+        },
+    });
+    var getStatusBadge = function (status) {
+        switch (status) {
+            case "active":
+                return (<Badge className="bg-green-500">
+            <CheckCircle className="h-3 w-3 mr-1"/>
+            Active
+          </Badge>);
+            case "canceled":
+                return (<Badge variant="destructive">
+            <AlertCircle className="h-3 w-3 mr-1"/>
+            Cancelled
+          </Badge>);
+            case "past_due":
+                return (<Badge variant="destructive">
+            <AlertCircle className="h-3 w-3 mr-1"/>
+            Past Due
+          </Badge>);
+            case "none":
+                return <Badge variant="secondary">No Subscription</Badge>;
+            default:
+                return <Badge variant="secondary">{status}</Badge>;
+        }
+    };
+    var formatDate = function (timestamp) {
+        return new Date(timestamp * 1000).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        });
+    };
+    if (isLoading) {
+        return (<Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"/>
+        </CardContent>
+      </Card>);
+    }
+    return (<div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5"/>
+            Current Subscription
+          </CardTitle>
+          <CardDescription>
+            Your subscription status and billing information
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium">Status</span>
+            {getStatusBadge((subscriptionStatus === null || subscriptionStatus === void 0 ? void 0 : subscriptionStatus.status) || "none")}
+          </div>
+
+          {(subscriptionStatus === null || subscriptionStatus === void 0 ? void 0 : subscriptionStatus.status) === "active" && (<>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium flex items-center gap-2">
+                  <Calendar className="h-4 w-4"/>
+                  Current Period Ends
+                </span>
+                <span className="text-sm">
+                  {subscriptionStatus.currentPeriodEnd
+                ? formatDate(subscriptionStatus.currentPeriodEnd)
+                : "N/A"}
+                </span>
+              </div>
+
+              {subscriptionStatus.cancelAtPeriodEnd && (<div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-amber-800">
+                    <AlertCircle className="h-4 w-4"/>
+                    <span className="text-sm font-medium">
+                      Subscription will cancel at the end of the billing period
+                    </span>
+                  </div>
+                </div>)}
+
+              <div className="pt-4 border-t">
+                <h4 className="font-medium mb-2">Subscription Features</h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500"/>
+                    Create unlimited meal deals
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500"/>
+                    Reach customers within 10km radius
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500"/>
+                    Analytics and insights dashboard
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500"/>
+                    Priority customer support
+                  </li>
+                </ul>
+              </div>
+            </>)}
+
+          {(subscriptionStatus === null || subscriptionStatus === void 0 ? void 0 : subscriptionStatus.status) === "active" &&
+            !subscriptionStatus.cancelAtPeriodEnd && (<div className="pt-4 space-y-2">
+                <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="destructive" className="w-full" data-testid="button-cancel-subscription">
+                      Cancel Subscription
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Cancel Subscription</DialogTitle>
+                      <DialogDescription>
+                        This will cancel your subscription immediately.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={function () { return setShowCancelDialog(false); }}>
+                        Keep Subscription
+                      </Button>
+                      <Button variant="destructive" onClick={function () { return cancelMutation.mutate(); }} disabled={cancelMutation.isPending}>
+                        {cancelMutation.isPending
+                ? "Cancelling..."
+                : "Yes, Cancel Now"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>)}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Billing History</CardTitle>
+          <CardDescription>
+            View your past invoices and payments
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Billing history will be available after your first payment.
+          </p>
+        </CardContent>
+      </Card>
+    </div>);
+};
+export default function Subscribe() {
+    var _this = this;
+    var _a = useAuth(), user = _a.user, isAuthenticated = _a.isAuthenticated, isLoading = _a.isLoading;
+    var toast = useToast().toast;
+    var _b = useLocation(), setLocation = _b[1];
+    // Plan selection state
+    var _c = useState("month"), billingInterval = _c[0], setBillingInterval = _c[1];
+    var _d = useState(""), promoCode = _d[0], setPromoCode = _d[1];
+    var _e = useState(""), creditsToApply = _e[0], setCreditsToApply = _e[1];
+    // Subscription flow state
+    var _f = useState({
+        status: "selecting",
+    }), subscriptionState = _f[0], setSubscriptionState = _f[1];
+    // Debug: Log auth status
+    console.log("Subscribe page - Auth Status:", {
+        isAuthenticated: isAuthenticated,
+        isLoading: isLoading,
+        hasUser: !!user,
+        userEmail: user === null || user === void 0 ? void 0 : user.email,
+    });
+    // Check current subscription status to determine which view to show
+    var currentSubscription = useQuery({
+        queryKey: ["/api/subscription/status"],
+        enabled: !!user,
+    }).data;
+    var creditBalanceData = useQuery({
+        queryKey: ["/api/payout/balance"],
+        enabled: !!user,
+    }).data;
+    var initializeSubscription = function () { return __awaiter(_this, void 0, void 0, function () {
+        var response, data, createResp, createData, error_2;
+        var _a, _b;
+        return __generator(this, function (_c) {
+            switch (_c.label) {
+                case 0:
+                    setSubscriptionState({ status: "initializing" });
+                    _c.label = 1;
+                case 1:
+                    _c.trys.push([1, 13, , 14]);
+                    console.log("Initializing subscription with promo code:", promoCode);
+                    return [4 /*yield*/, apiRequest("POST", "/api/subscriptions/initialize", {
+                            hasMultipleDeals: false, // Always false now - single tier pricing
+                            billingInterval: billingInterval,
+                            promoCode: promoCode || undefined,
+                        })];
+                case 2:
+                    response = _c.sent();
+                    return [4 /*yield*/, response.json()];
+                case 3:
+                    data = _c.sent();
+                    console.log("Subscription response:", data);
+                    if (!(data && data.status === "active")) return [3 /*break*/, 7];
+                    // BETA or free promo code - no payment required
+                    console.log("BETA access granted successfully");
+                    toast({
+                        title: "Success!",
+                        description: data.message || "Your subscription is now active!",
+                    });
+                    // Invalidate and refetch queries to refresh subscription status
+                    return [4 /*yield*/, queryClient.invalidateQueries({
+                            queryKey: ["/api/subscription/status"],
+                        })];
+                case 4:
+                    // Invalidate and refetch queries to refresh subscription status
+                    _c.sent();
+                    return [4 /*yield*/, queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] })];
+                case 5:
+                    _c.sent();
+                    // Wait for refetch to complete
+                    return [4 /*yield*/, queryClient.refetchQueries({ queryKey: ["/api/auth/user"] })];
+                case 6:
+                    // Wait for refetch to complete
+                    _c.sent();
+                    // Redirect to deal creation
+                    setTimeout(function () { return setLocation("/deal-creation"); }, 1000);
+                    return [3 /*break*/, 12];
+                case 7:
+                    if (!(data && data.status === "requires_payment")) return [3 /*break*/, 8];
+                    console.log("Payment required, showing payment form");
+                    setSubscriptionState({
+                        status: "requires_payment",
+                        subscriptionId: data.subscriptionId,
+                        clientSecret: data.clientSecret,
+                        intentType: data.intentType || "payment",
+                    });
+                    return [3 /*break*/, 12];
+                case 8:
+                    if (!(data && data.status === "quote")) return [3 /*break*/, 11];
+                    // Read-only initialize: now create the actual subscription
+                    console.log("Received quote; creating subscription with server-selected Price ID");
+                    return [4 /*yield*/, apiRequest("POST", "/api/create-subscription", {
+                            billingInterval: billingInterval,
+                            promoCode: promoCode || undefined,
+                            applyCreditsCents: Math.max(0, Math.floor(Number(creditsToApply || 0) * 100)),
+                        })];
+                case 9:
+                    createResp = _c.sent();
+                    return [4 /*yield*/, createResp.json()];
+                case 10:
+                    createData = _c.sent();
+                    if (createResp.ok &&
+                        createData &&
+                        createData.subscriptionId &&
+                        createData.clientSecret) {
+                        setSubscriptionState({
+                            status: "requires_payment",
+                            subscriptionId: createData.subscriptionId,
+                            clientSecret: createData.clientSecret,
+                            intentType: "payment",
+                        });
+                    }
+                    else {
+                        console.error("Create subscription failed:", createData);
+                        setSubscriptionState({
+                            status: "error",
+                            error: ((_a = createData === null || createData === void 0 ? void 0 : createData.error) === null || _a === void 0 ? void 0 : _a.message) ||
+                                "Failed to create subscription after quote.",
+                        });
+                    }
+                    return [3 /*break*/, 12];
+                case 11:
+                    console.error("Unexpected response:", data);
+                    setSubscriptionState({
+                        status: "error",
+                        error: ((_b = data.error) === null || _b === void 0 ? void 0 : _b.message) ||
+                            data.message ||
+                            "Unable to initialize payment. Please try again.",
+                    });
+                    _c.label = 12;
+                case 12: return [3 /*break*/, 14];
+                case 13:
+                    error_2 = _c.sent();
+                    console.error("Error initializing subscription:", error_2);
+                    if (isUnauthorizedError(error_2)) {
+                        toast({
+                            title: "Unauthorized",
+                            description: "You are logged out. Logging in again...",
+                            variant: "destructive",
+                        });
+                        setTimeout(function () {
+                            window.location.href = "/api/auth/google/restaurant";
+                        }, 500);
+                        return [2 /*return*/];
+                    }
+                    setSubscriptionState({
+                        status: "error",
+                        error: error_2.message ||
+                            "Failed to initialize subscription. Please try again.",
+                    });
+                    return [3 /*break*/, 14];
+                case 14: return [2 /*return*/];
+            }
+        });
+    }); };
+    var handlePaymentSuccess = function (paymentIntentId) { return __awaiter(_this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            setLocation("/deal-creation");
+            return [2 /*return*/];
+        });
+    }); };
+    var handleRetry = function () {
+        setSubscriptionState({ status: "selecting" });
+    };
+    var showNewSubscription = function () {
+        setSubscriptionState({ status: "selecting" });
+    };
+    if (isLoading) {
+        return (<div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" aria-label="Loading"/>
+      </div>);
+    }
+    if (!isAuthenticated) {
+        return (<div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-center text-muted-foreground mb-4">
+              Please log in to manage your subscription
+            </p>
+            <Button onClick={function () {
+                return (window.location.href = "/api/auth/google/restaurant");
+            }} className="w-full">
+              Log In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>);
+    }
+    // Show message if Stripe is not configured
+    if (!stripePromise) {
+        return (<div className="max-w-md mx-auto bg-white min-h-screen">
+        <BackHeader title="Pricing & Subscriptions" fallbackHref="/restaurant-owner-dashboard" icon={CreditCard}/>
+        <div className="px-4 py-6 flex items-center justify-center min-h-[50vh]">
+          <Card>
+            <CardContent className="p-6 text-center">
+              <i className="fas fa-cog text-muted-foreground text-3xl mb-4"></i>
+              <h2 className="text-lg font-semibold text-foreground mb-2">
+                Payment Setup Required
+              </h2>
+              <p className="text-muted-foreground mb-4">
+                Stripe payment processing is not yet configured.
+              </p>
+              <Link href="/deal-creation">
+                <Button className="w-full mb-2">
+                  Create Deals (Demo Mode)
+                </Button>
+              </Link>
+              <Link href="/">
+                <Button variant="outline" className="w-full">
+                  Back to Home
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      </div>);
+    }
+    // Determine which view to show based on subscription status
+    var hasActiveSubscription = (currentSubscription === null || currentSubscription === void 0 ? void 0 : currentSubscription.status) === "active";
+    var showManagement = hasActiveSubscription && subscriptionState.status === "selecting";
+    return (<div className="max-w-md mx-auto bg-white min-h-screen">
+      <BackHeader title="Pricing & Subscriptions" fallbackHref="/restaurant-owner-dashboard" icon={CreditCard}/>
+
+      <div className="px-4 py-6">
+        {/* If user has active subscription and not in payment flow, show management */}
+        {showManagement && (<div className="space-y-6">
+            <SubscriptionManagement />
+
+            {/* Option to upgrade/change plan */}
+            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+              <CardContent className="p-6 text-center">
+                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                  Change Plan or Use Promo Code
+                </h3>
+                <p className="text-sm text-gray-600 mb-2">
+                  Change your billing frequency or apply a promo code
+                </p>
+                <p className="text-xs text-blue-600 font-medium mb-4">
+                  💡 Use code "BETA" for free access or "TEST1" for $1 testing
+                </p>
+                <Button onClick={showNewSubscription} variant="outline" className="w-full" data-testid="button-change-plan">
+                  View Plans & Enter Promo Code
+                </Button>
+              </CardContent>
+            </Card>
+          </div>)}
+
+        {/* Show plan selection for new users or when changing plans */}
+        {subscriptionState.status === "selecting" && !showManagement && (<div className="space-y-6">
+            {/* If user has active subscription, show note about changing plans */}
+            {hasActiveSubscription && (<Card className="bg-amber-50 border-amber-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 text-amber-800">
+                    <AlertCircle className="h-4 w-4"/>
+                    <span className="text-sm font-medium">
+                      You currently have an active subscription. Selecting a new
+                      plan will replace your current plan.
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>)}
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Apply Credits</CardTitle>
+                <CardDescription>
+                  Credits can reduce your next subscription invoice.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-sm text-gray-700">
+                  Available: ${Number((creditBalanceData === null || creditBalanceData === void 0 ? void 0 : creditBalanceData.balance) || 0).toFixed(2)}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="credit-apply">Credits to apply</Label>
+                  <Input id="credit-apply" type="number" min="0" step="0.01" value={creditsToApply} onChange={function (e) { return setCreditsToApply(e.target.value); }} placeholder="0.00"/>
+                  <p className="text-xs text-gray-500">
+                    Credits apply to the upcoming invoice only.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <PlanSelector billingInterval={billingInterval} promoCode={promoCode} onBillingIntervalChange={setBillingInterval} onPromoCodeChange={setPromoCode} onContinue={initializeSubscription}/>
+
+            {/* If user has active subscription, show option to go back to management */}
+            {hasActiveSubscription && (<Card>
+                <CardContent className="p-4 text-center">
+                  <Button variant="outline" onClick={function () {
+                    return setSubscriptionState({ status: "selecting" });
+                }} className="w-full" data-testid="button-back-to-management">
+                    Back to Subscription Management
+                  </Button>
+                </CardContent>
+              </Card>)}
+          </div>)}
+
+        {/* Show subscription not found for users without subscriptions */}
+        {(currentSubscription === null || currentSubscription === void 0 ? void 0 : currentSubscription.status) === "none" &&
+            subscriptionState.status === "selecting" && (<PlanSelector billingInterval={billingInterval} promoCode={promoCode} onBillingIntervalChange={setBillingInterval} onPromoCodeChange={setPromoCode} onContinue={initializeSubscription}/>)}
+
+        {subscriptionState.status === "initializing" && (<div className="flex items-center justify-center min-h-[50vh]">
+            <div className="text-center">
+              <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" aria-label="Loading"/>
+              <p className="text-muted-foreground" data-testid="text-initializing">
+                Initializing your subscription...
+              </p>
+            </div>
+          </div>)}
+
+        {subscriptionState.status === "requires_payment" &&
+            subscriptionState.clientSecret && (<Elements stripe={stripePromise} options={{ clientSecret: subscriptionState.clientSecret }}>
+              <div className="space-y-6">
+                <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+                  <CardContent className="p-6 text-center">
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">
+                      Complete Your Payment
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                        MealScout Restaurant Plan • $50 -&gt; $25/month
+                    </p>
+                  </CardContent>
+                </Card>
+                <PaymentForm clientSecret={subscriptionState.clientSecret} intentType={subscriptionState.intentType} onSuccess={function (paymentIntentId) {
+                return handlePaymentSuccess(paymentIntentId);
+            }}/>
+              </div>
+            </Elements>)}
+
+        {subscriptionState.status === "error" && (<div className="flex items-center justify-center min-h-[50vh]">
+            <Card>
+              <CardContent className="p-6 text-center">
+                <i className="fas fa-exclamation-triangle text-destructive text-3xl mb-4"></i>
+                <h2 className="text-lg font-semibold text-foreground mb-2">
+                  Setup Error
+                </h2>
+                <p className="text-muted-foreground mb-4" data-testid="text-error-message">
+                  {subscriptionState.error}
+                </p>
+                <Button onClick={handleRetry} className="w-full">
+                  Try Again
+                </Button>
+              </CardContent>
+            </Card>
+          </div>)}
+      </div>
+    </div>);
+}

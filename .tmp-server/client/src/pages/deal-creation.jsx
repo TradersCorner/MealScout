@@ -1,0 +1,868 @@
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __generator = (this && this.__generator) || function (thisArg, body) {
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
+    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (g && (g = 0, op[0] && (_ = 0)), _) try {
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+    }
+};
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
+import { useState, useRef, useEffect, useMemo } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+import { Link, useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, } from "@/components/ui/form";
+import { Badge } from "@/components/ui/badge";
+import { Upload, X, Eye, Sparkles, Clock, Users, DollarSign, } from "lucide-react";
+import { BackHeader } from "@/components/back-header";
+import Navigation from "@/components/navigation";
+var dealSchema = z
+    .object({
+    title: z.string().min(1, "Special title is required"),
+    description: z.string().min(1, "Description is required"),
+    dealType: z.enum(["percentage", "fixed"]),
+    discountValue: z.string().min(1, "Discount value is required"),
+    minOrderAmount: z.string().optional(),
+    imageUrl: z.string().min(1, "Special image is required"),
+    startDate: z.string().min(1, "Start date is required"),
+    endDate: z.string().optional(),
+    startTime: z.string().optional(),
+    endTime: z.string().optional(),
+    availableDuringBusinessHours: z.boolean().default(false),
+    isOngoing: z.boolean().default(false),
+    totalUsesLimit: z.string().optional(),
+    perCustomerLimit: z.string().optional(),
+    facebookPageUrl: z.string().optional(),
+})
+    .refine(function (data) {
+    // If not ongoing, endDate is required
+    if (!data.isOngoing && !data.endDate) {
+        return false;
+    }
+    return true;
+}, { message: "End date is required for non-ongoing deals", path: ["endDate"] })
+    .refine(function (data) {
+    // If not available during business hours, times are required
+    if (!data.availableDuringBusinessHours &&
+        (!data.startTime || !data.endTime)) {
+        return false;
+    }
+    return true;
+}, {
+    message: "Times are required unless available during business hours",
+    path: ["startTime"],
+});
+export default function DealCreation() {
+    var _this = this;
+    var _a = useLocation(), setLocation = _a[1];
+    var toast = useToast().toast;
+    var _b = useAuth(), user = _b.user, isAuthenticated = _b.isAuthenticated, isLoading = _b.isLoading;
+    var queryClient = useQueryClient();
+    var _c = useState(null), selectedImage = _c[0], setSelectedImage = _c[1];
+    var _d = useState(false), showPreview = _d[0], setShowPreview = _d[1];
+    var fileInputRef = useRef(null);
+    var restaurants = useQuery({
+        queryKey: ["/api/restaurants/my-restaurants"],
+        enabled: isAuthenticated,
+    }).data;
+    // Fetch subscription status for deal limits
+    var _e = useQuery({
+        queryKey: ["/api/subscription/status"],
+        enabled: isAuthenticated,
+        retry: false,
+        refetchOnWindowFocus: false,
+    }), subscription = _e.data, isSubscriptionLoading = _e.isLoading, isSubscriptionError = _e.isError;
+    console.log("Deal Creation - Subscription Data:", subscription);
+    console.log("Deal Creation - Is Subscription Loading:", isSubscriptionLoading);
+    // Fetch current deal count for limits
+    var currentDeals = useQuery({
+        queryKey: ["/api/deals/my-active"],
+        enabled: isAuthenticated && Array.isArray(restaurants) && restaurants.length > 0,
+    }).data;
+    var DEAL_DRAFT_KEY = "mealscout:deal-creation-draft";
+    var dealDefaultValues = useMemo(function () {
+        var base = {
+            title: "",
+            description: "",
+            dealType: "percentage",
+            discountValue: "",
+            minOrderAmount: "0",
+            imageUrl: "",
+            startDate: new Date().toISOString().split("T")[0],
+            endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                .toISOString()
+                .split("T")[0],
+            startTime: "11:00",
+            endTime: "15:00",
+            availableDuringBusinessHours: false,
+            isOngoing: false,
+            totalUsesLimit: "",
+            perCustomerLimit: "1",
+            facebookPageUrl: "",
+        };
+        if (typeof window === "undefined")
+            return base;
+        try {
+            var stored = window.localStorage.getItem(DEAL_DRAFT_KEY);
+            if (!stored)
+                return base;
+            var parsed = JSON.parse(stored);
+            // Do not restore imageUrl from storage to avoid huge base64 blobs
+            delete parsed.imageUrl;
+            return __assign(__assign({}, base), parsed);
+        }
+        catch (_a) {
+            return base;
+        }
+    }, []);
+    var form = useForm({
+        resolver: zodResolver(dealSchema),
+        defaultValues: dealDefaultValues,
+    });
+    // Persist deal draft so restaurant owners can resume creation later
+    useEffect(function () {
+        var subscription = form.watch(function (value) {
+            try {
+                var imageUrl = value.imageUrl, rest = __rest(value, ["imageUrl"]);
+                window.localStorage.setItem(DEAL_DRAFT_KEY, JSON.stringify(rest));
+            }
+            catch (_a) {
+                // ignore
+            }
+        });
+        return function () { return subscription.unsubscribe(); };
+    }, [form]);
+    var createDealMutation = useMutation({
+        mutationFn: function (data) { return __awaiter(_this, void 0, void 0, function () {
+            var dealData;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (!Array.isArray(restaurants) || restaurants.length === 0) {
+                            throw new Error("No restaurant found. Please register a restaurant first.");
+                        }
+                        dealData = __assign(__assign({}, data), { restaurantId: restaurants[0].id, discountValue: parseFloat(data.discountValue), minOrderAmount: data.minOrderAmount
+                                ? parseFloat(data.minOrderAmount)
+                                : null, totalUsesLimit: data.totalUsesLimit
+                                ? parseInt(data.totalUsesLimit)
+                                : null, perCustomerLimit: data.perCustomerLimit
+                                ? parseInt(data.perCustomerLimit)
+                                : 1, startDate: new Date(data.startDate), endDate: data.isOngoing ? null : new Date(data.endDate), startTime: data.availableDuringBusinessHours ? null : data.startTime, endTime: data.availableDuringBusinessHours ? null : data.endTime, availableDuringBusinessHours: data.availableDuringBusinessHours, isOngoing: data.isOngoing });
+                        return [4 /*yield*/, apiRequest("POST", "/api/deals", dealData)];
+                    case 1: return [2 /*return*/, _a.sent()];
+                }
+            });
+        }); },
+        onSuccess: function () {
+            toast({
+                title: "Success!",
+                description: "Deal created successfully!",
+            });
+            try {
+                window.localStorage.removeItem(DEAL_DRAFT_KEY);
+            }
+            catch (_a) {
+                // ignore
+            }
+            queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
+            setLocation("/");
+        },
+        onError: function (error) {
+            if (isUnauthorizedError(error)) {
+                toast({
+                    title: "Unauthorized",
+                    description: "You are logged out. Logging in again...",
+                    variant: "destructive",
+                });
+                setTimeout(function () {
+                    window.location.href = "/api/auth/google/restaurant";
+                }, 500);
+                return;
+            }
+            // Handle subscription required error (402)
+            if (error.message &&
+                (error.message.includes("subscription") ||
+                    error.message.includes("Payment Required"))) {
+                toast({
+                    title: "Subscription Required",
+                    description: "Please upgrade your subscription to create specials",
+                    variant: "destructive",
+                });
+                setTimeout(function () {
+                    setLocation("/subscribe");
+                }, 1500);
+                return;
+            }
+            toast({
+                title: "Error",
+                description: error.message || "Failed to create deal",
+                variant: "destructive",
+            });
+        },
+    });
+    var onSubmit = function (data) {
+        // Server-side validation will handle subscription limits
+        createDealMutation.mutate(data);
+    };
+    var handleImageUpload = function (event) {
+        var _a;
+        var file = (_a = event.target.files) === null || _a === void 0 ? void 0 : _a[0];
+        if (file) {
+            // Check file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                toast({
+                    title: "File too large",
+                    description: "Please choose an image smaller than 5MB",
+                    variant: "destructive",
+                });
+                return;
+            }
+            // Check file type
+            if (!file.type.startsWith("image/")) {
+                toast({
+                    title: "Invalid file type",
+                    description: "Please choose an image file",
+                    variant: "destructive",
+                });
+                return;
+            }
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                var _a;
+                var imageData = (_a = e.target) === null || _a === void 0 ? void 0 : _a.result;
+                setSelectedImage(imageData);
+                form.setValue("imageUrl", imageData); // Set form value for validation
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    var removeImage = function () {
+        setSelectedImage(null);
+        form.setValue("imageUrl", ""); // Clear form value
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    };
+    var dealPreviewData = {
+        title: form.watch("title") || "Your Special Title",
+        description: form.watch("description") || "Your deal description will appear here...",
+        dealType: form.watch("dealType"),
+        discountValue: form.watch("discountValue") || "0",
+        minOrderAmount: form.watch("minOrderAmount"),
+        facebookPageUrl: form.watch("facebookPageUrl"),
+        image: selectedImage,
+    };
+    if (isLoading) {
+        return (<div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"/>
+      </div>);
+    }
+    if (!isAuthenticated) {
+        return (<div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-center text-muted-foreground mb-4">
+              Please log in to create specials
+            </p>
+            <Button onClick={function () {
+                return (window.location.href = "/api/auth/google/restaurant");
+            }} className="w-full">
+              Log In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>);
+    }
+    if (!Array.isArray(restaurants) || restaurants.length === 0) {
+        return (<div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <i className="fas fa-store text-muted-foreground text-3xl mb-4"></i>
+            <p className="text-muted-foreground mb-4">
+              You need to register a business first
+            </p>
+            <Link href="/restaurant-signup">
+              <Button className="w-full">Register Business</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>);
+    }
+    // Show loading while checking subscription
+    if (isSubscriptionLoading) {
+        return (<div className="max-w-md mx-auto bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"/>
+      </div>);
+    }
+    // Check subscription status - redirect to subscribe page if needed
+    // Allow access if: active subscription OR has access flag OR admin/staff
+    var isAdminOrStaff = user &&
+        (user.userType === "admin" ||
+            user.userType === "super_admin" ||
+            user.userType === "staff");
+    var hasAccess = isAdminOrStaff ||
+        (subscription &&
+            (subscription.status === "active" ||
+                subscription.hasAccess === true));
+    if (!isSubscriptionError && subscription && !hasAccess) {
+        console.log("Blocking due to subscription status:", subscription.status);
+        return (<div className="max-w-md mx-auto bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 min-h-screen flex items-center justify-center px-4">
+        <Card className="w-full shadow-xl border-orange-200/70">
+          <CardContent className="p-6 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-orange-100 text-orange-600 text-2xl mb-3">
+              💳
+            </div>
+            <h2 className="text-lg font-semibold mb-1">
+              Subscription required to post specials
+            </h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Unlock unlimited featured spots for your food truck or restaurant
+              with a simple monthly plan.
+            </p>
+            <Link href="/subscribe">
+              <Button className="w-full" data-testid="button-subscribe-to-create">
+                View subscription plans
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>);
+    }
+    return (<div className="max-w-md mx-auto bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 min-h-screen">
+      <BackHeader title="Create a new special" fallbackHref="/restaurant-owner-dashboard" icon={Sparkles} rightActions={<Button variant="outline" size="sm" onClick={function () { return setShowPreview(!showPreview); }} data-testid="button-preview">
+            <Eye className="w-4 h-4 mr-2"/>
+            {showPreview ? "Hide" : "Preview"}
+          </Button>}/>
+
+      <div className="px-4 py-5 pb-24 space-y-4">
+        <div className="rounded-2xl bg-white/80 backdrop-blur-sm border border-orange-100 px-4 py-3 flex items-start space-x-3">
+          <div className="mt-0.5">
+            <Sparkles className="w-4 h-4 text-orange-500"/>
+          </div>
+          <div className="text-xs text-gray-700">
+            <p className="font-semibold text-gray-900 mb-1">
+              Turn one-time diners into regulars
+            </p>
+            <p>
+              Short, time-bound specials work best for food trucks and busy
+              restaurants. Highlight your hero item and limit the window so it
+              feels special.
+            </p>
+          </div>
+        </div>
+
+        {/* Live Preview */}
+        {showPreview && (<div className="mb-6">
+            <div className="flex items-center space-x-2 mb-3">
+              <Sparkles className="w-4 h-4 text-primary"/>
+              <h3 className="text-sm font-semibold text-foreground">
+                Live Preview
+              </h3>
+              <Badge variant="secondary" className="text-xs">
+                How customers see it
+              </Badge>
+            </div>
+
+            <Card className="overflow-hidden border-0 shadow-xl rounded-2xl bg-white">
+              <div className="relative">
+                {dealPreviewData.image ? (<img src={dealPreviewData.image} alt="Deal preview" className="w-full h-36 object-cover"/>) : (<div className="w-full h-36 bg-gradient-to-br from-orange-100 via-red-100 to-yellow-100 flex items-center justify-center">
+                    <div className="text-center">
+                      <Upload className="w-8 h-8 text-orange-500 mx-auto mb-1"/>
+                      <p className="text-xs text-gray-700 font-medium">
+                        Add a photo to see how your deal pops in the feed
+                      </p>
+                    </div>
+                  </div>)}
+
+                <div className="absolute bottom-2 right-2 bg-gradient-to-r from-red-500 to-orange-500 text-white px-2 py-1 rounded-md text-sm font-bold shadow-lg">
+                  {dealPreviewData.dealType === "percentage"
+                ? "".concat(dealPreviewData.discountValue, "% OFF")
+                : "$".concat(dealPreviewData.discountValue, " OFF")}
+                </div>
+              </div>
+
+              <CardContent className="p-3">
+                <h4 className="font-semibold text-sm text-foreground mb-1 line-clamp-1">
+                  {dealPreviewData.title}
+                </h4>
+                <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                  {dealPreviewData.description}
+                </p>
+
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center space-x-3 text-muted-foreground">
+                    <div className="flex items-center space-x-1">
+                      <Clock className="w-3 h-3"/>
+                      <span>Limited time</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Users className="w-3 h-3"/>
+                      <span>Limited uses</span>
+                    </div>
+                  </div>
+
+                  {dealPreviewData.minOrderAmount && (<div className="flex items-center space-x-1 text-muted-foreground">
+                      <DollarSign className="w-3 h-3"/>
+                      <span>Min ${dealPreviewData.minOrderAmount}</span>
+                    </div>)}
+                </div>
+              </CardContent>
+            </Card>
+          </div>)}
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 bg-white/90 border border-orange-100 rounded-2xl px-4 py-5 shadow-sm">
+            {/* Deal Image - REQUIRED */}
+            <FormField control={form.control} name="imageUrl" render={function (_a) {
+            var field = _a.field;
+            return (<FormItem>
+                  <FormLabel className="text-sm font-medium">
+                    Special Photo <span className="text-destructive">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <div>
+                      {selectedImage ? (<div className="relative rounded-lg overflow-hidden">
+                          <img src={selectedImage} alt="Deal preview" className="w-full h-48 object-cover"/>
+                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                            <div className="flex space-x-2">
+                              <Button type="button" size="sm" variant="secondary" onClick={function () { var _a; return (_a = fileInputRef.current) === null || _a === void 0 ? void 0 : _a.click(); }} data-testid="button-change-photo">
+                                <Upload className="w-4 h-4 mr-1"/>
+                                Change
+                              </Button>
+                              <Button type="button" size="sm" variant="destructive" onClick={removeImage} data-testid="button-remove-photo">
+                                <X className="w-4 h-4 mr-1"/>
+                                Remove
+                              </Button>
+                            </div>
+                          </div>
+                        </div>) : (<div onClick={function () { var _a; return (_a = fileInputRef.current) === null || _a === void 0 ? void 0 : _a.click(); }} className="border-2 border-dashed border-destructive/50 rounded-lg p-8 text-center bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors">
+                          <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2"/>
+                          <p className="text-sm font-semibold text-foreground mb-1" data-testid="text-photo-prompt">
+                            Add a mouth-watering photo of your deal{" "}
+                            <span className="text-destructive">*</span>
+                          </p>
+                          <p className="text-xs text-muted-foreground mb-3">
+                            JPG, PNG up to 5MB (Required)
+                          </p>
+                          <Button type="button" variant="default" size="sm" data-testid="button-upload-photo">
+                            Upload Photo
+                          </Button>
+                        </div>)}
+
+                      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" data-testid="input-file-upload"/>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>);
+        }}/>
+
+            {/* Quick Templates */}
+            <div>
+              <Label className="block text-sm font-medium text-foreground mb-2">
+                Quick Start Templates
+              </Label>
+              <div className="grid grid-cols-1 gap-2">
+                <Button type="button" variant="outline" size="sm" className="justify-start text-xs h-auto py-2" onClick={function () {
+            form.setValue("title", "Happy Hour Special");
+            form.setValue("description", "Enjoy discounted drinks and appetizers during our happy hour! Perfect for after-work relaxation.");
+            form.setValue("dealType", "percentage");
+            form.setValue("discountValue", "25");
+            form.setValue("startTime", "16:00");
+            form.setValue("endTime", "18:00");
+        }} data-testid="template-happy-hour">
+                  <Clock className="w-3 h-3 mr-2"/>
+                  Happy Hour Special (25% off drinks)
+                </Button>
+                <Button type="button" variant="outline" size="sm" className="justify-start text-xs h-auto py-2" onClick={function () {
+            form.setValue("title", "Lunch Combo Deal");
+            form.setValue("description", "Get a main dish, side, and drink for one great price during lunch hours!");
+            form.setValue("dealType", "fixed");
+            form.setValue("discountValue", "5");
+            form.setValue("minOrderAmount", "15");
+            form.setValue("startTime", "11:00");
+            form.setValue("endTime", "15:00");
+        }} data-testid="template-lunch-combo">
+                  <DollarSign className="w-3 h-3 mr-2"/>
+                  Lunch Combo ($5 off)
+                </Button>
+                <Button type="button" variant="outline" size="sm" className="justify-start text-xs h-auto py-2" onClick={function () {
+            form.setValue("title", "Family Night Special");
+            form.setValue("description", "Perfect for families! Kids eat free with adult entree purchase on weekends.");
+            form.setValue("dealType", "percentage");
+            form.setValue("discountValue", "30");
+            form.setValue("perCustomerLimit", "2");
+        }} data-testid="template-family-night">
+                  <Users className="w-3 h-3 mr-2"/>
+                  Family Night (30% off)
+                </Button>
+              </div>
+            </div>
+
+            {/* Deal Details */}
+            <FormField control={form.control} name="title" render={function (_a) {
+            var field = _a.field;
+            return (<FormItem>
+                  <FormLabel data-testid="label-deal-title">
+                    Special Title
+                  </FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Buy One Get One Free Meal Special" {...field} data-testid="input-deal-title"/>
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Keep it short and exciting! Max 50 characters.
+                  </p>
+                  <FormMessage />
+                </FormItem>);
+        }}/>
+
+            <FormField control={form.control} name="description" render={function (_a) {
+            var _b;
+            var field = _a.field;
+            return (<FormItem>
+                  <FormLabel data-testid="label-description">
+                    Special Description
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Describe your deal in detail. What's included? Any restrictions?" rows={3} {...field} data-testid="textarea-description"/>
+                  </FormControl>
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-xs text-muted-foreground">
+                      Be specific about what customers get!
+                    </p>
+                    <span className="text-xs text-muted-foreground">
+                      {((_b = field.value) === null || _b === void 0 ? void 0 : _b.length) || 0}/200
+                    </span>
+                  </div>
+                  <FormMessage />
+                </FormItem>);
+        }}/>
+
+            {/* Special Type */}
+            <FormField control={form.control} name="dealType" render={function (_a) {
+            var field = _a.field;
+            return (<FormItem className="space-y-3">
+                  <FormLabel data-testid="label-deal-type">
+                    Special Type
+                  </FormLabel>
+                  <FormControl>
+                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="grid grid-cols-2 gap-3">
+                      <div className="flex items-center space-x-3 p-3 border border-input rounded-lg cursor-pointer hover:bg-muted/50">
+                        <RadioGroupItem value="percentage" id="percentage" data-testid="radio-percentage"/>
+                        <Label htmlFor="percentage" className="cursor-pointer">
+                          <p className="font-medium text-sm" data-testid="text-percentage-title">
+                            Percentage Off
+                          </p>
+                          <p className="text-xs text-muted-foreground" data-testid="text-percentage-desc">
+                            e.g., 20% off
+                          </p>
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-3 p-3 border border-input rounded-lg cursor-pointer hover:bg-muted/50">
+                        <RadioGroupItem value="fixed" id="fixed" data-testid="radio-fixed"/>
+                        <Label htmlFor="fixed" className="cursor-pointer">
+                          <p className="font-medium text-sm" data-testid="text-fixed-title">
+                            Fixed Amount
+                          </p>
+                          <p className="text-xs text-muted-foreground" data-testid="text-fixed-desc">
+                            e.g., $5 off
+                          </p>
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>);
+        }}/>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="discountValue" render={function (_a) {
+            var field = _a.field;
+            return (<FormItem>
+                    <FormLabel data-testid="label-discount-value">
+                      Discount Value
+                    </FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input type="number" placeholder="25" {...field} data-testid="input-discount-value"/>
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                          {form.watch("dealType") === "percentage" ? "%" : "$"}
+                        </span>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>);
+        }}/>
+              <FormField control={form.control} name="minOrderAmount" render={function (_a) {
+            var field = _a.field;
+            return (<FormItem>
+                    <FormLabel data-testid="label-min-order">
+                      Min. Order
+                    </FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                          $
+                        </span>
+                        <Input type="number" placeholder="15.00" className="pl-8" {...field} data-testid="input-min-order"/>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>);
+        }}/>
+            </div>
+
+            {/* Timing */}
+            <div>
+              <Label className="block text-sm font-medium text-foreground mb-3" data-testid="label-availability">
+                When is this deal available?
+              </Label>
+
+              {/* Checkboxes for business hours and ongoing */}
+              <div className="space-y-3 mb-4">
+                <FormField control={form.control} name="isOngoing" render={function (_a) {
+            var field = _a.field;
+            return (<FormItem className="flex items-center space-x-2">
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} data-testid="checkbox-ongoing"/>
+                      </FormControl>
+                      <FormLabel className="!mt-0 cursor-pointer">
+                        Ongoing deal (no expiration date)
+                      </FormLabel>
+                    </FormItem>);
+        }}/>
+                <FormField control={form.control} name="availableDuringBusinessHours" render={function (_a) {
+            var field = _a.field;
+            return (<FormItem className="flex items-center space-x-2">
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={function (checked) {
+                    var isChecked = checked === true; // Checkbox can return boolean | "indeterminate"
+                    field.onChange(isChecked);
+                    if (isChecked) {
+                        // Clear time fields when business hours is enabled
+                        form.setValue("startTime", "", {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                        });
+                        form.setValue("endTime", "", {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                        });
+                    }
+                    else {
+                        // Restore defaults when unchecked
+                        form.setValue("startTime", "11:00", {
+                            shouldDirty: true,
+                        });
+                        form.setValue("endTime", "15:00", {
+                            shouldDirty: true,
+                        });
+                    }
+                }} data-testid="checkbox-business-hours"/>
+                      </FormControl>
+                      <FormLabel className="!mt-0 cursor-pointer">
+                        Available anytime during business hours
+                      </FormLabel>
+                    </FormItem>);
+        }}/>
+              </div>
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="startDate" render={function (_a) {
+            var field = _a.field;
+            return (<FormItem>
+                        <FormLabel className="text-xs text-muted-foreground" data-testid="label-start-date">
+                          Start Date
+                        </FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} data-testid="input-start-date"/>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>);
+        }}/>
+                  <FormField control={form.control} name="endDate" render={function (_a) {
+            var field = _a.field;
+            return (<FormItem>
+                        <FormLabel className="text-xs text-muted-foreground" data-testid="label-end-date">
+                          End Date{" "}
+                          {!form.watch("isOngoing") && (<span className="text-destructive">*</span>)}
+                        </FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} disabled={form.watch("isOngoing")} data-testid="input-end-date"/>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>);
+        }}/>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="startTime" render={function (_a) {
+            var field = _a.field;
+            return (<FormItem>
+                        <FormLabel className="text-xs text-muted-foreground" data-testid="label-start-time">
+                          Available From{" "}
+                          {!form.watch("availableDuringBusinessHours") && (<span className="text-destructive">*</span>)}
+                        </FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} disabled={form.watch("availableDuringBusinessHours")} data-testid="input-start-time"/>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>);
+        }}/>
+                  <FormField control={form.control} name="endTime" render={function (_a) {
+            var field = _a.field;
+            return (<FormItem>
+                        <FormLabel className="text-xs text-muted-foreground" data-testid="label-end-time">
+                          Available Until{" "}
+                          {!form.watch("availableDuringBusinessHours") && (<span className="text-destructive">*</span>)}
+                        </FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} disabled={form.watch("availableDuringBusinessHours")} data-testid="input-end-time"/>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>);
+        }}/>
+                </div>
+              </div>
+            </div>
+
+            {/* Limits */}
+            <div>
+              <Label className="block text-sm font-medium text-foreground mb-2" data-testid="label-deal-limits">
+                Special Limits
+              </Label>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={form.control} name="totalUsesLimit" render={function (_a) {
+            var field = _a.field;
+            return (<FormItem>
+                      <FormControl>
+                        <Input type="number" placeholder="Total uses (optional)" {...field} data-testid="input-total-uses"/>
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground mt-1" data-testid="text-total-uses-help">
+                        Leave blank for unlimited
+                      </p>
+                      <FormMessage />
+                    </FormItem>);
+        }}/>
+                <FormField control={form.control} name="perCustomerLimit" render={function (_a) {
+            var field = _a.field;
+            return (<FormItem>
+                      <FormControl>
+                        <Input type="number" placeholder="Per customer limit" {...field} data-testid="input-per-customer"/>
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground mt-1" data-testid="text-per-customer-help">
+                        Max uses per person
+                      </p>
+                      <FormMessage />
+                    </FormItem>);
+        }}/>
+              </div>
+            </div>
+
+            {/* Facebook Integration */}
+            <Card className="bg-gradient-to-r from-blue-50 to-indigo-50">
+              <CardContent className="p-4">
+                <h3 className="font-semibold text-foreground text-sm mb-2" data-testid="text-facebook-title">
+                  Social Media Integration
+                </h3>
+                <p className="text-muted-foreground text-xs mb-4" data-testid="text-facebook-desc">
+                  Connect your Facebook page to automatically post specials and tag
+                  @MealScout
+                </p>
+
+                <FormField control={form.control} name="facebookPageUrl" render={function (_a) {
+            var field = _a.field;
+            return (<FormItem>
+                      <FormControl>
+                        <Input type="url" placeholder="https://facebook.com/your-restaurant-page" {...field} data-testid="input-facebook-url"/>
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground mt-1" data-testid="text-facebook-help">
+                        Link your Facebook page to cross-post specials
+                        automatically
+                      </p>
+                      <FormMessage />
+                    </FormItem>);
+        }}/>
+              </CardContent>
+            </Card>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-4 pt-4">
+              <Button type="button" variant="outline" className="py-3 px-4" data-testid="button-save-draft">
+                Save Draft
+              </Button>
+              <Button type="submit" className="py-3 px-4" disabled={createDealMutation.isPending} data-testid="button-publish-deal">
+                {createDealMutation.isPending
+            ? "Publishing..."
+            : "Publish Special"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </div>
+
+      {/* Bottom Navigation */}
+      <Navigation />
+    </div>);
+}

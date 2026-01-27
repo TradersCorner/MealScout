@@ -1259,6 +1259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const address = await storage.createUserAddress(addressData);
+      await storage.syncHostFromUserAddress(userId, address);
       res.status(201).json(address);
     } catch (error) {
       console.error("Error creating address:", error);
@@ -1291,6 +1292,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           addressId,
           updates,
         );
+        await storage.syncHostFromUserAddress(
+          userId,
+          updatedAddress,
+          existingAddress,
+        );
         res.json(updatedAddress);
       } catch (error) {
         console.error("Error updating address:", error);
@@ -1320,6 +1326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         await storage.deleteUserAddress(addressId);
+        await storage.deleteHostForUserAddress(userId, existingAddress);
         res.status(204).send();
       } catch (error) {
         console.error("Error deleting address:", error);

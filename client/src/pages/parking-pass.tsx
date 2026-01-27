@@ -170,6 +170,11 @@ const parkingPassPinIcon = new L.Icon({
   popupAnchor: [0, -30],
 });
 
+const defaultMapCenter = {
+  lat: 39.8283,
+  lng: -98.5795,
+};
+
 const MapCenterer = ({
   center,
 }: {
@@ -789,7 +794,7 @@ export default function ParkingPassPage() {
   const mapCenter = useMemo(() => {
     const activeCoords =
       getEventCoords(activeEvent) || (activeEvent ? parkingCoords[activeEvent.id] : null);
-    return activeCoords || mapEvents[0]?.coords || null;
+    return activeCoords || mapEvents[0]?.coords || defaultMapCenter;
   }, [activeEvent, mapEvents, parkingCoords]);
 
   useEffect(() => {
@@ -1192,20 +1197,19 @@ export default function ParkingPassPage() {
               ) : viewMode === "map" ? (
                 <div className="space-y-3">
                   <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-                    <div className="h-72 w-full bg-gray-100">
-                      {mapCenter ? (
-                        <MapContainer
-                          center={[mapCenter.lat, mapCenter.lng]}
-                          zoom={13}
-                          scrollWheelZoom
-                          className="h-full w-full"
-                        >
-                          <MapCenterer center={mapCenter} />
-                          <TileLayer
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                          />
-                          {mapEvents.map(({ event, coords }) => {
+                    <div className="relative h-72 w-full bg-gray-100">
+                      <MapContainer
+                        center={[mapCenter.lat, mapCenter.lng]}
+                        zoom={13}
+                        scrollWheelZoom
+                        className="h-full w-full"
+                      >
+                        <MapCenterer center={mapCenter} />
+                        <TileLayer
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                        />
+                        {mapEvents.map(({ event, coords }) => {
                             const bookings = Array.isArray(event.bookings)
                               ? event.bookings
                               : [];
@@ -1242,131 +1246,128 @@ export default function ParkingPassPage() {
                               ? event.availableSpotNumbers.length > 0
                               : event.status === "open";
 
-                            return (
-                              <Marker
-                                key={event.id}
-                                position={[coords.lat, coords.lng]}
-                                icon={parkingPassPinIcon}
-                                eventHandlers={{
-                                  click: () => setActiveEventId(event.id),
-                                }}
-                              >
-                                <Popup>
-                                  <div className="space-y-2 text-xs">
-                                    <p className="font-semibold text-gray-900">
-                                      {event.host.businessName}
-                                    </p>
-                                    <p className="text-gray-600">
-                                      {event.host.address}
-                                    </p>
-                                    <p className="text-gray-600">
-                                      {format(
-                                        new Date(event.date),
-                                        "EEE, MMM d",
-                                      )}{" "}
-                                      •{" "}
-                                      {event.startTime === "00:00" &&
-                                      event.endTime === "23:59"
-                                        ? "Any time"
-                                        : `${event.startTime} - ${event.endTime}`}
-                                    </p>
-                                    <p className="text-gray-600">
-                                      {availability}
-                                    </p>
-                                    {slotOptions.length > 0 && (
-                                      <div className="space-y-2">
-                                        <div className="grid grid-cols-2 gap-2">
-                                          {slotOptions.map((slot) => {
-                                            const feeCents = getFeeCentsForSlots(
-                                              [slot.type],
-                                              slot.priceCents || 0,
-                                            );
-                                            const totalPrice =
-                                              ((slot.priceCents || 0) +
-                                                feeCents) /
-                                              100;
-                                            const isSelected =
-                                              selectedSlots.includes(slot.type);
-                                            return (
-                                              <Button
-                                                key={slot.type}
-                                                variant={
-                                                  isSelected
-                                                    ? "default"
-                                                    : "outline"
-                                                }
-                                                size="sm"
-                                                className="justify-between text-[11px]"
-                                                disabled={!hasAvailability}
-                                                onClick={() =>
-                                                  handleSelect(event, slot.type)
-                                                }
-                                              >
-                                                <span>{slot.label}</span>
-                                                <span>
-                                                  ${totalPrice.toFixed(2)}
-                                                </span>
-                                              </Button>
-                                            );
-                                          })}
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-[11px] text-gray-500">
-                                            Includes $10 MealScout fee.
-                                          </span>
-                                          <Button
-                                            size="sm"
-                                            onClick={() =>
-                                              handleBookSelected(event)
-                                            }
-                                            disabled={selectedSlots.length === 0}
-                                          >
-                                            Book spot
-                                            {selectedTotalWithFee > 0 && (
-                                              <span className="ml-2 text-[11px]">
-                                                ${(
-                                                  (selectedTotalWithFee || 0) /
-                                                  100
-                                                ).toFixed(2)}
+                          return (
+                            <Marker
+                              key={event.id}
+                              position={[coords.lat, coords.lng]}
+                              icon={parkingPassPinIcon}
+                              eventHandlers={{
+                                click: () => setActiveEventId(event.id),
+                              }}
+                            >
+                              <Popup>
+                                <div className="space-y-2 text-xs">
+                                  <p className="font-semibold text-gray-900">
+                                    {event.host.businessName}
+                                  </p>
+                                  <p className="text-gray-600">
+                                    {event.host.address}
+                                  </p>
+                                  <p className="text-gray-600">
+                                    {format(
+                                      new Date(event.date),
+                                      "EEE, MMM d",
+                                    )}{" "}
+                                    •{" "}
+                                    {event.startTime === "00:00" &&
+                                    event.endTime === "23:59"
+                                      ? "Any time"
+                                      : `${event.startTime} - ${event.endTime}`}
+                                  </p>
+                                  <p className="text-gray-600">
+                                    {availability}
+                                  </p>
+                                  {slotOptions.length > 0 && (
+                                    <div className="space-y-2">
+                                      <div className="grid grid-cols-2 gap-2">
+                                        {slotOptions.map((slot) => {
+                                          const feeCents = getFeeCentsForSlots(
+                                            [slot.type],
+                                            slot.priceCents || 0,
+                                          );
+                                          const totalPrice =
+                                            ((slot.priceCents || 0) + feeCents) /
+                                            100;
+                                          const isSelected =
+                                            selectedSlots.includes(slot.type);
+                                          return (
+                                            <Button
+                                              key={slot.type}
+                                              variant={
+                                                isSelected ? "default" : "outline"
+                                              }
+                                              size="sm"
+                                              className="justify-between text-[11px]"
+                                              disabled={!hasAvailability}
+                                              onClick={() =>
+                                                handleSelect(event, slot.type)
+                                              }
+                                            >
+                                              <span>{slot.label}</span>
+                                              <span>
+                                                ${totalPrice.toFixed(2)}
                                               </span>
-                                            )}
-                                          </Button>
-                                        </div>
+                                            </Button>
+                                          );
+                                        })}
                                       </div>
-                                    )}
-                                    {bookings.length > 0 ? (
-                                      <div className="pt-1 text-[11px] text-gray-500 space-y-1">
-                                        {bookings
-                                          .slice(0, 3)
-                                          .map((booking) => (
-                                            <div key={`${booking.truckId}-${booking.slotType || "slot"}`}>
-                                              {booking.truckName}
-                                              {booking.slotType
-                                                ? ` • ${formatSlotLabel(
-                                                    booking.slotType,
-                                                  )}`
-                                                : ""}
-                                            </div>
-                                          ))}
-                                        {bookings.length > 3 && (
-                                          <div>
-                                            +{bookings.length - 3} more
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-[11px] text-gray-500">
+                                          Includes $10 MealScout fee.
+                                        </span>
+                                        <Button
+                                          size="sm"
+                                          onClick={() =>
+                                            handleBookSelected(event)
+                                          }
+                                          disabled={selectedSlots.length === 0}
+                                        >
+                                          Book spot
+                                          {selectedTotalWithFee > 0 && (
+                                            <span className="ml-2 text-[11px]">
+                                              ${(
+                                                (selectedTotalWithFee || 0) /
+                                                100
+                                              ).toFixed(2)}
+                                            </span>
+                                          )}
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {bookings.length > 0 ? (
+                                    <div className="pt-1 text-[11px] text-gray-500 space-y-1">
+                                      {bookings
+                                        .slice(0, 3)
+                                        .map((booking) => (
+                                          <div
+                                            key={`${booking.truckId}-${booking.slotType || "slot"}`}
+                                          >
+                                            {booking.truckName}
+                                            {booking.slotType
+                                              ? ` • ${formatSlotLabel(
+                                                  booking.slotType,
+                                                )}`
+                                              : ""}
                                           </div>
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <p className="pt-1 text-[11px] text-gray-500">
-                                        No bookings yet
-                                      </p>
-                                    )}
-                                  </div>
-                                </Popup>
-                              </Marker>
-                            );
-                          })}
-                        </MapContainer>
-                      ) : (
-                        <div className="h-full w-full flex items-center justify-center text-sm text-gray-500">
+                                        ))}
+                                      {bookings.length > 3 && (
+                                        <div>+{bookings.length - 3} more</div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <p className="pt-1 text-[11px] text-gray-500">
+                                      No bookings yet
+                                    </p>
+                                  )}
+                                </div>
+                              </Popup>
+                            </Marker>
+                          );
+                        })}
+                      </MapContainer>
+                      {mapEvents.length === 0 && (
+                        <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500 pointer-events-none">
                           No mappable locations yet.
                         </div>
                       )}

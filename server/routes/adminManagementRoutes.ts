@@ -1504,6 +1504,9 @@ export function registerAdminManagementRoutes(app: Express) {
         if (req.body?.isDefault) {
           await storage.setDefaultAddress(req.params.userId, address.id);
         }
+        await storage.syncHostFromUserAddress(req.params.userId, address, undefined, {
+          force: true,
+        });
 
         res.json(address);
       } catch (error: any) {
@@ -1520,6 +1523,7 @@ export function registerAdminManagementRoutes(app: Express) {
     async (req: any, res) => {
       if (denyStaffEdits(req, res)) return;
       try {
+        const existing = await storage.getUserAddress(req.params.addressId);
         const updated = await storage.updateUserAddress(req.params.addressId, {
           label: req.body?.label,
           address: req.body?.address,
@@ -1533,6 +1537,14 @@ export function registerAdminManagementRoutes(app: Express) {
 
         if (req.body?.isDefault) {
           await storage.setDefaultAddress(req.params.userId, updated.id);
+        }
+        if (existing) {
+          await storage.syncHostFromUserAddress(
+            req.params.userId,
+            updated,
+            existing,
+            { force: true },
+          );
         }
 
         res.json(updated);
@@ -1566,7 +1578,11 @@ export function registerAdminManagementRoutes(app: Express) {
     async (req: any, res) => {
       if (denyStaffEdits(req, res)) return;
       try {
+        const existing = await storage.getUserAddress(req.params.addressId);
         await storage.deleteUserAddress(req.params.addressId);
+        if (existing) {
+          await storage.deleteHostForUserAddress(req.params.userId, existing);
+        }
         res.json({ message: "Address deleted" });
       } catch (error) {
         console.error("Error deleting user address:", error);

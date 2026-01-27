@@ -126,6 +126,16 @@ export interface IStorage {
   getHostByUserId(userId: string): Promise<Host | undefined>;
   ensureDraftParkingPassForHost(hostId: string): Promise<boolean>;
   getHostsByUserId(userId: string): Promise<Host[]>;
+  syncHostFromUserAddress(
+    userId: string,
+    address: UserAddress,
+    previousAddress?: UserAddress,
+    options?: { force?: boolean }
+  ): Promise<Host | null>;
+  deleteHostForUserAddress(
+    userId: string,
+    address: UserAddress
+  ): Promise<boolean>;
   getParkingPassBlackoutDates(
     seriesId: string
   ): Promise<ParkingPassBlackoutDate[]>;
@@ -826,6 +836,124 @@ export class DatabaseStorage implements IStorage {
       .from(hosts)
       .where(eq(hosts.userId, userId))
       .orderBy(desc(hosts.createdAt));
+  }
+
+  private normalizeHostValue(value?: string | null): string {
+    return (value ?? "").trim().toLowerCase();
+  }
+
+  private buildHostLocationKey(
+    address?: string | null,
+    city?: string | null,
+    state?: string | null,
+  ): string {
+    return [
+      this.normalizeHostValue(address),
+      this.normalizeHostValue(city),
+      this.normalizeHostValue(state),
+    ].join("|");
+  }
+
+  async syncHostFromUserAddress(
+    userId: string,
+    address: UserAddress,
+    previousAddress?: UserAddress,
+    options?: { force?: boolean },
+  ): Promise<Host | null> {
+    const force = options?.force ?? false;
+    const [user] = await db
+      .select({ userType: users.userType })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const hostList = await this.getHostsByUserId(userId);
+    if (!force && hostList.length === 0 && user?.userType !== "host") {
+      return null;
+    }
+
+    const nextKey = this.buildHostLocationKey(
+      address.address,
+      address.city,
+      address.state,
+    );
+    const previousKey = previousAddress
+      ? this.buildHostLocationKey(
+          previousAddress.address,
+          previousAddress.city,
+          previousAddress.state,
+        )
+      : null;
+    const matchKey = previousKey ?? nextKey;
+    const matched = hostList.find(
+      (host) =>
+        this.buildHostLocationKey(host.address, host.city, host.state) ===
+        matchKey,
+    );
+
+    const normalizeCoord = (value?: string | null) =>
+      value === null || value === undefined ? null : String(value);
+
+    if (matched) {
+      const updates: Partial<InsertHost> & { updatedAt: Date } = {
+        address: address.address,
+        city: address.city,
+        state: address.state,
+        latitude: normalizeCoord(address.latitude),
+        longitude: normalizeCoord(address.longitude),
+        updatedAt: new Date(),
+      };
+      if (matched.adminCreated && address.label) {
+        updates.businessName = address.label;
+      }
+      const [updated] = await db
+        .update(hosts)
+        .set(updates)
+        .where(eq(hosts.id, matched.id))
+        .returning();
+      return updated ?? matched;
+    }
+
+    const payload: InsertHost = {
+      userId,
+      businessName: address.label || "Host location",
+      address: address.address,
+      city: address.city,
+      state: address.state || null,
+      latitude: normalizeCoord(address.latitude),
+      longitude: normalizeCoord(address.longitude),
+      locationType: "other",
+      expectedFootTraffic: null,
+      amenities: null,
+      contactPhone: null,
+      notes: null,
+      adminCreated: true,
+      spotCount: 1,
+    };
+
+    const created = await this.createHost(payload);
+    return created;
+  }
+
+  async deleteHostForUserAddress(
+    userId: string,
+    address: UserAddress,
+  ): Promise<boolean> {
+    const hostList = await this.getHostsByUserId(userId);
+    if (hostList.length === 0) return false;
+    const key = this.buildHostLocationKey(
+      address.address,
+      address.city,
+      address.state,
+    );
+    const matched = hostList.find(
+      (host) =>
+        host.adminCreated &&
+        this.buildHostLocationKey(host.address, host.city, host.state) === key,
+    );
+    if (!matched) return false;
+    await db.delete(hosts).where(eq(hosts.id, matched.id));
+    return true;
   }
 
   async getAllHosts(): Promise<Host[]> {

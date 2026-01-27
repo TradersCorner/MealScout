@@ -120,7 +120,7 @@ const buildRowData = (
     if (!field) return;
     const value = row[index]?.trim();
     if (!value) return;
-    mapped[field as keyof ParsedTruckRow] = value;
+    (mapped as unknown as Record<string, string | null>)[field] = value;
   });
 
   return mapped;

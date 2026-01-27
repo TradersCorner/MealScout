@@ -3,6 +3,7 @@ import { storage } from "./storage";
 import { isAuthenticated, isAdmin, isStaffOrAdmin } from "./unifiedAuth";
 import { logAudit } from "./auditLogger";
 import { sendAccountSetupInvite } from "./utils/accountSetup";
+import bcrypt from "bcryptjs";
 
 /**
  * Staff Management & User Creation Routes
@@ -396,6 +397,8 @@ export function registerStaffRoutes(app: Express) {
             ownerId: user.id,
             name: restaurantName.trim(),
             address: restaurantAddress?.trim() || "Address pending",
+            city: "Pending",
+            state: "Pending",
             phone: restaurantPhone?.trim() || null,
             businessType: "restaurant",
             cuisineType: "Cuisine pending",

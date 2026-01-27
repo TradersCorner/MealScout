@@ -28,6 +28,7 @@ interface Deal {
   endTime: string;
   perCustomerLimit: number;
   currentUses: number;
+  distance?: number;
 }
 
 interface Restaurant {
@@ -175,6 +176,7 @@ export default function DealDetail() {
     "Exclusive food special from a local restaurant";
   const discountValue = (deal as Deal)?.discountValue || "";
   const dealType = (deal as Deal)?.dealType || "";
+  const distance = (deal as Deal)?.distance;
 
   const offerSchema = {
     "@context": "https://schema.org",
@@ -274,11 +276,11 @@ export default function DealDetail() {
               {(restaurant as Restaurant)?.name || "Restaurant"}
             </h1>
             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-              {(deal as Deal)?.distance !== undefined && (
+              {distance !== undefined && (
                 <div className="flex items-center space-x-1">
                   <i className="fas fa-map-marker-alt"></i>
                   <span data-testid="text-restaurant-distance">
-                    {(deal as Deal).distance.toFixed(1)} mi away
+                    {distance.toFixed(1)} mi away
                   </span>
                 </div>
               )}

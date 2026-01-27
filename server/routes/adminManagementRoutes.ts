@@ -26,6 +26,8 @@ import {
   userAddresses,
   affiliateShareEvents,
   affiliateCommissionLedger,
+  affiliateWithdrawals,
+  creditLedger,
 } from "@shared/schema";
 
 // Optional Stripe integration (mirrors server/routes.ts)
@@ -578,8 +580,15 @@ export function registerAdminManagementRoutes(app: Express) {
           .from(affiliateShareEvents)
           .groupBy(affiliateShareEvents.affiliateUserId);
 
+        type ShareCountRow = {
+          affiliateUserId: string | null;
+          count: number | string | null;
+        };
         const shareCountMap = new Map(
-          shareCounts.map((row) => [row.affiliateUserId, Number(row.count)]),
+          (shareCounts as ShareCountRow[]).map((row) => [
+            row.affiliateUserId,
+            Number(row.count ?? 0),
+          ]),
         );
 
         const commissionSums = await db
@@ -593,8 +602,18 @@ export function registerAdminManagementRoutes(app: Express) {
           .from(affiliateCommissionLedger)
           .groupBy(affiliateCommissionLedger.affiliateUserId);
 
+        type CommissionSumRow = {
+          affiliateUserId: string | null;
+          earnedCents: number | string | null;
+          revenueCents: number | string | null;
+          subscriptionRevenueCents: number | string | null;
+          bookingRevenueCents: number | string | null;
+        };
         const commissionMap = new Map(
-          commissionSums.map((row) => [row.affiliateUserId, row]),
+          (commissionSums as CommissionSumRow[]).map((row) => [
+            row.affiliateUserId,
+            row,
+          ]),
         );
 
         const referralRows = await db
@@ -657,8 +676,8 @@ export function registerAdminManagementRoutes(app: Express) {
           }
         }
 
-        const payload = allUsers.map((user) => {
-          const commissions = commissionMap.get(user.id);
+        const payload = allUsers.map((user: (typeof allUsers)[number]) => {
+          const commissions = commissionMap.get(user.id as string);
           const referred = referredMap.get(user.id);
           const paid = paidMap.get(user.id);
 
@@ -750,6 +769,215 @@ export function registerAdminManagementRoutes(app: Express) {
       } catch (error: any) {
         console.error("Error updating affiliate settings:", error);
         res.status(500).json({ message: "Failed to update affiliate settings" });
+      }
+    },
+  );
+
+  // Affiliate payout queue (manual payouts)
+  app.get(
+    "/api/admin/affiliate-payouts",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (!requireAdminUser(req, res)) return;
+      try {
+        const status = typeof req.query?.status === "string" ? req.query.status : null;
+        const baseQuery = db
+          .select({
+            id: affiliateWithdrawals.id,
+            userId: affiliateWithdrawals.userId,
+            amount: affiliateWithdrawals.amount,
+            method: affiliateWithdrawals.method,
+            status: affiliateWithdrawals.status,
+            methodDetails: affiliateWithdrawals.methodDetails,
+            creditLedgerId: affiliateWithdrawals.creditLedgerId,
+            requestedAt: affiliateWithdrawals.requestedAt,
+            processedAt: affiliateWithdrawals.processedAt,
+            approvedAt: affiliateWithdrawals.approvedAt,
+            approvedBy: affiliateWithdrawals.approvedBy,
+            paidAt: affiliateWithdrawals.paidAt,
+            rejectedAt: affiliateWithdrawals.rejectedAt,
+            notes: affiliateWithdrawals.notes,
+            userEmail: users.email,
+            userFirstName: users.firstName,
+            userLastName: users.lastName,
+          })
+          .from(affiliateWithdrawals)
+          .innerJoin(users, eq(affiliateWithdrawals.userId, users.id));
+
+        const rows = status
+          ? await baseQuery.where(eq(affiliateWithdrawals.status, status)).orderBy(desc(affiliateWithdrawals.requestedAt))
+          : await baseQuery.orderBy(desc(affiliateWithdrawals.requestedAt));
+
+        res.json(rows);
+      } catch (error: any) {
+        console.error("Error fetching affiliate payouts:", error);
+        res.status(500).json({ message: "Failed to fetch payout requests" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/affiliate-payouts/:id/approve",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (!requireAdminUser(req, res)) return;
+      try {
+        const payoutId = req.params.id;
+        const [existing] = await db
+          .select()
+          .from(affiliateWithdrawals)
+          .where(eq(affiliateWithdrawals.id, payoutId))
+          .limit(1);
+
+        if (!existing) {
+          return res.status(404).json({ message: "Payout request not found" });
+        }
+        if (existing.status !== "pending") {
+          return res.status(409).json({ message: "Payout is not pending" });
+        }
+
+        const [updated] = await db
+          .update(affiliateWithdrawals)
+          .set({
+            status: "approved",
+            approvedAt: new Date(),
+            approvedBy: req.user.id,
+          })
+          .where(eq(affiliateWithdrawals.id, payoutId))
+          .returning();
+
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error approving affiliate payout:", error);
+        res.status(500).json({ message: "Failed to approve payout" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/affiliate-payouts/:id/mark-paid",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (!requireAdminUser(req, res)) return;
+      try {
+        const payoutId = req.params.id;
+        const [existing] = await db
+          .select()
+          .from(affiliateWithdrawals)
+          .where(eq(affiliateWithdrawals.id, payoutId))
+          .limit(1);
+
+        if (!existing) {
+          return res.status(404).json({ message: "Payout request not found" });
+        }
+        if (existing.status === "paid") {
+          return res.status(409).json({ message: "Payout already marked paid" });
+        }
+        if (existing.status === "rejected") {
+          return res.status(409).json({ message: "Payout was rejected" });
+        }
+
+        const [updated] = await db
+          .update(affiliateWithdrawals)
+          .set({
+            status: "paid",
+            paidAt: new Date(),
+            processedAt: new Date(),
+          })
+          .where(eq(affiliateWithdrawals.id, payoutId))
+          .returning();
+
+        if (existing.creditLedgerId) {
+          await db
+            .update(creditLedger)
+            .set({
+              redeemedFor: "cash_payout",
+              redeemedAt: new Date(),
+            })
+            .where(eq(creditLedger.id, existing.creditLedgerId));
+        }
+
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error marking affiliate payout paid:", error);
+        res.status(500).json({ message: "Failed to mark payout paid" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/affiliate-payouts/:id/reject",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (!requireAdminUser(req, res)) return;
+      try {
+        const payoutId = req.params.id;
+        const reason = typeof req.body?.reason === "string" ? req.body.reason : null;
+        const [existing] = await db
+          .select()
+          .from(affiliateWithdrawals)
+          .where(eq(affiliateWithdrawals.id, payoutId))
+          .limit(1);
+
+        if (!existing) {
+          return res.status(404).json({ message: "Payout request not found" });
+        }
+        if (existing.status === "paid") {
+          return res.status(409).json({ message: "Payout already paid" });
+        }
+        if (existing.status === "rejected") {
+          return res.status(409).json({ message: "Payout already rejected" });
+        }
+
+        const amountNum = parseFloat(existing.amount?.toString() || "0");
+
+        await db.transaction(async (tx: any) => {
+          await tx
+            .update(affiliateWithdrawals)
+            .set({
+              status: "rejected",
+              rejectedAt: new Date(),
+              notes: reason || existing.notes,
+            })
+            .where(eq(affiliateWithdrawals.id, payoutId));
+
+          const reversalExists = (await tx
+            .select({ id: creditLedger.id })
+            .from(creditLedger)
+            .where(
+              and(
+                eq(creditLedger.userId, existing.userId),
+                eq(creditLedger.sourceType, "cash_payout_reversal"),
+                eq(creditLedger.sourceId, payoutId),
+              ),
+            )
+            .limit(1))[0];
+
+          if (!reversalExists && amountNum > 0) {
+            await tx.insert(creditLedger).values({
+              userId: existing.userId,
+              amount: amountNum.toString(),
+              sourceType: "cash_payout_reversal",
+              sourceId: payoutId,
+            });
+          }
+
+          if (existing.creditLedgerId) {
+            await tx
+              .update(creditLedger)
+              .set({ redeemedFor: "cash_payout_rejected" })
+              .where(eq(creditLedger.id, existing.creditLedgerId));
+          }
+        });
+
+        res.json({ success: true });
+      } catch (error: any) {
+        console.error("Error rejecting affiliate payout:", error);
+        res.status(500).json({ message: "Failed to reject payout" });
       }
     },
   );
@@ -1376,7 +1604,8 @@ export function registerAdminManagementRoutes(app: Express) {
           .from(hosts)
           .where(eq(hosts.userId, userId));
         const hasDuplicate = existingHosts.some(
-          (host) => buildLocationKey(host.address, host.city, host.state) === newKey,
+          (host: (typeof existingHosts)[number]) =>
+            buildLocationKey(host.address, host.city, host.state) === newKey,
         );
         if (hasDuplicate) {
           return res.status(409).json({
@@ -1556,7 +1785,7 @@ export function registerAdminManagementRoutes(app: Express) {
           .select({ id: hosts.id })
           .from(hosts)
           .where(eq(hosts.userId, userId));
-        const hostIds = hostRows.map((row) => row.id);
+        const hostIds = hostRows.map((row: (typeof hostRows)[number]) => row.id);
         const bookingsAsHost = hostIds.length
           ? await db
               .select()

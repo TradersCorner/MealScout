@@ -182,7 +182,7 @@ function isTrialActive(user: User | null): boolean {
 }
 
 async function ensureTrialForUser(user: User): Promise<User> {
-  if (isTrialActive(user) || user.trialUsed || hydratedUser.stripeSubscriptionId) {
+  if (isTrialActive(user) || user.trialUsed || user.stripeSubscriptionId) {
     return user;
   }
 
@@ -1113,7 +1113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           googleAccessToken: user.googleAccessToken,
           stripeCustomerId: user.stripeCustomerId,
           stripeSubscriptionId: user.stripeSubscriptionId,
-          subscriptionBillingInterval: hydratedUser.subscriptionBillingInterval,
+          subscriptionBillingInterval: user.subscriptionBillingInterval,
           birthYear: user.birthYear,
           gender: user.gender,
           postalCode: user.postalCode,
@@ -1474,7 +1474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           latitude: loc.latitude,
           longitude: loc.longitude,
         })),
-        ...hostProfiles.map((host) => ({
+        ...hostProfiles.map((host: any) => ({
           id: host.id,
           type: "host_location" as const,
           name: host.businessName,
@@ -5106,7 +5106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           restaurantAddress: restaurant.address,
           facebookPostData: {
             message: facebookMessage,
-            place: restaurant.facebookPlaceId || undefined,
+            place: (restaurant as any).facebookPlaceId || undefined,
           },
         });
       } catch (error: any) {
@@ -5433,7 +5433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (c: any) => `${baseUrl}/food-trucks/${encodeURIComponent(c.slug)}`,
       );
       const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
-        .map((u) => `  <url><loc>${u}</loc></url>`)
+        .map((u: string) => `  <url><loc>${u}</loc></url>`)
         .join("\n")}\n</urlset>`;
       res.setHeader("Content-Type", "application/xml");
       res.send(xml);

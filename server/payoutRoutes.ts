@@ -36,17 +36,22 @@ export default function setupPayoutRoutes(app: Express) {
   app.post('/api/payout/preferences', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const { method, stripeConnectedId } = req.body;
+      const { method, stripeConnectedId, methodDetails } = req.body;
 
-      if (!['cash', 'credit'].includes(method)) {
+      if (!['credit', 'paypal', 'ach', 'other'].includes(method)) {
         return res.status(400).json({ error: 'Invalid payout method' });
       }
 
-      if (method === 'cash' && !stripeConnectedId) {
-        return res.status(400).json({ error: 'Stripe Connected ID required for cash payouts' });
+      if (method === 'credit' && stripeConnectedId) {
+        return res.status(400).json({ error: 'Stripe Connected ID not allowed for credit payouts' });
       }
 
-      const prefs = await setPayoutMethod(userId, method, stripeConnectedId);
+      const prefs = await setPayoutMethod(
+        userId,
+        method,
+        methodDetails,
+        stripeConnectedId
+      );
 
       res.json({
         message: 'Payout preferences updated',

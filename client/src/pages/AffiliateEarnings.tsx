@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Copy, Share2, TrendingUp, DollarSign, RefreshCw, Download } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Copy, Share2, TrendingUp, DollarSign } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -34,11 +34,36 @@ interface Stats {
   recentLinks: any[];
 }
 
+interface Withdrawal {
+  id: string;
+  amount: number | string;
+  method: string;
+  status: string;
+  methodDetails?: Record<string, any> | null;
+  requestedAt?: string | null;
+  approvedAt?: string | null;
+  paidAt?: string | null;
+  rejectedAt?: string | null;
+  notes?: string | null;
+}
+
 export default function AffiliateEarnings() {
   const { isAuthenticated, authState } = useAuth();
+  const queryClient = useQueryClient();
   const [withdrawalDialog, setWithdrawalDialog] = useState(false);
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
-  const [withdrawalMethod, setWithdrawalMethod] = useState('bank_transfer');
+  const [withdrawalMethod, setWithdrawalMethod] = useState<'paypal' | 'ach' | 'other'>('paypal');
+  const [withdrawalDetails, setWithdrawalDetails] = useState({
+    paypalEmail: '',
+    achAccountName: '',
+    achBankName: '',
+    achRoutingNumber: '',
+    achAccountNumber: '',
+    otherInstructions: '',
+  });
+  const [withdrawalNotes, setWithdrawalNotes] = useState('');
+  const [withdrawalError, setWithdrawalError] = useState<string | null>(null);
+  const [withdrawalSubmitting, setWithdrawalSubmitting] = useState(false);
   const [affiliateTag, setAffiliateTag] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tagSaving, setTagSaving] = useState(false);
@@ -53,6 +78,16 @@ export default function AffiliateEarnings() {
     },
     enabled: isAuthenticated,
     refetchInterval: 30000,
+  });
+
+  const { data: withdrawalsData } = useQuery<{ withdrawals: Withdrawal[] }>({
+    queryKey: ['affiliate-withdrawals'],
+    queryFn: async () => {
+      const res = await fetch(apiUrl('/api/affiliate/withdrawals'), { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch withdrawals');
+      return res.json();
+    },
+    enabled: isAuthenticated,
   });
 
   const { data: tagData } = useQuery<{ tag: string }>({
@@ -82,6 +117,105 @@ export default function AffiliateEarnings() {
       style: 'currency',
       currency: 'USD',
     }).format(num || 0);
+  };
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const handleWithdrawalSubmit = async () => {
+    const availableBalance = stats?.wallet.availableBalance ?? 0;
+    const amountNum = parseFloat(withdrawalAmount);
+    if (!amountNum || Number.isNaN(amountNum)) {
+      setWithdrawalError('Enter a valid amount.');
+      return;
+    }
+    if (amountNum < 5) {
+      setWithdrawalError('Minimum cashout is $5.');
+      return;
+    }
+    if (amountNum > availableBalance) {
+      setWithdrawalError('Amount exceeds your available balance.');
+      return;
+    }
+
+    const methodDetails: Record<string, string> = {};
+    if (withdrawalMethod === 'paypal') {
+      if (!withdrawalDetails.paypalEmail.trim()) {
+        setWithdrawalError('PayPal email is required.');
+        return;
+      }
+      methodDetails.paypalEmail = withdrawalDetails.paypalEmail.trim();
+    }
+
+    if (withdrawalMethod === 'ach') {
+      if (
+        !withdrawalDetails.achAccountName.trim() ||
+        !withdrawalDetails.achBankName.trim() ||
+        !withdrawalDetails.achRoutingNumber.trim() ||
+        !withdrawalDetails.achAccountNumber.trim()
+      ) {
+        setWithdrawalError('All ACH fields are required.');
+        return;
+      }
+      methodDetails.accountName = withdrawalDetails.achAccountName.trim();
+      methodDetails.bankName = withdrawalDetails.achBankName.trim();
+      methodDetails.routingNumber = withdrawalDetails.achRoutingNumber.trim();
+      methodDetails.accountNumber = withdrawalDetails.achAccountNumber.trim();
+    }
+
+    if (withdrawalMethod === 'other') {
+      if (!withdrawalDetails.otherInstructions.trim()) {
+        setWithdrawalError('Please add payout instructions.');
+        return;
+      }
+      methodDetails.instructions = withdrawalDetails.otherInstructions.trim();
+    }
+
+    setWithdrawalSubmitting(true);
+    setWithdrawalError(null);
+    try {
+      const res = await fetch(apiUrl('/api/affiliate/withdraw'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: amountNum,
+          method: withdrawalMethod,
+          methodDetails,
+          notes: withdrawalNotes.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to request cashout');
+      }
+
+      setWithdrawalAmount('');
+      setWithdrawalNotes('');
+      setWithdrawalDetails({
+        paypalEmail: '',
+        achAccountName: '',
+        achBankName: '',
+        achRoutingNumber: '',
+        achAccountNumber: '',
+        otherInstructions: '',
+      });
+      setWithdrawalDialog(false);
+      queryClient.invalidateQueries({ queryKey: ['affiliate-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['affiliate-withdrawals'] });
+    } catch (error: any) {
+      setWithdrawalError(error?.message || 'Failed to request cashout.');
+    } finally {
+      setWithdrawalSubmitting(false);
+    }
   };
 
   const handleSaveTag = async () => {
@@ -145,7 +279,7 @@ export default function AffiliateEarnings() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Affiliate Dashboard</h1>
         <p className="text-gray-600 mt-2">
-          Earn recurring commissions by sharing restaurants from MealScout
+          Earn commissions when MealScout gets paid on subscriptions you refer.
         </p>
       </div>
 
@@ -218,13 +352,13 @@ export default function AffiliateEarnings() {
 
         <Card className="border-yellow-200 bg-yellow-50">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-yellow-700">Pending</CardTitle>
+            <CardTitle className="text-sm font-medium text-yellow-700">Pending Cashouts</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
               {formatCurrency(stats?.wallet.pendingCommissions || 0)}
             </div>
-            <p className="text-xs text-yellow-600 mt-1">Next 30 days</p>
+            <p className="text-xs text-yellow-600 mt-1">Awaiting manual payout</p>
           </CardContent>
         </Card>
 
@@ -424,11 +558,35 @@ export default function AffiliateEarnings() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    <TableRow>
-                      <TableCell className="text-sm text-gray-500">
-                        No withdrawals yet
-                      </TableCell>
-                    </TableRow>
+                    {withdrawalsData?.withdrawals?.length ? (
+                      withdrawalsData.withdrawals.map((withdrawal) => (
+                        <TableRow key={withdrawal.id}>
+                          <TableCell>{formatDate(withdrawal.requestedAt)}</TableCell>
+                          <TableCell>{formatCurrency(withdrawal.amount)}</TableCell>
+                          <TableCell className="capitalize">{withdrawal.method}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={
+                                withdrawal.status === 'completed'
+                                  ? 'border-green-200 text-green-700'
+                                  : withdrawal.status === 'rejected'
+                                  ? 'border-red-200 text-red-700'
+                                  : 'border-yellow-200 text-yellow-700'
+                              }
+                            >
+                              {withdrawal.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell className="text-sm text-gray-500">
+                          No withdrawals yet
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -470,30 +628,130 @@ export default function AffiliateEarnings() {
               <label className="text-sm font-medium">Withdrawal Method</label>
               <select
                 value={withdrawalMethod}
-                onChange={(e) => setWithdrawalMethod(e.target.value)}
+                onChange={(e) => {
+                  setWithdrawalMethod(e.target.value as 'paypal' | 'ach' | 'other');
+                  setWithdrawalError(null);
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
               >
-                <option value="bank_transfer">Bank Transfer</option>
                 <option value="paypal">PayPal</option>
-                <option value="store_credit">Store Credit (Instant)</option>
+                <option value="ach">ACH (Bank Transfer)</option>
+                <option value="other">Other</option>
               </select>
             </div>
+
+            {withdrawalMethod === 'paypal' && (
+              <div>
+                <label className="text-sm font-medium">PayPal Email</label>
+                <input
+                  type="email"
+                  value={withdrawalDetails.paypalEmail}
+                  onChange={(e) =>
+                    setWithdrawalDetails((prev) => ({ ...prev, paypalEmail: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                  placeholder="name@example.com"
+                />
+              </div>
+            )}
+
+            {withdrawalMethod === 'ach' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium">Account Holder Name</label>
+                  <input
+                    type="text"
+                    value={withdrawalDetails.achAccountName}
+                    onChange={(e) =>
+                      setWithdrawalDetails((prev) => ({ ...prev, achAccountName: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                    placeholder="Full name on account"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Bank Name</label>
+                  <input
+                    type="text"
+                    value={withdrawalDetails.achBankName}
+                    onChange={(e) =>
+                      setWithdrawalDetails((prev) => ({ ...prev, achBankName: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                    placeholder="Your bank"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium">Routing Number</label>
+                    <input
+                      type="text"
+                      value={withdrawalDetails.achRoutingNumber}
+                      onChange={(e) =>
+                        setWithdrawalDetails((prev) => ({ ...prev, achRoutingNumber: e.target.value }))
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                      placeholder="9-digit routing"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Account Number</label>
+                    <input
+                      type="text"
+                      value={withdrawalDetails.achAccountNumber}
+                      onChange={(e) =>
+                        setWithdrawalDetails((prev) => ({ ...prev, achAccountNumber: e.target.value }))
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                      placeholder="Account number"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {withdrawalMethod === 'other' && (
+              <div>
+                <label className="text-sm font-medium">Payout Instructions</label>
+                <textarea
+                  value={withdrawalDetails.otherInstructions}
+                  onChange={(e) =>
+                    setWithdrawalDetails((prev) => ({ ...prev, otherInstructions: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                  placeholder="Tell us how you want to be paid (PayPal, ACH, check, etc.)"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="text-sm font-medium">Notes (optional)</label>
+              <textarea
+                value={withdrawalNotes}
+                onChange={(e) => setWithdrawalNotes(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                placeholder="Any extra details or preferred timing"
+              />
+            </div>
+
+            {withdrawalError && (
+              <p className="text-sm text-red-600">{withdrawalError}</p>
+            )}
 
             <div className="flex gap-2">
               <button
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50"
                 onClick={() => setWithdrawalDialog(false)}
+                disabled={withdrawalSubmitting}
               >
                 Cancel
               </button>
               <button
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
-                onClick={() => {
-                  // Handle withdrawal
-                  setWithdrawalDialog(false);
-                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-70"
+                onClick={handleWithdrawalSubmit}
+                disabled={withdrawalSubmitting}
               >
-                Request Withdrawal
+                {withdrawalSubmitting ? 'Submitting...' : 'Request Withdrawal'}
               </button>
             </div>
           </div>

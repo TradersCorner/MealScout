@@ -107,6 +107,10 @@ const getFootTrafficCount = async (params: {
     radiusKm / (111 * Math.cos((lat * Math.PI) / 180) || 1);
 
   const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+  const minLat = toDecimalString(lat - latDelta);
+  const maxLat = toDecimalString(lat + latDelta);
+  const minLng = toDecimalString(lng - lngDelta);
+  const maxLng = toDecimalString(lng + lngDelta);
   let rows: Array<{
     lat: string | number | null;
     lng: string | number | null;
@@ -125,10 +129,10 @@ const getFootTrafficCount = async (params: {
       .where(
         and(
           gte(geoLocationPings.createdAt, since),
-          gte(geoLocationPings.lat, lat - latDelta),
-          lte(geoLocationPings.lat, lat + latDelta),
-          gte(geoLocationPings.lng, lng - lngDelta),
-          lte(geoLocationPings.lng, lng + lngDelta)
+          gte(geoLocationPings.lat, minLat ?? "0"),
+          lte(geoLocationPings.lat, maxLat ?? "0"),
+          gte(geoLocationPings.lng, minLng ?? "0"),
+          lte(geoLocationPings.lng, maxLng ?? "0")
         )
       );
   } catch (error) {

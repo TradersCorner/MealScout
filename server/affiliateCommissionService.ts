@@ -45,7 +45,14 @@ async function getAffiliateRecipientsForUser(
         : inArray(users.id, uniqueIds),
     );
 
-  const map = new Map(affiliates.map((row) => [row.id, row]));
+  type AffiliateRow = {
+    id: string;
+    userType: string | null;
+    affiliatePercent: number | string | null;
+  };
+
+  const typedAffiliates = affiliates as AffiliateRow[];
+  const map = new Map(typedAffiliates.map((row) => [row.id, row]));
 
   return uniqueIds
     .map((id) => map.get(id))

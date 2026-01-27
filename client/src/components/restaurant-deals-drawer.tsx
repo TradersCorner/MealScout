@@ -28,6 +28,7 @@ interface Deal {
     cuisineType?: string;
     phone?: string;
   };
+  distance?: number;
 }
 
 interface RestaurantDealsDrawerProps {

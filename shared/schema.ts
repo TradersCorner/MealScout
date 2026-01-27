@@ -45,7 +45,7 @@ export const sessions = pgTable(
 );
 
 // User storage table supporting multiple authentication methods
-export const users = pgTable("users", {
+export const users: any = pgTable("users", {
   id: varchar("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
@@ -2213,9 +2213,19 @@ export const affiliateWithdrawals = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-    method: varchar("method").notNull(), // 'bank_transfer' | 'paypal' | 'store_credit'
+    method: varchar("method").notNull(), // 'paypal' | 'ach' | 'other'
     status: varchar("status").notNull().default("pending"), // 'pending' | 'processing' | 'completed' | 'failed'
     methodDetails: jsonb("method_details"), // Bank account, PayPal email, etc
+    creditLedgerId: varchar("credit_ledger_id").references(
+      () => creditLedger.id,
+      { onDelete: "set null" },
+    ),
+    approvedAt: timestamp("approved_at"),
+    approvedBy: varchar("approved_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    paidAt: timestamp("paid_at"),
+    rejectedAt: timestamp("rejected_at"),
     requestedAt: timestamp("requested_at").defaultNow(),
     processedAt: timestamp("processed_at"),
     notes: text("notes"),
@@ -2729,8 +2739,9 @@ export const userPayoutPreferences = pgTable(
       .notNull()
       .unique()
       .references(() => users.id, { onDelete: "cascade" }),
-    method: varchar("method").notNull().default("credit"), // 'cash' | 'credit'
-    stripeConnectedId: varchar("stripe_connected_id"), // For Stripe Connect payouts
+    method: varchar("method").notNull().default("credit"), // 'credit' | 'paypal' | 'ach' | 'other'
+    methodDetails: jsonb("method_details"), // { paypalEmail, achRouting, achAccount, achName, notes }
+    stripeConnectedId: varchar("stripe_connected_id"), // Legacy Stripe Connect payouts (optional)
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },

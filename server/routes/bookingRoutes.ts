@@ -35,7 +35,9 @@ export function registerBookingRoutes(app: Express) {
         return res.json([]);
       }
 
-      const truckIds = userTrucks.map((t) => t.id);
+      const truckIds = userTrucks.map(
+        (t: (typeof userTrucks)[number]) => t.id,
+      );
 
       // Get all bookings for these trucks
       const bookings = await db
@@ -58,11 +60,11 @@ export function registerBookingRoutes(app: Express) {
         .from(eventBookings)
         .innerJoin(events, eq(eventBookings.eventId, events.id))
         .innerJoin(hosts, eq(eventBookings.hostId, hosts.id))
-        .where(or(...truckIds.map((id) => eq(eventBookings.truckId, id))))
+        .where(or(...truckIds.map((id: string) => eq(eventBookings.truckId, id))))
         .orderBy(desc(events.date));
 
       // Format the response
-      const formattedBookings = bookings.map((b) => ({
+      const formattedBookings = bookings.map((b: (typeof bookings)[number]) => ({
         id: b.id,
         eventId: b.eventId,
         truckId: b.truckId,
@@ -111,7 +113,9 @@ export function registerBookingRoutes(app: Express) {
         return res.json([]);
       }
 
-      const hostIds = userHosts.map((h) => h.id);
+      const hostIds = userHosts.map(
+        (h: (typeof userHosts)[number]) => h.id,
+      );
 
       // Get all bookings for these host locations
       const bookings = await db
@@ -136,11 +140,11 @@ export function registerBookingRoutes(app: Express) {
         .innerJoin(events, eq(eventBookings.eventId, events.id))
         .innerJoin(hosts, eq(eventBookings.hostId, hosts.id))
         .innerJoin(restaurants, eq(eventBookings.truckId, restaurants.id))
-        .where(or(...hostIds.map((id) => eq(eventBookings.hostId, id))))
+        .where(or(...hostIds.map((id: string) => eq(eventBookings.hostId, id))))
         .orderBy(desc(events.date));
 
       // Format the response
-      const formattedBookings = bookings.map((b) => ({
+      const formattedBookings = bookings.map((b: (typeof bookings)[number]) => ({
         id: b.id,
         eventId: b.eventId,
         truckId: b.truckId,
@@ -445,11 +449,11 @@ export function registerBookingRoutes(app: Express) {
           .orderBy(desc(events.date));
 
         const bookingEventIds = new Set(
-          bookingRows.map((row) => row.eventId),
+          bookingRows.map((row: (typeof bookingRows)[number]) => row.eventId),
         );
 
         const schedule = [
-          ...bookingRows.map((row) => ({
+          ...bookingRows.map((row: (typeof bookingRows)[number]) => ({
             type: "booking",
             status: row.status,
             createdAt: row.createdAt,
@@ -471,8 +475,11 @@ export function registerBookingRoutes(app: Express) {
             },
           })),
           ...acceptedInterestRows
-            .filter((row) => !bookingEventIds.has(row.eventId))
-            .map((row) => ({
+            .filter(
+              (row: (typeof acceptedInterestRows)[number]) =>
+                !bookingEventIds.has(row.eventId),
+            )
+            .map((row: (typeof acceptedInterestRows)[number]) => ({
               type: "accepted_interest",
               status: row.status,
               createdAt: row.createdAt,

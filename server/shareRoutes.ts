@@ -5,10 +5,10 @@
  */
 
 import type { Express } from 'express';
-import { isAuthenticated } from './unifiedAuth';
-import { generateShareLink } from './shareMiddleware';
+import { generateShareableUrl } from './shareMiddleware';
 import { db } from "./db";
 import { affiliateShareEvents } from "@shared/schema";
+import { ensureAffiliateTag, resolveAffiliateUserId } from "./affiliateTagService";
 
 export default function setupShareRoutes(app: Express) {
   /**
@@ -18,26 +18,41 @@ export default function setupShareRoutes(app: Express) {
    * Body: { path: '/restaurants/123' | '/deals/456' | etc }
    * Returns: { shareLink, shortPath, copied: true }
    */
-  app.post('/api/share/generate', isAuthenticated, async (req: any, res) => {
+  app.post('/api/share/generate', async (req: any, res) => {
     try {
-      const { path } = req.body;
+      const { path, ref } = req.body;
 
       if (!path) {
         return res.status(400).json({ error: 'Path required' });
       }
 
       const baseUrl = `${req.protocol}://${req.get('host')}`;
-      const result = await generateShareLink(path, baseUrl, req.user?.id);
+      let affiliateUserId: string | null = req.user?.id || null;
+      let affiliateTag: string | undefined;
 
-      if (req.user?.id) {
+      if (affiliateUserId) {
+        affiliateTag = await ensureAffiliateTag(affiliateUserId);
+      } else if (typeof ref === "string" && ref.trim()) {
+        const trimmed = ref.trim();
+        const resolved = await resolveAffiliateUserId(trimmed);
+        if (resolved) {
+          affiliateUserId = resolved;
+          affiliateTag = trimmed;
+        }
+      }
+
+      const shareLink = generateShareableUrl(path, baseUrl, affiliateTag);
+
+      if (affiliateUserId) {
         await db.insert(affiliateShareEvents).values({
-          affiliateUserId: req.user.id,
+          affiliateUserId,
           sourcePath: path,
         });
       }
 
       res.json({
-        ...result,
+        shareLink,
+        shortPath: path,
         message: 'Share link generated',
       });
     } catch (error: any) {

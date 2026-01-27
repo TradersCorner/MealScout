@@ -182,6 +182,9 @@ export async function setupUnifiedAuth(app: Express) {
         return done(null, false);
       }
       let user = await storage.getUser(id);
+      if (!user) {
+        return done(null, false);
+      }
 
       // Auto-upgrade the configured super admin email to super_admin role
       const SUPER_ADMIN_EMAIL =

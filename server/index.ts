@@ -159,12 +159,6 @@ if (process.env.NODE_ENV === "production") {
         }
         return compression.filter(req, res);
       },
-      brotli: {
-        enabled: true,
-        zlib: {
-          level: 5,
-        },
-      },
     })
   );
 }

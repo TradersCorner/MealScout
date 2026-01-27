@@ -121,7 +121,7 @@ export function registerEventRoutes(app: Express) {
           spotCount: maxSpots,
           bookedSpots: Math.min(rows.length, maxSpots),
           availableSpotNumbers,
-          bookings: rows.map((row) => ({
+          bookings: rows.map((row: (typeof rows)[number]) => ({
             truckId: row.truckId,
             truckName: row.truckName,
             slotType: row.slotType,

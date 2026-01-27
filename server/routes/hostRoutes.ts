@@ -79,7 +79,9 @@ export function registerHostRoutes(app: Express) {
       (row.dailyPriceCents ?? 0) > 0 ||
       (row.weeklyPriceCents ?? 0) > 0 ||
       (row.monthlyPriceCents ?? 0) > 0;
-    const activeRow = rows.find((row) => hasActivePricing(row));
+    const activeRow = rows.find((row: (typeof rows)[number]) =>
+      hasActivePricing(row),
+    );
     return activeRow?.seriesId ?? null;
   };
 
@@ -114,7 +116,7 @@ export function registerHostRoutes(app: Express) {
         parsed.state ?? null,
       );
       const hasDuplicate = existingHosts.some(
-        (host) =>
+        (host: (typeof existingHosts)[number]) =>
           buildLocationKey(host.address, host.city, host.state) === newKey,
       );
       if (hasDuplicate) {
@@ -169,20 +171,28 @@ export function registerHostRoutes(app: Express) {
     }
   });
 
-  app.get("/api/hosts/:hostId", isAuthenticated, async (req: any, res) => {
-    try {
-      const { hostId } = req.params;
-      const userId = req.user.id;
-      const host = await storage.getHost(hostId);
-      if (!host || host.userId !== userId) {
-        return res.status(404).json({ message: "Host profile not found" });
+  app.get(
+    "/api/hosts/:hostId",
+    isAuthenticated,
+    async (req: any, res, next) => {
+      const reserved = new Set(["events", "event-series"]);
+      if (reserved.has(req.params.hostId)) {
+        return next();
       }
-      res.json(host);
-    } catch (error: any) {
-      console.error("Error fetching host profile:", error);
-      res.status(500).json({ message: "Failed to fetch host profile" });
-    }
-  });
+      try {
+        const { hostId } = req.params;
+        const userId = req.user.id;
+        const host = await storage.getHost(hostId);
+        if (!host || host.userId !== userId) {
+          return res.status(404).json({ message: "Host profile not found" });
+        }
+        res.json(host);
+      } catch (error: any) {
+        console.error("Error fetching host profile:", error);
+        res.status(500).json({ message: "Failed to fetch host profile" });
+      }
+    },
+  );
 
   app.patch("/api/hosts/me", isAuthenticated, async (req: any, res) => {
     try {
@@ -254,7 +264,7 @@ export function registerHostRoutes(app: Express) {
         .where(eq(hosts.userId, userId));
 
       const hasDuplicate = siblingHosts.some(
-        (item) =>
+        (item: (typeof siblingHosts)[number]) =>
           item.id !== host.id &&
           buildLocationKey(item.address, item.city, item.state) === nextKey,
       );
@@ -309,9 +319,7 @@ export function registerHostRoutes(app: Express) {
         }
         const seriesId = await getActiveParkingPassSeriesId(hostId);
         if (!seriesId) {
-          return res
-            .status(404)
-            .json({ message: "No active parking pass found." });
+          return res.json([]);
         }
         const blackoutDates =
           await storage.getParkingPassBlackoutDates(seriesId);
@@ -576,14 +584,16 @@ export function registerHostRoutes(app: Express) {
         });
       }
       if (existingPaidEvents.length > 0) {
-        const draftEventIds = existingPaidEvents.map((row) => row.id);
+        const draftEventIds = existingPaidEvents.map(
+          (row: (typeof existingPaidEvents)[number]) => row.id,
+        );
         const draftSeriesIds = Array.from(
           new Set(
             existingPaidEvents
-              .map((row) => row.seriesId)
-              .filter((id): id is string => Boolean(id)),
+              .map((row: (typeof existingPaidEvents)[number]) => row.seriesId)
+              .filter((id: string | null): id is string => Boolean(id)),
           ),
-        );
+        ) as string[];
         await db.delete(events).where(inArray(events.id, draftEventIds));
         if (draftSeriesIds.length > 0) {
           await db
@@ -595,6 +605,7 @@ export function registerHostRoutes(app: Express) {
       const horizon = new Date(today);
       horizon.setDate(horizon.getDate() + 30);
 
+      const hardCapEnabled = Boolean(req.body?.hardCapEnabled);
       const [series] = await db
         .insert(eventSeries)
         .values({
@@ -647,12 +658,13 @@ export function registerHostRoutes(app: Express) {
 
       const blackoutSet = new Set(
         blackoutRows.map(
-          (row) => new Date(row.date).toISOString().split("T")[0],
+          (row: (typeof blackoutRows)[number]) =>
+            new Date(row.date).toISOString().split("T")[0],
         ),
       );
 
       const existingKeys = new Set(
-        existingEvents.map((item) => {
+        existingEvents.map((item: (typeof existingEvents)[number]) => {
           const dateKey = new Date(item.date).toISOString().split("T")[0];
           return `${dateKey}-${item.startTime}-${item.endTime}`;
         }),
@@ -737,6 +749,9 @@ export function registerHostRoutes(app: Express) {
 
         if (!event) {
           return res.status(404).json({ message: "Event not found" });
+        }
+        if (!host) {
+          return res.status(404).json({ message: "Host profile not found" });
         }
 
         // Verify host owns the event

@@ -15,9 +15,20 @@ import affiliateService from './affiliateService';
 import shareService from './shareService';
 import emptyCountyService from './emptyCountyService';
 import { logAudit } from './auditLogger';
-import { eq, desc } from 'drizzle-orm';
-import { affiliateWithdrawals, affiliateLinks, affiliateCommissions, affiliateWallet } from '@shared/schema';
+import { eq, desc, sql, and, isNull, sum } from 'drizzle-orm';
+import {
+  affiliateWithdrawals,
+  affiliateLinks,
+  affiliateCommissions,
+  affiliateWallet,
+  affiliateShareEvents,
+  creditLedger,
+  referralClicks,
+  referrals,
+} from '@shared/schema';
 import { ensureAffiliateTag, setAffiliateTag } from "./affiliateTagService";
+import { appendReferralParam } from "./referralService";
+import { getUserCreditBalance } from "./creditService";
 
 const router = Router();
 
@@ -151,11 +162,177 @@ router.get('/stats', isAuthenticated, async (req, res) => {
     }
 
     const stats = await affiliateService.getAffiliateStats(userId);
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const affiliateTag = await ensureAffiliateTag(userId);
+
+    const creditBalance = await getUserCreditBalance(userId);
+    const totalEarnedRows = await db
+      .select({ total: sum(creditLedger.amount) })
+      .from(creditLedger)
+      .where(eq(creditLedger.userId, userId));
+    const totalEarnedRaw = totalEarnedRows[0]?.total
+      ? parseFloat(totalEarnedRows[0].total.toString())
+      : 0;
+    const totalEarned = Math.max(0, totalEarnedRaw);
+
+    const totalWithdrawnRows = await db
+      .select({ total: sum(creditLedger.amount) })
+      .from(creditLedger)
+      .where(
+        and(
+          eq(creditLedger.userId, userId),
+          eq(creditLedger.redeemedFor, "cash_payout"),
+        ),
+      );
+    const totalWithdrawnRaw = totalWithdrawnRows[0]?.total
+      ? parseFloat(totalWithdrawnRows[0].total.toString())
+      : 0;
+    const totalWithdrawn = Math.abs(Math.min(0, totalWithdrawnRaw));
+
+    const pendingWithdrawalsRows = await db
+      .select({ total: sum(creditLedger.amount) })
+      .from(creditLedger)
+      .where(
+        and(
+          eq(creditLedger.userId, userId),
+          eq(creditLedger.redeemedFor, "cash_payout_request"),
+        ),
+      );
+    const pendingWithdrawalsRaw = pendingWithdrawalsRows[0]?.total
+      ? parseFloat(pendingWithdrawalsRows[0].total.toString())
+      : 0;
+    const pendingWithdrawals = Math.abs(Math.min(0, pendingWithdrawalsRaw));
+
+    const totalSpentRows = await db
+      .select({ total: sum(creditLedger.amount) })
+      .from(creditLedger)
+      .where(
+        and(
+          eq(creditLedger.userId, userId),
+          eq(creditLedger.redeemedFor, "restaurant"),
+        ),
+      );
+    const totalSpentRaw = totalSpentRows[0]?.total
+      ? parseFloat(totalSpentRows[0].total.toString())
+      : 0;
+    const totalSpent = Math.abs(Math.min(0, totalSpentRaw));
+
+    const referralClicksCount = await db
+      .select({ count: sql<number>`count(*)`.mapWith(Number) })
+      .from(referralClicks)
+      .where(eq(referralClicks.affiliateUserId, userId));
+    const referralConversions = await db
+      .select({ count: sql<number>`count(*)`.mapWith(Number) })
+      .from(referrals)
+      .where(
+        and(
+          eq(referrals.affiliateUserId, userId),
+          sql`${referrals.status} in ('signed_up','activated','paid')`,
+        ),
+      );
+
+    const shareCountRows = await db
+      .select({
+        count: sql<number>`count(distinct ${affiliateShareEvents.sourcePath})`.mapWith(Number),
+      })
+      .from(affiliateShareEvents)
+      .where(eq(affiliateShareEvents.affiliateUserId, userId));
+    const shareCount = shareCountRows[0]?.count ?? 0;
+
+    const shareRows = await db
+      .select({
+        id: affiliateShareEvents.id,
+        sourcePath: affiliateShareEvents.sourcePath,
+        createdAt: affiliateShareEvents.createdAt,
+      })
+      .from(affiliateShareEvents)
+      .where(eq(affiliateShareEvents.affiliateUserId, userId))
+      .orderBy(desc(affiliateShareEvents.createdAt))
+      .limit(5);
+
+    const shareLinks = shareRows.map((row: { id: string; sourcePath: string; createdAt: Date | null }) => {
+      const path = row.sourcePath.startsWith("/")
+        ? row.sourcePath
+        : `/${row.sourcePath}`;
+      const fullUrl = appendReferralParam(`${baseUrl}${path}`, affiliateTag);
+      return {
+        id: row.id,
+        code: row.sourcePath,
+        resourceType: "page",
+        resourceId: null,
+        sourceUrl: path,
+        fullUrl,
+        clickCount: 0,
+        conversions: 0,
+        createdAt: row.createdAt,
+      };
+    });
+
+    stats.wallet = {
+      totalEarned,
+      availableBalance: creditBalance,
+      pendingCommissions: pendingWithdrawals,
+      totalWithdrawn,
+      totalSpent,
+    };
+
+    stats.stats.totalLinks = Math.max(stats.stats.totalLinks, shareCount);
+    stats.stats.totalClicks = referralClicksCount[0]?.count ?? stats.stats.totalClicks;
+    stats.stats.totalConversions = referralConversions[0]?.count ?? stats.stats.totalConversions;
+    stats.stats.conversionRate =
+      stats.stats.totalClicks > 0
+        ? ((stats.stats.totalConversions / stats.stats.totalClicks) * 100).toFixed(2)
+        : "0";
+
+    if (shareLinks.length > 0) {
+      stats.recentLinks = shareLinks;
+    }
 
     res.json(stats);
   } catch (error) {
     console.error('Failed to fetch affiliate stats:', error);
     res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+/**
+ * GET /api/affiliate/withdrawals
+ * Get withdrawal history for the logged-in affiliate
+ */
+router.get('/withdrawals', isAuthenticated, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit as string, 10) || 25, 1),
+      100,
+    );
+
+    const withdrawals = await db
+      .select({
+        id: affiliateWithdrawals.id,
+        amount: affiliateWithdrawals.amount,
+        method: affiliateWithdrawals.method,
+        status: affiliateWithdrawals.status,
+        methodDetails: affiliateWithdrawals.methodDetails,
+        requestedAt: affiliateWithdrawals.requestedAt,
+        approvedAt: affiliateWithdrawals.approvedAt,
+        paidAt: affiliateWithdrawals.paidAt,
+        rejectedAt: affiliateWithdrawals.rejectedAt,
+        notes: affiliateWithdrawals.notes,
+      })
+      .from(affiliateWithdrawals)
+      .where(eq(affiliateWithdrawals.userId, userId))
+      .orderBy(desc(affiliateWithdrawals.requestedAt))
+      .limit(limit);
+
+    res.json({ withdrawals });
+  } catch (error) {
+    console.error('Failed to fetch affiliate withdrawals:', error);
+    res.status(500).json({ error: 'Failed to fetch withdrawals' });
   }
 });
 
@@ -210,7 +387,7 @@ router.get('/commissions', isAuthenticated, async (req, res) => {
 router.post('/withdraw', isAuthenticated, async (req, res) => {
   try {
     const userId = req.user?.id;
-    const { amount, method, methodDetails } = req.body;
+    const { amount, method, methodDetails, notes } = req.body;
 
     if (!userId || !amount || !method) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -222,42 +399,64 @@ router.post('/withdraw', isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: 'Minimum withdrawal is $5' });
     }
 
-    // Check available balance
-    const wallet = (await db
-      .select()
-      .from(affiliateWallet)
-      .where(eq(affiliateWallet.userId, userId))
-      .limit(1))[0];
+    if (!['paypal', 'ach', 'other'].includes(method)) {
+      return res.status(400).json({ error: 'Invalid payout method' });
+    }
 
-    if (!wallet || parseFloat(wallet.availableBalance?.toString() || '0') < amountNum) {
+    if (!methodDetails || typeof methodDetails !== "object") {
+      return res.status(400).json({ error: 'Payout method details required' });
+    }
+
+    // Check available balance
+    const balance = await getUserCreditBalance(userId);
+    if (balance < amountNum) {
       return res.status(400).json({ error: 'Insufficient balance' });
     }
 
-    // Create withdrawal request
-    const withdrawal = await db.insert(affiliateWithdrawals).values({
-      userId,
-      amount,
-      method,
-      methodDetails,
-    }).returning();
+    const withdrawal = await db.transaction(async (tx: any) => {
+      const [created] = await tx
+        .insert(affiliateWithdrawals)
+        .values({
+          userId,
+          amount: amountNum.toString(),
+          method,
+          methodDetails,
+          status: "pending",
+          notes: notes || null,
+        })
+        .returning();
 
-    // Update wallet
-    await affiliateService.updateAffiliateWallet(userId, {
-      availableBalance: -amountNum,
-      totalWithdrawn: amountNum,
+      const [ledgerEntry] = await tx
+        .insert(creditLedger)
+        .values({
+          userId,
+          amount: (-amountNum).toString(),
+          sourceType: "cash_payout",
+          sourceId: created.id,
+          redeemedAt: new Date(),
+          redeemedFor: "cash_payout_request",
+        })
+        .returning();
+
+      await tx
+        .update(affiliateWithdrawals)
+        .set({ creditLedgerId: ledgerEntry.id })
+        .where(eq(affiliateWithdrawals.id, created.id));
+
+      return { ...created, creditLedgerId: ledgerEntry.id };
     });
 
     await logAudit(
       userId,
       'affiliate_withdrawal_requested',
       'withdrawal',
-      withdrawal[0].id,
+      withdrawal.id,
       req.ip || 'unknown',
       req.get('user-agent') || 'unknown',
-      { amount, method },
+      { amount: amountNum, method },
     );
 
-    res.json(withdrawal[0]);
+    res.json(withdrawal);
   } catch (error) {
     console.error('Failed to create withdrawal:', error);
     res.status(500).json({ error: 'Failed to create withdrawal' });

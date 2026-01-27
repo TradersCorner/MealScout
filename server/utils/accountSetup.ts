@@ -23,9 +23,9 @@ export async function sendAccountSetupInvite({
     userId: user.id,
     tokenHash,
     expiresAt,
-    createdByUserId: createdBy?.id ?? null,
-    requestIp: req.ip || null,
-    userAgent: req.get("User-Agent") || null,
+    createdByUserId: createdBy?.id ?? undefined,
+    requestIp: req.ip || undefined,
+    userAgent: req.get("User-Agent") || undefined,
   });
 
   const baseUrl =

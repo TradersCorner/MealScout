@@ -10,7 +10,7 @@ export default function DashboardRouter() {
     const list = new Set<string>();
     if (user?.userType) list.add(user.userType);
     if (Array.isArray(user?.roles)) {
-      user.roles.forEach((role) => {
+      user.roles.forEach((role: string | null) => {
         if (role) list.add(role);
       });
     }

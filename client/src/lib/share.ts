@@ -80,7 +80,10 @@ export async function getAffiliateShareUrl(input: string): Promise<string> {
       : baseFallback;
 
   try {
-    const res = await apiRequest("POST", "/api/share/generate", { path });
+    const res = await apiRequest("POST", "/api/share/generate", {
+      path,
+      ref: storedRef || undefined,
+    });
     const data = await res.json();
     return data?.shareLink || fallback;
   } catch {

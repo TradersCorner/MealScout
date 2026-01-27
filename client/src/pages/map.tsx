@@ -211,6 +211,7 @@ interface GeoAd {
 type HostLocation = {
   id: string;
   name: string;
+  businessName?: string;
   address: string;
   city?: string | null;
   state?: string | null;

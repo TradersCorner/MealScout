@@ -44,7 +44,8 @@ export async function getUserPayoutPreferences(userId: string) {
  */
 export async function setPayoutMethod(
   userId: string,
-  method: 'cash' | 'credit',
+  method: 'credit' | 'paypal' | 'ach' | 'other',
+  methodDetails?: Record<string, any>,
   stripeConnectedId?: string,
 ) {
   try {
@@ -59,6 +60,7 @@ export async function setPayoutMethod(
       const created = await db.insert(userPayoutPreferences).values({
         userId,
         method,
+        methodDetails: methodDetails ?? undefined,
         stripeConnectedId: stripeConnectedId || undefined,
       }).returning();
       prefs = created[0];
@@ -67,6 +69,7 @@ export async function setPayoutMethod(
       const updated = await db.update(userPayoutPreferences)
         .set({
           method,
+          methodDetails: methodDetails ?? undefined,
           stripeConnectedId: stripeConnectedId || undefined,
           updatedAt: new Date(),
         })

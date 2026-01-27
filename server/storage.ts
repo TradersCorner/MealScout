@@ -228,6 +228,9 @@ export interface IStorage {
         | "stripeCustomerId"
         | "stripeSubscriptionId"
         | "subscriptionSignupDate"
+        | "trialStartedAt"
+        | "trialEndsAt"
+        | "trialUsed"
         | "emailVerified"
         | "firstName"
         | "lastName"
@@ -1084,6 +1087,9 @@ export class DatabaseStorage implements IStorage {
         | "stripeSubscriptionId"
         | "passwordHash"
         | "subscriptionSignupDate"
+        | "trialStartedAt"
+        | "trialEndsAt"
+        | "trialUsed"
         | "emailVerified"
         | "firstName"
         | "lastName"
@@ -2945,6 +2951,8 @@ export class DatabaseStorage implements IStorage {
       const restaurant1 = await this.createRestaurant({
         name: "Café du Monde Hammond",
         address: "315 W Thomas St, Hammond, LA 70401",
+        city: "Hammond",
+        state: "LA",
         phone: "+1 (985) 345-2233",
         cuisineType: "Cajun",
         latitude: "30.5047",
@@ -2955,6 +2963,8 @@ export class DatabaseStorage implements IStorage {
       const restaurant2 = await this.createRestaurant({
         name: "Red Lobster Hammond",
         address: "1535 W Thomas St, Hammond, LA 70401",
+        city: "Hammond",
+        state: "LA",
         phone: "+1 (985) 419-1235",
         cuisineType: "Seafood",
         latitude: "30.5125",
@@ -2966,6 +2976,8 @@ export class DatabaseStorage implements IStorage {
       const restaurant3 = await this.createRestaurant({
         name: "Joe's Pizza NYC",
         address: "7 Carmine St, New York, NY 10014",
+        city: "New York",
+        state: "NY",
         phone: "+1 (212) 366-1182",
         cuisineType: "Italian",
         latitude: "40.7303",
@@ -2976,6 +2988,8 @@ export class DatabaseStorage implements IStorage {
       const restaurant4 = await this.createRestaurant({
         name: "Katz's Delicatessen",
         address: "205 E Houston St, New York, NY 10002",
+        city: "New York",
+        state: "NY",
         phone: "+1 (212) 254-2246",
         cuisineType: "Jewish",
         latitude: "40.7222",
@@ -2987,6 +3001,8 @@ export class DatabaseStorage implements IStorage {
       const restaurant5 = await this.createRestaurant({
         name: "In-N-Out Burger",
         address: "7009 Sunset Blvd, Hollywood, CA 90028",
+        city: "Los Angeles",
+        state: "CA",
         phone: "+1 (800) 786-1000",
         cuisineType: "American",
         latitude: "34.0985",
@@ -2997,6 +3013,8 @@ export class DatabaseStorage implements IStorage {
       const restaurant6 = await this.createRestaurant({
         name: "Guelaguetza",
         address: "3014 W Olympic Blvd, Los Angeles, CA 90006",
+        city: "Los Angeles",
+        state: "CA",
         phone: "+1 (213) 427-0608",
         cuisineType: "Mexican",
         latitude: "34.0579",
@@ -3008,6 +3026,8 @@ export class DatabaseStorage implements IStorage {
       const restaurant7 = await this.createRestaurant({
         name: "Lou Malnati's Pizzeria",
         address: "439 N Wells St, Chicago, IL 60654",
+        city: "Chicago",
+        state: "IL",
         phone: "+1 (312) 828-9800",
         cuisineType: "Italian",
         latitude: "41.8906",
@@ -3018,6 +3038,8 @@ export class DatabaseStorage implements IStorage {
       const restaurant8 = await this.createRestaurant({
         name: "Al's Beef",
         address: "1079 W Taylor St, Chicago, IL 60607",
+        city: "Chicago",
+        state: "IL",
         phone: "+1 (312) 226-4017",
         cuisineType: "American",
         latitude: "41.8690",
@@ -3029,6 +3051,8 @@ export class DatabaseStorage implements IStorage {
       const restaurant9 = await this.createRestaurant({
         name: "The Original Ninfa's",
         address: "2704 Navigation Blvd, Houston, TX 77003",
+        city: "Houston",
+        state: "TX",
         phone: "+1 (713) 228-1175",
         cuisineType: "Mexican",
         latitude: "29.7469",
@@ -3039,6 +3063,8 @@ export class DatabaseStorage implements IStorage {
       const restaurant10 = await this.createRestaurant({
         name: "Franklin Barbecue",
         address: "900 E 11th St, Austin, TX 78702",
+        city: "Austin",
+        state: "TX",
         phone: "+1 (512) 653-1187",
         cuisineType: "BBQ",
         latitude: "30.2669",
@@ -3050,6 +3076,8 @@ export class DatabaseStorage implements IStorage {
       const restaurant11 = await this.createRestaurant({
         name: "Versailles Restaurant",
         address: "3555 SW 8th St, Miami, FL 33135",
+        city: "Miami",
+        state: "FL",
         phone: "+1 (305) 444-0240",
         cuisineType: "Cuban",
         latitude: "25.7654",
@@ -3061,6 +3089,8 @@ export class DatabaseStorage implements IStorage {
       const restaurant12 = await this.createRestaurant({
         name: "Pike Place Chowder",
         address: "1530 Post Alley, Seattle, WA 98101",
+        city: "Seattle",
+        state: "WA",
         phone: "+1 (206) 267-2537",
         cuisineType: "Seafood",
         latitude: "47.6089",
@@ -3072,6 +3102,8 @@ export class DatabaseStorage implements IStorage {
       const foodTruck1 = await this.createRestaurant({
         name: "Louisiana Po-Boy Express",
         address: "Mobile - Hammond & Ponchatoula area",
+        city: "Hammond",
+        state: "LA",
         phone: "+1 (985) 662-7823",
         cuisineType: "Cajun",
         isFoodTruck: true,
@@ -3083,6 +3115,8 @@ export class DatabaseStorage implements IStorage {
       const foodTruck2 = await this.createRestaurant({
         name: "The Halal Guys NYC",
         address: "Mobile - Manhattan area",
+        city: "New York",
+        state: "NY",
         phone: "+1 (347) 527-1505",
         cuisineType: "Middle Eastern",
         isFoodTruck: true,
@@ -3094,6 +3128,8 @@ export class DatabaseStorage implements IStorage {
       const foodTruck3 = await this.createRestaurant({
         name: "Kogi BBQ Truck",
         address: "Mobile - Los Angeles area",
+        city: "Los Angeles",
+        state: "CA",
         phone: "+1 (323) 582-8889",
         cuisineType: "Korean",
         isFoodTruck: true,

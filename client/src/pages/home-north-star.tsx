@@ -97,7 +97,7 @@ export default function Home() {
                     List my food truck or restaurant
                   </h3>
                   <p className="text-sm text-gray-600">
-                    Join before March 1 and lock in $50 -> $25/month forever
+                    Join before March 1 and lock in $50 → $25/month forever
                   </p>
                   <Button className="mt-4">Get Started</Button>
                 </div>
@@ -179,7 +179,7 @@ export default function Home() {
             where fair
           </p>
           <p className="font-semibold text-orange-600">
-            🔒 $50 -> $25/month forever for restaurants joining before March 1, 2026
+            🔒 $50 → $25/month forever for restaurants joining before March 1, 2026
           </p>
           <p className="text-gray-700">
             MealScout is a food truck finder and parking sourcing tool. It is

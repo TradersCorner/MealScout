@@ -12,7 +12,7 @@ export default function EventsRouter() {
     const roles = new Set<string>();
     if (user?.userType) roles.add(user.userType);
     if (Array.isArray(user?.roles)) {
-      user.roles.forEach((role) => {
+      user.roles.forEach((role: string | null) => {
         if (role) roles.add(role);
       });
     }

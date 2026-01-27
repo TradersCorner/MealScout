@@ -19,11 +19,11 @@ export function sanitizeUser<T extends Record<string, any>>(
 
   const sanitized = { ...user } as Record<string, any>;
 
-  for (const field of STRIPPED_FIELDS) {
+  Array.from(STRIPPED_FIELDS).forEach((field) => {
     if (field in sanitized) {
       delete sanitized[field];
     }
-  }
+  });
 
   if (!options.includeStripe) {
     delete sanitized.stripeCustomerId;

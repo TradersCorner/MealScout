@@ -8,7 +8,8 @@ import {
   Send,
   HelpCircle,
   Users,
-  Building
+  Building,
+  Clock
 } from "lucide-react";
 
 export default function Contact() {

@@ -452,6 +452,70 @@ export const restaurantFavorites = pgTable(
   ],
 );
 
+// Restaurant follows tracking
+export const restaurantFollows = pgTable(
+  "restaurant_follows",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    restaurantId: varchar("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id, { onDelete: "cascade" }),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    followedAt: timestamp("followed_at").defaultNow(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_restaurant_follows_restaurant").on(
+      table.restaurantId,
+      table.followedAt.desc(),
+    ),
+    index("IDX_restaurant_follows_user").on(
+      table.userId,
+      table.followedAt.desc(),
+    ),
+    index("IDX_restaurant_follows_unique").on(
+      table.restaurantId,
+      table.userId,
+    ),
+  ],
+);
+
+// Restaurant user recommendations (manual user recommends; one per restaurant)
+export const restaurantUserRecommendations = pgTable(
+  "restaurant_user_recommendations",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    restaurantId: varchar("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id, { onDelete: "cascade" }),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    recommendedAt: timestamp("recommended_at").defaultNow(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_restaurant_user_recommendations_restaurant").on(
+      table.restaurantId,
+      table.recommendedAt.desc(),
+    ),
+    index("IDX_restaurant_user_recommendations_user").on(
+      table.userId,
+      table.recommendedAt.desc(),
+    ),
+    index("IDX_restaurant_user_recommendations_unique").on(
+      table.restaurantId,
+      table.userId,
+    ),
+  ],
+);
+
 // Restaurant recommendations tracking - when a restaurant appears in recommendation feeds
 export const restaurantRecommendations = pgTable(
   "restaurant_recommendations",
@@ -722,6 +786,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   reviews: many(reviews),
   dealViews: many(dealViews),
   restaurantFavorites: many(restaurantFavorites),
+  restaurantFollows: many(restaurantFollows),
+  restaurantUserRecommendations: many(restaurantUserRecommendations),
   restaurantRecommendations: many(restaurantRecommendations),
   addresses: many(userAddresses),
   passwordResetTokens: many(passwordResetTokens),
@@ -1144,6 +1210,8 @@ export const restaurantsRelations = relations(restaurants, ({ one, many }) => ({
   foodTruckSessions: many(foodTruckSessions),
   foodTruckLocations: many(foodTruckLocations),
   favorites: many(restaurantFavorites),
+  follows: many(restaurantFollows),
+  userRecommendations: many(restaurantUserRecommendations),
   recommendations: many(restaurantRecommendations),
   manualSchedules: many(truckManualSchedules),
 }));
@@ -1243,6 +1311,34 @@ export const restaurantFavoritesRelations = relations(
     }),
     user: one(users, {
       fields: [restaurantFavorites.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const restaurantFollowsRelations = relations(
+  restaurantFollows,
+  ({ one }) => ({
+    restaurant: one(restaurants, {
+      fields: [restaurantFollows.restaurantId],
+      references: [restaurants.id],
+    }),
+    user: one(users, {
+      fields: [restaurantFollows.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const restaurantUserRecommendationsRelations = relations(
+  restaurantUserRecommendations,
+  ({ one }) => ({
+    restaurant: one(restaurants, {
+      fields: [restaurantUserRecommendations.restaurantId],
+      references: [restaurants.id],
+    }),
+    user: one(users, {
+      fields: [restaurantUserRecommendations.userId],
       references: [users.id],
     }),
   }),
@@ -1519,6 +1615,22 @@ export const insertRestaurantFavoriteSchema = createInsertSchema(
 ).omit({
   id: true,
   favoritedAt: true,
+  createdAt: true,
+});
+
+export const insertRestaurantFollowSchema = createInsertSchema(
+  restaurantFollows,
+).omit({
+  id: true,
+  followedAt: true,
+  createdAt: true,
+});
+
+export const insertRestaurantUserRecommendationSchema = createInsertSchema(
+  restaurantUserRecommendations,
+).omit({
+  id: true,
+  recommendedAt: true,
   createdAt: true,
 });
 
@@ -1825,6 +1937,17 @@ export type InsertRestaurantFavorite = z.infer<
   typeof insertRestaurantFavoriteSchema
 >;
 export type RestaurantFavorite = typeof restaurantFavorites.$inferSelect;
+
+export type InsertRestaurantFollow = z.infer<
+  typeof insertRestaurantFollowSchema
+>;
+export type RestaurantFollow = typeof restaurantFollows.$inferSelect;
+
+export type InsertRestaurantUserRecommendation = z.infer<
+  typeof insertRestaurantUserRecommendationSchema
+>;
+export type RestaurantUserRecommendation =
+  typeof restaurantUserRecommendations.$inferSelect;
 
 export type InsertRestaurantRecommendation = z.infer<
   typeof insertRestaurantRecommendationSchema

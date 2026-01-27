@@ -49,7 +49,9 @@ import {
   updateRestaurantMobileSettingsSchema,
   insertFoodTruckSessionSchema,
   insertRestaurantFavoriteSchema,
+  insertRestaurantFollowSchema,
   insertRestaurantRecommendationSchema,
+  insertRestaurantUserRecommendationSchema,
   insertUserAddressSchema,
   insertPasswordResetTokenSchema,
   updateRestaurantLocationSchema,
@@ -3267,11 +3269,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const { restaurantId } = req.params;
         const userId = req.user.id;
+        const MAX_FAVORITES = 3;
 
         // Check if restaurant exists
         const restaurant = await storage.getRestaurant(restaurantId);
         if (!restaurant) {
           return res.status(404).json({ message: "Restaurant not found" });
+        }
+
+        const favoriteCount = await storage.getUserRestaurantFavoritesCount(
+          userId
+        );
+        if (favoriteCount >= MAX_FAVORITES) {
+          return res.status(400).json({
+            message: `You can favorite up to ${MAX_FAVORITES} restaurants.`,
+          });
         }
 
         const favoriteData = insertRestaurantFavoriteSchema.parse({
@@ -3324,6 +3336,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error("Error fetching user restaurant favorites:", error);
         res.status(500).json({ message: "Failed to fetch favorites" });
+      }
+    },
+  );
+
+  // Restaurant follow endpoints
+  app.post(
+    "/api/restaurants/:restaurantId/follow",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { restaurantId } = req.params;
+        const userId = req.user.id;
+
+        const restaurant = await storage.getRestaurant(restaurantId);
+        if (!restaurant) {
+          return res.status(404).json({ message: "Restaurant not found" });
+        }
+
+        const followData = insertRestaurantFollowSchema.parse({
+          restaurantId,
+          userId,
+        });
+
+        const follow = await storage.createRestaurantFollow(followData);
+        res.json(follow);
+      } catch (error: any) {
+        console.error("Error adding restaurant follow:", error);
+        if (error.code === "23505") {
+          return res
+            .status(400)
+            .json({ message: "Restaurant already followed" });
+        }
+        res
+          .status(400)
+          .json({ message: error.message || "Failed to follow restaurant" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/restaurants/:restaurantId/follow",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { restaurantId } = req.params;
+        const userId = req.user.id;
+
+        await storage.removeRestaurantFollow(restaurantId, userId);
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error removing restaurant follow:", error);
+        res.status(500).json({ message: "Failed to unfollow restaurant" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/following/restaurants",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.id;
+        const follows = await storage.getUserRestaurantFollows(userId);
+        res.json(follows);
+      } catch (error) {
+        console.error("Error fetching user restaurant follows:", error);
+        res.status(500).json({ message: "Failed to fetch follows" });
+      }
+    },
+  );
+
+  // Restaurant recommend endpoints (one per restaurant)
+  app.post(
+    "/api/restaurants/:restaurantId/recommend",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { restaurantId } = req.params;
+        const userId = req.user.id;
+
+        const restaurant = await storage.getRestaurant(restaurantId);
+        if (!restaurant) {
+          return res.status(404).json({ message: "Restaurant not found" });
+        }
+
+        const recommendationData =
+          insertRestaurantUserRecommendationSchema.parse({
+            restaurantId,
+            userId,
+          });
+
+        const recommendation =
+          await storage.createRestaurantUserRecommendation(
+            recommendationData,
+          );
+        res.json(recommendation);
+      } catch (error: any) {
+        console.error("Error adding restaurant recommendation:", error);
+        if (error.code === "23505") {
+          return res
+            .status(400)
+            .json({ message: "Restaurant already recommended" });
+        }
+        res.status(400).json({
+          message: error.message || "Failed to recommend restaurant",
+        });
+      }
+    },
+  );
+
+  app.get(
+    "/api/recommendations/restaurants",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.id;
+        const recommendations =
+          await storage.getUserRestaurantRecommendations(userId);
+        res.json(recommendations);
+      } catch (error) {
+        console.error("Error fetching user restaurant recommendations:", error);
+        res.status(500).json({ message: "Failed to fetch recommendations" });
       }
     },
   );

@@ -1,6 +1,12 @@
 import { storage } from './storage';
 import { db } from './db';
-import { users, restaurants, awardHistory, videoStories } from '@shared/schema';
+import {
+  users,
+  restaurants,
+  awardHistory,
+  videoStories,
+  restaurantUserRecommendations,
+} from '@shared/schema';
 import { eq, and, or, like, sql, isNotNull } from 'drizzle-orm';
 
 // Golden Fork Award Criteria
@@ -22,17 +28,32 @@ const GOLDEN_PLATE_CRITERIA = {
  * ever tagged in a story (restaurantId IS NOT NULL), regardless of story status.
  */
 export async function getUserRecommendationCount(userId: string): Promise<number> {
-  const result = await db
-    .select({ count: sql<number>`COUNT(DISTINCT ${videoStories.restaurantId})`.mapWith(Number) })
+  const storyRecommendations = await db
+    .select({ restaurantId: videoStories.restaurantId })
     .from(videoStories)
     .where(
       and(
         eq(videoStories.userId, userId),
         isNotNull(videoStories.restaurantId),
       ),
-    );
+    )
+    .groupBy(videoStories.restaurantId);
 
-  return result[0]?.count ?? 0;
+  const manualRecommendations = await db
+    .select({ restaurantId: restaurantUserRecommendations.restaurantId })
+    .from(restaurantUserRecommendations)
+    .where(eq(restaurantUserRecommendations.userId, userId))
+    .groupBy(restaurantUserRecommendations.restaurantId);
+
+  const uniqueRestaurantIds = new Set<string>();
+  for (const rec of storyRecommendations) {
+    if (rec.restaurantId) uniqueRestaurantIds.add(rec.restaurantId);
+  }
+  for (const rec of manualRecommendations) {
+    if (rec.restaurantId) uniqueRestaurantIds.add(rec.restaurantId);
+  }
+
+  return uniqueRestaurantIds.size;
 }
 
 /**

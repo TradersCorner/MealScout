@@ -19,7 +19,7 @@ export default function About() {
     "@context": "https://schema.org",
     "@type": "Organization",
     "name": "MealScout",
-    "description": "Discover amazing local food deals and connect with nearby restaurants offering special promotions.",
+    "description": "MealScout helps food trucks find real places to park and serve — and helps customers find where food trucks are today.",
     "url": "https://mealscout.us",
     "logo": "https://mealscout.us/logo.png",
     "foundingDate": "2024",
@@ -32,31 +32,31 @@ export default function About() {
   };
 
   const stats = [
-    { number: "10,000+", label: "Active Users", icon: Users },
-    { number: "500+", label: "Partner Restaurants", icon: ShoppingBag },
-    { number: "50,000+", label: "Deals Claimed", icon: Star },
+    { number: "10,000+", label: "Active Diners", icon: Users },
+    { number: "500+", label: "Food Trucks", icon: ShoppingBag },
+    { number: "50,000+", label: "Parking Pass Visits", icon: Star },
     { number: "25+", label: "Cities Covered", icon: MapPin }
   ];
 
   const features = [
     {
-      title: "Local Discovery",
-      description: "Find the best food deals within walking distance of your location.",
+      title: "Find Food Trucks",
+      description: "See which trucks are active nearby and where they are today.",
       icon: MapPin
     },
     {
-      title: "Real-Time Updates",
-      description: "Get instant notifications when your favorite restaurants post new deals.",
+      title: "Source Parking",
+      description: "Discover verified host locations and reliable places to operate.",
       icon: TrendingUp
     },
     {
-      title: "Community Driven",
-      description: "Read reviews and ratings from fellow food lovers in your area.",
+      title: "Built for Trucks",
+      description: "Tools that match how food truck operators think: where can I park?",
       icon: Heart
     },
     {
-      title: "Quality Assured",
-      description: "All partner restaurants are verified and meet our quality standards.",
+      title: "Verified Locations",
+      description: "Hosts and spots are screened so trucks can operate confidently.",
       icon: Award
     }
   ];
@@ -64,9 +64,9 @@ export default function About() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
       <SEOHead
-        title="About MealScout - Discover Local Food Deals & Restaurant Promotions"
-        description="Learn about MealScout, the leading platform for discovering local food deals, restaurant promotions, and dining experiences. Join thousands of food lovers saving money while supporting local businesses."
-        keywords="about mealscout, local food deals, restaurant promotions, food discovery app, dining deals, local restaurants, food savings"
+        title="About MealScout - Food Truck Finder & Parking Sourcing"
+        description="MealScout helps food trucks find real places to park and serve and helps customers find active food trucks near them."
+        keywords="about mealscout, food truck finder, parking pass, host locations, food truck parking, local food trucks"
         canonicalUrl="https://mealscout.us/about"
         schemaData={schemaData}
       />
@@ -85,12 +85,11 @@ export default function About() {
             <Heart className="w-12 h-12 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-6">
-            Connecting Food Lovers with Local Restaurants
+            Connecting Food Trucks with Places to Park — and Customers with Food Trucks
           </h1>
           <p className="text-xl text-gray-600 leading-relaxed max-w-3xl mx-auto">
-            MealScout is the premier platform for discovering amazing food deals in your neighborhood. 
-            We help food enthusiasts save money while supporting local restaurants through targeted promotions 
-            and time-sensitive offers.
+            MealScout helps food trucks find real places to park and serve — and helps customers find where food trucks are today. 
+            Discover food trucks near you or scout verified parking spots, host locations, and opportunities to operate.
           </p>
         </div>
 
@@ -118,17 +117,16 @@ export default function About() {
           <div className="grid lg:grid-cols-2 gap-8 items-center">
             <div>
               <p className="text-lg text-gray-700 leading-relaxed mb-6">
-                We believe that great food brings communities together. Our mission is to make dining 
-                out more affordable and accessible while helping local restaurants reach new customers 
-                through innovative promotional tools.
+                We believe great food brings communities together. Our mission is to help food trucks
+                operate legally and reliably by making real parking locations easy to find.
               </p>
               <p className="text-lg text-gray-700 leading-relaxed mb-6">
-                By focusing on hyper-local discovery and time-based promotions, we create meaningful 
-                connections between diners and restaurants in their immediate vicinity.
+                By focusing on real-time discovery and verified host locations, we create clear
+                connections between trucks and customers in the moments that matter most.
               </p>
               <Link href="/customer-signup?role=business">
                 <Button className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold px-6 py-3">
-                  Partner With Us
+                  List Your Food Truck
                 </Button>
               </Link>
             </div>

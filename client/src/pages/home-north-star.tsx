@@ -7,10 +7,9 @@ import Navigation from "@/components/navigation";
 import { SEOHead } from "@/components/seo-head";
 import { authDebugProbe } from "@/lib/authDebug";
 
-const HOME_TITLE =
-  "MealScout | Local Food Discovery for Trucks, Bars & Restaurants";
+const HOME_TITLE = "MealScout | Food Truck Finder & Parking Sourcing";
 const HOME_DESCRIPTION =
-  "MealScout helps food trucks, bars, and restaurants get discovered locally, post specials, and connect with diners, hosts, and events.";
+  "MealScout helps food trucks find real places to park and serve — and helps customers find where food trucks are today. Discover food trucks near you or scout verified parking spots, host locations, and opportunities to operate.";
 
 const canonicalUrl =
   typeof window !== "undefined"
@@ -51,7 +50,7 @@ const schemaData = {
         "@type": "Organization",
         name: "MealScout",
       },
-      serviceType: "Local food discovery and booking",
+      serviceType: "Food truck discovery and parking sourcing",
       areaServed: "Local",
     },
   ],
@@ -76,11 +75,11 @@ export default function Home() {
         {/* Hero Section */}
         <div className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            Local Food Discovery for Food Trucks, Bars, and Restaurants
+            Find food trucks. Scout places to park.
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            MealScout connects food trucks, restaurants, hosts, events, and
-            diners — locally.
+            MealScout helps food trucks find real places to park and serve — and
+            helps customers find where food trucks are today.
           </p>
         </div>
 
@@ -183,8 +182,8 @@ export default function Home() {
             🔒 $50 -> $25/month forever for restaurants joining before March 1, 2026
           </p>
           <p className="text-gray-700">
-            MealScout is a paid local discovery platform for food trucks, bars,
-            and restaurants, with free access for hosts, events, and diners.
+            MealScout is a food truck finder and parking sourcing tool. It is
+            not delivery, not a marketplace, and not events-only.
           </p>
         </div>
       </main>

@@ -650,6 +650,20 @@
     border: 1px solid #e5e7eb;
   }
 
+  .admin-dashboard {
+    --text-secondary: #1f2937;
+    --text-muted: #334155;
+  }
+
+  .theme-night .admin-dashboard {
+    --text-secondary: #e5e7eb;
+    --text-muted: #cbd5e1;
+  }
+
+  .admin-dashboard .text-muted-foreground {
+    color: var(--text-secondary);
+  }
+
   .theme-day .text-gray-500 {
     color: #475569;
   }

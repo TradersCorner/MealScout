@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Flame, Clock, Share2, Bookmark, Star } from "lucide-react";
+import { Flame, Clock, Star, UserPlus } from "lucide-react";
 import { GoldenForkIcon } from "@/components/award-badges";
 import { apiRequest } from "@/lib/queryClient";
 import { getAffiliateShareUrl } from "@/lib/share";
@@ -164,6 +164,13 @@ export default function DealCard({ deal }: DealCardProps) {
   const [isRestaurantFavorite, setIsRestaurantFavorite] = useState(false);
   const [favoriteError, setFavoriteError] = useState("");
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [followSelection, setFollowSelection] = useState(false);
+  const [isRestaurantFollowed, setIsRestaurantFollowed] = useState(false);
+  const [followError, setFollowError] = useState("");
+  const [followLoading, setFollowLoading] = useState(false);
+  const [recommendSelection, setRecommendSelection] = useState(false);
+  const [isRestaurantRecommended, setIsRestaurantRecommended] = useState(false);
+  const [recommendError, setRecommendError] = useState("");
   const [recommendSubmitting, setRecommendSubmitting] = useState(false);
   const isGoldenForkUser = Boolean(
     (user as any)?.influenceScore && (user as any)?.influenceScore > 0
@@ -217,24 +224,46 @@ export default function DealCard({ deal }: DealCardProps) {
   useEffect(() => {
     if (!showRecommendModal || !user) return;
 
-    const fetchFavoritesSnapshot = async () => {
+    const fetchPreferenceSnapshot = async () => {
       try {
-        const favorites = await apiRequest("GET", "/api/favorites/restaurants");
+        const [favorites, follows, recommendations] = await Promise.all([
+          apiRequest("GET", "/api/favorites/restaurants"),
+          apiRequest("GET", "/api/following/restaurants"),
+          apiRequest("GET", "/api/recommendations/restaurants"),
+        ]);
         const list = Array.isArray(favorites) ? favorites : [];
         const isFav = list.some(
           (fav: any) =>
             (fav.restaurantId || fav.restaurant?.id) === deal.restaurantId
         );
+        const followList = Array.isArray(follows) ? follows : [];
+        const isFollowed = followList.some(
+          (follow: any) =>
+            (follow.restaurantId || follow.restaurant?.id) === deal.restaurantId
+        );
+        const recommendationList = Array.isArray(recommendations)
+          ? recommendations
+          : [];
+        const isRecommended = recommendationList.some(
+          (rec: any) =>
+            (rec.restaurantId || rec.restaurant?.id) === deal.restaurantId
+        );
         setFavoriteCount(list.length);
         setIsRestaurantFavorite(isFav);
         setFavoriteSelection(isFav);
+        setIsRestaurantFollowed(isFollowed);
+        setFollowSelection(isFollowed);
+        setIsRestaurantRecommended(isRecommended);
+        setRecommendSelection(isRecommended);
         setFavoriteError("");
+        setFollowError("");
+        setRecommendError("");
       } catch (error) {
-        console.error("Failed to load favorites snapshot:", error);
+        console.error("Failed to load preference snapshot:", error);
       }
     };
 
-    fetchFavoritesSnapshot();
+    fetchPreferenceSnapshot();
   }, [showRecommendModal, user, deal.restaurantId]);
 
   const formatDiscount = () => {
@@ -336,13 +365,15 @@ export default function DealCard({ deal }: DealCardProps) {
 
   const MAX_FAVORITES = 3;
 
-  const toggleRestaurantFavorite = async (nextSelected: boolean) => {
+  const toggleRestaurantFavorite = async (
+    nextSelected: boolean
+  ): Promise<boolean> => {
     if (!user) {
       window.location.href = "/api/auth/facebook";
-      return;
+      return false;
     }
 
-    if (favoriteLoading) return;
+    if (favoriteLoading) return false;
 
     // Enforce max favorites for new additions
     if (
@@ -353,7 +384,7 @@ export default function DealCard({ deal }: DealCardProps) {
     ) {
       setFavoriteError(`You can favorite up to ${MAX_FAVORITES} restaurants.`);
       setFavoriteSelection(false);
-      return;
+      return false;
     }
 
     try {
@@ -381,13 +412,58 @@ export default function DealCard({ deal }: DealCardProps) {
         setFavoriteSelection(false);
         setFavoriteCount((prev) => Math.max((prev ?? 1) - 1, 0));
       }
+      return true;
     } catch (error: any) {
       console.error("Favorite toggle failed:", error);
       setFavoriteError(error?.message || "Unable to update favorite");
       // Reset selection to previous state on failure
       setFavoriteSelection(isRestaurantFavorite);
+      return false;
     } finally {
       setFavoriteLoading(false);
+    }
+  };
+
+  const toggleRestaurantFollow = async (
+    nextSelected: boolean
+  ): Promise<boolean> => {
+    if (!user) {
+      window.location.href = "/api/auth/facebook";
+      return false;
+    }
+
+    if (followLoading) return false;
+
+    try {
+      setFollowLoading(true);
+      setFollowError("");
+
+      if (nextSelected) {
+        await apiRequest(
+          "POST",
+          `/api/restaurants/${deal.restaurantId}/follow`,
+          {}
+        );
+        setIsRestaurantFollowed(true);
+        setFollowSelection(true);
+      } else {
+        await apiRequest(
+          "DELETE",
+          `/api/restaurants/${deal.restaurantId}/follow`,
+          {}
+        );
+        setIsRestaurantFollowed(false);
+        setFollowSelection(false);
+      }
+
+      return true;
+    } catch (error: any) {
+      console.error("Follow toggle failed:", error);
+      setFollowError(error?.message || "Unable to update follow");
+      setFollowSelection(isRestaurantFollowed);
+      return false;
+    } finally {
+      setFollowLoading(false);
     }
   };
 
@@ -410,10 +486,29 @@ export default function DealCard({ deal }: DealCardProps) {
 
     try {
       setRecommendSubmitting(true);
+      setRecommendError("");
 
-      // Sync favorite state first
+      // Sync follow state
+      if (followSelection !== isRestaurantFollowed) {
+        const followOk = await toggleRestaurantFollow(followSelection);
+        if (!followOk) return;
+      }
+
+      // Sync favorite state
       if (favoriteSelection !== isRestaurantFavorite) {
-        await toggleRestaurantFavorite(favoriteSelection);
+        const favoriteOk = await toggleRestaurantFavorite(favoriteSelection);
+        if (!favoriteOk) return;
+      }
+
+      // Register recommendation (one per restaurant)
+      if (recommendSelection && !isRestaurantRecommended) {
+        await apiRequest(
+          "POST",
+          `/api/restaurants/${deal.restaurantId}/recommend`,
+          {}
+        );
+        setIsRestaurantRecommended(true);
+        setRecommendSelection(true);
       }
 
       // Optional recommendation text routed through reviews endpoint with a positive rating
@@ -429,7 +524,9 @@ export default function DealCard({ deal }: DealCardProps) {
       setRecommendationText("");
     } catch (error) {
       console.error("Recommendation submit failed:", error);
-      setFavoriteError("Could not submit recommendation. Please try again.");
+      setRecommendError(
+        (error as any)?.message || "Could not submit recommendation."
+      );
     } finally {
       setRecommendSubmitting(false);
     }
@@ -639,6 +736,86 @@ export default function DealCard({ deal }: DealCardProps) {
                 onChange={(e) => setRecommendationText(e.target.value)}
               />
 
+              {/* Recommend toggle card */}
+              <button
+                type="button"
+                disabled={isRestaurantRecommended}
+                onClick={() => {
+                  if (isRestaurantRecommended) return;
+                  const next = !recommendSelection;
+                  setRecommendSelection(next);
+                  setRecommendError("");
+                }}
+                className={`mt-4 w-full rounded-xl border transition-all text-left p-3 flex items-center gap-3 ${
+                  recommendSelection
+                    ? "border-yellow-400 bg-yellow-50"
+                    : "border-subtle bg-surface-muted"
+                } ${isRestaurantRecommended ? "opacity-70 cursor-not-allowed" : ""}`}
+              >
+                <div
+                  className={`w-9 h-9 rounded-lg flex items-center justify-center border ${
+                    recommendSelection
+                      ? "bg-white text-yellow-700 border-yellow-300"
+                      : "bg-card text-muted border-subtle"
+                  }`}
+                >
+                  <GoldenForkIcon className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-semibold text-primary text-sm">
+                    Recommend this spot
+                  </div>
+                  <div className="text-xs text-secondary">
+                    {isRestaurantRecommended
+                      ? "Already recommended"
+                      : "One recommendation per restaurant"}
+                  </div>
+                  {recommendError && (
+                    <div className="text-red-600 text-xs mt-1">
+                      {recommendError}
+                    </div>
+                  )}
+                </div>
+              </button>
+
+              {/* Follow toggle card */}
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !followSelection;
+                  setFollowSelection(next);
+                  setFollowError("");
+                }}
+                className={`mt-3 w-full rounded-xl border transition-all text-left p-3 flex items-center gap-3 ${
+                  followSelection
+                    ? "border-emerald-400 bg-emerald-50"
+                    : "border-subtle bg-surface-muted"
+                }`}
+              >
+                <div
+                  className={`w-9 h-9 rounded-lg flex items-center justify-center border ${
+                    followSelection
+                      ? "bg-white text-emerald-600 border-emerald-300"
+                      : "bg-card text-muted border-subtle"
+                  }`}
+                >
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-semibold text-primary text-sm">
+                    Follow this restaurant
+                  </div>
+                  <div className="text-xs text-secondary">
+                    Get updates when specials go live
+                  </div>
+                  {followError && (
+                    <div className="text-red-600 text-xs mt-1">
+                      {followError}
+                    </div>
+                  )}
+                </div>
+              </button>
+
               {/* Favorite toggle card */}
               <button
                 type="button"
@@ -711,9 +888,11 @@ export default function DealCard({ deal }: DealCardProps) {
                 <Button
                   className="h-9 bg-yellow-500 hover:bg-yellow-600 text-white text-sm shadow-md shadow-yellow-200/80"
                   onClick={handleRecommendSubmit}
-                  disabled={recommendSubmitting || favoriteLoading}
+                  disabled={
+                    recommendSubmitting || favoriteLoading || followLoading
+                  }
                 >
-                  {recommendSubmitting ? "Sending..." : "Boost This Restaurant"}
+                  {recommendSubmitting ? "Saving..." : "Save choices"}
                 </Button>
               </div>
             </div>

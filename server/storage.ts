@@ -9,6 +9,8 @@ import {
   foodTruckSessions,
   foodTruckLocations,
   restaurantFavorites,
+  restaurantFollows,
+  restaurantUserRecommendations,
   restaurantRecommendations,
   locationRequests,
   truckInterests,
@@ -40,6 +42,10 @@ import {
   type UpdateRestaurantMobileSettings,
   type RestaurantFavorite,
   type InsertRestaurantFavorite,
+  type RestaurantFollow,
+  type InsertRestaurantFollow,
+  type RestaurantUserRecommendation,
+  type InsertRestaurantUserRecommendation,
   type RestaurantRecommendation,
   type InsertRestaurantRecommendation,
   type LocationRequest,
@@ -479,6 +485,15 @@ export interface IStorage {
   }): Promise<any>;
   removeRestaurantFavorite(restaurantId: string, userId: string): Promise<void>;
   getUserRestaurantFavorites(userId: string): Promise<any[]>;
+  getUserRestaurantFavoritesCount(userId: string): Promise<number>;
+  createRestaurantFollow(follow: { restaurantId: string; userId: string }): Promise<any>;
+  removeRestaurantFollow(restaurantId: string, userId: string): Promise<void>;
+  getUserRestaurantFollows(userId: string): Promise<any[]>;
+  createRestaurantUserRecommendation(recommendation: {
+    restaurantId: string;
+    userId: string;
+  }): Promise<any>;
+  getUserRestaurantRecommendations(userId: string): Promise<any[]>;
   getRestaurantFavoritesAnalytics(
     restaurantId: string,
     dateRange?: { start: Date; end: Date }
@@ -4562,6 +4577,93 @@ export class DatabaseStorage implements IStorage {
       )
       .where(eq(restaurantFavorites.userId, userId))
       .orderBy(desc(restaurantFavorites.favoritedAt));
+
+    return result;
+  }
+
+  async getUserRestaurantFavoritesCount(userId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`COUNT(*)`.mapWith(Number) })
+      .from(restaurantFavorites)
+      .where(eq(restaurantFavorites.userId, userId));
+    return result[0]?.count ?? 0;
+  }
+
+  async createRestaurantFollow(follow: {
+    restaurantId: string;
+    userId: string;
+  }): Promise<RestaurantFollow> {
+    const [result] = await db.insert(restaurantFollows).values(follow).returning();
+    return result;
+  }
+
+  async removeRestaurantFollow(
+    restaurantId: string,
+    userId: string
+  ): Promise<void> {
+    await db
+      .delete(restaurantFollows)
+      .where(
+        and(
+          eq(restaurantFollows.restaurantId, restaurantId),
+          eq(restaurantFollows.userId, userId)
+        )
+      );
+  }
+
+  async getUserRestaurantFollows(
+    userId: string
+  ): Promise<(RestaurantFollow & { restaurant: Restaurant })[]> {
+    const result = await db
+      .select({
+        id: restaurantFollows.id,
+        restaurantId: restaurantFollows.restaurantId,
+        userId: restaurantFollows.userId,
+        followedAt: restaurantFollows.followedAt,
+        createdAt: restaurantFollows.createdAt,
+        restaurant: restaurants,
+      })
+      .from(restaurantFollows)
+      .innerJoin(
+        restaurants,
+        eq(restaurantFollows.restaurantId, restaurants.id)
+      )
+      .where(eq(restaurantFollows.userId, userId))
+      .orderBy(desc(restaurantFollows.followedAt));
+
+    return result;
+  }
+
+  async createRestaurantUserRecommendation(recommendation: {
+    restaurantId: string;
+    userId: string;
+  }): Promise<RestaurantUserRecommendation> {
+    const [result] = await db
+      .insert(restaurantUserRecommendations)
+      .values(recommendation)
+      .returning();
+    return result;
+  }
+
+  async getUserRestaurantRecommendations(
+    userId: string
+  ): Promise<(RestaurantUserRecommendation & { restaurant: Restaurant })[]> {
+    const result = await db
+      .select({
+        id: restaurantUserRecommendations.id,
+        restaurantId: restaurantUserRecommendations.restaurantId,
+        userId: restaurantUserRecommendations.userId,
+        recommendedAt: restaurantUserRecommendations.recommendedAt,
+        createdAt: restaurantUserRecommendations.createdAt,
+        restaurant: restaurants,
+      })
+      .from(restaurantUserRecommendations)
+      .innerJoin(
+        restaurants,
+        eq(restaurantUserRecommendations.restaurantId, restaurants.id)
+      )
+      .where(eq(restaurantUserRecommendations.userId, userId))
+      .orderBy(desc(restaurantUserRecommendations.recommendedAt));
 
     return result;
   }

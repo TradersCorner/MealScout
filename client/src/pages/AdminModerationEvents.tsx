@@ -203,7 +203,7 @@ export default function AdminModerationEvents() {
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="admin-dialog max-w-2xl">
           {selectedEvent && (
             <>
               <DialogHeader>

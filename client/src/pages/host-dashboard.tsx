@@ -49,12 +49,21 @@ interface Event {
   dinnerPriceCents?: number | null;
   dailyPriceCents?: number | null;
   weeklyPriceCents?: number | null;
+  monthlyPriceCents?: number | null;
 }
 
 const normalizeDollar = (value: string | number) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 0;
   return Math.round(parsed);
+};
+
+const parseOptionalDollar = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.max(0, Math.round(parsed));
 };
 
 function HostDashboard() {
@@ -78,6 +87,8 @@ function HostDashboard() {
   const [breakfastPrice, setBreakfastPrice] = useState("");
   const [lunchPrice, setLunchPrice] = useState("");
   const [dinnerPrice, setDinnerPrice] = useState("");
+  const [weeklyOverride, setWeeklyOverride] = useState("");
+  const [monthlyOverride, setMonthlyOverride] = useState("");
   const [amenities, setAmenities] = useState<Record<string, boolean>>({
     water: false,
     electric: false,
@@ -358,7 +369,8 @@ function HostDashboard() {
     (item.lunchPriceCents ?? 0) > 0 ||
     (item.dinnerPriceCents ?? 0) > 0 ||
     (item.dailyPriceCents ?? 0) > 0 ||
-    (item.weeklyPriceCents ?? 0) > 0;
+    (item.weeklyPriceCents ?? 0) > 0 ||
+    (item.monthlyPriceCents ?? 0) > 0;
 
   const hasActivePass = events.some((item) => {
     if (!item.requiresPayment) return false;
@@ -439,6 +451,12 @@ function HostDashboard() {
           breakfastPriceCents: breakfast ? breakfast * 100 : 0,
           lunchPriceCents: lunch ? lunch * 100 : 0,
           dinnerPriceCents: dinner ? dinner * 100 : 0,
+          ...(weeklyOverrideValue !== null
+            ? { weeklyPriceCents: weeklyOverrideValue * 100 }
+            : {}),
+          ...(monthlyOverrideValue !== null
+            ? { monthlyPriceCents: monthlyOverrideValue * 100 }
+            : {}),
         }),
       });
 
@@ -460,6 +478,8 @@ function HostDashboard() {
       setBreakfastPrice("");
       setLunchPrice("");
       setDinnerPrice("");
+      setWeeklyOverride("");
+      setMonthlyOverride("");
     } catch (error: any) {
       setCreateError(error.message);
     }
@@ -567,6 +587,11 @@ function HostDashboard() {
   const slotSum = breakfastValue + lunchValue + dinnerValue;
   const dailyEstimate = slotSum ? slotSum + 10 : 0;
   const weeklyEstimate = slotSum ? slotSum * 7 + 10 : 0;
+  const monthlyEstimate = slotSum ? slotSum * 30 + 10 : 0;
+  const weeklyOverrideValue = parseOptionalDollar(weeklyOverride);
+  const monthlyOverrideValue = parseOptionalDollar(monthlyOverride);
+  const weeklyFinal = weeklyOverrideValue ?? weeklyEstimate;
+  const monthlyFinal = monthlyOverrideValue ?? monthlyEstimate;
 
   const handleEnablePayments = async () => {
     try {
@@ -1159,6 +1184,7 @@ function HostDashboard() {
                 </h3>
                 <p className="text-xs text-orange-700 mb-4">
                   Daily = slot total + $10. Weekly = (slot total x 7) + $10.
+                  Monthly = (slot total x 30) + $10.
                 </p>
                 <div className="space-y-2 text-sm text-orange-900">
                   <div className="flex items-center justify-between">
@@ -1174,9 +1200,21 @@ function HostDashboard() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>Weekly</span>
+                    <span>
+                      Weekly{" "}
+                      {weeklyOverrideValue !== null ? "(custom)" : "(auto)"}
+                    </span>
                     <span className="font-semibold">
-                      {weeklyEstimate ? `$${weeklyEstimate.toFixed(2)}` : "-"}
+                      {weeklyFinal ? `$${weeklyFinal.toFixed(2)}` : "-"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>
+                      Monthly{" "}
+                      {monthlyOverrideValue !== null ? "(custom)" : "(auto)"}
+                    </span>
+                    <span className="font-semibold">
+                      {monthlyFinal ? `$${monthlyFinal.toFixed(2)}` : "-"}
                     </span>
                   </div>
                 </div>
@@ -1235,6 +1273,56 @@ function HostDashboard() {
                     placeholder="0"
                   />
                   <p className="text-xs text-slate-500">Evening coverage.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <h3 className="text-base font-semibold text-slate-900 mb-2">
+                Weekly & monthly rates (optional)
+              </h3>
+              <p className="text-xs text-slate-500 mb-4">
+                Leave blank to use the auto-calculated weekly and monthly
+                totals.
+              </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                  <Label htmlFor="weeklyOverride">Weekly rate</Label>
+                  <Input
+                    id="weeklyOverride"
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputMode="numeric"
+                    value={weeklyOverride}
+                    onChange={(event) => setWeeklyOverride(event.target.value)}
+                    placeholder={
+                      weeklyEstimate ? `$${weeklyEstimate.toFixed(0)}` : "Auto"
+                    }
+                  />
+                  <p className="text-xs text-slate-500">
+                    Auto weekly:{" "}
+                    {weeklyEstimate ? `$${weeklyEstimate.toFixed(0)}` : "—"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                  <Label htmlFor="monthlyOverride">Monthly rate</Label>
+                  <Input
+                    id="monthlyOverride"
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputMode="numeric"
+                    value={monthlyOverride}
+                    onChange={(event) => setMonthlyOverride(event.target.value)}
+                    placeholder={
+                      monthlyEstimate ? `$${monthlyEstimate.toFixed(0)}` : "Auto"
+                    }
+                  />
+                  <p className="text-xs text-slate-500">
+                    Auto monthly:{" "}
+                    {monthlyEstimate ? `$${monthlyEstimate.toFixed(0)}` : "—"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -1336,7 +1424,8 @@ function HostDashboard() {
                             {event.requiresPayment && (
                               <span className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded-full px-2 py-0.5">
                                 Daily {formatCents(event.dailyPriceCents)} / Weekly{" "}
-                                {formatCents(event.weeklyPriceCents)}
+                                {formatCents(event.weeklyPriceCents)} / Monthly{" "}
+                                {formatCents(event.monthlyPriceCents)}
                               </span>
                             )}
                             {event.hardCapEnabled && (

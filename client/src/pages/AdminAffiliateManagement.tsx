@@ -223,7 +223,7 @@ export default function AdminAffiliateManagement() {
       </Card>
 
       <Dialog open={Boolean(editing)} onOpenChange={() => setEditing(null)}>
-        <DialogContent>
+        <DialogContent className="admin-dialog">
           <DialogHeader>
             <DialogTitle>Edit Affiliate Settings</DialogTitle>
             <DialogDescription>

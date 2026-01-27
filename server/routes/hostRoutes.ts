@@ -464,10 +464,23 @@ export function registerHostRoutes(app: Express) {
         });
       }
 
+      const parseOverrideCents = (value: any) => {
+        if (value === null || value === undefined || value === "") return null;
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) return null;
+        return Math.max(0, Math.round(parsed));
+      };
+
       const slotSum = breakfastPriceCents + lunchPriceCents + dinnerPriceCents;
       const dailyPriceCents = slotSum;
-      const weeklyPriceCents = slotSum * 7;
-      const monthlyPriceCents = slotSum * 30;
+      const weeklyOverrideCents = parseOverrideCents(
+        req.body?.weeklyPriceCents,
+      );
+      const monthlyOverrideCents = parseOverrideCents(
+        req.body?.monthlyPriceCents,
+      );
+      const weeklyPriceCents = weeklyOverrideCents ?? slotSum * 7;
+      const monthlyPriceCents = monthlyOverrideCents ?? slotSum * 30;
 
       const daysOfWeekSchema = z.array(z.number().int().min(0).max(6));
       const daysOfWeek = daysOfWeekSchema.parse(req.body?.daysOfWeek || []);

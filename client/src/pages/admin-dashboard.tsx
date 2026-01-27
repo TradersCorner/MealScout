@@ -3090,7 +3090,7 @@ export default function AdminDashboard() {
 
       {/* User Details Dialog */}
       <Dialog open={userDetailsOpen} onOpenChange={setUserDetailsOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="admin-dialog max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <Users className="w-5 h-5" />
@@ -5255,7 +5255,7 @@ export default function AdminDashboard() {
 
       {/* Deal Details Dialog */}
       <Dialog open={dealDetailsOpen} onOpenChange={setDealDetailsOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="admin-dialog max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <Package className="w-5 h-5" />

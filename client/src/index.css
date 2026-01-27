@@ -650,18 +650,21 @@
     border: 1px solid #e5e7eb;
   }
 
-  .admin-dashboard {
-    --text-secondary: #1f2937;
-    --text-muted: #334155;
+  .admin-dashboard,
+  .admin-dialog {
+    --text-secondary: #111827;
+    --text-muted: #1f2937;
   }
 
-  .theme-night .admin-dashboard {
-    --text-secondary: #e5e7eb;
-    --text-muted: #cbd5e1;
+  .theme-night .admin-dashboard,
+  .theme-night .admin-dialog {
+    --text-secondary: #f3f4f6;
+    --text-muted: #e5e7eb;
   }
 
-  .admin-dashboard .text-muted-foreground {
-    color: var(--text-secondary);
+  .admin-dashboard .text-muted-foreground,
+  .admin-dialog .text-muted-foreground {
+    color: var(--text-primary);
   }
 
   .theme-day .text-gray-500 {

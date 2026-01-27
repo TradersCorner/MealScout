@@ -3799,6 +3799,10 @@ export default function AdminDashboard() {
                     {userHosts.map((host: any) => {
                       const edits = hostEdits[host.id];
                       if (!edits) return null;
+                      const pass = parkingPasses.find(
+                        (item) => (item.host?.id ?? item.hostId) === host.id,
+                      );
+                      const passEdits = pass ? parkingPassEdits[pass.id] : null;
                       return (
                         <div
                           key={host.id}
@@ -3984,6 +3988,269 @@ export default function AdminDashboard() {
                               />
                               Verified
                             </label>
+                          </div>
+                          <div className="rounded-lg border border-border/60 bg-background/70 p-3 space-y-3">
+                            <p className="text-xs font-semibold text-muted-foreground">
+                              Parking Pass pricing
+                            </p>
+                            {pass && passEdits ? (
+                              <>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-muted-foreground">
+                                      Start Time
+                                    </p>
+                                    <input
+                                      type="time"
+                                      className="w-full px-2 py-1 border rounded-md text-sm"
+                                      value={passEdits.startTime}
+                                      onChange={(e) =>
+                                        setParkingPassEdits({
+                                          ...parkingPassEdits,
+                                          [pass.id]: {
+                                            ...passEdits,
+                                            startTime: e.target.value,
+                                          },
+                                        })
+                                      }
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-muted-foreground">
+                                      End Time
+                                    </p>
+                                    <input
+                                      type="time"
+                                      className="w-full px-2 py-1 border rounded-md text-sm"
+                                      value={passEdits.endTime}
+                                      onChange={(e) =>
+                                        setParkingPassEdits({
+                                          ...parkingPassEdits,
+                                          [pass.id]: {
+                                            ...passEdits,
+                                            endTime: e.target.value,
+                                          },
+                                        })
+                                      }
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-muted-foreground">
+                                      Max Trucks
+                                    </p>
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      className="w-full px-2 py-1 border rounded-md text-sm"
+                                      value={passEdits.maxTrucks}
+                                      onChange={(e) =>
+                                        setParkingPassEdits({
+                                          ...parkingPassEdits,
+                                          [pass.id]: {
+                                            ...passEdits,
+                                            maxTrucks: e.target.value,
+                                          },
+                                        })
+                                      }
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-muted-foreground">
+                                      Status
+                                    </p>
+                                    <select
+                                      className="w-full px-2 py-1 border rounded-md text-sm bg-background"
+                                      value={passEdits.status}
+                                      onChange={(e) =>
+                                        setParkingPassEdits({
+                                          ...parkingPassEdits,
+                                          [pass.id]: {
+                                            ...passEdits,
+                                            status: e.target.value,
+                                          },
+                                        })
+                                      }
+                                    >
+                                      <option value="open">Open</option>
+                                      <option value="booked">Booked</option>
+                                      <option value="cancelled">Cancelled</option>
+                                      <option value="completed">Completed</option>
+                                    </select>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-muted-foreground">
+                                      Breakfast ($)
+                                    </p>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      step={1}
+                                      className="w-full px-2 py-1 border rounded-md text-sm"
+                                      value={toDollars(
+                                        passEdits.breakfastPriceCents,
+                                      )}
+                                      onChange={(e) =>
+                                        setParkingPassEdits({
+                                          ...parkingPassEdits,
+                                          [pass.id]: {
+                                            ...passEdits,
+                                            breakfastPriceCents: toCents(
+                                              e.target.value,
+                                            ),
+                                          },
+                                        })
+                                      }
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-muted-foreground">
+                                      Lunch ($)
+                                    </p>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      step={1}
+                                      className="w-full px-2 py-1 border rounded-md text-sm"
+                                      value={toDollars(
+                                        passEdits.lunchPriceCents,
+                                      )}
+                                      onChange={(e) =>
+                                        setParkingPassEdits({
+                                          ...parkingPassEdits,
+                                          [pass.id]: {
+                                            ...passEdits,
+                                            lunchPriceCents: toCents(
+                                              e.target.value,
+                                            ),
+                                          },
+                                        })
+                                      }
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-muted-foreground">
+                                      Dinner ($)
+                                    </p>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      step={1}
+                                      className="w-full px-2 py-1 border rounded-md text-sm"
+                                      value={toDollars(
+                                        passEdits.dinnerPriceCents,
+                                      )}
+                                      onChange={(e) =>
+                                        setParkingPassEdits({
+                                          ...parkingPassEdits,
+                                          [pass.id]: {
+                                            ...passEdits,
+                                            dinnerPriceCents: toCents(
+                                              e.target.value,
+                                            ),
+                                          },
+                                        })
+                                      }
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-muted-foreground">
+                                      Daily ($)
+                                    </p>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      step={1}
+                                      className="w-full px-2 py-1 border rounded-md text-sm"
+                                      value={toDollars(
+                                        passEdits.dailyPriceCents,
+                                      )}
+                                      onChange={(e) =>
+                                        setParkingPassEdits({
+                                          ...parkingPassEdits,
+                                          [pass.id]: {
+                                            ...passEdits,
+                                            dailyPriceCents: toCents(
+                                              e.target.value,
+                                            ),
+                                            weeklyPriceCents:
+                                              toCents(e.target.value) * 7,
+                                            monthlyPriceCents:
+                                              toCents(e.target.value) * 30,
+                                          },
+                                        })
+                                      }
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-muted-foreground">
+                                      Weekly ($)
+                                    </p>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      step={1}
+                                      className="w-full px-2 py-1 border rounded-md text-sm"
+                                      value={
+                                        Number(passEdits.dailyPriceCents || 0)
+                                          ? toDollars(
+                                              Number(
+                                                passEdits.dailyPriceCents || 0,
+                                              ) * 7,
+                                            )
+                                          : toDollars(
+                                              passEdits.weeklyPriceCents,
+                                            )
+                                      }
+                                      readOnly
+                                      disabled
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-muted-foreground">
+                                      Monthly ($)
+                                    </p>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      step={1}
+                                      className="w-full px-2 py-1 border rounded-md text-sm"
+                                      value={
+                                        Number(passEdits.dailyPriceCents || 0)
+                                          ? toDollars(
+                                              Number(
+                                                passEdits.dailyPriceCents || 0,
+                                              ) * 30,
+                                            )
+                                          : toDollars(
+                                              passEdits.monthlyPriceCents,
+                                            )
+                                      }
+                                      readOnly
+                                      disabled
+                                    />
+                                  </div>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    updateParkingPass.mutate({
+                                      eventId: pass.id,
+                                      updates: passEdits,
+                                    })
+                                  }
+                                  disabled={
+                                    updateParkingPass.isPending || isStaff
+                                  }
+                                >
+                                  Save Parking Pass
+                                </Button>
+                              </>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">
+                                No parking pass listing yet.
+                              </p>
+                            )}
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
                             <Button
@@ -4688,7 +4955,7 @@ export default function AdminDashboard() {
               )}
 
               {/* Parking Pass Listings */}
-              {parkingPasses.length > 0 && (
+              {parkingPasses.length > 0 && userHosts.length === 0 && (
                 <div>
                   <h3 className="font-semibold mb-3 flex items-center text-sm text-muted-foreground">
                     <MapPin className="w-4 h-4 mr-2" />

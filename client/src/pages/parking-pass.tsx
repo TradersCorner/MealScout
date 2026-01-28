@@ -2,6 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
 import {
+  PARKING_PASS_BOOKING_DAYS,
+  PARKING_PASS_SLOT_TYPES,
+  isSlotWithinHours,
+} from "@shared/parkingPassSlots";
+import {
   AlertCircle,
   Calendar,
   Clock,
@@ -207,12 +212,21 @@ const buildSlotOptions = (listing: ParkingPassListing) =>
       type: "monthly",
       priceCents: listing.monthlyPriceCents,
     },
-  ].filter((slot) => (slot.priceCents || 0) > 0);
+  ].filter(
+    (slot) =>
+      (slot.priceCents || 0) > 0 &&
+      isSlotWithinHours(
+        slot.type as (typeof PARKING_PASS_SLOT_TYPES)[number],
+        listing.startTime,
+        listing.endTime,
+      ),
+  );
 
-const getFeeCentsForSlots = (slotTypes: string[], slotTotalCents: number) => {
-  if (!slotTypes.length || slotTotalCents <= 0) return 0;
-  if (slotTypes.includes("monthly")) return 15000;
-  return slotTypes.includes("weekly") ? 7000 : 1000;
+const getFeeCentsForSlots = (slotTypes: string[]) => {
+  if (!slotTypes.length) return 0;
+  const slotType = slotTypes[0] as (typeof PARKING_PASS_SLOT_TYPES)[number];
+  const bookingDays = PARKING_PASS_BOOKING_DAYS[slotType] ?? 1;
+  return 1000 * bookingDays;
 };
 
 const parseCoord = (value: number | string | null | undefined) => {
@@ -921,7 +935,7 @@ export default function ParkingPassPage() {
             0;
           return sum + price;
         }, 0);
-        const fee = getFeeCentsForSlots(item.slotTypes, slotTotal);
+        const fee = getFeeCentsForSlots(item.slotTypes);
         totals.hostCents += slotTotal;
         totals.feeCents += fee;
         totals.totalCents += slotTotal + fee;
@@ -1380,6 +1394,34 @@ export default function ParkingPassPage() {
     const dinner = normalizeDollar(dinnerPrice);
     const hasSlotPrice = breakfast > 0 || lunch > 0 || dinner > 0;
 
+    const invalidSlotLabels: string[] = [];
+    if (
+      breakfast > 0 &&
+      !isSlotWithinHours("breakfast", finalStartTime, finalEndTime)
+    ) {
+      invalidSlotLabels.push("Breakfast");
+    }
+    if (
+      lunch > 0 &&
+      !isSlotWithinHours("lunch", finalStartTime, finalEndTime)
+    ) {
+      invalidSlotLabels.push("Lunch");
+    }
+    if (
+      dinner > 0 &&
+      !isSlotWithinHours("dinner", finalStartTime, finalEndTime)
+    ) {
+      invalidSlotLabels.push("Dinner");
+    }
+    if (invalidSlotLabels.length > 0) {
+      setCreateError(
+        `Parking hours must fully cover priced slots: ${invalidSlotLabels.join(
+          ", ",
+        )}.`,
+      );
+      return;
+    }
+
     if (!hasSlotPrice) {
       setCreateError("At least one slot price is required.");
       return;
@@ -1446,12 +1488,16 @@ export default function ParkingPassPage() {
   const dinnerValue = normalizeDollar(dinnerPrice);
   const slotSum = breakfastValue + lunchValue + dinnerValue;
   const dailyEstimate = slotSum ? slotSum + 10 : 0;
-  const weeklyEstimate = slotSum ? slotSum * 7 + 10 : 0;
-  const monthlyEstimate = slotSum ? slotSum * 30 + 10 : 0;
+  const weeklyHostEstimate = slotSum ? slotSum * 7 : 0;
+  const monthlyHostEstimate = slotSum ? slotSum * 30 : 0;
+  const weeklyEstimate = weeklyHostEstimate ? weeklyHostEstimate + 70 : 0;
+  const monthlyEstimate = monthlyHostEstimate ? monthlyHostEstimate + 300 : 0;
   const weeklyOverrideValue = parseOptionalDollar(weeklyOverride);
   const monthlyOverrideValue = parseOptionalDollar(monthlyOverride);
-  const weeklyFinal = weeklyOverrideValue ?? weeklyEstimate;
-  const monthlyFinal = monthlyOverrideValue ?? monthlyEstimate;
+  const weeklyFinal =
+    weeklyOverrideValue !== null ? weeklyOverrideValue + 70 : weeklyEstimate;
+  const monthlyFinal =
+    monthlyOverrideValue !== null ? monthlyOverrideValue + 300 : monthlyEstimate;
 
   const getLocationCoords = (host?: Host | null) => {
     if (!host) return null;
@@ -1464,9 +1510,19 @@ export default function ParkingPassPage() {
   const handleSelect = (listing: ParkingPassListing, slotType: string) => {
     setSelectedSlotsByListing((prev) => {
       const existing = prev[listing.id] || [];
-      const updated = existing.includes(slotType)
-        ? existing.filter((type) => type !== slotType)
-        : [...existing, slotType];
+      const durationSlots = new Set(["daily", "weekly", "monthly"]);
+      const isDuration = durationSlots.has(slotType);
+      const existingDuration = existing.find((type) => durationSlots.has(type));
+      let updated = existing;
+      if (isDuration) {
+        updated = existingDuration === slotType ? [] : [slotType];
+      } else if (existingDuration) {
+        updated = [slotType];
+      } else {
+        updated = existing.includes(slotType)
+          ? existing.filter((type) => type !== slotType)
+          : [...existing, slotType];
+      }
       return { ...prev, [listing.id]: updated };
     });
   };
@@ -2341,7 +2397,7 @@ export default function ParkingPassPage() {
                   Post a Parking Pass
                 </h2>
                 <p className="text-sm text-slate-500">
-                  Set the day, time window, and what each slot costs.
+                  Set parking hours and what each slot costs.
                 </p>
               </div>
               <div className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-600">
@@ -2369,7 +2425,7 @@ export default function ParkingPassPage() {
                         When trucks can park
                       </h3>
                       <p className="text-xs text-slate-500">
-                        Pick the weekly schedule and a time window.
+                        Pick the days and parking hours (or choose Any time).
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -2466,11 +2522,11 @@ export default function ParkingPassPage() {
 
                 <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">
                   <h3 className="text-base font-semibold text-orange-900">
-                    Earnings preview
+                    Price preview
                   </h3>
                   <p className="text-xs text-orange-700 mb-4">
-                    Daily = slot total + $10. Weekly = (slot total x 7) + $10.
-                    Monthly = (slot total x 30) + $10.
+                    Daily = slot total + $10. Weekly = (slot total x 7) + $70.
+                    Monthly = (slot total x 30) + $300.
                   </p>
                   <div className="space-y-2 text-sm text-orange-900">
                     <div className="flex items-center justify-between">
@@ -2503,7 +2559,7 @@ export default function ParkingPassPage() {
                     </div>
                   </div>
                   <p className="mt-4 text-xs text-orange-800">
-                    Trucks see your full payout per slot.
+                    Trucks see your price plus the MealScout fee.
                   </p>
                 </div>
               </div>
@@ -2581,11 +2637,16 @@ export default function ParkingPassPage() {
                       value={weeklyOverride}
                       onChange={(event) => setWeeklyOverride(event.target.value)}
                       placeholder={
-                        weeklyEstimate ? `$${weeklyEstimate.toFixed(0)}` : "Auto"
+                        weeklyHostEstimate
+                          ? `$${weeklyHostEstimate.toFixed(0)}`
+                          : "Auto"
                       }
                     />
                     <p className="text-xs text-slate-500">
-                      Auto weekly: {weeklyEstimate ? `$${weeklyEstimate.toFixed(0)}` : "—"}
+                      Auto weekly:{" "}
+                      {weeklyHostEstimate
+                        ? `$${weeklyHostEstimate.toFixed(0)}`
+                        : "—"}
                     </p>
                   </div>
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
@@ -2599,11 +2660,16 @@ export default function ParkingPassPage() {
                       value={monthlyOverride}
                       onChange={(event) => setMonthlyOverride(event.target.value)}
                       placeholder={
-                        monthlyEstimate ? `$${monthlyEstimate.toFixed(0)}` : "Auto"
+                        monthlyHostEstimate
+                          ? `$${monthlyHostEstimate.toFixed(0)}`
+                          : "Auto"
                       }
                     />
                     <p className="text-xs text-slate-500">
-                      Auto monthly: {monthlyEstimate ? `$${monthlyEstimate.toFixed(0)}` : "—"}
+                      Auto monthly:{" "}
+                      {monthlyHostEstimate
+                        ? `$${monthlyHostEstimate.toFixed(0)}`
+                        : "—"}
                     </p>
                   </div>
                 </div>
@@ -2997,7 +3063,7 @@ export default function ParkingPassPage() {
                 Find parking pass spots
               </p>
               <p className="text-xs text-gray-500">
-                Search by city or address. Dates control slot availability.
+                Search by city or address. Pick a date to see availability.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -3021,7 +3087,7 @@ export default function ParkingPassPage() {
             <div className="space-y-4 order-1 lg:order-none">
               <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-2">
                 <p className="text-xs font-semibold text-gray-700">
-                  Pick a day for slots
+                  Pick a date for availability
                 </p>
                 <input
                   type="date"
@@ -3103,7 +3169,6 @@ export default function ParkingPassPage() {
                           );
                           const selectedFeeCents = getFeeCentsForSlots(
                             selectedSlots,
-                            selectedTotalCents,
                           );
                           const selectedTotalWithFee =
                             selectedTotalCents > 0
@@ -3175,7 +3240,6 @@ export default function ParkingPassPage() {
                                         {slotOptions.map((slot) => {
                                           const feeCents = getFeeCentsForSlots(
                                             [slot.type],
-                                            slot.priceCents || 0,
                                           );
                                           const totalPrice =
                                             ((slot.priceCents || 0) + feeCents) /
@@ -3205,7 +3269,7 @@ export default function ParkingPassPage() {
                                       </div>
                                       <div className="flex items-center justify-between">
                                         <span className="text-[11px] text-gray-500">
-                                          Includes $10 MealScout fee.
+                                          Includes a $10/day MealScout fee.
                                         </span>
                                         <Button
                                           size="sm"
@@ -3304,7 +3368,6 @@ export default function ParkingPassPage() {
                       );
                       const selectedFeeCents = getFeeCentsForSlots(
                         selectedSlots,
-                        selectedTotalCents,
                       );
                       const selectedTotalWithFee =
                         selectedTotalCents > 0
@@ -3433,7 +3496,6 @@ export default function ParkingPassPage() {
                               {slotOptions.map((slot) => {
                                 const feeCents = getFeeCentsForSlots(
                                   [slot.type],
-                                  slot.priceCents || 0,
                                 );
                                 const totalPrice =
                                   ((slot.priceCents || 0) + feeCents) / 100;
@@ -3528,7 +3590,6 @@ export default function ParkingPassPage() {
                     );
                     const selectedFeeCents = getFeeCentsForSlots(
                       selectedSlots,
-                      selectedTotalCents,
                     );
                     const selectedTotalWithFee =
                       selectedTotalCents > 0
@@ -3630,7 +3691,6 @@ export default function ParkingPassPage() {
                             {slotOptions.map((slot) => {
                               const feeCents = getFeeCentsForSlots(
                                 [slot.type],
-                                slot.priceCents || 0,
                               );
                               const totalPrice =
                                 ((slot.priceCents || 0) + feeCents) / 100;
@@ -3895,7 +3955,6 @@ export default function ParkingPassPage() {
                                 .map((slot) => {
                                   const feeCents = getFeeCentsForSlots(
                                     [slot.type],
-                                    slot.priceCents || 0,
                                   );
                                   const totalPrice =
                                     ((slot.priceCents || 0) + feeCents) / 100;

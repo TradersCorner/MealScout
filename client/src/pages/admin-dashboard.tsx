@@ -608,8 +608,8 @@ function ManualUserCreation({ adminUser }: { adminUser?: any }) {
                   They set rental prices (hourly/daily/weekly/monthly).
                   <br />
                   <strong>
-                    We add $10 to every booking - host gets their price, we get
-                    $10.
+                    We add $10/day to every booking - host gets their price,
+                    we get $10 per day.
                   </strong>
                 </p>
               </div>

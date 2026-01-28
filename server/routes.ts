@@ -81,6 +81,11 @@ import {
   truckClaimRequests,
   awardHistory,
 } from "@shared/schema";
+import {
+  PARKING_PASS_BOOKING_DAYS,
+  PARKING_PASS_SLOT_TYPES,
+  isSlotWithinHours,
+} from "@shared/parkingPassSlots";
 import { z } from "zod";
 import { validateDocuments, checkRateLimit } from "./documentValidation";
 import { randomBytes, timingSafeEqual, createHash } from "crypto";
@@ -4711,134 +4716,280 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .from(hosts)
               .where(eq(hosts.id, eventRow.hostId));
 
-            const slotTypes = String(metadata.slotTypes || "")
+            const slotTypes = String(
+              metadata.slotTypes || metadata.slotType || "",
+            )
               .split(",")
-              .map((value) => value.trim())
-              .filter((value) => value.length > 0);
+              .map((value) => value.trim().toLowerCase())
+              .filter((value) => value.length > 0)
+              .filter((value) =>
+                PARKING_PASS_SLOT_TYPES.includes(value as any),
+              );
+            const normalizedSlotTypes =
+              slotTypes.length > 0 ? slotTypes : ["daily"];
+
+            const hasMonthly = normalizedSlotTypes.includes("monthly");
+            const hasWeekly = normalizedSlotTypes.includes("weekly");
+            const hasDaily = normalizedSlotTypes.includes("daily");
+            const bookingDays = Math.max(
+              1,
+              Number(
+                metadata.bookingDays ||
+                  (hasMonthly
+                    ? PARKING_PASS_BOOKING_DAYS.monthly
+                    : hasWeekly
+                      ? PARKING_PASS_BOOKING_DAYS.weekly
+                      : hasDaily
+                        ? PARKING_PASS_BOOKING_DAYS.daily
+                        : 1),
+              ),
+            );
+
+            const startDateKey = metadata.bookingStartDate
+              ? String(metadata.bookingStartDate)
+              : new Date(eventRow.date).toISOString().split("T")[0];
+            const rangeStart = new Date(`${startDateKey}T00:00:00`);
+            const rangeEnd = new Date(rangeStart);
+            rangeEnd.setDate(rangeEnd.getDate() + bookingDays);
+
+            const bookingEvents = await db
+              .select()
+              .from(events)
+              .where(
+                and(
+                  eq(events.hostId, eventRow.hostId),
+                  eq(events.requiresPayment, true),
+                  gte(events.date, rangeStart),
+                  lt(events.date, rangeEnd),
+                ),
+              )
+              .orderBy(asc(events.date));
+
+            const eventsByDate = new Map<string, (typeof bookingEvents)[number]>();
+            for (const row of bookingEvents) {
+              const dateKey = new Date(row.date).toISOString().split("T")[0];
+              eventsByDate.set(dateKey, row);
+            }
+
+            const expectedDateKeys: string[] = [];
+            for (let offset = 0; offset < bookingDays; offset += 1) {
+              const cursor = new Date(rangeStart);
+              cursor.setDate(cursor.getDate() + offset);
+              expectedDateKeys.push(cursor.toISOString().split("T")[0]);
+            }
+
+            const metadataHostPriceCents = Number(metadata.hostPriceCents || 0);
+            const metadataPlatformFeeCents = Number(
+              metadata.platformFeeCents || 0,
+            );
+            let cancelled = false;
+            const cancelWithCredit = async (reason: string) => {
+              if (cancelled) return;
+              cancelled = true;
+              const [truck] = await db
+                .select({ ownerId: restaurants.ownerId })
+                .from(restaurants)
+                .where(eq(restaurants.id, truckId));
+
+              if (truck?.ownerId) {
+                const { addCredit } = await import("./creditService");
+                await addCredit(
+                  truck.ownerId,
+                  amountCents / 100,
+                  reason,
+                  paymentIntent.id,
+                );
+              }
+
+              await db.insert(eventBookings).values({
+                eventId: passId,
+                truckId,
+                hostId: eventRow.hostId,
+                hostPriceCents: metadataHostPriceCents,
+                platformFeeCents: metadataPlatformFeeCents,
+                totalCents: amountCents,
+                status: "cancelled",
+                stripePaymentIntentId: paymentIntent.id,
+                stripePaymentStatus: "succeeded",
+                stripeApplicationFeeAmount: metadataPlatformFeeCents,
+                stripeTransferDestination: host?.stripeConnectAccountId || null,
+                slotType: normalizedSlotTypes.join(","),
+                refundStatus: "credit",
+                refundAmountCents: amountCents,
+                refundedAt: new Date(),
+                refundReason: "Overbooked",
+                cancelledAt: new Date(),
+                cancellationReason: "Overbooked - credit issued",
+              });
+            };
+
+            const missingDates = expectedDateKeys.filter(
+              (dateKey) => !eventsByDate.has(dateKey),
+            );
+            if (missingDates.length > 0) {
+              await cancelWithCredit("parking_pass_overbook");
+              break;
+            }
+
+            for (const dateKey of expectedDateKeys) {
+              const row = eventsByDate.get(dateKey);
+              if (!row) continue;
+              if (row.status !== "open") {
+                await cancelWithCredit("parking_pass_overbook");
+                break;
+              }
+
+              for (const slotType of normalizedSlotTypes) {
+                if (
+                  !isSlotWithinHours(
+                    slotType as any,
+                    row.startTime,
+                    row.endTime,
+                  )
+                ) {
+                  await cancelWithCredit("parking_pass_overbook");
+                  break;
+                }
+              }
+              if (cancelled) {
+                break;
+              }
+            }
+            if (cancelled) {
+              break;
+            }
+
+            const eventIds = bookingEvents.map((row) => row.id);
+            const counts =
+              eventIds.length > 0
+                ? await db
+                    .select({
+                      eventId: eventBookings.eventId,
+                      count: sql<number>`count(*)`,
+                    })
+                    .from(eventBookings)
+                    .where(inArray(eventBookings.eventId, eventIds))
+                    .where(inArray(eventBookings.status, ["confirmed"]))
+                    .groupBy(eventBookings.eventId)
+                : [];
+
+            const countsByEvent = new Map<string, number>();
+            for (const row of counts) {
+              countsByEvent.set(row.eventId, Number(row.count || 0));
+            }
+
+            for (const dateKey of expectedDateKeys) {
+              const row = eventsByDate.get(dateKey);
+              if (!row) continue;
+              const count = countsByEvent.get(row.id) ?? 0;
+              if (count >= (row.maxTrucks ?? 1)) {
+                await cancelWithCredit("parking_pass_overbook");
+                break;
+              }
+            }
+            if (cancelled) {
+              break;
+            }
+
+            const existingTruckBooking = await db
+              .select({ id: eventBookings.id })
+              .from(eventBookings)
+              .where(inArray(eventBookings.eventId, eventIds))
+              .where(eq(eventBookings.truckId, truckId))
+              .where(inArray(eventBookings.status, ["confirmed"]))
+              .limit(1);
+
+            if (existingTruckBooking.length > 0) {
+              await cancelWithCredit("parking_pass_duplicate");
+              break;
+            }
+
+            const splitAmount = (total: number, days: number) => {
+              if (days <= 1) return [total];
+              const base = Math.floor(total / days);
+              const remainder = total - base * days;
+              return Array.from({ length: days }, (_, index) =>
+                index === 0 ? base + remainder : base,
+              );
+            };
 
             const hostPriceCents = Number(metadata.hostPriceCents || 0);
             const platformFeeCents = Number(metadata.platformFeeCents || 0);
+            const hostSplit = splitAmount(hostPriceCents, bookingDays);
+            const platformSplit = splitAmount(platformFeeCents, bookingDays);
 
             const confirmedBookings = await db
               .select({
-                id: eventBookings.id,
+                eventId: eventBookings.eventId,
                 spotNumber: eventBookings.spotNumber,
                 bookingConfirmedAt: eventBookings.bookingConfirmedAt,
               })
               .from(eventBookings)
-              .where(eq(eventBookings.eventId, passId))
+              .where(inArray(eventBookings.eventId, eventIds))
               .where(inArray(eventBookings.status, ["confirmed"]))
               .orderBy(asc(eventBookings.bookingConfirmedAt));
 
-            if (confirmedBookings.length >= eventRow.maxTrucks) {
-              const [truck] = await db
-                .select({ ownerId: restaurants.ownerId })
-                .from(restaurants)
-                .where(eq(restaurants.id, truckId));
-
-              if (truck?.ownerId) {
-                const { addCredit } = await import("./creditService");
-                await addCredit(
-                  truck.ownerId,
-                  amountCents / 100,
-                  "parking_pass_overbook",
-                  paymentIntent.id,
-                );
-              }
-
-              await db.insert(eventBookings).values({
-                eventId: passId,
-                truckId,
-                hostId: eventRow.hostId,
-                hostPriceCents,
-                platformFeeCents,
-                totalCents: amountCents,
-                status: "cancelled",
-                stripePaymentIntentId: paymentIntent.id,
-                stripePaymentStatus: "succeeded",
-                stripeApplicationFeeAmount: platformFeeCents,
-                stripeTransferDestination: host?.stripeConnectAccountId || null,
-                slotType: slotTypes.join(","),
-                refundStatus: "credit",
-                refundAmountCents: amountCents,
-                refundedAt: new Date(),
-                refundReason: "Overbooked",
-                cancelledAt: new Date(),
-                cancellationReason: "Overbooked - credit issued",
-              });
-
-              break;
-            }
-
-            const usedSpotNumbers = new Set<number>();
+            const bookingsByEvent = new Map<
+              string,
+              (typeof confirmedBookings)[number][]
+            >();
             for (const row of confirmedBookings) {
-              if (row.spotNumber && row.spotNumber > 0) {
-                usedSpotNumbers.add(row.spotNumber);
-              }
+              const list = bookingsByEvent.get(row.eventId) ?? [];
+              list.push(row);
+              bookingsByEvent.set(row.eventId, list);
             }
 
-            let spotNumber = 1;
-            while (usedSpotNumbers.has(spotNumber)) {
-              spotNumber += 1;
-            }
+            const bookingRows = expectedDateKeys.map((dateKey, index) => {
+              const row = eventsByDate.get(dateKey);
+              if (!row) return null;
 
-            if (spotNumber > eventRow.maxTrucks) {
-              const [truck] = await db
-                .select({ ownerId: restaurants.ownerId })
-                .from(restaurants)
-                .where(eq(restaurants.id, truckId));
-
-              if (truck?.ownerId) {
-                const { addCredit } = await import("./creditService");
-                await addCredit(
-                  truck.ownerId,
-                  amountCents / 100,
-                  "parking_pass_overbook",
-                  paymentIntent.id,
-                );
+              const bookedRows = bookingsByEvent.get(row.id) ?? [];
+              const usedSpotNumbers = new Set<number>();
+              for (const booked of bookedRows) {
+                if (booked.spotNumber && booked.spotNumber > 0) {
+                  usedSpotNumbers.add(booked.spotNumber);
+                }
+              }
+              let spotNumber = 1;
+              while (usedSpotNumbers.has(spotNumber)) {
+                spotNumber += 1;
+              }
+              if (spotNumber > row.maxTrucks) {
+                return null;
               }
 
-              await db.insert(eventBookings).values({
-                eventId: passId,
+              const hostCents = hostSplit[index] ?? 0;
+              const feeCents = platformSplit[index] ?? 0;
+
+              return {
+                eventId: row.id,
                 truckId,
-                hostId: eventRow.hostId,
-                hostPriceCents,
-                platformFeeCents,
-                totalCents: amountCents,
-                status: "cancelled",
+                hostId: row.hostId,
+                hostPriceCents: hostCents,
+                platformFeeCents: feeCents,
+                totalCents: hostCents + feeCents,
+                status: "confirmed",
                 stripePaymentIntentId: paymentIntent.id,
                 stripePaymentStatus: "succeeded",
-                stripeApplicationFeeAmount: platformFeeCents,
+                stripeApplicationFeeAmount: feeCents,
                 stripeTransferDestination: host?.stripeConnectAccountId || null,
-                slotType: slotTypes.join(","),
-                refundStatus: "credit",
-                refundAmountCents: amountCents,
-                refundedAt: new Date(),
-                refundReason: "Overbooked",
-                cancelledAt: new Date(),
-                cancellationReason: "Overbooked - credit issued",
-              });
+                slotType: normalizedSlotTypes.join(","),
+                paidAt: new Date(),
+                bookingConfirmedAt: new Date(),
+                spotNumber,
+              };
+            });
 
+            const filteredRows = bookingRows.filter(
+              (row): row is NonNullable<(typeof bookingRows)[number]> => Boolean(row),
+            );
+
+            if (filteredRows.length !== expectedDateKeys.length) {
+              await cancelWithCredit("parking_pass_overbook");
               break;
             }
 
-            await db.insert(eventBookings).values({
-              eventId: passId,
-              truckId,
-              hostId: eventRow.hostId,
-              hostPriceCents,
-              platformFeeCents,
-              totalCents: amountCents,
-              status: "confirmed",
-              stripePaymentIntentId: paymentIntent.id,
-              stripePaymentStatus: "succeeded",
-              stripeApplicationFeeAmount: platformFeeCents,
-              stripeTransferDestination: host?.stripeConnectAccountId || null,
-              slotType: slotTypes.join(","),
-              paidAt: new Date(),
-              bookingConfirmedAt: new Date(),
-              spotNumber,
-            });
+            await db.insert(eventBookings).values(filteredRows);
 
             try {
               const creditAppliedCents = Number(
@@ -6068,7 +6219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Schedule Parking Pass completion reminders (Monday 9:00 AM)
-  cron.schedule("0 9 * * 1", async () => {
+  cron.schedule("0 9 1 * *", async () => {
     console.log("⏰ Triggering Parking Pass Completion Reminders");
     try {
       const stats = await remindIncompleteParkingPassHosts();

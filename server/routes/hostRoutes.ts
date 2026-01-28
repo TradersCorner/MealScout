@@ -12,7 +12,7 @@ import {
   eventBookings,
   parkingPassBlackoutDates,
 } from "@shared/schema";
-import { and, asc, eq, gte, inArray, isNotNull, lt } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNotNull, lt, sql } from "drizzle-orm";
 import { isAuthenticated } from "../unifiedAuth";
 import Stripe from "stripe";
 import {
@@ -28,6 +28,13 @@ import {
   computeFillRate,
 } from "../services/interestDecision";
 import { forwardGeocode } from "../utils/geocoding";
+import {
+  PARKING_PASS_BOOKING_DAYS,
+  PARKING_PASS_SLOT_TYPES,
+  getSlotWindowMinutes,
+  isSlotWithinHours,
+  slotWindowsOverlap,
+} from "@shared/parkingPassSlots";
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -734,6 +741,33 @@ export function registerHostRoutes(app: Express) {
           .json({ message: "End time must be after start time" });
       }
 
+      const invalidSlotLabels: string[] = [];
+      if (
+        breakfastPriceCents > 0 &&
+        !isSlotWithinHours("breakfast", parsed.startTime, parsed.endTime)
+      ) {
+        invalidSlotLabels.push("Breakfast");
+      }
+      if (
+        lunchPriceCents > 0 &&
+        !isSlotWithinHours("lunch", parsed.startTime, parsed.endTime)
+      ) {
+        invalidSlotLabels.push("Lunch");
+      }
+      if (
+        dinnerPriceCents > 0 &&
+        !isSlotWithinHours("dinner", parsed.startTime, parsed.endTime)
+      ) {
+        invalidSlotLabels.push("Dinner");
+      }
+      if (invalidSlotLabels.length > 0) {
+        return res.status(400).json({
+          message:
+            "Parking hours must fully cover priced slots: " +
+            invalidSlotLabels.join(", "),
+        });
+      }
+
       // Validation: Spots >= 1
       if (parsed.maxTrucks !== undefined && parsed.maxTrucks < 1) {
         return res
@@ -798,7 +832,7 @@ export function registerHostRoutes(app: Express) {
       }
 
       const horizon = new Date(today);
-      horizon.setDate(horizon.getDate() + 30);
+      horizon.setDate(horizon.getDate() + 90);
 
       const hardCapEnabled = Boolean(req.body?.hardCapEnabled);
       const [series] = await db
@@ -1019,6 +1053,33 @@ export function registerHostRoutes(app: Express) {
         return res
           .status(400)
           .json({ message: "End time must be after start time" });
+      }
+
+      const invalidSlotLabels: string[] = [];
+      if (
+        (event.breakfastPriceCents ?? 0) > 0 &&
+        !isSlotWithinHours("breakfast", finalStartTime, finalEndTime)
+      ) {
+        invalidSlotLabels.push("Breakfast");
+      }
+      if (
+        (event.lunchPriceCents ?? 0) > 0 &&
+        !isSlotWithinHours("lunch", finalStartTime, finalEndTime)
+      ) {
+        invalidSlotLabels.push("Lunch");
+      }
+      if (
+        (event.dinnerPriceCents ?? 0) > 0 &&
+        !isSlotWithinHours("dinner", finalStartTime, finalEndTime)
+      ) {
+        invalidSlotLabels.push("Dinner");
+      }
+      if (invalidSlotLabels.length > 0) {
+        return res.status(400).json({
+          message:
+            "Parking hours must fully cover priced slots: " +
+            invalidSlotLabels.join(", "),
+        });
       }
 
       // Validation: Capacity >= 1
@@ -1397,7 +1458,7 @@ export function registerHostRoutes(app: Express) {
     }
   );
 
-  // Book a Parking Pass (creates payment intent with $10 platform fee auto-added)
+  // Book a Parking Pass (creates payment intent with $10/day platform fee auto-added)
   app.post(
     "/api/parking-pass/:passId/book",
     isAuthenticated,
@@ -1414,14 +1475,7 @@ export function registerHostRoutes(app: Express) {
       if (!truckId) {
         return res.status(400).json({ message: "Truck ID required" });
       }
-      const allowedSlotTypes = new Set([
-        "breakfast",
-        "lunch",
-        "dinner",
-        "daily",
-        "weekly",
-        "monthly",
-      ]);
+      const allowedSlotTypes = new Set(PARKING_PASS_SLOT_TYPES);
       const requestedSlots = Array.isArray(slotTypes)
         ? slotTypes
         : slotType
@@ -1435,12 +1489,33 @@ export function registerHostRoutes(app: Express) {
             .filter((value: string) => value.length > 0),
         ),
       );
-      if (
-        normalizedSlots.length === 0 ||
-        normalizedSlots.some((value) => !allowedSlotTypes.has(value))
-      ) {
+      if (normalizedSlots.length === 0) {
         return res.status(400).json({ message: "Valid slotTypes required" });
       }
+      if (normalizedSlots.some((value) => !allowedSlotTypes.has(value))) {
+        return res.status(400).json({ message: "Valid slotTypes required" });
+      }
+
+      const durationSlots = normalizedSlots.filter((value) =>
+        ["daily", "weekly", "monthly"].includes(value),
+      );
+      const mealSlots = normalizedSlots.filter((value) =>
+        ["breakfast", "lunch", "dinner"].includes(value),
+      );
+      if (durationSlots.length > 0 && mealSlots.length > 0) {
+        return res.status(400).json({
+          message: "Daily, weekly, and monthly bookings cannot be combined with meal slots.",
+        });
+      }
+      if (durationSlots.length > 1) {
+        return res.status(400).json({
+          message: "Select only one of daily, weekly, or monthly.",
+        });
+      }
+
+      const selectedSlotTypes = (durationSlots.length > 0
+        ? durationSlots
+        : mealSlots) as (typeof PARKING_PASS_SLOT_TYPES)[number][];
 
       // Verify truck ownership
       const truck = await storage.getRestaurant(truckId);
@@ -1521,45 +1596,180 @@ export function registerHostRoutes(app: Express) {
         });
       }
 
-      const currentBookings = await db
-        .select({ id: eventBookings.id })
-        .from(eventBookings)
-        .where(eq(eventBookings.eventId, passId))
-        .where(inArray(eventBookings.status, ["confirmed"]));
+      const bookingDays = durationSlots.includes("monthly")
+        ? 30
+        : durationSlots.includes("weekly")
+          ? 7
+          : 1;
+      const eventDate = new Date(event.date);
+      const rangeStart = new Date(eventDate);
+      rangeStart.setHours(0, 0, 0, 0);
+      const rangeEnd = new Date(rangeStart);
+      rangeEnd.setDate(rangeEnd.getDate() + bookingDays);
 
-      if (currentBookings.length >= event.maxTrucks) {
+      const bookingEvents = await db
+        .select()
+        .from(events)
+        .where(
+          and(
+            eq(events.hostId, host.id),
+            eq(events.requiresPayment, true),
+            gte(events.date, rangeStart),
+            lt(events.date, rangeEnd),
+          ),
+        )
+        .orderBy(asc(events.date));
+
+      const eventsByDate = new Map<string, (typeof bookingEvents)[number]>();
+      for (const row of bookingEvents) {
+        const dateKey = new Date(row.date).toISOString().split("T")[0];
+        eventsByDate.set(dateKey, row);
+      }
+
+      const expectedDateKeys: string[] = [];
+      for (let offset = 0; offset < bookingDays; offset += 1) {
+        const cursor = new Date(rangeStart);
+        cursor.setDate(cursor.getDate() + offset);
+        expectedDateKeys.push(cursor.toISOString().split("T")[0]);
+      }
+
+      const missingDates = expectedDateKeys.filter(
+        (dateKey) => !eventsByDate.has(dateKey),
+      );
+      if (missingDates.length > 0) {
         return res.status(400).json({
-          message: "This parking pass is fully booked.",
+          message:
+            "This parking pass does not have availability for the full booking range.",
         });
       }
 
-      const eventDate = new Date(event.date);
-      const dayStart = new Date(eventDate);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setDate(dayEnd.getDate() + 1);
+      for (const dateKey of expectedDateKeys) {
+        const row = eventsByDate.get(dateKey);
+        if (!row) continue;
+        if (row.status !== "open") {
+          return res.status(400).json({
+            message: "This parking pass is not available for that date.",
+          });
+        }
+        for (const slotType of selectedSlotTypes) {
+          if (!isSlotWithinHours(slotType, row.startTime, row.endTime)) {
+            return res.status(400).json({
+              message:
+                "Selected slots do not fit within host parking hours.",
+            });
+          }
+        }
+      }
 
-      const existingDayBooking = await db
-        .select({ id: eventBookings.id })
+      const eventIds = bookingEvents.map((row) => row.id);
+      const bookingCounts =
+        eventIds.length > 0
+          ? await db
+              .select({
+                eventId: eventBookings.eventId,
+                count: sql<number>`count(*)`,
+              })
+              .from(eventBookings)
+              .where(inArray(eventBookings.eventId, eventIds))
+              .where(inArray(eventBookings.status, ["confirmed"]))
+              .groupBy(eventBookings.eventId)
+          : [];
+
+      const countsByEvent = new Map<string, number>();
+      for (const row of bookingCounts) {
+        countsByEvent.set(row.eventId, Number(row.count || 0));
+      }
+
+      for (const dateKey of expectedDateKeys) {
+        const row = eventsByDate.get(dateKey);
+        if (!row) continue;
+        const count = countsByEvent.get(row.id) ?? 0;
+        if (count >= (row.maxTrucks ?? 1)) {
+          return res.status(400).json({
+            message: "This parking pass is fully booked.",
+          });
+        }
+      }
+
+      const existingBookings = await db
+        .select({
+          slotType: eventBookings.slotType,
+          eventDate: events.date,
+          eventStartTime: events.startTime,
+          eventEndTime: events.endTime,
+        })
         .from(eventBookings)
         .innerJoin(events, eq(eventBookings.eventId, events.id))
         .where(
           and(
             eq(eventBookings.truckId, truckId),
-            eq(eventBookings.hostId, event.hostId),
-            gte(events.date, dayStart),
-            lt(events.date, dayEnd),
-            inArray(eventBookings.status, ["confirmed"])
-          )
-        )
-        .limit(1);
+            inArray(eventBookings.status, ["confirmed"]),
+            gte(events.date, rangeStart),
+            lt(events.date, rangeEnd),
+          ),
+        );
 
-      if (existingDayBooking.length > 0) {
-        return res.status(400).json({
-          message:
-            "You already have a parking pass for this host on that date.",
-          bookingId: existingDayBooking[0].id,
-        });
+      const requestedWindowsByDate = new Map<string, Array<{ start: number; end: number }>>();
+      for (const dateKey of expectedDateKeys) {
+        const row = eventsByDate.get(dateKey);
+        if (!row) continue;
+        const windows: Array<{ start: number; end: number }> = [];
+        for (const slotType of selectedSlotTypes) {
+          const window = getSlotWindowMinutes(
+            slotType,
+            row.startTime,
+            row.endTime,
+          );
+          if (window) {
+            windows.push({
+              start: window.startMinutes,
+              end: window.endMinutes,
+            });
+          }
+        }
+        if (windows.length > 0) {
+          requestedWindowsByDate.set(dateKey, windows);
+        }
+      }
+
+      for (const booking of existingBookings) {
+        const dateKey = new Date(booking.eventDate).toISOString().split("T")[0];
+        const requested = requestedWindowsByDate.get(dateKey);
+        if (!requested || requested.length === 0) continue;
+        const slotParts = (booking.slotType || "")
+          .split(",")
+          .map((value) => value.trim().toLowerCase())
+          .filter((value) => value.length > 0);
+        const normalizedExisting = slotParts.filter((value) =>
+          allowedSlotTypes.has(value),
+        );
+        const existingSlots =
+          normalizedExisting.length > 0
+            ? normalizedExisting
+            : ["daily"];
+        for (const slot of existingSlots) {
+          const window = getSlotWindowMinutes(
+            slot as (typeof PARKING_PASS_SLOT_TYPES)[number],
+            booking.eventStartTime,
+            booking.eventEndTime,
+          );
+          if (!window) continue;
+          for (const requestedWindow of requested) {
+            if (
+              slotWindowsOverlap(
+                requestedWindow.start,
+                requestedWindow.end,
+                window.startMinutes,
+                window.endMinutes,
+              )
+            ) {
+              return res.status(400).json({
+                message:
+                  "You already have a booking that overlaps this time.",
+              });
+            }
+          }
+        }
       }
 
       // Calculate pricing: Host price + $10 platform fee
@@ -1571,7 +1781,7 @@ export function registerHostRoutes(app: Express) {
         weekly: event.weeklyPriceCents,
         monthly: event.monthlyPriceCents,
       };
-      const selectedPrices = normalizedSlots.map((slot) => ({
+      const selectedPrices = selectedSlotTypes.map((slot) => ({
         slot,
         price: slotPriceMap[slot] || 0,
       }));
@@ -1584,12 +1794,7 @@ export function registerHostRoutes(app: Express) {
         (sum, item) => sum + item.price,
         0,
       );
-      const bookingDays = normalizedSlots.includes("monthly")
-        ? 30
-        : normalizedSlots.includes("weekly")
-          ? 7
-          : 1;
-      const platformFeeCents = Math.min(1000 * bookingDays, 15000); // $10/day, capped at $150/month
+      const platformFeeCents = 1000 * bookingDays; // $10/day, no cap
 
       let creditAppliedCents = 0;
       const requestedCreditCents = Number(applyCreditsCents || 0);
@@ -1619,12 +1824,14 @@ export function registerHostRoutes(app: Express) {
         {
           amount: totalCents,
           currency: "usd",
-          application_fee_amount: platformFeeCents, // $10 to MealScout (platform)
+          application_fee_amount: adjustedPlatformFeeCents, // MealScout platform fee
           metadata: {
             passId: event.id,
             hostId: host.id,
             truckId,
-            slotTypes: normalizedSlots.join(","),
+            slotTypes: selectedSlotTypes.join(","),
+            bookingDays: bookingDays.toString(),
+            bookingStartDate: rangeStart.toISOString().split("T")[0],
             hostPriceCents: hostPriceCents.toString(),
             platformFeeCents: adjustedPlatformFeeCents.toString(),
             totalCents: totalCents.toString(),

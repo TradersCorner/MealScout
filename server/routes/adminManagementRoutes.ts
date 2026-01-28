@@ -29,6 +29,7 @@ import {
   affiliateWithdrawals,
   creditLedger,
 } from "@shared/schema";
+import { isSlotWithinHours } from "@shared/parkingPassSlots";
 
 // Optional Stripe integration (mirrors server/routes.ts)
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -2090,6 +2091,25 @@ export function registerAdminManagementRoutes(app: Express) {
         const dinner = Number(
           updates.dinnerPriceCents ?? event.dinnerPriceCents ?? 0,
         );
+        const finalStartTime = String(updates.startTime ?? event.startTime);
+        const finalEndTime = String(updates.endTime ?? event.endTime);
+        const invalidSlots: string[] = [];
+        if (breakfast > 0 && !isSlotWithinHours("breakfast", finalStartTime, finalEndTime)) {
+          invalidSlots.push("Breakfast");
+        }
+        if (lunch > 0 && !isSlotWithinHours("lunch", finalStartTime, finalEndTime)) {
+          invalidSlots.push("Lunch");
+        }
+        if (dinner > 0 && !isSlotWithinHours("dinner", finalStartTime, finalEndTime)) {
+          invalidSlots.push("Dinner");
+        }
+        if (invalidSlots.length > 0) {
+          return res.status(400).json({
+            message:
+              "Parking hours must fully cover priced slots: " +
+              invalidSlots.join(", "),
+          });
+        }
         const slotSum = breakfast + lunch + dinner;
         updates.hostPriceCents = slotSum;
         updates.dailyPriceCents = slotSum;

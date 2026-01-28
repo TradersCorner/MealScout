@@ -54,6 +54,12 @@ interface ParkingPassEvent {
   }>;
 }
 
+type ParkingPassLocationGroup = {
+  key: string;
+  host: Host;
+  events: ParkingPassEvent[];
+};
+
 interface ManualScheduleEntry {
   id: string;
   date: string;
@@ -158,10 +164,14 @@ const parseCoord = (value: number | string | null | undefined) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-const buildFullAddress = (event: ParkingPassEvent) =>
-  [event.host?.address, event.host?.city, event.host?.state]
-    .filter(Boolean)
-    .join(", ");
+const buildHostAddress = (host?: Host | null) =>
+  [host?.address, host?.city, host?.state].filter(Boolean).join(", ");
+
+const getEventDateKey = (value: string) =>
+  new Date(value).toISOString().split("T")[0];
+
+const getLocationKey = (event: ParkingPassEvent) =>
+  event.host?.id || event.host?.address || event.id;
 
 const parkingPassPinIcon = new L.Icon({
   iconUrl: mealScoutIcon,
@@ -229,7 +239,8 @@ export default function ParkingPassPage() {
     Array<{ event: ParkingPassEvent; slotTypes: string[] }>
   >([]);
   const [viewMode, setViewMode] = useState<"map" | "list">("map");
-  const [activeEventId, setActiveEventId] = useState<string | null>(null);
+  const [activeLocationKey, setActiveLocationKey] = useState<string | null>(null);
+  const [pendingPassId, setPendingPassId] = useState<string | null>(null);
   const [parkingCoords, setParkingCoords] = useState<
     Record<string, GeoPoint>
   >({});
@@ -285,7 +296,7 @@ export default function ParkingPassPage() {
     const params = new URLSearchParams(window.location.search);
     const passId = params.get("pass");
     if (passId) {
-      setActiveEventId(passId);
+      setPendingPassId(passId);
     }
   }, []);
 
@@ -353,6 +364,16 @@ export default function ParkingPassPage() {
       cancelled = true;
     };
   }, [isAuthenticated, toast]);
+
+  useEffect(() => {
+    if (!pendingPassId) return;
+    const match = events.find((event) => event.id === pendingPassId);
+    if (match) {
+      setActiveLocationKey(getLocationKey(match));
+      setSelectedDate(getEventDateKey(match.date));
+    }
+    setPendingPassId(null);
+  }, [pendingPassId, events]);
 
   useEffect(() => {
     if (!truckId) {
@@ -587,10 +608,10 @@ export default function ParkingPassPage() {
     return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
   };
 
-  const getEventCoords = (event?: ParkingPassEvent | null) => {
-    if (!event?.host) return null;
-    const lat = parseCoord(event.host.latitude);
-    const lng = parseCoord(event.host.longitude);
+  const getLocationCoords = (host?: Host | null) => {
+    if (!host) return null;
+    const lat = parseCoord(host.latitude);
+    const lng = parseCoord(host.longitude);
     if (lat === null || lng === null) return null;
     return { lat, lng };
   };
@@ -731,27 +752,42 @@ export default function ParkingPassPage() {
   const showHostParkingPass =
     isAuthenticated && hasHostProfile && !isAdminOrStaff;
   const normalizedCityQuery = cityQuery.trim().toLowerCase();
-  const filteredEvents = events
-    .filter((event) => {
-      const eventDate = new Date(event.date).toISOString().split("T")[0];
-      if (eventDate !== selectedDate) {
-        return false;
+  const locationGroups = useMemo(() => {
+    const byHost = new Map<string, ParkingPassLocationGroup>();
+    events.forEach((event) => {
+      const key = getLocationKey(event);
+      const existing = byHost.get(key);
+      if (existing) {
+        existing.events.push(event);
+      } else {
+        byHost.set(key, { key, host: event.host, events: [event] });
       }
-      if (!normalizedCityQuery) {
-        return true;
-      }
-      const locationText = [
-        event.host.city,
-        event.host.state,
-        event.host.address,
-        event.host.businessName,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return locationText.includes(normalizedCityQuery);
-    })
-    .sort((a, b) => {
+    });
+    for (const group of byHost.values()) {
+      group.events.sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      );
+    }
+    return Array.from(byHost.values());
+  }, [events]);
+
+  const filteredLocations = useMemo(() => {
+    const filtered = normalizedCityQuery
+      ? locationGroups.filter((group) => {
+          const locationText = [
+            group.host.city,
+            group.host.state,
+            group.host.address,
+            group.host.businessName,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return locationText.includes(normalizedCityQuery);
+        })
+      : locationGroups;
+
+    return [...filtered].sort((a, b) => {
       const cityA = (a.host.city || "").toLowerCase();
       const cityB = (b.host.city || "").toLowerCase();
       if (cityA && cityB && cityA !== cityB) {
@@ -759,11 +795,31 @@ export default function ParkingPassPage() {
       }
       return a.host.businessName.localeCompare(b.host.businessName);
     });
+  }, [locationGroups, normalizedCityQuery]);
+
+  const activeLocation =
+    filteredLocations.find((group) => group.key === activeLocationKey) ||
+    filteredLocations[0] ||
+    null;
+
+  const activeEventForDate = activeLocation
+    ? activeLocation.events.find(
+        (event) => getEventDateKey(event.date) === selectedDate,
+      )
+    : null;
 
   const activeEvent =
-    filteredEvents.find((event) => event.id === activeEventId) ||
-    filteredEvents[0] ||
+    activeEventForDate ||
+    activeLocation?.events.find(
+      (event) => getEventDateKey(event.date) >= selectedDate,
+    ) ||
+    activeLocation?.events[0] ||
     null;
+  const selectedDateLabel = format(
+    new Date(`${selectedDate}T00:00:00`),
+    "EEE, MMM d",
+  );
+  const selectedDateAvailable = Boolean(activeEventForDate);
   const activeEventBookings = Array.isArray(activeEvent?.bookings)
     ? activeEvent.bookings
     : [];
@@ -776,35 +832,41 @@ export default function ParkingPassPage() {
         ? "Open"
         : "Closed"
       : null;
-  const mapEvents = useMemo(
+  const mapLocations = useMemo(
     () =>
-      filteredEvents
-        .map((event) => {
-          const coords = getEventCoords(event) || parkingCoords[event.id] || null;
-          return coords ? { event, coords } : null;
+      filteredLocations
+        .map((group) => {
+          const coords =
+            getLocationCoords(group.host) || parkingCoords[group.key] || null;
+          return coords ? { group, coords } : null;
         })
         .filter(
           (
             item,
-          ): item is { event: ParkingPassEvent; coords: { lat: number; lng: number } } =>
+          ): item is { group: ParkingPassLocationGroup; coords: GeoPoint } =>
             item !== null,
         ),
-    [filteredEvents],
+    [filteredLocations, parkingCoords],
   );
   const mapCenter = useMemo(() => {
-    const activeCoords =
-      getEventCoords(activeEvent) || (activeEvent ? parkingCoords[activeEvent.id] : null);
-    return activeCoords || mapEvents[0]?.coords || defaultMapCenter;
-  }, [activeEvent, mapEvents, parkingCoords]);
+    const activeCoords = activeLocation
+      ? getLocationCoords(activeLocation.host) ||
+        parkingCoords[activeLocation.key] ||
+        null
+      : null;
+    return activeCoords || mapLocations[0]?.coords || defaultMapCenter;
+  }, [activeLocation, mapLocations, parkingCoords]);
 
   useEffect(() => {
     if (geocodeInFlight.current) return;
-    const queue = filteredEvents
-      .filter((event) => {
-        const hostLat = parseCoord(event.host?.latitude);
-        const hostLng = parseCoord(event.host?.longitude);
+    const queue = filteredLocations
+      .filter((group) => {
+        const hostLat = parseCoord(group.host?.latitude);
+        const hostLng = parseCoord(group.host?.longitude);
         if (hostLat !== null && hostLng !== null) return false;
-        return !parkingCoords[event.id] && Boolean(buildFullAddress(event));
+        return (
+          !parkingCoords[group.key] && Boolean(buildHostAddress(group.host))
+        );
       })
       .slice(0, 8);
 
@@ -813,19 +875,19 @@ export default function ParkingPassPage() {
     geocodeInFlight.current = true;
     (async () => {
       try {
-        for (const event of queue) {
-          const address = buildFullAddress(event);
+        for (const group of queue) {
+          const address = buildHostAddress(group.host);
           if (!address) continue;
           const cached = geocodeCache[address];
           if (cached) {
-            setParkingCoords((prev) => ({ ...prev, [event.id]: cached }));
+            setParkingCoords((prev) => ({ ...prev, [group.key]: cached }));
             continue;
           }
           const point = await geocodeAddress(address).catch(() => null);
           if (!point) {
             continue;
           }
-          setParkingCoords((prev) => ({ ...prev, [event.id]: point }));
+          setParkingCoords((prev) => ({ ...prev, [group.key]: point }));
           setGeocodeCache((prev) => ({ ...prev, [address]: point }));
           await new Promise((r) => setTimeout(r, 300));
         }
@@ -833,18 +895,18 @@ export default function ParkingPassPage() {
         geocodeInFlight.current = false;
       }
     })();
-  }, [filteredEvents, parkingCoords, geocodeCache]);
+  }, [filteredLocations, parkingCoords, geocodeCache]);
 
   useEffect(() => {
-    if (!activeEvent) {
-      setActiveEventId(null);
+    if (!activeLocation) {
+      setActiveLocationKey(null);
       return;
     }
-    if (activeEventId && activeEventId === activeEvent.id) {
+    if (activeLocationKey && activeLocationKey === activeLocation.key) {
       return;
     }
-    setActiveEventId(activeEvent.id);
-  }, [activeEvent, activeEventId]);
+    setActiveLocationKey(activeLocation.key);
+  }, [activeLocation, activeLocationKey]);
 
   if (
     isAuthenticated &&
@@ -1142,7 +1204,7 @@ export default function ParkingPassPage() {
                 Find parking pass spots
               </p>
               <p className="text-xs text-gray-500">
-                Search by date, city, or address.
+                Search by city or address. Dates control slot availability.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1166,13 +1228,18 @@ export default function ParkingPassPage() {
             <div className="space-y-4 order-1 lg:order-none">
               <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-2">
                 <p className="text-xs font-semibold text-gray-700">
-                  Pick a day to book
+                  Pick a day for slots
                 </p>
                 <input
                   type="date"
                   className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
                   value={selectedDate}
-                  onChange={(event) => setSelectedDate(event.target.value)}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setSelectedDate(
+                      value || new Date().toISOString().split("T")[0],
+                    );
+                  }}
                 />
                 <input
                   type="text"
@@ -1209,75 +1276,105 @@ export default function ParkingPassPage() {
                           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                         />
-                        {mapEvents.map(({ event, coords }) => {
-                            const bookings = Array.isArray(event.bookings)
-                              ? event.bookings
-                              : [];
-                            const slotOptions = buildSlotOptions(event);
-                            const selectedSlots =
-                              selectedSlotsByEvent[event.id] || [];
-                            const selectedTotalCents = selectedSlots.reduce(
-                              (sum, slot) => {
-                                const price =
-                                  slotOptions.find((item) => item.type === slot)
-                                    ?.priceCents || 0;
-                                return sum + price;
-                              },
-                              0,
-                            );
-                            const selectedFeeCents = getFeeCentsForSlots(
-                              selectedSlots,
-                              selectedTotalCents,
-                            );
-                            const selectedTotalWithFee =
-                              selectedTotalCents > 0
-                                ? selectedTotalCents + selectedFeeCents
-                                : 0;
-                            const availability = event.availableSpotNumbers
-                              ? event.availableSpotNumbers.length > 0
-                                ? `Open spots: ${event.availableSpotNumbers.join(
+                        {mapLocations.map(({ group, coords }) => {
+                          const eventForDate = group.events.find(
+                            (event) => getEventDateKey(event.date) === selectedDate,
+                          );
+                          const displayEvent =
+                            eventForDate ||
+                            group.events.find(
+                              (event) => getEventDateKey(event.date) >= selectedDate,
+                            ) ||
+                            group.events[0] ||
+                            null;
+                          const bookingEvent = eventForDate || displayEvent;
+                          const bookings = Array.isArray(bookingEvent?.bookings)
+                            ? bookingEvent?.bookings ?? []
+                            : [];
+                          const slotOptions = eventForDate
+                            ? buildSlotOptions(eventForDate)
+                            : [];
+                          const selectedSlots = eventForDate
+                            ? selectedSlotsByEvent[eventForDate.id] || []
+                            : [];
+                          const selectedTotalCents = selectedSlots.reduce(
+                            (sum, slot) => {
+                              const price =
+                                slotOptions.find((item) => item.type === slot)
+                                  ?.priceCents || 0;
+                              return sum + price;
+                            },
+                            0,
+                          );
+                          const selectedFeeCents = getFeeCentsForSlots(
+                            selectedSlots,
+                            selectedTotalCents,
+                          );
+                          const selectedTotalWithFee =
+                            selectedTotalCents > 0
+                              ? selectedTotalCents + selectedFeeCents
+                              : 0;
+                          const availability = eventForDate
+                            ? eventForDate.availableSpotNumbers
+                              ? eventForDate.availableSpotNumbers.length > 0
+                                ? `Open spots: ${eventForDate.availableSpotNumbers.join(
                                     ", ",
                                   )}`
                                 : "Fully booked"
-                              : event.status === "open"
+                              : eventForDate.status === "open"
                                 ? "Open"
-                                : "Closed";
-                            const hasAvailability = event.availableSpotNumbers
-                              ? event.availableSpotNumbers.length > 0
-                              : event.status === "open";
+                                : "Closed"
+                            : "No slots for selected day";
+                          const hasAvailability = eventForDate
+                            ? eventForDate.availableSpotNumbers
+                              ? eventForDate.availableSpotNumbers.length > 0
+                              : eventForDate.status === "open"
+                            : false;
 
                           return (
                             <Marker
-                              key={event.id}
+                              key={group.key}
                               position={[coords.lat, coords.lng]}
                               icon={parkingPassPinIcon}
                               eventHandlers={{
-                                click: () => setActiveEventId(event.id),
+                                click: () => setActiveLocationKey(group.key),
                               }}
                             >
                               <Popup>
                                 <div className="space-y-2 text-xs">
                                   <p className="font-semibold text-gray-900">
-                                    {event.host.businessName}
+                                    {group.host.businessName}
                                   </p>
                                   <p className="text-gray-600">
-                                    {event.host.address}
+                                    {group.host.address}
                                   </p>
-                                  <p className="text-gray-600">
-                                    {format(
-                                      new Date(event.date),
-                                      "EEE, MMM d",
-                                    )}{" "}
-                                    •{" "}
-                                    {event.startTime === "00:00" &&
-                                    event.endTime === "23:59"
-                                      ? "Any time"
-                                      : `${event.startTime} - ${event.endTime}`}
-                                  </p>
+                                  {displayEvent && (
+                                    <p className="text-gray-600">
+                                      {format(
+                                        new Date(displayEvent.date),
+                                        "EEE, MMM d",
+                                      )}{" "}
+                                      •{" "}
+                                      {displayEvent.startTime === "00:00" &&
+                                      displayEvent.endTime === "23:59"
+                                        ? "Any time"
+                                        : `${displayEvent.startTime} - ${displayEvent.endTime}`}
+                                    </p>
+                                  )}
+                                  {!eventForDate && (
+                                    <p className="text-[11px] text-amber-700">
+                                      No slots on{" "}
+                                      {format(
+                                        new Date(`${selectedDate}T00:00:00`),
+                                        "EEE, MMM d",
+                                      )}
+                                      .
+                                    </p>
+                                  )}
                                   <p className="text-gray-600">
                                     {availability}
                                   </p>
-                                  {slotOptions.length > 0 && (
+                                  {eventForDate && slotOptions.length > 0 ? (
                                     <div className="space-y-2">
                                       <div className="grid grid-cols-2 gap-2">
                                         {slotOptions.map((slot) => {
@@ -1300,7 +1397,7 @@ export default function ParkingPassPage() {
                                               className="justify-between text-[11px]"
                                               disabled={!hasAvailability}
                                               onClick={() =>
-                                                handleSelect(event, slot.type)
+                                                handleSelect(eventForDate, slot.type)
                                               }
                                             >
                                               <span>{slot.label}</span>
@@ -1318,7 +1415,7 @@ export default function ParkingPassPage() {
                                         <Button
                                           size="sm"
                                           onClick={() =>
-                                            handleBookSelected(event)
+                                            handleBookSelected(eventForDate)
                                           }
                                           disabled={selectedSlots.length === 0}
                                         >
@@ -1334,6 +1431,10 @@ export default function ParkingPassPage() {
                                         </Button>
                                       </div>
                                     </div>
+                                  ) : (
+                                    <p className="text-[11px] text-gray-500">
+                                      Choose a day with availability.
+                                    </p>
                                   )}
                                   {bookings.length > 0 ? (
                                     <div className="pt-1 text-[11px] text-gray-500 space-y-1">
@@ -1366,7 +1467,7 @@ export default function ParkingPassPage() {
                           );
                         })}
                       </MapContainer>
-                      {mapEvents.length === 0 && (
+                      {mapLocations.length === 0 && (
                         <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500 pointer-events-none">
                           No mappable locations yet.
                         </div>
@@ -1377,9 +1478,24 @@ export default function ParkingPassPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    {filteredEvents.map((event) => {
-                      const slotOptions = buildSlotOptions(event);
-                      const selectedSlots = selectedSlotsByEvent[event.id] || [];
+                    {filteredLocations.map((group) => {
+                      const eventForDate = group.events.find(
+                        (event) => getEventDateKey(event.date) === selectedDate,
+                      );
+                      const displayEvent =
+                        eventForDate ||
+                        group.events.find(
+                          (event) => getEventDateKey(event.date) >= selectedDate,
+                        ) ||
+                        group.events[0] ||
+                        null;
+                      const bookingEvent = eventForDate || displayEvent;
+                      const slotOptions = eventForDate
+                        ? buildSlotOptions(eventForDate)
+                        : [];
+                      const selectedSlots = eventForDate
+                        ? selectedSlotsByEvent[eventForDate.id] || []
+                        : [];
                       const selectedTotalCents = selectedSlots.reduce(
                         (sum, slot) => {
                           const price =
@@ -1397,33 +1513,39 @@ export default function ParkingPassPage() {
                         selectedTotalCents > 0
                           ? selectedTotalCents + selectedFeeCents
                           : 0;
-                      const availableSpots = event.availableSpotNumbers;
-                      const hasAvailability =
-                        availableSpots === undefined
-                          ? event.status === "open"
-                          : availableSpots.length > 0;
-                      const bookings = Array.isArray(event.bookings)
-                        ? event.bookings
+                      const availableSpots = eventForDate?.availableSpotNumbers;
+                      const hasAvailability = eventForDate
+                        ? availableSpots === undefined
+                          ? eventForDate.status === "open"
+                          : availableSpots.length > 0
+                        : false;
+                      const bookings = Array.isArray(bookingEvent?.bookings)
+                        ? bookingEvent?.bookings ?? []
                         : [];
+                      const isActive = activeLocation?.key === group.key;
+                      const shareDate = displayEvent
+                        ? getEventDateKey(displayEvent.date)
+                        : selectedDate;
+                      const shareEventId = displayEvent?.id || "";
 
                       return (
                         <div
-                          key={event.id}
+                          key={group.key}
                           role="button"
                           tabIndex={0}
-                          aria-pressed={activeEvent?.id === event.id}
-                          onClick={() => setActiveEventId(event.id)}
+                          aria-pressed={isActive}
+                          onClick={() => setActiveLocationKey(group.key)}
                           onKeyDown={(keyboardEvent) => {
                             if (
                               keyboardEvent.key === "Enter" ||
                               keyboardEvent.key === " "
                             ) {
                               keyboardEvent.preventDefault();
-                              setActiveEventId(event.id);
+                              setActiveLocationKey(group.key);
                             }
                           }}
                           className={`w-full rounded-xl border px-4 py-3 space-y-2 transition cursor-pointer ${
-                            activeEvent?.id === event.id
+                            isActive
                               ? "border-orange-300 bg-orange-50"
                               : "border-gray-200 bg-white hover:bg-gray-50"
                           }`}
@@ -1431,32 +1553,49 @@ export default function ParkingPassPage() {
                           <div className="flex items-center justify-between">
                             <div>
                               <span className="font-semibold text-gray-900">
-                                {event.host.businessName}
+                                {group.host.businessName}
                               </span>
                               <div className="text-xs text-gray-500">
-                                {format(new Date(event.date), "EEE, MMM d")}
+                                {displayEvent
+                                  ? format(
+                                      new Date(displayEvent.date),
+                                      "EEE, MMM d",
+                                    )
+                                  : "No dates listed"}
                               </div>
                             </div>
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => setActiveEventId(event.id)}
+                              onClick={() => setActiveLocationKey(group.key)}
                             >
                               View
                             </Button>
                           </div>
                           <div className="text-xs text-gray-600 space-y-1">
-                            <p>{event.host.address}</p>
-                            <p>
-                              {event.startTime === "00:00" &&
-                              event.endTime === "23:59"
-                                ? "Any time"
-                                : `${event.startTime} - ${event.endTime}`}
-                            </p>
-                            {event.availableSpotNumbers && (
+                            <p>{group.host.address}</p>
+                            {displayEvent && (
+                              <p>
+                                {displayEvent.startTime === "00:00" &&
+                                displayEvent.endTime === "23:59"
+                                  ? "Any time"
+                                  : `${displayEvent.startTime} - ${displayEvent.endTime}`}
+                              </p>
+                            )}
+                            {!eventForDate && (
+                              <p className="text-[11px] text-amber-700">
+                                No slots on{" "}
+                                {format(
+                                  new Date(`${selectedDate}T00:00:00`),
+                                  "EEE, MMM d",
+                                )}
+                                .
+                              </p>
+                            )}
+                            {eventForDate?.availableSpotNumbers && (
                               <p className="text-[11px] text-gray-500">
-                                {event.availableSpotNumbers.length > 0
-                                  ? `Open spot${event.availableSpotNumbers.length > 1 ? "s" : ""}: ${event.availableSpotNumbers.join(", ")}`
+                                {eventForDate.availableSpotNumbers.length > 0
+                                  ? `Open spot${eventForDate.availableSpotNumbers.length > 1 ? "s" : ""}: ${eventForDate.availableSpotNumbers.join(", ")}`
                                   : "Fully booked"}
                               </p>
                             )}
@@ -1477,26 +1616,28 @@ export default function ParkingPassPage() {
                               </div>
                             )}
                           </div>
-                          <div>
-                            <ShareButton
-                              url={`/parking-pass?date=${encodeURIComponent(
-                                event.date?.split("T")[0] || selectedDate,
-                              )}&pass=${event.id}`}
-                              title={`Parking Pass at ${event.host.businessName}`}
-                              description={`${event.host.address}${
-                                event.host.city ? `, ${event.host.city}` : ""
-                              }${event.host.state ? `, ${event.host.state}` : ""}`}
-                              size="sm"
-                              variant="outline"
-                            />
-                          </div>
-                          {slotOptions.length > 0 && (
+                          {shareEventId && (
+                            <div>
+                              <ShareButton
+                                url={`/parking-pass?date=${encodeURIComponent(
+                                  shareDate,
+                                )}&pass=${shareEventId}`}
+                                title={`Parking Pass at ${group.host.businessName}`}
+                                description={`${group.host.address}${
+                                  group.host.city ? `, ${group.host.city}` : ""
+                                }${group.host.state ? `, ${group.host.state}` : ""}`}
+                                size="sm"
+                                variant="outline"
+                              />
+                            </div>
+                          )}
+                          {eventForDate && slotOptions.length > 0 && (
                             <div className="grid grid-cols-2 gap-2 pt-1">
                               {slotOptions.map((slot) => {
-                            const feeCents = getFeeCentsForSlots(
-                              [slot.type],
-                              slot.priceCents || 0,
-                            );
+                                const feeCents = getFeeCentsForSlots(
+                                  [slot.type],
+                                  slot.priceCents || 0,
+                                );
                                 const totalPrice =
                                   ((slot.priceCents || 0) + feeCents) / 100;
                                 const isSelected = selectedSlots.includes(
@@ -1509,7 +1650,9 @@ export default function ParkingPassPage() {
                                     size="sm"
                                     className="justify-between"
                                     disabled={!hasAvailability}
-                                    onClick={() => handleSelect(event, slot.type)}
+                                    onClick={() =>
+                                      handleSelect(eventForDate, slot.type)
+                                    }
                                   >
                                     <span>{slot.label}</span>
                                     <span>${totalPrice.toFixed(2)}</span>
@@ -1523,43 +1666,58 @@ export default function ParkingPassPage() {
                               <p className="text-[11px] text-gray-500">
                                 Includes a $10/day MealScout fee per host.
                               </p>
-                              <Button
-                                size="sm"
-                                onClick={() => handleBookSelected(event)}
-                                disabled={selectedSlots.length === 0}
-                              >
-                                Add to cart
-                                {selectedTotalWithFee > 0 && (
-                                  <span className="ml-2 text-xs">
-                                    ${(
-                                      (selectedTotalWithFee || 0) / 100
-                                    ).toFixed(2)}
-                                  </span>
-                                )}
-                              </Button>
+                              {eventForDate && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleBookSelected(eventForDate)}
+                                  disabled={selectedSlots.length === 0}
+                                >
+                                  Add to cart
+                                  {selectedTotalWithFee > 0 && (
+                                    <span className="ml-2 text-xs">
+                                      ${(
+                                        (selectedTotalWithFee || 0) / 100
+                                      ).toFixed(2)}
+                                    </span>
+                                  )}
+                                </Button>
+                              )}
                             </div>
                           ) : (
                             <p className="text-[11px] text-gray-500">
-                              Fully booked.
+                              {eventForDate ? "Fully booked." : "No slots on selected day."}
                             </p>
                           )}
                         </div>
                       );
                     })}
-                    {filteredEvents.length === 0 && (
+                    {filteredLocations.length === 0 && (
                       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-600">
-                        No spots are available for that day.
+                        No locations match that search.
                       </div>
                     )}
                   </div>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {filteredEvents.map((event) => {
-                    const slotOptions = buildSlotOptions(event);
-
-                    const selectedSlots =
-                      selectedSlotsByEvent[event.id] || [];
+                  {filteredLocations.map((group) => {
+                    const eventForDate = group.events.find(
+                      (event) => getEventDateKey(event.date) === selectedDate,
+                    );
+                    const displayEvent =
+                      eventForDate ||
+                      group.events.find(
+                        (event) => getEventDateKey(event.date) >= selectedDate,
+                      ) ||
+                      group.events[0] ||
+                      null;
+                    const bookingEvent = eventForDate || displayEvent;
+                    const slotOptions = eventForDate
+                      ? buildSlotOptions(eventForDate)
+                      : [];
+                    const selectedSlots = eventForDate
+                      ? selectedSlotsByEvent[eventForDate.id] || []
+                      : [];
                     const selectedTotalCents = selectedSlots.reduce(
                       (sum, slot) => {
                         const price =
@@ -1578,128 +1736,159 @@ export default function ParkingPassPage() {
                         ? selectedTotalCents + selectedFeeCents
                         : 0;
 
-                    const availableSpots = event.availableSpotNumbers;
-                    const hasAvailability =
-                      availableSpots === undefined
-                        ? event.status === "open"
-                        : availableSpots.length > 0;
+                    const availableSpots = eventForDate?.availableSpotNumbers;
+                    const hasAvailability = eventForDate
+                      ? availableSpots === undefined
+                        ? eventForDate.status === "open"
+                        : availableSpots.length > 0
+                      : false;
+                    const bookings = Array.isArray(bookingEvent?.bookings)
+                      ? bookingEvent?.bookings ?? []
+                      : [];
+                    const isActive = activeLocation?.key === group.key;
+                    const shareDate = displayEvent
+                      ? getEventDateKey(displayEvent.date)
+                      : selectedDate;
+                    const shareEventId = displayEvent?.id || "";
 
                     return (
                       <div
-                        key={event.id}
+                        key={group.key}
                         role="button"
                         tabIndex={0}
-                        aria-pressed={activeEvent?.id === event.id}
-                        onClick={() => setActiveEventId(event.id)}
+                        aria-pressed={isActive}
+                        onClick={() => setActiveLocationKey(group.key)}
                         onKeyDown={(keyboardEvent) => {
                           if (
                             keyboardEvent.key === "Enter" ||
                             keyboardEvent.key === " "
                           ) {
                             keyboardEvent.preventDefault();
-                            setActiveEventId(event.id);
+                            setActiveLocationKey(group.key);
                           }
                         }}
                         className={`w-full text-left rounded-xl border px-4 py-3 space-y-2 transition cursor-pointer ${
-                          activeEvent?.id === event.id
+                          isActive
                             ? "border-orange-300 bg-orange-50"
                             : "border-gray-200 bg-white hover:bg-gray-50"
                         }`}
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-semibold text-gray-900">
-                            {event.host.businessName}
+                            {group.host.businessName}
                           </span>
                           <span className="text-xs text-gray-500">
-                            {format(new Date(event.date), "EEE, MMM d")}
+                            {displayEvent
+                              ? format(new Date(displayEvent.date), "EEE, MMM d")
+                              : "No dates listed"}
                           </span>
                         </div>
                         <div className="text-xs text-gray-600">
-                          <p>{event.host.address}</p>
-                          <p>
-                            {event.startTime === "00:00" &&
-                            event.endTime === "23:59"
-                              ? "Any time"
-                              : `${event.startTime} - ${event.endTime}`}
-                          </p>
-                          {availableSpots && (
+                          <p>{group.host.address}</p>
+                          {displayEvent && (
+                            <p>
+                              {displayEvent.startTime === "00:00" &&
+                              displayEvent.endTime === "23:59"
+                                ? "Any time"
+                                : `${displayEvent.startTime} - ${displayEvent.endTime}`}
+                            </p>
+                          )}
+                          {!eventForDate && (
+                            <p className="text-[11px] text-amber-700">
+                              No slots on{" "}
+                              {format(
+                                new Date(`${selectedDate}T00:00:00`),
+                                "EEE, MMM d",
+                              )}
+                              .
+                            </p>
+                          )}
+                          {eventForDate?.availableSpotNumbers && (
                             <p className="text-[11px] text-gray-500">
-                              {availableSpots.length > 0
-                                ? `Open spot${availableSpots.length > 1 ? "s" : ""}: ${availableSpots.join(", ")}`
+                              {eventForDate.availableSpotNumbers.length > 0
+                                ? `Open spot${eventForDate.availableSpotNumbers.length > 1 ? "s" : ""}: ${eventForDate.availableSpotNumbers.join(", ")}`
                                 : "Fully booked"}
                             </p>
                           )}
                         </div>
-                        <div>
-                          <ShareButton
-                            url={`/parking-pass?date=${encodeURIComponent(
-                              event.date?.split("T")[0] || selectedDate,
-                            )}&pass=${event.id}`}
-                            title={`Parking Pass at ${event.host.businessName}`}
-                            description={`${event.host.address}${
-                              event.host.city ? `, ${event.host.city}` : ""
-                            }${event.host.state ? `, ${event.host.state}` : ""}`}
-                            size="sm"
-                            variant="outline"
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 pt-1">
-                          {slotOptions.map((slot) => {
-                            const feeCents = getFeeCentsForSlots(
-                              [slot.type],
-                              slot.priceCents || 0,
-                            );
-                            const totalPrice =
-                              ((slot.priceCents || 0) + feeCents) / 100;
-                            const isSelected = selectedSlots.includes(
-                              slot.type,
-                            );
-                            return (
-                              <Button
-                                key={slot.type}
-                                variant={isSelected ? "default" : "outline"}
-                                size="sm"
-                                className="justify-between"
-                                disabled={!hasAvailability}
-                                onClick={() => handleSelect(event, slot.type)}
-                              >
-                                <span>{slot.label}</span>
-                                <span>${totalPrice.toFixed(2)}</span>
-                              </Button>
-                            );
-                          })}
-                        </div>
+                        {shareEventId && (
+                          <div>
+                            <ShareButton
+                              url={`/parking-pass?date=${encodeURIComponent(
+                                shareDate,
+                              )}&pass=${shareEventId}`}
+                              title={`Parking Pass at ${group.host.businessName}`}
+                              description={`${group.host.address}${
+                                group.host.city ? `, ${group.host.city}` : ""
+                              }${group.host.state ? `, ${group.host.state}` : ""}`}
+                              size="sm"
+                              variant="outline"
+                            />
+                          </div>
+                        )}
+                        {eventForDate && slotOptions.length > 0 && (
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            {slotOptions.map((slot) => {
+                              const feeCents = getFeeCentsForSlots(
+                                [slot.type],
+                                slot.priceCents || 0,
+                              );
+                              const totalPrice =
+                                ((slot.priceCents || 0) + feeCents) / 100;
+                              const isSelected = selectedSlots.includes(
+                                slot.type,
+                              );
+                              return (
+                                <Button
+                                  key={slot.type}
+                                  variant={isSelected ? "default" : "outline"}
+                                  size="sm"
+                                  className="justify-between"
+                                  disabled={!hasAvailability}
+                                  onClick={() =>
+                                    handleSelect(eventForDate, slot.type)
+                                  }
+                                >
+                                  <span>{slot.label}</span>
+                                  <span>${totalPrice.toFixed(2)}</span>
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        )}
                         {hasAvailability ? (
                           <div className="flex items-center justify-between gap-3 pt-2">
                             <p className="text-[11px] text-gray-500">
                               Includes a $10/day MealScout fee per host.
                             </p>
-                            <Button
-                              size="sm"
-                              onClick={() => handleBookSelected(event)}
-                              disabled={selectedSlots.length === 0}
-                            >
-                              Add to cart
-                              {selectedTotalWithFee > 0 && (
-                                <span className="ml-2 text-xs">
-                                  ${(
-                                    (selectedTotalWithFee || 0) / 100
-                                  ).toFixed(2)}
-                                </span>
-                              )}
-                            </Button>
+                            {eventForDate && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleBookSelected(eventForDate)}
+                                disabled={selectedSlots.length === 0}
+                              >
+                                Add to cart
+                                {selectedTotalWithFee > 0 && (
+                                  <span className="ml-2 text-xs">
+                                    ${(
+                                      (selectedTotalWithFee || 0) / 100
+                                    ).toFixed(2)}
+                                  </span>
+                                )}
+                              </Button>
+                            )}
                           </div>
                         ) : (
                           <p className="text-[11px] text-gray-500">
-                            Fully booked.
+                            {eventForDate ? "Fully booked." : "No slots on selected day."}
                           </p>
                         )}
                       </div>
                     );
                   })}
-                  {filteredEvents.length === 0 && (
+                  {filteredLocations.length === 0 && (
                     <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-600">
-                      No spots are available for that day.
+                      No locations match that search.
                     </div>
                   )}
                 </div>
@@ -1772,10 +1961,10 @@ export default function ParkingPassPage() {
                 <CardContent className="p-5 space-y-3">
                   <div>
                     <p className="text-sm font-semibold text-gray-900">
-                      {activeEvent?.host.businessName || "Select a location"}
+                      {activeLocation?.host.businessName || "Select a location"}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {activeEvent?.host.address || "Choose a spot to see details."}
+                      {activeLocation?.host.address || "Choose a spot to see details."}
                     </p>
                   </div>
                   {activeEvent && (
@@ -1799,6 +1988,11 @@ export default function ParkingPassPage() {
                         <p className="text-[11px] font-semibold text-gray-700">
                           Schedule
                         </p>
+                        {!selectedDateAvailable && (
+                          <p className="text-[11px] text-amber-700">
+                            No slots on {selectedDateLabel}. Showing next available.
+                          </p>
+                        )}
                         <div className="flex items-center justify-between">
                           <span>Date</span>
                           <span>
@@ -1859,90 +2053,98 @@ export default function ParkingPassPage() {
                           No bookings yet.
                         </p>
                       )}
-                      <div className="space-y-2">
-                        <p className="text-xs font-semibold text-gray-700">
-                          Slot pricing
+                      {selectedDateAvailable && activeEventForDate ? (
+                        <>
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold text-gray-700">
+                              Slot pricing
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {[
+                                {
+                                  label: "Breakfast",
+                                  type: "breakfast",
+                                  priceCents: activeEventForDate.breakfastPriceCents,
+                                },
+                                {
+                                  label: "Lunch",
+                                  type: "lunch",
+                                  priceCents: activeEventForDate.lunchPriceCents,
+                                },
+                                {
+                                  label: "Dinner",
+                                  type: "dinner",
+                                  priceCents: activeEventForDate.dinnerPriceCents,
+                                },
+                                {
+                                  label: "Daily",
+                                  type: "daily",
+                                  priceCents: activeEventForDate.dailyPriceCents,
+                                },
+                                {
+                                  label: "Weekly",
+                                  type: "weekly",
+                                  priceCents: activeEventForDate.weeklyPriceCents,
+                                },
+                                {
+                                  label: "Monthly",
+                                  type: "monthly",
+                                  priceCents: activeEventForDate.monthlyPriceCents,
+                                },
+                              ]
+                                .filter((slot) => (slot.priceCents || 0) > 0)
+                                .map((slot) => {
+                                  const feeCents = getFeeCentsForSlots(
+                                    [slot.type],
+                                    slot.priceCents || 0,
+                                  );
+                                  const totalPrice =
+                                    ((slot.priceCents || 0) + feeCents) / 100;
+                                  const selectedSlots =
+                                    selectedSlotsByEvent[activeEventForDate.id] || [];
+                                  const isSelected = selectedSlots.includes(
+                                    slot.type,
+                                  );
+                                  return (
+                                    <Button
+                                      key={slot.type}
+                                      variant={isSelected ? "default" : "outline"}
+                                      size="sm"
+                                      className="justify-between"
+                                      disabled={activeEventForDate.status !== "open"}
+                                      onClick={() =>
+                                        handleSelect(activeEventForDate, slot.type)
+                                      }
+                                    >
+                                      <span>{slot.label}</span>
+                                      <span>${totalPrice.toFixed(2)}</span>
+                                    </Button>
+                                  );
+                                })}
+                            </div>
+                          </div>
+                          {activeEventForDate.status === "open" && (
+                            <div className="flex items-center justify-between gap-3 pt-2">
+                              <p className="text-[11px] text-gray-500">
+                                Includes a $10/day MealScout fee per host.
+                              </p>
+                              <Button
+                                size="sm"
+                                onClick={() => handleBookSelected(activeEventForDate)}
+                                disabled={
+                                  (selectedSlotsByEvent[activeEventForDate.id] || [])
+                                    .length === 0
+                                }
+                              >
+                                Add to cart
+                              </Button>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-[11px] text-gray-500">
+                          Pick a day with availability to view slot pricing.
                         </p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {[
-                            {
-                              label: "Breakfast",
-                              type: "breakfast",
-                              priceCents: activeEvent.breakfastPriceCents,
-                            },
-                            {
-                              label: "Lunch",
-                              type: "lunch",
-                              priceCents: activeEvent.lunchPriceCents,
-                            },
-                            {
-                              label: "Dinner",
-                              type: "dinner",
-                              priceCents: activeEvent.dinnerPriceCents,
-                            },
-                            {
-                              label: "Daily",
-                              type: "daily",
-                              priceCents: activeEvent.dailyPriceCents,
-                            },
-                            {
-                              label: "Weekly",
-                              type: "weekly",
-                              priceCents: activeEvent.weeklyPriceCents,
-                            },
-                            {
-                              label: "Monthly",
-                              type: "monthly",
-                              priceCents: activeEvent.monthlyPriceCents,
-                            },
-                          ]
-                            .filter((slot) => (slot.priceCents || 0) > 0)
-                            .map((slot) => {
-                                const feeCents = getFeeCentsForSlots(
-                                  [slot.type],
-                                  slot.priceCents || 0,
-                                );
-                              const totalPrice =
-                                ((slot.priceCents || 0) + feeCents) / 100;
-                              const selectedSlots =
-                                selectedSlotsByEvent[activeEvent.id] || [];
-                              const isSelected = selectedSlots.includes(
-                                slot.type,
-                              );
-                              return (
-                                <Button
-                                  key={slot.type}
-                                  variant={isSelected ? "default" : "outline"}
-                                  size="sm"
-                                  className="justify-between"
-                                  disabled={activeEvent.status !== "open"}
-                                  onClick={() =>
-                                    handleSelect(activeEvent, slot.type)
-                                  }
-                                >
-                                  <span>{slot.label}</span>
-                                  <span>${totalPrice.toFixed(2)}</span>
-                                </Button>
-                              );
-                            })}
-                        </div>
-                      </div>
-                      {activeEvent.status === "open" && (
-                        <div className="flex items-center justify-between gap-3 pt-2">
-                          <p className="text-[11px] text-gray-500">
-                            Includes a $10/day MealScout fee per host.
-                          </p>
-                          <Button
-                            size="sm"
-                            onClick={() => handleBookSelected(activeEvent)}
-                            disabled={
-                              (selectedSlotsByEvent[activeEvent.id] || [])
-                                .length === 0
-                            }
-                          >
-                            Add to cart
-                          </Button>
-                        </div>
                       )}
                     </>
                   )}

@@ -17,7 +17,7 @@ export default function ParkingPassManage() {
       .then((res) => {
         if (cancelled) return;
         if (res.ok) {
-          setLocation("/host/dashboard");
+          setLocation("/parking-pass#parking-pass-settings");
         } else {
           setLocation("/parking-pass");
         }

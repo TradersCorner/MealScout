@@ -64,7 +64,7 @@ export function EditOccurrenceDialog({
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(`/api/hosts/events/${event.id}`, {
+      const res = await fetch(`/api/hosts/parking-pass/${event.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -77,7 +77,7 @@ export function EditOccurrenceDialog({
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message || "Failed to update event");
+        throw new Error(data.message || "Failed to update parking pass listing");
       }
 
       onOpenChange(false);
@@ -95,9 +95,9 @@ export function EditOccurrenceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Edit Event Details</DialogTitle>
+        <DialogTitle>Edit Parking Pass Listing</DialogTitle>
           <DialogDescription>
-            Update time window, capacity, or enforcement for this specific occurrence.
+            Update time window, capacity, or enforcement for this listing.
           </DialogDescription>
         </DialogHeader>
 

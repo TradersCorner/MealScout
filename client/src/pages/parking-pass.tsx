@@ -1,18 +1,40 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
-import { Loader2, Share2, Trash2 } from "lucide-react";
-import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import {
+  AlertCircle,
+  Calendar,
+  Clock,
+  Loader2,
+  Plus,
+  Share2,
+  Truck,
+} from "lucide-react";
+import {
+  MapContainer,
+  Marker,
+  Popup,
+  TileLayer,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
 import L from "leaflet";
 import { BookingPaymentModal } from "@/components/booking-payment-modal";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import ShareButton from "@/components/share-button";
+import {
+  ParkingScheduleCalendar,
+  type ParkingScheduleItem,
+} from "@/components/parking-schedule-calendar";
 import mealScoutIcon from "@assets/meal-scout-icon.png";
 
 interface Host {
@@ -25,9 +47,30 @@ interface Host {
   latitude?: number | string | null;
   longitude?: number | string | null;
   expectedFootTraffic?: string | null;
+  contactPhone?: string | null;
+  amenities?: Record<string, boolean> | null;
 }
 
-interface ParkingPassEvent {
+interface HostPassListing {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  maxTrucks: number;
+  hardCapEnabled?: boolean;
+  seriesId?: string | null;
+  status: string;
+  requiresPayment?: boolean;
+  hostPriceCents?: number;
+  breakfastPriceCents?: number | null;
+  lunchPriceCents?: number | null;
+  dinnerPriceCents?: number | null;
+  dailyPriceCents?: number | null;
+  weeklyPriceCents?: number | null;
+  monthlyPriceCents?: number | null;
+}
+
+interface ParkingPassListing {
   id: string;
   date: string;
   startTime: string;
@@ -57,7 +100,7 @@ interface ParkingPassEvent {
 type ParkingPassLocationGroup = {
   key: string;
   host: Host;
-  events: ParkingPassEvent[];
+  listings: ParkingPassListing[];
 };
 
 interface ManualScheduleEntry {
@@ -110,45 +153,59 @@ type GeoPoint = { lat: number; lng: number };
 const formatSlotLabel = (slot: string) =>
   slot.charAt(0).toUpperCase() + slot.slice(1);
 
-const hasPricing = (event: ParkingPassEvent) =>
-  (event.breakfastPriceCents ?? 0) > 0 ||
-  (event.lunchPriceCents ?? 0) > 0 ||
-  (event.dinnerPriceCents ?? 0) > 0 ||
-  (event.dailyPriceCents ?? 0) > 0 ||
-  (event.weeklyPriceCents ?? 0) > 0 ||
-  (event.monthlyPriceCents ?? 0) > 0;
+const hasListingPricing = (listing: ParkingPassListing) =>
+  (listing.breakfastPriceCents ?? 0) > 0 ||
+  (listing.lunchPriceCents ?? 0) > 0 ||
+  (listing.dinnerPriceCents ?? 0) > 0 ||
+  (listing.dailyPriceCents ?? 0) > 0 ||
+  (listing.weeklyPriceCents ?? 0) > 0 ||
+  (listing.monthlyPriceCents ?? 0) > 0;
 
-const buildSlotOptions = (event: ParkingPassEvent) =>
+const normalizeDollar = (value: string | number) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.round(parsed);
+};
+
+const parseOptionalDollar = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.max(0, Math.round(parsed));
+};
+
+const buildSlotOptions = (listing: ParkingPassListing) =>
   [
     {
       label: "Breakfast",
       type: "breakfast",
-      priceCents: event.breakfastPriceCents,
+      priceCents: listing.breakfastPriceCents,
     },
     {
       label: "Lunch",
       type: "lunch",
-      priceCents: event.lunchPriceCents,
+      priceCents: listing.lunchPriceCents,
     },
     {
       label: "Dinner",
       type: "dinner",
-      priceCents: event.dinnerPriceCents,
+      priceCents: listing.dinnerPriceCents,
     },
     {
       label: "Daily",
       type: "daily",
-      priceCents: event.dailyPriceCents,
+      priceCents: listing.dailyPriceCents,
     },
     {
       label: "Weekly",
       type: "weekly",
-      priceCents: event.weeklyPriceCents,
+      priceCents: listing.weeklyPriceCents,
     },
     {
       label: "Monthly",
       type: "monthly",
-      priceCents: event.monthlyPriceCents,
+      priceCents: listing.monthlyPriceCents,
     },
   ].filter((slot) => (slot.priceCents || 0) > 0);
 
@@ -164,14 +221,46 @@ const parseCoord = (value: number | string | null | undefined) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const normalizeLocationValue = (value?: string | null) =>
+  (value ?? "").trim().toLowerCase();
+
+const buildLocationKey = (
+  address?: string | null,
+  city?: string | null,
+  state?: string | null,
+) =>
+  [
+    normalizeLocationValue(address),
+    normalizeLocationValue(city),
+    normalizeLocationValue(state),
+  ].join("|");
+
+const buildAddressLabel = (
+  address?: string,
+  city?: string,
+  state?: string,
+) =>
+  [address, city, state, "USA"]
+    .map((value) => (value ?? "").trim())
+    .filter(Boolean)
+    .join(", ");
+
+const pointsMatch = (left: GeoPoint | null, right: GeoPoint | null) => {
+  if (!left || !right) return false;
+  return (
+    Math.abs(left.lat - right.lat) < 1e-6 &&
+    Math.abs(left.lng - right.lng) < 1e-6
+  );
+};
+
 const buildHostAddress = (host?: Host | null) =>
   [host?.address, host?.city, host?.state].filter(Boolean).join(", ");
 
-const getEventDateKey = (value: string) =>
+const getListingDateKey = (value: string) =>
   new Date(value).toISOString().split("T")[0];
 
-const getLocationKey = (event: ParkingPassEvent) =>
-  event.host?.id || event.host?.address || event.id;
+const getLocationKey = (listing: ParkingPassListing) =>
+  listing.host?.id || listing.host?.address || listing.id;
 
 const parkingPassPinIcon = new L.Icon({
   iconUrl: mealScoutIcon,
@@ -187,16 +276,31 @@ const defaultMapCenter = {
 
 const MapCenterer = ({
   center,
+  zoom,
 }: {
   center: { lat: number; lng: number } | null;
+  zoom?: number;
 }) => {
   const map = useMap();
 
   useEffect(() => {
     if (!center) return;
-    map.setView([center.lat, center.lng], map.getZoom(), { animate: true });
-  }, [center?.lat, center?.lng, map]);
+    map.setView([center.lat, center.lng], zoom ?? map.getZoom(), {
+      animate: true,
+    });
+  }, [center?.lat, center?.lng, map, zoom]);
 
+  return null;
+};
+
+const MapPinPicker = ({
+  onPick,
+}: {
+  onPick: (point: GeoPoint) => void;
+}) => {
+  useMapEvents({
+    click: (event) => onPick({ lat: event.latlng.lat, lng: event.latlng.lng }),
+  });
   return null;
 };
 
@@ -205,19 +309,66 @@ export default function ParkingPassPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(true);
-  const [events, setEvents] = useState<ParkingPassEvent[]>([]);
+  const [passListings, setPassListings] = useState<ParkingPassListing[]>([]);
   const [truckId, setTruckId] = useState<string | null>(null);
   const [truck, setTruck] = useState<any | null>(null);
   const [hasHostProfile, setHasHostProfile] = useState(false);
+  const [hosts, setHosts] = useState<Host[]>([]);
+  const [selectedHostId, setSelectedHostId] = useState<string>("");
+  const [host, setHost] = useState<Host | null>(null);
+  const [amenities, setAmenities] = useState<Record<string, boolean>>({
+    water: false,
+    electric: false,
+    bathrooms: false,
+    wifi: false,
+    seating: false,
+  });
+  const [isSavingAmenities, setIsSavingAmenities] = useState(false);
+  const [blackoutDateInput, setBlackoutDateInput] = useState("");
+  const [blackoutDates, setBlackoutDates] = useState<string[]>([]);
+  const [isSavingBlackout, setIsSavingBlackout] = useState(false);
+  const [hasActiveParkingPass, setHasActiveParkingPass] = useState(false);
+  const [newLocationForm, setNewLocationForm] = useState({
+    businessName: "",
+    address: "",
+    city: "",
+    state: "",
+    locationType: "other",
+    contactPhone: "",
+  });
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
+  const [isDeletingLocation, setIsDeletingLocation] = useState(false);
+  const [pinPosition, setPinPosition] = useState<GeoPoint | null>(null);
+  const [isSavingPin, setIsSavingPin] = useState(false);
+  const [isGeocodingPin, setIsGeocodingPin] = useState(false);
+  const [newLocationPinPosition, setNewLocationPinPosition] =
+    useState<GeoPoint | null>(null);
+  const [isGeocodingNewPin, setIsGeocodingNewPin] = useState(false);
+  const [hostPassListings, setHostPassListings] = useState<HostPassListing[]>(
+    [],
+  );
+  const [isCreating, setIsCreating] = useState(false);
+  const [daysOfWeek, setDaysOfWeek] = useState<number[]>([]);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [anyTime, setAnyTime] = useState(false);
+  const [maxTrucks, setMaxTrucks] = useState(1);
+  const [hardCapEnabled, setHardCapEnabled] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [breakfastPrice, setBreakfastPrice] = useState("");
+  const [lunchPrice, setLunchPrice] = useState("");
+  const [dinnerPrice, setDinnerPrice] = useState("");
+  const [weeklyOverride, setWeeklyOverride] = useState("");
+  const [monthlyOverride, setMonthlyOverride] = useState("");
   const [manualSchedules, setManualSchedules] = useState<ManualScheduleEntry[]>(
     [],
   );
   const [bookedSchedule, setBookedSchedule] = useState<TruckScheduleEntry[]>(
     [],
   );
-  const [selectedEvent, setSelectedEvent] = useState<ParkingPassEvent | null>(
-    null,
-  );
+  const [selectedListing, setSelectedListing] =
+    useState<ParkingPassListing | null>(null);
   const [selectedSlotTypes, setSelectedSlotTypes] = useState<string[]>([]);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -228,15 +379,15 @@ export default function ParkingPassPage() {
     }
     return new Date().toISOString().split("T")[0];
   });
-  const [selectedSlotsByEvent, setSelectedSlotsByEvent] = useState<
+  const [selectedSlotsByListing, setSelectedSlotsByListing] = useState<
     Record<string, string[]>
   >({});
   const [cityQuery, setCityQuery] = useState("");
   const [cartItems, setCartItems] = useState<
-    Array<{ event: ParkingPassEvent; slotTypes: string[] }>
+    Array<{ listing: ParkingPassListing; slotTypes: string[] }>
   >([]);
   const [checkoutQueue, setCheckoutQueue] = useState<
-    Array<{ event: ParkingPassEvent; slotTypes: string[] }>
+    Array<{ listing: ParkingPassListing; slotTypes: string[] }>
   >([]);
   const [viewMode, setViewMode] = useState<"map" | "list">("map");
   const [activeLocationKey, setActiveLocationKey] = useState<string | null>(null);
@@ -289,7 +440,7 @@ export default function ParkingPassPage() {
   }, [geocodeCache]);
 
   useEffect(() => {
-    setSelectedSlotsByEvent({});
+    setSelectedSlotsByListing({});
   }, [selectedDate]);
 
   useEffect(() => {
@@ -325,25 +476,32 @@ export default function ParkingPassPage() {
           }
           const hostRes = await fetch("/api/hosts");
           if (hostRes.ok) {
-            const hosts = await hostRes.json();
-            if (!cancelled && Array.isArray(hosts) && hosts.length > 0) {
+            const hostList = await hostRes.json();
+            if (!cancelled && Array.isArray(hostList) && hostList.length > 0) {
               setHasHostProfile(true);
+              setHosts(hostList);
+            } else if (!cancelled) {
+              setHasHostProfile(false);
+              setHosts([]);
             }
           } else if (!cancelled) {
             setHasHostProfile(false);
+            setHosts([]);
           }
         }
 
-        const eventsRes = await fetch("/api/parking-pass");
-        if (!eventsRes.ok) {
+        const listingsRes = await fetch("/api/parking-pass");
+        if (!listingsRes.ok) {
           throw new Error("Failed to load parking pass listings");
         }
-        const data = await eventsRes.json();
+        const data = await listingsRes.json();
         if (!cancelled) {
-          const openEvents = Array.isArray(data)
-            ? data.filter((e) => e.status === "open" && hasPricing(e))
+          const openListings = Array.isArray(data)
+            ? data.filter((listing) =>
+                listing.status === "open" && hasListingPricing(listing),
+              )
             : [];
-          setEvents(openEvents);
+          setPassListings(openListings);
         }
       } catch (error: any) {
         if (!cancelled) {
@@ -367,13 +525,154 @@ export default function ParkingPassPage() {
 
   useEffect(() => {
     if (!pendingPassId) return;
-    const match = events.find((event) => event.id === pendingPassId);
+    const match = passListings.find((listing) => listing.id === pendingPassId);
     if (match) {
       setActiveLocationKey(getLocationKey(match));
-      setSelectedDate(getEventDateKey(match.date));
+      setSelectedDate(getListingDateKey(match.date));
     }
     setPendingPassId(null);
-  }, [pendingPassId, events]);
+  }, [pendingPassId, passListings]);
+
+  useEffect(() => {
+    if (!hosts.length) {
+      setHost(null);
+      setSelectedHostId("");
+      return;
+    }
+    if (!selectedHostId) {
+      setSelectedHostId(hosts[0].id);
+    }
+  }, [hosts, selectedHostId]);
+
+  useEffect(() => {
+    if (!selectedHostId) {
+      setHost(null);
+      return;
+    }
+    const selected = hosts.find((item) => item.id === selectedHostId) || null;
+    setHost(selected);
+    if (selected) {
+      setAmenities((current) => ({
+        ...current,
+        ...(selected.amenities ?? {}),
+      }));
+    }
+  }, [hosts, selectedHostId]);
+
+  useEffect(() => {
+    if (!selectedHostId) {
+      setHostPassListings([]);
+      return;
+    }
+    const fetchListings = async () => {
+      try {
+        const res = await fetch(
+          `/api/hosts/parking-pass?hostId=${selectedHostId}`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setHostPassListings(data);
+          }
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    fetchListings();
+  }, [selectedHostId]);
+
+  useEffect(() => {
+    if (!selectedHostId) {
+      setBlackoutDates([]);
+      setHasActiveParkingPass(false);
+      return;
+    }
+    const fetchBlackouts = async () => {
+      try {
+        const res = await fetch(
+          `/api/hosts/${selectedHostId}/blackout-dates`,
+        );
+        if (res.status === 404) {
+          setBlackoutDates([]);
+          setHasActiveParkingPass(false);
+          return;
+        }
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            const dates = data
+              .map((row) => new Date(row.date).toISOString().split("T")[0])
+              .sort();
+            setBlackoutDates(dates);
+            setHasActiveParkingPass(true);
+          }
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchBlackouts();
+  }, [selectedHostId]);
+
+  useEffect(() => {
+    if (!host) {
+      setPinPosition(null);
+      return;
+    }
+    const lat = parseCoord(host.latitude);
+    const lng = parseCoord(host.longitude);
+    if (lat !== null && lng !== null) {
+      setPinPosition({ lat, lng });
+    } else {
+      setPinPosition(null);
+    }
+  }, [host?.id, host?.latitude, host?.longitude]);
+
+  const savedHost = host
+    ? hosts.find((item) => item.id === host.id) ?? null
+    : null;
+  const savedLat = parseCoord(savedHost?.latitude);
+  const savedLng = parseCoord(savedHost?.longitude);
+  const savedPoint =
+    savedLat !== null && savedLng !== null
+      ? { lat: savedLat, lng: savedLng }
+      : null;
+  const addressNeedsPin =
+    !!host &&
+    !!savedHost &&
+    buildLocationKey(host.address, host.city, host.state) !==
+      buildLocationKey(savedHost.address, savedHost.city, savedHost.state);
+
+  useEffect(() => {
+    if (!addressNeedsPin) return;
+    if (!pinPosition || !savedPoint) return;
+    if (pointsMatch(pinPosition, savedPoint)) {
+      setPinPosition(null);
+    }
+  }, [
+    addressNeedsPin,
+    pinPosition?.lat,
+    pinPosition?.lng,
+    savedPoint?.lat,
+    savedPoint?.lng,
+  ]);
+
+  useEffect(() => {
+    setNewLocationPinPosition((current) => (current ? null : current));
+  }, [
+    newLocationForm.address,
+    newLocationForm.city,
+    newLocationForm.state,
+  ]);
+
+  const settingsMapCenter = pinPosition
+    ?? (addressNeedsPin ? defaultMapCenter : savedPoint ?? defaultMapCenter);
+  const settingsMapZoom =
+    pinPosition ? 15 : addressNeedsPin ? 4 : savedPoint ? 12 : 4;
+  const newLocationMapCenter = newLocationPinPosition ?? defaultMapCenter;
+  const newLocationMapZoom = newLocationPinPosition ? 15 : 4;
 
   useEffect(() => {
     if (!truckId) {
@@ -568,17 +867,57 @@ export default function ParkingPassPage() {
     }
   };
 
+  const parkingScheduleItems = useMemo<ParkingScheduleItem[]>(() => {
+    const bookingItems = bookedSchedule
+      .map((entry) => {
+        if (!entry.event) return null;
+        return {
+          id: `booking-${entry.event.id}-${entry.slotType || "slot"}`,
+          date: entry.event.date,
+          startTime: entry.event.startTime,
+          endTime: entry.event.endTime,
+          title: entry.host?.businessName || "Parking Pass",
+          subtitle: entry.host?.address || "",
+          type: "booking" as const,
+          slotLabel: entry.slotType ? formatSlotLabel(entry.slotType) : null,
+          isPublic: true,
+        };
+      })
+      .filter(Boolean) as ParkingScheduleItem[];
+
+    const manualItems = manualSchedules.map((entry) => ({
+      id: `manual-${entry.id}`,
+      manualId: entry.id,
+      date: entry.date,
+      startTime: entry.startTime,
+      endTime: entry.endTime,
+      title: entry.locationName || "Manual stop",
+      subtitle: [entry.address, entry.city, entry.state]
+        .filter(Boolean)
+        .join(", "),
+      type: "manual" as const,
+      isPublic: entry.isPublic,
+    }));
+
+    return [...bookingItems, ...manualItems].sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      if (dateA !== dateB) return dateA - dateB;
+      return (a.startTime || "").localeCompare(b.startTime || "");
+    });
+  }, [bookedSchedule, manualSchedules]);
+
   const getCartTotals = () => {
     return cartItems.reduce(
       (totals, item) => {
         const slotTotal = item.slotTypes.reduce((sum, slotType) => {
           const price =
-            (slotType === "breakfast" && item.event.breakfastPriceCents) ||
-            (slotType === "lunch" && item.event.lunchPriceCents) ||
-            (slotType === "dinner" && item.event.dinnerPriceCents) ||
-            (slotType === "daily" && item.event.dailyPriceCents) ||
-            (slotType === "weekly" && item.event.weeklyPriceCents) ||
-            (slotType === "monthly" && item.event.monthlyPriceCents) ||
+            (slotType === "breakfast" && item.listing.breakfastPriceCents) ||
+            (slotType === "lunch" && item.listing.lunchPriceCents) ||
+            (slotType === "dinner" && item.listing.dinnerPriceCents) ||
+            (slotType === "daily" && item.listing.dailyPriceCents) ||
+            (slotType === "weekly" && item.listing.weeklyPriceCents) ||
+            (slotType === "monthly" && item.listing.monthlyPriceCents) ||
             0;
           return sum + price;
         }, 0);
@@ -608,6 +947,512 @@ export default function ParkingPassPage() {
     return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
   };
 
+  const handleAmenitiesSave = async () => {
+    if (!host) return;
+    setIsSavingAmenities(true);
+    try {
+      const res = await fetch(`/api/hosts/${host.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amenities }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to update amenities");
+      }
+      const updated = await res.json();
+      setHosts((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setHost(updated);
+      toast({
+        title: "Amenities saved",
+        description: "Your parking pass amenities are saved.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Unable to save amenities",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingAmenities(false);
+    }
+  };
+
+  const handleGeocodeNewLocationPin = async () => {
+    const addressLabel = buildAddressLabel(
+      newLocationForm.address,
+      newLocationForm.city,
+      newLocationForm.state,
+    );
+    if (!addressLabel) {
+      toast({
+        title: "Missing address",
+        description: "Add the address details first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGeocodingNewPin(true);
+    try {
+      const coords = await geocodeAddress(addressLabel).catch(() => null);
+      if (!coords) {
+        throw new Error("Unable to find that address.");
+      }
+      setNewLocationPinPosition(coords);
+      toast({
+        title: "Pin set from address",
+        description: "Review the pin and adjust if needed.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Pin update failed",
+        description: error.message || "Unable to set pin from address.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeocodingNewPin(false);
+    }
+  };
+
+  const handleCreateLocation = async () => {
+    if (!newLocationForm.businessName || !newLocationForm.address) {
+      toast({
+        title: "Missing details",
+        description: "Business name and address are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!newLocationForm.city || !newLocationForm.state) {
+      toast({
+        title: "Missing city/state",
+        description: "City and state are required to save a location.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!newLocationPinPosition) {
+      toast({
+        title: "Pin required",
+        description: "Set the map pin before adding a new location.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingLocation(true);
+    try {
+      const res = await fetch("/api/hosts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName: newLocationForm.businessName,
+          address: newLocationForm.address,
+          city: newLocationForm.city,
+          state: newLocationForm.state,
+          locationType: newLocationForm.locationType,
+          contactPhone: newLocationForm.contactPhone || null,
+          latitude: newLocationPinPosition.lat,
+          longitude: newLocationPinPosition.lng,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to create host location");
+      }
+      const created = await res.json();
+      setHosts((current) => [created, ...current]);
+      setSelectedHostId(created.id);
+      setHasHostProfile(true);
+      setNewLocationForm({
+        businessName: "",
+        address: "",
+        city: "",
+        state: "",
+        locationType: "other",
+        contactPhone: "",
+      });
+      setNewLocationPinPosition(null);
+      toast({
+        title: "Location added",
+        description: "You can edit this location any time.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Unable to save location",
+        description: error.message || "Failed to create location.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingLocation(false);
+    }
+  };
+
+  const handleUpdateLocation = async () => {
+    if (!host) return;
+    if (!pinPosition) {
+      toast({
+        title: "Pin required",
+        description: "Set the map pin before saving this location.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsUpdatingLocation(true);
+    try {
+      const res = await fetch(`/api/hosts/${host.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName: host.businessName,
+          address: host.address,
+          city: host.city,
+          state: host.state,
+          locationType: host.locationType,
+          contactPhone: host.contactPhone || null,
+          latitude: pinPosition.lat,
+          longitude: pinPosition.lng,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to update location");
+      }
+      const updated = await res.json();
+      setHosts((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setHost(updated);
+      toast({ title: "Location updated" });
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: error.message || "Failed to update location.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingLocation(false);
+    }
+  };
+
+  const handleSavePin = async () => {
+    if (!host || !pinPosition) return;
+    setIsSavingPin(true);
+    try {
+      const res = await fetch(`/api/hosts/${host.id}/coordinates`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          latitude: pinPosition.lat,
+          longitude: pinPosition.lng,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to update pin");
+      }
+      const updated = await res.json();
+      setHosts((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setHost(updated);
+      toast({ title: "Pin updated", description: "Map location saved." });
+    } catch (error: any) {
+      toast({
+        title: "Pin update failed",
+        description: error.message || "Failed to update pin.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingPin(false);
+    }
+  };
+
+  const handleGeocodePin = async () => {
+    if (!host) return;
+    const addressLabel = buildAddressLabel(host.address, host.city, host.state);
+    if (!addressLabel) {
+      toast({
+        title: "Missing address",
+        description: "Add the address details first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsGeocodingPin(true);
+    try {
+      const coords = await geocodeAddress(addressLabel).catch(() => null);
+      if (!coords) {
+        throw new Error("Unable to find that address.");
+      }
+      setPinPosition(coords);
+      toast({
+        title: "Pin set from address",
+        description: "Review the pin and save the location to keep it.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Pin update failed",
+        description: error.message || "Failed to set pin from address.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeocodingPin(false);
+    }
+  };
+
+  const handleDeleteLocation = async () => {
+    if (!host) return;
+    const confirmed = window.confirm(
+      `Delete ${host.businessName}? This removes the location and its listings.`,
+    );
+    if (!confirmed) return;
+
+    setIsDeletingLocation(true);
+    try {
+      const res = await fetch(`/api/hosts/${host.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to delete location");
+      }
+
+      const nextHosts = hosts.filter((item) => item.id !== host.id);
+      setHosts(nextHosts);
+      setHasHostProfile(nextHosts.length > 0);
+
+      if (!nextHosts.length) {
+        setHost(null);
+        setSelectedHostId("");
+        toast({
+          title: "Location deleted",
+          description: "Your location has been removed.",
+        });
+        return;
+      }
+
+      const nextHost = nextHosts[0];
+      setSelectedHostId(nextHost.id);
+      setHost(nextHost);
+      toast({
+        title: "Location deleted",
+        description: "Your location has been removed.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Delete failed",
+        description: error.message || "Failed to delete location.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingLocation(false);
+    }
+  };
+
+  const handleAddBlackout = async () => {
+    if (!host || !blackoutDateInput || !hasActiveParkingPass) return;
+    setIsSavingBlackout(true);
+    try {
+      const res = await fetch(`/api/hosts/${host.id}/blackout-dates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: blackoutDateInput }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to add blackout date");
+      }
+      const dateKey = blackoutDateInput;
+      setBlackoutDates((current) =>
+        current.includes(dateKey) ? current : [...current, dateKey].sort(),
+      );
+      setBlackoutDateInput("");
+      toast({
+        title: "Blackout added",
+        description: "Trucks will not be able to book that date.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Unable to add blackout",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingBlackout(false);
+    }
+  };
+
+  const handleRemoveBlackout = async (dateKey: string) => {
+    if (!host) return;
+    setIsSavingBlackout(true);
+    try {
+      const res = await fetch(`/api/hosts/${host.id}/blackout-dates`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: dateKey }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to remove blackout date");
+      }
+      setBlackoutDates((current) =>
+        current.filter((item) => item !== dateKey),
+      );
+      toast({
+        title: "Blackout removed",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Remove failed",
+        description: error.message || "Failed to remove blackout date.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingBlackout(false);
+    }
+  };
+
+  const hasPassPricing = (event: HostPassListing) =>
+    (event.breakfastPriceCents ?? 0) > 0 ||
+    (event.lunchPriceCents ?? 0) > 0 ||
+    (event.dinnerPriceCents ?? 0) > 0 ||
+    (event.dailyPriceCents ?? 0) > 0 ||
+    (event.weeklyPriceCents ?? 0) > 0 ||
+    (event.monthlyPriceCents ?? 0) > 0;
+
+  const hasActiveHostPass = hostPassListings.some((item) => {
+    if (!item.requiresPayment) return false;
+    if (!hasPassPricing(item)) return false;
+    const itemDate = new Date(item.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return itemDate >= today;
+  });
+
+  const groupParkingPassListings = (items: HostPassListing[]) => {
+    const sorted = [...items].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
+    const grouped = new Map<string, HostPassListing>();
+    sorted.forEach((item) => {
+      const key = item.seriesId || item.id;
+      if (!grouped.has(key)) {
+        grouped.set(key, item);
+      }
+    });
+    return Array.from(grouped.values());
+  };
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const upcomingListings = groupParkingPassListings(
+    hostPassListings.filter(
+      (event) => event.requiresPayment && new Date(event.date) >= todayStart,
+    ),
+  );
+
+  const pastListings = groupParkingPassListings(
+    hostPassListings.filter(
+      (event) => event.requiresPayment && new Date(event.date) < todayStart,
+    ),
+  );
+
+  const handleCreatePass = async (formEvent: React.FormEvent) => {
+    formEvent.preventDefault();
+    setCreateError("");
+    if (!selectedHostId) {
+      setCreateError("Select a location before creating a pass.");
+      return;
+    }
+    if (hasActiveHostPass) {
+      setCreateError(
+        "You already have a parking pass for this address. Edit the existing listing.",
+      );
+      return;
+    }
+    const finalStartTime = anyTime ? "00:00" : startTime;
+    const finalEndTime = anyTime ? "23:59" : endTime;
+    const breakfast = normalizeDollar(breakfastPrice);
+    const lunch = normalizeDollar(lunchPrice);
+    const dinner = normalizeDollar(dinnerPrice);
+    const hasSlotPrice = breakfast > 0 || lunch > 0 || dinner > 0;
+
+    if (!hasSlotPrice) {
+      setCreateError("At least one slot price is required.");
+      return;
+    }
+    if (daysOfWeek.length === 0) {
+      setCreateError("Select at least one day of the week.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/hosts/parking-pass", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hostId: selectedHostId,
+          daysOfWeek,
+          startTime: finalStartTime,
+          endTime: finalEndTime,
+          maxTrucks: Number(maxTrucks),
+          hardCapEnabled,
+          requiresPayment: true,
+          breakfastPriceCents: breakfast ? breakfast * 100 : 0,
+          lunchPriceCents: lunch ? lunch * 100 : 0,
+          dinnerPriceCents: dinner ? dinner * 100 : 0,
+          ...(weeklyOverrideValue !== null
+            ? { weeklyPriceCents: weeklyOverrideValue * 100 }
+            : {}),
+          ...(monthlyOverrideValue !== null
+            ? { monthlyPriceCents: monthlyOverrideValue * 100 }
+            : {}),
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to create listing");
+      }
+
+      const newListing = await res.json();
+      const newListings = Array.isArray(newListing) ? newListing : [newListing];
+      setHostPassListings((current) => [...current, ...newListings]);
+      setIsCreating(false);
+      setDaysOfWeek([]);
+      setStartTime("");
+      setEndTime("");
+      setAnyTime(false);
+      setMaxTrucks(1);
+      setHardCapEnabled(false);
+      setBreakfastPrice("");
+      setLunchPrice("");
+      setDinnerPrice("");
+      setWeeklyOverride("");
+      setMonthlyOverride("");
+    } catch (error: any) {
+      setCreateError(error.message);
+    }
+  };
+
+  const formatCents = (value?: number | null) =>
+    value && value > 0 ? `$${(value / 100).toFixed(2)}` : "—";
+
+  const breakfastValue = normalizeDollar(breakfastPrice);
+  const lunchValue = normalizeDollar(lunchPrice);
+  const dinnerValue = normalizeDollar(dinnerPrice);
+  const slotSum = breakfastValue + lunchValue + dinnerValue;
+  const dailyEstimate = slotSum ? slotSum + 10 : 0;
+  const weeklyEstimate = slotSum ? slotSum * 7 + 10 : 0;
+  const monthlyEstimate = slotSum ? slotSum * 30 + 10 : 0;
+  const weeklyOverrideValue = parseOptionalDollar(weeklyOverride);
+  const monthlyOverrideValue = parseOptionalDollar(monthlyOverride);
+  const weeklyFinal = weeklyOverrideValue ?? weeklyEstimate;
+  const monthlyFinal = monthlyOverrideValue ?? monthlyEstimate;
+
   const getLocationCoords = (host?: Host | null) => {
     if (!host) return null;
     const lat = parseCoord(host.latitude);
@@ -616,53 +1461,53 @@ export default function ParkingPassPage() {
     return { lat, lng };
   };
 
-  const handleSelect = (event: ParkingPassEvent, slotType: string) => {
-    setSelectedSlotsByEvent((prev) => {
-      const existing = prev[event.id] || [];
+  const handleSelect = (listing: ParkingPassListing, slotType: string) => {
+    setSelectedSlotsByListing((prev) => {
+      const existing = prev[listing.id] || [];
       const updated = existing.includes(slotType)
         ? existing.filter((type) => type !== slotType)
         : [...existing, slotType];
-      return { ...prev, [event.id]: updated };
+      return { ...prev, [listing.id]: updated };
     });
   };
 
-  const handleBookSelected = (event: ParkingPassEvent) => {
-    const slotTypes = selectedSlotsByEvent[event.id] || [];
+  const handleBookSelected = (listing: ParkingPassListing) => {
+    const slotTypes = selectedSlotsByListing[listing.id] || [];
     if (slotTypes.length === 0) return;
 
     setCartItems((prev) => {
-      const rest = prev.filter((item) => item.event.id !== event.id);
-      return [...rest, { event, slotTypes }];
+      const rest = prev.filter((item) => item.listing.id !== listing.id);
+      return [...rest, { listing, slotTypes }];
     });
   };
 
-  const removeCartItem = (eventId: string) => {
-    setCartItems((prev) => prev.filter((item) => item.event.id !== eventId));
+  const removeCartItem = (listingId: string) => {
+    setCartItems((prev) => prev.filter((item) => item.listing.id !== listingId));
   };
 
   const startCheckout = () => {
     if (cartItems.length === 0) return;
     const [first, ...rest] = cartItems;
     setCheckoutQueue(rest);
-    setSelectedEvent(first.event);
+    setSelectedListing(first.listing);
     setSelectedSlotTypes(first.slotTypes);
     setPaymentOpen(true);
   };
 
   const handleSuccess = () => {
-    if (selectedEvent) {
-      removeCartItem(selectedEvent.id);
+    if (selectedListing) {
+      removeCartItem(selectedListing.id);
     }
 
     if (checkoutQueue.length > 0) {
       const [next, ...rest] = checkoutQueue;
       setCheckoutQueue(rest);
-      setSelectedEvent(next.event);
+      setSelectedListing(next.listing);
       setSelectedSlotTypes(next.slotTypes);
       setPaymentOpen(true);
     } else {
       setPaymentOpen(false);
-      setSelectedEvent(null);
+      setSelectedListing(null);
       setSelectedSlotTypes([]);
     }
 
@@ -754,22 +1599,22 @@ export default function ParkingPassPage() {
   const normalizedCityQuery = cityQuery.trim().toLowerCase();
   const locationGroups = useMemo(() => {
     const byHost = new Map<string, ParkingPassLocationGroup>();
-    events.forEach((event) => {
-      const key = getLocationKey(event);
+    passListings.forEach((listing) => {
+      const key = getLocationKey(listing);
       const existing = byHost.get(key);
       if (existing) {
-        existing.events.push(event);
+        existing.listings.push(listing);
       } else {
-        byHost.set(key, { key, host: event.host, events: [event] });
+        byHost.set(key, { key, host: listing.host, listings: [listing] });
       }
     });
     for (const group of byHost.values()) {
-      group.events.sort(
+      group.listings.sort(
         (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
       );
     }
     return Array.from(byHost.values());
-  }, [events]);
+  }, [passListings]);
 
   const filteredLocations = useMemo(() => {
     const filtered = normalizedCityQuery
@@ -802,33 +1647,33 @@ export default function ParkingPassPage() {
     filteredLocations[0] ||
     null;
 
-  const activeEventForDate = activeLocation
-    ? activeLocation.events.find(
-        (event) => getEventDateKey(event.date) === selectedDate,
+  const activeListingForDate = activeLocation
+    ? activeLocation.listings.find(
+        (listing) => getListingDateKey(listing.date) === selectedDate,
       )
     : null;
 
-  const activeEvent =
-    activeEventForDate ||
-    activeLocation?.events.find(
-      (event) => getEventDateKey(event.date) >= selectedDate,
+  const activeListing =
+    activeListingForDate ||
+    activeLocation?.listings.find(
+      (listing) => getListingDateKey(listing.date) >= selectedDate,
     ) ||
-    activeLocation?.events[0] ||
+    activeLocation?.listings[0] ||
     null;
   const selectedDateLabel = format(
     new Date(`${selectedDate}T00:00:00`),
     "EEE, MMM d",
   );
-  const selectedDateAvailable = Boolean(activeEventForDate);
-  const activeEventBookings = Array.isArray(activeEvent?.bookings)
-    ? activeEvent.bookings
+  const selectedDateAvailable = Boolean(activeListingForDate);
+  const activeListingBookings = Array.isArray(activeListing?.bookings)
+    ? activeListing.bookings
     : [];
-  const activeEventAvailability = activeEvent?.availableSpotNumbers
-    ? activeEvent.availableSpotNumbers.length > 0
-      ? `Open spots: ${activeEvent.availableSpotNumbers.join(", ")}`
+  const activeListingAvailability = activeListing?.availableSpotNumbers
+    ? activeListing.availableSpotNumbers.length > 0
+      ? `Open spots: ${activeListing.availableSpotNumbers.join(", ")}`
       : "Fully booked"
-    : activeEvent?.status
-      ? activeEvent.status === "open"
+    : activeListing?.status
+      ? activeListing.status === "open"
         ? "Open"
         : "Closed"
       : null;
@@ -911,7 +1756,9 @@ export default function ParkingPassPage() {
   if (
     isAuthenticated &&
     user &&
-    !["food_truck", "admin", "super_admin", "staff"].includes(user.userType)
+    !["food_truck", "admin", "super_admin", "staff"].includes(user.userType) &&
+    !hasHostProfile &&
+    !isLoading
   ) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
@@ -933,20 +1780,1023 @@ export default function ParkingPassPage() {
             Book available parking spots by day and time.
           </p>
         </div>
-        {showHostParkingPass && (
-          <div className="rounded-2xl border border-orange-200 bg-orange-50/80 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-orange-900">
-                Host parking pass listings
-              </p>
-              <p className="text-xs text-orange-700">
-                Create and manage parking passes for your locations.
-              </p>
+        {showHostParkingPass && host && (
+          <div
+            id="parking-pass-settings"
+            className="rounded-2xl border border-orange-200 bg-orange-50/70 p-4"
+          >
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-orange-900">
+                  Parking Pass settings
+                </p>
+                <p className="text-xs text-orange-700">
+                  Manage location details, pins, and amenities for your listings.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {hosts.length > 1 && (
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="hostSelect" className="text-xs text-orange-900">
+                      Location
+                    </Label>
+                    <select
+                      id="hostSelect"
+                      value={selectedHostId}
+                      onChange={(event) => setSelectedHostId(event.target.value)}
+                      className="h-9 rounded-md border border-orange-200 bg-white px-2 text-xs"
+                    >
+                      {hosts.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.businessName} · {item.address}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <Button size="sm" onClick={() => setIsCreating(!isCreating)}>
+                  {isCreating ? (
+                    "Cancel"
+                  ) : (
+                    <>
+                      <Plus className="mr-2 h-4 w-4" /> New Parking Pass
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-            <Button size="sm" onClick={() => setLocation("/host/dashboard")}>
-              Open host dashboard
-            </Button>
+            {!host ? (
+              <div className="mt-4 rounded-xl border border-orange-200 bg-white/60 p-4 text-xs text-orange-800">
+                Loading your parking pass locations...
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-6 lg:grid-cols-[1.35fr_0.65fr]">
+                <div className="space-y-4">
+                    <div className="rounded-xl border border-orange-200 bg-white p-4 space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold text-orange-900">
+                        Blackout dates
+                      </p>
+                      <p className="text-xs text-orange-700">
+                        Block specific days when trucks cannot park.
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <Input
+                        type="date"
+                        value={blackoutDateInput}
+                        onChange={(event) => setBlackoutDateInput(event.target.value)}
+                        min={new Date().toISOString().split("T")[0]}
+                        disabled={!hasActiveParkingPass}
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleAddBlackout}
+                        disabled={
+                          !hasActiveParkingPass ||
+                          !blackoutDateInput ||
+                          isSavingBlackout
+                        }
+                        size="sm"
+                      >
+                        {isSavingBlackout ? "Saving..." : "Add blackout date"}
+                      </Button>
+                    </div>
+                    {!hasActiveParkingPass && (
+                      <p className="text-xs text-orange-700">
+                        Create a parking pass to manage blackout dates for that pass.
+                      </p>
+                    )}
+                    {blackoutDates.length === 0 ? (
+                      <p className="text-xs text-orange-700">No blackout dates set.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {blackoutDates.map((dateKey) => (
+                          <button
+                            key={dateKey}
+                            type="button"
+                            onClick={() => handleRemoveBlackout(dateKey)}
+                            className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs text-orange-900 hover:bg-orange-100"
+                            disabled={
+                              isSavingBlackout ||
+                              dateKey <= new Date().toISOString().split("T")[0]
+                            }
+                          >
+                            {format(new Date(dateKey), "MMM d, yyyy")} (remove)
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                <div className="rounded-xl border border-orange-200 bg-white p-4 space-y-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <h3 className="text-base font-semibold text-orange-900">
+                          Location details
+                        </h3>
+                        <p className="text-xs text-orange-700">
+                          Keep each parking address accurate for trucks.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          onClick={handleUpdateLocation}
+                          disabled={isUpdatingLocation || !pinPosition}
+                          size="sm"
+                        >
+                          {isUpdatingLocation ? "Saving..." : "Save location"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={handleDeleteLocation}
+                          disabled={isDeletingLocation}
+                          size="sm"
+                        >
+                          {isDeletingLocation ? "Deleting..." : "Delete location"}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="hostBusinessName">Location name</Label>
+                        <Input
+                          id="hostBusinessName"
+                          value={host.businessName}
+                          onChange={(event) =>
+                            setHost((current) =>
+                              current
+                                ? { ...current, businessName: event.target.value }
+                                : current,
+                            )
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="hostContactPhone">Contact phone</Label>
+                        <Input
+                          id="hostContactPhone"
+                          value={host.contactPhone || ""}
+                          onChange={(event) =>
+                            setHost((current) =>
+                              current
+                                ? { ...current, contactPhone: event.target.value }
+                                : current,
+                            )
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="hostAddress">Address</Label>
+                        <Input
+                          id="hostAddress"
+                          value={host.address}
+                          onChange={(event) =>
+                            setHost((current) =>
+                              current
+                                ? { ...current, address: event.target.value }
+                                : current,
+                            )
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="hostCity">City</Label>
+                        <Input
+                          id="hostCity"
+                          value={host.city || ""}
+                          onChange={(event) =>
+                            setHost((current) =>
+                              current
+                                ? { ...current, city: event.target.value }
+                                : current,
+                            )
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="hostState">State</Label>
+                        <Input
+                          id="hostState"
+                          value={host.state || ""}
+                          onChange={(event) =>
+                            setHost((current) =>
+                              current
+                                ? { ...current, state: event.target.value }
+                                : current,
+                            )
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="hostType">Location type</Label>
+                        <select
+                          id="hostType"
+                          value={host.locationType || "other"}
+                          onChange={(event) =>
+                            setHost((current) =>
+                              current
+                                ? { ...current, locationType: event.target.value }
+                                : current,
+                            )
+                          }
+                          className="w-full rounded-md border border-orange-200 bg-white px-3 py-2 text-sm"
+                        >
+                          <option value="office">Office</option>
+                          <option value="bar">Bar</option>
+                          <option value="brewery">Brewery</option>
+                          <option value="restaurant">Restaurant</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-orange-200 bg-white p-4 space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-orange-900">
+                            Pin location
+                          </p>
+                          <p className="text-xs text-orange-700">
+                            Drag the pin or click the map to adjust the exact spot.
+                          </p>
+                        </div>
+                        {addressNeedsPin && (
+                          <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold text-amber-700">
+                            Address changed - reset the pin
+                          </span>
+                        )}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleGeocodePin}
+                            disabled={isGeocodingPin}
+                          >
+                            {isGeocodingPin ? "Setting pin..." : "Use address"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={handleSavePin}
+                            disabled={!pinPosition || isSavingPin}
+                          >
+                            {isSavingPin ? "Saving pin..." : "Save pin"}
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="relative h-64 w-full overflow-hidden rounded-xl border border-orange-200 bg-orange-100/20">
+                        <MapContainer
+                          center={[settingsMapCenter.lat, settingsMapCenter.lng]}
+                          zoom={settingsMapZoom}
+                          scrollWheelZoom
+                          className="h-full w-full"
+                        >
+                          <TileLayer
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          />
+                          <MapCenterer
+                            center={settingsMapCenter}
+                            zoom={settingsMapZoom}
+                          />
+                          <MapPinPicker onPick={(point) => setPinPosition(point)} />
+                          {pinPosition && (
+                            <Marker
+                              position={[pinPosition.lat, pinPosition.lng]}
+                              icon={parkingPassPinIcon}
+                              draggable
+                              eventHandlers={{
+                                dragend: (event) => {
+                                  const marker = event.target as L.Marker;
+                                  const next = marker.getLatLng();
+                                  setPinPosition({ lat: next.lat, lng: next.lng });
+                                },
+                              }}
+                            />
+                          )}
+                        </MapContainer>
+                        {!pinPosition && (
+                          <div className="absolute inset-0 flex items-center justify-center text-xs text-orange-700 pointer-events-none">
+                            {addressNeedsPin
+                              ? "Address updated. Click the map or use the address button."
+                              : "No pin yet. Click the map or use the address button."}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-xs text-orange-700">
+                        <span>
+                          Lat: {pinPosition ? pinPosition.lat.toFixed(6) : "--"}
+                        </span>
+                        <span>
+                          Lng: {pinPosition ? pinPosition.lng.toFixed(6) : "--"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-orange-200 bg-white/70 p-4 space-y-3">
+                    <p className="text-sm font-semibold text-orange-900">
+                      Add another parking location
+                    </p>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="newHostName">Location name</Label>
+                        <Input
+                          id="newHostName"
+                          value={newLocationForm.businessName}
+                          onChange={(event) =>
+                            setNewLocationForm((current) => ({
+                              ...current,
+                              businessName: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="newHostPhone">Contact phone</Label>
+                        <Input
+                          id="newHostPhone"
+                          value={newLocationForm.contactPhone}
+                          onChange={(event) =>
+                            setNewLocationForm((current) => ({
+                              ...current,
+                              contactPhone: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="newHostAddress">Address</Label>
+                        <Input
+                          id="newHostAddress"
+                          value={newLocationForm.address}
+                          onChange={(event) =>
+                            setNewLocationForm((current) => ({
+                              ...current,
+                              address: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="newHostCity">City</Label>
+                        <Input
+                          id="newHostCity"
+                          value={newLocationForm.city}
+                          onChange={(event) =>
+                            setNewLocationForm((current) => ({
+                              ...current,
+                              city: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="newHostState">State</Label>
+                        <Input
+                          id="newHostState"
+                          value={newLocationForm.state}
+                          onChange={(event) =>
+                            setNewLocationForm((current) => ({
+                              ...current,
+                              state: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="newHostType">Location type</Label>
+                        <select
+                          id="newHostType"
+                          value={newLocationForm.locationType}
+                          onChange={(event) =>
+                            setNewLocationForm((current) => ({
+                              ...current,
+                              locationType: event.target.value,
+                            }))
+                          }
+                          className="w-full rounded-md border border-orange-200 bg-white px-3 py-2 text-sm"
+                        >
+                          <option value="office">Office</option>
+                          <option value="bar">Bar</option>
+                          <option value="brewery">Brewery</option>
+                          <option value="restaurant">Restaurant</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                      <div className="flex items-end">
+                        <Button
+                          variant="outline"
+                          onClick={handleCreateLocation}
+                          disabled={isSavingLocation || !newLocationPinPosition}
+                          size="sm"
+                        >
+                          {isSavingLocation ? "Saving..." : "Add location"}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="mt-4 rounded-xl border border-orange-200 bg-white p-3 space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold text-orange-900">
+                            Pin preview
+                          </p>
+                          <p className="text-[11px] text-orange-700">
+                            Pin required before adding a new location.
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleGeocodeNewLocationPin}
+                          disabled={isGeocodingNewPin}
+                        >
+                          {isGeocodingNewPin ? "Setting pin..." : "Use address"}
+                        </Button>
+                      </div>
+                      <div className="relative h-56 w-full overflow-hidden rounded-lg border border-orange-200 bg-orange-100/20">
+                        <MapContainer
+                          center={[
+                            newLocationMapCenter.lat,
+                            newLocationMapCenter.lng,
+                          ]}
+                          zoom={newLocationMapZoom}
+                          scrollWheelZoom
+                          className="h-full w-full"
+                        >
+                          <TileLayer
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          />
+                          <MapCenterer
+                            center={newLocationMapCenter}
+                            zoom={newLocationMapZoom}
+                          />
+                          <MapPinPicker
+                            onPick={(point) => setNewLocationPinPosition(point)}
+                          />
+                          {newLocationPinPosition && (
+                            <Marker
+                              position={[
+                                newLocationPinPosition.lat,
+                                newLocationPinPosition.lng,
+                              ]}
+                              icon={parkingPassPinIcon}
+                              draggable
+                              eventHandlers={{
+                                dragend: (event) => {
+                                  const marker = event.target as L.Marker;
+                                  const next = marker.getLatLng();
+                                  setNewLocationPinPosition({
+                                    lat: next.lat,
+                                    lng: next.lng,
+                                  });
+                                },
+                              }}
+                            />
+                          )}
+                        </MapContainer>
+                        {!newLocationPinPosition && (
+                          <div className="absolute inset-0 flex items-center justify-center text-xs text-orange-700 pointer-events-none">
+                            Click the map or use the address to set a pin.
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-xs text-orange-700">
+                        <span>
+                          Lat:{" "}
+                          {newLocationPinPosition
+                            ? newLocationPinPosition.lat.toFixed(6)
+                            : "--"}
+                        </span>
+                        <span>
+                          Lng:{" "}
+                          {newLocationPinPosition
+                            ? newLocationPinPosition.lng.toFixed(6)
+                            : "--"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-orange-200 bg-white p-4 space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-semibold text-orange-900">
+                        On-site amenities
+                      </h3>
+                      <p className="text-xs text-orange-700">
+                        Share what trucks can expect at your location.
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAmenitiesSave}
+                      disabled={isSavingAmenities}
+                    >
+                      {isSavingAmenities ? "Saving..." : "Save amenities"}
+                    </Button>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {[
+                      { key: "water", label: "Water" },
+                      { key: "electric", label: "Electric" },
+                      { key: "bathrooms", label: "Bathrooms" },
+                      { key: "wifi", label: "Wi-Fi" },
+                      { key: "seating", label: "Seating" },
+                    ].map((amenity) => (
+                      <label
+                        key={amenity.key}
+                        className="flex items-center gap-2 text-sm text-orange-900"
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4"
+                          checked={amenities[amenity.key] ?? false}
+                          onChange={(event) =>
+                            setAmenities((prev) => ({
+                              ...prev,
+                              [amenity.key]: event.target.checked,
+                            }))
+                          }
+                        />
+                        {amenity.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
+        )}
+
+        {showHostParkingPass && host && (
+          <>
+        {isCreating && (
+          <div className="bg-white p-6 rounded-2xl border border-orange-200 shadow-sm">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold text-slate-900">
+                  Post a Parking Pass
+                </h2>
+                <p className="text-sm text-slate-500">
+                  Set the day, time window, and what each slot costs.
+                </p>
+              </div>
+              <div className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-600">
+                {host.businessName}
+              </div>
+            </div>
+            <form onSubmit={handleCreatePass} className="mt-6 space-y-6">
+              {createError && (
+                <div className="p-3 bg-rose-50 text-rose-700 rounded-md text-sm">
+                  {createError}
+                </div>
+              )}
+              {hasActiveHostPass && (
+                <div className="p-3 bg-amber-50 text-amber-700 rounded-md text-sm">
+                  You already have a parking pass for this address. Edit the
+                  existing listing instead of creating a new one.
+                </div>
+              )}
+
+              <div className="grid gap-4 md:grid-cols-[1.2fr_1fr]">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-base font-semibold text-slate-900">
+                        When trucks can park
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        Pick the weekly schedule and a time window.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="anyTime"
+                        checked={anyTime}
+                        onCheckedChange={setAnyTime}
+                      />
+                      <Label htmlFor="anyTime" className="text-xs text-slate-600">
+                        Any time
+                      </Label>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Days of the week</Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: "Mon", value: 1 },
+                          { label: "Tue", value: 2 },
+                          { label: "Wed", value: 3 },
+                          { label: "Thu", value: 4 },
+                          { label: "Fri", value: 5 },
+                          { label: "Sat", value: 6 },
+                          { label: "Sun", value: 0 },
+                        ].map((day) => {
+                          const selected = daysOfWeek.includes(day.value);
+                          return (
+                            <button
+                              key={day.value}
+                              type="button"
+                              className={`rounded-md border px-3 py-2 text-xs font-medium transition ${
+                                selected
+                                  ? "border-orange-300 bg-orange-100 text-orange-900"
+                                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                              }`}
+                              onClick={() =>
+                                setDaysOfWeek((current) =>
+                                  current.includes(day.value)
+                                    ? current.filter((item) => item !== day.value)
+                                    : [...current, day.value],
+                                )
+                              }
+                            >
+                              {day.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="maxTrucks">Number of spots</Label>
+                      <Input
+                        id="maxTrucks"
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={maxTrucks}
+                        onChange={(event) =>
+                          setMaxTrucks(Number(event.target.value))
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="startTime">Start</Label>
+                      <Input
+                        id="startTime"
+                        type="time"
+                        value={startTime}
+                        onChange={(event) => setStartTime(event.target.value)}
+                        disabled={anyTime}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="endTime">End</Label>
+                      <Input
+                        id="endTime"
+                        type="time"
+                        value={endTime}
+                        onChange={(event) => setEndTime(event.target.value)}
+                        disabled={anyTime}
+                        required
+                      />
+                    </div>
+                  </div>
+                  {anyTime && (
+                    <p className="mt-3 text-xs text-slate-500">
+                      Any time means trucks can park 24/7.
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">
+                  <h3 className="text-base font-semibold text-orange-900">
+                    Earnings preview
+                  </h3>
+                  <p className="text-xs text-orange-700 mb-4">
+                    Daily = slot total + $10. Weekly = (slot total x 7) + $10.
+                    Monthly = (slot total x 30) + $10.
+                  </p>
+                  <div className="space-y-2 text-sm text-orange-900">
+                    <div className="flex items-center justify-between">
+                      <span>Slot total</span>
+                      <span className="font-semibold">
+                        {slotSum ? `$${slotSum.toFixed(2)}` : "-"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Daily</span>
+                      <span className="font-semibold">
+                        {dailyEstimate ? `$${dailyEstimate.toFixed(2)}` : "-"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>
+                        Weekly {weeklyOverrideValue !== null ? "(custom)" : "(auto)"}
+                      </span>
+                      <span className="font-semibold">
+                        {weeklyFinal ? `$${weeklyFinal.toFixed(2)}` : "-"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>
+                        Monthly {monthlyOverrideValue !== null ? "(custom)" : "(auto)"}
+                      </span>
+                      <span className="font-semibold">
+                        {monthlyFinal ? `$${monthlyFinal.toFixed(2)}` : "-"}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-xs text-orange-800">
+                    Trucks see your full payout per slot.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <h3 className="text-base font-semibold text-slate-900 mb-2">
+                  Set slot pricing
+                </h3>
+                <p className="text-xs text-slate-500 mb-4">
+                  Set any slot to $0 if you don't want to offer it.
+                </p>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                    <Label htmlFor="breakfastPrice">Breakfast</Label>
+                    <Input
+                      id="breakfastPrice"
+                      type="number"
+                      min="0"
+                      step="1"
+                      inputMode="numeric"
+                      value={breakfastPrice}
+                      onChange={(event) => setBreakfastPrice(event.target.value)}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-slate-500">Early shift pricing.</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                    <Label htmlFor="lunchPrice">Lunch</Label>
+                    <Input
+                      id="lunchPrice"
+                      type="number"
+                      min="0"
+                      step="1"
+                      inputMode="numeric"
+                      value={lunchPrice}
+                      onChange={(event) => setLunchPrice(event.target.value)}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-slate-500">Peak traffic slot.</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                    <Label htmlFor="dinnerPrice">Dinner</Label>
+                    <Input
+                      id="dinnerPrice"
+                      type="number"
+                      min="0"
+                      step="1"
+                      inputMode="numeric"
+                      value={dinnerPrice}
+                      onChange={(event) => setDinnerPrice(event.target.value)}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-slate-500">Evening coverage.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <h3 className="text-base font-semibold text-slate-900 mb-2">
+                  Weekly & monthly rates (optional)
+                </h3>
+                <p className="text-xs text-slate-500 mb-4">
+                  Leave blank to use the auto-calculated weekly and monthly
+                  totals.
+                </p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                    <Label htmlFor="weeklyOverride">Weekly rate</Label>
+                    <Input
+                      id="weeklyOverride"
+                      type="number"
+                      min="0"
+                      step="1"
+                      inputMode="numeric"
+                      value={weeklyOverride}
+                      onChange={(event) => setWeeklyOverride(event.target.value)}
+                      placeholder={
+                        weeklyEstimate ? `$${weeklyEstimate.toFixed(0)}` : "Auto"
+                      }
+                    />
+                    <p className="text-xs text-slate-500">
+                      Auto weekly: {weeklyEstimate ? `$${weeklyEstimate.toFixed(0)}` : "—"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                    <Label htmlFor="monthlyOverride">Monthly rate</Label>
+                    <Input
+                      id="monthlyOverride"
+                      type="number"
+                      min="0"
+                      step="1"
+                      inputMode="numeric"
+                      value={monthlyOverride}
+                      onChange={(event) => setMonthlyOverride(event.target.value)}
+                      placeholder={
+                        monthlyEstimate ? `$${monthlyEstimate.toFixed(0)}` : "Auto"
+                      }
+                    />
+                    <p className="text-xs text-slate-500">
+                      Auto monthly: {monthlyEstimate ? `$${monthlyEstimate.toFixed(0)}` : "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-4 border p-4 rounded-xl border-slate-200 bg-slate-50">
+                <Switch
+                  id="hard-cap"
+                  checked={hardCapEnabled}
+                  onCheckedChange={setHardCapEnabled}
+                />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="hard-cap" className="font-semibold">
+                      Capacity Guard v2.2
+                    </Label>
+                    <Badge variant="secondary" className="text-xs">
+                      New
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-slate-500">
+                    Strictly enforces the max trucks limit. Once you accept enough
+                    trucks to hit the limit, no further approvals will be allowed.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <p className="text-xs text-slate-500">
+                  You can edit times later if plans change.
+                </p>
+                <Button type="submit" className="px-6" disabled={hasActiveHostPass}>
+                  Publish Parking Pass
+                </Button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        <div className="space-y-6">
+          <Tabs defaultValue="upcoming" className="w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-slate-900">
+                Your Parking Pass Listings
+              </h2>
+              <TabsList>
+                <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+                <TabsTrigger value="past">Past</TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent value="upcoming" className="space-y-4">
+              {upcomingListings.length === 0 ? (
+                <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                  <Calendar className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+                  <h3 className="text-lg font-medium text-slate-900">
+                    No upcoming parking pass listings
+                  </h3>
+                  <p className="text-slate-500 mb-4">
+                    Create a parking pass listing for trucks.
+                  </p>
+                  <Button variant="outline" onClick={() => setIsCreating(true)}>
+                    Create Parking Pass Listing
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {upcomingListings.map((listing) => (
+                    <div
+                      key={listing.id}
+                      className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-6">
+                        <div className="flex flex-col items-center justify-center w-16 h-16 bg-rose-50 rounded-lg text-rose-700">
+                          <span className="text-xs font-bold uppercase">
+                            {format(new Date(listing.date), "MMM")}
+                          </span>
+                          <span className="text-2xl font-bold">
+                            {format(new Date(listing.date), "d")}
+                          </span>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center gap-4 text-sm text-slate-600 mb-1">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              {listing.startTime === "00:00" &&
+                              listing.endTime === "23:59"
+                                ? "Any time"
+                                : `${listing.startTime} - ${listing.endTime}`}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Truck className="h-4 w-4" />
+                              {listing.maxTrucks} Spot
+                              {listing.maxTrucks !== 1 ? "s" : ""}
+                            </span>
+                            {listing.requiresPayment && (
+                              <span className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded-full px-2 py-0.5">
+                                Daily {formatCents(listing.dailyPriceCents)} / Weekly{" "}
+                                {formatCents(listing.weeklyPriceCents)} / Monthly{" "}
+                                {formatCents(listing.monthlyPriceCents)}
+                              </span>
+                            )}
+                            {listing.hardCapEnabled && (
+                              <span
+                                title="Capacity Guard v2.2 Enabled"
+                                className="flex items-center gap-1 text-xs bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100"
+                              >
+                                <AlertCircle className="h-3 w-3 text-emerald-600" />
+                                <span className="text-emerald-700 font-medium">
+                                  Strict Cap
+                                </span>
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                listing.status === "open"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : listing.status === "filled"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-slate-100 text-slate-800"
+                              }`}
+                            >
+                              {listing.status.charAt(0).toUpperCase() +
+                                listing.status.slice(1)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <Badge variant="secondary">Listing</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="past" className="space-y-4">
+              {pastListings.length === 0 ? (
+                <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                  <Clock className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+                  <h3 className="text-lg font-medium text-slate-900">
+                    No past parking pass listings
+                  </h3>
+                  <p className="text-slate-500">
+                    Your parking pass history will appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-4 opacity-75">
+                  {pastListings.map((listing) => (
+                    <div
+                      key={listing.id}
+                      className="bg-slate-50 p-6 rounded-xl border border-slate-200 flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-6">
+                        <div className="flex flex-col items-center justify-center w-16 h-16 bg-slate-200 rounded-lg text-slate-600">
+                          <span className="text-xs font-bold uppercase">
+                            {format(new Date(listing.date), "MMM")}
+                          </span>
+                          <span className="text-2xl font-bold">
+                            {format(new Date(listing.date), "d")}
+                          </span>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              {listing.startTime} - {listing.endTime}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-600">
+                              Completed
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <Button variant="ghost" size="sm" disabled>
+                        Archived
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
+          </>
         )}
 
         {isTruckViewUser && (
@@ -1004,195 +2854,138 @@ export default function ParkingPassPage() {
 
         {isTruckViewUser && (
           <Card className="rounded-2xl border border-gray-200 bg-white">
-            <CardContent className="p-5 space-y-4">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">
-                  Your current schedule
-                </p>
-                <p className="text-xs text-gray-500">
-                  Add non-MealScout stops to keep customers in the loop.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-gray-700">
-                  Booked parking pass schedule
-                </p>
-                {bookedSchedule.length > 0 ? (
-                  <div className="space-y-2">
-                    {bookedSchedule.map((entry) => (
-                      <div
-                        key={`${entry.event?.id || "booking"}-${
-                          entry.slotType || "slot"
-                        }`}
-                        className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600"
-                      >
-                        <p className="font-semibold text-gray-900 text-sm">
-                          {entry.event
-                            ? `${format(new Date(entry.event.date), "EEE, MMM d")} • ${
-                                entry.event.startTime
-                              } - ${entry.event.endTime}`
-                            : "Upcoming booking"}
-                        </p>
-                        <p>{entry.host?.businessName || "Host location"}</p>
-                        {entry.slotType && (
-                          <p className="text-[11px] text-gray-500">
-                            Slot: {formatSlotLabel(entry.slotType)}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-500">
-                    No confirmed parking pass bookings yet.
+            <CardContent className="p-5 space-y-6">
+              <ParkingScheduleCalendar
+                items={parkingScheduleItems}
+                allowManualEdits
+                onDeleteManual={handleDeleteSchedule}
+              />
+
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-4">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    Add manual stop
                   </p>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+                  <p className="text-xs text-gray-500">
+                    Share where you will be parked even if it isn’t a Parking Pass
+                    location.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="schedule-date">Date</Label>
+                    <Input
+                      id="schedule-date"
+                      type="date"
+                      value={scheduleForm.date}
+                      onChange={(event) =>
+                        handleScheduleFieldChange("date", event.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="schedule-location">Location name</Label>
+                    <Input
+                      id="schedule-location"
+                      placeholder="Downtown plaza"
+                      value={scheduleForm.locationName}
+                      onChange={(event) =>
+                        handleScheduleFieldChange(
+                          "locationName",
+                          event.target.value,
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="schedule-start">Start time</Label>
+                    <Input
+                      id="schedule-start"
+                      type="time"
+                      value={scheduleForm.startTime}
+                      onChange={(event) =>
+                        handleScheduleFieldChange("startTime", event.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="schedule-end">End time</Label>
+                    <Input
+                      id="schedule-end"
+                      type="time"
+                      value={scheduleForm.endTime}
+                      onChange={(event) =>
+                        handleScheduleFieldChange("endTime", event.target.value)
+                      }
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="schedule-date">Date</Label>
+                  <Label htmlFor="schedule-address">Address</Label>
                   <Input
-                    id="schedule-date"
-                    type="date"
-                    value={scheduleForm.date}
+                    id="schedule-address"
+                    placeholder="123 Main St, City"
+                    value={scheduleForm.address}
                     onChange={(event) =>
-                      handleScheduleFieldChange("date", event.target.value)
+                      handleScheduleFieldChange("address", event.target.value)
                     }
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="schedule-city">City</Label>
+                    <Input
+                      id="schedule-city"
+                      placeholder="City"
+                      value={scheduleForm.city}
+                      onChange={(event) =>
+                        handleScheduleFieldChange("city", event.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="schedule-state">State</Label>
+                    <Input
+                      id="schedule-state"
+                      placeholder="State"
+                      value={scheduleForm.state}
+                      onChange={(event) =>
+                        handleScheduleFieldChange("state", event.target.value)
+                      }
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="schedule-location">Location name</Label>
-                  <Input
-                    id="schedule-location"
-                    placeholder="Downtown plaza"
-                    value={scheduleForm.locationName}
+                  <Label htmlFor="schedule-notes">Notes</Label>
+                  <Textarea
+                    id="schedule-notes"
+                    placeholder="Optional notes for this stop."
+                    value={scheduleForm.notes}
                     onChange={(event) =>
-                      handleScheduleFieldChange(
-                        "locationName",
-                        event.target.value,
-                      )
+                      handleScheduleFieldChange("notes", event.target.value)
                     }
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="schedule-start">Start time</Label>
-                  <Input
-                    id="schedule-start"
-                    type="time"
-                    value={scheduleForm.startTime}
-                    onChange={(event) =>
-                      handleScheduleFieldChange("startTime", event.target.value)
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="schedule-end">End time</Label>
-                  <Input
-                    id="schedule-end"
-                    type="time"
-                    value={scheduleForm.endTime}
-                    onChange={(event) =>
-                      handleScheduleFieldChange("endTime", event.target.value)
-                    }
-                  />
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-xs text-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={scheduleForm.isPublic}
+                      onChange={(event) =>
+                        handleScheduleFieldChange("isPublic", event.target.checked)
+                      }
+                    />
+                    Show on public profile
+                  </label>
+                  <Button
+                    size="sm"
+                    onClick={handleCreateSchedule}
+                    disabled={isSavingSchedule}
+                  >
+                    {isSavingSchedule ? "Saving..." : "Add stop"}
+                  </Button>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="schedule-address">Address</Label>
-                <Input
-                  id="schedule-address"
-                  placeholder="123 Main St, City"
-                  value={scheduleForm.address}
-                  onChange={(event) =>
-                    handleScheduleFieldChange("address", event.target.value)
-                  }
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="schedule-city">City</Label>
-                  <Input
-                    id="schedule-city"
-                    placeholder="City"
-                    value={scheduleForm.city}
-                    onChange={(event) =>
-                      handleScheduleFieldChange("city", event.target.value)
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="schedule-state">State</Label>
-                  <Input
-                    id="schedule-state"
-                    placeholder="State"
-                    value={scheduleForm.state}
-                    onChange={(event) =>
-                      handleScheduleFieldChange("state", event.target.value)
-                    }
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="schedule-notes">Notes</Label>
-                <Textarea
-                  id="schedule-notes"
-                  placeholder="Optional notes for this stop."
-                  value={scheduleForm.notes}
-                  onChange={(event) =>
-                    handleScheduleFieldChange("notes", event.target.value)
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-xs text-gray-600">
-                  <input
-                    type="checkbox"
-                    checked={scheduleForm.isPublic}
-                    onChange={(event) =>
-                      handleScheduleFieldChange("isPublic", event.target.checked)
-                    }
-                  />
-                  Show on public profile
-                </label>
-                <Button
-                  size="sm"
-                  onClick={handleCreateSchedule}
-                  disabled={isSavingSchedule}
-                >
-                  {isSavingSchedule ? "Saving..." : "Add stop"}
-                </Button>
-              </div>
-              {manualSchedules.length > 0 && (
-                <div className="space-y-2">
-                  {manualSchedules.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="font-semibold text-gray-900 text-sm">
-                            {new Date(entry.date).toLocaleDateString()} -{" "}
-                            {entry.startTime} - {entry.endTime}
-                          </p>
-                          <p>
-                            {entry.locationName ? `${entry.locationName} - ` : ""}
-                            {entry.address}
-                          </p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteSchedule(entry.id)}
-                          aria-label="Remove schedule entry"
-                        >
-                          <Trash2 className="h-4 w-4 text-gray-500" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </CardContent>
           </Card>
         )}
@@ -1257,7 +3050,7 @@ export default function ParkingPassPage() {
                     Loading parking pass spots...
                   </p>
                 </div>
-              ) : events.length === 0 ? (
+              ) : passListings.length === 0 ? (
                 <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-600">
                   No parking pass spots are available right now.
                 </div>
@@ -1277,25 +3070,27 @@ export default function ParkingPassPage() {
                           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                         />
                         {mapLocations.map(({ group, coords }) => {
-                          const eventForDate = group.events.find(
-                            (event) => getEventDateKey(event.date) === selectedDate,
+                          const listingForDate = group.listings.find(
+                            (listing) =>
+                              getListingDateKey(listing.date) === selectedDate,
                           );
-                          const displayEvent =
-                            eventForDate ||
-                            group.events.find(
-                              (event) => getEventDateKey(event.date) >= selectedDate,
+                          const displayListing =
+                            listingForDate ||
+                            group.listings.find(
+                              (listing) =>
+                                getListingDateKey(listing.date) >= selectedDate,
                             ) ||
-                            group.events[0] ||
+                            group.listings[0] ||
                             null;
-                          const bookingEvent = eventForDate || displayEvent;
-                          const bookings = Array.isArray(bookingEvent?.bookings)
-                            ? bookingEvent?.bookings ?? []
+                          const bookingListing = listingForDate || displayListing;
+                          const bookings = Array.isArray(bookingListing?.bookings)
+                            ? bookingListing?.bookings ?? []
                             : [];
-                          const slotOptions = eventForDate
-                            ? buildSlotOptions(eventForDate)
+                          const slotOptions = listingForDate
+                            ? buildSlotOptions(listingForDate)
                             : [];
-                          const selectedSlots = eventForDate
-                            ? selectedSlotsByEvent[eventForDate.id] || []
+                          const selectedSlots = listingForDate
+                            ? selectedSlotsByListing[listingForDate.id] || []
                             : [];
                           const selectedTotalCents = selectedSlots.reduce(
                             (sum, slot) => {
@@ -1314,21 +3109,21 @@ export default function ParkingPassPage() {
                             selectedTotalCents > 0
                               ? selectedTotalCents + selectedFeeCents
                               : 0;
-                          const availability = eventForDate
-                            ? eventForDate.availableSpotNumbers
-                              ? eventForDate.availableSpotNumbers.length > 0
-                                ? `Open spots: ${eventForDate.availableSpotNumbers.join(
+                          const availability = listingForDate
+                            ? listingForDate.availableSpotNumbers
+                              ? listingForDate.availableSpotNumbers.length > 0
+                                ? `Open spots: ${listingForDate.availableSpotNumbers.join(
                                     ", ",
                                   )}`
                                 : "Fully booked"
-                              : eventForDate.status === "open"
+                              : listingForDate.status === "open"
                                 ? "Open"
                                 : "Closed"
                             : "No slots for selected day";
-                          const hasAvailability = eventForDate
-                            ? eventForDate.availableSpotNumbers
-                              ? eventForDate.availableSpotNumbers.length > 0
-                              : eventForDate.status === "open"
+                          const hasAvailability = listingForDate
+                            ? listingForDate.availableSpotNumbers
+                              ? listingForDate.availableSpotNumbers.length > 0
+                              : listingForDate.status === "open"
                             : false;
 
                           return (
@@ -1348,20 +3143,20 @@ export default function ParkingPassPage() {
                                   <p className="text-gray-600">
                                     {group.host.address}
                                   </p>
-                                  {displayEvent && (
+                                  {displayListing && (
                                     <p className="text-gray-600">
                                       {format(
-                                        new Date(displayEvent.date),
+                                        new Date(displayListing.date),
                                         "EEE, MMM d",
                                       )}{" "}
                                       •{" "}
-                                      {displayEvent.startTime === "00:00" &&
-                                      displayEvent.endTime === "23:59"
+                                      {displayListing.startTime === "00:00" &&
+                                      displayListing.endTime === "23:59"
                                         ? "Any time"
-                                        : `${displayEvent.startTime} - ${displayEvent.endTime}`}
+                                        : `${displayListing.startTime} - ${displayListing.endTime}`}
                                     </p>
                                   )}
-                                  {!eventForDate && (
+                                  {!listingForDate && (
                                     <p className="text-[11px] text-amber-700">
                                       No slots on{" "}
                                       {format(
@@ -1374,7 +3169,7 @@ export default function ParkingPassPage() {
                                   <p className="text-gray-600">
                                     {availability}
                                   </p>
-                                  {eventForDate && slotOptions.length > 0 ? (
+                                  {listingForDate && slotOptions.length > 0 ? (
                                     <div className="space-y-2">
                                       <div className="grid grid-cols-2 gap-2">
                                         {slotOptions.map((slot) => {
@@ -1397,7 +3192,7 @@ export default function ParkingPassPage() {
                                               className="justify-between text-[11px]"
                                               disabled={!hasAvailability}
                                               onClick={() =>
-                                                handleSelect(eventForDate, slot.type)
+                                                handleSelect(listingForDate, slot.type)
                                               }
                                             >
                                               <span>{slot.label}</span>
@@ -1415,7 +3210,7 @@ export default function ParkingPassPage() {
                                         <Button
                                           size="sm"
                                           onClick={() =>
-                                            handleBookSelected(eventForDate)
+                                            handleBookSelected(listingForDate)
                                           }
                                           disabled={selectedSlots.length === 0}
                                         >
@@ -1479,22 +3274,24 @@ export default function ParkingPassPage() {
                   </div>
                   <div className="space-y-2">
                     {filteredLocations.map((group) => {
-                      const eventForDate = group.events.find(
-                        (event) => getEventDateKey(event.date) === selectedDate,
+                      const listingForDate = group.listings.find(
+                        (listing) =>
+                          getListingDateKey(listing.date) === selectedDate,
                       );
-                      const displayEvent =
-                        eventForDate ||
-                        group.events.find(
-                          (event) => getEventDateKey(event.date) >= selectedDate,
+                      const displayListing =
+                        listingForDate ||
+                        group.listings.find(
+                          (listing) =>
+                            getListingDateKey(listing.date) >= selectedDate,
                         ) ||
-                        group.events[0] ||
+                        group.listings[0] ||
                         null;
-                      const bookingEvent = eventForDate || displayEvent;
-                      const slotOptions = eventForDate
-                        ? buildSlotOptions(eventForDate)
+                      const bookingListing = listingForDate || displayListing;
+                      const slotOptions = listingForDate
+                        ? buildSlotOptions(listingForDate)
                         : [];
-                      const selectedSlots = eventForDate
-                        ? selectedSlotsByEvent[eventForDate.id] || []
+                      const selectedSlots = listingForDate
+                        ? selectedSlotsByListing[listingForDate.id] || []
                         : [];
                       const selectedTotalCents = selectedSlots.reduce(
                         (sum, slot) => {
@@ -1513,20 +3310,20 @@ export default function ParkingPassPage() {
                         selectedTotalCents > 0
                           ? selectedTotalCents + selectedFeeCents
                           : 0;
-                      const availableSpots = eventForDate?.availableSpotNumbers;
-                      const hasAvailability = eventForDate
+                      const availableSpots = listingForDate?.availableSpotNumbers;
+                      const hasAvailability = listingForDate
                         ? availableSpots === undefined
-                          ? eventForDate.status === "open"
+                          ? listingForDate.status === "open"
                           : availableSpots.length > 0
                         : false;
-                      const bookings = Array.isArray(bookingEvent?.bookings)
-                        ? bookingEvent?.bookings ?? []
+                      const bookings = Array.isArray(bookingListing?.bookings)
+                        ? bookingListing?.bookings ?? []
                         : [];
                       const isActive = activeLocation?.key === group.key;
-                      const shareDate = displayEvent
-                        ? getEventDateKey(displayEvent.date)
+                      const shareDate = displayListing
+                        ? getListingDateKey(displayListing.date)
                         : selectedDate;
-                      const shareEventId = displayEvent?.id || "";
+                      const shareListingId = displayListing?.id || "";
 
                       return (
                         <div
@@ -1556,9 +3353,9 @@ export default function ParkingPassPage() {
                                 {group.host.businessName}
                               </span>
                               <div className="text-xs text-gray-500">
-                                {displayEvent
+                                {displayListing
                                   ? format(
-                                      new Date(displayEvent.date),
+                                      new Date(displayListing.date),
                                       "EEE, MMM d",
                                     )
                                   : "No dates listed"}
@@ -1574,15 +3371,15 @@ export default function ParkingPassPage() {
                           </div>
                           <div className="text-xs text-gray-600 space-y-1">
                             <p>{group.host.address}</p>
-                            {displayEvent && (
+                            {displayListing && (
                               <p>
-                                {displayEvent.startTime === "00:00" &&
-                                displayEvent.endTime === "23:59"
+                                {displayListing.startTime === "00:00" &&
+                                displayListing.endTime === "23:59"
                                   ? "Any time"
-                                  : `${displayEvent.startTime} - ${displayEvent.endTime}`}
+                                  : `${displayListing.startTime} - ${displayListing.endTime}`}
                               </p>
                             )}
-                            {!eventForDate && (
+                            {!listingForDate && (
                               <p className="text-[11px] text-amber-700">
                                 No slots on{" "}
                                 {format(
@@ -1592,10 +3389,10 @@ export default function ParkingPassPage() {
                                 .
                               </p>
                             )}
-                            {eventForDate?.availableSpotNumbers && (
+                            {listingForDate?.availableSpotNumbers && (
                               <p className="text-[11px] text-gray-500">
-                                {eventForDate.availableSpotNumbers.length > 0
-                                  ? `Open spot${eventForDate.availableSpotNumbers.length > 1 ? "s" : ""}: ${eventForDate.availableSpotNumbers.join(", ")}`
+                                {listingForDate.availableSpotNumbers.length > 0
+                                  ? `Open spot${listingForDate.availableSpotNumbers.length > 1 ? "s" : ""}: ${listingForDate.availableSpotNumbers.join(", ")}`
                                   : "Fully booked"}
                               </p>
                             )}
@@ -1616,12 +3413,12 @@ export default function ParkingPassPage() {
                               </div>
                             )}
                           </div>
-                          {shareEventId && (
+                          {shareListingId && (
                             <div>
                               <ShareButton
                                 url={`/parking-pass?date=${encodeURIComponent(
                                   shareDate,
-                                )}&pass=${shareEventId}`}
+                                )}&pass=${shareListingId}`}
                                 title={`Parking Pass at ${group.host.businessName}`}
                                 description={`${group.host.address}${
                                   group.host.city ? `, ${group.host.city}` : ""
@@ -1631,7 +3428,7 @@ export default function ParkingPassPage() {
                               />
                             </div>
                           )}
-                          {eventForDate && slotOptions.length > 0 && (
+                          {listingForDate && slotOptions.length > 0 && (
                             <div className="grid grid-cols-2 gap-2 pt-1">
                               {slotOptions.map((slot) => {
                                 const feeCents = getFeeCentsForSlots(
@@ -1651,7 +3448,7 @@ export default function ParkingPassPage() {
                                     className="justify-between"
                                     disabled={!hasAvailability}
                                     onClick={() =>
-                                      handleSelect(eventForDate, slot.type)
+                                      handleSelect(listingForDate, slot.type)
                                     }
                                   >
                                     <span>{slot.label}</span>
@@ -1666,10 +3463,10 @@ export default function ParkingPassPage() {
                               <p className="text-[11px] text-gray-500">
                                 Includes a $10/day MealScout fee per host.
                               </p>
-                              {eventForDate && (
+                              {listingForDate && (
                                 <Button
                                   size="sm"
-                                  onClick={() => handleBookSelected(eventForDate)}
+                                  onClick={() => handleBookSelected(listingForDate)}
                                   disabled={selectedSlots.length === 0}
                                 >
                                   Add to cart
@@ -1685,7 +3482,7 @@ export default function ParkingPassPage() {
                             </div>
                           ) : (
                             <p className="text-[11px] text-gray-500">
-                              {eventForDate ? "Fully booked." : "No slots on selected day."}
+                              {listingForDate ? "Fully booked." : "No slots on selected day."}
                             </p>
                           )}
                         </div>
@@ -1701,22 +3498,24 @@ export default function ParkingPassPage() {
               ) : (
                 <div className="space-y-3">
                   {filteredLocations.map((group) => {
-                    const eventForDate = group.events.find(
-                      (event) => getEventDateKey(event.date) === selectedDate,
+                    const listingForDate = group.listings.find(
+                      (listing) =>
+                        getListingDateKey(listing.date) === selectedDate,
                     );
-                    const displayEvent =
-                      eventForDate ||
-                      group.events.find(
-                        (event) => getEventDateKey(event.date) >= selectedDate,
+                    const displayListing =
+                      listingForDate ||
+                      group.listings.find(
+                        (listing) =>
+                          getListingDateKey(listing.date) >= selectedDate,
                       ) ||
-                      group.events[0] ||
+                      group.listings[0] ||
                       null;
-                    const bookingEvent = eventForDate || displayEvent;
-                    const slotOptions = eventForDate
-                      ? buildSlotOptions(eventForDate)
+                    const bookingListing = listingForDate || displayListing;
+                    const slotOptions = listingForDate
+                      ? buildSlotOptions(listingForDate)
                       : [];
-                    const selectedSlots = eventForDate
-                      ? selectedSlotsByEvent[eventForDate.id] || []
+                    const selectedSlots = listingForDate
+                      ? selectedSlotsByListing[listingForDate.id] || []
                       : [];
                     const selectedTotalCents = selectedSlots.reduce(
                       (sum, slot) => {
@@ -1736,20 +3535,20 @@ export default function ParkingPassPage() {
                         ? selectedTotalCents + selectedFeeCents
                         : 0;
 
-                    const availableSpots = eventForDate?.availableSpotNumbers;
-                    const hasAvailability = eventForDate
+                    const availableSpots = listingForDate?.availableSpotNumbers;
+                    const hasAvailability = listingForDate
                       ? availableSpots === undefined
-                        ? eventForDate.status === "open"
+                        ? listingForDate.status === "open"
                         : availableSpots.length > 0
                       : false;
-                    const bookings = Array.isArray(bookingEvent?.bookings)
-                      ? bookingEvent?.bookings ?? []
+                    const bookings = Array.isArray(bookingListing?.bookings)
+                      ? bookingListing?.bookings ?? []
                       : [];
                     const isActive = activeLocation?.key === group.key;
-                    const shareDate = displayEvent
-                      ? getEventDateKey(displayEvent.date)
+                    const shareDate = displayListing
+                      ? getListingDateKey(displayListing.date)
                       : selectedDate;
-                    const shareEventId = displayEvent?.id || "";
+                    const shareListingId = displayListing?.id || "";
 
                     return (
                       <div
@@ -1778,22 +3577,22 @@ export default function ParkingPassPage() {
                             {group.host.businessName}
                           </span>
                           <span className="text-xs text-gray-500">
-                            {displayEvent
-                              ? format(new Date(displayEvent.date), "EEE, MMM d")
+                            {displayListing
+                              ? format(new Date(displayListing.date), "EEE, MMM d")
                               : "No dates listed"}
                           </span>
                         </div>
                         <div className="text-xs text-gray-600">
                           <p>{group.host.address}</p>
-                          {displayEvent && (
+                          {displayListing && (
                             <p>
-                              {displayEvent.startTime === "00:00" &&
-                              displayEvent.endTime === "23:59"
+                              {displayListing.startTime === "00:00" &&
+                              displayListing.endTime === "23:59"
                                 ? "Any time"
-                                : `${displayEvent.startTime} - ${displayEvent.endTime}`}
+                                : `${displayListing.startTime} - ${displayListing.endTime}`}
                             </p>
                           )}
-                          {!eventForDate && (
+                          {!listingForDate && (
                             <p className="text-[11px] text-amber-700">
                               No slots on{" "}
                               {format(
@@ -1803,20 +3602,20 @@ export default function ParkingPassPage() {
                               .
                             </p>
                           )}
-                          {eventForDate?.availableSpotNumbers && (
+                          {listingForDate?.availableSpotNumbers && (
                             <p className="text-[11px] text-gray-500">
-                              {eventForDate.availableSpotNumbers.length > 0
-                                ? `Open spot${eventForDate.availableSpotNumbers.length > 1 ? "s" : ""}: ${eventForDate.availableSpotNumbers.join(", ")}`
+                              {listingForDate.availableSpotNumbers.length > 0
+                                ? `Open spot${listingForDate.availableSpotNumbers.length > 1 ? "s" : ""}: ${listingForDate.availableSpotNumbers.join(", ")}`
                                 : "Fully booked"}
                             </p>
                           )}
                         </div>
-                        {shareEventId && (
+                        {shareListingId && (
                           <div>
                             <ShareButton
                               url={`/parking-pass?date=${encodeURIComponent(
                                 shareDate,
-                              )}&pass=${shareEventId}`}
+                              )}&pass=${shareListingId}`}
                               title={`Parking Pass at ${group.host.businessName}`}
                               description={`${group.host.address}${
                                 group.host.city ? `, ${group.host.city}` : ""
@@ -1826,7 +3625,7 @@ export default function ParkingPassPage() {
                             />
                           </div>
                         )}
-                        {eventForDate && slotOptions.length > 0 && (
+                        {listingForDate && slotOptions.length > 0 && (
                           <div className="grid grid-cols-2 gap-2 pt-1">
                             {slotOptions.map((slot) => {
                               const feeCents = getFeeCentsForSlots(
@@ -1846,7 +3645,7 @@ export default function ParkingPassPage() {
                                   className="justify-between"
                                   disabled={!hasAvailability}
                                   onClick={() =>
-                                    handleSelect(eventForDate, slot.type)
+                                    handleSelect(listingForDate, slot.type)
                                   }
                                 >
                                   <span>{slot.label}</span>
@@ -1861,10 +3660,10 @@ export default function ParkingPassPage() {
                             <p className="text-[11px] text-gray-500">
                               Includes a $10/day MealScout fee per host.
                             </p>
-                            {eventForDate && (
+                            {listingForDate && (
                               <Button
                                 size="sm"
-                                onClick={() => handleBookSelected(eventForDate)}
+                                onClick={() => handleBookSelected(listingForDate)}
                                 disabled={selectedSlots.length === 0}
                               >
                                 Add to cart
@@ -1880,7 +3679,7 @@ export default function ParkingPassPage() {
                           </div>
                         ) : (
                           <p className="text-[11px] text-gray-500">
-                            {eventForDate ? "Fully booked." : "No slots on selected day."}
+                            {listingForDate ? "Fully booked." : "No slots on selected day."}
                           </p>
                         )}
                       </div>
@@ -1914,21 +3713,21 @@ export default function ParkingPassPage() {
                   <div className="space-y-2">
                     {cartItems.map((item) => (
                       <div
-                        key={item.event.id}
+                        key={item.listing.id}
                         className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600"
                       >
                         <div className="flex items-center justify-between text-sm text-gray-900">
-                          <span>{item.event.host.businessName}</span>
+                          <span>{item.listing.host.businessName}</span>
                           <button
                             type="button"
                             className="text-xs text-gray-500 underline"
-                            onClick={() => removeCartItem(item.event.id)}
+                            onClick={() => removeCartItem(item.listing.id)}
                           >
                             remove
                           </button>
                         </div>
                         <p>
-                          {format(new Date(item.event.date), "EEE, MMM d")} -{" "}
+                          {format(new Date(item.listing.date), "EEE, MMM d")} -{" "}
                           {item.slotTypes.join(", ")}
                         </p>
                       </div>
@@ -1967,21 +3766,21 @@ export default function ParkingPassPage() {
                       {activeLocation?.host.address || "Choose a spot to see details."}
                     </p>
                   </div>
-                  {activeEvent && (
+                  {activeListing && (
                     <>
                       <div className="flex flex-wrap gap-2 text-xs text-gray-600">
                         <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-1">
-                          {activeEvent.host.locationType || "Location"}
+                          {activeListing.host.locationType || "Location"}
                         </span>
                         <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-1">
                           Foot traffic:{" "}
-                          {activeEvent.host.expectedFootTraffic || "Not shared"}
+                          {activeListing.host.expectedFootTraffic || "Not shared"}
                         </span>
                         <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-1">
-                          {activeEvent.startTime === "00:00" &&
-                          activeEvent.endTime === "23:59"
+                          {activeListing.startTime === "00:00" &&
+                          activeListing.endTime === "23:59"
                             ? "Any time"
-                            : `${activeEvent.startTime} - ${activeEvent.endTime}`}
+                            : `${activeListing.startTime} - ${activeListing.endTime}`}
                         </span>
                       </div>
                       <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 space-y-2">
@@ -1996,36 +3795,36 @@ export default function ParkingPassPage() {
                         <div className="flex items-center justify-between">
                           <span>Date</span>
                           <span>
-                            {format(new Date(activeEvent.date), "EEE, MMM d")}
+                            {format(new Date(activeListing.date), "EEE, MMM d")}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span>Time</span>
                           <span>
-                            {activeEvent.startTime === "00:00" &&
-                            activeEvent.endTime === "23:59"
+                            {activeListing.startTime === "00:00" &&
+                            activeListing.endTime === "23:59"
                               ? "Any time"
-                              : `${activeEvent.startTime} - ${activeEvent.endTime}`}
+                              : `${activeListing.startTime} - ${activeListing.endTime}`}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span>Status</span>
-                          <span className="capitalize">{activeEvent.status}</span>
+                          <span className="capitalize">{activeListing.status}</span>
                         </div>
-                        {activeEventAvailability && (
+                        {activeListingAvailability && (
                           <div className="flex items-center justify-between">
                             <span>Availability</span>
-                            <span>{activeEventAvailability}</span>
+                            <span>{activeListingAvailability}</span>
                           </div>
                         )}
                       </div>
-                      {activeEventBookings.length > 0 ? (
+                      {activeListingBookings.length > 0 ? (
                         <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 space-y-2">
                           <p className="text-[11px] font-semibold text-gray-700">
                             Booked trucks
                           </p>
                           <div className="space-y-1">
-                            {activeEventBookings.slice(0, 5).map((booking) => (
+                            {activeListingBookings.slice(0, 5).map((booking) => (
                               <div
                                 key={`${booking.truckId}-${booking.slotType || "slot"}`}
                                 className="flex items-center justify-between"
@@ -2041,9 +3840,9 @@ export default function ParkingPassPage() {
                                 </span>
                               </div>
                             ))}
-                            {activeEventBookings.length > 5 && (
+                            {activeListingBookings.length > 5 && (
                               <div className="text-[11px] text-gray-500">
-                                +{activeEventBookings.length - 5} more
+                                +{activeListingBookings.length - 5} more
                               </div>
                             )}
                           </div>
@@ -2053,7 +3852,7 @@ export default function ParkingPassPage() {
                           No bookings yet.
                         </p>
                       )}
-                      {selectedDateAvailable && activeEventForDate ? (
+                      {selectedDateAvailable && activeListingForDate ? (
                         <>
                           <div className="space-y-2">
                             <p className="text-xs font-semibold text-gray-700">
@@ -2064,32 +3863,32 @@ export default function ParkingPassPage() {
                                 {
                                   label: "Breakfast",
                                   type: "breakfast",
-                                  priceCents: activeEventForDate.breakfastPriceCents,
+                                  priceCents: activeListingForDate.breakfastPriceCents,
                                 },
                                 {
                                   label: "Lunch",
                                   type: "lunch",
-                                  priceCents: activeEventForDate.lunchPriceCents,
+                                  priceCents: activeListingForDate.lunchPriceCents,
                                 },
                                 {
                                   label: "Dinner",
                                   type: "dinner",
-                                  priceCents: activeEventForDate.dinnerPriceCents,
+                                  priceCents: activeListingForDate.dinnerPriceCents,
                                 },
                                 {
                                   label: "Daily",
                                   type: "daily",
-                                  priceCents: activeEventForDate.dailyPriceCents,
+                                  priceCents: activeListingForDate.dailyPriceCents,
                                 },
                                 {
                                   label: "Weekly",
                                   type: "weekly",
-                                  priceCents: activeEventForDate.weeklyPriceCents,
+                                  priceCents: activeListingForDate.weeklyPriceCents,
                                 },
                                 {
                                   label: "Monthly",
                                   type: "monthly",
-                                  priceCents: activeEventForDate.monthlyPriceCents,
+                                  priceCents: activeListingForDate.monthlyPriceCents,
                                 },
                               ]
                                 .filter((slot) => (slot.priceCents || 0) > 0)
@@ -2101,7 +3900,7 @@ export default function ParkingPassPage() {
                                   const totalPrice =
                                     ((slot.priceCents || 0) + feeCents) / 100;
                                   const selectedSlots =
-                                    selectedSlotsByEvent[activeEventForDate.id] || [];
+                                    selectedSlotsByListing[activeListingForDate.id] || [];
                                   const isSelected = selectedSlots.includes(
                                     slot.type,
                                   );
@@ -2111,9 +3910,9 @@ export default function ParkingPassPage() {
                                       variant={isSelected ? "default" : "outline"}
                                       size="sm"
                                       className="justify-between"
-                                      disabled={activeEventForDate.status !== "open"}
+                                      disabled={activeListingForDate.status !== "open"}
                                       onClick={() =>
-                                        handleSelect(activeEventForDate, slot.type)
+                                        handleSelect(activeListingForDate, slot.type)
                                       }
                                     >
                                       <span>{slot.label}</span>
@@ -2123,16 +3922,16 @@ export default function ParkingPassPage() {
                                 })}
                             </div>
                           </div>
-                          {activeEventForDate.status === "open" && (
+                          {activeListingForDate.status === "open" && (
                             <div className="flex items-center justify-between gap-3 pt-2">
                               <p className="text-[11px] text-gray-500">
                                 Includes a $10/day MealScout fee per host.
                               </p>
                               <Button
                                 size="sm"
-                                onClick={() => handleBookSelected(activeEventForDate)}
+                                onClick={() => handleBookSelected(activeListingForDate)}
                                 disabled={
-                                  (selectedSlotsByEvent[activeEventForDate.id] || [])
+                                  (selectedSlotsByListing[activeListingForDate.id] || [])
                                     .length === 0
                                 }
                               >
@@ -2155,25 +3954,25 @@ export default function ParkingPassPage() {
         </div>
       </div>
 
-      {selectedEvent && truckId && selectedSlotTypes.length > 0 && (
+      {selectedListing && truckId && selectedSlotTypes.length > 0 && (
         <BookingPaymentModal
           open={paymentOpen}
           onOpenChange={setPaymentOpen}
-          passId={selectedEvent.id}
+          passId={selectedListing.id}
           truckId={truckId}
           slotTypes={selectedSlotTypes}
           eventDetails={{
             name: "Parking Pass",
-            date: format(new Date(selectedEvent.date), "MMMM d, yyyy"),
-            startTime: selectedEvent.startTime,
-            endTime: selectedEvent.endTime,
-            hostName: selectedEvent.host.businessName,
-            hostPrice: selectedEvent.hostPriceCents,
+            date: format(new Date(selectedListing.date), "MMMM d, yyyy"),
+            startTime: selectedListing.startTime,
+            endTime: selectedListing.endTime,
+            hostName: selectedListing.host.businessName,
+            hostPrice: selectedListing.hostPriceCents,
             slotSummary: selectedSlotTypes.map(formatSlotLabel).join(", "),
           }}
           onSuccess={() => {
-            if (selectedEvent) {
-              removeCartItem(selectedEvent.id);
+            if (selectedListing) {
+              removeCartItem(selectedListing.id);
             }
             handleSuccess();
           }}

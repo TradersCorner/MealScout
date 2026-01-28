@@ -3,7 +3,13 @@ type ReverseGeocodeResult = {
   state?: string;
 };
 
+type ForwardGeocodeResult = {
+  lat: number;
+  lng: number;
+};
+
 const cache = new Map<string, ReverseGeocodeResult>();
+const forwardCache = new Map<string, ForwardGeocodeResult | null>();
 
 const roundCoord = (value: number, digits = 3) => {
   const factor = Math.pow(10, digits);
@@ -12,6 +18,9 @@ const roundCoord = (value: number, digits = 3) => {
 
 const getCacheKey = (lat: number, lng: number) =>
   `${roundCoord(lat)}:${roundCoord(lng)}`;
+
+const normalizeAddressKey = (address: string) =>
+  address.trim().toLowerCase();
 
 const extractCityState = (data: any): ReverseGeocodeResult => {
   const address = data?.address || {};
@@ -64,6 +73,48 @@ async function reverseWithGoogle(
   return { city, state };
 }
 
+async function forwardWithNominatim(
+  address: string,
+): Promise<ForwardGeocodeResult | null> {
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=${encodeURIComponent(
+    address,
+  )}`;
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": "MealScout/1.0 (geocoding)",
+      "Accept-Language": "en",
+    },
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const first = Array.isArray(data) ? data[0] : null;
+  if (!first?.lat || !first?.lon) return null;
+  const lat = Number(first.lat);
+  const lng = Number(first.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+}
+
+async function forwardWithGoogle(
+  address: string,
+): Promise<ForwardGeocodeResult | null> {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (!apiKey) return null;
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+    address,
+  )}&key=${apiKey}`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const data = await res.json();
+  const result = data?.results?.[0];
+  const location = result?.geometry?.location;
+  if (!location) return null;
+  const lat = Number(location.lat);
+  const lng = Number(location.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+}
+
 export async function reverseGeocode(
   lat: number,
   lng: number,
@@ -87,4 +138,29 @@ export async function reverseGeocode(
   const fallback: ReverseGeocodeResult = {};
   cache.set(key, fallback);
   return fallback;
+}
+
+export async function forwardGeocode(
+  address: string,
+): Promise<ForwardGeocodeResult | null> {
+  const key = normalizeAddressKey(address);
+  if (!key) return null;
+  if (forwardCache.has(key)) {
+    return forwardCache.get(key) ?? null;
+  }
+
+  const googleResult = await forwardWithGoogle(address);
+  if (googleResult) {
+    forwardCache.set(key, googleResult);
+    return googleResult;
+  }
+
+  const nominatimResult = await forwardWithNominatim(address);
+  if (nominatimResult) {
+    forwardCache.set(key, nominatimResult);
+    return nominatimResult;
+  }
+
+  forwardCache.set(key, null);
+  return null;
 }

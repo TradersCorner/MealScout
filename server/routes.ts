@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import cron from "node-cron";
 import { DigestService } from "./digestService";
 import { notifyUnbookedEvents } from "./eventNotificationCron";
+import { remindIncompleteParkingPassHosts } from "./parkingPassReminder";
 import Stripe from "stripe";
 import { storage } from "./storage";
 import {
@@ -23,6 +24,7 @@ import {
   computeFillRate,
 } from "./services/interestDecision";
 import { registerHostRoutes } from "./routes/hostRoutes";
+import { forwardGeocode } from "./utils/geocoding";
 import { registerOpenCallSeriesRoutes } from "./routes/openCallSeriesRoutes";
 import { registerEventRoutes } from "./routes/eventRoutes";
 import { registerEventCoordinatorRoutes } from "./routes/eventCoordinatorRoutes";
@@ -1367,7 +1369,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         postedByUserId: userId,
       });
 
-      const created = await storage.createLocationRequest(parsed);
+      let coords: { lat: number; lng: number } | null = null;
+      if (parsed.address) {
+        const geocodeAddress = [parsed.address, "USA"].join(", ");
+        try {
+          coords = await forwardGeocode(geocodeAddress);
+        } catch {
+          coords = null;
+        }
+      }
+
+      const created = await storage.createLocationRequest({
+        ...parsed,
+        latitude: coords ? coords.lat.toString() : parsed.latitude ?? null,
+        longitude: coords ? coords.lng.toString() : parsed.longitude ?? null,
+      });
       res
         .status(201)
         .json({ message: "Location request submitted", request: created });
@@ -6048,6 +6064,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("✅ Weekly Digest Cron Job Completed");
     } catch (error) {
       console.error("❌ Weekly Digest Cron Job Failed:", error);
+    }
+  });
+
+  // Schedule Parking Pass completion reminders (Monday 9:00 AM)
+  cron.schedule("0 9 * * 1", async () => {
+    console.log("⏰ Triggering Parking Pass Completion Reminders");
+    try {
+      const stats = await remindIncompleteParkingPassHosts();
+      console.log("✅ Parking Pass Completion Reminders Completed:", stats);
+    } catch (error) {
+      console.error("❌ Parking Pass Completion Reminders Failed:", error);
     }
   });
 

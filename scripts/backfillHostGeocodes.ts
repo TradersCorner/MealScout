@@ -1,32 +1,21 @@
 import "dotenv/config";
-import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, or } from "drizzle-orm";
 import { db } from "../server/db";
-import { hosts } from "../shared/schema";
+import { forwardGeocode } from "../server/utils/geocoding";
+import { hosts, locationRequests } from "../shared/schema";
 
 type GeoPoint = { lat: number; lng: number };
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function geocodeAddress(address: string): Promise<GeoPoint | null> {
-  const response = await fetch(
-    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-      address,
-    )}&limit=1`,
-    {
-      headers: { "Accept-Language": "en", "User-Agent": "MealScout/1.0" },
-    },
-  );
-  if (!response.ok) return null;
-  const data = (await response.json()) as Array<{ lat: string; lon: string }>;
-  if (!data.length) return null;
-  const lat = Number(data[0].lat);
-  const lng = Number(data[0].lon);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return { lat, lng };
-}
+const buildAddress = (parts: Array<string | null | undefined>) =>
+  parts
+    .map((part) => (part ?? "").trim())
+    .filter(Boolean)
+    .join(", ");
 
 async function run() {
-  const rows = await db
+  const hostRows = await db
     .select({
       id: hosts.id,
       businessName: hosts.businessName,
@@ -36,34 +25,58 @@ async function run() {
     })
     .from(hosts)
     .where(
-      and(isNull(hosts.latitude), isNull(hosts.longitude), isNotNull(hosts.address)),
+      and(
+        or(isNull(hosts.latitude), isNull(hosts.longitude)),
+        isNotNull(hosts.address),
+      ),
     );
 
-  if (!rows.length) {
-    console.log("No hosts missing coordinates.");
+  const requestRows = await db
+    .select({
+      id: locationRequests.id,
+      businessName: locationRequests.businessName,
+      address: locationRequests.address,
+    })
+    .from(locationRequests)
+    .where(
+      and(
+        or(
+          isNull(locationRequests.latitude),
+          isNull(locationRequests.longitude),
+        ),
+        isNotNull(locationRequests.address),
+      ),
+    );
+
+  if (!hostRows.length && !requestRows.length) {
+    console.log("No hosts or location requests missing coordinates.");
     return;
   }
 
-  console.log(`Geocoding ${rows.length} host(s)...`);
+  if (hostRows.length) {
+    console.log(`Geocoding ${hostRows.length} host(s)...`);
+  }
+  if (requestRows.length) {
+    console.log(`Geocoding ${requestRows.length} location request(s)...`);
+  }
 
   let updated = 0;
   let skipped = 0;
 
-  for (const host of rows) {
-    const fullAddress = [
-      host.address?.trim(),
-      host.city?.trim(),
-      host.state?.trim(),
-    ]
-      .filter(Boolean)
-      .join(", ");
+  for (const host of hostRows) {
+    const fullAddress = buildAddress([
+      host.address,
+      host.city,
+      host.state,
+      "USA",
+    ]);
 
     if (!fullAddress) {
       skipped += 1;
       continue;
     }
 
-    const coords = await geocodeAddress(fullAddress);
+    const coords = await forwardGeocode(fullAddress);
     if (!coords) {
       console.log(`No coords for ${host.businessName} (${fullAddress})`);
       skipped += 1;
@@ -82,7 +95,39 @@ async function run() {
 
     updated += 1;
     console.log(
-      `Updated ${host.businessName} -> ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`,
+      `Updated host ${host.businessName} -> ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`,
+    );
+    await delay(1100);
+  }
+
+  for (const request of requestRows) {
+    const fullAddress = buildAddress([request.address, "USA"]);
+    if (!fullAddress) {
+      skipped += 1;
+      continue;
+    }
+
+    const coords = await forwardGeocode(fullAddress);
+    if (!coords) {
+      console.log(
+        `No coords for request ${request.businessName} (${fullAddress})`,
+      );
+      skipped += 1;
+      await delay(1100);
+      continue;
+    }
+
+    await db
+      .update(locationRequests)
+      .set({
+        latitude: coords.lat.toString(),
+        longitude: coords.lng.toString(),
+      })
+      .where(eq(locationRequests.id, request.id));
+
+    updated += 1;
+    console.log(
+      `Updated request ${request.businessName} -> ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`,
     );
     await delay(1100);
   }

@@ -25,6 +25,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import ShareButton from "@/components/share-button";
+import {
+  ParkingScheduleCalendar,
+  type ParkingScheduleItem,
+} from "@/components/parking-schedule-calendar";
 
 export default function RestaurantDetailPage() {
   const { id: restaurantId } = useParams();
@@ -87,6 +91,43 @@ export default function RestaurantDetailPage() {
   const scheduleItems = Array.isArray(scheduleData?.schedule)
     ? scheduleData.schedule
     : [];
+  const parkingScheduleItems: ParkingScheduleItem[] = scheduleItems
+    .filter(
+      (item: any) =>
+        item.type === "manual" ||
+        (item.type === "booking" && item.event?.requiresPayment),
+    )
+    .map((item: any) => {
+      if (item.type === "manual") {
+        return {
+          id: `manual-${item.manual.id}`,
+          manualId: item.manual.id,
+          date: item.manual.date,
+          startTime: item.manual.startTime,
+          endTime: item.manual.endTime,
+          title: item.manual.locationName || "Manual stop",
+          subtitle: [item.manual.address, item.manual.city, item.manual.state]
+            .filter(Boolean)
+            .join(", "),
+          type: "manual" as const,
+          isPublic: true,
+        };
+      }
+
+      return {
+        id: `booking-${item.event.id}-${item.slotType || "slot"}`,
+        date: item.event.date,
+        startTime: item.event.startTime,
+        endTime: item.event.endTime,
+        title: item.host?.businessName || "Parking Pass",
+        subtitle: item.host?.address || "",
+        type: "booking" as const,
+        slotLabel: item.slotType
+          ? formatSlotSummary(String(item.slotType))
+          : null,
+        isPublic: true,
+      };
+    });
   const formatSlotSummary = (value: string) =>
     value
       .split(",")
@@ -448,7 +489,7 @@ export default function RestaurantDetailPage() {
         {isFoodTruck && (
           <div className="mb-8">
             <h2 className="text-xl font-bold text-foreground mb-4">
-              Upcoming Schedule
+              Parking Schedule
             </h2>
             {scheduleLoading ? (
               <Card>
@@ -456,63 +497,15 @@ export default function RestaurantDetailPage() {
                   Loading schedule...
                 </CardContent>
               </Card>
-            ) : scheduleItems.length > 0 ? (
-              <div className="space-y-3">
-                {scheduleItems.map((item: any) => (
-                  <Card
-                    key={
-                      item.type === "manual"
-                        ? `manual-${item.manual.id}`
-                        : `${item.type}-${item.event.id}`
-                    }
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        {item.type === "manual" ? (
-                          <div>
-                            <p className="font-semibold text-foreground">
-                              {new Date(item.manual.date).toLocaleDateString()}{" "}
-                              - {item.manual.startTime} - {item.manual.endTime}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {item.manual.locationName
-                                ? `${item.manual.locationName} - `
-                                : ""}
-                              {item.manual.address}
-                            </p>
-                          </div>
-                        ) : (
-                          <div>
-                            <p className="font-semibold text-foreground">
-                              {new Date(item.event.date).toLocaleDateString()} -{" "}
-                              {item.event.startTime} - {item.event.endTime}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {item.host.businessName} - {item.host.address}
-                            </p>
-                            {item.slotType && (
-                              <p className="text-xs text-muted-foreground">
-                                Slots: {formatSlotSummary(String(item.slotType))}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                        <Badge variant="secondary">
-                          {item.type === "manual"
-                            ? "Manual"
-                            : item.type === "booking"
-                              ? "Booked"
-                              : "Accepted"}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+            ) : parkingScheduleItems.length > 0 ? (
+              <ParkingScheduleCalendar
+                items={parkingScheduleItems}
+                subtitle="Auto-updated by Parking Pass bookings and public manual stops."
+              />
             ) : (
               <Card>
                 <CardContent className="p-6 text-center text-muted-foreground">
-                  No upcoming bookings or accepted events yet.
+                  No upcoming parking schedule yet.
                 </CardContent>
               </Card>
             )}

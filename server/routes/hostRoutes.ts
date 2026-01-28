@@ -27,6 +27,7 @@ import {
   buildCapacityFullError,
   computeFillRate,
 } from "../services/interestDecision";
+import { forwardGeocode } from "../utils/geocoding";
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -46,6 +47,12 @@ export function registerHostRoutes(app: Express) {
       normalizeLocationValue(city),
       normalizeLocationValue(state),
     ].join("|");
+
+  const buildGeocodeAddress = (
+    address?: string | null,
+    city?: string | null,
+    state?: string | null,
+  ) => [address, city, state, "USA"].filter(Boolean).join(", ");
 
   const getActiveParkingPassSeriesId = async (hostId: string) => {
     const today = new Date();
@@ -126,7 +133,57 @@ export function registerHostRoutes(app: Express) {
         });
       }
 
-      const host = await storage.createHost(parsed);
+      const rawLat = parsed.latitude ?? null;
+      const rawLng = parsed.longitude ?? null;
+      const manualLat =
+        rawLat === null || rawLat === undefined ? null : Number(rawLat);
+      const manualLng =
+        rawLng === null || rawLng === undefined ? null : Number(rawLng);
+      const hasManualCoords = rawLat !== null || rawLng !== null;
+      if (hasManualCoords && (!Number.isFinite(manualLat) || !Number.isFinite(manualLng))) {
+        return res.status(400).json({ message: "Invalid coordinates" });
+      }
+      const manualCoords =
+        hasManualCoords && manualLat !== null && manualLng !== null
+          ? { lat: manualLat, lng: manualLng }
+          : null;
+      if (
+        manualCoords &&
+        (manualCoords.lat < -90 ||
+          manualCoords.lat > 90 ||
+          manualCoords.lng < -180 ||
+          manualCoords.lng > 180)
+      ) {
+        return res.status(400).json({ message: "Invalid coordinates" });
+      }
+
+      const geocodeAddress = buildGeocodeAddress(
+        parsed.address,
+        parsed.city ?? null,
+        parsed.state ?? null,
+      );
+      let coords: { lat: number; lng: number } | null = null;
+      if (!manualCoords && geocodeAddress) {
+        try {
+          coords = await forwardGeocode(geocodeAddress);
+        } catch {
+          coords = null;
+        }
+      }
+
+      const host = await storage.createHost({
+        ...parsed,
+        latitude: manualCoords
+          ? manualCoords.lat.toString()
+          : coords
+            ? coords.lat.toString()
+            : null,
+        longitude: manualCoords
+          ? manualCoords.lng.toString()
+          : coords
+            ? coords.lng.toString()
+            : null,
+      });
 
       // Hosts should keep their existing user type (typically "customer").
       // We no longer auto-upgrade hosts into restaurant_owner accounts so
@@ -235,6 +292,14 @@ export function registerHostRoutes(app: Express) {
         return res.status(404).json({ message: "Host profile not found" });
       }
 
+      const latitudeSchema = z.preprocess(
+        (value) => (value === null ? undefined : value),
+        z.coerce.number().min(-90).max(90),
+      );
+      const longitudeSchema = z.preprocess(
+        (value) => (value === null ? undefined : value),
+        z.coerce.number().min(-180).max(180),
+      );
       const updateSchema = z.object({
         businessName: z.string().min(1).optional(),
         address: z.string().min(1).optional(),
@@ -245,8 +310,25 @@ export function registerHostRoutes(app: Express) {
         notes: z.string().optional().nullable(),
         amenities: z.record(z.boolean()).optional().nullable(),
         spotCount: z.number().int().min(1).optional(),
+        latitude: latitudeSchema.optional(),
+        longitude: longitudeSchema.optional(),
       });
       const parsed = updateSchema.parse(req.body || {});
+
+      const hasManualCoords =
+        parsed.latitude !== undefined || parsed.longitude !== undefined;
+      if (
+        hasManualCoords &&
+        (parsed.latitude === undefined || parsed.longitude === undefined)
+      ) {
+        return res
+          .status(400)
+          .json({ message: "Latitude and longitude are required together." });
+      }
+      const manualCoords =
+        parsed.latitude !== undefined && parsed.longitude !== undefined
+          ? { lat: parsed.latitude, lng: parsed.longitude }
+          : null;
 
       const nextAddress = parsed.address ?? host.address;
       const nextCity = parsed.city ?? host.city;
@@ -275,6 +357,24 @@ export function registerHostRoutes(app: Express) {
         });
       }
 
+      const addressChanged =
+        buildLocationKey(host.address, host.city, host.state) !== nextKey;
+      const shouldGeocode =
+        !manualCoords && (addressChanged || !host.latitude || !host.longitude);
+      const geocodeAddress = buildGeocodeAddress(
+        nextAddress,
+        nextCity ?? null,
+        nextState ?? null,
+      );
+      let coords: { lat: number; lng: number } | null = null;
+      if (shouldGeocode && geocodeAddress) {
+        try {
+          coords = await forwardGeocode(geocodeAddress);
+        } catch {
+          coords = null;
+        }
+      }
+
       const [updated] = await db
         .update(hosts)
         .set({
@@ -287,12 +387,24 @@ export function registerHostRoutes(app: Express) {
           notes: parsed.notes ?? host.notes,
           amenities: parsed.amenities ?? host.amenities ?? null,
           spotCount: parsed.spotCount ?? host.spotCount ?? 1,
+          latitude: manualCoords
+            ? manualCoords.lat.toString()
+            : coords
+              ? coords.lat.toString()
+              : addressChanged
+                ? null
+                : host.latitude,
+          longitude: manualCoords
+            ? manualCoords.lng.toString()
+            : coords
+              ? coords.lng.toString()
+              : addressChanged
+                ? null
+                : host.longitude,
           updatedAt: new Date(),
         })
         .where(eq(hosts.id, host.id))
         .returning();
-
-      await storage.ensureDraftParkingPassForHost(updated.id);
 
       res.json(updated);
     } catch (error: any) {
@@ -305,6 +417,89 @@ export function registerHostRoutes(app: Express) {
       res.status(500).json({ message: "Failed to update host profile" });
     }
   });
+
+  app.patch(
+    "/api/hosts/:hostId/coordinates",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { hostId } = req.params;
+        const userId = req.user.id;
+        const host = await storage.getHost(hostId);
+        if (!host || host.userId !== userId) {
+          return res.status(404).json({ message: "Host profile not found" });
+        }
+
+        const coordSchema = z.object({
+          latitude: z.coerce.number().min(-90).max(90),
+          longitude: z.coerce.number().min(-180).max(180),
+        });
+        const parsed = coordSchema.parse(req.body || {});
+
+        const updated = await storage.updateHostCoordinates(
+          host.id,
+          parsed.latitude,
+          parsed.longitude,
+        );
+
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error updating host coordinates:", error);
+        if (error instanceof z.ZodError) {
+          return res
+            .status(400)
+            .json({ message: "Invalid coordinates", errors: error.errors });
+        }
+        res.status(500).json({ message: "Failed to update coordinates" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/hosts/:hostId/geocode",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { hostId } = req.params;
+        const userId = req.user.id;
+        const host = await storage.getHost(hostId);
+        if (!host || host.userId !== userId) {
+          return res.status(404).json({ message: "Host profile not found" });
+        }
+
+        const geocodeAddress = buildGeocodeAddress(
+          host.address,
+          host.city ?? null,
+          host.state ?? null,
+        );
+        let coords: { lat: number; lng: number } | null = null;
+        if (geocodeAddress) {
+          try {
+            coords = await forwardGeocode(geocodeAddress);
+          } catch {
+            coords = null;
+          }
+        }
+
+        if (!coords) {
+          return res.status(400).json({
+            message: "Unable to find coordinates for this address.",
+          });
+        }
+
+        const updated = await storage.updateHostCoordinates(
+          host.id,
+          coords.lat,
+          coords.lng,
+        );
+
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error geocoding host:", error);
+        res.status(500).json({ message: "Failed to geocode host" });
+      }
+    },
+  );
 
   app.get(
     "/api/hosts/:hostId/blackout-dates",
@@ -437,7 +632,7 @@ export function registerHostRoutes(app: Express) {
     }
   });
 
-  app.post("/api/hosts/events", isAuthenticated, async (req: any, res) => {
+  const createHostParkingPassListing = async (req: any, res: any) => {
     try {
       const userId = req.user.id;
       const hostId = req.body?.hostId;
@@ -703,19 +898,23 @@ export function registerHostRoutes(app: Express) {
       const createdEvents = await db.insert(events).values(newEvents).returning();
       res.status(201).json(createdEvents);
     } catch (error: any) {
-      console.error("Error creating event:", error);
+      console.error("Error creating parking pass listing:", error);
       if (error instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({ message: "Invalid event data", errors: error.errors });
+        return res.status(400).json({
+          message: "Invalid parking pass data",
+          errors: error.errors,
+        });
       }
-      res
-        .status(400)
-        .json({ message: error.message || "Failed to create event" });
+      res.status(400).json({
+        message: error.message || "Failed to create parking pass listing",
+      });
     }
-  });
+  };
 
-  app.get("/api/hosts/events", isAuthenticated, async (req: any, res) => {
+  app.post("/api/hosts/parking-pass", isAuthenticated, createHostParkingPassListing);
+  app.post("/api/hosts/events", isAuthenticated, createHostParkingPassListing);
+
+  const listHostParkingPassListings = async (req: any, res: any) => {
     try {
       const userId = req.user.id;
       const hostId = req.query?.hostId;
@@ -728,153 +927,177 @@ export function registerHostRoutes(app: Express) {
       }
 
       const eventsByHost = await storage.getEventsByHost(host.id);
-      res.json(eventsByHost);
+      const hasPricing = (event: (typeof eventsByHost)[number]) =>
+        (event.breakfastPriceCents ?? 0) > 0 ||
+        (event.lunchPriceCents ?? 0) > 0 ||
+        (event.dinnerPriceCents ?? 0) > 0 ||
+        (event.dailyPriceCents ?? 0) > 0 ||
+        (event.weeklyPriceCents ?? 0) > 0 ||
+        (event.monthlyPriceCents ?? 0) > 0;
+      const parkingPassListings = eventsByHost.filter(
+        (event) => event.requiresPayment && hasPricing(event),
+      );
+      res.json(parkingPassListings);
     } catch (error: any) {
-      console.error("Error fetching host events:", error);
-      res.status(500).json({ message: "Failed to fetch events" });
+      console.error("Error fetching parking pass listings:", error);
+      res.status(500).json({ message: "Failed to fetch parking pass listings" });
     }
-  });
+  };
 
-  // PATCH: Override a single event occurrence (time window, capacity, hard cap)
+  app.get("/api/hosts/parking-pass", isAuthenticated, listHostParkingPassListings);
+  app.get("/api/hosts/events", isAuthenticated, listHostParkingPassListings);
+
+  // PATCH: Override a single parking pass listing occurrence (time window, capacity, hard cap)
+  const updateHostParkingPassListing = async (req: any, res: any) => {
+    try {
+      const eventId = req.params.eventId ?? req.params.passId;
+      if (!eventId) {
+        return res.status(400).json({ message: "Parking pass ID required" });
+      }
+      const userId = req.user.id;
+
+      // Verify event exists and host owns it
+      const { event, host } = await getEventAndHostForUser(eventId, userId);
+
+      if (!event) {
+        return res
+          .status(404)
+          .json({ message: "Parking pass listing not found" });
+      }
+      if (!host) {
+        return res.status(404).json({ message: "Host profile not found" });
+      }
+
+      // Verify host owns the event
+      if (!hostOwnsEvent(host, event)) {
+        return res
+          .status(403)
+          .json({ message: "Not authorized to edit this parking pass listing" });
+      }
+
+      // Don't allow editing past events
+      const eventDate = new Date(event.date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (eventDate < today) {
+        return res
+          .status(400)
+          .json({ message: "Cannot edit past parking pass listings" });
+      }
+
+      const { startTime, endTime, maxTrucks, hardCapEnabled } = req.body;
+
+      // Build updates object (only include provided fields)
+      const updates: any = {};
+      if (startTime !== undefined) updates.startTime = startTime;
+      if (endTime !== undefined) updates.endTime = endTime;
+      let shouldSyncSpotCount = false;
+      if (maxTrucks !== undefined) {
+        const spotCount = Number(maxTrucks);
+        if (!Number.isFinite(spotCount) || spotCount < 1) {
+          return res
+            .status(400)
+            .json({ message: "Number of spots must be at least 1" });
+        }
+        updates.maxTrucks = spotCount;
+        if (event.requiresPayment) {
+          shouldSyncSpotCount = true;
+        }
+      }
+      if (hardCapEnabled !== undefined) updates.hardCapEnabled = hardCapEnabled;
+
+      // Validation: End time > Start time (if both provided)
+      const finalStartTime = updates.startTime || event.startTime;
+      const finalEndTime = updates.endTime || event.endTime;
+
+      const [startHour, startMinute] = finalStartTime.split(":").map(Number);
+      const [endHour, endMinute] = finalEndTime.split(":").map(Number);
+      const startMinutes = startHour * 60 + startMinute;
+      const endMinutes = endHour * 60 + endMinute;
+
+      if (endMinutes <= startMinutes) {
+        return res
+          .status(400)
+          .json({ message: "End time must be after start time" });
+      }
+
+      // Validation: Capacity >= 1
+      const finalMaxTrucks =
+        updates.maxTrucks !== undefined ? updates.maxTrucks : event.maxTrucks;
+      if (finalMaxTrucks < 1) {
+        return res
+          .status(400)
+          .json({ message: "Max trucks must be at least 1" });
+      }
+
+      // Store before state for telemetry
+      const beforeState = {
+        startTime: event.startTime,
+        endTime: event.endTime,
+        maxTrucks: event.maxTrucks,
+        hardCapEnabled: event.hardCapEnabled,
+      };
+
+      // Apply updates
+      updates.updatedAt = new Date();
+      const [updatedEvent] = await db
+        .update(events)
+        .set(updates)
+        .where(eq(events.id, eventId))
+        .returning();
+
+      if (shouldSyncSpotCount && updates.maxTrucks !== undefined) {
+        await db
+          .update(hosts)
+          .set({ spotCount: updates.maxTrucks, updatedAt: new Date() })
+          .where(eq(hosts.id, host.id));
+
+        await db
+          .update(events)
+          .set({ maxTrucks: updates.maxTrucks, updatedAt: new Date() })
+          .where(
+            and(
+              eq(events.hostId, host.id),
+              eq(events.requiresPayment, true),
+              gte(events.date, today),
+            ),
+          );
+      }
+
+      // Telemetry
+      await storage.createTelemetryEvent({
+        eventName: "occurrence_overridden",
+        userId: req.user.id,
+        properties: {
+          eventId,
+          seriesId: event.seriesId,
+          before: beforeState,
+          after: {
+            startTime: updatedEvent.startTime,
+            endTime: updatedEvent.endTime,
+            maxTrucks: updatedEvent.maxTrucks,
+            hardCapEnabled: updatedEvent.hardCapEnabled,
+          },
+          changedFields: Object.keys(updates).filter((k) => k !== "updatedAt"),
+        },
+      });
+
+      res.json(updatedEvent);
+    } catch (error: any) {
+      console.error("Error updating parking pass listing:", error);
+      res.status(500).json({ message: "Failed to update parking pass listing" });
+    }
+  };
+
+  app.patch(
+    "/api/hosts/parking-pass/:passId",
+    isAuthenticated,
+    updateHostParkingPassListing,
+  );
   app.patch(
     "/api/hosts/events/:eventId",
     isAuthenticated,
-    async (req: any, res) => {
-      try {
-        const { eventId } = req.params;
-        const userId = req.user.id;
-
-        // Verify event exists and host owns it
-        const { event, host } = await getEventAndHostForUser(eventId, userId);
-
-        if (!event) {
-          return res.status(404).json({ message: "Event not found" });
-        }
-        if (!host) {
-          return res.status(404).json({ message: "Host profile not found" });
-        }
-
-        // Verify host owns the event
-        if (!hostOwnsEvent(host, event)) {
-          return res
-            .status(403)
-            .json({ message: "Not authorized to edit this event" });
-        }
-
-        // Don't allow editing past events
-        const eventDate = new Date(event.date);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (eventDate < today) {
-          return res.status(400).json({ message: "Cannot edit past events" });
-        }
-
-        const { startTime, endTime, maxTrucks, hardCapEnabled } = req.body;
-
-        // Build updates object (only include provided fields)
-        const updates: any = {};
-        if (startTime !== undefined) updates.startTime = startTime;
-        if (endTime !== undefined) updates.endTime = endTime;
-        let shouldSyncSpotCount = false;
-        if (maxTrucks !== undefined) {
-          const spotCount = Number(maxTrucks);
-          if (!Number.isFinite(spotCount) || spotCount < 1) {
-            return res
-              .status(400)
-              .json({ message: "Number of spots must be at least 1" });
-          }
-          updates.maxTrucks = spotCount;
-          if (event.requiresPayment) {
-            shouldSyncSpotCount = true;
-          }
-        }
-        if (hardCapEnabled !== undefined)
-          updates.hardCapEnabled = hardCapEnabled;
-
-        // Validation: End time > Start time (if both provided)
-        const finalStartTime = updates.startTime || event.startTime;
-        const finalEndTime = updates.endTime || event.endTime;
-
-        const [startHour, startMinute] = finalStartTime.split(":").map(Number);
-        const [endHour, endMinute] = finalEndTime.split(":").map(Number);
-        const startMinutes = startHour * 60 + startMinute;
-        const endMinutes = endHour * 60 + endMinute;
-
-        if (endMinutes <= startMinutes) {
-          return res
-            .status(400)
-            .json({ message: "End time must be after start time" });
-        }
-
-        // Validation: Capacity >= 1
-        const finalMaxTrucks =
-          updates.maxTrucks !== undefined ? updates.maxTrucks : event.maxTrucks;
-        if (finalMaxTrucks < 1) {
-          return res
-            .status(400)
-            .json({ message: "Max trucks must be at least 1" });
-        }
-
-        // Store before state for telemetry
-        const beforeState = {
-          startTime: event.startTime,
-          endTime: event.endTime,
-          maxTrucks: event.maxTrucks,
-          hardCapEnabled: event.hardCapEnabled,
-        };
-
-        // Apply updates
-        updates.updatedAt = new Date();
-        const [updatedEvent] = await db
-          .update(events)
-          .set(updates)
-          .where(eq(events.id, eventId))
-          .returning();
-
-        if (shouldSyncSpotCount && updates.maxTrucks !== undefined) {
-          await db
-            .update(hosts)
-            .set({ spotCount: updates.maxTrucks, updatedAt: new Date() })
-            .where(eq(hosts.id, host.id));
-
-          await db
-            .update(events)
-            .set({ maxTrucks: updates.maxTrucks, updatedAt: new Date() })
-            .where(
-              and(
-                eq(events.hostId, host.id),
-                eq(events.requiresPayment, true),
-                gte(events.date, today),
-              ),
-            );
-        }
-
-        // Telemetry
-        await storage.createTelemetryEvent({
-          eventName: "occurrence_overridden",
-          userId: req.user.id,
-          properties: {
-            eventId,
-            seriesId: event.seriesId,
-            before: beforeState,
-            after: {
-              startTime: updatedEvent.startTime,
-              endTime: updatedEvent.endTime,
-              maxTrucks: updatedEvent.maxTrucks,
-              hardCapEnabled: updatedEvent.hardCapEnabled,
-            },
-            changedFields: Object.keys(updates).filter(
-              (k) => k !== "updatedAt"
-            ),
-          },
-        });
-
-        res.json(updatedEvent);
-      } catch (error: any) {
-        console.error("Error updating event:", error);
-        res.status(500).json({ message: "Failed to update event" });
-      }
-    }
+    updateHostParkingPassListing,
   );
 
   app.patch(
@@ -901,13 +1124,15 @@ export function registerHostRoutes(app: Express) {
         }
 
         if (!event) {
-          return res.status(404).json({ message: "Event not found" });
+          return res
+            .status(404)
+            .json({ message: "Parking pass listing not found" });
         }
 
         if (!hostOwnsEvent(host, event)) {
-          return res
-            .status(403)
-            .json({ message: "Not authorized to manage this event" });
+          return res.status(403).json({
+            message: "Not authorized to manage this parking pass listing",
+          });
         }
 
         // Idempotency Check: If already in desired status, return success
@@ -1013,32 +1238,44 @@ export function registerHostRoutes(app: Express) {
     }
   );
 
+  const listHostParkingPassInterests = async (req: any, res: any) => {
+    try {
+      const eventId = req.params.eventId ?? req.params.passId;
+      if (!eventId) {
+        return res.status(400).json({ message: "Parking pass ID required" });
+      }
+      const userId = req.user.id;
+
+      // Verify host owns this parking pass listing (indirectly via host profile)
+      const host = await getHostByUserId(userId);
+      if (!host) {
+        return res.status(403).json({ message: "Not a host" });
+      }
+
+      const { event } = await getEventAndHostForUser(eventId, userId);
+      if (!event || !hostOwnsEvent(host, event)) {
+        return res
+          .status(404)
+          .json({ message: "Parking pass listing not found" });
+      }
+
+      const interests = await storage.getEventInterestsByEventId(eventId);
+      res.json(interests);
+    } catch (error: any) {
+      console.error("Error fetching parking pass interests:", error);
+      res.status(500).json({ message: "Failed to fetch interests" });
+    }
+  };
+
+  app.get(
+    "/api/hosts/parking-pass/:passId/interests",
+    isAuthenticated,
+    listHostParkingPassInterests,
+  );
   app.get(
     "/api/hosts/events/:eventId/interests",
     isAuthenticated,
-    async (req: any, res) => {
-      try {
-        const { eventId } = req.params;
-        const userId = req.user.id;
-
-        // Verify host owns this event (indirectly via host profile)
-        const host = await getHostByUserId(userId);
-        if (!host) {
-          return res.status(403).json({ message: "Not a host" });
-        }
-
-        const { event } = await getEventAndHostForUser(eventId, userId);
-        if (!event || !hostOwnsEvent(host, event)) {
-          return res.status(404).json({ message: "Event not found" });
-        }
-
-        const interests = await storage.getEventInterestsByEventId(eventId);
-        res.json(interests);
-      } catch (error: any) {
-        console.error("Error fetching event interests:", error);
-        res.status(500).json({ message: "Failed to fetch interests" });
-      }
-    }
+    listHostParkingPassInterests,
   );
 
   // =====================================================================

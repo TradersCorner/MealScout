@@ -1211,9 +1211,16 @@ export function registerAdminManagementRoutes(app: Express) {
         const allEvents = await Promise.all(
           hosts.map((host) => storage.getEventsByHost(host.id)),
         );
+        const hasPricing = (event: (typeof allEvents)[number][number]) =>
+          (event.breakfastPriceCents ?? 0) > 0 ||
+          (event.lunchPriceCents ?? 0) > 0 ||
+          (event.dinnerPriceCents ?? 0) > 0 ||
+          (event.dailyPriceCents ?? 0) > 0 ||
+          (event.weeklyPriceCents ?? 0) > 0 ||
+          (event.monthlyPriceCents ?? 0) > 0;
         const parkingPassEvents = allEvents
           .flat()
-          .filter((event) => event.requiresPayment);
+          .filter((event) => event.requiresPayment && hasPricing(event));
 
         const eventsByHost = new Map<string, typeof parkingPassEvents>();
         for (const event of parkingPassEvents) {
@@ -1321,6 +1328,11 @@ export function registerAdminManagementRoutes(app: Express) {
           updates.dinnerPriceCents ?? event.dinnerPriceCents ?? 0,
         );
         const slotSum = breakfast + lunch + dinner;
+        if (slotSum <= 0) {
+          return res.status(400).json({
+            message: "At least one slot price is required.",
+          });
+        }
         const dailyOverride =
           updates.dailyPriceCents !== undefined
             ? Number(updates.dailyPriceCents)
@@ -1850,8 +1862,6 @@ export function registerAdminManagementRoutes(app: Express) {
           .set({ ...updates, updatedAt: new Date() })
           .where(eq(hosts.id, req.params.id))
           .returning();
-
-        await storage.ensureDraftParkingPassForHost(updated.id);
 
         res.json(updated);
       } catch (error: any) {

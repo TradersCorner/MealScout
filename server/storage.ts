@@ -699,6 +699,11 @@ export class DatabaseStorage implements IStorage {
   private async createDraftParkingPassForHost(
     host: Host,
   ): Promise<boolean> {
+    // Pricing is required for Parking Pass listings; skip auto-creating drafts.
+    const draftsEnabled = false;
+    if (!draftsEnabled) {
+      return false;
+    }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const horizon = new Date(today);
@@ -797,11 +802,6 @@ export class DatabaseStorage implements IStorage {
       }
     } catch (e) {
       console.warn("ensureCityExists failed for host", e);
-    }
-    try {
-      await this.createDraftParkingPassForHost(newHost);
-    } catch (e) {
-      console.warn("createDraftParkingPassForHost failed:", e);
     }
     return newHost;
   }

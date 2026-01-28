@@ -19,6 +19,7 @@
     "verify:deal-writes": "npx dotenv-cli -e .env -- npx tsx scripts/verifyDealWrites.ts",
     "test:incidents": "tsx scripts/testIncidents.ts",
     "validate:config": "tsx scripts/validateConfig.ts",
+    "backfill:host-coordinates": "tsx scripts/backfillHostGeocodes.ts",
     "stress-test": "tsx scripts/stressTest.ts",
     "test:flows": "tsx scripts/userFlows.ts",
     "test:flows:with-server": "node scripts/testFlowsWithServer.mjs",

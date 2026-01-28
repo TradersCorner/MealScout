@@ -55,6 +55,12 @@ interface BaseEmailParams {
   }>;
 }
 
+interface ParkingPassCompletionReminderParams {
+  email: string;
+  businessName?: string;
+  address?: string;
+}
+
 // Email templates
 class EmailTemplates {
   public static getBaseTemplate(title: string, content: string): string {
@@ -1095,6 +1101,41 @@ export class EmailService {
     text?: string,
   ): Promise<boolean> {
     return this.sendEmail({ to, subject, html, text });
+  }
+
+  async sendParkingPassCompletionReminder(
+    params: ParkingPassCompletionReminderParams,
+  ): Promise<boolean> {
+    const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:5000";
+    const manageUrl = `${baseUrl.replace(/\\/+$/, "")}/parking-pass`;
+    const locationLabel = params.businessName || "your location";
+    const addressLine = params.address
+      ? `<p><strong>Address:</strong> ${params.address}</p>`
+      : "";
+    const content = `
+      <h2>Finish your Parking Pass pricing</h2>
+      <p>Your parking pass for <strong>${locationLabel}</strong> isn’t complete yet.</p>
+      ${addressLine}
+      <p>Add at least one slot price (breakfast, lunch, or dinner) so trucks can book your spots.</p>
+      <p style="margin: 18px 0;">
+        <a href="${manageUrl}" class="cta-button">Complete Parking Pass</a>
+      </p>
+      <p>If the button doesn’t work, paste this link into your browser:</p>
+      <p style="word-break: break-all; color: #f97316;">${manageUrl}</p>
+    `;
+
+    const html = EmailTemplates.getBaseTemplate(
+      "Complete your Parking Pass",
+      content,
+    );
+    const text = `Finish your Parking Pass pricing for ${locationLabel}. Manage here: ${manageUrl}`;
+    return this.sendEmail({
+      to: params.email,
+      subject: "Finish your Parking Pass pricing",
+      html,
+      text,
+      category: "general",
+    });
   }
 
   async sendEmailVerificationEmail(

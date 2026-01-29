@@ -3284,12 +3284,6 @@ export const truckParkingReportsRelations = relations(
   }),
 );
 
-export const requestLogsRelations = relations(requestLogs, ({ one }) => ({
-  user: one(users, {
-    fields: [requestLogs.userId],
-    references: [users.id],
-  }),
-}));
 
 export const referralsRelations = relations(referrals, ({ one }) => ({
   affiliateUser: one(users, {
@@ -3817,6 +3811,13 @@ export const requestLogs = pgTable(
     index("idx_request_logs_path").on(table.path),
   ],
 );
+
+export const requestLogsRelations = relations(requestLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [requestLogs.userId],
+    references: [users.id],
+  }),
+}));
 
 export const adminDailyReports = pgTable(
   "admin_daily_reports",

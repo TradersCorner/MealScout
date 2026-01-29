@@ -19,9 +19,11 @@ import {
   securityAuditLog,
   incidents,
   users,
+  requestLogs,
+  adminDailyReports,
 } from "@shared/schema";
 import { eq, desc, and, or, gte, lte, like, isNull } from "drizzle-orm";
-import { isAdmin } from "./unifiedAuth";
+import { isAdmin, isStaffOrAdmin } from "./unifiedAuth";
 import { logAudit } from "./auditLogger";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
@@ -322,6 +324,70 @@ router.get("/moderation-events/:id", isAdmin, async (req, res) => {
   } catch (error) {
     console.error("Failed to fetch event:", error);
     res.status(500).json({ error: "Failed to fetch event" });
+  }
+});
+
+/**
+ * GET /api/admin/request-logs
+ * Download request logs for a date range (default last 48 hours)
+ */
+router.get("/request-logs", isStaffOrAdmin, async (req, res) => {
+  try {
+    const startParam = req.query.startDate as string | undefined;
+    const endParam = req.query.endDate as string | undefined;
+    const limit = Number(req.query.limit || 2000);
+    const startDate = startParam
+      ? new Date(`${startParam}T00:00:00`)
+      : new Date(Date.now() - 48 * 60 * 60 * 1000);
+    const endDate = endParam
+      ? new Date(`${endParam}T23:59:59`)
+      : new Date();
+
+    const logs = await db
+      .select()
+      .from(requestLogs)
+      .where(
+        and(
+          gte(requestLogs.createdAt, startDate),
+          lte(requestLogs.createdAt, endDate)
+        )
+      )
+      .orderBy(desc(requestLogs.createdAt))
+      .limit(Number.isFinite(limit) ? Math.min(limit, 20000) : 2000);
+
+    res.json({
+      range: {
+        start: startDate.toISOString(),
+        end: endDate.toISOString(),
+      },
+      count: logs.length,
+      logs,
+    });
+  } catch (error) {
+    console.error("Failed to fetch request logs:", error);
+    res.status(500).json({ error: "Failed to fetch request logs" });
+  }
+});
+
+/**
+ * GET /api/admin/daily-reports
+ * Fetch stored daily summaries (default request logs)
+ */
+router.get("/daily-reports", isStaffOrAdmin, async (req, res) => {
+  try {
+    const reportType = (req.query.type as string) || "request_summary";
+    const limit = Number(req.query.limit || 30);
+    const reports = await db
+      .select()
+      .from(adminDailyReports)
+      .where(eq(adminDailyReports.reportType, reportType))
+      .orderBy(desc(adminDailyReports.reportDate))
+      .limit(Number.isFinite(limit) ? Math.min(limit, 180) : 30);
+
+    res.json({ reportType, count: reports.length, reports });
+  } catch (error) {
+    console.error("Failed to fetch daily reports:", error);
+    res.status(500).json({ error: "Failed to fetch daily reports" });
   }
 });
 

@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import {
   PARKING_PASS_BOOKING_DAYS,
   PARKING_PASS_SLOT_TYPES,
+  addMinutesToTime,
   isSlotWithinHours,
 } from "@shared/parkingPassSlots";
 import {
@@ -33,9 +34,18 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import ShareButton from "@/components/share-button";
+import { initFacebookSDK, postToFacebook } from "@/lib/facebook";
 import {
   ParkingScheduleCalendar,
   type ParkingScheduleItem,
@@ -126,6 +136,7 @@ interface TruckScheduleEntry {
   status: string;
   createdAt?: string;
   bookingConfirmedAt?: string | null;
+  bookingId?: string;
   slotType?: string | null;
   event?: {
     id: string;
@@ -136,6 +147,7 @@ interface TruckScheduleEntry {
     requiresPayment?: boolean | null;
   };
   host?: {
+    id?: string;
     businessName: string;
     address: string;
     locationType: string;
@@ -153,10 +165,68 @@ interface TruckScheduleEntry {
   };
 }
 
+interface TruckParkingReport {
+  id: string;
+  truckId: string;
+  date: string;
+  sourceType: string;
+  bookingId?: string | null;
+  manualScheduleId?: string | null;
+  hostId?: string | null;
+  locationName?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  rating?: number | null;
+  arrivalCleanliness?: number | null;
+  customersServed?: number | null;
+  salesCents?: number | null;
+  notes?: string | null;
+}
+
 type GeoPoint = { lat: number; lng: number };
+
+type SocialAutopostSettings = {
+  platforms: {
+    facebook: boolean;
+    instagram: boolean;
+    x: boolean;
+  };
+  triggers: {
+    schedule: boolean;
+    booking: boolean;
+    live: boolean;
+    deal: boolean;
+  };
+  promptBeforePost: boolean;
+};
+
+const defaultSocialAutopostSettings: SocialAutopostSettings = {
+  platforms: {
+    facebook: true,
+    instagram: true,
+    x: true,
+  },
+  triggers: {
+    schedule: true,
+    booking: true,
+    live: true,
+    deal: true,
+  },
+  promptBeforePost: true,
+};
 
 const formatSlotLabel = (slot: string) =>
   slot.charAt(0).toUpperCase() + slot.slice(1);
+
+const buildReportKey = (report: {
+  bookingId?: string | null;
+  manualScheduleId?: string | null;
+}) => {
+  if (report.bookingId) return `booking:${report.bookingId}`;
+  if (report.manualScheduleId) return `manual:${report.manualScheduleId}`;
+  return null;
+};
 
 const hasListingPricing = (listing: ParkingPassListing) =>
   (listing.breakfastPriceCents ?? 0) > 0 ||
@@ -326,6 +396,26 @@ export default function ParkingPassPage() {
   const [passListings, setPassListings] = useState<ParkingPassListing[]>([]);
   const [truckId, setTruckId] = useState<string | null>(null);
   const [truck, setTruck] = useState<any | null>(null);
+  const [socialLinks, setSocialLinks] = useState({
+    facebookPageUrl: "",
+    instagramUrl: "",
+    xUrl: "",
+  });
+  const [socialSettings, setSocialSettings] = useState<SocialAutopostSettings>(
+    defaultSocialAutopostSettings,
+  );
+  const [isSavingSocialSettings, setIsSavingSocialSettings] = useState(false);
+  const [postPrompt, setPostPrompt] = useState<{
+    title: string;
+    message: string;
+    link: string;
+    selectedPlatforms: {
+      facebook: boolean;
+      instagram: boolean;
+      x: boolean;
+    };
+  } | null>(null);
+  const [isPostingSocial, setIsPostingSocial] = useState(false);
   const [hasHostProfile, setHasHostProfile] = useState(false);
   const [hosts, setHosts] = useState<Host[]>([]);
   const [selectedHostId, setSelectedHostId] = useState<string>("");
@@ -381,6 +471,26 @@ export default function ParkingPassPage() {
   const [bookedSchedule, setBookedSchedule] = useState<TruckScheduleEntry[]>(
     [],
   );
+  const [parkingReports, setParkingReports] = useState<TruckParkingReport[]>(
+    [],
+  );
+  const [reportDraft, setReportDraft] = useState<{
+    date: string;
+    sourceType: "booking" | "manual" | "custom";
+    bookingId?: string;
+    manualScheduleId?: string;
+    hostId?: string;
+    locationName?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    rating?: string;
+    arrivalCleanliness?: string;
+    customersServed?: string;
+    salesDollars?: string;
+    notes?: string;
+  } | null>(null);
+  const [isSavingReport, setIsSavingReport] = useState(false);
   const [selectedListing, setSelectedListing] =
     useState<ParkingPassListing | null>(null);
   const [selectedSlotTypes, setSelectedSlotTypes] = useState<string[]>([]);
@@ -536,6 +646,29 @@ export default function ParkingPassPage() {
       cancelled = true;
     };
   }, [isAuthenticated, toast]);
+
+  useEffect(() => {
+    if (!truck) return;
+    setSocialLinks({
+      facebookPageUrl: truck.facebookPageUrl || "",
+      instagramUrl: truck.instagramUrl || "",
+      xUrl: truck.xUrl || "",
+    });
+    const existing =
+      (truck.socialAutopostSettings || {}) as Partial<SocialAutopostSettings>;
+    setSocialSettings({
+      ...defaultSocialAutopostSettings,
+      ...existing,
+      platforms: {
+        ...defaultSocialAutopostSettings.platforms,
+        ...(existing.platforms || {}),
+      },
+      triggers: {
+        ...defaultSocialAutopostSettings.triggers,
+        ...(existing.triggers || {}),
+      },
+    });
+  }, [truck?.id]);
 
   useEffect(() => {
     if (!pendingPassId) return;
@@ -765,6 +898,42 @@ export default function ParkingPassPage() {
     };
   }, [truckId, toast]);
 
+  useEffect(() => {
+    if (!truckId) {
+      setParkingReports([]);
+      return;
+    }
+    let cancelled = false;
+
+    const loadReports = async () => {
+      try {
+        const start = new Date();
+        start.setDate(start.getDate() - 120);
+        const startKey = start.toISOString().split("T")[0];
+        const res = await fetch(
+          `/api/trucks/${truckId}/parking-reports?startDate=${startKey}`,
+        );
+        if (!res.ok) {
+          throw new Error("Failed to load reports");
+        }
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data)) {
+          setParkingReports(data);
+        }
+      } catch {
+        if (!cancelled) {
+          setParkingReports([]);
+        }
+      }
+    };
+
+    loadReports();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [truckId]);
+
   const handleScheduleFieldChange = (
     field: keyof typeof scheduleForm,
     value: string | boolean,
@@ -838,6 +1007,26 @@ export default function ParkingPassPage() {
         title: "Schedule saved",
         description: "Your stop is now on your schedule.",
       });
+      const shareDate = scheduleForm.date
+        ? format(new Date(`${scheduleForm.date}T00:00:00`), "EEE, MMM d")
+        : "today";
+      const timeLabel =
+        scheduleForm.startTime && scheduleForm.endTime
+          ? `${scheduleForm.startTime} - ${scheduleForm.endTime}`
+          : "Time TBD";
+      const locationLabel =
+        scheduleForm.locationName || scheduleForm.address || "a new stop";
+      const shareMessage = `${
+        truck?.name || "We"
+      } are parked at ${locationLabel} on ${shareDate} (${timeLabel}). Find us on MealScout.`;
+      const shareLink = buildTruckShareLink();
+      if (shareLink) {
+        maybePromptSocialPost("schedule", {
+          title: "Share your updated schedule",
+          message: shareMessage,
+          link: shareLink,
+        });
+      }
     } catch (error) {
       toast({
         title: "Save failed",
@@ -881,20 +1070,48 @@ export default function ParkingPassPage() {
     }
   };
 
+  const reportByKey = useMemo(() => {
+    const map = new Map<string, TruckParkingReport>();
+    parkingReports.forEach((report) => {
+      const key = buildReportKey(report);
+      if (key) {
+        map.set(key, report);
+      }
+    });
+    return map;
+  }, [parkingReports]);
+
+  const reportLookup = useMemo(() => {
+    const lookup: Record<string, boolean> = {};
+    reportByKey.forEach((report, key) => {
+      lookup[key] = !!report.id;
+    });
+    return lookup;
+  }, [reportByKey]);
+
   const parkingScheduleItems = useMemo<ParkingScheduleItem[]>(() => {
     const bookingItems = bookedSchedule
       .map((entry) => {
         if (!entry.event) return null;
+        const reportKey = entry.bookingId
+          ? `booking:${entry.bookingId}`
+          : null;
         return {
           id: `booking-${entry.event.id}-${entry.slotType || "slot"}`,
           date: entry.event.date,
           startTime: entry.event.startTime,
           endTime: entry.event.endTime,
+          cleanupEndTime: addMinutesToTime(entry.event.endTime, 30),
           title: entry.host?.businessName || "Parking Pass",
           subtitle: entry.host?.address || "",
           type: "booking" as const,
           slotLabel: entry.slotType ? formatSlotLabel(entry.slotType) : null,
           isPublic: true,
+          bookingId: entry.bookingId,
+          hostId: entry.host?.id,
+          locationName: entry.host?.businessName,
+          address: entry.host?.address,
+          reportKey: reportKey ?? undefined,
         };
       })
       .filter(Boolean) as ParkingScheduleItem[];
@@ -911,6 +1128,11 @@ export default function ParkingPassPage() {
         .join(", "),
       type: "manual" as const,
       isPublic: entry.isPublic,
+      locationName: entry.locationName ?? "Manual stop",
+      address: entry.address,
+      city: entry.city,
+      state: entry.state,
+      reportKey: `manual:${entry.id}`,
     }));
 
     return [...bookingItems, ...manualItems].sort((a, b) => {
@@ -920,6 +1142,197 @@ export default function ParkingPassPage() {
       return (a.startTime || "").localeCompare(b.startTime || "");
     });
   }, [bookedSchedule, manualSchedules]);
+
+  const handleOpenReport = (item: ParkingScheduleItem) => {
+    if (!item.reportKey) return;
+    const existing = reportByKey.get(item.reportKey);
+    const dateKey =
+      typeof item.date === "string"
+        ? item.date.split("T")[0]
+        : item.date.toISOString().split("T")[0];
+    setReportDraft({
+      date: dateKey,
+      sourceType: item.type === "booking" ? "booking" : "manual",
+      bookingId: item.bookingId,
+      manualScheduleId: item.manualId,
+      hostId: item.hostId,
+      locationName: item.locationName || item.title,
+      address: item.address || item.subtitle || "",
+      city: item.city,
+      state: item.state,
+      rating: existing?.rating ? String(existing.rating) : "",
+      arrivalCleanliness: existing?.arrivalCleanliness
+        ? String(existing.arrivalCleanliness)
+        : "",
+      customersServed: existing?.customersServed
+        ? String(existing.customersServed)
+        : "",
+      salesDollars: existing?.salesCents
+        ? String((existing.salesCents / 100).toFixed(2))
+        : "",
+      notes: existing?.notes || "",
+    });
+  };
+
+  const handleReportFieldChange = (
+    field:
+      | "rating"
+      | "arrivalCleanliness"
+      | "customersServed"
+      | "salesDollars"
+      | "notes",
+    value: string,
+  ) => {
+    setReportDraft((current) =>
+      current ? { ...current, [field]: value } : current,
+    );
+  };
+
+  const handleSaveReport = async () => {
+    if (!truckId || !reportDraft) return;
+    setIsSavingReport(true);
+    try {
+      const salesValue = reportDraft.salesDollars?.trim();
+      const salesCents =
+        salesValue && Number.isFinite(Number(salesValue))
+          ? Math.max(0, Math.round(Number(salesValue) * 100))
+          : undefined;
+      const payload = {
+        date: reportDraft.date,
+        sourceType: reportDraft.sourceType,
+        bookingId: reportDraft.bookingId,
+        manualScheduleId: reportDraft.manualScheduleId,
+        hostId: reportDraft.hostId,
+        locationName: reportDraft.locationName,
+        address: reportDraft.address,
+        city: reportDraft.city,
+        state: reportDraft.state,
+        rating: reportDraft.rating ? Number(reportDraft.rating) : undefined,
+        arrivalCleanliness: reportDraft.arrivalCleanliness
+          ? Number(reportDraft.arrivalCleanliness)
+          : undefined,
+        customersServed: reportDraft.customersServed
+          ? Number(reportDraft.customersServed)
+          : undefined,
+        salesCents,
+        notes: reportDraft.notes?.trim() || undefined,
+      };
+
+      const res = await fetch(`/api/trucks/${truckId}/parking-reports`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to save report");
+      }
+      const saved = (await res.json()) as TruckParkingReport;
+      setParkingReports((prev) => {
+        const index = prev.findIndex((item) => item.id === saved.id);
+        if (index >= 0) {
+          const next = [...prev];
+          next[index] = saved;
+          return next;
+        }
+        return [saved, ...prev];
+      });
+      toast({
+        title: "Report saved",
+        description: "Thanks for sharing your day details.",
+      });
+      setReportDraft(null);
+    } catch (error) {
+      toast({
+        title: "Report failed",
+        description:
+          error instanceof Error ? error.message : "Unable to save report.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingReport(false);
+    }
+  };
+
+  const handlePostPromptToggle = (
+    platform: keyof SocialAutopostSettings["platforms"],
+  ) => {
+    setPostPrompt((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        selectedPlatforms: {
+          ...current.selectedPlatforms,
+          [platform]: !current.selectedPlatforms[platform],
+        },
+      };
+    });
+  };
+
+  const handlePostPromptMessage = (message: string) => {
+    setPostPrompt((current) => (current ? { ...current, message } : current));
+  };
+
+  const handlePostPromptShare = async (
+    payload?: {
+      message: string;
+      link: string;
+      selectedPlatforms: {
+        facebook: boolean;
+        instagram: boolean;
+        x: boolean;
+      };
+    },
+  ) => {
+    const activePrompt = payload ?? postPrompt;
+    if (!activePrompt) return;
+    setIsPostingSocial(true);
+    try {
+      const shouldClear = !payload;
+      let shared = false;
+      if (activePrompt.selectedPlatforms.facebook) {
+        await initFacebookSDK();
+        await postToFacebook({
+          message: activePrompt.message,
+          link: activePrompt.link,
+        });
+        shared = true;
+      }
+      if (activePrompt.selectedPlatforms.x) {
+        const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+          activePrompt.message,
+        )}&url=${encodeURIComponent(activePrompt.link)}`;
+        window.open(shareUrl, "_blank", "width=600,height=500");
+        shared = true;
+      }
+      if (activePrompt.selectedPlatforms.instagram) {
+        const copyText = `${activePrompt.message} ${activePrompt.link}`.trim();
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(copyText);
+        }
+        window.open("https://www.instagram.com/", "_blank");
+        shared = true;
+      }
+      if (shared) {
+        toast({
+          title: "Share opened",
+          description: "Finish the post in the new window.",
+        });
+      }
+      if (shouldClear) {
+        setPostPrompt(null);
+      }
+    } catch (error) {
+      toast({
+        title: "Share failed",
+        description:
+          error instanceof Error ? error.message : "Unable to share.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPostingSocial(false);
+    }
+  };
 
   const getCartTotals = () => {
     return cartItems.reduce(
@@ -1550,7 +1963,81 @@ export default function ParkingPassPage() {
     setPaymentOpen(true);
   };
 
+  const buildTruckShareLink = () =>
+    truckId ? `${window.location.origin}/restaurant/${truckId}` : "";
+
+  const maybePromptSocialPost = (
+    trigger: keyof SocialAutopostSettings["triggers"],
+    options: { title: string; message: string; link: string },
+  ) => {
+    if (!socialSettings.triggers[trigger]) return;
+    const selectedPlatforms = { ...socialSettings.platforms };
+    if (
+      !selectedPlatforms.facebook &&
+      !selectedPlatforms.instagram &&
+      !selectedPlatforms.x
+    ) {
+      return;
+    }
+    if (!socialSettings.promptBeforePost) {
+      void handlePostPromptShare({
+        message: options.message,
+        link: options.link,
+        selectedPlatforms,
+      });
+      return;
+    }
+    setPostPrompt({
+      title: options.title,
+      message: options.message,
+      link: options.link,
+      selectedPlatforms,
+    });
+  };
+
+  const handleSaveSocialSettings = async () => {
+    if (!truckId) return;
+    setIsSavingSocialSettings(true);
+    try {
+      const res = await fetch(`/api/restaurants/${truckId}/social-settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          facebookPageUrl: socialLinks.facebookPageUrl,
+          instagramUrl: socialLinks.instagramUrl,
+          xUrl: socialLinks.xUrl,
+          socialAutopostSettings: socialSettings,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to update social settings");
+      }
+      const data = await res.json();
+      if (data?.restaurant) {
+        setTruck(data.restaurant);
+      }
+      toast({
+        title: "Social settings saved",
+        description: "Your sharing preferences are updated.",
+      });
+    } catch (error) {
+      toast({
+        title: "Save failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to update social settings.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingSocialSettings(false);
+    }
+  };
+
   const handleSuccess = () => {
+    const bookedListing = selectedListing;
+    const bookedSlots = [...selectedSlotTypes];
     if (selectedListing) {
       removeCartItem(selectedListing.id);
     }
@@ -1571,6 +2058,28 @@ export default function ParkingPassPage() {
       title: "Parking Pass Booked",
       description: "Your booking is confirmed.",
     });
+
+    if (bookedListing) {
+      const hostName = bookedListing.host?.businessName || "a host location";
+      const dateLabel = format(
+        new Date(`${bookedListing.date}T00:00:00`),
+        "EEE, MMM d",
+      );
+      const slotLabel = bookedSlots.length
+        ? bookedSlots.map(formatSlotLabel).join(", ")
+        : "Spot";
+      const shareMessage = `${
+        truck?.name || "We"
+      } just booked ${slotLabel} at ${hostName} for ${dateLabel}. Track us on MealScout.`;
+      const shareLink = buildTruckShareLink();
+      if (shareLink) {
+        maybePromptSocialPost("booking", {
+          title: "Share your booking",
+          message: shareMessage,
+          link: shareLink,
+        });
+      }
+    }
   };
 
   const handleShareLocation = async () => {
@@ -1634,6 +2143,17 @@ export default function ParkingPassPage() {
         title: "Live location shared",
         description: "You are now visible on the map.",
       });
+      const shareMessage = `${
+        truck?.name || "We"
+      } are live right now. Find our location on MealScout.`;
+      const shareLink = buildTruckShareLink();
+      if (shareLink) {
+        maybePromptSocialPost("live", {
+          title: "Share your live location",
+          message: shareMessage,
+          link: shareLink,
+        });
+      }
     } catch (error) {
       toast({
         title: "Location update failed",
@@ -1651,7 +2171,7 @@ export default function ParkingPassPage() {
   );
   const isTruckViewUser = user?.userType === "food_truck" || isAdminOrStaff;
   const showHostParkingPass =
-    isAuthenticated && hasHostProfile && !isAdminOrStaff;
+    isAuthenticated && (hasHostProfile || isAdminOrStaff);
   const normalizedCityQuery = cityQuery.trim().toLowerCase();
   const locationGroups = useMemo(() => {
     const byHost = new Map<string, ParkingPassLocationGroup>();
@@ -2890,7 +3410,7 @@ export default function ParkingPassPage() {
                       : "Go live + share"}
                 </Button>
               </div>
-              {(truck?.instagramUrl || truck?.facebookPageUrl) && (
+              {(truck?.instagramUrl || truck?.facebookPageUrl || truck?.xUrl) && (
                 <div className="flex flex-wrap gap-2">
                   {truck?.instagramUrl && (
                     <Button
@@ -2912,8 +3432,162 @@ export default function ParkingPassPage() {
                       Open Facebook
                     </Button>
                   )}
+                  {truck?.xUrl && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(truck.xUrl, "_blank")}
+                    >
+                      Open X
+                    </Button>
+                  )}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {isTruckViewUser && (
+          <Card className="rounded-2xl border border-gray-200 bg-white">
+            <CardContent className="p-5 space-y-6">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  Social autopost
+                </p>
+                <p className="text-xs text-gray-500">
+                  Link your socials and choose which updates should prompt a post.
+                </p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="social-facebook">Facebook URL</Label>
+                  <Input
+                    id="social-facebook"
+                    placeholder="https://facebook.com/yourpage"
+                    value={socialLinks.facebookPageUrl}
+                    onChange={(event) =>
+                      setSocialLinks((current) => ({
+                        ...current,
+                        facebookPageUrl: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="social-instagram">Instagram URL</Label>
+                  <Input
+                    id="social-instagram"
+                    placeholder="https://instagram.com/yourtruck"
+                    value={socialLinks.instagramUrl}
+                    onChange={(event) =>
+                      setSocialLinks((current) => ({
+                        ...current,
+                        instagramUrl: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="social-x">X URL</Label>
+                  <Input
+                    id="social-x"
+                    placeholder="https://x.com/yourtruck"
+                    value={socialLinks.xUrl}
+                    onChange={(event) =>
+                      setSocialLinks((current) => ({
+                        ...current,
+                        xUrl: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+                  <p className="text-xs font-semibold text-gray-700">
+                    Platforms
+                  </p>
+                  {(
+                    [
+                      { key: "facebook", label: "Facebook" },
+                      { key: "instagram", label: "Instagram" },
+                      { key: "x", label: "X" },
+                    ] as const
+                  ).map((platform) => (
+                    <div
+                      key={platform.key}
+                      className="flex items-center justify-between text-sm"
+                    >
+                      <span>{platform.label}</span>
+                      <Switch
+                        checked={socialSettings.platforms[platform.key]}
+                        onCheckedChange={(checked) =>
+                          setSocialSettings((current) => ({
+                            ...current,
+                            platforms: {
+                              ...current.platforms,
+                              [platform.key]: checked,
+                            },
+                          }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+                  <p className="text-xs font-semibold text-gray-700">
+                    Post prompts
+                  </p>
+                  {(
+                    [
+                      { key: "schedule", label: "Schedule updates" },
+                      { key: "booking", label: "Parking pass bookings" },
+                      { key: "live", label: "Go live" },
+                      { key: "deal", label: "New deals" },
+                    ] as const
+                  ).map((trigger) => (
+                    <div
+                      key={trigger.key}
+                      className="flex items-center justify-between text-sm"
+                    >
+                      <span>{trigger.label}</span>
+                      <Switch
+                        checked={socialSettings.triggers[trigger.key]}
+                        onCheckedChange={(checked) =>
+                          setSocialSettings((current) => ({
+                            ...current,
+                            triggers: {
+                              ...current.triggers,
+                              [trigger.key]: checked,
+                            },
+                          }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs text-gray-600">
+                  <Switch
+                    checked={socialSettings.promptBeforePost}
+                    onCheckedChange={(checked) =>
+                      setSocialSettings((current) => ({
+                        ...current,
+                        promptBeforePost: checked,
+                      }))
+                    }
+                  />
+                  <span>Always prompt before posting</span>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleSaveSocialSettings}
+                  disabled={isSavingSocialSettings}
+                >
+                  {isSavingSocialSettings ? "Saving..." : "Save settings"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -2925,7 +3599,12 @@ export default function ParkingPassPage() {
                 items={parkingScheduleItems}
                 allowManualEdits
                 onDeleteManual={handleDeleteSchedule}
+                reportLookup={reportLookup}
+                onAddReport={handleOpenReport}
               />
+              <p className="text-xs text-gray-500">
+                Every booking includes a 30-minute cleanup window after the end time.
+              </p>
 
               <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-4">
                 <div>
@@ -3052,6 +3731,209 @@ export default function ParkingPassPage() {
                   </Button>
                 </div>
               </div>
+              <Dialog
+                open={!!reportDraft}
+                onOpenChange={(open) => {
+                  if (!open) setReportDraft(null);
+                }}
+              >
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Day report</DialogTitle>
+                    <DialogDescription>
+                      Optional but powerful. This helps us keep locations clean,
+                      reward great hosts, and back you up if issues happen.
+                    </DialogDescription>
+                  </DialogHeader>
+                  {reportDraft && (
+                    <div className="space-y-4">
+                      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
+                        <p className="font-semibold text-gray-800">
+                          {reportDraft.locationName || "Parking stop"}
+                        </p>
+                        <p className="text-gray-600">
+                          {[reportDraft.address, reportDraft.city, reportDraft.state]
+                            .filter(Boolean)
+                            .join(", ")}
+                        </p>
+                        <p className="text-gray-500">{reportDraft.date}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label>Overall rating (1-5)</Label>
+                          <select
+                            className="h-9 w-full rounded-md border border-gray-200 bg-white px-2 text-sm"
+                            value={reportDraft.rating || ""}
+                            onChange={(event) =>
+                              handleReportFieldChange("rating", event.target.value)
+                            }
+                          >
+                            <option value="">Optional</option>
+                            {[1, 2, 3, 4, 5].map((value) => (
+                              <option key={value} value={value}>
+                                {value}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Spot cleanliness on arrival</Label>
+                          <select
+                            className="h-9 w-full rounded-md border border-gray-200 bg-white px-2 text-sm"
+                            value={reportDraft.arrivalCleanliness || ""}
+                            onChange={(event) =>
+                              handleReportFieldChange(
+                                "arrivalCleanliness",
+                                event.target.value,
+                              )
+                            }
+                          >
+                            <option value="">Optional</option>
+                            {[1, 2, 3, 4, 5].map((value) => (
+                              <option key={value} value={value}>
+                                {value}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Customers served</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={reportDraft.customersServed || ""}
+                            onChange={(event) =>
+                              handleReportFieldChange(
+                                "customersServed",
+                                event.target.value,
+                              )
+                            }
+                            placeholder="Optional"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Sales total ($)</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={reportDraft.salesDollars || ""}
+                            onChange={(event) =>
+                              handleReportFieldChange(
+                                "salesDollars",
+                                event.target.value,
+                              )
+                            }
+                            placeholder="Optional"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Notes</Label>
+                        <Textarea
+                          value={reportDraft.notes || ""}
+                          onChange={(event) =>
+                            handleReportFieldChange("notes", event.target.value)
+                          }
+                          placeholder="Optional notes about the day, host, or issues."
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setReportDraft(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleSaveReport}
+                      disabled={isSavingReport}
+                    >
+                      {isSavingReport ? "Saving..." : "Save report"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <Dialog
+                open={!!postPrompt}
+                onOpenChange={(open) => {
+                  if (!open) setPostPrompt(null);
+                }}
+              >
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>{postPrompt?.title || "Share update"}</DialogTitle>
+                    <DialogDescription>
+                      Choose where to post this update. You can edit the message
+                      before sharing.
+                    </DialogDescription>
+                  </DialogHeader>
+                  {postPrompt && (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Message</Label>
+                        <Textarea
+                          value={postPrompt.message}
+                          onChange={(event) =>
+                            handlePostPromptMessage(event.target.value)
+                          }
+                        />
+                        <p className="text-xs text-gray-500">
+                          Link: {postPrompt.link}
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Post to</Label>
+                        <div className="grid gap-2 sm:grid-cols-3">
+                          {(
+                            [
+                              { key: "facebook", label: "Facebook" },
+                              { key: "instagram", label: "Instagram" },
+                              { key: "x", label: "X" },
+                            ] as const
+                          ).map((platform) => (
+                            <label
+                              key={platform.key}
+                              className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={postPrompt.selectedPlatforms[platform.key]}
+                                onChange={() => handlePostPromptToggle(platform.key)}
+                              />
+                              {platform.label}
+                            </label>
+                          ))}
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          Instagram will open with the caption copied to your
+                          clipboard.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setPostPrompt(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handlePostPromptShare}
+                      disabled={isPostingSocial}
+                    >
+                      {isPostingSocial ? "Sharing..." : "Post update"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         )}
@@ -3269,7 +4151,8 @@ export default function ParkingPassPage() {
                                       </div>
                                       <div className="flex items-center justify-between">
                                         <span className="text-[11px] text-gray-500">
-                                          Includes a $10/day MealScout fee.
+                                          Includes a $10/day MealScout fee. Cleanup
+                                          time is 30 minutes after the end time.
                                         </span>
                                         <Button
                                           size="sm"
@@ -3523,7 +4406,8 @@ export default function ParkingPassPage() {
                           {hasAvailability ? (
                             <div className="flex items-center justify-between gap-3 pt-2">
                               <p className="text-[11px] text-gray-500">
-                                Includes a $10/day MealScout fee per host.
+                                Includes a $10/day MealScout fee per host. Cleanup
+                                time is 30 minutes after the end time.
                               </p>
                               {listingForDate && (
                                 <Button
@@ -3718,7 +4602,8 @@ export default function ParkingPassPage() {
                         {hasAvailability ? (
                           <div className="flex items-center justify-between gap-3 pt-2">
                             <p className="text-[11px] text-gray-500">
-                              Includes a $10/day MealScout fee per host.
+                              Includes a $10/day MealScout fee per host. Cleanup
+                              time is 30 minutes after the end time.
                             </p>
                             {listingForDate && (
                               <Button
@@ -3984,7 +4869,8 @@ export default function ParkingPassPage() {
                           {activeListingForDate.status === "open" && (
                             <div className="flex items-center justify-between gap-3 pt-2">
                               <p className="text-[11px] text-gray-500">
-                                Includes a $10/day MealScout fee per host.
+                                Includes a $10/day MealScout fee per host. Cleanup
+                                time is 30 minutes after the end time.
                               </p>
                               <Button
                                 size="sm"

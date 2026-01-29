@@ -216,6 +216,8 @@ export const restaurants = pgTable("restaurants", {
   websiteUrl: varchar("website_url"), // Business website
   instagramUrl: varchar("instagram_url"), // Instagram profile
   facebookPageUrl: varchar("facebook_page_url"), // Facebook business page
+  xUrl: varchar("x_url"), // X profile
+  socialAutopostSettings: jsonb("social_autopost_settings"),
   amenities: jsonb("amenities"), // { parking: boolean, wifi: boolean, outdoor_seating: boolean, etc }
   // Golden Plate Award for top-performing restaurants (awarded every 90 days)
   hasGoldenPlate: boolean("has_golden_plate").default(false),
@@ -1482,6 +1484,8 @@ export const insertRestaurantSchema = createInsertSchema(restaurants)
     websiteUrl: z.string().url().optional().nullable().or(z.literal("")),
     instagramUrl: z.string().url().optional().nullable().or(z.literal("")),
     facebookPageUrl: z.string().url().optional().nullable().or(z.literal("")),
+    xUrl: z.string().url().optional().nullable().or(z.literal("")),
+    socialAutopostSettings: z.record(z.any()).optional().nullable(),
     amenities: z
       .object({
         parking: z.boolean().optional(),
@@ -2442,6 +2446,7 @@ export const events = pgTable(
     }), // Open Calls: FK to parent series
     name: varchar("name"), // e.g. "Friday Lunch"
     description: text("description"),
+    eventType: varchar("event_type").notNull().default("event"),
     date: timestamp("date").notNull(),
     startTime: varchar("start_time").notNull(), // HH:MM
     endTime: varchar("end_time").notNull(), // HH:MM
@@ -2473,6 +2478,7 @@ export const events = pgTable(
     index("idx_events_series").on(table.seriesId),
     index("idx_events_date").on(table.date),
     index("idx_events_status").on(table.status),
+    index("idx_events_type").on(table.eventType),
     index("idx_events_booked_restaurant").on(table.bookedRestaurantId),
     index("idx_events_requires_payment").on(table.requiresPayment),
   ],
@@ -2617,11 +2623,55 @@ export const truckManualSchedules = pgTable(
     state: varchar("state"),
     notes: text("notes"),
     isPublic: boolean("is_public").default(true),
+      createdAt: timestamp("created_at").defaultNow(),
+      updatedAt: timestamp("updated_at").defaultNow(),
+    },
+    (table) => [
+      index("idx_truck_manual_schedule_truck").on(table.truckId, table.date),
+    ],
+  );
+
+// Daily parking reports for food trucks (Parking Pass + manual stops)
+export const truckParkingReports = pgTable(
+  "truck_parking_reports",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    truckId: varchar("truck_id")
+      .notNull()
+      .references(() => restaurants.id, { onDelete: "cascade" }),
+    date: timestamp("date").notNull(),
+    sourceType: varchar("source_type").notNull().default("booking"),
+    bookingId: varchar("booking_id").references(() => eventBookings.id, {
+      onDelete: "set null",
+    }),
+    manualScheduleId: varchar("manual_schedule_id").references(
+      () => truckManualSchedules.id,
+      { onDelete: "set null" },
+    ),
+    hostId: varchar("host_id").references(() => hosts.id, {
+      onDelete: "set null",
+    }),
+    locationName: varchar("location_name"),
+    address: varchar("address"),
+    city: varchar("city"),
+    state: varchar("state"),
+    rating: integer("rating"),
+    arrivalCleanliness: integer("arrival_cleanliness"),
+    customersServed: integer("customers_served"),
+    salesCents: integer("sales_cents"),
+    notes: text("notes"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
   (table) => [
-    index("idx_truck_manual_schedule_truck").on(table.truckId, table.date),
+    index("idx_truck_parking_reports_truck").on(table.truckId, table.date),
+    index("idx_truck_parking_reports_date").on(table.date),
+    index("idx_truck_parking_reports_booking").on(table.bookingId),
+    index("idx_truck_parking_reports_manual").on(table.manualScheduleId),
+    unique("uq_truck_parking_reports_booking").on(table.bookingId),
+    unique("uq_truck_parking_reports_manual").on(table.manualScheduleId),
   ],
 );
 
@@ -3212,6 +3262,35 @@ export const truckManualSchedulesRelations = relations(
   }),
 );
 
+export const truckParkingReportsRelations = relations(
+  truckParkingReports,
+  ({ one }) => ({
+    truck: one(restaurants, {
+      fields: [truckParkingReports.truckId],
+      references: [restaurants.id],
+    }),
+    booking: one(eventBookings, {
+      fields: [truckParkingReports.bookingId],
+      references: [eventBookings.id],
+    }),
+    manualSchedule: one(truckManualSchedules, {
+      fields: [truckParkingReports.manualScheduleId],
+      references: [truckManualSchedules.id],
+    }),
+    host: one(hosts, {
+      fields: [truckParkingReports.hostId],
+      references: [hosts.id],
+    }),
+  }),
+);
+
+export const requestLogsRelations = relations(requestLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [requestLogs.userId],
+    references: [users.id],
+  }),
+}));
+
 export const referralsRelations = relations(referrals, ({ one }) => ({
   affiliateUser: one(users, {
     fields: [referrals.affiliateUserId],
@@ -3670,6 +3749,19 @@ export type InsertTruckManualSchedule = z.infer<
   typeof insertTruckManualScheduleSchema
 >;
 
+export const insertTruckParkingReportSchema = createInsertSchema(
+  truckParkingReports,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type TruckParkingReport = typeof truckParkingReports.$inferSelect;
+export type InsertTruckParkingReport = z.infer<
+  typeof insertTruckParkingReportSchema
+>;
+
 export const insertEmailVerificationTokenSchema = createInsertSchema(
   emailVerificationTokens,
 ).omit({
@@ -3702,6 +3794,76 @@ export const telemetryEvents = pgTable(
 
 export type TelemetryEvent = typeof telemetryEvents.$inferSelect;
 export type InsertTelemetryEvent = typeof telemetryEvents.$inferInsert;
+
+// Request logs for admin reporting (48-hour retention)
+export const requestLogs = pgTable(
+  "request_logs",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    method: varchar("method").notNull(),
+    path: text("path").notNull(),
+    statusCode: integer("status_code").notNull(),
+    durationMs: integer("duration_ms").notNull(),
+    userId: varchar("user_id"),
+    ip: varchar("ip"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_request_logs_created").on(table.createdAt),
+    index("idx_request_logs_user").on(table.userId),
+    index("idx_request_logs_path").on(table.path),
+  ],
+);
+
+export const adminDailyReports = pgTable(
+  "admin_daily_reports",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    reportDate: timestamp("report_date").notNull(),
+    reportType: varchar("report_type").notNull(),
+    summary: jsonb("summary").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_admin_daily_reports_date").on(table.reportDate),
+    index("idx_admin_daily_reports_type").on(table.reportType),
+  ],
+);
+
+export type RequestLog = typeof requestLogs.$inferSelect;
+export type InsertRequestLog = typeof requestLogs.$inferInsert;
+export type AdminDailyReport = typeof adminDailyReports.$inferSelect;
+export type InsertAdminDailyReport = typeof adminDailyReports.$inferInsert;
+
+export const socialPostQueue = pgTable(
+  "social_post_queue",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    platform: varchar("platform").notNull(),
+    target: varchar("target"),
+    message: text("message").notNull(),
+    link: text("link"),
+    status: varchar("status").notNull().default("pending"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_social_post_queue_status").on(table.status),
+    index("idx_social_post_queue_platform").on(table.platform),
+    index("idx_social_post_queue_created").on(table.createdAt),
+  ],
+);
+
+export type SocialPostQueueItem = typeof socialPostQueue.$inferSelect;
+export type InsertSocialPostQueueItem = typeof socialPostQueue.$inferInsert;
 
 // LISA Phase 4A: Claim Persistence Table
 // Purpose: Write-only fact recording layer for deterministic resolution

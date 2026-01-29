@@ -382,6 +382,139 @@ export function registerBookingRoutes(app: Express) {
     }
   );
 
+  // Truck daily parking reports (owner or admin/staff)
+  app.get(
+    "/api/trucks/:truckId/parking-reports",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { truckId } = req.params;
+        const isOwner = await storage.verifyRestaurantOwnership(
+          truckId,
+          req.user.id,
+        );
+        const isAdmin = ["admin", "super_admin", "staff"].includes(
+          req.user?.userType || "",
+        );
+        if (!isOwner && !isAdmin) {
+          return res
+            .status(403)
+            .json({ message: "Unauthorized to view reports" });
+        }
+
+        const parseDate = (value?: string) => {
+          if (!value) return undefined;
+          const parsed = new Date(`${value}T00:00:00`);
+          return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+        };
+
+        const startDate = parseDate(req.query?.startDate as string | undefined);
+        let endDate = parseDate(req.query?.endDate as string | undefined);
+        if (endDate) {
+          endDate.setHours(23, 59, 59, 999);
+        }
+
+        const reports = await storage.getTruckParkingReports(truckId, {
+          startDate,
+          endDate,
+        });
+        res.json(reports);
+      } catch (error) {
+        console.error("Error fetching parking reports:", error);
+        res.status(500).json({ message: "Failed to fetch reports" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/trucks/:truckId/parking-reports",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { truckId } = req.params;
+        const isOwner = await storage.verifyRestaurantOwnership(
+          truckId,
+          req.user.id,
+        );
+        const isAdmin = ["admin", "super_admin", "staff"].includes(
+          req.user?.userType || "",
+        );
+        if (!isOwner && !isAdmin) {
+          return res
+            .status(403)
+            .json({ message: "Unauthorized to create reports" });
+        }
+
+        const optionalNumber = (schema: z.ZodTypeAny) =>
+          z.preprocess(
+            (value) =>
+              value === "" || value === null || value === undefined
+                ? undefined
+                : value,
+            schema.optional(),
+          );
+
+        const schema = z.object({
+          date: z.string().min(1),
+          sourceType: z.string().optional(),
+          bookingId: z.string().optional(),
+          manualScheduleId: z.string().optional(),
+          hostId: z.string().optional(),
+          locationName: z.string().optional(),
+          address: z.string().optional(),
+          city: z.string().optional(),
+          state: z.string().optional(),
+          rating: optionalNumber(z.coerce.number().int().min(1).max(5)),
+          arrivalCleanliness: optionalNumber(
+            z.coerce.number().int().min(1).max(5),
+          ),
+          customersServed: optionalNumber(
+            z.coerce.number().int().min(0),
+          ),
+          salesCents: optionalNumber(z.coerce.number().int().min(0)),
+          notes: z.string().optional(),
+        });
+
+        const parsed = schema.parse(req.body);
+        const parsedDate = new Date(`${parsed.date}T00:00:00`);
+        if (Number.isNaN(parsedDate.getTime())) {
+          return res.status(400).json({ message: "Invalid date" });
+        }
+
+        const sourceType =
+          parsed.sourceType ||
+          (parsed.bookingId
+            ? "booking"
+            : parsed.manualScheduleId
+              ? "manual"
+              : "custom");
+
+        const created = await storage.createTruckParkingReport({
+          truckId,
+          date: parsedDate,
+          sourceType,
+          bookingId: parsed.bookingId || null,
+          manualScheduleId: parsed.manualScheduleId || null,
+          hostId: parsed.hostId || null,
+          locationName: parsed.locationName || null,
+          address: parsed.address || null,
+          city: parsed.city || null,
+          state: parsed.state || null,
+          rating: parsed.rating ?? null,
+          arrivalCleanliness: parsed.arrivalCleanliness ?? null,
+          customersServed: parsed.customersServed ?? null,
+          salesCents: parsed.salesCents ?? null,
+          notes: parsed.notes || null,
+        });
+
+        res.json(created);
+      } catch (error) {
+        console.error("Error creating parking report:", error);
+        res.status(500).json({ message: "Failed to save report" });
+      }
+    },
+  );
+
   // Public profile schedule (booked + accepted events + manual)
   app.get(
     "/api/bookings/truck/:truckId/schedule",
@@ -403,6 +536,7 @@ export function registerBookingRoutes(app: Express) {
 
         const bookingRows = await db
           .select({
+            bookingId: eventBookings.id,
             eventId: eventBookings.eventId,
             status: eventBookings.status,
             bookingConfirmedAt: eventBookings.bookingConfirmedAt,
@@ -458,6 +592,7 @@ export function registerBookingRoutes(app: Express) {
             status: row.status,
             createdAt: row.createdAt,
             bookingConfirmedAt: row.bookingConfirmedAt,
+            bookingId: row.bookingId,
             slotType: row.slotType,
             event: {
               id: row.event.id,
@@ -469,6 +604,7 @@ export function registerBookingRoutes(app: Express) {
               requiresPayment: row.event.requiresPayment,
             },
             host: {
+              id: row.host.id,
               businessName: row.host.businessName,
               address: row.host.address,
               locationType: row.host.locationType,

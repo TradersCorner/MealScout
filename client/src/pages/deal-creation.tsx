@@ -25,6 +25,14 @@ import {
 } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Upload,
   X,
   Eye,
@@ -35,6 +43,7 @@ import {
 } from "lucide-react";
 import { BackHeader } from "@/components/back-header";
 import Navigation from "@/components/navigation";
+import { initFacebookSDK, postToFacebook } from "@/lib/facebook";
 
 const dealSchema = z
   .object({
@@ -83,6 +92,27 @@ const dealSchema = z
 
 type DealFormData = z.infer<typeof dealSchema>;
 
+type SocialAutopostSettings = {
+  platforms: {
+    facebook: boolean;
+    instagram: boolean;
+    x: boolean;
+  };
+  triggers: {
+    schedule: boolean;
+    booking: boolean;
+    live: boolean;
+    deal: boolean;
+  };
+  promptBeforePost: boolean;
+};
+
+const defaultSocialAutopostSettings: SocialAutopostSettings = {
+  platforms: { facebook: true, instagram: true, x: true },
+  triggers: { schedule: true, booking: true, live: true, deal: true },
+  promptBeforePost: true,
+};
+
 export default function DealCreation() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -91,11 +121,43 @@ export default function DealCreation() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dealSharePrompt, setDealSharePrompt] = useState<{
+    message: string;
+    link: string;
+    selectedPlatforms: {
+      facebook: boolean;
+      instagram: boolean;
+      x: boolean;
+    };
+  } | null>(null);
+  const [isSharingDeal, setIsSharingDeal] = useState(false);
 
   const { data: restaurants } = useQuery({
     queryKey: ["/api/restaurants/my-restaurants"],
     enabled: isAuthenticated,
   });
+
+  const socialSettings = useMemo<SocialAutopostSettings>(() => {
+    const restaurant =
+      Array.isArray(restaurants) && restaurants.length > 0
+        ? restaurants[0]
+        : null;
+    const existing =
+      (restaurant?.socialAutopostSettings ||
+        {}) as Partial<SocialAutopostSettings>;
+    return {
+      ...defaultSocialAutopostSettings,
+      ...existing,
+      platforms: {
+        ...defaultSocialAutopostSettings.platforms,
+        ...(existing.platforms || {}),
+      },
+      triggers: {
+        ...defaultSocialAutopostSettings.triggers,
+        ...(existing.triggers || {}),
+      },
+    };
+  }, [restaurants]);
 
   // Fetch subscription status for deal limits
   const {
@@ -164,6 +226,87 @@ export default function DealCreation() {
     defaultValues: dealDefaultValues,
   });
 
+  const handleDealShareToggle = (
+    platform: keyof SocialAutopostSettings["platforms"],
+  ) => {
+    setDealSharePrompt((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        selectedPlatforms: {
+          ...current.selectedPlatforms,
+          [platform]: !current.selectedPlatforms[platform],
+        },
+      };
+    });
+  };
+
+  const handleDealShareMessage = (message: string) => {
+    setDealSharePrompt((current) => (current ? { ...current, message } : current));
+  };
+
+  const handleDealSharePost = async (
+    payload?: {
+      message: string;
+      link: string;
+      selectedPlatforms: {
+        facebook: boolean;
+        instagram: boolean;
+        x: boolean;
+      };
+    },
+  ) => {
+    const activePrompt = payload ?? dealSharePrompt;
+    if (!activePrompt) return;
+    setIsSharingDeal(true);
+    try {
+      const shouldClear = !payload;
+      let shared = false;
+      if (activePrompt.selectedPlatforms.facebook) {
+        await initFacebookSDK();
+        await postToFacebook({
+          message: activePrompt.message,
+          link: activePrompt.link,
+        });
+        shared = true;
+      }
+      if (activePrompt.selectedPlatforms.x) {
+        const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+          activePrompt.message,
+        )}&url=${encodeURIComponent(activePrompt.link)}`;
+        window.open(shareUrl, "_blank", "width=600,height=500");
+        shared = true;
+      }
+      if (activePrompt.selectedPlatforms.instagram) {
+        const copyText = `${activePrompt.message} ${activePrompt.link}`.trim();
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(copyText);
+        }
+        window.open("https://www.instagram.com/", "_blank");
+        shared = true;
+      }
+      if (shared) {
+        toast({
+          title: "Share opened",
+          description: "Finish the post in the new window.",
+        });
+      }
+      if (shouldClear) {
+        setDealSharePrompt(null);
+        setLocation("/");
+      }
+    } catch (error) {
+      toast({
+        title: "Share failed",
+        description:
+          error instanceof Error ? error.message : "Unable to share.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSharingDeal(false);
+    }
+  };
+
   // Persist deal draft so restaurant owners can resume creation later
   useEffect(() => {
     const subscription = form.watch((value) => {
@@ -208,7 +351,7 @@ export default function DealCreation() {
 
       return await apiRequest("POST", "/api/deals", dealData);
     },
-    onSuccess: () => {
+    onSuccess: (created: any) => {
       toast({
         title: "Success!",
         description: "Deal created successfully!",
@@ -219,6 +362,32 @@ export default function DealCreation() {
         // ignore
       }
       queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
+      const hasTrigger = socialSettings.triggers.deal;
+      const selectedPlatforms = { ...socialSettings.platforms };
+      const hasPlatforms =
+        selectedPlatforms.facebook ||
+        selectedPlatforms.instagram ||
+        selectedPlatforms.x;
+      if (hasTrigger && hasPlatforms) {
+        const restaurant =
+          Array.isArray(restaurants) && restaurants.length > 0
+            ? restaurants[0]
+            : null;
+        const dealId = created?.id || created?.deal?.id;
+        const link = dealId
+          ? `${window.location.origin}/deals/${dealId}`
+          : window.location.origin;
+        const dealTitle = form.getValues("title") || "New deal";
+        const restaurantName = restaurant?.name || "our truck";
+        const message = `New deal at ${restaurantName}: ${dealTitle}. Check it out on MealScout.`;
+        if (!socialSettings.promptBeforePost) {
+          void handleDealSharePost({ message, link, selectedPlatforms });
+          setLocation("/");
+          return;
+        }
+        setDealSharePrompt({ message, link, selectedPlatforms });
+        return;
+      }
       setLocation("/");
     },
     onError: (error) => {
@@ -1169,6 +1338,88 @@ export default function DealCreation() {
           </form>
         </Form>
       </div>
+
+      <Dialog
+        open={!!dealSharePrompt}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDealSharePrompt(null);
+            setLocation("/");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Share your new deal</DialogTitle>
+            <DialogDescription>
+              Choose where to post this update. You can edit the message before
+              sharing.
+            </DialogDescription>
+          </DialogHeader>
+          {dealSharePrompt && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Message</Label>
+                <Textarea
+                  value={dealSharePrompt.message}
+                  onChange={(event) =>
+                    handleDealShareMessage(event.target.value)
+                  }
+                />
+                <p className="text-xs text-gray-500">
+                  Link: {dealSharePrompt.link}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Post to</Label>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {(
+                    [
+                      { key: "facebook", label: "Facebook" },
+                      { key: "instagram", label: "Instagram" },
+                      { key: "x", label: "X" },
+                    ] as const
+                  ).map((platform) => (
+                    <label
+                      key={platform.key}
+                      className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={dealSharePrompt.selectedPlatforms[platform.key]}
+                        onChange={() => handleDealShareToggle(platform.key)}
+                      />
+                      {platform.label}
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500">
+                  Instagram will open with the caption copied to your clipboard.
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setDealSharePrompt(null);
+                setLocation("/");
+              }}
+            >
+              Skip
+            </Button>
+            <Button
+              type="button"
+              onClick={handleDealSharePost}
+              disabled={isSharingDeal}
+            >
+              {isSharingDeal ? "Sharing..." : "Post update"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Bottom Navigation */}
       <Navigation />

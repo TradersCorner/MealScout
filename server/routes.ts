@@ -80,6 +80,9 @@ import {
   truckImportListings,
   truckClaimRequests,
   awardHistory,
+  requestLogs,
+  adminDailyReports,
+  socialPostQueue,
 } from "@shared/schema";
 import {
   PARKING_PASS_BOOKING_DAYS,
@@ -172,7 +175,18 @@ import { vacEvaluateRestaurantSignup } from "./vacLite";
 import { broadcastLocationUpdate, broadcastStatusUpdate } from "./websocket";
 import { reverseGeocode } from "./utils/geocoding";
 import { db } from "./db";
-import { and, inArray, eq, sql, gte, desc, like, asc, isNotNull } from "drizzle-orm";
+import {
+  and,
+  inArray,
+  eq,
+  sql,
+  gte,
+  desc,
+  like,
+  asc,
+  isNotNull,
+  lt,
+} from "drizzle-orm";
 import { registerStoryCronJobs } from "./storiesCronJobs";
 
 // Optional Stripe integration
@@ -182,6 +196,58 @@ const stripe = process.env.STRIPE_SECRET_KEY
 
 // Pricing helpers: Stripe Price IDs
 const PROMO_DEADLINE = new Date("2026-03-01T00:00:00Z");
+
+const postToFacebookPage = async (message: string, link?: string | null) => {
+  const pageId = process.env.MEALSCOUT_FB_PAGE_ID;
+  const pageToken = process.env.MEALSCOUT_FB_PAGE_TOKEN;
+  if (!pageId || !pageToken) {
+    return { ok: false, error: "Missing Facebook page credentials" };
+  }
+  const body = new URLSearchParams();
+  body.set("message", link ? `${message} ${link}` : message);
+  body.set("access_token", pageToken);
+
+  const res = await fetch(`https://graph.facebook.com/v19.0/${pageId}/feed`, {
+    method: "POST",
+    body,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: data?.error?.message || "Facebook post failed",
+    };
+  }
+  return { ok: true, postId: data?.id };
+};
+
+const queueSocialPost = async (payload: {
+  platform: string;
+  target?: string | null;
+  message: string;
+  link?: string | null;
+}) => {
+  let status = "pending";
+  let errorMessage: string | null = null;
+
+  if (payload.platform === "facebook") {
+    const result = await postToFacebookPage(payload.message, payload.link);
+    status = result.ok ? "posted" : "failed";
+    if (!result.ok) {
+      errorMessage = result.error || "Facebook post failed";
+    }
+  }
+
+  await db.insert(socialPostQueue).values({
+    platform: payload.platform,
+    target: payload.target || null,
+    message: payload.message,
+    link: payload.link || null,
+    status,
+    errorMessage,
+    updatedAt: new Date(),
+  });
+};
 
 function isTrialActive(user: User | null): boolean {
   if (!user?.trialEndsAt) return false;
@@ -2183,6 +2249,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  // Update restaurant social settings (owner only)
+  app.patch(
+    "/api/restaurants/:restaurantId/social-settings",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { restaurantId } = req.params;
+        const isAuthorized = await storage.verifyRestaurantOwnership(
+          restaurantId,
+          req.user.id,
+        );
+        if (!isAuthorized) {
+          return res.status(403).json({
+            message:
+              "Unauthorized: You can only update social settings for restaurants you own",
+          });
+        }
+
+        const schema = z.object({
+          facebookPageUrl: z.string().url().optional().nullable().or(z.literal("")),
+          instagramUrl: z.string().url().optional().nullable().or(z.literal("")),
+          xUrl: z.string().url().optional().nullable().or(z.literal("")),
+          socialAutopostSettings: z.record(z.any()).optional().nullable(),
+        });
+
+        const parsed = schema.parse(req.body);
+        const [updated] = await db
+          .update(restaurants)
+          .set({
+            facebookPageUrl: parsed.facebookPageUrl || null,
+            instagramUrl: parsed.instagramUrl || null,
+            xUrl: parsed.xUrl || null,
+            socialAutopostSettings: parsed.socialAutopostSettings ?? null,
+            updatedAt: new Date(),
+          })
+          .where(eq(restaurants.id, restaurantId))
+          .returning();
+
+        res.json({ success: true, restaurant: updated });
+      } catch (error) {
+        console.error("Error updating social settings:", error);
+        res.status(400).json({
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to update social settings",
+        });
+      }
+    },
+  );
+
   // Check if restaurant is currently open (public endpoint)
   app.get("/api/restaurants/:restaurantId/is-open", async (req: any, res) => {
     try {
@@ -2883,6 +3000,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (e) {
         console.warn("VAC-lite failed", e);
         // Never block signup due to VAC issues
+      }
+
+      // Auto-post to MealScout Facebook page when a new food truck joins
+      if ((restaurant as any).businessType === "food_truck") {
+        try {
+          const baseUrl = (process.env.PUBLIC_BASE_URL ||
+            "https://www.mealscout.us").replace(/\/+$/, "");
+          const link = `${baseUrl}/restaurant/${restaurant.id}`;
+          const message = `Welcome ${restaurant.name} to MealScout! Catch them on the map and follow their schedule.`;
+          await queueSocialPost({
+            platform: "facebook",
+            target: "mealscout_page",
+            message,
+            link,
+          });
+        } catch (error) {
+          console.error("Failed to queue social post:", error);
+        }
       }
 
       // PHASE 2: Attach referral if present in request
@@ -6237,6 +6372,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("✅ Unbooked Event Notification Check Completed:", stats);
     } catch (error) {
       console.error("❌ Unbooked Event Notification Check Failed:", error);
+    }
+  });
+
+  // Daily request log summary for admin reporting
+  cron.schedule("5 6 * * *", async () => {
+    console.log("⏰ Triggering Daily Request Log Summary");
+    try {
+      const end = new Date();
+      end.setHours(0, 0, 0, 0);
+      const start = new Date(end);
+      start.setDate(start.getDate() - 1);
+
+      const [totals] = await db
+        .select({
+          total: sql<number>`count(*)`,
+          uniqueUsers: sql<number>`count(distinct ${requestLogs.userId})`,
+          avgDurationMs: sql<number>`avg(${requestLogs.durationMs})`,
+        })
+        .from(requestLogs)
+        .where(and(gte(requestLogs.createdAt, start), lt(requestLogs.createdAt, end)));
+
+      const statusBuckets = await db
+        .select({
+          statusCode: requestLogs.statusCode,
+          count: sql<number>`count(*)`,
+        })
+        .from(requestLogs)
+        .where(and(gte(requestLogs.createdAt, start), lt(requestLogs.createdAt, end)))
+        .groupBy(requestLogs.statusCode)
+        .orderBy(desc(sql`count(*)`));
+
+      const topPaths = await db
+        .select({
+          path: requestLogs.path,
+          count: sql<number>`count(*)`,
+          avgDurationMs: sql<number>`avg(${requestLogs.durationMs})`,
+        })
+        .from(requestLogs)
+        .where(and(gte(requestLogs.createdAt, start), lt(requestLogs.createdAt, end)))
+        .groupBy(requestLogs.path)
+        .orderBy(desc(sql`count(*)`))
+        .limit(25);
+
+      const topErrors = await db
+        .select({
+          path: requestLogs.path,
+          statusCode: requestLogs.statusCode,
+          count: sql<number>`count(*)`,
+        })
+        .from(requestLogs)
+        .where(
+          and(
+            gte(requestLogs.createdAt, start),
+            lt(requestLogs.createdAt, end),
+            gte(requestLogs.statusCode, 400),
+          ),
+        )
+        .groupBy(requestLogs.path, requestLogs.statusCode)
+        .orderBy(desc(sql`count(*)`))
+        .limit(25);
+
+      await db.insert(adminDailyReports).values({
+        reportDate: start,
+        reportType: "request_summary",
+        summary: {
+          range: {
+            start: start.toISOString(),
+            end: end.toISOString(),
+          },
+          totals: {
+            totalRequests: Number(totals?.total || 0),
+            uniqueUsers: Number(totals?.uniqueUsers || 0),
+            avgDurationMs: Number(totals?.avgDurationMs || 0),
+          },
+          statusBuckets: statusBuckets.map((row) => ({
+            statusCode: row.statusCode,
+            count: Number(row.count || 0),
+          })),
+          topPaths: topPaths.map((row) => ({
+            path: row.path,
+            count: Number(row.count || 0),
+            avgDurationMs: Number(row.avgDurationMs || 0),
+          })),
+          topErrors: topErrors.map((row) => ({
+            path: row.path,
+            statusCode: row.statusCode,
+            count: Number(row.count || 0),
+          })),
+        },
+      });
+      console.log("✅ Daily Request Log Summary Saved");
+    } catch (error) {
+      console.error("❌ Daily Request Log Summary Failed:", error);
+    }
+  });
+
+  // Cleanup request logs older than 48 hours
+  cron.schedule("15 * * * *", async () => {
+    try {
+      const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
+      await db.delete(requestLogs).where(lt(requestLogs.createdAt, cutoff));
+    } catch (error) {
+      console.error("❌ Request log cleanup failed:", error);
     }
   });
 

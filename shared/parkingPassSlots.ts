@@ -17,6 +17,8 @@ export const PARKING_PASS_MEAL_WINDOWS = {
   dinner: { start: "16:00", end: "21:00" },
 } as const;
 
+export const PARKING_PASS_CLEANUP_BUFFER_MINUTES = 30;
+
 
 export const PARKING_PASS_BOOKING_DAYS: Record<ParkingPassSlotType, number> = {
   breakfast: 1,
@@ -30,6 +32,7 @@ export const PARKING_PASS_BOOKING_DAYS: Record<ParkingPassSlotType, number> = {
 const isValidHour = (value: number) => Number.isFinite(value) && value >= 0 && value <= 23;
 const isValidMinute = (value: number) =>
   Number.isFinite(value) && value >= 0 && value <= 59;
+const clampMinutesInDay = (value: number) => Math.max(0, Math.min(value, 24 * 60));
 
 export const timeToMinutes = (value?: string | null) => {
   if (!value) return null;
@@ -57,6 +60,37 @@ export const getSlotWindowMinutes = (
   const endMinutes = timeToMinutes(endTime);
   if (startMinutes === null || endMinutes === null) return null;
   return { startMinutes, endMinutes };
+};
+
+export const addMinutesToTime = (
+  value: string | null | undefined,
+  minutesToAdd: number,
+) => {
+  const baseMinutes = timeToMinutes(value);
+  if (baseMinutes === null) return null;
+  const total = clampMinutesInDay(baseMinutes + minutesToAdd);
+  const hours = Math.floor(total / 60)
+    .toString()
+    .padStart(2, "0");
+  const minutes = Math.floor(total % 60)
+    .toString()
+    .padStart(2, "0");
+  return `${hours}:${minutes}`;
+};
+
+export const getSlotWindowMinutesWithCleanup = (
+  slotType: ParkingPassSlotType,
+  startTime?: string | null,
+  endTime?: string | null,
+) => {
+  const window = getSlotWindowMinutes(slotType, startTime, endTime);
+  if (!window) return null;
+  return {
+    startMinutes: window.startMinutes,
+    endMinutes: clampMinutesInDay(
+      window.endMinutes + PARKING_PASS_CLEANUP_BUFFER_MINUTES,
+    ),
+  };
 };
 
 export const isSlotWithinHours = (

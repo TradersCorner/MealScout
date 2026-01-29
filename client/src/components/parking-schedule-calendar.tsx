@@ -4,6 +4,7 @@ import {
   endOfMonth,
   endOfWeek,
   format,
+  isBefore,
   isSameDay,
   isSameMonth,
   isToday,
@@ -22,12 +23,20 @@ export type ParkingScheduleItem = {
   date: string | Date;
   startTime?: string | null;
   endTime?: string | null;
+  cleanupEndTime?: string | null;
   title: string;
   subtitle?: string | null;
   type: "booking" | "manual" | "accepted_interest";
   slotLabel?: string | null;
   isPublic?: boolean | null;
   manualId?: string;
+  bookingId?: string;
+  hostId?: string;
+  locationName?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  reportKey?: string;
 };
 
 type ParkingScheduleCalendarProps = {
@@ -36,6 +45,8 @@ type ParkingScheduleCalendarProps = {
   subtitle?: string;
   allowManualEdits?: boolean;
   onDeleteManual?: (manualId: string) => void;
+  reportLookup?: Record<string, boolean>;
+  onAddReport?: (item: ParkingScheduleItem) => void;
   className?: string;
 };
 
@@ -62,6 +73,8 @@ export function ParkingScheduleCalendar({
   subtitle = "Auto-updated by Parking Pass bookings. Add manual stops anytime.",
   allowManualEdits = false,
   onDeleteManual,
+  reportLookup,
+  onAddReport,
   className,
 }: ParkingScheduleCalendarProps) {
   const [monthAnchor, setMonthAnchor] = useState(() => startOfMonth(new Date()));
@@ -97,6 +110,11 @@ export function ParkingScheduleCalendar({
 
   const activeKey = toDateKey(activeDate);
   const activeItems = itemsByDate.get(activeKey) ?? [];
+  const today = useMemo(() => {
+    const value = new Date();
+    value.setHours(0, 0, 0, 0);
+    return value;
+  }, []);
 
   return (
     <div className={className}>
@@ -253,6 +271,9 @@ export function ParkingScheduleCalendar({
                         {item.startTime && item.endTime
                           ? `${item.startTime} - ${item.endTime}`
                           : "Time not set"}
+                        {item.cleanupEndTime
+                          ? ` • Cleanup until ${item.cleanupEndTime}`
+                          : ""}
                         {item.slotLabel ? ` • ${item.slotLabel}` : ""}
                       </p>
                     </div>
@@ -268,6 +289,30 @@ export function ParkingScheduleCalendar({
                           Remove
                         </Button>
                       )}
+                    {onAddReport && item.reportKey && (
+                      <div className="flex items-center gap-2">
+                        {reportLookup?.[item.reportKey] && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] border-emerald-200 text-emerald-700"
+                          >
+                            Report saved
+                          </Badge>
+                        )}
+                        {(isSameDay(toDate(item.date), today) ||
+                          isBefore(toDate(item.date), today)) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onAddReport(item)}
+                          >
+                            {reportLookup?.[item.reportKey]
+                              ? "Edit report"
+                              : "Add day report"}
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

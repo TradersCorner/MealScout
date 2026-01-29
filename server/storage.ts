@@ -80,6 +80,9 @@ import {
   truckManualSchedules,
   type TruckManualSchedule,
   type InsertTruckManualSchedule,
+  truckParkingReports,
+  type TruckParkingReport,
+  type InsertTruckParkingReport,
   type Event,
   type InsertEvent,
   type EventSeries,
@@ -280,6 +283,13 @@ export interface IStorage {
     scheduleId: string,
     truckId?: string
   ): Promise<void>;
+  createTruckParkingReport(
+    report: InsertTruckParkingReport
+  ): Promise<TruckParkingReport>;
+  getTruckParkingReports(
+    truckId: string,
+    options?: { startDate?: Date; endDate?: Date }
+  ): Promise<TruckParkingReport[]>;
 
   // Deal operations
   createDeal(deal: InsertDeal): Promise<Deal>;
@@ -757,6 +767,7 @@ export class DatabaseStorage implements IStorage {
         seriesId: series?.id ?? null,
         name: `Parking Pass - ${host.businessName}`,
         description: host.address,
+        eventType: "parking_pass",
         date: new Date(cursor),
         startTime: defaultStartTime,
         endTime: defaultEndTime,
@@ -2093,6 +2104,69 @@ export class DatabaseStorage implements IStorage {
       : eq(truckManualSchedules.id, scheduleId);
 
     await db.delete(truckManualSchedules).where(whereClause);
+  }
+
+  async createTruckParkingReport(
+    report: InsertTruckParkingReport
+  ): Promise<TruckParkingReport> {
+    const updatedAt = new Date();
+    const values = { ...report, updatedAt };
+
+    if (report.bookingId) {
+      const existing = await db
+        .select({ id: truckParkingReports.id })
+        .from(truckParkingReports)
+        .where(eq(truckParkingReports.bookingId, report.bookingId))
+        .limit(1);
+      if (existing.length > 0) {
+        const [updated] = await db
+          .update(truckParkingReports)
+          .set(values)
+          .where(eq(truckParkingReports.id, existing[0].id))
+          .returning();
+        return updated;
+      }
+    }
+
+    if (report.manualScheduleId) {
+      const existing = await db
+        .select({ id: truckParkingReports.id })
+        .from(truckParkingReports)
+        .where(eq(truckParkingReports.manualScheduleId, report.manualScheduleId))
+        .limit(1);
+      if (existing.length > 0) {
+        const [updated] = await db
+          .update(truckParkingReports)
+          .set(values)
+          .where(eq(truckParkingReports.id, existing[0].id))
+          .returning();
+        return updated;
+      }
+    }
+
+    const [created] = await db
+      .insert(truckParkingReports)
+      .values(values)
+      .returning();
+    return created;
+  }
+
+  async getTruckParkingReports(
+    truckId: string,
+    options?: { startDate?: Date; endDate?: Date }
+  ): Promise<TruckParkingReport[]> {
+    const whereClauses = [eq(truckParkingReports.truckId, truckId)];
+    if (options?.startDate) {
+      whereClauses.push(gte(truckParkingReports.date, options.startDate));
+    }
+    if (options?.endDate) {
+      whereClauses.push(lte(truckParkingReports.date, options.endDate));
+    }
+    return await db
+      .select()
+      .from(truckParkingReports)
+      .where(and(...whereClauses))
+      .orderBy(desc(truckParkingReports.date));
   }
 
   // Deal operations

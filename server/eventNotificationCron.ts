@@ -1,6 +1,6 @@
 import { db } from './db';
 import { events, hosts, restaurants, eventInterests, users } from '@shared/schema';
-import { and, eq, gte, lte, sql, isNull } from 'drizzle-orm';
+import { and, eq, gte, lte, isNull } from 'drizzle-orm';
 import { emailService } from './emailService';
 import auditLogger from './auditLogger';
 
@@ -50,7 +50,8 @@ export async function notifyUnbookedEvents(): Promise<{
         and(
           eq(events.status, 'open'),
           gte(events.date, now),
-          lte(events.date, bufferEnd)
+          lte(events.date, bufferEnd),
+          eq(events.eventType, 'event')
         )
       );
 

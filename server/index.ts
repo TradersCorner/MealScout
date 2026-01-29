@@ -19,7 +19,7 @@ import fs from "fs";
 import path from "path";
 import { validateEnv } from "./utils/env";
 import { healthRouter } from "./routes/health";
-import { videoStories, restaurants } from "@shared/schema";
+import { videoStories, restaurants, requestLogs } from "@shared/schema";
 import { and, eq } from "drizzle-orm";
 
 validateEnv();
@@ -165,6 +165,41 @@ if (process.env.NODE_ENV === "production") {
 
 // Anti-scrape middleware: allow TradeScout crawler, block obvious scrapers
 app.use(antiScrape);
+
+// Request logging for admin reporting (skip static assets)
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    const pathValue = req.originalUrl || req.url || "";
+    if (
+      pathValue.startsWith("/assets") ||
+      pathValue.startsWith("/favicon") ||
+      pathValue.startsWith("/static") ||
+      pathValue.startsWith("/_next") ||
+      pathValue.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|map)$/i)
+    ) {
+      return;
+    }
+    const durationMs = Date.now() - start;
+    const userId = (req as any).user?.id || null;
+    void db
+      .insert(requestLogs)
+      .values({
+        method: req.method,
+        path: pathValue,
+        statusCode: res.statusCode || 0,
+        durationMs,
+        userId,
+        ip: req.ip,
+        userAgent: req.get("user-agent") || null,
+        createdAt: new Date(),
+      })
+      .catch((error) => {
+        console.error("Failed to write request log:", error);
+      });
+  });
+  next();
+});
 
 // Basic health endpoints (no auth)
 app.use(healthRouter);

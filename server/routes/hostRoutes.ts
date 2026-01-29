@@ -31,7 +31,7 @@ import { forwardGeocode } from "../utils/geocoding";
 import {
   PARKING_PASS_BOOKING_DAYS,
   PARKING_PASS_SLOT_TYPES,
-  getSlotWindowMinutes,
+  getSlotWindowMinutesWithCleanup,
   isSlotWithinHours,
   slotWindowsOverlap,
 } from "@shared/parkingPassSlots";
@@ -718,6 +718,7 @@ export function registerHostRoutes(app: Express) {
         ...req.body,
         date: new Date(),
         requiresPayment: true,
+        eventType: "parking_pass",
         hostId: host.id,
         maxTrucks: spotCount,
         breakfastPriceCents: breakfastPriceCents || null,
@@ -1715,7 +1716,7 @@ export function registerHostRoutes(app: Express) {
         if (!row) continue;
         const windows: Array<{ start: number; end: number }> = [];
         for (const slotType of selectedSlotTypes) {
-          const window = getSlotWindowMinutes(
+          const window = getSlotWindowMinutesWithCleanup(
             slotType,
             row.startTime,
             row.endTime,
@@ -1748,7 +1749,7 @@ export function registerHostRoutes(app: Express) {
             ? normalizedExisting
             : ["daily"];
         for (const slot of existingSlots) {
-          const window = getSlotWindowMinutes(
+          const window = getSlotWindowMinutesWithCleanup(
             slot as (typeof PARKING_PASS_SLOT_TYPES)[number],
             booking.eventStartTime,
             booking.eventEndTime,

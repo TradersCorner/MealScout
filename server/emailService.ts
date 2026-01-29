@@ -1107,7 +1107,7 @@ export class EmailService {
     params: ParkingPassCompletionReminderParams,
   ): Promise<boolean> {
     const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:5000";
-    const manageUrl = `${baseUrl.replace(/\\/+$/, "")}/parking-pass`;
+    const manageUrl = `${baseUrl.replace(/\/+$/, "")}/parking-pass`;
     const locationLabel = params.businessName || "your location";
     const addressLine = params.address
       ? `<p><strong>Address:</strong> ${params.address}</p>`

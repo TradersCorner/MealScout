@@ -239,7 +239,7 @@ export function registerHostRoutes(app: Express) {
     "/api/hosts/:hostId",
     isAuthenticated,
     async (req: any, res, next) => {
-      const reserved = new Set(["events", "event-series"]);
+      const reserved = new Set(["events", "event-series", "parking-pass"]);
       if (reserved.has(req.params.hostId)) {
         return next();
       }

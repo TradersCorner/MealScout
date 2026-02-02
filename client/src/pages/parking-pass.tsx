@@ -2356,6 +2356,8 @@ export default function ParkingPassPage() {
             Book available parking spots by day and time.
           </p>
         </div>
+
+        <div className="flex flex-col gap-6">
         {showHostParkingPass && host && (
           <div
             id="parking-pass-settings"
@@ -3593,7 +3595,7 @@ export default function ParkingPassPage() {
         )}
 
         {isTruckViewUser && (
-          <Card className="rounded-2xl border border-gray-200 bg-white">
+          <Card className="order-[-9998] rounded-2xl border border-gray-200 bg-white">
             <CardContent className="p-5 space-y-6">
               <ParkingScheduleCalendar
                 items={parkingScheduleItems}
@@ -3938,7 +3940,7 @@ export default function ParkingPassPage() {
           </Card>
         )}
 
-        <div className="space-y-4">
+        <div className={`space-y-4${isTruckViewUser ? " order-first" : ""}`}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-gray-900">
@@ -4896,6 +4898,7 @@ export default function ParkingPassPage() {
               </Card>
             </div>
           </div>
+        </div>
         </div>
       </div>
 

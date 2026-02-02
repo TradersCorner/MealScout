@@ -105,6 +105,7 @@ export default function Navigation() {
   const isEventCoordinator = user && user.userType === "event_coordinator";
 
   const [isHost, setIsHost] = useState(false);
+  const canSeeParkingPassNav = isAdmin || isStaff || isFoodTruck || isHost;
 
   // Detect if this user has a host profile so we can show host flows
   useEffect(() => {
@@ -176,7 +177,7 @@ export default function Navigation() {
     { path: "/restaurant-owner-dashboard", icon: Store, label: "Dashboard" },
     { path: "/deal-creation", icon: Plus, label: "Create Special" },
     { path: "/subscription", icon: BarChart3, label: "Subscription" },
-    { path: "/parking-pass", icon: Search, label: "Parking Pass" },
+    { path: "/parking-pass", icon: ParkingSquare, label: "Parking Pass" },
     { path: "/for-restaurants", icon: Store, label: "For Restaurants" },
     { path: "/for-bars", icon: Store, label: "For Bars" },
     { path: "/deals/featured", icon: Receipt, label: "Featured Specials" },
@@ -217,7 +218,7 @@ export default function Navigation() {
     { path: "/events", icon: Calendar, label: "Events" },
     { path: "/host/dashboard", icon: Users, label: "Host" },
     ...restaurantOwnerExtras,
-    { path: "/parking-pass", icon: Search, label: "Parking Pass" },
+    { path: "/parking-pass", icon: ParkingSquare, label: "Parking Pass" },
     ...customerExtras,
   ]);
 
@@ -242,6 +243,9 @@ export default function Navigation() {
     sharedNavItems,
     customerExtras,
     hostExtras,
+    canSeeParkingPassNav
+      ? [{ path: "/parking-pass", icon: ParkingSquare, label: "Parking Pass" }]
+      : [],
   );
 
   const eventCoordinatorExtras: NavItem[] = [
@@ -259,7 +263,9 @@ export default function Navigation() {
     customerExtras,
     [
       { path: "/events", icon: Calendar, label: "Events" },
-      { path: "/parking-pass", icon: ParkingSquare, label: "Parking Pass" },
+      ...(canSeeParkingPassNav
+        ? [{ path: "/parking-pass", icon: ParkingSquare, label: "Parking Pass" }]
+        : []),
     ],
   );
 

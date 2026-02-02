@@ -92,10 +92,13 @@ export async function setupUnifiedAuth(app: Express) {
       userAgent: req.get("User-Agent") || undefined,
     });
 
-    const apiBaseUrl =
-      `${req.protocol}://${req.get("host")}` ||
+    const reqHost = req.get("host");
+    const inferredBaseUrl = reqHost ? `${req.protocol}://${reqHost}` : null;
+    const apiBaseUrl = (
       process.env.PUBLIC_BASE_URL ||
-      "http://localhost:5000";
+      inferredBaseUrl ||
+      "http://localhost:5000"
+    ).replace(/\/+$/, "");
     const verifyUrl = `${apiBaseUrl}/api/auth/verify-email?token=${encodeURIComponent(
       token,
     )}`;

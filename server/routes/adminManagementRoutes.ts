@@ -1209,19 +1209,19 @@ export function registerAdminManagementRoutes(app: Express) {
           return res.json([]);
         }
 
+        // Ensure every host has draft Parking Pass events so pricing can be edited.
+        await Promise.all(
+          hosts.map((host) => storage.ensureDraftParkingPassForHost(host.id)),
+        );
+
         const allEvents = await Promise.all(
           hosts.map((host) => storage.getEventsByHost(host.id)),
         );
-        const hasPricing = (event: (typeof allEvents)[number][number]) =>
-          (event.breakfastPriceCents ?? 0) > 0 ||
-          (event.lunchPriceCents ?? 0) > 0 ||
-          (event.dinnerPriceCents ?? 0) > 0 ||
-          (event.dailyPriceCents ?? 0) > 0 ||
-          (event.weeklyPriceCents ?? 0) > 0 ||
-          (event.monthlyPriceCents ?? 0) > 0;
+        // Include unpriced Parking Pass events so staff/admin can set pricing.
+        // Public endpoints still filter by pricing.
         const parkingPassEvents = allEvents
           .flat()
-          .filter((event) => event.requiresPayment && hasPricing(event));
+          .filter((event) => event.eventType === "parking_pass" && event.requiresPayment);
 
         const eventsByHost = new Map<string, typeof parkingPassEvents>();
         for (const event of parkingPassEvents) {
@@ -1463,6 +1463,47 @@ export function registerAdminManagementRoutes(app: Express) {
     }
   );
 
+  app.get(
+    "/api/admin/hosts",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (_req: any, res) => {
+      try {
+        const allHosts = await storage.getAllHosts();
+        res.json(allHosts);
+      } catch (error) {
+        console.error("Error fetching hosts:", error);
+        res.status(500).json({ message: "Failed to fetch hosts" });
+      }
+    },
+  );
+
+  app.patch(
+    "/api/admin/hosts/:hostId/coordinates",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (denyStaffEdits(req, res)) return;
+      try {
+        const hostId = req.params.hostId;
+        const lat = Number(req.body?.latitude);
+        const lng = Number(req.body?.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          return res.status(400).json({ message: "Invalid coordinates" });
+        }
+        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+          return res.status(400).json({ message: "Invalid coordinates" });
+        }
+
+        const updated = await storage.updateHostCoordinates(hostId, lat, lng);
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error updating host coordinates:", error);
+        res.status(500).json({ message: "Failed to update coordinates" });
+      }
+    },
+  );
+
   app.delete(
     "/api/admin/users/:id",
     isAuthenticated,
@@ -1683,6 +1724,8 @@ export function registerAdminManagementRoutes(app: Express) {
         });
 
         const host = await storage.createHost(parsed);
+        // Ensure the new host has draft Parking Pass events so pricing can be edited immediately.
+        await storage.ensureDraftParkingPassForHost(host.id);
         res.status(201).json(host);
       } catch (error: any) {
         console.error("Error creating host location:", error);

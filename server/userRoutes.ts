@@ -5,10 +5,12 @@
  */
 
 import { Router, Request, Response } from "express";
-import { and, eq, ilike, isNull, or } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, isNull, or, sql } from "drizzle-orm";
 import { db } from "./db";
-import { users } from "@shared/schema";
+import { dealClaims, deals, reviews, users } from "@shared/schema";
 import { getUserCreditBalance } from "./creditService";
+import { isAuthenticated } from "./unifiedAuth";
+import { storage } from "./storage";
 
 const router = Router();
 
@@ -33,6 +35,124 @@ router.get("/:userId/balance", async (req: Request, res: Response) => {
       error: "Failed to fetch user balance",
       message: error instanceof Error ? error.message : "Unknown error",
     });
+  }
+});
+
+/**
+ * GET /api/users/stats
+ *
+ * Lightweight stats for the user dashboard.
+ */
+router.get("/stats", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
+    const [totalDealsUsedRow] = await db
+      .select({ count: sql<number>`COUNT(*)`.mapWith(Number) })
+      .from(dealClaims)
+      .where(eq(dealClaims.userId, userId));
+
+    const [dealsThisMonthRow] = await db
+      .select({ count: sql<number>`COUNT(*)`.mapWith(Number) })
+      .from(dealClaims)
+      .where(and(eq(dealClaims.userId, userId), gte(dealClaims.claimedAt, monthStart)));
+
+    const [avgRatingRow] = await db
+      .select({ avgRating: sql<number>`AVG(${reviews.rating})` })
+      .from(reviews)
+      .where(eq(reviews.userId, userId));
+
+    const favoritesCount = await storage.getUserRestaurantFavoritesCount(userId);
+
+    const claims = await db
+      .select({
+        dealType: deals.dealType,
+        discountValue: deals.discountValue,
+        orderAmount: dealClaims.orderAmount,
+      })
+      .from(dealClaims)
+      .innerJoin(deals, eq(dealClaims.dealId, deals.id))
+      .where(eq(dealClaims.userId, userId));
+
+    const totalSavings = claims.reduce((sum: number, claim) => {
+      const discountValue = Number(claim.discountValue ?? 0) || 0;
+      const orderAmount = claim.orderAmount ? Number(claim.orderAmount) : null;
+      if (claim.dealType === "percentage") {
+        if (orderAmount && discountValue > 0) {
+          return sum + (discountValue / 100) * orderAmount;
+        }
+        return sum;
+      }
+      return sum + discountValue;
+    }, 0);
+
+    res.json({
+      totalDealsUsed: totalDealsUsedRow?.count ?? 0,
+      totalSavings: Math.round(totalSavings * 100) / 100,
+      favoriteRestaurants: favoritesCount,
+      averageRating: avgRatingRow?.avgRating
+        ? Math.round(Number(avgRatingRow.avgRating) * 10) / 10
+        : 0,
+      dealsThisMonth: dealsThisMonthRow?.count ?? 0,
+    });
+  } catch (error) {
+    console.error("[userRoutes] Error fetching user stats:", error);
+    res.status(500).json({
+      error: "Failed to fetch user stats",
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * GET /api/users/claimed-deals
+ *
+ * Returns claimed deals with nested deal + restaurant for dashboard.
+ */
+  router.get("/claimed-deals", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const claims = await db.query.dealClaims.findMany({
+      where: eq(dealClaims.userId, userId),
+      orderBy: desc(dealClaims.claimedAt),
+      with: {
+        deal: {
+          with: {
+            restaurant: true,
+          },
+        },
+      },
+    });
+
+    const mapped = claims.map((claim: (typeof claims)[number]) => ({
+      ...claim,
+      deal: claim.deal,
+      restaurant: claim.deal?.restaurant,
+    }));
+
+    res.json(mapped);
+  } catch (error) {
+    console.error("[userRoutes] Error fetching claimed deals:", error);
+    res.status(500).json({ message: "Failed to fetch claimed deals" });
+  }
+});
+
+/**
+ * GET /api/users/favorites
+ *
+ * Returns favorite restaurants for dashboard.
+ */
+router.get("/favorites", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const favorites = await storage.getUserRestaurantFavorites(userId);
+    res.json(favorites.map((favorite) => favorite.restaurant));
+  } catch (error) {
+    console.error("[userRoutes] Error fetching favorites:", error);
+    res.status(500).json({ message: "Failed to fetch favorites" });
   }
 });
 

@@ -186,6 +186,8 @@ import {
   asc,
   isNotNull,
   lt,
+  isNull,
+  or,
 } from "drizzle-orm";
 import { registerStoryCronJobs } from "./storiesCronJobs";
 
@@ -1539,14 +1541,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Public map feed: hosts (open location requests) + upcoming events (hosted slots)
   app.get("/api/map/locations", async (_req, res) => {
     try {
-      const [openLocations, upcomingEvents, hostProfiles] = await Promise.all([
+      const [openLocations, upcomingEvents] = await Promise.all([
         storage.getOpenLocationRequests(),
         storage.getAllUpcomingEvents(),
-        db
-          .select()
-          .from(hosts)
-          .where(isNotNull(hosts.address)),
       ]);
+
+      const hostProfiles = await db
+        .select({ host: hosts })
+        .from(hosts)
+        .innerJoin(users, eq(hosts.userId, users.id))
+        .where(
+          and(
+            isNotNull(hosts.address),
+            or(eq(users.isDisabled, false), isNull(users.isDisabled)),
+          ),
+        );
 
       const publicEvents = upcomingEvents.filter(
         (event) => !event.requiresPayment,
@@ -1568,7 +1577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           latitude: loc.latitude,
           longitude: loc.longitude,
         })),
-        ...hostProfiles.map((host: any) => ({
+        ...hostProfiles.map(({ host }) => ({
           id: host.id,
           type: "host_location" as const,
           name: host.businessName,

@@ -808,7 +808,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 10px 18px rgba(15, 23, 42, 0.25);
+    border: 2px solid #0f172a;
+    box-shadow: 0 10px 18px rgba(15, 23, 42, 0.35);
   }
 
   .map-user-marker__logo img {
@@ -836,6 +837,10 @@
   .map-host-marker__logo {
     width: 36px;
     height: 36px;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 2px solid #0f172a;
+    box-shadow: 0 10px 18px rgba(15, 23, 42, 0.4);
   }
 
   .map-host-marker__logo img {
@@ -852,8 +857,12 @@
     height: 10px;
     border-radius: 999px;
     background: #22c55e;
-    border: 2px solid #15803d;
+    border: 2px solid #0f172a;
     box-shadow: 0 2px 6px rgba(15, 23, 42, 0.35);
+  }
+
+  .leaflet-marker-icon {
+    filter: drop-shadow(0 4px 8px rgba(15, 23, 42, 0.45));
   }
 
   @keyframes map-user-pulse {

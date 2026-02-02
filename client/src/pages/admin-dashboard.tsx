@@ -67,6 +67,22 @@ interface PendingRestaurant {
   isActive: boolean;
 }
 
+const FOOT_TRAFFIC_OPTIONS = [
+  { value: "50", label: "Low (1-50/day)", min: 1, max: 50 },
+  { value: "200", label: "Medium (51-200/day)", min: 51, max: 200 },
+  { value: "500", label: "High (201+/day)", min: 201, max: 10000 },
+];
+
+const resolveFootTrafficValue = (value?: string | number | null) => {
+  if (value === null || value === undefined || value === "") return "";
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "";
+  const match = FOOT_TRAFFIC_OPTIONS.find(
+    (option) => numeric >= option.min && numeric <= option.max,
+  );
+  return match?.value ?? FOOT_TRAFFIC_OPTIONS[FOOT_TRAFFIC_OPTIONS.length - 1].value;
+};
+
 function TruckImportPanel({ enabled }: { enabled: boolean }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1328,6 +1344,8 @@ export default function AdminDashboard() {
     }
     const nextEdits: Record<string, any> = {};
     userHosts.forEach((host: any) => {
+      const originalFootTraffic =
+        host.expectedFootTraffic === undefined ? null : host.expectedFootTraffic;
       nextEdits[host.id] = {
         businessName: host.businessName || "",
         address: host.address || "",
@@ -1336,7 +1354,9 @@ export default function AdminDashboard() {
         latitude: host.latitude || "",
         longitude: host.longitude || "",
         locationType: host.locationType || "other",
-        expectedFootTraffic: host.expectedFootTraffic ?? "",
+        expectedFootTraffic: resolveFootTrafficValue(originalFootTraffic),
+        expectedFootTrafficOriginal: originalFootTraffic,
+        expectedFootTrafficTouched: false,
         contactPhone: host.contactPhone || "",
         notes: host.notes || "",
         isVerified: !!host.isVerified,
@@ -3916,20 +3936,29 @@ export default function AdminDashboard() {
                               <option value="public_park">Public Park</option>
                               <option value="other">Other</option>
                             </select>
-                            <input
-                              className="w-full px-2 py-1 border rounded-md text-sm"
-                              placeholder="Foot Traffic"
-                              value={edits.expectedFootTraffic}
+                            <select
+                              className="w-full px-2 py-1 border rounded-md text-sm bg-background"
+                              value={resolveFootTrafficValue(
+                                edits.expectedFootTraffic,
+                              )}
                               onChange={(e) =>
                                 setHostEdits({
                                   ...hostEdits,
                                   [host.id]: {
                                     ...edits,
                                     expectedFootTraffic: e.target.value,
+                                    expectedFootTrafficTouched: true,
                                   },
                                 })
                               }
-                            />
+                            >
+                              <option value="">Foot Traffic</option>
+                              {FOOT_TRAFFIC_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
                             <input
                               className="w-full px-2 py-1 border rounded-md text-sm"
                               placeholder="Contact Phone"
@@ -4275,6 +4304,11 @@ export default function AdminDashboard() {
                                   hostId: host.id,
                                   updates: {
                                     ...edits,
+                                    expectedFootTraffic: edits.expectedFootTrafficTouched
+                                      ? (edits.expectedFootTraffic === ""
+                                          ? null
+                                          : Number(edits.expectedFootTraffic))
+                                      : edits.expectedFootTrafficOriginal,
                                     amenities,
                                   },
                                 });
@@ -4365,17 +4399,25 @@ export default function AdminDashboard() {
                           <option value="public_park">Public Park</option>
                           <option value="other">Other</option>
                         </select>
-                        <input
-                          className="w-full px-2 py-1 border rounded-md text-sm"
-                          placeholder="Foot Traffic"
-                          value={newHostLocation.expectedFootTraffic}
+                        <select
+                          className="w-full px-2 py-1 border rounded-md text-sm bg-background"
+                          value={resolveFootTrafficValue(
+                            newHostLocation.expectedFootTraffic,
+                          )}
                           onChange={(e) =>
                             setNewHostLocation({
                               ...newHostLocation,
                               expectedFootTraffic: e.target.value,
                             })
                           }
-                        />
+                        >
+                          <option value="">Foot Traffic</option>
+                          {FOOT_TRAFFIC_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
                         <input
                           className="w-full px-2 py-1 border rounded-md text-sm"
                           placeholder="Contact Phone"

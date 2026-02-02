@@ -120,6 +120,7 @@ import {
 import bcrypt from "bcryptjs";
 import { syncUserToBrevo } from "./brevoCrm";
 import { ensureAffiliateTag } from "./affiliateTagService";
+import { forwardGeocode } from "./utils/geocoding";
 
 // Interface for storage operations
 export interface IStorage {
@@ -709,11 +710,7 @@ export class DatabaseStorage implements IStorage {
   private async createDraftParkingPassForHost(
     host: Host,
   ): Promise<boolean> {
-    // Pricing is required for Parking Pass listings; skip auto-creating drafts.
-    const draftsEnabled = false;
-    if (!draftsEnabled) {
-      return false;
-    }
+    // Create unpriced draft Parking Pass events so staff/admin can set pricing later.
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const horizon = new Date(today);
@@ -725,6 +722,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(events.hostId, host.id),
+          eq(events.eventType, "parking_pass"),
           eq(events.requiresPayment, true),
           gte(events.date, today),
         ),
@@ -905,15 +903,48 @@ export class DatabaseStorage implements IStorage {
     const normalizeCoord = (value?: string | null) =>
       value === null || value === undefined ? null : String(value);
 
+    const rawLat = normalizeCoord(address.latitude);
+    const rawLng = normalizeCoord(address.longitude);
+    const latNum = rawLat === null ? null : Number(rawLat);
+    const lngNum = rawLng === null ? null : Number(rawLng);
+    const hasValidManualCoords =
+      latNum !== null &&
+      lngNum !== null &&
+      Number.isFinite(latNum) &&
+      Number.isFinite(lngNum);
+
+    const geocodeAddress = [address.address, address.city, address.state]
+      .filter(Boolean)
+      .join(", ");
+
+    const kickOffGeocode = (hostId: string) => {
+      if (!geocodeAddress) return;
+      // Best-effort: avoid blocking the request path on external geocoding.
+      void (async () => {
+        const coords = await forwardGeocode(geocodeAddress).catch(() => null);
+        if (!coords) return;
+        await db
+          .update(hosts)
+          .set({
+            latitude: coords.lat.toString(),
+            longitude: coords.lng.toString(),
+            updatedAt: new Date(),
+          })
+          .where(eq(hosts.id, hostId));
+      })();
+    };
+
     if (matched) {
-      const updates: Partial<InsertHost> & { updatedAt: Date } = {
+      const updates: Partial<typeof hosts.$inferInsert> & { updatedAt: Date } = {
         address: address.address,
         city: address.city,
         state: address.state,
-        latitude: normalizeCoord(address.latitude),
-        longitude: normalizeCoord(address.longitude),
         updatedAt: new Date(),
       };
+      if (hasValidManualCoords) {
+        updates.latitude = latNum!.toString();
+        updates.longitude = lngNum!.toString();
+      }
       if (matched.adminCreated && address.label) {
         updates.businessName = address.label;
       }
@@ -922,28 +953,36 @@ export class DatabaseStorage implements IStorage {
         .set(updates)
         .where(eq(hosts.id, matched.id))
         .returning();
+      if (!hasValidManualCoords && (!matched.latitude || !matched.longitude)) {
+        kickOffGeocode(matched.id);
+      }
       return updated ?? matched;
     }
 
-    const payload: InsertHost = {
-      userId,
-      businessName: address.label || "Host location",
-      address: address.address,
-      city: address.city,
-      state: address.state || null,
-      latitude: normalizeCoord(address.latitude),
-      longitude: normalizeCoord(address.longitude),
-      locationType: "other",
-      expectedFootTraffic: null,
-      amenities: null,
-      contactPhone: null,
-      notes: null,
-      adminCreated: true,
-      spotCount: 1,
-    };
-
-    const created = await this.createHost(payload);
-    return created;
+    const [created] = await db
+      .insert(hosts)
+      .values({
+        userId,
+        businessName: address.label || "Host location",
+        address: address.address,
+        city: address.city,
+        state: address.state || null,
+        latitude: hasValidManualCoords ? latNum!.toString() : null,
+        longitude: hasValidManualCoords ? lngNum!.toString() : null,
+        locationType: "other",
+        expectedFootTraffic: null,
+        amenities: null,
+        contactPhone: null,
+        notes: null,
+        adminCreated: true,
+        spotCount: 1,
+        updatedAt: new Date(),
+      })
+      .returning();
+    if (created && !hasValidManualCoords && (!created.latitude || !created.longitude)) {
+      kickOffGeocode(created.id);
+    }
+    return created ?? null;
   }
 
   async deleteHostForUserAddress(
@@ -1732,7 +1771,7 @@ export class DatabaseStorage implements IStorage {
             lastName: emailData.lastName,
             phone: emailData.phone,
             passwordHash: emailData.passwordHash,
-            emailVerified: true,
+            emailVerified: false,
             appContext,
           })
           .returning();

@@ -1990,7 +1990,13 @@ export function registerHostRoutes(app: Express) {
 
       // Expire stale pending holds for this truck so users aren't blocked forever if they abandon checkout.
       // We rely on webhook events for fast cleanup, this is a safety net.
-      const holdCutoff = new Date(Date.now() - 30 * 60 * 1000); // 30 minutes
+      const holdTtlMinutesRaw = Number(
+        process.env.PARKING_PASS_HOLD_TTL_MINUTES ?? 7,
+      );
+      const holdTtlMinutes = Number.isFinite(holdTtlMinutesRaw)
+        ? Math.max(1, Math.min(holdTtlMinutesRaw, 60))
+        : 7;
+      const holdCutoff = new Date(Date.now() - holdTtlMinutes * 60 * 1000);
       await db
         .update(eventBookings)
         .set({

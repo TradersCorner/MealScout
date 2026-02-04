@@ -543,6 +543,7 @@ export default function ParkingPassPage() {
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [isSharingLocation, setIsSharingLocation] = useState(false);
   const [isLive, setIsLive] = useState(false);
+  const [topTab, setTopTab] = useState<"book" | "schedule" | "host">("book");
 
   const reloadHostPassListings = async (hostId: string) => {
     if (!hostId) return;
@@ -2320,6 +2321,25 @@ export default function ParkingPassPage() {
   const isTruckViewUser = user?.userType === "food_truck" || isAdminOrStaff;
   const showHostParkingPass =
     isAuthenticated && (hasHostProfile || isAdminOrStaff);
+  const canScheduleTab = Boolean(isTruckViewUser);
+  const canHostTab = Boolean(showHostParkingPass);
+  const availableTabs = useMemo(
+    () =>
+      (["book", canScheduleTab ? "schedule" : null, canHostTab ? "host" : null]
+        .filter(Boolean) as Array<"book" | "schedule" | "host">),
+    [canHostTab, canScheduleTab],
+  );
+
+  useEffect(() => {
+    const preferred: "book" | "schedule" | "host" = canHostTab
+      ? (isTruckViewUser ? "book" : "host")
+      : "book";
+    if (!availableTabs.includes(topTab)) {
+      setTopTab(preferred);
+    } else if (!isTruckViewUser && topTab === "schedule") {
+      setTopTab(preferred);
+    }
+  }, [availableTabs, canHostTab, isTruckViewUser, topTab]);
   const normalizedCityQuery = cityQuery.trim().toLowerCase();
   const locationGroups = useMemo(() => {
     const byHost = new Map<string, ParkingPassLocationGroup>();
@@ -2505,8 +2525,31 @@ export default function ParkingPassPage() {
           </p>
         </div>
 
+        <Tabs value={topTab} onValueChange={(value) => setTopTab(value as any)}>
+          <TabsList className="w-full justify-start bg-white border border-gray-200 rounded-xl p-1">
+            <TabsTrigger value="book" className="text-sm">
+              Book spots
+            </TabsTrigger>
+            {canScheduleTab && (
+              <TabsTrigger value="schedule" className="text-sm">
+                My schedule
+              </TabsTrigger>
+            )}
+            {canHostTab && (
+              <TabsTrigger value="host" className="text-sm">
+                Host tools
+              </TabsTrigger>
+            )}
+          </TabsList>
+        </Tabs>
+
         <div className="flex flex-col gap-6">
-        {showHostParkingPass && host && (
+        {topTab === "host" && showHostParkingPass && !host && (
+          <div className="rounded-2xl border border-orange-200 bg-orange-50/70 p-4 text-sm text-orange-800">
+            Loading your host tools...
+          </div>
+        )}
+        {topTab === "host" && showHostParkingPass && host && (
           <div
             id="parking-pass-settings"
             className="rounded-2xl border border-orange-200 bg-orange-50/70 p-4"
@@ -3057,7 +3100,7 @@ export default function ParkingPassPage() {
           </div>
         )}
 
-        {showHostParkingPass && host && (
+        {topTab === "host" && showHostParkingPass && host && (
           <>
         {isCreating && (
           <div className="bg-white p-6 rounded-2xl border border-orange-200 shadow-sm">
@@ -3564,7 +3607,7 @@ export default function ParkingPassPage() {
           </>
         )}
 
-        {isTruckViewUser && (
+        {topTab === "schedule" && isTruckViewUser && (
           <Card className="rounded-2xl border border-gray-200 bg-white">
             <CardContent className="p-5 space-y-4">
               <div className="flex items-center justify-between gap-3">
@@ -3626,7 +3669,7 @@ export default function ParkingPassPage() {
           </Card>
         )}
 
-        {isTruckViewUser && (
+        {topTab === "schedule" && isTruckViewUser && (
           <Card className="rounded-2xl border border-gray-200 bg-white">
             <CardContent className="p-5 space-y-6">
               <div>
@@ -3771,7 +3814,7 @@ export default function ParkingPassPage() {
           </Card>
         )}
 
-        {isTruckViewUser && (
+        {topTab === "schedule" && isTruckViewUser && (
           <Card className="order-[-9998] rounded-2xl border border-gray-200 bg-white">
             <CardContent className="p-5 space-y-6">
               <ParkingScheduleCalendar
@@ -4117,6 +4160,7 @@ export default function ParkingPassPage() {
           </Card>
         )}
 
+        {topTab === "book" && (
         <div className={`space-y-4${isTruckViewUser ? " order-first" : ""}`}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -5077,6 +5121,7 @@ export default function ParkingPassPage() {
           </div>
         </div>
         </div>
+        )}
       </div>
 
       {selectedListing && truckId && selectedSlotTypes.length > 0 && (

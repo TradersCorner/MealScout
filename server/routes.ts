@@ -6624,10 +6624,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Cleanup stale Parking Pass booking holds (pending rows created during checkout)
   // so capacity isn't blocked if a truck abandons the payment flow.
-  cron.schedule("*/10 * * * *", async () => {
+  const getParkingPassHoldTtlMs = () => {
+    const raw = Number(process.env.PARKING_PASS_HOLD_TTL_MINUTES ?? 7);
+    const minutes = Number.isFinite(raw) ? Math.max(1, Math.min(raw, 60)) : 7;
+    return minutes * 60 * 1000;
+  };
+
+  cron.schedule("* * * * *", async () => {
     try {
       const { eventBookings } = await import("@shared/schema");
-      const cutoff = new Date(Date.now() - 30 * 60 * 1000); // 30 minutes
+      const cutoff = new Date(Date.now() - getParkingPassHoldTtlMs());
       const now = new Date();
 
       await db

@@ -26,6 +26,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import { BookingPaymentModal } from "@/components/booking-payment-modal";
+import { EditOccurrenceDialog } from "@/components/edit-occurrence-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -452,6 +453,9 @@ export default function ParkingPassPage() {
   const [hostPassListings, setHostPassListings] = useState<HostPassListing[]>(
     [],
   );
+  const [editHostListing, setEditHostListing] =
+    useState<HostPassListing | null>(null);
+  const [editHostListingOpen, setEditHostListingOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([]);
   const [startTime, setStartTime] = useState("");
@@ -516,6 +520,8 @@ export default function ParkingPassPage() {
   const [viewMode, setViewMode] = useState<"map" | "list">("map");
   const [activeLocationKey, setActiveLocationKey] = useState<string | null>(null);
   const [pendingPassId, setPendingPassId] = useState<string | null>(null);
+  const [bookingReturnIntentId, setBookingReturnIntentId] = useState<string | null>(null);
+  const [bookingReturnHandled, setBookingReturnHandled] = useState(false);
   const [parkingCoords, setParkingCoords] = useState<
     Record<string, GeoPoint>
   >({});
@@ -537,6 +543,88 @@ export default function ParkingPassPage() {
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [isSharingLocation, setIsSharingLocation] = useState(false);
   const [isLive, setIsLive] = useState(false);
+
+  const reloadHostPassListings = async (hostId: string) => {
+    if (!hostId) return;
+    try {
+      const res = await fetch(`/api/hosts/parking-pass?hostId=${hostId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setHostPassListings(data);
+        }
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const filterBookablePassListings = (data: any) => {
+    if (!Array.isArray(data)) return [];
+    return data.filter((listing: any) => {
+      if (!hasListingPricing(listing)) return false;
+      const available =
+        Array.isArray(listing.availableSpotNumbers)
+          ? listing.availableSpotNumbers.length > 0
+          : typeof listing.spotCount === "number"
+            ? listing.spotCount - Number(listing.bookedSpots || 0) > 0
+            : listing.status === "open";
+      return Boolean(available);
+    });
+  };
+
+  const reloadPassListings = async (options?: { silent?: boolean }) => {
+    try {
+      const listingsRes = await fetch("/api/parking-pass");
+      if (!listingsRes.ok) {
+        throw new Error("Failed to load parking pass listings");
+      }
+      const data = await listingsRes.json();
+      setPassListings(filterBookablePassListings(data));
+    } catch (error: any) {
+      if (!options?.silent) {
+        toast({
+          title: "Error",
+          description:
+            error.message || "Failed to load parking pass listings.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const reloadBookedSchedule = async (
+    selectedTruckId: string,
+    options?: { silent?: boolean },
+  ) => {
+    if (!selectedTruckId) return;
+    try {
+      const res = await fetch(`/api/bookings/truck/${selectedTruckId}/schedule`);
+      if (!res.ok) {
+        throw new Error("Failed to load booked schedule");
+      }
+      const data = await res.json();
+      const schedule = Array.isArray(data?.schedule) ? data.schedule : [];
+      const parkingBookings = schedule.filter(
+        (entry: TruckScheduleEntry) =>
+          entry.type === "booking" &&
+          entry.status === "confirmed" &&
+          entry.event?.requiresPayment,
+      );
+      setBookedSchedule(parkingBookings);
+    } catch (error) {
+      if (!options?.silent) {
+        toast({
+          title: "Schedule Error",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Failed to load booked schedule.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
   useEffect(() => {
     try {
@@ -572,6 +660,9 @@ export default function ParkingPassPage() {
     const passId = params.get("pass");
     if (passId) {
       setPendingPassId(passId);
+    }
+    if (params.get("booking") === "success") {
+      setBookingReturnIntentId(params.get("payment_intent"));
     }
   }, []);
 
@@ -620,12 +711,7 @@ export default function ParkingPassPage() {
         }
         const data = await listingsRes.json();
         if (!cancelled) {
-          const openListings = Array.isArray(data)
-            ? data.filter((listing) =>
-                listing.status === "open" && hasListingPricing(listing),
-              )
-            : [];
-          setPassListings(openListings);
+          setPassListings(filterBookablePassListings(data));
         }
       } catch (error: any) {
         if (!cancelled) {
@@ -681,6 +767,72 @@ export default function ParkingPassPage() {
   }, [pendingPassId, passListings]);
 
   useEffect(() => {
+    if (bookingReturnHandled) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("booking") !== "success") return;
+    if (!truckId) return;
+
+    setBookingReturnHandled(true);
+    const intentId = bookingReturnIntentId || params.get("payment_intent");
+
+    const run = async () => {
+      try {
+        let status: "pending" | "confirmed" | "credited" = "pending";
+        if (intentId) {
+          const res = await fetch(
+            `/api/bookings/payment-intent/${encodeURIComponent(
+              intentId,
+            )}?truckId=${encodeURIComponent(truckId)}`,
+          );
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.status === "confirmed") status = "confirmed";
+            if (data?.status === "credited") status = "credited";
+          }
+        }
+
+        if (status === "credited") {
+          toast({
+            title: "Booking Unavailable",
+            description:
+              "Payment succeeded but the spot was no longer available. Credits were issued to your account.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Payment received",
+            description:
+              status === "confirmed"
+                ? "Your booking is confirmed."
+                : "Your booking will appear shortly.",
+          });
+        }
+      } catch {
+        toast({
+          title: "Payment received",
+          description: "Your booking will appear shortly.",
+        });
+      } finally {
+        void reloadPassListings({ silent: true });
+        void reloadBookedSchedule(truckId, { silent: true });
+
+        const nextParams = new URLSearchParams(window.location.search);
+        nextParams.delete("booking");
+        nextParams.delete("payment_intent");
+        nextParams.delete("payment_intent_client_secret");
+        const nextQuery = nextParams.toString();
+        window.history.replaceState(
+          {},
+          "",
+          nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname,
+        );
+      }
+    };
+
+    void run();
+  }, [bookingReturnHandled, bookingReturnIntentId, toast, truckId]);
+
+  useEffect(() => {
     if (!hosts.length) {
       setHost(null);
       setSelectedHostId("");
@@ -709,24 +861,13 @@ export default function ParkingPassPage() {
   useEffect(() => {
     if (!selectedHostId) {
       setHostPassListings([]);
+      setEditHostListing(null);
+      setEditHostListingOpen(false);
       return;
     }
-    const fetchListings = async () => {
-      try {
-        const res = await fetch(
-          `/api/hosts/parking-pass?hostId=${selectedHostId}`,
-        );
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            setHostPassListings(data);
-          }
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    };
-    fetchListings();
+    setEditHostListing(null);
+    setEditHostListingOpen(false);
+    void reloadHostPassListings(selectedHostId);
   }, [selectedHostId]);
 
   useEffect(() => {
@@ -873,7 +1014,9 @@ export default function ParkingPassPage() {
         const schedule = Array.isArray(data?.schedule) ? data.schedule : [];
         const parkingBookings = schedule.filter(
           (entry: TruckScheduleEntry) =>
-            entry.type === "booking" && entry.event?.requiresPayment,
+            entry.type === "booking" &&
+            entry.status === "confirmed" &&
+            entry.event?.requiresPayment,
         );
         if (!cancelled) {
           setBookedSchedule(parkingBookings);
@@ -2079,6 +2222,11 @@ export default function ParkingPassPage() {
           link: shareLink,
         });
       }
+    }
+
+    void reloadPassListings({ silent: true });
+    if (truckId) {
+      void reloadBookedSchedule(truckId, { silent: true });
     }
   };
 
@@ -3324,7 +3472,19 @@ export default function ParkingPassPage() {
                         </div>
                       </div>
 
-                      <Badge variant="secondary">Listing</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">Listing</Badge>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditHostListing(listing);
+                            setEditHostListingOpen(true);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -3384,6 +3544,23 @@ export default function ParkingPassPage() {
             </TabsContent>
           </Tabs>
         </div>
+
+        <EditOccurrenceDialog
+          event={editHostListing}
+          seriesName={host ? `Parking Pass - ${host.businessName}` : undefined}
+          open={editHostListingOpen}
+          onOpenChange={(open) => {
+            setEditHostListingOpen(open);
+            if (!open) {
+              setEditHostListing(null);
+            }
+          }}
+          onEventUpdated={() => {
+            if (selectedHostId) {
+              void reloadHostPassListings(selectedHostId);
+            }
+          }}
+        />
           </>
         )}
 

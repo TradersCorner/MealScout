@@ -12,6 +12,11 @@ import { eq, and, or, desc, gte, inArray } from "drizzle-orm";
 import { isAuthenticated } from "../unifiedAuth";
 import { storage } from "../storage";
 import { emailService } from "../emailService";
+import Stripe from "stripe";
+
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
+  : null;
 
 /**
  * Booking Management Routes
@@ -20,6 +25,222 @@ import { emailService } from "../emailService";
  * - POST /api/bookings/:bookingId/cancel - Cancel a booking (non-refundable)
  */
 export function registerBookingRoutes(app: Express) {
+  // Lookup booking state by Stripe PaymentIntent (used by the client to poll after payment confirmation).
+  app.get(
+    "/api/bookings/payment-intent/:paymentIntentId",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const paymentIntentId = String(req.params.paymentIntentId || "").trim();
+        const truckId = String(req.query?.truckId || "").trim();
+        if (!paymentIntentId) {
+          return res
+            .status(400)
+            .json({ message: "PaymentIntent ID required" });
+        }
+        if (!truckId) {
+          return res.status(400).json({ message: "Truck ID required" });
+        }
+
+        const isOwner = await storage.verifyRestaurantOwnership(
+          truckId,
+          req.user.id,
+        );
+        const isAdmin = ["admin", "super_admin", "staff"].includes(
+          req.user?.userType || "",
+        );
+        if (!isOwner && !isAdmin) {
+          return res.status(403).json({ message: "Not authorized" });
+        }
+
+        const rows = await db
+          .select({
+            id: eventBookings.id,
+            eventId: eventBookings.eventId,
+            status: eventBookings.status,
+            refundStatus: eventBookings.refundStatus,
+            bookingConfirmedAt: eventBookings.bookingConfirmedAt,
+            cancelledAt: eventBookings.cancelledAt,
+          })
+          .from(eventBookings)
+          .where(
+            and(
+              eq(eventBookings.stripePaymentIntentId, paymentIntentId),
+              eq(eventBookings.truckId, truckId),
+            ),
+          )
+          .orderBy(desc(eventBookings.createdAt));
+
+        if (rows.length === 0) {
+          return res.json({ status: "pending", bookings: [] });
+        }
+
+        const hasConfirmed = rows.some((row) => row.status === "confirmed");
+        if (hasConfirmed) {
+          const confirmed = rows.filter((row) => row.status === "confirmed");
+          return res.json({
+            status: "confirmed",
+            bookings: confirmed.map((row) => ({
+              id: row.id,
+              eventId: row.eventId,
+              bookingConfirmedAt: row.bookingConfirmedAt,
+            })),
+          });
+        }
+
+        const allCredited = rows.every(
+          (row) => row.status === "cancelled" && row.refundStatus === "credit",
+        );
+        if (allCredited) {
+          return res.json({ status: "credited", bookings: [] });
+        }
+
+        return res.json({
+          status: rows[0].status,
+          bookings: rows.map((row) => ({
+            id: row.id,
+            eventId: row.eventId,
+            bookingConfirmedAt: row.bookingConfirmedAt,
+            cancelledAt: row.cancelledAt,
+          })),
+        });
+      } catch (error) {
+        console.error("Error checking booking by payment intent:", error);
+        res.status(500).json({ message: "Failed to check booking status" });
+      }
+    },
+  );
+
+  // Cancel an in-progress checkout: releases pending holds and cancels the Stripe PaymentIntent (if possible).
+  app.post(
+    "/api/bookings/payment-intent/:paymentIntentId/cancel",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const paymentIntentId = String(req.params.paymentIntentId || "").trim();
+        const truckId = String(req.query?.truckId || "").trim();
+        if (!paymentIntentId) {
+          return res
+            .status(400)
+            .json({ message: "PaymentIntent ID required" });
+        }
+        if (!truckId) {
+          return res.status(400).json({ message: "Truck ID required" });
+        }
+
+        const isOwner = await storage.verifyRestaurantOwnership(
+          truckId,
+          req.user.id,
+        );
+        const isAdmin = ["admin", "super_admin", "staff"].includes(
+          req.user?.userType || "",
+        );
+        if (!isOwner && !isAdmin) {
+          return res.status(403).json({ message: "Not authorized" });
+        }
+
+        const rows = await db
+          .select({
+            id: eventBookings.id,
+            eventId: eventBookings.eventId,
+            hostId: eventBookings.hostId,
+            status: eventBookings.status,
+            stripePaymentStatus: eventBookings.stripePaymentStatus,
+            stripeTransferDestination: eventBookings.stripeTransferDestination,
+          })
+          .from(eventBookings)
+          .where(
+            and(
+              eq(eventBookings.stripePaymentIntentId, paymentIntentId),
+              eq(eventBookings.truckId, truckId),
+            ),
+          )
+          .orderBy(desc(eventBookings.createdAt));
+
+        if (rows.length === 0) {
+          return res.json({ ok: true });
+        }
+
+        const hasConfirmed = rows.some((row) => row.status === "confirmed");
+        if (hasConfirmed) {
+          return res.status(409).json({
+            message: "Booking already confirmed and cannot be cancelled.",
+          });
+        }
+
+        const now = new Date();
+        const pendingRows = rows.filter((row) => row.status === "pending");
+        if (pendingRows.length === 0) {
+          // Nothing to cancel (already cancelled/credited/etc.). Idempotent success.
+          return res.json({ ok: true });
+        }
+
+        const accountIdFromRows =
+          rows.find((row) => Boolean(row.stripeTransferDestination))
+            ?.stripeTransferDestination ?? null;
+
+        let stripeAccountId: string | null = accountIdFromRows;
+        if (!stripeAccountId) {
+          const first = rows[0];
+          if (first?.hostId) {
+            const [host] = await db
+              .select({ stripeConnectAccountId: hosts.stripeConnectAccountId })
+              .from(hosts)
+              .where(eq(hosts.id, first.hostId));
+            stripeAccountId = host?.stripeConnectAccountId || null;
+          }
+        }
+
+        // Best effort cancel at Stripe so the user can't later complete the payment in another tab.
+        if (stripe) {
+          try {
+            const intent = await stripe.paymentIntents.retrieve(
+              paymentIntentId,
+              {},
+              stripeAccountId ? { stripeAccount: stripeAccountId } : undefined,
+            );
+            if (intent.status === "succeeded") {
+              return res.status(409).json({
+                message:
+                  "Payment already completed. Please wait for booking confirmation.",
+              });
+            }
+            if (intent.status !== "canceled") {
+              await stripe.paymentIntents.cancel(
+                paymentIntentId,
+                {},
+                stripeAccountId ? { stripeAccount: stripeAccountId } : undefined,
+              );
+            }
+          } catch (stripeError) {
+            console.error(
+              "Error cancelling PaymentIntent (continuing to release holds):",
+              stripeError,
+            );
+            // Continue; holds release is still valuable and webhook will no-op if payment never completes.
+          }
+        }
+
+        const holdIds = pendingRows.map((row) => row.id);
+        await db
+          .update(eventBookings)
+          .set({
+            status: "cancelled",
+            stripePaymentStatus: "cancelled",
+            cancelledAt: now,
+            cancellationReason: "Checkout cancelled",
+            updatedAt: now,
+          })
+          .where(inArray(eventBookings.id, holdIds));
+
+        res.json({ ok: true });
+      } catch (error) {
+        console.error("Error cancelling checkout:", error);
+        res.status(500).json({ message: "Failed to cancel checkout" });
+      }
+    },
+  );
+
   // Get all bookings for the user's food truck
   app.get("/api/bookings/my-truck", isAuthenticated, async (req: any, res) => {
     try {
@@ -534,6 +755,20 @@ export function registerBookingRoutes(app: Express) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
+        const isAdmin = ["admin", "super_admin", "staff"].includes(
+          req.user?.userType || "",
+        );
+        let includePending = false;
+        if (req.isAuthenticated?.() && req.user?.id) {
+          includePending =
+            isAdmin ||
+            (await storage.verifyRestaurantOwnership(truckId, req.user.id));
+        }
+
+        const bookingStatuses = includePending
+          ? (["confirmed", "pending"] as const)
+          : (["confirmed"] as const);
+
         const bookingRows = await db
           .select({
             bookingId: eventBookings.id,
@@ -551,10 +786,7 @@ export function registerBookingRoutes(app: Express) {
           .where(
             and(
               eq(eventBookings.truckId, truckId),
-              or(
-                eq(eventBookings.status, "confirmed"),
-                eq(eventBookings.status, "pending"),
-              ),
+              inArray(eventBookings.status, bookingStatuses as any),
               or(eq(events.status, "open"), eq(events.status, "booked")),
               gte(events.date, today),
             ),

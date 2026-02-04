@@ -12,7 +12,7 @@ import {
   insertEventInterestSchema,
   restaurants,
 } from "@shared/schema";
-import { asc, eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 
 export function registerEventRoutes(app: Express) {
   // Get all upcoming events (public)
@@ -50,8 +50,15 @@ export function registerEventRoutes(app: Express) {
         (event.weeklyPriceCents ?? 0) > 0 ||
         (event.monthlyPriceCents ?? 0) > 0;
 
+      const hostCanAcceptPayments = (event: (typeof events)[number]) =>
+        Boolean(
+          (event as any)?.host?.stripeConnectAccountId &&
+            (event as any)?.host?.stripeChargesEnabled,
+        );
+
       const parkingEvents = events.filter(
-        (event) => event.requiresPayment && hasPricing(event),
+        (event) =>
+          event.requiresPayment && hasPricing(event) && hostCanAcceptPayments(event),
       );
       const eventIds = parkingEvents.map((event) => event.id);
 
@@ -76,6 +83,24 @@ export function registerEventRoutes(app: Express) {
               .orderBy(asc(eventBookings.bookingConfirmedAt))
           : [];
 
+      const pendingCounts =
+        eventIds.length > 0
+          ? await db
+              .select({
+                eventId: eventBookings.eventId,
+                count: sql<number>`count(*)`,
+              })
+              .from(eventBookings)
+              .where(inArray(eventBookings.eventId, eventIds))
+              .where(inArray(eventBookings.status, ["pending"]))
+              .groupBy(eventBookings.eventId)
+          : [];
+
+      const pendingByEvent = new Map<string, number>();
+      for (const row of pendingCounts) {
+        pendingByEvent.set(row.eventId, Number(row.count || 0));
+      }
+
       const bookingsByEvent = new Map<string, typeof bookingRows>();
       for (const row of bookingRows) {
         const list = bookingsByEvent.get(row.eventId) ?? [];
@@ -85,6 +110,7 @@ export function registerEventRoutes(app: Express) {
 
       const enhancedEvents = parkingEvents.map((event) => {
         const rows = bookingsByEvent.get(event.id) ?? [];
+        const pending = pendingByEvent.get(event.id) ?? 0;
         const maxSpots = event.maxTrucks ?? 1;
 
         const usedSpotNumbers = new Set<number>();
@@ -115,11 +141,16 @@ export function registerEventRoutes(app: Express) {
           }
         }
 
+        const confirmedCount = rows.length;
+        const reservedCount = Math.min(confirmedCount + pending, maxSpots);
+        const availableCount = Math.max(0, maxSpots - reservedCount);
+        const trimmedAvailable = availableSpotNumbers.slice(0, availableCount);
+
         return {
           ...event,
           spotCount: maxSpots,
-          bookedSpots: Math.min(rows.length, maxSpots),
-          availableSpotNumbers,
+          bookedSpots: reservedCount,
+          availableSpotNumbers: trimmedAvailable,
           bookings: rows.map((row: (typeof rows)[number]) => ({
             truckId: row.truckId,
             truckName: row.truckName,

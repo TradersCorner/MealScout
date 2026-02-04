@@ -4808,41 +4808,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
               break;
             }
 
-            const existingByIntent = await db
-              .select()
-              .from(eventBookings)
-              .where(eq(eventBookings.stripePaymentIntentId, paymentIntent.id))
-              .limit(1);
-
-            if (existingByIntent.length > 0) {
-              break;
-            }
-
-            const existingByTruck = await db
-              .select()
-              .from(eventBookings)
-              .where(eq(eventBookings.eventId, passId))
-              .where(eq(eventBookings.truckId, truckId))
-              .limit(1);
-
             const amountCents =
               Number(metadata.totalCents) || Number(paymentIntent.amount || 0);
 
-            if (existingByTruck.length > 0) {
-              const [truck] = await db
-                .select({ ownerId: restaurants.ownerId })
-                .from(restaurants)
-                .where(eq(restaurants.id, truckId));
-
-              if (truck?.ownerId) {
-                const { addCredit } = await import("./creditService");
-                await addCredit(
-                  truck.ownerId,
-                  amountCents / 100,
-                  "parking_pass_duplicate",
-                  paymentIntent.id,
-                );
-              }
+            const intentRows = await db
+              .select()
+              .from(eventBookings)
+              .where(
+                and(
+                  eq(eventBookings.stripePaymentIntentId, paymentIntent.id),
+                  eq(eventBookings.truckId, truckId),
+                ),
+              );
+            const alreadyProcessed = intentRows.some(
+              (row: (typeof intentRows)[number]) =>
+                row.status === "confirmed" ||
+                (row.status === "cancelled" && row.refundStatus === "credit"),
+            );
+            if (alreadyProcessed) {
               break;
             }
 
@@ -4945,26 +4928,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 );
               }
 
-              await db.insert(eventBookings).values({
-                eventId: passId,
-                truckId,
-                hostId: eventRow.hostId,
-                hostPriceCents: metadataHostPriceCents,
-                platformFeeCents: metadataPlatformFeeCents,
-                totalCents: amountCents,
-                status: "cancelled",
-                stripePaymentIntentId: paymentIntent.id,
-                stripePaymentStatus: "succeeded",
-                stripeApplicationFeeAmount: metadataPlatformFeeCents,
-                stripeTransferDestination: host?.stripeConnectAccountId || null,
-                slotType: normalizedSlotTypes.join(","),
-                refundStatus: "credit",
-                refundAmountCents: amountCents,
-                refundedAt: new Date(),
-                refundReason: "Overbooked",
-                cancelledAt: new Date(),
-                cancellationReason: "Overbooked - credit issued",
-              });
+              // If we created pending holds ahead of payment, update them instead of inserting,
+              // otherwise the unique constraint (event_id, truck_id) can fail.
+              if (intentRows.length > 0) {
+                const now = new Date();
+                for (const row of intentRows) {
+                  await db
+                    .update(eventBookings)
+                    .set({
+                      status: "cancelled",
+                      stripePaymentStatus: "succeeded",
+                      refundStatus: "credit",
+                      refundAmountCents: row.totalCents,
+                      refundedAt: now,
+                      refundReason: "Credit issued",
+                      cancelledAt: now,
+                      cancellationReason: "Overbooked - credit issued",
+                      updatedAt: now,
+                    })
+                    .where(eq(eventBookings.id, row.id));
+                }
+                return;
+              }
+
+              try {
+                await db.insert(eventBookings).values({
+                  eventId: passId,
+                  truckId,
+                  hostId: eventRow.hostId,
+                  hostPriceCents: metadataHostPriceCents,
+                  platformFeeCents: metadataPlatformFeeCents,
+                  totalCents: amountCents,
+                  status: "cancelled",
+                  stripePaymentIntentId: paymentIntent.id,
+                  stripePaymentStatus: "succeeded",
+                  stripeApplicationFeeAmount: metadataPlatformFeeCents,
+                  stripeTransferDestination: host?.stripeConnectAccountId || null,
+                  slotType: normalizedSlotTypes.join(","),
+                  refundStatus: "credit",
+                  refundAmountCents: amountCents,
+                  refundedAt: new Date(),
+                  refundReason: "Overbooked",
+                  cancelledAt: new Date(),
+                  cancellationReason: "Overbooked - credit issued",
+                });
+              } catch (error) {
+                console.warn(
+                  "[WEBHOOK] Unable to insert cancelled booking row after credit:",
+                  error,
+                );
+              }
             };
 
             const missingDates = expectedDateKeys.filter(
@@ -5083,57 +5096,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
               bookingsByEvent.set(row.eventId, list);
             }
 
-            const bookingRows = expectedDateKeys.map((dateKey, index) => {
-              const row = eventsByDate.get(dateKey);
-              if (!row) return null;
+            const now = new Date();
+            const usesHolds = intentRows.length > 0;
 
-              const bookedRows = bookingsByEvent.get(row.id) ?? [];
-              const usedSpotNumbers = new Set<number>();
-              for (const booked of bookedRows) {
-                if (booked.spotNumber && booked.spotNumber > 0) {
-                  usedSpotNumbers.add(booked.spotNumber);
+            if (usesHolds) {
+              const holdsByEventId = new Map<string, (typeof intentRows)[number]>();
+              for (const row of intentRows) {
+                holdsByEventId.set(row.eventId, row);
+              }
+
+              const plannedUpdates = expectedDateKeys.map((dateKey, index) => {
+                const row = eventsByDate.get(dateKey);
+                if (!row) return null;
+                const hold = holdsByEventId.get(row.id);
+                if (!hold) return null;
+
+                const bookedRows = bookingsByEvent.get(row.id) ?? [];
+                const usedSpotNumbers = new Set<number>();
+                for (const booked of bookedRows) {
+                  if (booked.spotNumber && booked.spotNumber > 0) {
+                    usedSpotNumbers.add(booked.spotNumber);
+                  }
                 }
+                let spotNumber = 1;
+                while (usedSpotNumbers.has(spotNumber)) {
+                  spotNumber += 1;
+                }
+                if (spotNumber > row.maxTrucks) {
+                  return null;
+                }
+
+                // Ensure deterministic assignment for subsequent days in this loop.
+                bookedRows.push({ eventId: row.id, spotNumber, bookingConfirmedAt: now });
+                bookingsByEvent.set(row.id, bookedRows);
+
+                const hostCents = hostSplit[index] ?? 0;
+                const feeCents = platformSplit[index] ?? 0;
+
+                return {
+                  id: hold.id,
+                  eventId: row.id,
+                  hostCents,
+                  feeCents,
+                  spotNumber,
+                };
+              });
+
+              const filtered = plannedUpdates.filter(
+                (
+                  row,
+                ): row is NonNullable<(typeof plannedUpdates)[number]> => Boolean(row),
+              );
+
+              if (filtered.length !== expectedDateKeys.length) {
+                await cancelWithCredit("parking_pass_overbook");
+                break;
               }
-              let spotNumber = 1;
-              while (usedSpotNumbers.has(spotNumber)) {
-                spotNumber += 1;
+
+              for (const update of filtered) {
+                await db
+                  .update(eventBookings)
+                  .set({
+                    eventId: update.eventId,
+                    truckId,
+                    hostId: eventRow.hostId,
+                    hostPriceCents: update.hostCents,
+                    platformFeeCents: update.feeCents,
+                    totalCents: update.hostCents + update.feeCents,
+                    status: "confirmed",
+                    stripePaymentIntentId: paymentIntent.id,
+                    stripePaymentStatus: "succeeded",
+                    stripeApplicationFeeAmount: update.feeCents,
+                    stripeTransferDestination: host?.stripeConnectAccountId || null,
+                    slotType: normalizedSlotTypes.join(","),
+                    paidAt: now,
+                    bookingConfirmedAt: now,
+                    spotNumber: update.spotNumber,
+                    updatedAt: now,
+                  })
+                  .where(eq(eventBookings.id, update.id));
               }
-              if (spotNumber > row.maxTrucks) {
-                return null;
+            } else {
+              const bookingRows = expectedDateKeys.map((dateKey, index) => {
+                const row = eventsByDate.get(dateKey);
+                if (!row) return null;
+
+                const bookedRows = bookingsByEvent.get(row.id) ?? [];
+                const usedSpotNumbers = new Set<number>();
+                for (const booked of bookedRows) {
+                  if (booked.spotNumber && booked.spotNumber > 0) {
+                    usedSpotNumbers.add(booked.spotNumber);
+                  }
+                }
+                let spotNumber = 1;
+                while (usedSpotNumbers.has(spotNumber)) {
+                  spotNumber += 1;
+                }
+                if (spotNumber > row.maxTrucks) {
+                  return null;
+                }
+
+                const hostCents = hostSplit[index] ?? 0;
+                const feeCents = platformSplit[index] ?? 0;
+
+                return {
+                  eventId: row.id,
+                  truckId,
+                  hostId: row.hostId,
+                  hostPriceCents: hostCents,
+                  platformFeeCents: feeCents,
+                  totalCents: hostCents + feeCents,
+                  status: "confirmed",
+                  stripePaymentIntentId: paymentIntent.id,
+                  stripePaymentStatus: "succeeded",
+                  stripeApplicationFeeAmount: feeCents,
+                  stripeTransferDestination: host?.stripeConnectAccountId || null,
+                  slotType: normalizedSlotTypes.join(","),
+                  paidAt: now,
+                  bookingConfirmedAt: now,
+                  spotNumber,
+                };
+              });
+
+              const filteredRows = bookingRows.filter(
+                (
+                  row,
+                ): row is NonNullable<(typeof bookingRows)[number]> => Boolean(row),
+              );
+
+              if (filteredRows.length !== expectedDateKeys.length) {
+                await cancelWithCredit("parking_pass_overbook");
+                break;
               }
 
-              const hostCents = hostSplit[index] ?? 0;
-              const feeCents = platformSplit[index] ?? 0;
-
-              return {
-                eventId: row.id,
-                truckId,
-                hostId: row.hostId,
-                hostPriceCents: hostCents,
-                platformFeeCents: feeCents,
-                totalCents: hostCents + feeCents,
-                status: "confirmed",
-                stripePaymentIntentId: paymentIntent.id,
-                stripePaymentStatus: "succeeded",
-                stripeApplicationFeeAmount: feeCents,
-                stripeTransferDestination: host?.stripeConnectAccountId || null,
-                slotType: normalizedSlotTypes.join(","),
-                paidAt: new Date(),
-                bookingConfirmedAt: new Date(),
-                spotNumber,
-              };
-            });
-
-            const filteredRows = bookingRows.filter(
-              (row): row is NonNullable<(typeof bookingRows)[number]> => Boolean(row),
-            );
-
-            if (filteredRows.length !== expectedDateKeys.length) {
-              await cancelWithCredit("parking_pass_overbook");
-              break;
+              await db.insert(eventBookings).values(filteredRows);
             }
-
-            await db.insert(eventBookings).values(filteredRows);
 
             try {
               const creditAppliedCents = Number(
@@ -5201,17 +5298,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
               );
             }
 
-            const totalConfirmed = confirmedBookings.length + 1;
-            const newStatus =
-              totalConfirmed >= eventRow.maxTrucks ? "filled" : "open";
+            const affectedEventIds = Array.from(
+              new Set(
+                expectedDateKeys
+                  .map((dateKey) => eventsByDate.get(dateKey)?.id)
+                  .filter((id): id is string => Boolean(id)),
+              ),
+            );
+            if (affectedEventIds.length === 0) {
+              affectedEventIds.push(passId);
+            }
 
-            await db
-              .update(events)
-              .set({
-                status: newStatus,
-                bookedRestaurantId: null,
-              })
-              .where(eq(events.id, passId));
+            const maxTrucksByEventId = new Map<string, number>();
+            for (const row of bookingEvents) {
+              maxTrucksByEventId.set(row.id, row.maxTrucks ?? 1);
+            }
+
+            const countRows =
+              affectedEventIds.length > 0
+                ? await db
+                    .select({
+                      eventId: eventBookings.eventId,
+                      count: sql<number>`count(*)`,
+                    })
+                    .from(eventBookings)
+                    .where(inArray(eventBookings.eventId, affectedEventIds))
+                    .where(inArray(eventBookings.status, ["confirmed"]))
+                    .groupBy(eventBookings.eventId)
+                : [];
+
+            const confirmedByEventId = new Map<string, number>();
+            for (const row of countRows) {
+              confirmedByEventId.set(row.eventId, Number(row.count || 0));
+            }
+
+            for (const eventId of affectedEventIds) {
+              const confirmedCount = confirmedByEventId.get(eventId) ?? 0;
+              const maxTrucks = maxTrucksByEventId.get(eventId) ?? 1;
+              const newStatus = confirmedCount >= maxTrucks ? "filled" : "open";
+
+              await db
+                .update(events)
+                .set({
+                  status: newStatus,
+                  bookedRestaurantId: null,
+                })
+                .where(eq(events.id, eventId));
+            }
           } catch (error) {
             console.error("[WEBHOOK] Error confirming booking:", error);
           }
@@ -5231,6 +5364,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 status: "cancelled",
                 stripePaymentStatus: "failed",
                 cancellationReason: "Payment failed",
+                cancelledAt: new Date(),
+                updatedAt: new Date(),
               })
               .where(eq(eventBookings.stripePaymentIntentId, failedIntent.id));
           } catch (error) {
@@ -6484,6 +6619,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await db.delete(requestLogs).where(lt(requestLogs.createdAt, cutoff));
     } catch (error) {
       console.error("❌ Request log cleanup failed:", error);
+    }
+  });
+
+  // Cleanup stale Parking Pass booking holds (pending rows created during checkout)
+  // so capacity isn't blocked if a truck abandons the payment flow.
+  cron.schedule("*/10 * * * *", async () => {
+    try {
+      const { eventBookings } = await import("@shared/schema");
+      const cutoff = new Date(Date.now() - 30 * 60 * 1000); // 30 minutes
+      const now = new Date();
+
+      await db
+        .update(eventBookings)
+        .set({
+          status: "cancelled",
+          cancelledAt: now,
+          cancellationReason: "Payment not completed (hold expired)",
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(eventBookings.status, "pending"),
+            lt(eventBookings.createdAt, cutoff),
+          ),
+        );
+    } catch (error) {
+      console.error("❌ Booking hold cleanup failed:", error);
     }
   });
 

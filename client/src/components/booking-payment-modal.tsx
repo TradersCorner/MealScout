@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Elements,
   PaymentElement,
@@ -17,10 +17,8 @@ import {
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// Load Stripe publishable key
-const stripePromise = loadStripe(
-  import.meta.env.VITE_STRIPE_PUBLIC_KEY || "",
-);
+const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY || "";
+const stripePromise = stripePublicKey ? loadStripe(stripePublicKey) : null;
 
 interface BookingPaymentModalProps {
   open: boolean;
@@ -42,6 +40,8 @@ interface BookingPaymentModalProps {
 
 interface PaymentFormProps {
   clientSecret: string;
+  paymentIntentId: string;
+  truckId: string;
   totalCents: number;
   breakdown: {
     hostPrice: number;
@@ -54,6 +54,8 @@ interface PaymentFormProps {
 
 function PaymentForm({
   clientSecret,
+  paymentIntentId,
+  truckId,
   totalCents,
   breakdown,
   onSuccess,
@@ -63,6 +65,32 @@ function PaymentForm({
   const elements = useElements();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const waitForBookingConfirmation = async () => {
+    const startedAt = Date.now();
+    const timeoutMs = 25_000;
+
+    while (Date.now() - startedAt < timeoutMs) {
+      try {
+        const res = await fetch(
+          `/api/bookings/payment-intent/${encodeURIComponent(
+            paymentIntentId,
+          )}?truckId=${encodeURIComponent(truckId)}`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.status === "confirmed") return "confirmed" as const;
+          if (data?.status === "credited") return "credited" as const;
+        }
+      } catch {
+        // ignore transient network issues; keep polling
+      }
+
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+
+    return "pending" as const;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,9 +117,24 @@ function PaymentForm({
           variant: "destructive",
         });
       } else {
+        const status = await waitForBookingConfirmation();
+        if (status === "credited") {
+          toast({
+            title: "Booking Unavailable",
+            description:
+              "Payment succeeded but the spot was no longer available. Credits were issued to your account.",
+            variant: "destructive",
+          });
+          onSuccess();
+          return;
+        }
+
         toast({
           title: "Parking Pass Confirmed!",
-          description: "Your parking spot has been reserved.",
+          description:
+            status === "pending"
+              ? "Payment received. Your booking will appear shortly."
+              : "Your parking spot has been reserved.",
         });
         onSuccess();
       }
@@ -117,7 +160,7 @@ function PaymentForm({
           </span>
         </div>
         <div className="flex items-center justify-between text-gray-700">
-          <span>MealScout Platform Fee (per day)</span>
+          <span>MealScout Platform Fee</span>
           <span className="font-medium">
             ${(breakdown.platformFee / 100).toFixed(2)}
           </span>
@@ -191,19 +234,43 @@ export function BookingPaymentModal({
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [bookingData, setBookingData] = useState<{
     totalCents: number;
     breakdown: { hostPrice: number; platformFee: number; creditsApplied?: number };
   } | null>(null);
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
   const [creditsToApply, setCreditsToApply] = useState("");
+  const cancelOnInitiateRef = useRef(false);
 
   useEffect(() => {
-    if (open && !clientSecret) {
+    if (open) {
+      cancelOnInitiateRef.current = false;
+      if (!stripePromise) {
+        toast({
+          title: "Payments Unavailable",
+          description: "Stripe is not configured for this environment.",
+          variant: "destructive",
+        });
+        onOpenChange(false);
+        return;
+      }
       loadCreditBalance();
-      initiateBooking();
     }
   }, [open]);
+
+  const cancelCheckout = async (intentId: string) => {
+    try {
+      await fetch(
+        `/api/bookings/payment-intent/${encodeURIComponent(intentId)}/cancel?truckId=${encodeURIComponent(
+          truckId,
+        )}`,
+        { method: "POST" },
+      );
+    } catch {
+      // Best effort; pending holds will eventually expire.
+    }
+  };
 
   const loadCreditBalance = async () => {
     try {
@@ -239,7 +306,15 @@ export function BookingPaymentModal({
       }
 
       const data = await res.json();
+      if (cancelOnInitiateRef.current) {
+        const intentId = String(data.paymentIntentId || "").trim();
+        if (intentId) {
+          await cancelCheckout(intentId);
+        }
+        return;
+      }
       setClientSecret(data.clientSecret);
+      setPaymentIntentId(data.paymentIntentId || null);
       setBookingData({
         totalCents: data.totalCents,
         breakdown: data.breakdown,
@@ -257,11 +332,27 @@ export function BookingPaymentModal({
     }
   };
 
-  const handleClose = () => {
+  const resetState = () => {
     setClientSecret(null);
+    setPaymentIntentId(null);
     setBookingData(null);
     setCreditsToApply("");
+  };
+
+  const handleClose = () => {
+    resetState();
     onOpenChange(false);
+  };
+
+  const handleCancel = () => {
+    const intentId = paymentIntentId;
+    cancelOnInitiateRef.current = isLoading;
+    resetState();
+    onOpenChange(false);
+
+    if (intentId) {
+      void cancelCheckout(intentId);
+    }
   };
 
   const handleSuccess = () => {
@@ -270,7 +361,14 @@ export function BookingPaymentModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          handleCancel();
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Confirm Parking Pass</DialogTitle>
@@ -327,9 +425,9 @@ export function BookingPaymentModal({
             variant="outline"
             className="mt-3 w-full"
             onClick={initiateBooking}
-            disabled={isLoading}
+            disabled={isLoading || Boolean(clientSecret)}
           >
-            Refresh Pricing
+            {clientSecret ? "Pricing locked" : "Continue to payment"}
           </Button>
         </div>
 
@@ -340,7 +438,7 @@ export function BookingPaymentModal({
           </div>
         )}
 
-        {!isLoading && clientSecret && bookingData && (
+        {!isLoading && clientSecret && paymentIntentId && bookingData && (
           <Elements
             stripe={stripePromise}
             options={{
@@ -355,10 +453,12 @@ export function BookingPaymentModal({
           >
             <PaymentForm
               clientSecret={clientSecret}
+              paymentIntentId={paymentIntentId}
+              truckId={truckId}
               totalCents={bookingData.totalCents}
               breakdown={bookingData.breakdown}
               onSuccess={handleSuccess}
-              onCancel={handleClose}
+              onCancel={handleCancel}
             />
           </Elements>
         )}

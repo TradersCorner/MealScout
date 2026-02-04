@@ -216,7 +216,7 @@ function PaymentForm({
 
       {/* Terms Notice */}
       <p className="text-xs text-gray-500 text-center">
-        By confirming payment, you acknowledge bookings are non-refundable.
+        By confirming payment, you acknowledge bookings are non-refundable once confirmed.
       </p>
     </form>
   );
@@ -242,6 +242,7 @@ export function BookingPaymentModal({
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
   const [creditsToApply, setCreditsToApply] = useState("");
   const cancelOnInitiateRef = useRef(false);
+  const stage: "review" | "pay" = clientSecret ? "pay" : "review";
 
   useEffect(() => {
     if (open) {
@@ -369,67 +370,121 @@ export function BookingPaymentModal({
         }
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Confirm Parking Pass</DialogTitle>
+          <DialogTitle className="font-display">Parking Pass Checkout</DialogTitle>
           <DialogDescription>
-            <div className="space-y-1 text-sm text-gray-600 pt-2">
-              <p className="font-semibold text-gray-900">{eventDetails.name}</p>
-              <p>{eventDetails.hostName}</p>
-              <p>
-                {eventDetails.date} - {eventDetails.startTime} -{" "}
-                {eventDetails.endTime}
-              </p>
-              {eventDetails.slotSummary && (
-                <p className="text-xs text-gray-500">
-                  Slots: {eventDetails.slotSummary}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center gap-2 text-[11px]">
+                <span
+                  className={`rounded-full border px-2.5 py-1 font-semibold ${
+                    stage === "review"
+                      ? "border-orange-200 bg-orange-50 text-orange-900"
+                      : "border-gray-200 bg-gray-50 text-gray-600"
+                  }`}
+                >
+                  1. Review
+                </span>
+                <span className="h-px flex-1 bg-gray-200" />
+                <span
+                  className={`rounded-full border px-2.5 py-1 font-semibold ${
+                    stage === "pay"
+                      ? "border-orange-200 bg-orange-50 text-orange-900"
+                      : "border-gray-200 bg-gray-50 text-gray-600"
+                  }`}
+                >
+                  2. Pay
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+                <p className="font-semibold text-gray-900">{eventDetails.hostName}</p>
+                <p className="text-xs text-gray-600">
+                  {eventDetails.date} · {eventDetails.startTime} - {eventDetails.endTime}
                 </p>
-              )}
+                {eventDetails.slotSummary ? (
+                  <p className="mt-1 text-xs text-gray-600">
+                    Slots: {eventDetails.slotSummary}
+                  </p>
+                ) : null}
+              </div>
             </div>
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-700">
-                Available Credits
-              </p>
-              <p className="text-lg font-semibold text-gray-900">
-                ${(creditBalance || 0).toFixed(2)}
+        {!clientSecret && (
+          <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Credits</p>
+                <p className="text-xs text-gray-500">
+                  Credits reduce the MealScout platform fee.
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[11px] text-gray-500">Available</p>
+                <p className="text-base font-semibold text-gray-900">
+                  ${(creditBalance || 0).toFixed(2)}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-xs font-semibold text-gray-600">
+                  Apply credits
+                </label>
+                <button
+                  type="button"
+                  className="text-xs text-gray-600 underline"
+                  onClick={() =>
+                    setCreditsToApply(String((creditBalance || 0).toFixed(2)))
+                  }
+                >
+                  Use max
+                </button>
+              </div>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={creditsToApply}
+                onChange={(e) => setCreditsToApply(e.target.value)}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                placeholder="0.00"
+              />
+              <p className="text-[11px] text-gray-500">
+                Your spot is held briefly while you check out. Closing this window releases the hold.
               </p>
             </div>
-            <p className="text-xs text-gray-500 text-right">
-              Credits reduce the platform fee.
-            </p>
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={handleCancel}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="flex-1"
+                onClick={initiateBooking}
+                disabled={isLoading}
+              >
+                Continue
+              </Button>
+            </div>
           </div>
-          <div className="mt-3">
-            <label className="text-xs font-medium text-gray-600">
-              Apply Credits
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={creditsToApply}
-              onChange={(e) => setCreditsToApply(e.target.value)}
-              className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
-              placeholder="0.00"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              You can refresh pricing after setting credits.
-            </p>
+        )}
+
+        {clientSecret ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            Pricing locked. Complete payment to confirm your booking.
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-3 w-full"
-            onClick={initiateBooking}
-            disabled={isLoading || Boolean(clientSecret)}
-          >
-            {clientSecret ? "Pricing locked" : "Continue to payment"}
-          </Button>
-        </div>
+        ) : null}
 
         {isLoading && (
           <div className="flex items-center justify-center py-12">

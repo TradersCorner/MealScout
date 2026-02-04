@@ -65,6 +65,9 @@ interface Host {
   expectedFootTraffic?: string | null;
   contactPhone?: string | null;
   amenities?: Record<string, boolean> | null;
+  stripeConnectAccountId?: string | null;
+  stripeChargesEnabled?: boolean | null;
+  stripeOnboardingCompleted?: boolean | null;
 }
 
 interface HostPassListing {
@@ -544,6 +547,9 @@ export default function ParkingPassPage() {
   const [isSharingLocation, setIsSharingLocation] = useState(false);
   const [isLive, setIsLive] = useState(false);
   const [topTab, setTopTab] = useState<"book" | "schedule" | "host">("book");
+  const [hostToolsTab, setHostToolsTab] = useState<
+    "listings" | "location" | "payments"
+  >("listings");
 
   const reloadHostPassListings = async (hostId: string) => {
     if (!hostId) return;
@@ -2516,7 +2522,7 @@ export default function ParkingPassPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-transparent">
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Parking Pass</h1>
@@ -2549,7 +2555,94 @@ export default function ParkingPassPage() {
             Loading your host tools...
           </div>
         )}
-        {topTab === "host" && showHostParkingPass && host && (
+
+        {topTab === "host" && showHostParkingPass && (
+          <div className="rounded-2xl border border-white/50 bg-white/80 backdrop-blur-md p-4 shadow-sm space-y-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-slate-900 font-display">
+                  Host tools
+                </p>
+                <p className="text-xs text-slate-500">
+                  Listings, location details, and payments status.
+                </p>
+              </div>
+              {host ? (
+                <span
+                  className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${
+                    host.stripeChargesEnabled
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : "border-amber-200 bg-amber-50 text-amber-800"
+                  }`}
+                >
+                  {host.stripeChargesEnabled ? "Payments enabled" : "Payments not enabled"}
+                </span>
+              ) : null}
+            </div>
+
+            <Tabs
+              value={hostToolsTab}
+              onValueChange={(value) => setHostToolsTab(value as any)}
+            >
+              <TabsList className="w-full justify-start bg-white/70 border border-white/60 rounded-xl p-1">
+                <TabsTrigger value="listings" className="text-sm">
+                  Listings
+                </TabsTrigger>
+                <TabsTrigger value="location" className="text-sm">
+                  Location
+                </TabsTrigger>
+                <TabsTrigger value="payments" className="text-sm">
+                  Payments
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        )}
+
+        {topTab === "host" && hostToolsTab === "payments" && showHostParkingPass && (
+          <div className="rounded-2xl border border-white/50 bg-white/80 backdrop-blur-md p-5 shadow-sm space-y-3">
+            <div>
+              <p className="text-base font-semibold text-slate-900 font-display">
+                Payments
+              </p>
+              <p className="text-xs text-slate-500">
+                You must enable payments before trucks can book your spots.
+              </p>
+            </div>
+
+            {!host ? (
+              <div className="rounded-xl border border-white/60 bg-white/70 p-4 text-sm text-slate-700">
+                Loading payment status...
+              </div>
+            ) : host.stripeChargesEnabled ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                Payments are enabled. Your listings can accept bookings.
+              </div>
+            ) : (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                <p className="text-sm font-semibold text-amber-900">
+                  Payments are not enabled yet.
+                </p>
+                <p className="text-xs text-amber-800">
+                  Finish Stripe onboarding to start getting paid automatically.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={() => setLocation("/host/dashboard")}>
+                    Enable payments
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setLocation("/host/dashboard?setup=refresh")}
+                  >
+                    Check status
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        {topTab === "host" && hostToolsTab === "location" && showHostParkingPass && host && (
           <div
             id="parking-pass-settings"
             className="rounded-2xl border border-orange-200 bg-orange-50/70 p-4"
@@ -3100,7 +3193,7 @@ export default function ParkingPassPage() {
           </div>
         )}
 
-        {topTab === "host" && showHostParkingPass && host && (
+        {topTab === "host" && hostToolsTab === "listings" && showHostParkingPass && host && (
           <>
         {isCreating && (
           <div className="bg-white p-6 rounded-2xl border border-orange-200 shadow-sm">
@@ -4161,7 +4254,7 @@ export default function ParkingPassPage() {
         )}
 
         {topTab === "book" && (
-        <div className={`space-y-4${isTruckViewUser ? " order-first" : ""}`}>
+        <div className={`space-y-4 pb-24${isTruckViewUser ? " order-first" : ""}`}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-gray-900">
@@ -4171,47 +4264,84 @@ export default function ParkingPassPage() {
                 Search by city or address. Pick a date to see availability.
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant={viewMode === "map" ? "default" : "outline"}
-                onClick={() => setViewMode("map")}
-              >
-                Map view
-              </Button>
-              <Button
-                size="sm"
-                variant={viewMode === "list" ? "default" : "outline"}
-                onClick={() => setViewMode("list")}
-              >
-                List view
-              </Button>
-            </div>
           </div>
           <div className="grid gap-4 lg:grid-cols-[1.35fr_0.9fr]">
             <div className="space-y-4 order-1 lg:order-none">
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-2">
-                <p className="text-xs font-semibold text-gray-700">
-                  Pick a date for availability
-                </p>
-                <input
-                  type="date"
-                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
-                  value={selectedDate}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setSelectedDate(
-                      value || new Date().toISOString().split("T")[0],
-                    );
-                  }}
-                />
-                <input
-                  type="text"
-                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
-                  placeholder="Search city or address"
-                  value={cityQuery}
-                  onChange={(event) => setCityQuery(event.target.value)}
-                />
+              <div className="rounded-2xl border border-white/50 bg-white/80 backdrop-blur-md p-4 shadow-sm space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-800">
+                      Search + availability
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Pick a date, then choose a location with open spots.
+                    </p>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant={viewMode === "map" ? "default" : "outline"}
+                      onClick={() => setViewMode("map")}
+                    >
+                      Map
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={viewMode === "list" ? "default" : "outline"}
+                      onClick={() => setViewMode("list")}
+                    >
+                      List
+                    </Button>
+                  </div>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-[200px_1fr]">
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-semibold text-slate-600">
+                      Date
+                    </p>
+                    <Input
+                      type="date"
+                      className="bg-white/90"
+                      value={selectedDate}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setSelectedDate(
+                          value || new Date().toISOString().split("T")[0],
+                        );
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-semibold text-slate-600">
+                      City or address
+                    </p>
+                    <Input
+                      type="text"
+                      className="bg-white/90"
+                      placeholder="Austin, TX or 123 Main St"
+                      value={cityQuery}
+                      onChange={(event) => setCityQuery(event.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex sm:hidden items-center gap-2">
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    variant={viewMode === "map" ? "default" : "outline"}
+                    onClick={() => setViewMode("map")}
+                  >
+                    Map view
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    variant={viewMode === "list" ? "default" : "outline"}
+                    onClick={() => setViewMode("list")}
+                  >
+                    List view
+                  </Button>
+                </div>
               </div>
 
               {isLoading ? (
@@ -4227,8 +4357,8 @@ export default function ParkingPassPage() {
                 </div>
               ) : viewMode === "map" ? (
                 <div className="space-y-3">
-                  <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-                    <div className="relative h-72 w-full bg-gray-100">
+                  <div className="rounded-2xl border border-white/50 bg-white/80 backdrop-blur-md shadow-sm overflow-hidden">
+                    <div className="relative h-72 w-full bg-slate-100/60">
                       <MapContainer
                         center={[mapCenter.lat, mapCenter.lng]}
                         zoom={13}
@@ -4438,7 +4568,7 @@ export default function ParkingPassPage() {
                         </div>
                       )}
                     </div>
-                    <div className="border-t border-gray-200 px-4 py-2 text-xs text-gray-500">
+                    <div className="border-t border-white/50 px-4 py-2 text-xs text-slate-600">
                       Tap a location below to update the map.
                     </div>
                   </div>
@@ -4510,15 +4640,15 @@ export default function ParkingPassPage() {
                               setActiveLocationKey(group.key);
                             }
                           }}
-                          className={`w-full rounded-xl border px-4 py-3 space-y-2 transition cursor-pointer ${
+                          className={`w-full rounded-2xl border px-4 py-3 space-y-2 transition cursor-pointer shadow-sm ${
                             isActive
-                              ? "border-orange-300 bg-orange-50"
-                              : "border-gray-200 bg-white hover:bg-gray-50"
+                              ? "border-orange-300 bg-white/95 ring-2 ring-orange-200"
+                              : "border-white/50 bg-white/80 backdrop-blur hover:bg-white/90"
                           }`}
                         >
                           <div className="flex items-center justify-between">
                             <div>
-                              <span className="font-semibold text-gray-900">
+                              <span className="text-[15px] font-semibold text-slate-900 font-display">
                                 {group.host.businessName}
                               </span>
                               <div className="text-xs text-gray-500">
@@ -4734,14 +4864,14 @@ export default function ParkingPassPage() {
                             setActiveLocationKey(group.key);
                           }
                         }}
-                        className={`w-full text-left rounded-xl border px-4 py-3 space-y-2 transition cursor-pointer ${
+                        className={`w-full text-left rounded-2xl border px-4 py-3 space-y-2 transition cursor-pointer shadow-sm ${
                           isActive
-                            ? "border-orange-300 bg-orange-50"
-                            : "border-gray-200 bg-white hover:bg-gray-50"
+                            ? "border-orange-300 bg-white/95 ring-2 ring-orange-200"
+                            : "border-white/50 bg-white/80 backdrop-blur hover:bg-white/90"
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-semibold text-gray-900">
+                          <span className="text-[15px] font-semibold text-slate-900 font-display">
                             {group.host.businessName}
                           </span>
                           <span className="text-xs text-gray-500">
@@ -4864,7 +4994,7 @@ export default function ParkingPassPage() {
 
             <div className="space-y-4 order-2 lg:order-none">
               {cartItems.length > 0 && (
-                <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
+                <div className="rounded-2xl border border-white/50 bg-white/80 backdrop-blur-md p-4 shadow-sm space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-semibold text-gray-900">
@@ -4882,7 +5012,7 @@ export default function ParkingPassPage() {
                     {cartItems.map((item) => (
                       <div
                         key={item.listing.id}
-                        className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600"
+                        className="rounded-xl border border-white/50 bg-white/70 px-3 py-2 text-xs text-slate-700"
                       >
                         <div className="flex items-center justify-between text-sm text-gray-900">
                           <span>{item.listing.host.businessName}</span>
@@ -4905,7 +5035,7 @@ export default function ParkingPassPage() {
                     const totals = getCartTotals();
                     if (!totals.totalCents) return null;
                     return (
-                      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
+                      <div className="rounded-xl border border-white/50 bg-white/70 p-3 text-xs text-slate-700">
                         <div className="flex items-center justify-between">
                           <span>Host total</span>
                           <span>${(totals.hostCents / 100).toFixed(2)}</span>
@@ -4924,10 +5054,10 @@ export default function ParkingPassPage() {
                 </div>
               )}
 
-              <Card className="rounded-2xl border border-gray-200 bg-white">
+              <Card className="rounded-2xl border border-white/50 bg-white/80 backdrop-blur-md shadow-sm">
                 <CardContent className="p-5 space-y-3">
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">
+                    <p className="text-base font-semibold text-slate-900 font-display">
                       {activeLocation?.host.businessName || "Select a location"}
                     </p>
                     <p className="text-xs text-gray-500">
@@ -4937,22 +5067,22 @@ export default function ParkingPassPage() {
                   {activeListing && (
                     <>
                       <div className="flex flex-wrap gap-2 text-xs text-gray-600">
-                        <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-1">
+                        <span className="rounded-full border border-white/50 bg-white/70 px-2 py-1">
                           {activeListing.host.locationType || "Location"}
                         </span>
-                        <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-1">
+                        <span className="rounded-full border border-white/50 bg-white/70 px-2 py-1">
                           Foot traffic:{" "}
                           {activeListing.host.expectedFootTraffic || "Not shared"}
                         </span>
-                        <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-1">
+                        <span className="rounded-full border border-white/50 bg-white/70 px-2 py-1">
                           {activeListing.startTime === "00:00" &&
                           activeListing.endTime === "23:59"
                             ? "Any time"
                             : `${activeListing.startTime} - ${activeListing.endTime}`}
                         </span>
                       </div>
-                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 space-y-2">
-                        <p className="text-[11px] font-semibold text-gray-700">
+                      <div className="rounded-xl border border-white/50 bg-white/70 p-3 text-xs text-slate-700 space-y-2">
+                        <p className="text-[11px] font-semibold text-slate-700">
                           Schedule
                         </p>
                         {!selectedDateAvailable && (
@@ -5120,6 +5250,28 @@ export default function ParkingPassPage() {
             </div>
           </div>
         </div>
+
+        {cartItems.length > 0 && (() => {
+          const totals = getCartTotals();
+          if (!totals.totalCents) return null;
+          return (
+            <div className="fixed bottom-4 left-0 right-0 z-50 px-4 lg:hidden">
+              <div className="mx-auto max-w-md rounded-2xl border border-white/60 bg-white/90 backdrop-blur-md shadow-lg p-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] text-slate-600">
+                    Cart ({cartItems.length})
+                  </p>
+                  <p className="text-base font-semibold text-slate-900">
+                    ${(totals.totalCents / 100).toFixed(2)}
+                  </p>
+                </div>
+                <Button size="sm" onClick={startCheckout}>
+                  Checkout
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
         </div>
         )}
       </div>

@@ -288,6 +288,10 @@ export default function RestaurantSignup() {
   });
 
   const selectedBusinessType = form.watch("businessType");
+  const mainHero =
+    selectedBusinessType === "food_truck"
+      ? COPY.main.hero.foodTruck
+      : COPY.main.hero.restaurant;
 
   useEffect(() => {
     if (selectedBusinessType !== "food_truck" && claimSelection) {
@@ -1399,13 +1403,13 @@ export default function RestaurantSignup() {
             className="text-4xl font-bold text-gray-900 mb-4"
             data-testid="text-hero-title"
           >
-            {COPY.main.heroTitle}
+            {mainHero.title}
           </h2>
           <p
             className="text-gray-600 text-xl leading-relaxed max-w-2xl mx-auto"
             data-testid="text-hero-subtitle"
           >
-            {COPY.main.heroSubtitle}
+            {mainHero.subtitle}
           </p>
         </div>
 

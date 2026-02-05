@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { format } from "date-fns";
 import {
   PARKING_PASS_BOOKING_DAYS,
+  PARKING_PASS_MEAL_WINDOWS,
   PARKING_PASS_SLOT_TYPES,
   addMinutesToTime,
   isSlotWithinHours,
@@ -462,8 +463,10 @@ export default function ParkingPassPage() {
   const [editHostListingOpen, setEditHostListingOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([]);
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
+  const defaultHostStartTime: string = PARKING_PASS_MEAL_WINDOWS.breakfast.start;
+  const defaultHostEndTime: string = PARKING_PASS_MEAL_WINDOWS.dinner.end;
+  const [startTime, setStartTime] = useState<string>(defaultHostStartTime);
+  const [endTime, setEndTime] = useState<string>(defaultHostEndTime);
   const [anyTime, setAnyTime] = useState(false);
   const [maxTrucks, setMaxTrucks] = useState(1);
   const [hardCapEnabled, setHardCapEnabled] = useState(false);
@@ -2033,8 +2036,8 @@ export default function ParkingPassPage() {
       setHostPassListings((current) => [...current, ...newListings]);
       setIsCreating(false);
       setDaysOfWeek([]);
-      setStartTime("");
-      setEndTime("");
+      setStartTime(defaultHostStartTime);
+      setEndTime(defaultHostEndTime);
       setAnyTime(false);
       setMaxTrucks(1);
       setHardCapEnabled(false);
@@ -2531,7 +2534,7 @@ export default function ParkingPassPage() {
     document.documentElement.classList.contains("theme-night");
   const parkingMapTileUrl = isNightTheme
     ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+    : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
   const parkingMapAttribution =
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
   const todayDateKey = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);

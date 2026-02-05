@@ -22,6 +22,7 @@
     "test:incidents": "tsx scripts/testIncidents.ts",
     "validate:config": "tsx scripts/validateConfig.ts",
     "backfill:host-coordinates": "tsx scripts/backfillHostGeocodes.ts",
+    "backfill:parking-pass-hours": "tsx scripts/backfillParkingPassHours.ts",
     "stress-test": "tsx scripts/stressTest.ts",
     "test:flows": "tsx scripts/userFlows.ts",
     "test:flows:with-server": "node scripts/testFlowsWithServer.mjs",

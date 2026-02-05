@@ -1412,7 +1412,7 @@ export default function DealCreation() {
             </Button>
             <Button
               type="button"
-              onClick={handleDealSharePost}
+              onClick={() => void handleDealSharePost()}
               disabled={isSharingDeal}
             >
               {isSharingDeal ? "Sharing..." : "Post update"}

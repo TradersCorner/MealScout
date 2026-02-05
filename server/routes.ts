@@ -1561,11 +1561,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (event) => !event.requiresPayment,
       );
 
-      const hostLocations = [
-        ...openLocations.map((loc) => ({
-          id: loc.id,
-          type: "host_location" as const,
-          name: loc.businessName,
+        const hostLocations = [
+          ...openLocations.map((loc) => ({
+            id: loc.id,
+            type: "host_location" as const,
+            name: loc.businessName,
           address: loc.address,
           city: null,
           state: null,
@@ -1574,25 +1574,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           notes: loc.notes,
           preferredDates: loc.preferredDates,
           status: loc.status,
-          latitude: loc.latitude,
-          longitude: loc.longitude,
-        })),
-        ...hostProfiles.map(({ host }) => ({
-          id: host.id,
-          type: "host_location" as const,
-          name: host.businessName,
-          address: host.address,
-          city: host.city,
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+          })),
+          ...hostProfiles.map(({ host }: { host: typeof hosts.$inferSelect }) => ({
+            id: host.id,
+            type: "host_location" as const,
+            name: host.businessName,
+            address: host.address,
+            city: host.city,
           state: host.state,
           locationType: host.locationType,
           expectedFootTraffic: host.expectedFootTraffic,
           notes: host.notes,
           preferredDates: [],
           status: host.isVerified ? "verified" : "active",
-          latitude: host.latitude,
-          longitude: host.longitude,
-        })),
-      ];
+            latitude: host.latitude,
+            longitude: host.longitude,
+          })),
+        ];
 
         const eventLocations = publicEvents.map((event) => ({
         id: event.id,
@@ -4882,7 +4882,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const rangeEnd = new Date(rangeStart);
             rangeEnd.setDate(rangeEnd.getDate() + bookingDays);
 
-            const bookingEvents = await db
+            const bookingEvents: Array<typeof events.$inferSelect> = await db
               .select()
               .from(events)
               .where(
@@ -6551,7 +6551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(requestLogs)
         .where(and(gte(requestLogs.createdAt, start), lt(requestLogs.createdAt, end)));
 
-      const statusBuckets = await db
+      const statusBuckets: Array<{ statusCode: number; count: number }> = await db
         .select({
           statusCode: requestLogs.statusCode,
           count: sql<number>`count(*)`,
@@ -6561,7 +6561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .groupBy(requestLogs.statusCode)
         .orderBy(desc(sql`count(*)`));
 
-      const topPaths = await db
+      const topPaths: Array<{ path: string; count: number; avgDurationMs: number }> = await db
         .select({
           path: requestLogs.path,
           count: sql<number>`count(*)`,
@@ -6573,7 +6573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(desc(sql`count(*)`))
         .limit(25);
 
-      const topErrors = await db
+      const topErrors: Array<{ path: string; statusCode: number; count: number }> = await db
         .select({
           path: requestLogs.path,
           statusCode: requestLogs.statusCode,

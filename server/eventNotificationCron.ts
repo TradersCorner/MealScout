@@ -1,6 +1,6 @@
 import { db } from './db';
 import { events, hosts, restaurants, eventInterests, users } from '@shared/schema';
-import { and, eq, gte, lte, isNull } from 'drizzle-orm';
+import { and, eq, gte, lte, isNull, sql } from 'drizzle-orm';
 import { emailService } from './emailService';
 import auditLogger from './auditLogger';
 

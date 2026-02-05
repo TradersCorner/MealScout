@@ -101,6 +101,7 @@ import {
   type LisaClaimType,
   type LisaClaimSource,
 } from "@shared/schema";
+import { PARKING_PASS_MEAL_WINDOWS } from "@shared/parkingPassSlots";
 import { db } from "./db";
 import {
   eq,
@@ -732,8 +733,8 @@ export class DatabaseStorage implements IStorage {
       return false;
     }
 
-    const defaultStartTime = "09:00";
-    const defaultEndTime = "17:00";
+    const defaultStartTime = PARKING_PASS_MEAL_WINDOWS.breakfast.start;
+    const defaultEndTime = PARKING_PASS_MEAL_WINDOWS.dinner.end;
     const spotCount = host.spotCount ?? 1;
 
     const [series] = await db

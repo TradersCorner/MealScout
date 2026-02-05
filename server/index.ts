@@ -182,22 +182,22 @@ app.use((req, res, next) => {
     }
     const durationMs = Date.now() - start;
     const userId = (req as any).user?.id || null;
-    void db
-      .insert(requestLogs)
-      .values({
-        method: req.method,
-        path: pathValue,
-        statusCode: res.statusCode || 0,
-        durationMs,
-        userId,
-        ip: req.ip,
-        userAgent: req.get("user-agent") || null,
-        createdAt: new Date(),
-      })
-      .catch((error) => {
-        console.error("Failed to write request log:", error);
-      });
-  });
+      void db
+        .insert(requestLogs)
+        .values({
+          method: req.method,
+          path: pathValue,
+          statusCode: res.statusCode || 0,
+          durationMs,
+          userId,
+          ip: req.ip,
+          userAgent: req.get("user-agent") || null,
+          createdAt: new Date(),
+        })
+        .catch((error: unknown) => {
+          console.error("Failed to write request log:", error);
+        });
+    });
   next();
 });
 

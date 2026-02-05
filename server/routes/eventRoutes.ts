@@ -8,19 +8,24 @@ import {
   isRestaurantOwner,
 } from "../unifiedAuth";
 import {
+  events as eventsTable,
   eventBookings,
   insertEventInterestSchema,
   restaurants,
 } from "@shared/schema";
 import { asc, eq, inArray, sql } from "drizzle-orm";
 import { forwardGeocode } from "../utils/geocoding";
+import {
+  PARKING_PASS_MEAL_WINDOWS,
+  timeToMinutes,
+} from "@shared/parkingPassSlots";
 
 export function registerEventRoutes(app: Express) {
   // Get all upcoming events (public)
   app.get("/api/events/upcoming", async (req: any, res) => {
     try {
-      const events = await storage.getAllUpcomingEvents();
-      res.json(events.filter((event) => !event.requiresPayment));
+      const upcomingEvents = await storage.getAllUpcomingEvents();
+      res.json(upcomingEvents.filter((event) => !event.requiresPayment));
     } catch (error: any) {
       console.error("Error fetching upcoming events:", error);
       res.status(500).json({ message: "Failed to fetch events" });
@@ -31,8 +36,8 @@ export function registerEventRoutes(app: Express) {
   app.get("/api/events", isAuthenticated, async (req: any, res) => {
     try {
       // Optional: Filter by location (lat/lng/radius) in the future
-      const events = await storage.getAllUpcomingEvents();
-      res.json(events.filter((event) => !event.requiresPayment));
+      const upcomingEvents = await storage.getAllUpcomingEvents();
+      res.json(upcomingEvents.filter((event) => !event.requiresPayment));
     } catch (error: any) {
       console.error("Error fetching all events:", error);
       res.status(500).json({ message: "Failed to fetch events" });
@@ -42,8 +47,8 @@ export function registerEventRoutes(app: Express) {
   // Parking Pass listings (truck-paid slots only)
   app.get("/api/parking-pass", async (req: any, res) => {
     try {
-      const events = await storage.getAllUpcomingEvents();
-      const hasPricing = (event: (typeof events)[number]) =>
+      const upcomingEvents = await storage.getAllUpcomingEvents();
+      const hasPricing = (event: (typeof upcomingEvents)[number]) =>
         (event.breakfastPriceCents ?? 0) > 0 ||
         (event.lunchPriceCents ?? 0) > 0 ||
         (event.dinnerPriceCents ?? 0) > 0 ||
@@ -51,21 +56,59 @@ export function registerEventRoutes(app: Express) {
         (event.weeklyPriceCents ?? 0) > 0 ||
         (event.monthlyPriceCents ?? 0) > 0;
 
-      const hostCanAcceptPayments = (event: (typeof events)[number]) =>
+      const hostCanAcceptPayments = (event: (typeof upcomingEvents)[number]) =>
         Boolean(
           (event as any)?.host?.stripeConnectAccountId &&
             (event as any)?.host?.stripeChargesEnabled,
         );
 
+      const defaultStartTime = PARKING_PASS_MEAL_WINDOWS.breakfast.start;
+      const defaultEndTime = PARKING_PASS_MEAL_WINDOWS.dinner.end;
+      const normalizeParkingPassTimes = (event: any) => {
+        const start = timeToMinutes(event?.startTime);
+        const end = timeToMinutes(event?.endTime);
+        if (start === null || end === null || end <= start) {
+          return { startTime: defaultStartTime, endTime: defaultEndTime };
+        }
+        return { startTime: event.startTime, endTime: event.endTime };
+      };
+
       // Include all Parking Pass listings with pricing so the map/list doesn't look empty
       // while hosts are still onboarding payments. The client will disable booking when
       // payments aren't enabled.
-      const parkingEvents = events
+      const idsToFix: string[] = [];
+      const parkingEvents = upcomingEvents
         .filter((event) => event.requiresPayment && hasPricing(event))
-        .map((event) => ({
-          ...event,
-          paymentsEnabled: hostCanAcceptPayments(event),
-        }));
+        .map((event: any) => {
+          const start = timeToMinutes(event?.startTime);
+          const end = timeToMinutes(event?.endTime);
+          if (start === null || end === null || end <= start) {
+            const id = String(event.id || "").trim();
+            if (id) idsToFix.push(id);
+          }
+
+          const normalized = normalizeParkingPassTimes(event);
+          return {
+            ...event,
+            ...normalized,
+            paymentsEnabled: hostCanAcceptPayments(event),
+          };
+        });
+
+      // Auto-heal legacy listings missing valid parking hours so meal slots (esp. dinner) render correctly.
+      if (idsToFix.length > 0) {
+        try {
+          await db
+            .update(eventsTable)
+            .set({ startTime: defaultStartTime, endTime: defaultEndTime })
+            .where(inArray(eventsTable.id, idsToFix));
+        } catch (error) {
+          console.warn(
+            "[parking-pass] Failed to auto-heal missing start/end times:",
+            error,
+          );
+        }
+      }
 
       // Best-effort: ensure host coordinates exist so map pins can render.
       // We intentionally cap work per request to avoid hammering geocoding providers.

@@ -67,7 +67,11 @@ router.get("/stats", isAuthenticated, async (req: any, res: Response) => {
 
     const favoritesCount = await storage.getUserRestaurantFavoritesCount(userId);
 
-    const claims = await db
+    const claims: Array<{
+      dealType: string | null;
+      discountValue: unknown;
+      orderAmount: unknown;
+    }> = await db
       .select({
         dealType: deals.dealType,
         discountValue: deals.discountValue,

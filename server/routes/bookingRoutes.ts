@@ -53,7 +53,14 @@ export function registerBookingRoutes(app: Express) {
           return res.status(403).json({ message: "Not authorized" });
         }
 
-        const rows = await db
+        const rows: Array<{
+          id: string;
+          eventId: string;
+          status: string;
+          refundStatus: string | null;
+          bookingConfirmedAt: Date | null;
+          cancelledAt: Date | null;
+        }> = await db
           .select({
             id: eventBookings.id,
             eventId: eventBookings.eventId,
@@ -139,7 +146,14 @@ export function registerBookingRoutes(app: Express) {
           return res.status(403).json({ message: "Not authorized" });
         }
 
-        const rows = await db
+        const rows: Array<{
+          id: string;
+          eventId: string;
+          hostId: string | null;
+          status: string;
+          stripePaymentStatus: string | null;
+          stripeTransferDestination: string | null;
+        }> = await db
           .select({
             id: eventBookings.id,
             eventId: eventBookings.eventId,

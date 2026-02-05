@@ -30,6 +30,7 @@ import {
 import { forwardGeocode } from "../utils/geocoding";
 import {
   PARKING_PASS_BOOKING_DAYS,
+  PARKING_PASS_MEAL_WINDOWS,
   PARKING_PASS_SLOT_TYPES,
   getSlotWindowMinutesWithCleanup,
   isSlotWithinHours,
@@ -714,6 +715,13 @@ export function registerHostRoutes(app: Express) {
           .where(eq(hosts.id, host.id));
       }
 
+      const defaultStartTime = PARKING_PASS_MEAL_WINDOWS.breakfast.start;
+      const defaultEndTime = PARKING_PASS_MEAL_WINDOWS.dinner.end;
+      const startTimeRaw =
+        typeof req.body?.startTime === "string" ? req.body.startTime.trim() : "";
+      const endTimeRaw =
+        typeof req.body?.endTime === "string" ? req.body.endTime.trim() : "";
+
       const parsed = insertEventSchema.parse({
         ...req.body,
         date: new Date(),
@@ -721,6 +729,8 @@ export function registerHostRoutes(app: Express) {
         eventType: "parking_pass",
         hostId: host.id,
         maxTrucks: spotCount,
+        startTime: startTimeRaw || defaultStartTime,
+        endTime: endTimeRaw || defaultEndTime,
         breakfastPriceCents: breakfastPriceCents || null,
         lunchPriceCents: lunchPriceCents || null,
         dinnerPriceCents: dinnerPriceCents || null,
@@ -1265,7 +1275,11 @@ export function registerHostRoutes(app: Express) {
       const willSyncFuture = applyToFuture && Boolean(event.requiresPayment);
 
       if (event.requiresPayment && (isCapacityChanging || isHoursChanging)) {
-        const affectedEvents = willSyncFuture
+        const affectedEvents: Array<{
+          id: string;
+          date: Date | string;
+          maxTrucks: number | null;
+        }> = willSyncFuture
           ? await db
               .select({
                 id: events.id,
@@ -1799,7 +1813,9 @@ export function registerHostRoutes(app: Express) {
       if (!truckId) {
         return res.status(400).json({ message: "Truck ID required" });
       }
-      const allowedSlotTypes = new Set(PARKING_PASS_SLOT_TYPES);
+      const allowedSlotTypes = new Set<string>(
+        PARKING_PASS_SLOT_TYPES as readonly string[],
+      );
       const requestedSlots = Array.isArray(slotTypes)
         ? slotTypes
         : slotType
@@ -2014,7 +2030,12 @@ export function registerHostRoutes(app: Express) {
           ),
         );
 
-      const existingBookings = await db
+      const existingBookings: Array<{
+        slotType: string | null;
+        eventDate: Date | string;
+        eventStartTime: string | null;
+        eventEndTime: string | null;
+      }> = await db
         .select({
           slotType: eventBookings.slotType,
           eventDate: events.date,
@@ -2157,7 +2178,7 @@ export function registerHostRoutes(app: Express) {
       // This prevents two trucks from simultaneously booking the last spot and paying.
       let insertedHolds: any[] = [];
       try {
-        insertedHolds = await db.transaction(async (tx) => {
+        insertedHolds = await db.transaction(async (tx: any) => {
           const now = new Date();
           const inserted: any[] = [];
 

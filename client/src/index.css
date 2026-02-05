@@ -78,6 +78,31 @@
   --radius: 18px;
 }
 
+.theme-day {
+  /* Shadcn/Tailwind system vars should be light in day mode */
+  --background: 24 20% 98%;
+  --foreground: 220 15% 10%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 220 15% 10%;
+
+  --surface: 0 0% 100%;
+  --surface-hover: 24 20% 96%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 15% 10%;
+
+  --secondary: 24 18% 96%;
+  --secondary-foreground: 220 15% 10%;
+
+  --muted: 24 14% 92%;
+  --muted-foreground: 215 18% 24%;
+
+  --border: 24 10% 84%;
+  --input: 24 10% 84%;
+  --ring: 10 100% 59%;
+}
+
 .theme-night {
   --bg-app: #1c1a18;
   --bg-texture: url("/backgrounds/noise.png");
@@ -276,17 +301,31 @@
     color: inherit;
   }
 
+  .theme-day .leaflet-popup-content-wrapper,
+  .theme-day .leaflet-popup-tip {
+    background: rgba(255, 255, 255, 0.98) !important;
+    color: rgba(15, 23, 42, 0.92) !important;
+    border: 1px solid rgba(15, 23, 42, 0.16) !important;
+    box-shadow: 0 18px 52px rgba(15, 23, 42, 0.18) !important;
+  }
+
+  .theme-day .leaflet-popup-content p,
+  .theme-day .leaflet-popup-content div,
+  .theme-day .leaflet-popup-content span {
+    color: inherit;
+  }
+
   /* Parking Pass: consistent “glass” surfaces + readable text in night mode */
   .pp-glass {
-    background: rgba(255, 255, 255, 0.84);
-    border: 1px solid rgba(255, 255, 255, 0.55);
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.68);
     backdrop-filter: blur(12px);
     color: var(--text-primary);
   }
 
   .pp-glass-muted {
-    background: rgba(255, 255, 255, 0.72);
-    border: 1px solid rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.86);
+    border: 1px solid rgba(255, 255, 255, 0.62);
     backdrop-filter: blur(10px);
     color: var(--text-primary);
   }
@@ -477,6 +516,11 @@
   .theme-night .parking-pass-page input::placeholder,
   .theme-night .parking-pass-page textarea::placeholder {
     color: rgba(255, 255, 255, 0.55);
+  }
+
+  .theme-day .parking-pass-page input::placeholder,
+  .theme-day .parking-pass-page textarea::placeholder {
+    color: #64748b;
   }
 
   h1,
@@ -979,12 +1023,42 @@
     color: var(--text-primary);
   }
 
-  .theme-day .text-gray-500 {
-    color: #475569;
+  .theme-day .text-gray-500,
+  .theme-day .text-slate-500,
+  .theme-day .text-zinc-500,
+  .theme-day .text-neutral-500 {
+    color: #334155 !important;
   }
 
-  .theme-day .text-gray-400 {
-    color: #64748b;
+  .theme-day .text-gray-600,
+  .theme-day .text-slate-600,
+  .theme-day .text-zinc-600,
+  .theme-day .text-neutral-600 {
+    color: #1f2937 !important;
+  }
+
+  .theme-day .text-gray-400,
+  .theme-day .text-slate-400,
+  .theme-day .text-zinc-400,
+  .theme-day .text-neutral-400 {
+    color: #475569 !important;
+  }
+
+  .theme-day .leaflet-tile {
+    filter: contrast(1.12) saturate(1.06);
+  }
+
+  .theme-day .leaflet-control-zoom a,
+  .theme-day .leaflet-bar a {
+    background: rgba(255, 255, 255, 0.92);
+    color: rgba(15, 23, 42, 0.92);
+    border-color: rgba(15, 23, 42, 0.18);
+  }
+
+  .theme-day .leaflet-control-attribution {
+    background: rgba(255, 255, 255, 0.82) !important;
+    color: rgba(15, 23, 42, 0.78) !important;
+    border-top: 1px solid rgba(15, 23, 42, 0.12);
   }
 
   .theme-night .filter-pill {

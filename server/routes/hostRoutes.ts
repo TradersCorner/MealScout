@@ -1896,13 +1896,13 @@ export function registerHostRoutes(app: Express) {
         return res.status(404).json({ message: "Host not found" });
       }
 
-      // Verify host has Stripe Connect setup
-      if (!host.stripeConnectAccountId || !host.stripeChargesEnabled) {
-        return res.status(400).json({
-          message:
-            "Host payment setup incomplete. Contact host to enable payments.",
-        });
-      }
+      // Host payouts may still be configuring Stripe Connect.
+      // We still allow bookings and charge through the platform account;
+      // once Connect is enabled, we switch to direct charges on the host account.
+      const hostStripeAccountId =
+        host.stripeConnectAccountId && host.stripeChargesEnabled
+          ? host.stripeConnectAccountId
+          : null;
 
       // Check for existing booking
       const existingBooking = await db
@@ -2205,8 +2205,8 @@ export function registerHostRoutes(app: Express) {
                 totalCents: hostCents + feeCents,
                 status: "pending",
                 stripePaymentStatus: "pending",
-                stripeApplicationFeeAmount: feeCents,
-                stripeTransferDestination: host.stripeConnectAccountId,
+                stripeApplicationFeeAmount: hostStripeAccountId ? feeCents : null,
+                stripeTransferDestination: hostStripeAccountId,
                 slotType: selectedSlotTypes.join(","),
                 createdAt: now,
                 updatedAt: now,
@@ -2235,31 +2235,37 @@ export function registerHostRoutes(app: Express) {
         });
       }
 
-      // Create Stripe PaymentIntent as a direct charge on the host's Connect account.
-      // Processing fees will be deducted from the host; the platform receives the $10 application fee.
+      // Create Stripe PaymentIntent.
+      // If the host has Stripe Connect payouts enabled, create a direct charge on their Connect account
+      // and collect the MealScout application fee. Otherwise, charge on the platform account so the
+      // booking can still go through (host payout will be handled later).
       let paymentIntent: Stripe.PaymentIntent;
       try {
+        const intentParams: Stripe.PaymentIntentCreateParams = {
+          amount: totalCents,
+          currency: "usd",
+          metadata: {
+            passId: event.id,
+            hostId: host.id,
+            truckId,
+            slotTypes: selectedSlotTypes.join(","),
+            bookingDays: bookingDays.toString(),
+            bookingStartDate: rangeStart.toISOString().split("T")[0],
+            hostPriceCents: hostPriceCents.toString(),
+            platformFeeCents: adjustedPlatformFeeCents.toString(),
+            totalCents: totalCents.toString(),
+            creditAppliedCents: creditAppliedCents.toString(),
+          },
+        };
+
+        // Only valid for Connect direct charges
+        if (hostStripeAccountId) {
+          intentParams.application_fee_amount = adjustedPlatformFeeCents;
+        }
+
         paymentIntent = await stripe.paymentIntents.create(
-          {
-            amount: totalCents,
-            currency: "usd",
-            application_fee_amount: adjustedPlatformFeeCents, // MealScout platform fee
-            metadata: {
-              passId: event.id,
-              hostId: host.id,
-              truckId,
-              slotTypes: selectedSlotTypes.join(","),
-              bookingDays: bookingDays.toString(),
-              bookingStartDate: rangeStart.toISOString().split("T")[0],
-              hostPriceCents: hostPriceCents.toString(),
-              platformFeeCents: adjustedPlatformFeeCents.toString(),
-              totalCents: totalCents.toString(),
-              creditAppliedCents: creditAppliedCents.toString(),
-            },
-          },
-          {
-            stripeAccount: host.stripeConnectAccountId, // Direct charge: fees come from host, app fee to platform
-          },
+          intentParams,
+          hostStripeAccountId ? { stripeAccount: hostStripeAccountId } : undefined,
         );
       } catch (error: any) {
         // Best-effort release holds if Stripe fails.

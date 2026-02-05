@@ -2536,7 +2536,10 @@ export default function ParkingPassPage() {
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
   const todayDateKey = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
 
-  const listingPaymentsReady = (listing: ParkingPassListing | null | undefined) =>
+  // Payments are processed by MealScout; a host may still be completing Stripe Connect.
+  // We keep the spot live and bookable, but surface a warning when host payouts aren't configured.
+  const platformPaymentsReady = true;
+  const listingPayoutsReady = (listing: ParkingPassListing | null | undefined) =>
     Boolean(
       listing?.paymentsEnabled ??
         listing?.host?.stripeChargesEnabled ??
@@ -2558,7 +2561,8 @@ export default function ParkingPassPage() {
       const next = group.listings.find((listing) => {
         const dateKey = getListingDateKey(listing.date);
         if (dateKey < todayDateKey) return false;
-        return listingPaymentsReady(listing) && listingHasAvailability(listing);
+        // Spots should be discoverable even if the host hasn't enabled payments yet.
+        return listingHasAvailability(listing);
       });
       map.set(group.key, next ? getListingDateKey(next.date) : null);
     }
@@ -2571,7 +2575,8 @@ export default function ParkingPassPage() {
       const next = group.listings.find((listing) => {
         const dateKey = getListingDateKey(listing.date);
         if (dateKey < todayDateKey) return false;
-        return listingPaymentsReady(listing) && listingHasAvailability(listing);
+        // Spots should be discoverable even if the host hasn't enabled payments yet.
+        return listingHasAvailability(listing);
       });
       map.set(group.key, next || null);
     }
@@ -2581,7 +2586,7 @@ export default function ParkingPassPage() {
   const activeBookableDates = useMemo(() => {
     if (!activeLocation) return [];
     const keys = activeLocation.listings
-      .filter((listing) => listingPaymentsReady(listing) && listingHasAvailability(listing))
+      .filter((listing) => listingHasAvailability(listing))
       .map((listing) => getListingDateKey(listing.date));
     return Array.from(new Set(keys)).sort();
   }, [activeLocation]);
@@ -4465,11 +4470,8 @@ export default function ParkingPassPage() {
                             group.listings[0] ||
                             null;
                           const bookingListing = listingForDate || displayListing;
-                          const paymentsReady = Boolean(
-                            bookingListing?.paymentsEnabled ??
-                              displayListing?.paymentsEnabled ??
-                              group.host?.stripeChargesEnabled,
-                          );
+                          const paymentsReady = platformPaymentsReady;
+                          const payoutsReady = listingPayoutsReady(bookingListing || displayListing);
                           const bookings = Array.isArray(bookingListing?.bookings)
                             ? bookingListing?.bookings ?? []
                             : [];
@@ -4495,9 +4497,7 @@ export default function ParkingPassPage() {
                             selectedTotalCents > 0
                               ? selectedTotalCents + selectedFeeCents
                               : 0;
-                          const availability = !paymentsReady
-                            ? "Payments not enabled"
-                            : listingForDate
+                          const availability = listingForDate
                               ? listingForDate.availableSpotNumbers
                                 ? listingForDate.availableSpotNumbers.length > 0
                                   ? `Open spots: ${listingForDate.availableSpotNumbers.join(
@@ -4508,13 +4508,10 @@ export default function ParkingPassPage() {
                                   ? "Open"
                                   : "Closed"
                               : "Choose this spot to see available dates";
-                          const hasAvailability =
-                            paymentsReady &&
-                            (listingForDate
-                              ? listingForDate.availableSpotNumbers
-                                ? listingForDate.availableSpotNumbers.length > 0
-                                : listingForDate.status === "open"
-                              : false);
+                          const hasAvailability = Boolean(
+                            listingForDate && listingHasAvailability(listingForDate),
+                          );
+                          const canBook = Boolean(paymentsReady && hasAvailability);
 
                           return (
                             <Marker
@@ -4579,7 +4576,7 @@ export default function ParkingPassPage() {
                                               }
                                               size="sm"
                                               className="justify-between text-[11px]"
-                                              disabled={!hasAvailability}
+                                              disabled={!canBook}
                                               onClick={() =>
                                                 handleSelect(listingForDate, slot.type)
                                               }
@@ -4602,7 +4599,7 @@ export default function ParkingPassPage() {
                                           onClick={() =>
                                             handleBookSelected(listingForDate)
                                           }
-                                          disabled={selectedSlots.length === 0}
+                                          disabled={!paymentsReady || selectedSlots.length === 0}
                                         >
                                           Book spot
                                           {selectedTotalWithFee > 0 && (
@@ -4619,6 +4616,11 @@ export default function ParkingPassPage() {
                                   ) : (
                                     <p className="text-[11px] text-gray-500">
                                       Choose a day with availability.
+                                    </p>
+                                  )}
+                                  {!payoutsReady && (
+                                    <p className="text-[11px] text-amber-700">
+                                      Host payouts are still being configured.
                                     </p>
                                   )}
                                   {bookings.length > 0 ? (
@@ -4685,11 +4687,8 @@ export default function ParkingPassPage() {
                         group.listings[0] ||
                         null;
                       const bookingListing = listingForDate || displayListing;
-                      const paymentsReady = Boolean(
-                        bookingListing?.paymentsEnabled ??
-                          displayListing?.paymentsEnabled ??
-                          group.host?.stripeChargesEnabled,
-                      );
+                      const paymentsReady = platformPaymentsReady;
+                      const payoutsReady = listingPayoutsReady(bookingListing || displayListing);
                       const slotOptions = listingForDate
                         ? buildSlotOptions(listingForDate)
                         : [];
@@ -4712,14 +4711,10 @@ export default function ParkingPassPage() {
                         selectedTotalCents > 0
                           ? selectedTotalCents + selectedFeeCents
                           : 0;
-                      const availableSpots = listingForDate?.availableSpotNumbers;
-                      const hasAvailability =
-                        paymentsReady &&
-                        (listingForDate
-                          ? availableSpots === undefined
-                            ? listingForDate.status === "open"
-                            : availableSpots.length > 0
-                          : false);
+                      const hasAvailability = Boolean(
+                        listingForDate && listingHasAvailability(listingForDate),
+                      );
+                      const canBook = Boolean(paymentsReady && hasAvailability);
                       const bookings = Array.isArray(bookingListing?.bookings)
                         ? bookingListing?.bookings ?? []
                         : [];
@@ -4783,9 +4778,9 @@ export default function ParkingPassPage() {
                                   : `${displayListing.startTime} - ${displayListing.endTime}`}
                               </p>
                             )}
-                            {!paymentsReady && (
+                            {!payoutsReady && (
                               <p className="text-[11px] text-amber-700">
-                                Payments not enabled yet.
+                                Host payouts are still being configured.
                               </p>
                             )}
                             {!listingForDate && (
@@ -4854,7 +4849,7 @@ export default function ParkingPassPage() {
                                     variant={isSelected ? "default" : "outline"}
                                     size="sm"
                                     className="justify-between"
-                                    disabled={!hasAvailability}
+                                    disabled={!canBook}
                                     onClick={() =>
                                       handleSelect(listingForDate, slot.type)
                                     }
@@ -4927,10 +4922,9 @@ export default function ParkingPassPage() {
                       group.listings[0] ||
                       null;
                     const bookingListing = listingForDate || displayListing;
-                    const paymentsReady = Boolean(
-                      bookingListing?.paymentsEnabled ??
-                        displayListing?.paymentsEnabled ??
-                        group.host?.stripeChargesEnabled,
+                    const paymentsReady = platformPaymentsReady;
+                    const payoutsReady = listingPayoutsReady(
+                      bookingListing || displayListing,
                     );
                     const slotOptions = listingForDate
                       ? buildSlotOptions(listingForDate)
@@ -4955,14 +4949,10 @@ export default function ParkingPassPage() {
                         ? selectedTotalCents + selectedFeeCents
                         : 0;
 
-                    const availableSpots = listingForDate?.availableSpotNumbers;
-                    const hasAvailability =
-                      paymentsReady &&
-                      (listingForDate
-                        ? availableSpots === undefined
-                          ? listingForDate.status === "open"
-                          : availableSpots.length > 0
-                        : false);
+                    const hasAvailability = Boolean(
+                      listingForDate && listingHasAvailability(listingForDate),
+                    );
+                    const canBook = Boolean(paymentsReady && hasAvailability);
                     const bookings = Array.isArray(bookingListing?.bookings)
                       ? bookingListing?.bookings ?? []
                       : [];
@@ -5006,6 +4996,13 @@ export default function ParkingPassPage() {
                         </div>
                         <div className="text-xs text-slate-700">
                           <p>{group.host.address}</p>
+                          {(group.host.city || group.host.state) && (
+                            <p>
+                              {[group.host.city, group.host.state]
+                                .filter(Boolean)
+                                .join(", ")}
+                            </p>
+                          )}
                           {displayListing && (
                             <p>
                               {displayListing.startTime === "00:00" &&
@@ -5014,9 +5011,9 @@ export default function ParkingPassPage() {
                                 : `${displayListing.startTime} - ${displayListing.endTime}`}
                             </p>
                           )}
-                          {!paymentsReady && (
+                          {!payoutsReady && (
                             <p className="text-[11px] text-amber-700">
-                              Payments not enabled yet.
+                              Host payouts are still being configured.
                             </p>
                           )}
                           {!listingForDate && (
@@ -5027,6 +5024,17 @@ export default function ParkingPassPage() {
                                     "EEE, MMM d",
                                   )}.`
                                 : "No open dates right now."}
+                            </p>
+                          )}
+                          {!isActive && nextBookableDateByGroup.get(group.key) && (
+                            <p className="text-[11px] text-slate-600">
+                              Next open:{" "}
+                              {format(
+                                new Date(
+                                  `${nextBookableDateByGroup.get(group.key)}T00:00:00`,
+                                ),
+                                "EEE, MMM d",
+                              )}
                             </p>
                           )}
                           {listingForDate?.availableSpotNumbers && (
@@ -5069,7 +5077,7 @@ export default function ParkingPassPage() {
                                   variant={isSelected ? "default" : "outline"}
                                   size="sm"
                                   className="justify-between"
-                                  disabled={!hasAvailability}
+                                  disabled={!canBook}
                                   onClick={() =>
                                     handleSelect(listingForDate, slot.type)
                                   }
@@ -5091,7 +5099,7 @@ export default function ParkingPassPage() {
                               <Button
                                 size="sm"
                                 onClick={() => handleBookSelected(listingForDate)}
-                                disabled={selectedSlots.length === 0}
+                                disabled={!canBook || selectedSlots.length === 0}
                               >
                                 Add to cart
                                 {selectedTotalWithFee > 0 && (
@@ -5107,6 +5115,11 @@ export default function ParkingPassPage() {
                         ) : (
                           <p className="text-[11px] text-gray-500">
                             {listingForDate ? "Fully booked." : "No open dates right now."}
+                          </p>
+                        )}
+                        {!payoutsReady && (
+                          <p className="text-[11px] text-amber-700">
+                            Host payouts are still being configured.
                           </p>
                         )}
                       </div>
@@ -5215,9 +5228,10 @@ export default function ParkingPassPage() {
                             No slots on {selectedDateLabel}. Showing next available.
                           </p>
                         )}
-                        {!listingPaymentsReady(activeListingForDate || activeListing) && (
+                        {!listingPayoutsReady(activeListingForDate || activeListing) && (
                           <p className="text-[11px] text-amber-700">
-                            This host hasn’t enabled payments yet, so booking is disabled.
+                            This host is still setting up payouts. Your booking will still
+                            go through, but the host won’t receive automatic payouts yet.
                           </p>
                         )}
                         <div className="flex items-center justify-between">

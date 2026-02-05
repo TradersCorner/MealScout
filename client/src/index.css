@@ -261,6 +261,21 @@
     color: rgba(255, 255, 255, 0.62) !important;
   }
 
+  /* Leaflet popup: default is white; in night mode it clashes with our light text overrides. */
+  .theme-night .leaflet-popup-content-wrapper,
+  .theme-night .leaflet-popup-tip {
+    background: rgba(16, 14, 12, 0.92) !important;
+    color: rgba(255, 255, 255, 0.92) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    box-shadow: 0 26px 70px rgba(0, 0, 0, 0.65) !important;
+  }
+
+  .theme-night .leaflet-popup-content p,
+  .theme-night .leaflet-popup-content div,
+  .theme-night .leaflet-popup-content span {
+    color: inherit;
+  }
+
   /* Parking Pass: consistent “glass” surfaces + readable text in night mode */
   .pp-glass {
     background: rgba(255, 255, 255, 0.84);

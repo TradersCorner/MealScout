@@ -254,6 +254,72 @@
     color: var(--text-muted) !important;
   }
 
+  /* Parking Pass: consistent “glass” surfaces + readable text in night mode */
+  .pp-glass {
+    background: rgba(255, 255, 255, 0.84);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(12px);
+    color: var(--text-primary);
+  }
+
+  .pp-glass-muted {
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    backdrop-filter: blur(10px);
+    color: var(--text-primary);
+  }
+
+  .pp-field {
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--text-primary);
+    border-color: var(--border-subtle) !important;
+  }
+
+  .pp-chip {
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    color: var(--text-secondary);
+  }
+
+  .theme-night .pp-glass {
+    background: rgba(16, 14, 12, 0.82);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 26px 70px rgba(0, 0, 0, 0.55);
+  }
+
+  .theme-night .pp-glass-muted {
+    background: rgba(26, 22, 19, 0.76);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.92);
+  }
+
+  .theme-night .pp-field {
+    background: rgba(18, 16, 14, 0.92);
+    color: rgba(255, 255, 255, 0.94);
+    border-color: rgba(255, 255, 255, 0.14) !important;
+  }
+
+  .theme-night .pp-chip {
+    background: rgba(26, 22, 19, 0.76);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.86);
+  }
+
+  .theme-night .parking-pass-page .text-gray-900,
+  .theme-night .parking-pass-page .text-slate-900,
+  .theme-night .parking-pass-page .text-zinc-900,
+  .theme-night .parking-pass-page .text-neutral-900 {
+    color: rgba(255, 255, 255, 0.94) !important;
+  }
+
+  .theme-night .parking-pass-page .text-slate-700,
+  .theme-night .parking-pass-page .text-gray-700,
+  .theme-night .parking-pass-page .text-zinc-700,
+  .theme-night .parking-pass-page .text-neutral-700 {
+    color: rgba(255, 255, 255, 0.84) !important;
+  }
+
   h1,
   h2,
   h3,

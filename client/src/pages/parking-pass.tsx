@@ -1308,8 +1308,8 @@ export default function ParkingPassPage() {
       hostId: item.hostId,
       locationName: item.locationName || item.title,
       address: item.address || item.subtitle || "",
-      city: item.city,
-      state: item.state,
+      city: item.city ?? undefined,
+      state: item.state ?? undefined,
       rating: existing?.rating ? String(existing.rating) : "",
       arrivalCleanliness: existing?.arrivalCleanliness
         ? String(existing.arrivalCleanliness)
@@ -2185,7 +2185,7 @@ export default function ParkingPassPage() {
     }
   };
 
-  const handleSuccess = () => {
+  const handleSuccess = (outcome: "confirmed" | "pending" | "credited") => {
     const bookedListing = selectedListing;
     const bookedSlots = [...selectedSlotTypes];
     if (selectedListing) {
@@ -2204,12 +2204,10 @@ export default function ParkingPassPage() {
       setSelectedSlotTypes([]);
     }
 
-    toast({
-      title: "Parking Pass Booked",
-      description: "Your booking is confirmed.",
-    });
+    const shouldReloadSchedule = outcome !== "credited";
+    const shouldShare = outcome === "confirmed";
 
-    if (bookedListing) {
+    if (shouldShare && bookedListing) {
       const hostName = bookedListing.host?.businessName || "a host location";
       const dateLabel = format(
         new Date(`${bookedListing.date}T00:00:00`),
@@ -2232,7 +2230,7 @@ export default function ParkingPassPage() {
     }
 
     void reloadPassListings({ silent: true });
-    if (truckId) {
+    if (shouldReloadSchedule && truckId) {
       void reloadBookedSchedule(truckId, { silent: true });
     }
   };
@@ -2520,6 +2518,9 @@ export default function ParkingPassPage() {
       </div>
     );
   }
+
+  const cartTotals = getCartTotals();
+  const hasCartTotal = cartItems.length > 0 && cartTotals.totalCents > 0;
 
   return (
     <div className="min-h-screen bg-transparent">
@@ -4254,7 +4255,9 @@ export default function ParkingPassPage() {
         )}
 
         {topTab === "book" && (
-        <div className={`space-y-4 pb-24${isTruckViewUser ? " order-first" : ""}`}>
+        <div
+          className={`space-y-4 pb-24${isTruckViewUser ? " order-first" : ""}`}
+        >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-gray-900">
@@ -5031,26 +5034,22 @@ export default function ParkingPassPage() {
                       </div>
                     ))}
                   </div>
-                  {(() => {
-                    const totals = getCartTotals();
-                    if (!totals.totalCents) return null;
-                    return (
-                      <div className="rounded-xl border border-white/50 bg-white/70 p-3 text-xs text-slate-700">
-                        <div className="flex items-center justify-between">
-                          <span>Host total</span>
-                          <span>${(totals.hostCents / 100).toFixed(2)}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>MealScout fee</span>
-                          <span>${(totals.feeCents / 100).toFixed(2)}</span>
-                        </div>
-                        <div className="flex items-center justify-between font-semibold text-gray-900">
-                          <span>Total</span>
-                          <span>${(totals.totalCents / 100).toFixed(2)}</span>
-                        </div>
+                  {cartTotals.totalCents > 0 && (
+                    <div className="rounded-xl border border-white/50 bg-white/70 p-3 text-xs text-slate-700">
+                      <div className="flex items-center justify-between">
+                        <span>Host total</span>
+                        <span>${(cartTotals.hostCents / 100).toFixed(2)}</span>
                       </div>
-                    );
-                  })()}
+                      <div className="flex items-center justify-between">
+                        <span>MealScout fee</span>
+                        <span>${(cartTotals.feeCents / 100).toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center justify-between font-semibold text-gray-900">
+                        <span>Total</span>
+                        <span>${(cartTotals.totalCents / 100).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -5249,29 +5248,22 @@ export default function ParkingPassPage() {
               </Card>
             </div>
           </div>
-        </div>
 
-        {cartItems.length > 0 && (() => {
-          const totals = getCartTotals();
-          if (!totals.totalCents) return null;
-          return (
-            <div className="fixed bottom-4 left-0 right-0 z-50 px-4 lg:hidden">
-              <div className="mx-auto max-w-md rounded-2xl border border-white/60 bg-white/90 backdrop-blur-md shadow-lg p-3 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[11px] text-slate-600">
-                    Cart ({cartItems.length})
-                  </p>
-                  <p className="text-base font-semibold text-slate-900">
-                    ${(totals.totalCents / 100).toFixed(2)}
-                  </p>
-                </div>
-                <Button size="sm" onClick={startCheckout}>
-                  Checkout
-                </Button>
+        {hasCartTotal && (
+          <div className="fixed bottom-4 left-0 right-0 z-50 px-4 lg:hidden">
+            <div className="mx-auto max-w-md rounded-2xl border border-white/60 bg-white/90 backdrop-blur-md shadow-lg p-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] text-slate-600">Cart ({cartItems.length})</p>
+                <p className="text-base font-semibold text-slate-900">
+                  ${(cartTotals.totalCents / 100).toFixed(2)}
+                </p>
               </div>
+              <Button size="sm" onClick={startCheckout}>
+                Checkout
+              </Button>
             </div>
-          );
-        })()}
+          </div>
+        )}
         </div>
         )}
       </div>
@@ -5292,14 +5284,12 @@ export default function ParkingPassPage() {
             hostPrice: selectedListing.hostPriceCents,
             slotSummary: selectedSlotTypes.map(formatSlotLabel).join(", "),
           }}
-          onSuccess={() => {
-            if (selectedListing) {
-              removeCartItem(selectedListing.id);
-            }
-            handleSuccess();
+          onSuccess={({ outcome }) => {
+            handleSuccess(outcome);
           }}
         />
       )}
+      </div>
     </div>
   );
 }

@@ -2001,6 +2001,7 @@ export function registerHostRoutes(app: Express) {
         .update(eventBookings)
         .set({
           status: "cancelled",
+          stripePaymentStatus: "cancelled",
           cancelledAt: new Date(),
           cancellationReason: "Payment not completed (hold expired)",
           updatedAt: new Date(),
@@ -2012,36 +2013,6 @@ export function registerHostRoutes(app: Express) {
             lt(eventBookings.createdAt, holdCutoff),
           ),
         );
-
-      const eventIds = bookingEvents.map((row) => row.id);
-      const bookingCounts =
-        eventIds.length > 0
-          ? await db
-              .select({
-                eventId: eventBookings.eventId,
-                count: sql<number>`count(*)`,
-              })
-              .from(eventBookings)
-              .where(inArray(eventBookings.eventId, eventIds))
-              .where(inArray(eventBookings.status, ["confirmed", "pending"]))
-              .groupBy(eventBookings.eventId)
-          : [];
-
-      const countsByEvent = new Map<string, number>();
-      for (const row of bookingCounts) {
-        countsByEvent.set(row.eventId, Number(row.count || 0));
-      }
-
-      for (const dateKey of expectedDateKeys) {
-        const row = eventsByDate.get(dateKey);
-        if (!row) continue;
-        const count = countsByEvent.get(row.id) ?? 0;
-        if (count >= (row.maxTrucks ?? 1)) {
-          return res.status(400).json({
-            message: "This parking pass is fully booked.",
-          });
-        }
-      }
 
       const existingBookings = await db
         .select({
@@ -2182,41 +2153,80 @@ export function registerHostRoutes(app: Express) {
       const hostSplit = splitAmount(hostPriceCents, bookingDays);
       const platformSplit = splitAmount(adjustedPlatformFeeCents, bookingDays);
 
-      const pendingRows = expectedDateKeys.map((dateKey, index) => {
-        const row = eventsByDate.get(dateKey);
-        if (!row) return null;
-        const hostCents = hostSplit[index] ?? 0;
-        const feeCents = platformSplit[index] ?? 0;
-        return {
-          eventId: row.id,
-          truckId,
-          hostId: row.hostId,
-          hostPriceCents: hostCents,
-          platformFeeCents: feeCents,
-          totalCents: hostCents + feeCents,
-          status: "pending",
-          stripePaymentStatus: "pending",
-          stripeApplicationFeeAmount: feeCents,
-          stripeTransferDestination: host.stripeConnectAccountId,
-          slotType: selectedSlotTypes.join(","),
-        };
-      });
-
-      const holdRows = pendingRows.filter(
-        (row): row is NonNullable<(typeof pendingRows)[number]> => Boolean(row),
-      );
-
-      if (holdRows.length !== expectedDateKeys.length) {
-        return res.status(400).json({
-          message:
-            "This parking pass does not have availability for the full booking range.",
-        });
-      }
-
+      // Create the pending holds inside a DB transaction with row-level locks on each event row.
+      // This prevents two trucks from simultaneously booking the last spot and paying.
       let insertedHolds: any[] = [];
       try {
-        insertedHolds = await db.insert(eventBookings).values(holdRows).returning();
+        insertedHolds = await db.transaction(async (tx) => {
+          const now = new Date();
+          const inserted: any[] = [];
+
+          for (let index = 0; index < expectedDateKeys.length; index += 1) {
+            const dateKey = expectedDateKeys[index];
+            const row = eventsByDate.get(dateKey);
+            if (!row) {
+              throw new Error("Missing parking pass date in booking range.");
+            }
+
+            // Lock this event row so capacity checks + hold insert are serialized.
+            await tx.execute(
+              sql`select ${events.id} from ${events} where ${events.id} = ${row.id} for update`,
+            );
+
+            const counts = await tx
+              .select({ count: sql<number>`count(*)` })
+              .from(eventBookings)
+              .where(
+                and(
+                  eq(eventBookings.eventId, row.id),
+                  inArray(eventBookings.status, ["confirmed", "pending"]),
+                ),
+              );
+
+            const reservedCount = Number(counts[0]?.count || 0);
+            const maxSpots = row.maxTrucks ?? 1;
+            if (reservedCount >= maxSpots) {
+              const err: any = new Error("This parking pass is fully booked.");
+              err.code = "FULLY_BOOKED";
+              throw err;
+            }
+
+            const hostCents = hostSplit[index] ?? 0;
+            const feeCents = platformSplit[index] ?? 0;
+
+            const [created] = await tx
+              .insert(eventBookings)
+              .values({
+                eventId: row.id,
+                truckId,
+                hostId: row.hostId,
+                hostPriceCents: hostCents,
+                platformFeeCents: feeCents,
+                totalCents: hostCents + feeCents,
+                status: "pending",
+                stripePaymentStatus: "pending",
+                stripeApplicationFeeAmount: feeCents,
+                stripeTransferDestination: host.stripeConnectAccountId,
+                slotType: selectedSlotTypes.join(","),
+                createdAt: now,
+                updatedAt: now,
+              })
+              .returning();
+
+            if (!created) {
+              throw new Error("Failed to reserve parking pass hold.");
+            }
+
+            inserted.push(created);
+          }
+
+          return inserted;
+        });
       } catch (error: any) {
+        if (error?.code === "FULLY_BOOKED") {
+          return res.status(400).json({ message: "This parking pass is fully booked." });
+        }
+
         // Unique constraint or race conditions should surface as "already booked" / "in progress".
         console.error("Failed to create booking holds:", error);
         return res.status(409).json({

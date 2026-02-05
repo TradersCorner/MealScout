@@ -8,74 +8,74 @@
 :root {
   --font-sans: "Space Grotesk", ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", sans-serif;
-  --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
+  --font-display: "Bebas Neue", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
 
   /* Day Mode Palette */
-  --bg-app: #f5f3ee;
+  --bg-app: #0b0a09;
   --bg-texture: none;
   --bg-light: none;
   --bg-evening-glow: none;
   --bg-day-glow: none;
   --bg-ember: none;
   --bg-layered: var(--bg-app);
-  --bg-surface: #ffffff;
-  --bg-surface-muted: #f2f2f0;
-  --bg-card: #ffffff;
-  --bg-popup: #ffffff;
-  --field-bg: #ffffff;
-  --text-primary: #111827;
-  --text-secondary: #374151;
+  --bg-surface: rgba(255, 255, 255, 0.92);
+  --bg-surface-muted: rgba(255, 255, 255, 0.82);
+  --bg-card: rgba(255, 255, 255, 0.94);
+  --bg-popup: rgba(255, 255, 255, 0.96);
+  --field-bg: rgba(255, 255, 255, 0.95);
+  --text-primary: #0a0a0a;
+  --text-secondary: #1f2937;
   --text-muted: #334155;
-  --text-inverse: #111827;
-  --border-subtle: #d1d5db;
-  --border-strong: #cbd5e1;
-  --action-primary: #f59e0b;
-  --action-primary-text: #111111;
-  --action-secondary: #f3f4f6;
-  --action-secondary-text: #111827;
-  --action-hover: #f59e0b;
+  --text-inverse: #0b0a09;
+  --border-subtle: rgba(15, 23, 42, 0.12);
+  --border-strong: rgba(15, 23, 42, 0.18);
+  --action-primary: #ff4d2e;
+  --action-primary-text: #0b0a09;
+  --action-secondary: rgba(255, 255, 255, 0.85);
+  --action-secondary-text: #0b0a09;
+  --action-hover: #ff6b52;
   --status-success: #16a34a;
-  --status-warning: #f59e0b;
+  --status-warning: #f97316;
   --status-error: #ef4444;
-  --accent-ember: #f59e0b;
-  --accent-text: #b45309;
-  --accent-text-hover: #92400e;
+  --accent-ember: #ff4d2e;
+  --accent-text: #ff4d2e;
+  --accent-text-hover: #ff6b52;
 
-  --background: 45 20% 96%;
+  --background: 28 25% 6%;
   --background-gradient: none;
-  --foreground: 222 47% 11%;
+  --foreground: 0 0% 98%;
 
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
+  --card-foreground: 220 15% 10%;
 
   --surface: 0 0% 100%;
-  --surface-hover: 210 16% 96%;
+  --surface-hover: 24 20% 97%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
+  --popover-foreground: 220 15% 10%;
 
-  /* Warm primary CTA */
-  --primary: 38 92% 50%;
-  --primary-foreground: 222 47% 11%;
+  /* Hot primary CTA */
+  --primary: 10 100% 59%;
+  --primary-foreground: 24 25% 6%;
 
-  /* Muted secondary surfaces */
-  --secondary: 210 16% 96%;
-  --secondary-foreground: 222 47% 11%;
+  --secondary: 24 20% 96%;
+  --secondary-foreground: 220 15% 10%;
 
-  --muted: 45 16% 93%;
-  --muted-foreground: 220 9% 28%;
+  --muted: 24 14% 92%;
+  --muted-foreground: 215 16% 30%;
 
-  --accent: 38 92% 50%;
-  --accent-foreground: 222 47% 11%;
+  --accent: 10 100% 59%;
+  --accent-foreground: 24 25% 6%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
-  --ring: 38 92% 50%;
+  --border: 24 10% 85%;
+  --input: 24 10% 85%;
+  --ring: 10 100% 59%;
 
-  --radius: 16px;
+  --radius: 18px;
 }
 
 .theme-night {
@@ -198,12 +198,42 @@
     transition: background 1.2s ease-in-out;
   }
 
+  /* Street-food grit: subtle grain + ember wash on top of cinematic background */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    background:
+      radial-gradient(
+        1100px circle at 20% 10%,
+        rgba(255, 77, 46, 0.18),
+        rgba(255, 77, 46, 0.0) 55%
+      ),
+      radial-gradient(
+        900px circle at 80% 30%,
+        rgba(255, 169, 64, 0.14),
+        rgba(255, 169, 64, 0.0) 60%
+      ),
+      repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.08),
+        rgba(0, 0, 0, 0.08) 1px,
+        rgba(0, 0, 0, 0.0) 3px,
+        rgba(0, 0, 0, 0.0) 6px
+      );
+    mix-blend-mode: overlay;
+    opacity: 0.55;
+  }
+
   h1,
   h2,
   h3,
   .font-display {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
   }
 
   :focus-visible {

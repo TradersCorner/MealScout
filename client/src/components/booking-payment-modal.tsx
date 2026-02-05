@@ -35,7 +35,7 @@ interface BookingPaymentModalProps {
     hostPrice?: number;
     slotSummary?: string;
   };
-  onSuccess: () => void;
+  onSuccess: (result: { outcome: "confirmed" | "pending" | "credited" }) => void;
 }
 
 interface PaymentFormProps {
@@ -48,7 +48,7 @@ interface PaymentFormProps {
     platformFee: number;
     creditsApplied?: number;
   };
-  onSuccess: () => void;
+  onSuccess: (outcome: "confirmed" | "pending" | "credited") => void;
   onCancel: () => void;
 }
 
@@ -125,7 +125,7 @@ function PaymentForm({
               "Payment succeeded but the spot was no longer available. Credits were issued to your account.",
             variant: "destructive",
           });
-          onSuccess();
+          onSuccess("credited");
           return;
         }
 
@@ -136,7 +136,7 @@ function PaymentForm({
               ? "Payment received. Your booking will appear shortly."
               : "Your parking spot has been reserved.",
         });
-        onSuccess();
+        onSuccess(status);
       }
     } catch (err: any) {
       toast({
@@ -356,9 +356,9 @@ export function BookingPaymentModal({
     }
   };
 
-  const handleSuccess = () => {
+  const handleSuccess = (outcome: "confirmed" | "pending" | "credited") => {
     handleClose();
-    onSuccess();
+    onSuccess({ outcome });
   };
 
   return (

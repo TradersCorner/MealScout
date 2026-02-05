@@ -1160,6 +1160,7 @@ export default function AdminDashboard() {
   const isStaff = adminUser?.userType === "staff";
   const isAdminOrSuper =
     adminUser?.userType === "admin" || adminUser?.userType === "super_admin";
+  const isSuperAdmin = adminUser?.userType === "super_admin";
 
   // Fetch dashboard stats
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
@@ -1256,6 +1257,36 @@ export default function AdminDashboard() {
 
     return normalized;
   }, [users, userSortDir, userSortKey]);
+
+  const userTypeTabs = useMemo(() => {
+    const base = [
+      { value: "all", label: "All" },
+      { value: "customer", label: "Customers" },
+      { value: "food_truck", label: "Food Trucks" },
+      { value: "restaurant_owner", label: "Restaurants" },
+      { value: "host", label: "Hosts" },
+      { value: "event_coordinator", label: "Events" },
+      { value: "staff", label: "Staff" },
+    ];
+
+    if (isAdminOrSuper) {
+      base.push({ value: "admin", label: "Admins" });
+    }
+    if (isSuperAdmin) {
+      base.push({ value: "super_admin", label: "Super Admins" });
+    }
+
+    return base;
+  }, [isAdminOrSuper, isSuperAdmin]);
+
+  const userCountsByType = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const u of users) {
+      const type = String(u?.userType || "unknown");
+      counts.set(type, (counts.get(type) ?? 0) + 1);
+    }
+    return counts;
+  }, [users]);
   const filteredUsers = useMemo(() => {
     const search = userSearch.trim().toLowerCase();
     return sortedUsers.filter((user: any) => {
@@ -2573,26 +2604,6 @@ export default function AdminDashboard() {
                       className="text-xs px-2 py-1 border rounded-md bg-background"
                     />
                     <select
-                      value={userTypeFilter}
-                      onChange={(e) => setUserTypeFilter(e.target.value)}
-                      className="text-xs px-2 py-1 border rounded-md bg-background"
-                    >
-                      <option value="all">All Types</option>
-                      <option value="customer">Customer</option>
-                      <option value="food_truck">Food Truck</option>
-                      <option value="restaurant_owner">Restaurant Owner</option>
-                      <option value="host">Host</option>
-                      <option value="event_coordinator">Event Coordinator</option>
-                      <option value="staff">Staff</option>
-                      {(adminUser?.userType === "admin" ||
-                        adminUser?.userType === "super_admin") && (
-                        <option value="admin">Admin</option>
-                      )}
-                      {adminUser?.userType === "super_admin" && (
-                        <option value="super_admin">Super Admin</option>
-                      )}
-                    </select>
-                    <select
                       value={userSortKey}
                       onChange={(e) =>
                         setUserSortKey(e.target.value as typeof userSortKey)
@@ -2615,6 +2626,29 @@ export default function AdminDashboard() {
                     </select>
                   </div>
                 </div>
+
+                <Tabs value={userTypeFilter} onValueChange={setUserTypeFilter}>
+                  <TabsList className="mt-3 w-full justify-start overflow-x-auto flex-nowrap">
+                    {userTypeTabs.map((tab) => {
+                      const count =
+                        tab.value === "all"
+                          ? users.length
+                          : userCountsByType.get(tab.value) ?? 0;
+                      return (
+                        <TabsTrigger
+                          key={tab.value}
+                          value={tab.value}
+                          className="whitespace-nowrap"
+                        >
+                          {tab.label}
+                          <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                            {count}
+                          </span>
+                        </TabsTrigger>
+                      );
+                    })}
+                  </TabsList>
+                </Tabs>
                 <div className="space-y-3 mt-3">
                   {filteredUsers.map((user: any) => (
                     <div

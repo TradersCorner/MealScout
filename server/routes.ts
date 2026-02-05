@@ -4820,6 +4820,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   eq(eventBookings.truckId, truckId),
                 ),
               );
+            const pendingHolds = intentRows.filter(
+              (row: (typeof intentRows)[number]) => row.status === "pending",
+            );
             const alreadyProcessed = intentRows.some(
               (row: (typeof intentRows)[number]) =>
                 row.status === "confirmed" ||
@@ -5097,11 +5100,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
 
             const now = new Date();
-            const usesHolds = intentRows.length > 0;
+            // If the PaymentIntent succeeded but we no longer have pending holds
+            // (e.g. hold expired or was cancelled), do NOT confirm a booking.
+            // Instead, issue credits and mark the rows cancelled so we don't create ghost bookings.
+            if (intentRows.length > 0 && pendingHolds.length === 0) {
+              await cancelWithCredit("parking_pass_hold_expired");
+              break;
+            }
+
+            const usesHolds = pendingHolds.length > 0;
 
             if (usesHolds) {
-              const holdsByEventId = new Map<string, (typeof intentRows)[number]>();
-              for (const row of intentRows) {
+              const holdsByEventId = new Map<
+                string,
+                (typeof pendingHolds)[number]
+              >();
+              for (const row of pendingHolds) {
                 holdsByEventId.set(row.eventId, row);
               }
 
@@ -6636,10 +6650,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cutoff = new Date(Date.now() - getParkingPassHoldTtlMs());
       const now = new Date();
 
+      // Best-effort: cancel any PaymentIntents tied to expired holds so a truck can't
+      // complete payment later after we released capacity.
+      try {
+        const expiredRows = await db
+          .select({
+            paymentIntentId: eventBookings.stripePaymentIntentId,
+            stripeAccountId: eventBookings.stripeTransferDestination,
+          })
+          .from(eventBookings)
+          .where(
+            and(
+              eq(eventBookings.status, "pending"),
+              lt(eventBookings.createdAt, cutoff),
+            ),
+          );
+
+        if (stripe) {
+          const unique = new Map<string, { intentId: string; accountId?: string }>();
+          for (const row of expiredRows) {
+            const intentId = String(row.paymentIntentId || "").trim();
+            if (!intentId) continue;
+            const accountId = String(row.stripeAccountId || "").trim();
+            const key = `${intentId}|${accountId}`;
+            if (!unique.has(key)) {
+              unique.set(key, { intentId, accountId: accountId || undefined });
+            }
+          }
+
+          for (const { intentId, accountId } of unique.values()) {
+            try {
+              const intent = await stripe.paymentIntents.retrieve(
+                intentId,
+                {},
+                accountId ? { stripeAccount: accountId } : undefined,
+              );
+              if (intent.status !== "succeeded" && intent.status !== "canceled") {
+                await stripe.paymentIntents.cancel(
+                  intentId,
+                  {},
+                  accountId ? { stripeAccount: accountId } : undefined,
+                );
+              }
+            } catch (stripeError) {
+              // Continue; webhook handler will credit if a payment sneaks through.
+              console.error("❌ Failed to cancel expired PaymentIntent:", stripeError);
+            }
+          }
+        }
+      } catch (cancelError) {
+        console.error("❌ Expired hold PaymentIntent cancel scan failed:", cancelError);
+      }
+
       await db
         .update(eventBookings)
         .set({
           status: "cancelled",
+          stripePaymentStatus: "cancelled",
           cancelledAt: now,
           cancellationReason: "Payment not completed (hold expired)",
           updatedAt: now,

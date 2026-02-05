@@ -96,6 +96,7 @@ interface ParkingPassListing {
   endTime: string;
   status: string;
   requiresPayment?: boolean;
+  paymentsEnabled?: boolean;
   maxTrucks?: number;
   spotCount?: number;
   bookedSpots?: number;
@@ -2521,6 +2522,14 @@ export default function ParkingPassPage() {
 
   const cartTotals = getCartTotals();
   const hasCartTotal = cartItems.length > 0 && cartTotals.totalCents > 0;
+  const isNightTheme =
+    typeof document !== "undefined" &&
+    document.documentElement.classList.contains("theme-night");
+  const parkingMapTileUrl = isNightTheme
+    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+  const parkingMapAttribution =
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
   return (
     <div className="min-h-screen bg-transparent parking-pass-page">
@@ -2914,8 +2923,8 @@ export default function ParkingPassPage() {
                           className="h-full w-full"
                         >
                           <TileLayer
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            attribution={parkingMapAttribution}
+                            url={parkingMapTileUrl}
                           />
                           <MapCenterer
                             center={settingsMapCenter}
@@ -3087,8 +3096,8 @@ export default function ParkingPassPage() {
                           className="h-full w-full"
                         >
                           <TileLayer
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            attribution={parkingMapAttribution}
+                            url={parkingMapTileUrl}
                           />
                           <MapCenterer
                             center={newLocationMapCenter}
@@ -4370,8 +4379,8 @@ export default function ParkingPassPage() {
                       >
                         <MapCenterer center={mapCenter} />
                         <TileLayer
-                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                          attribution={parkingMapAttribution}
+                          url={parkingMapTileUrl}
                         />
                         {mapLocations.map(({ group, coords }) => {
                           const listingForDate = group.listings.find(
@@ -4387,6 +4396,11 @@ export default function ParkingPassPage() {
                             group.listings[0] ||
                             null;
                           const bookingListing = listingForDate || displayListing;
+                          const paymentsReady = Boolean(
+                            bookingListing?.paymentsEnabled ??
+                              displayListing?.paymentsEnabled ??
+                              group.host?.stripeChargesEnabled,
+                          );
                           const bookings = Array.isArray(bookingListing?.bookings)
                             ? bookingListing?.bookings ?? []
                             : [];
@@ -4412,22 +4426,26 @@ export default function ParkingPassPage() {
                             selectedTotalCents > 0
                               ? selectedTotalCents + selectedFeeCents
                               : 0;
-                          const availability = listingForDate
-                            ? listingForDate.availableSpotNumbers
-                              ? listingForDate.availableSpotNumbers.length > 0
-                                ? `Open spots: ${listingForDate.availableSpotNumbers.join(
-                                    ", ",
-                                  )}`
-                                : "Fully booked"
-                              : listingForDate.status === "open"
-                                ? "Open"
-                                : "Closed"
-                            : "No slots for selected day";
-                          const hasAvailability = listingForDate
-                            ? listingForDate.availableSpotNumbers
-                              ? listingForDate.availableSpotNumbers.length > 0
-                              : listingForDate.status === "open"
-                            : false;
+                          const availability = !paymentsReady
+                            ? "Payments not enabled"
+                            : listingForDate
+                              ? listingForDate.availableSpotNumbers
+                                ? listingForDate.availableSpotNumbers.length > 0
+                                  ? `Open spots: ${listingForDate.availableSpotNumbers.join(
+                                      ", ",
+                                    )}`
+                                  : "Fully booked"
+                                : listingForDate.status === "open"
+                                  ? "Open"
+                                  : "Closed"
+                              : "No slots for selected day";
+                          const hasAvailability =
+                            paymentsReady &&
+                            (listingForDate
+                              ? listingForDate.availableSpotNumbers
+                                ? listingForDate.availableSpotNumbers.length > 0
+                                : listingForDate.status === "open"
+                              : false);
 
                           return (
                             <Marker
@@ -4590,6 +4608,11 @@ export default function ParkingPassPage() {
                         group.listings[0] ||
                         null;
                       const bookingListing = listingForDate || displayListing;
+                      const paymentsReady = Boolean(
+                        bookingListing?.paymentsEnabled ??
+                          displayListing?.paymentsEnabled ??
+                          group.host?.stripeChargesEnabled,
+                      );
                       const slotOptions = listingForDate
                         ? buildSlotOptions(listingForDate)
                         : [];
@@ -4613,11 +4636,13 @@ export default function ParkingPassPage() {
                           ? selectedTotalCents + selectedFeeCents
                           : 0;
                       const availableSpots = listingForDate?.availableSpotNumbers;
-                      const hasAvailability = listingForDate
-                        ? availableSpots === undefined
-                          ? listingForDate.status === "open"
-                          : availableSpots.length > 0
-                        : false;
+                      const hasAvailability =
+                        paymentsReady &&
+                        (listingForDate
+                          ? availableSpots === undefined
+                            ? listingForDate.status === "open"
+                            : availableSpots.length > 0
+                          : false);
                       const bookings = Array.isArray(bookingListing?.bookings)
                         ? bookingListing?.bookings ?? []
                         : [];
@@ -4645,7 +4670,7 @@ export default function ParkingPassPage() {
                           }}
                           className={`w-full rounded-2xl border px-4 py-3 space-y-2 transition cursor-pointer shadow-sm ${
                             isActive
-                              ? "border-orange-300 bg-white/95 ring-2 ring-orange-200"
+                              ? "border-orange-300 pp-glass ring-2 ring-orange-200"
                               : "border-[color:var(--border-subtle)] pp-glass-muted hover:opacity-95"
                           }`}
                         >
@@ -4671,7 +4696,7 @@ export default function ParkingPassPage() {
                               View
                             </Button>
                           </div>
-                          <div className="text-xs text-gray-600 space-y-1">
+                          <div className="text-xs text-slate-700 space-y-1">
                             <p>{group.host.address}</p>
                             {displayListing && (
                               <p>
@@ -4679,6 +4704,11 @@ export default function ParkingPassPage() {
                                 displayListing.endTime === "23:59"
                                   ? "Any time"
                                   : `${displayListing.startTime} - ${displayListing.endTime}`}
+                              </p>
+                            )}
+                            {!paymentsReady && (
+                              <p className="text-[11px] text-amber-700">
+                                Payments not enabled yet.
                               </p>
                             )}
                             {!listingForDate && (
@@ -4692,14 +4722,14 @@ export default function ParkingPassPage() {
                               </p>
                             )}
                             {listingForDate?.availableSpotNumbers && (
-                              <p className="text-[11px] text-gray-500">
+                              <p className="text-[11px] text-slate-600">
                                 {listingForDate.availableSpotNumbers.length > 0
                                   ? `Open spot${listingForDate.availableSpotNumbers.length > 1 ? "s" : ""}: ${listingForDate.availableSpotNumbers.join(", ")}`
                                   : "Fully booked"}
                               </p>
                             )}
                             {bookings.length > 0 ? (
-                              <div className="text-[11px] text-gray-500">
+                              <div className="text-[11px] text-slate-600">
                                 Booked trucks:{" "}
                                 {bookings
                                   .slice(0, 2)
@@ -4791,7 +4821,7 @@ export default function ParkingPassPage() {
                       );
                     })}
                     {filteredLocations.length === 0 && (
-                      <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-600">
+                      <div className="rounded-2xl pp-glass-muted p-6 text-center text-sm text-slate-700">
                         No locations match that search.
                       </div>
                     )}
@@ -4813,6 +4843,11 @@ export default function ParkingPassPage() {
                       group.listings[0] ||
                       null;
                     const bookingListing = listingForDate || displayListing;
+                    const paymentsReady = Boolean(
+                      bookingListing?.paymentsEnabled ??
+                        displayListing?.paymentsEnabled ??
+                        group.host?.stripeChargesEnabled,
+                    );
                     const slotOptions = listingForDate
                       ? buildSlotOptions(listingForDate)
                       : [];
@@ -4837,11 +4872,13 @@ export default function ParkingPassPage() {
                         : 0;
 
                     const availableSpots = listingForDate?.availableSpotNumbers;
-                    const hasAvailability = listingForDate
-                      ? availableSpots === undefined
-                        ? listingForDate.status === "open"
-                        : availableSpots.length > 0
-                      : false;
+                    const hasAvailability =
+                      paymentsReady &&
+                      (listingForDate
+                        ? availableSpots === undefined
+                          ? listingForDate.status === "open"
+                          : availableSpots.length > 0
+                        : false);
                     const bookings = Array.isArray(bookingListing?.bookings)
                       ? bookingListing?.bookings ?? []
                       : [];
@@ -4869,7 +4906,7 @@ export default function ParkingPassPage() {
                         }}
                         className={`w-full text-left rounded-2xl border px-4 py-3 space-y-2 transition cursor-pointer shadow-sm ${
                           isActive
-                            ? "border-orange-300 bg-white/95 ring-2 ring-orange-200"
+                            ? "border-orange-300 pp-glass ring-2 ring-orange-200"
                             : "border-[color:var(--border-subtle)] pp-glass-muted hover:opacity-95"
                         }`}
                       >
@@ -4877,13 +4914,13 @@ export default function ParkingPassPage() {
                           <span className="text-[15px] font-semibold text-slate-900 font-display">
                             {group.host.businessName}
                           </span>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-slate-600">
                             {displayListing
                               ? format(new Date(displayListing.date), "EEE, MMM d")
                               : "No dates listed"}
                           </span>
                         </div>
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-slate-700">
                           <p>{group.host.address}</p>
                           {displayListing && (
                             <p>
@@ -4891,6 +4928,11 @@ export default function ParkingPassPage() {
                               displayListing.endTime === "23:59"
                                 ? "Any time"
                                 : `${displayListing.startTime} - ${displayListing.endTime}`}
+                            </p>
+                          )}
+                          {!paymentsReady && (
+                            <p className="text-[11px] text-amber-700">
+                              Payments not enabled yet.
                             </p>
                           )}
                           {!listingForDate && (
@@ -4904,7 +4946,7 @@ export default function ParkingPassPage() {
                             </p>
                           )}
                           {listingForDate?.availableSpotNumbers && (
-                            <p className="text-[11px] text-gray-500">
+                            <p className="text-[11px] text-slate-600">
                               {listingForDate.availableSpotNumbers.length > 0
                                 ? `Open spot${listingForDate.availableSpotNumbers.length > 1 ? "s" : ""}: ${listingForDate.availableSpotNumbers.join(", ")}`
                                 : "Fully booked"}

@@ -56,10 +56,15 @@ export function registerEventRoutes(app: Express) {
             (event as any)?.host?.stripeChargesEnabled,
         );
 
-      const parkingEvents = events.filter(
-        (event) =>
-          event.requiresPayment && hasPricing(event) && hostCanAcceptPayments(event),
-      );
+      // Include all Parking Pass listings with pricing so the map/list doesn't look empty
+      // while hosts are still onboarding payments. The client will disable booking when
+      // payments aren't enabled.
+      const parkingEvents = events
+        .filter((event) => event.requiresPayment && hasPricing(event))
+        .map((event) => ({
+          ...event,
+          paymentsEnabled: hostCanAcceptPayments(event),
+        }));
       const eventIds = parkingEvents.map((event) => event.id);
 
       const bookingRows =

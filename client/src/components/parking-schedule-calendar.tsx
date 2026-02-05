@@ -118,12 +118,12 @@ export function ParkingScheduleCalendar({
 
   return (
     <div className={className}>
-      <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-        <div className="flex flex-col gap-2 border-b border-gray-200 bg-gradient-to-r from-orange-50 via-rose-50 to-amber-50 px-5 py-4">
+      <div className="parking-schedule-calendar rounded-2xl pp-glass overflow-hidden">
+        <div className="pp-calendar-header flex flex-col gap-2 border-b border-[color:var(--border-subtle)] px-5 py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-gray-900">{title}</p>
-              <p className="text-xs text-gray-600">{subtitle}</p>
+              <p className="text-xs text-slate-700">{subtitle}</p>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -149,7 +149,7 @@ export function ParkingScheduleCalendar({
               </Button>
             </div>
           </div>
-          <div className="grid grid-cols-7 gap-2 text-[11px] text-gray-500">
+          <div className="grid grid-cols-7 gap-2 text-[11px] text-slate-600">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label) => (
               <span key={label} className="text-center uppercase tracking-wide">
                 {label}
@@ -169,11 +169,9 @@ export function ParkingScheduleCalendar({
                 key={key}
                 type="button"
                 onClick={() => setActiveDate(day)}
-                className={`min-h-[84px] rounded-xl border px-2 py-2 text-left transition ${
-                  isActive
-                    ? "border-orange-300 bg-orange-50/80"
-                    : "border-gray-200 bg-white hover:bg-gray-50"
-                } ${isCurrentMonth ? "text-gray-900" : "text-gray-400"}`}
+                className={`pp-calendar-day min-h-[84px] rounded-xl border px-2 py-2 text-left transition ${
+                  isActive ? "pp-calendar-day--active" : "pp-calendar-day--idle"
+                } ${isCurrentMonth ? "pp-calendar-day--in-month" : "pp-calendar-day--out-month"}`}
               >
                 <div className="flex items-center justify-between">
                   <span
@@ -184,7 +182,7 @@ export function ParkingScheduleCalendar({
                     {format(day, "d")}
                   </span>
                   {dayItems.length > 0 && (
-                    <span className="text-[10px] text-gray-400">
+                    <span className="text-[10px] text-slate-500">
                       {dayItems.length}
                     </span>
                   )}
@@ -193,7 +191,7 @@ export function ParkingScheduleCalendar({
                   {dayItems.slice(0, 2).map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center gap-1 text-[10px] text-gray-600"
+                      className="flex items-center gap-1 text-[10px] text-slate-700"
                     >
                       <span
                         className={`h-1.5 w-1.5 rounded-full ${
@@ -204,7 +202,7 @@ export function ParkingScheduleCalendar({
                     </div>
                   ))}
                   {dayItems.length > 2 && (
-                    <span className="text-[10px] text-gray-400">
+                    <span className="text-[10px] text-slate-500">
                       +{dayItems.length - 2} more
                     </span>
                   )}
@@ -215,7 +213,7 @@ export function ParkingScheduleCalendar({
         </div>
       </div>
 
-      <Card className="mt-4 rounded-2xl border border-gray-200 bg-white">
+      <Card className="mt-4 rounded-2xl pp-glass">
         <CardContent className="p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -237,7 +235,7 @@ export function ParkingScheduleCalendar({
               {activeItems.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-xl border border-gray-200 bg-gray-50 p-4"
+                  className="rounded-xl pp-glass-muted p-4"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>

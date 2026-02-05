@@ -13,6 +13,7 @@ import {
   restaurants,
 } from "@shared/schema";
 import { asc, eq, inArray, sql } from "drizzle-orm";
+import { forwardGeocode } from "../utils/geocoding";
 
 export function registerEventRoutes(app: Express) {
   // Get all upcoming events (public)
@@ -65,6 +66,43 @@ export function registerEventRoutes(app: Express) {
           ...event,
           paymentsEnabled: hostCanAcceptPayments(event),
         }));
+
+      // Best-effort: ensure host coordinates exist so map pins can render.
+      // We intentionally cap work per request to avoid hammering geocoding providers.
+      const MAX_GEOCODE_PER_REQUEST = 4;
+      let geocodeCount = 0;
+      for (let i = 0; i < parkingEvents.length && geocodeCount < MAX_GEOCODE_PER_REQUEST; i += 1) {
+        const event: any = parkingEvents[i];
+        const host: any = event?.host;
+        if (!host?.id) continue;
+
+        const lat = host.latitude !== null && host.latitude !== undefined ? Number(host.latitude) : NaN;
+        const lng = host.longitude !== null && host.longitude !== undefined ? Number(host.longitude) : NaN;
+        const hasCoords = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+        if (hasCoords) continue;
+
+        const addressParts = [host.address, host.city, host.state, "USA"]
+          .map((value: any) => String(value || "").trim())
+          .filter((value: string) => value.length > 0);
+        if (addressParts.length === 0) continue;
+
+        const geocodeAddress = addressParts.join(", ");
+        const coords = await forwardGeocode(geocodeAddress).catch(() => null);
+        if (!coords) continue;
+
+        geocodeCount += 1;
+
+        // Persist and patch the in-memory host so this response includes the coords.
+        try {
+          await storage.updateHostCoordinates(host.id, coords.lat, coords.lng);
+          host.latitude = coords.lat.toString();
+          host.longitude = coords.lng.toString();
+        } catch {
+          // Ignore persistence errors; response can still use computed coords.
+          host.latitude = coords.lat.toString();
+          host.longitude = coords.lng.toString();
+        }
+      }
       const eventIds = parkingEvents.map((event) => event.id);
 
       const bookingRows =

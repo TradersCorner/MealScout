@@ -4471,7 +4471,6 @@ export default function ParkingPassPage() {
                             null;
                           const bookingListing = listingForDate || displayListing;
                           const paymentsReady = platformPaymentsReady;
-                          const payoutsReady = listingPayoutsReady(bookingListing || displayListing);
                           const bookings = Array.isArray(bookingListing?.bookings)
                             ? bookingListing?.bookings ?? []
                             : [];
@@ -4524,7 +4523,7 @@ export default function ParkingPassPage() {
                             >
                               <Popup>
                                 <div className="space-y-2 text-xs">
-                                  <p className="font-semibold text-gray-900">
+                                  <p className="font-semibold text-orange-600">
                                     {group.host.businessName}
                                   </p>
                                   <p className="text-gray-600">
@@ -4618,11 +4617,6 @@ export default function ParkingPassPage() {
                                       Choose a day with availability.
                                     </p>
                                   )}
-                                  {!payoutsReady && (
-                                    <p className="text-[11px] text-amber-700">
-                                      Host payouts are still being configured.
-                                    </p>
-                                  )}
                                   {bookings.length > 0 ? (
                                     <div className="pt-1 text-[11px] text-gray-500 space-y-1">
                                       {bookings
@@ -4688,7 +4682,6 @@ export default function ParkingPassPage() {
                         null;
                       const bookingListing = listingForDate || displayListing;
                       const paymentsReady = platformPaymentsReady;
-                      const payoutsReady = listingPayoutsReady(bookingListing || displayListing);
                       const slotOptions = listingForDate
                         ? buildSlotOptions(listingForDate)
                         : [];
@@ -4748,7 +4741,7 @@ export default function ParkingPassPage() {
                         >
                           <div className="flex items-center justify-between">
                             <div>
-                              <span className="text-[15px] font-semibold text-slate-900 font-display">
+                              <span className="text-[15px] font-semibold text-orange-500 font-display">
                                 {group.host.businessName}
                               </span>
                               <div className="text-xs text-gray-500">
@@ -4776,11 +4769,6 @@ export default function ParkingPassPage() {
                                 displayListing.endTime === "23:59"
                                   ? "Any time"
                                   : `${displayListing.startTime} - ${displayListing.endTime}`}
-                              </p>
-                            )}
-                            {!payoutsReady && (
-                              <p className="text-[11px] text-amber-700">
-                                Host payouts are still being configured.
                               </p>
                             )}
                             {!listingForDate && (
@@ -4923,9 +4911,6 @@ export default function ParkingPassPage() {
                       null;
                     const bookingListing = listingForDate || displayListing;
                     const paymentsReady = platformPaymentsReady;
-                    const payoutsReady = listingPayoutsReady(
-                      bookingListing || displayListing,
-                    );
                     const slotOptions = listingForDate
                       ? buildSlotOptions(listingForDate)
                       : [];
@@ -4985,9 +4970,9 @@ export default function ParkingPassPage() {
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-[15px] font-semibold text-slate-900 font-display">
-                            {group.host.businessName}
-                          </span>
+                           <span className="text-[15px] font-semibold text-orange-500 font-display">
+                             {group.host.businessName}
+                           </span>
                           <span className="text-xs text-slate-600">
                             {displayListing
                               ? format(new Date(displayListing.date), "EEE, MMM d")
@@ -5009,11 +4994,6 @@ export default function ParkingPassPage() {
                               displayListing.endTime === "23:59"
                                 ? "Any time"
                                 : `${displayListing.startTime} - ${displayListing.endTime}`}
-                            </p>
-                          )}
-                          {!payoutsReady && (
-                            <p className="text-[11px] text-amber-700">
-                              Host payouts are still being configured.
                             </p>
                           )}
                           {!listingForDate && (
@@ -5117,11 +5097,6 @@ export default function ParkingPassPage() {
                             {listingForDate ? "Fully booked." : "No open dates right now."}
                           </p>
                         )}
-                        {!payoutsReady && (
-                          <p className="text-[11px] text-amber-700">
-                            Host payouts are still being configured.
-                          </p>
-                        )}
                       </div>
                     );
                   })}
@@ -5157,7 +5132,7 @@ export default function ParkingPassPage() {
                         className="rounded-xl pp-glass-muted px-3 py-2 text-xs text-slate-700"
                       >
                         <div className="flex items-center justify-between text-sm text-gray-900">
-                          <span>{item.listing.host.businessName}</span>
+                          <span className="text-orange-500">{item.listing.host.businessName}</span>
                           <button
                             type="button"
                             className="text-xs text-gray-500 underline"
@@ -5226,12 +5201,6 @@ export default function ParkingPassPage() {
                         {!selectedDateAvailable && (
                           <p className="text-[11px] text-amber-700">
                             No slots on {selectedDateLabel}. Showing next available.
-                          </p>
-                        )}
-                        {!listingPayoutsReady(activeListingForDate || activeListing) && (
-                          <p className="text-[11px] text-amber-700">
-                            This host is still setting up payouts. Your booking will still
-                            go through, but the host won’t receive automatic payouts yet.
                           </p>
                         )}
                         <div className="flex items-center justify-between">

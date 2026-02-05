@@ -115,10 +115,16 @@ export default function Navigation() {
     }
 
     let cancelled = false;
-    fetch("/api/hosts/me")
-      .then((res) => {
+    // Use list endpoint so users without a host profile don't generate noisy 404s.
+    fetch("/api/hosts")
+      .then(async (res) => {
         if (cancelled) return;
-        setIsHost(res.ok);
+        if (!res.ok) {
+          setIsHost(false);
+          return;
+        }
+        const hosts = await res.json().catch(() => []);
+        setIsHost(Array.isArray(hosts) && hosts.length > 0);
       })
       .catch(() => {
         if (cancelled) return;

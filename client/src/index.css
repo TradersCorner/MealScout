@@ -320,6 +320,25 @@
     color: rgba(255, 255, 255, 0.84) !important;
   }
 
+  .theme-night .parking-pass-page .text-gray-600,
+  .theme-night .parking-pass-page .text-slate-600,
+  .theme-night .parking-pass-page .text-zinc-600,
+  .theme-night .parking-pass-page .text-neutral-600 {
+    color: rgba(255, 255, 255, 0.78) !important;
+  }
+
+  .theme-night .parking-pass-page .text-gray-500,
+  .theme-night .parking-pass-page .text-slate-500,
+  .theme-night .parking-pass-page .text-zinc-500,
+  .theme-night .parking-pass-page .text-neutral-500 {
+    color: rgba(255, 255, 255, 0.72) !important;
+  }
+
+  .theme-night .parking-pass-page input::placeholder,
+  .theme-night .parking-pass-page textarea::placeholder {
+    color: rgba(255, 255, 255, 0.55);
+  }
+
   h1,
   h2,
   h3,

@@ -4350,12 +4350,12 @@ export default function ParkingPassPage() {
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-8 space-y-3">
                   <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-slate-700">
                     Loading parking pass spots...
                   </p>
                 </div>
               ) : passListings.length === 0 ? (
-                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-600">
+                <div className="rounded-2xl pp-glass-muted p-6 text-center text-sm text-slate-700">
                   No parking pass spots are available right now.
                 </div>
               ) : viewMode === "map" ? (

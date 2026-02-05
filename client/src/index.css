@@ -182,6 +182,12 @@
     min-height: 100%;
   }
 
+  /* Ensure background overlays stay behind the app content (night mode readability) */
+  #root {
+    position: relative;
+    z-index: 10;
+  }
+
   * {
     border-color: hsl(var(--border));
   }
@@ -225,6 +231,27 @@
       );
     mix-blend-mode: overlay;
     opacity: 0.55;
+  }
+
+  .theme-night body::before {
+    /* Slightly softer so text/cards stay crisp on dark photography */
+    mix-blend-mode: soft-light;
+    opacity: 0.38;
+  }
+
+  /* Night mode: boost contrast for common “muted” Tailwind text colors */
+  .theme-night .text-gray-500,
+  .theme-night .text-slate-500,
+  .theme-night .text-zinc-500,
+  .theme-night .text-neutral-500 {
+    color: var(--text-secondary) !important;
+  }
+
+  .theme-night .text-gray-600,
+  .theme-night .text-slate-600,
+  .theme-night .text-zinc-600,
+  .theme-night .text-neutral-600 {
+    color: var(--text-muted) !important;
   }
 
   h1,

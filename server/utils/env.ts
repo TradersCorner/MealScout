@@ -37,8 +37,10 @@ export function validateEnv(): EnvSpec {
     TRADESCOUT_API_TOKEN: optional("TRADESCOUT_API_TOKEN"),
     SESSION_SECRET: required("SESSION_SECRET"),
     CLIENT_ORIGIN: required("CLIENT_ORIGIN"),
-    BREVO_API_KEY: requiredInProd("BREVO_API_KEY"),
-    INCIDENT_EMAIL_RECIPIENTS: requiredInProd("INCIDENT_EMAIL_RECIPIENTS"),
+    // Email notifications are nice-to-have; don't hard-block startup if missing.
+    // If missing, related actions should fail gracefully and/or log warnings.
+    BREVO_API_KEY: optional("BREVO_API_KEY"),
+    INCIDENT_EMAIL_RECIPIENTS: optional("INCIDENT_EMAIL_RECIPIENTS"),
     TWILIO_ACCOUNT_SID: optional("TWILIO_ACCOUNT_SID"),
     TWILIO_AUTH_TOKEN: optional("TWILIO_AUTH_TOKEN"),
   };
@@ -59,15 +61,15 @@ export function validateEnv(): EnvSpec {
     );
   }
 
-  // For non-production, warn but do not prevent the server from starting
-  // when incident email configuration is missing.
-  if (!isProduction && !env.BREVO_API_KEY) {
+  // Warn but do not prevent the server from starting when incident email
+  // configuration is missing.
+  if (!env.BREVO_API_KEY) {
     console.warn(
       "⚠️  BREVO_API_KEY is not set – incident email notifications will fail and related actions will error until configured."
     );
   }
 
-  if (!isProduction && !env.INCIDENT_EMAIL_RECIPIENTS) {
+  if (!env.INCIDENT_EMAIL_RECIPIENTS) {
     console.warn(
       "⚠️  INCIDENT_EMAIL_RECIPIENTS is not set – incident email notifications will throw errors when triggered."
     );

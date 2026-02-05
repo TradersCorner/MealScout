@@ -254,6 +254,13 @@
     color: var(--text-muted) !important;
   }
 
+  .theme-night .text-gray-400,
+  .theme-night .text-slate-400,
+  .theme-night .text-zinc-400,
+  .theme-night .text-neutral-400 {
+    color: rgba(255, 255, 255, 0.62) !important;
+  }
+
   /* Parking Pass: consistent “glass” surfaces + readable text in night mode */
   .pp-glass {
     background: rgba(255, 255, 255, 0.84);
@@ -304,6 +311,49 @@
     opacity: 0.62;
   }
 
+  .pp-calendar-badge {
+    border-width: 1px !important;
+    border-style: solid !important;
+    border-color: rgba(15, 23, 42, 0.12) !important;
+    background: rgba(255, 255, 255, 0.72) !important;
+    color: rgba(15, 23, 42, 0.86) !important;
+    backdrop-filter: blur(10px);
+  }
+
+  .pp-calendar-badge--booking {
+    background: rgba(255, 237, 213, 0.9) !important;
+    border-color: rgba(234, 88, 12, 0.25) !important;
+    color: rgba(154, 52, 18, 0.96) !important;
+  }
+
+  .pp-calendar-badge--manual {
+    background: rgba(226, 232, 240, 0.82) !important;
+    border-color: rgba(15, 23, 42, 0.14) !important;
+    color: rgba(51, 65, 85, 0.96) !important;
+  }
+
+  .pp-calendar-badge--accepted {
+    background: rgba(224, 231, 255, 0.82) !important;
+    border-color: rgba(79, 70, 229, 0.22) !important;
+    color: rgba(49, 46, 129, 0.96) !important;
+  }
+
+  .pp-calendar-dot {
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+  }
+
+  .pp-calendar-dot--booking {
+    background: rgb(234, 88, 12);
+  }
+
+  .pp-calendar-dot--manual {
+    background: rgb(100, 116, 139);
+  }
+
+  .pp-calendar-dot--accepted {
+    background: rgb(79, 70, 229);
+  }
+
   .theme-night .pp-glass {
     background: rgba(16, 14, 12, 0.82);
     border-color: rgba(255, 255, 255, 0.14);
@@ -351,6 +401,34 @@
     background: rgba(234, 88, 12, 0.18);
     border-color: rgba(245, 158, 11, 0.35);
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+  }
+
+  .theme-night .pp-calendar-badge {
+    border-color: rgba(255, 255, 255, 0.16) !important;
+    background: rgba(26, 22, 19, 0.76) !important;
+    color: rgba(255, 255, 255, 0.86) !important;
+  }
+
+  .theme-night .pp-calendar-badge--booking {
+    background: rgba(234, 88, 12, 0.18) !important;
+    border-color: rgba(245, 158, 11, 0.28) !important;
+    color: rgba(255, 220, 190, 0.92) !important;
+  }
+
+  .theme-night .pp-calendar-badge--manual {
+    background: rgba(148, 163, 184, 0.12) !important;
+    border-color: rgba(148, 163, 184, 0.22) !important;
+    color: rgba(226, 232, 240, 0.92) !important;
+  }
+
+  .theme-night .pp-calendar-badge--accepted {
+    background: rgba(99, 102, 241, 0.14) !important;
+    border-color: rgba(129, 140, 248, 0.26) !important;
+    color: rgba(224, 231, 255, 0.92) !important;
+  }
+
+  .theme-night .pp-calendar-dot {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
   }
 
   .theme-night .parking-pass-page .text-gray-900,

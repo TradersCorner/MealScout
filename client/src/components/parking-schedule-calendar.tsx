@@ -50,16 +50,16 @@ type ParkingScheduleCalendarProps = {
   className?: string;
 };
 
-const typeBadgeStyles: Record<ParkingScheduleItem["type"], string> = {
-  booking: "bg-orange-100 text-orange-800 border-orange-200",
-  manual: "bg-slate-100 text-slate-700 border-slate-200",
-  accepted_interest: "bg-indigo-100 text-indigo-700 border-indigo-200",
+const typeBadgeClass: Record<ParkingScheduleItem["type"], string> = {
+  booking: "pp-calendar-badge pp-calendar-badge--booking",
+  manual: "pp-calendar-badge pp-calendar-badge--manual",
+  accepted_interest: "pp-calendar-badge pp-calendar-badge--accepted",
 };
 
-const typeDotStyles: Record<ParkingScheduleItem["type"], string> = {
-  booking: "bg-orange-500",
-  manual: "bg-slate-400",
-  accepted_interest: "bg-indigo-500",
+const typeDotClass: Record<ParkingScheduleItem["type"], string> = {
+  booking: "pp-calendar-dot pp-calendar-dot--booking",
+  manual: "pp-calendar-dot pp-calendar-dot--manual",
+  accepted_interest: "pp-calendar-dot pp-calendar-dot--accepted",
 };
 
 const toDate = (value: string | Date) =>
@@ -194,9 +194,7 @@ export function ParkingScheduleCalendar({
                       className="flex items-center gap-1 text-[10px] text-slate-700"
                     >
                       <span
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          typeDotStyles[item.type]
-                        }`}
+                        className={`h-1.5 w-1.5 rounded-full ${typeDotClass[item.type]}`}
                       />
                       <span className="truncate">{item.title}</span>
                     </div>
@@ -242,7 +240,7 @@ export function ParkingScheduleCalendar({
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge
                           variant="outline"
-                          className={`text-[10px] ${typeBadgeStyles[item.type]}`}
+                          className={`text-[10px] ${typeBadgeClass[item.type]}`}
                         >
                           {item.type === "booking"
                             ? "Parking Pass"

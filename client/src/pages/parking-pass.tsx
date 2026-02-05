@@ -1751,7 +1751,11 @@ export default function ParkingPassPage() {
 
   const handleGeocodePin = async () => {
     if (!host) return;
-    const addressLabel = buildAddressLabel(host.address, host.city, host.state);
+    const addressLabel = buildAddressLabel(
+      host.address ?? undefined,
+      host.city ?? undefined,
+      host.state ?? undefined,
+    );
     if (!addressLabel) {
       toast({
         title: "Missing address",
@@ -2530,6 +2534,78 @@ export default function ParkingPassPage() {
     : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
   const parkingMapAttribution =
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+  const todayDateKey = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
+
+  const listingPaymentsReady = (listing: ParkingPassListing | null | undefined) =>
+    Boolean(
+      listing?.paymentsEnabled ??
+        listing?.host?.stripeChargesEnabled ??
+        listing?.host?.stripeConnectAccountId,
+    );
+
+  const listingHasAvailability = (
+    listing: ParkingPassListing | null | undefined,
+  ): boolean => {
+    if (!listing) return false;
+    if (listing.status !== "open") return false;
+    const spots = listing.availableSpotNumbers;
+    return Array.isArray(spots) ? spots.length > 0 : true;
+  };
+
+  const nextBookableDateByGroup = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const group of filteredLocations) {
+      const next = group.listings.find((listing) => {
+        const dateKey = getListingDateKey(listing.date);
+        if (dateKey < todayDateKey) return false;
+        return listingPaymentsReady(listing) && listingHasAvailability(listing);
+      });
+      map.set(group.key, next ? getListingDateKey(next.date) : null);
+    }
+    return map;
+  }, [filteredLocations, todayDateKey]);
+
+  const nextBookableListingByGroup = useMemo(() => {
+    const map = new Map<string, ParkingPassListing | null>();
+    for (const group of filteredLocations) {
+      const next = group.listings.find((listing) => {
+        const dateKey = getListingDateKey(listing.date);
+        if (dateKey < todayDateKey) return false;
+        return listingPaymentsReady(listing) && listingHasAvailability(listing);
+      });
+      map.set(group.key, next || null);
+    }
+    return map;
+  }, [filteredLocations, todayDateKey]);
+
+  const activeBookableDates = useMemo(() => {
+    if (!activeLocation) return [];
+    const keys = activeLocation.listings
+      .filter((listing) => listingPaymentsReady(listing) && listingHasAvailability(listing))
+      .map((listing) => getListingDateKey(listing.date));
+    return Array.from(new Set(keys)).sort();
+  }, [activeLocation]);
+
+  const lastActiveLocationKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!activeLocation) return;
+    if (lastActiveLocationKeyRef.current === activeLocation.key) return;
+    lastActiveLocationKeyRef.current = activeLocation.key;
+
+    const next = nextBookableDateByGroup.get(activeLocation.key) || null;
+    if (next) {
+      setSelectedDate(next);
+    } else if (activeLocation.listings.length > 0) {
+      setSelectedDate(getListingDateKey(activeLocation.listings[0].date));
+    }
+  }, [activeLocation, nextBookableDateByGroup]);
+
+  useEffect(() => {
+    if (!activeLocation) return;
+    if (activeBookableDates.length === 0) return;
+    if (activeBookableDates.includes(selectedDate)) return;
+    setSelectedDate(activeBookableDates[0]);
+  }, [activeBookableDates, activeLocation, selectedDate]);
 
   return (
     <div className="min-h-screen bg-transparent parking-pass-page">
@@ -3773,7 +3849,7 @@ export default function ParkingPassPage() {
         )}
 
         {topTab === "schedule" && isTruckViewUser && (
-          <Card className="rounded-2xl border border-gray-200 bg-white">
+          <Card className="rounded-2xl pp-glass shadow-sm">
             <CardContent className="p-5 space-y-6">
               <div>
                 <p className="text-sm font-semibold text-gray-900">
@@ -3788,6 +3864,7 @@ export default function ParkingPassPage() {
                   <Label htmlFor="social-facebook">Facebook URL</Label>
                   <Input
                     id="social-facebook"
+                    className="pp-field"
                     placeholder="https://facebook.com/yourpage"
                     value={socialLinks.facebookPageUrl}
                     onChange={(event) =>
@@ -3802,6 +3879,7 @@ export default function ParkingPassPage() {
                   <Label htmlFor="social-instagram">Instagram URL</Label>
                   <Input
                     id="social-instagram"
+                    className="pp-field"
                     placeholder="https://instagram.com/yourtruck"
                     value={socialLinks.instagramUrl}
                     onChange={(event) =>
@@ -3816,6 +3894,7 @@ export default function ParkingPassPage() {
                   <Label htmlFor="social-x">X URL</Label>
                   <Input
                     id="social-x"
+                    className="pp-field"
                     placeholder="https://x.com/yourtruck"
                     value={socialLinks.xUrl}
                     onChange={(event) =>
@@ -3828,8 +3907,8 @@ export default function ParkingPassPage() {
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
-                  <p className="text-xs font-semibold text-gray-700">
+                <div className="rounded-xl pp-glass-muted p-4 space-y-3">
+                  <p className="text-xs font-semibold text-slate-700">
                     Platforms
                   </p>
                   {(
@@ -3859,8 +3938,8 @@ export default function ParkingPassPage() {
                     </div>
                   ))}
                 </div>
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
-                  <p className="text-xs font-semibold text-gray-700">
+                <div className="rounded-xl pp-glass-muted p-4 space-y-3">
+                  <p className="text-xs font-semibold text-slate-700">
                     Post prompts
                   </p>
                   {(
@@ -3893,7 +3972,7 @@ export default function ParkingPassPage() {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-gray-600">
+                <div className="flex items-center gap-2 text-xs text-slate-700">
                   <Switch
                     checked={socialSettings.promptBeforePost}
                     onCheckedChange={(checked) =>
@@ -4251,7 +4330,7 @@ export default function ParkingPassPage() {
                     </Button>
                     <Button
                       type="button"
-                      onClick={handlePostPromptShare}
+                      onClick={() => void handlePostPromptShare()}
                       disabled={isPostingSocial}
                     >
                       {isPostingSocial ? "Sharing..." : "Post update"}
@@ -4273,7 +4352,7 @@ export default function ParkingPassPage() {
                 Find parking pass spots
               </p>
               <p className="text-xs text-gray-500">
-                Search by city or address. Pick a date to see availability.
+                Search by city or address. Pick a spot first, then choose from its open dates.
               </p>
             </div>
           </div>
@@ -4286,7 +4365,7 @@ export default function ParkingPassPage() {
                       Search + availability
                     </p>
                     <p className="text-[11px] text-slate-500">
-                      Pick a date, then choose a location with open spots.
+                      Choose a spot, then pick an open date and time slot.
                     </p>
                   </div>
                   <div className="hidden sm:flex items-center gap-2">
@@ -4306,35 +4385,17 @@ export default function ParkingPassPage() {
                     </Button>
                   </div>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-[200px_1fr]">
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-semibold text-slate-600">
-                      Date
-                    </p>
-                    <Input
-                      type="date"
-                      className="pp-field"
-                      value={selectedDate}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setSelectedDate(
-                          value || new Date().toISOString().split("T")[0],
-                        );
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-semibold text-slate-600">
-                      City or address
-                    </p>
-                    <Input
-                      type="text"
-                      className="pp-field"
-                      placeholder="Austin, TX or 123 Main St"
-                      value={cityQuery}
-                      onChange={(event) => setCityQuery(event.target.value)}
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] font-semibold text-slate-600">
+                    City or address
+                  </p>
+                  <Input
+                    type="text"
+                    className="pp-field"
+                    placeholder="Austin, TX or 123 Main St"
+                    value={cityQuery}
+                    onChange={(event) => setCityQuery(event.target.value)}
+                  />
                 </div>
                 <div className="flex sm:hidden items-center gap-2">
                   <Button
@@ -4383,15 +4444,23 @@ export default function ParkingPassPage() {
                           url={parkingMapTileUrl}
                         />
                         {mapLocations.map(({ group, coords }) => {
-                          const listingForDate = group.listings.find(
-                            (listing) =>
-                              getListingDateKey(listing.date) === selectedDate,
-                          );
+                          const effectiveDateKey =
+                            group.key === activeLocationKey
+                              ? selectedDate
+                              : nextBookableDateByGroup.get(group.key);
+                          const listingForDate = effectiveDateKey
+                            ? group.listings.find(
+                                (listing) =>
+                                  getListingDateKey(listing.date) ===
+                                  effectiveDateKey,
+                              )
+                            : null;
+                          const fallbackDateKey = effectiveDateKey || todayDateKey;
                           const displayListing =
                             listingForDate ||
                             group.listings.find(
                               (listing) =>
-                                getListingDateKey(listing.date) >= selectedDate,
+                                getListingDateKey(listing.date) >= fallbackDateKey,
                             ) ||
                             group.listings[0] ||
                             null;
@@ -4438,7 +4507,7 @@ export default function ParkingPassPage() {
                                 : listingForDate.status === "open"
                                   ? "Open"
                                   : "Closed"
-                              : "No slots for selected day";
+                              : "Choose this spot to see available dates";
                           const hasAvailability =
                             paymentsReady &&
                             (listingForDate
@@ -4479,12 +4548,12 @@ export default function ParkingPassPage() {
                                   )}
                                   {!listingForDate && (
                                     <p className="text-[11px] text-amber-700">
-                                      No slots on{" "}
-                                      {format(
-                                        new Date(`${selectedDate}T00:00:00`),
-                                        "EEE, MMM d",
-                                      )}
-                                      .
+                                      {group.key === activeLocationKey
+                                        ? `No slots on ${format(
+                                            new Date(`${selectedDate}T00:00:00`),
+                                            "EEE, MMM d",
+                                          )}.`
+                                        : "No open dates right now."}
                                     </p>
                                   )}
                                   <p className="text-gray-600">
@@ -4593,17 +4662,25 @@ export default function ParkingPassPage() {
                       Tap a location below to update the map.
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    {filteredLocations.map((group) => {
-                      const listingForDate = group.listings.find(
-                        (listing) =>
-                          getListingDateKey(listing.date) === selectedDate,
-                      );
+                    <div className="space-y-2">
+                      {filteredLocations.map((group) => {
+                      const effectiveDateKey =
+                        group.key === activeLocationKey
+                          ? selectedDate
+                          : nextBookableDateByGroup.get(group.key);
+                      const listingForDate = effectiveDateKey
+                        ? group.listings.find(
+                            (listing) =>
+                              getListingDateKey(listing.date) ===
+                              effectiveDateKey,
+                          )
+                        : null;
+                      const fallbackDateKey = effectiveDateKey || todayDateKey;
                       const displayListing =
                         listingForDate ||
                         group.listings.find(
                           (listing) =>
-                            getListingDateKey(listing.date) >= selectedDate,
+                            getListingDateKey(listing.date) >= fallbackDateKey,
                         ) ||
                         group.listings[0] ||
                         null;
@@ -4713,12 +4790,12 @@ export default function ParkingPassPage() {
                             )}
                             {!listingForDate && (
                               <p className="text-[11px] text-amber-700">
-                                No slots on{" "}
-                                {format(
-                                  new Date(`${selectedDate}T00:00:00`),
-                                  "EEE, MMM d",
-                                )}
-                                .
+                                {effectiveDateKey
+                                  ? `No slots on ${format(
+                                      new Date(`${effectiveDateKey}T00:00:00`),
+                                      "EEE, MMM d",
+                                    )}.`
+                                  : "No open dates right now."}
                               </p>
                             )}
                             {listingForDate?.availableSpotNumbers && (
@@ -4760,7 +4837,7 @@ export default function ParkingPassPage() {
                               />
                             </div>
                           )}
-                          {listingForDate && slotOptions.length > 0 && (
+                          {isActive && listingForDate && slotOptions.length > 0 && (
                             <div className="grid grid-cols-2 gap-2 pt-1">
                               {slotOptions.map((slot) => {
                                 const feeCents = getFeeCentsForSlots(
@@ -4795,7 +4872,7 @@ export default function ParkingPassPage() {
                                 Includes a $10/day MealScout fee per host. Cleanup
                                 time is 30 minutes after the end time.
                               </p>
-                              {listingForDate && (
+                              {isActive && listingForDate && (
                                 <Button
                                   size="sm"
                                   onClick={() => handleBookSelected(listingForDate)}
@@ -4814,7 +4891,7 @@ export default function ParkingPassPage() {
                             </div>
                           ) : (
                             <p className="text-[11px] text-gray-500">
-                              {listingForDate ? "Fully booked." : "No slots on selected day."}
+                              {listingForDate ? "Fully booked." : "No open dates right now."}
                             </p>
                           )}
                         </div>
@@ -4830,15 +4907,22 @@ export default function ParkingPassPage() {
               ) : (
                 <div className="space-y-3">
                   {filteredLocations.map((group) => {
-                    const listingForDate = group.listings.find(
-                      (listing) =>
-                        getListingDateKey(listing.date) === selectedDate,
-                    );
+                    const effectiveDateKey =
+                      group.key === activeLocationKey
+                        ? selectedDate
+                        : nextBookableDateByGroup.get(group.key);
+                    const listingForDate = effectiveDateKey
+                      ? group.listings.find(
+                          (listing) =>
+                            getListingDateKey(listing.date) === effectiveDateKey,
+                        )
+                      : null;
+                    const fallbackDateKey = effectiveDateKey || todayDateKey;
                     const displayListing =
                       listingForDate ||
                       group.listings.find(
                         (listing) =>
-                          getListingDateKey(listing.date) >= selectedDate,
+                          getListingDateKey(listing.date) >= fallbackDateKey,
                       ) ||
                       group.listings[0] ||
                       null;
@@ -4937,12 +5021,12 @@ export default function ParkingPassPage() {
                           )}
                           {!listingForDate && (
                             <p className="text-[11px] text-amber-700">
-                              No slots on{" "}
-                              {format(
-                                new Date(`${selectedDate}T00:00:00`),
-                                "EEE, MMM d",
-                              )}
-                              .
+                              {effectiveDateKey
+                                ? `No slots on ${format(
+                                    new Date(`${effectiveDateKey}T00:00:00`),
+                                    "EEE, MMM d",
+                                  )}.`
+                                : "No open dates right now."}
                             </p>
                           )}
                           {listingForDate?.availableSpotNumbers && (
@@ -4968,7 +5052,7 @@ export default function ParkingPassPage() {
                             />
                           </div>
                         )}
-                        {listingForDate && slotOptions.length > 0 && (
+                        {isActive && listingForDate && slotOptions.length > 0 && (
                           <div className="grid grid-cols-2 gap-2 pt-1">
                             {slotOptions.map((slot) => {
                               const feeCents = getFeeCentsForSlots(
@@ -5003,7 +5087,7 @@ export default function ParkingPassPage() {
                               Includes a $10/day MealScout fee per host. Cleanup
                               time is 30 minutes after the end time.
                             </p>
-                            {listingForDate && (
+                            {isActive && listingForDate && (
                               <Button
                                 size="sm"
                                 onClick={() => handleBookSelected(listingForDate)}
@@ -5022,14 +5106,14 @@ export default function ParkingPassPage() {
                           </div>
                         ) : (
                           <p className="text-[11px] text-gray-500">
-                            {listingForDate ? "Fully booked." : "No slots on selected day."}
+                            {listingForDate ? "Fully booked." : "No open dates right now."}
                           </p>
                         )}
                       </div>
                     );
                   })}
                   {filteredLocations.length === 0 && (
-                    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-600">
+                    <div className="rounded-2xl pp-glass-muted p-6 text-center text-sm text-slate-700">
                       No locations match that search.
                     </div>
                   )}
@@ -5131,11 +5215,33 @@ export default function ParkingPassPage() {
                             No slots on {selectedDateLabel}. Showing next available.
                           </p>
                         )}
+                        {!listingPaymentsReady(activeListingForDate || activeListing) && (
+                          <p className="text-[11px] text-amber-700">
+                            This host hasn’t enabled payments yet, so booking is disabled.
+                          </p>
+                        )}
                         <div className="flex items-center justify-between">
                           <span>Date</span>
-                          <span>
-                            {format(new Date(activeListing.date), "EEE, MMM d")}
-                          </span>
+                          {activeBookableDates.length > 1 ? (
+                            <select
+                              className="pp-field h-8 w-auto max-w-[190px] text-[11px]"
+                              value={selectedDate}
+                              onChange={(event) => setSelectedDate(event.target.value)}
+                            >
+                              {activeBookableDates.map((dateKey) => (
+                                <option key={dateKey} value={dateKey}>
+                                  {format(new Date(`${dateKey}T00:00:00`), "EEE, MMM d")}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span>
+                              {format(
+                                new Date(`${selectedDate}T00:00:00`),
+                                "EEE, MMM d",
+                              )}
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center justify-between">
                           <span>Time</span>
@@ -5158,8 +5264,8 @@ export default function ParkingPassPage() {
                         )}
                       </div>
                       {activeListingBookings.length > 0 ? (
-                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 space-y-2">
-                          <p className="text-[11px] font-semibold text-gray-700">
+                        <div className="rounded-xl pp-glass-muted p-3 text-xs text-slate-700 space-y-2">
+                          <p className="text-[11px] font-semibold text-slate-700">
                             Booked trucks
                           </p>
                           <div className="space-y-1">

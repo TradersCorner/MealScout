@@ -2956,7 +2956,7 @@ export default function ParkingPassPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-orange-200 bg-white/70 p-4 space-y-3">
+                  <div className="rounded-2xl border border-orange-200 pp-glass-muted p-4 space-y-3">
                     <p className="text-sm font-semibold text-orange-900">
                       Add another parking location
                     </p>

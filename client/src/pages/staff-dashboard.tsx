@@ -13,9 +13,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Store, Copy, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  UserPlus,
+  Store,
+  Copy,
+  CheckCircle2,
+  AlertCircle,
+  MapPin,
+} from "lucide-react";
 import Navigation from "@/components/navigation";
 import { Link } from "wouter";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import HostLocationManager from "@/components/admin/host-location-manager";
 
 interface CreatedAccount {
   userId: string;
@@ -55,6 +64,10 @@ export default function StaffDashboard() {
   const [createdAccount, setCreatedAccount] = useState<CreatedAccount | null>(
     null
   );
+  const [selectedTab, setSelectedTab] = useState<
+    "accounts" | "host-locations"
+  >("accounts");
+  const canEditHostLocations = user?.userType === "admin";
 
   // Verify staff access
   const { data: staffCheck, isLoading: checkingAccess } = useQuery({
@@ -264,7 +277,18 @@ export default function StaffDashboard() {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
+        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+          <TabsList className="w-full inline-flex h-auto flex-wrap gap-1 p-1 mb-4">
+            <TabsTrigger value="accounts" className="flex-shrink-0">
+              Account Creation
+            </TabsTrigger>
+            <TabsTrigger value="host-locations" className="flex-shrink-0">
+              Host Locations
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="accounts">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
           {/* Create Any User Type (Admin only) */}
           {user?.userType === "admin" && (
             <Card className="md:col-span-2">
@@ -542,7 +566,26 @@ export default function StaffDashboard() {
               </form>
             </CardContent>
           </Card>
-        </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="host-locations">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="w-5 h-5" />
+                  Manage Host Locations
+                </CardTitle>
+                <CardDescription>
+                  View and update geocoded locations for existing hosts
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <HostLocationManager canEdit={canEditHostLocations} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Quick Links */}
         {user?.userType === "admin" && (

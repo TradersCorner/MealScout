@@ -36,6 +36,10 @@ import {
   isSlotWithinHours,
   slotWindowsOverlap,
 } from "@shared/parkingPassSlots";
+import {
+  ensureParkingPassEventRow,
+  listParkingPassOccurrences,
+} from "../services/parkingPassVirtual";
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -788,160 +792,108 @@ export function registerHostRoutes(app: Express) {
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const existingPaidEvents = await db
-        .select({
-          id: events.id,
-          seriesId: events.seriesId,
-          breakfastPriceCents: events.breakfastPriceCents,
-          lunchPriceCents: events.lunchPriceCents,
-          dinnerPriceCents: events.dinnerPriceCents,
-          dailyPriceCents: events.dailyPriceCents,
-          weeklyPriceCents: events.weeklyPriceCents,
-          monthlyPriceCents: events.monthlyPriceCents,
-        })
-        .from(events)
-        .where(
-          and(
-            eq(events.hostId, host.id),
-            gte(events.date, today),
-            eq(events.requiresPayment, true),
-          ),
-        );
-
-      const hasActivePricing = (row: typeof existingPaidEvents[number]) =>
-        (row.breakfastPriceCents ?? 0) > 0 ||
-        (row.lunchPriceCents ?? 0) > 0 ||
-        (row.dinnerPriceCents ?? 0) > 0 ||
-        (row.dailyPriceCents ?? 0) > 0 ||
-        (row.weeklyPriceCents ?? 0) > 0 ||
-        (row.monthlyPriceCents ?? 0) > 0;
-
-      const activePaidEvents = existingPaidEvents.filter(hasActivePricing);
-      if (activePaidEvents.length > 0) {
-        return res.status(409).json({
-          message:
-            "You already have a parking pass for this address. Edit your existing listing.",
-        });
-      }
-      if (existingPaidEvents.length > 0) {
-        const draftEventIds = existingPaidEvents.map(
-          (row: (typeof existingPaidEvents)[number]) => row.id,
-        );
-        const draftSeriesIds = Array.from(
-          new Set(
-            existingPaidEvents
-              .map((row: (typeof existingPaidEvents)[number]) => row.seriesId)
-              .filter((id: string | null): id is string => Boolean(id)),
-          ),
-        ) as string[];
-        await db.delete(events).where(inArray(events.id, draftEventIds));
-        if (draftSeriesIds.length > 0) {
-          await db
-            .delete(eventSeries)
-            .where(inArray(eventSeries.id, draftSeriesIds));
-        }
-      }
 
       const horizon = new Date(today);
       horizon.setDate(horizon.getDate() + 90);
 
       const hardCapEnabled = Boolean(req.body?.hardCapEnabled);
-      const [series] = await db
-        .insert(eventSeries)
-        .values({
-          hostId: host.id,
-          name: `Parking Pass - ${host.businessName}`,
-          description: host.address,
-          timezone: "America/New_York",
-          recurrenceRule: null,
-          startDate: today,
-          endDate: horizon,
-          defaultStartTime: parsed.startTime,
-          defaultEndTime: parsed.endTime,
-          defaultMaxTrucks: spotCount,
-          defaultHardCapEnabled: hardCapEnabled,
-          status: "published",
-          publishedAt: new Date(),
-        })
-        .returning();
 
-      const seriesId = series?.id ?? null;
-
-      const existingEvents = await db
-        .select({
-          date: events.date,
-          startTime: events.startTime,
-          endTime: events.endTime,
-        })
-        .from(events)
+      // Airbnb-style listing: store defaults on the series; do not materialize occurrences here.
+      const existingSeries = await db
+        .select({ id: eventSeries.id })
+        .from(eventSeries)
         .where(
           and(
-            eq(events.hostId, host.id),
-            gte(events.date, today),
-            lt(events.date, horizon),
-            eq(events.requiresPayment, true),
+            eq(eventSeries.hostId, host.id),
+            eq(eventSeries.seriesType, "parking_pass"),
           ),
-        );
+        )
+        .limit(1);
 
-      const blackoutRows = seriesId
-        ? await db
-            .select({ date: parkingPassBlackoutDates.date })
-            .from(parkingPassBlackoutDates)
-            .where(
-              and(
-                eq(parkingPassBlackoutDates.seriesId, seriesId),
-                gte(parkingPassBlackoutDates.date, today),
-                lt(parkingPassBlackoutDates.date, horizon),
-              ),
-            )
-        : [];
+      if (existingSeries.length === 0) {
+        const legacyRows = await db
+          .select({
+            id: events.id,
+            breakfastPriceCents: events.breakfastPriceCents,
+            lunchPriceCents: events.lunchPriceCents,
+            dinnerPriceCents: events.dinnerPriceCents,
+            dailyPriceCents: events.dailyPriceCents,
+            weeklyPriceCents: events.weeklyPriceCents,
+            monthlyPriceCents: events.monthlyPriceCents,
+          })
+          .from(events)
+          .where(
+            and(
+              eq(events.hostId, host.id),
+              eq(events.eventType, "parking_pass"),
+              eq(events.requiresPayment, true),
+              gte(events.date, today),
+            ),
+          )
+          .limit(1);
 
-      const blackoutSet = new Set(
-        blackoutRows.map(
-          (row: (typeof blackoutRows)[number]) =>
-            new Date(row.date).toISOString().split("T")[0],
-        ),
-      );
-
-      const existingKeys = new Set(
-        existingEvents.map((item: (typeof existingEvents)[number]) => {
-          const dateKey = new Date(item.date).toISOString().split("T")[0];
-          return `${dateKey}-${item.startTime}-${item.endTime}`;
-        }),
-      );
-
-      const newEvents = [];
-      for (
-        let cursor = new Date(today);
-        cursor < horizon;
-        cursor.setDate(cursor.getDate() + 1)
-      ) {
-        if (!daysOfWeek.includes(cursor.getDay())) {
-          continue;
+        const hasPricing =
+          (legacyRows[0]?.breakfastPriceCents ?? 0) > 0 ||
+          (legacyRows[0]?.lunchPriceCents ?? 0) > 0 ||
+          (legacyRows[0]?.dinnerPriceCents ?? 0) > 0 ||
+          (legacyRows[0]?.dailyPriceCents ?? 0) > 0 ||
+          (legacyRows[0]?.weeklyPriceCents ?? 0) > 0 ||
+          (legacyRows[0]?.monthlyPriceCents ?? 0) > 0;
+        if (hasPricing) {
+          return res.status(409).json({
+            message:
+              "This location already has a Parking Pass listing. Run the migration/backfill to convert it to the new listing model.",
+          });
         }
-        const dateKey = cursor.toISOString().split("T")[0];
-        if (blackoutSet.has(dateKey)) {
-          continue;
-        }
-        const key = `${dateKey}-${parsed.startTime}-${parsed.endTime}`;
-        if (existingKeys.has(key)) {
-          continue;
-        }
-
-        const eventPayload = {
-          ...parsed,
-          date: new Date(dateKey),
-          seriesId,
-        };
-        newEvents.push(eventPayload);
       }
 
-      if (newEvents.length === 0) {
-        return res.status(200).json([]);
+      const seriesValues: typeof eventSeries.$inferInsert = {
+        hostId: host.id,
+        name: `Parking Pass - ${host.businessName}`,
+        description: host.address,
+        timezone: "America/New_York",
+        recurrenceRule: null,
+        startDate: today,
+        endDate: horizon,
+        defaultStartTime: parsed.startTime,
+        defaultEndTime: parsed.endTime,
+        defaultMaxTrucks: spotCount,
+        defaultHardCapEnabled: hardCapEnabled,
+        seriesType: "parking_pass",
+        parkingPassDaysOfWeek: daysOfWeek,
+        defaultBreakfastPriceCents: breakfastPriceCents,
+        defaultLunchPriceCents: lunchPriceCents,
+        defaultDinnerPriceCents: dinnerPriceCents,
+        defaultDailyPriceCents: dailyPriceCents,
+        defaultWeeklyPriceCents: weeklyPriceCents,
+        defaultMonthlyPriceCents: monthlyPriceCents,
+        defaultHostPriceCents: slotSum,
+        status: "published",
+        publishedAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      let seriesId = existingSeries[0]?.id ?? null;
+      if (seriesId) {
+        await db
+          .update(eventSeries)
+          .set(seriesValues as any)
+          .where(eq(eventSeries.id, seriesId));
+      } else {
+        const [created] = await db.insert(eventSeries).values(seriesValues).returning();
+        seriesId = created?.id ?? null;
       }
 
-      const createdEvents = await db.insert(events).values(newEvents).returning();
-      res.status(201).json(createdEvents);
+      if (!seriesId) {
+        return res.status(500).json({ message: "Failed to create parking pass listing" });
+      }
+
+      const { occurrences } = await listParkingPassOccurrences({
+        hostIds: [host.id],
+        start: today,
+        horizonDays: 90,
+      });
+      res.status(201).json(occurrences.filter((item) => item.seriesId === seriesId));
     } catch (error: any) {
       console.error("Error creating parking pass listing:", error);
       if (error instanceof z.ZodError) {
@@ -971,18 +923,36 @@ export function registerHostRoutes(app: Express) {
         return res.status(404).json({ message: "Host profile not found" });
       }
 
-      const eventsByHost = await storage.getEventsByHost(host.id);
-      const hasPricing = (event: (typeof eventsByHost)[number]) =>
+      const { occurrences } = await listParkingPassOccurrences({
+        hostIds: [host.id],
+        horizonDays: 90,
+      });
+      const hasPricing = (event: any) =>
         (event.breakfastPriceCents ?? 0) > 0 ||
         (event.lunchPriceCents ?? 0) > 0 ||
         (event.dinnerPriceCents ?? 0) > 0 ||
         (event.dailyPriceCents ?? 0) > 0 ||
         (event.weeklyPriceCents ?? 0) > 0 ||
         (event.monthlyPriceCents ?? 0) > 0;
-      const parkingPassListings = eventsByHost.filter(
-        (event) => event.requiresPayment && hasPricing(event),
-      );
-      res.json(parkingPassListings);
+
+      const legacyEvents =
+        occurrences.length > 0
+          ? []
+          : (await storage.getEventsByHost(host.id)).filter(
+              (event: any) =>
+                event?.eventType === "parking_pass" &&
+                event?.requiresPayment &&
+                hasPricing(event),
+            );
+
+      const deduped = new Map<string, any>();
+      for (const item of [...occurrences, ...legacyEvents]) {
+        if (hasPricing(item)) {
+          deduped.set(item.id, item);
+        }
+      }
+
+      res.json(Array.from(deduped.values()));
     } catch (error: any) {
       console.error("Error fetching parking pass listings:", error);
       res.status(500).json({ message: "Failed to fetch parking pass listings" });
@@ -1000,6 +970,8 @@ export function registerHostRoutes(app: Express) {
         return res.status(400).json({ message: "Parking pass ID required" });
       }
       const userId = req.user.id;
+
+      await ensureParkingPassEventRow({ passId: eventId, requireFuture: true });
 
       // Verify event exists and host owns it
       const { event, host } = await getEventAndHostForUser(eventId, userId);
@@ -1453,6 +1425,27 @@ export function registerHostRoutes(app: Express) {
         if (updates.hardCapEnabled !== undefined) {
           seriesUpdates.defaultHardCapEnabled = updates.hardCapEnabled;
         }
+        if (updates.breakfastPriceCents !== undefined) {
+          seriesUpdates.defaultBreakfastPriceCents = updates.breakfastPriceCents;
+        }
+        if (updates.lunchPriceCents !== undefined) {
+          seriesUpdates.defaultLunchPriceCents = updates.lunchPriceCents;
+        }
+        if (updates.dinnerPriceCents !== undefined) {
+          seriesUpdates.defaultDinnerPriceCents = updates.dinnerPriceCents;
+        }
+        if (updates.dailyPriceCents !== undefined) {
+          seriesUpdates.defaultDailyPriceCents = updates.dailyPriceCents;
+        }
+        if (updates.weeklyPriceCents !== undefined) {
+          seriesUpdates.defaultWeeklyPriceCents = updates.weeklyPriceCents;
+        }
+        if (updates.monthlyPriceCents !== undefined) {
+          seriesUpdates.defaultMonthlyPriceCents = updates.monthlyPriceCents;
+        }
+        if (updates.hostPriceCents !== undefined) {
+          seriesUpdates.defaultHostPriceCents = updates.hostPriceCents;
+        }
       }
 
       if (event.seriesId && Object.keys(seriesUpdates).length > 0) {
@@ -1887,8 +1880,11 @@ export function registerHostRoutes(app: Express) {
         });
       }
 
-      // Get event
-      const event = await storage.getEvent(passId);
+      // Get (or materialize) the Parking Pass occurrence row.
+      const event = await ensureParkingPassEventRow({
+        passId,
+        requireFuture: true,
+      });
       if (!event) {
         return res.status(404).json({ message: "Parking pass not found" });
       }

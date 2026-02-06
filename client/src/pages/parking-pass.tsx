@@ -359,6 +359,14 @@ const parkingPassPinIcon = new L.Icon({
   popupAnchor: [0, -30],
 });
 
+const parkingPassPinIconOccupied = new L.DivIcon({
+  className: "pp-pin",
+  html: `<div class="pp-pin__wrap"><img class="pp-pin__img" src="${mealScoutIcon}" alt="" /><span class="pp-pin__dot" aria-hidden="true"></span></div>`,
+  iconSize: [36, 36],
+  iconAnchor: [18, 36],
+  popupAnchor: [0, -30],
+});
+
 const defaultMapCenter = {
   lat: 39.8283,
   lng: -98.5795,
@@ -573,14 +581,11 @@ export default function ParkingPassPage() {
   const filterBookablePassListings = (data: any) => {
     if (!Array.isArray(data)) return [];
     return data.filter((listing: any) => {
+      if (!listing?.host) return false;
       if (!hasListingPricing(listing)) return false;
-      const available =
-        Array.isArray(listing.availableSpotNumbers)
-          ? listing.availableSpotNumbers.length > 0
-          : typeof listing.spotCount === "number"
-            ? listing.spotCount - Number(listing.bookedSpots || 0) > 0
-            : listing.status === "open";
-      return Boolean(available);
+      // Show priced locations even when fully booked so pins don't disappear from the map.
+      // Booking is still gated elsewhere via `listingHasAvailability(...)`.
+      return true;
     });
   };
 
@@ -2403,6 +2408,14 @@ export default function ParkingPassPage() {
     filteredLocations[0] ||
     null;
 
+  const activeListingDateKeys = useMemo(() => {
+    if (!activeLocation) return [];
+    const keys = activeLocation.listings.map((listing) =>
+      getListingDateKey(listing.date),
+    );
+    return Array.from(new Set(keys)).sort();
+  }, [activeLocation]);
+
   const activeListingForDate = activeLocation
     ? activeLocation.listings.find(
         (listing) => getListingDateKey(listing.date) === selectedDate,
@@ -2490,7 +2503,7 @@ export default function ParkingPassPage() {
           }
           setParkingCoords((prev) => ({ ...prev, [group.key]: point }));
           setGeocodeCache((prev) => ({ ...prev, [address]: point }));
-          await new Promise((r) => setTimeout(r, 300));
+          await new Promise((r) => setTimeout(r, 1100));
         }
       } finally {
         geocodeInFlight.current = false;
@@ -2558,6 +2571,10 @@ export default function ParkingPassPage() {
     return Array.isArray(spots) ? spots.length > 0 : true;
   };
 
+  const selectedDateHasOpenSpots = Boolean(
+    activeListingForDate && listingHasAvailability(activeListingForDate),
+  );
+
   const nextBookableDateByGroup = useMemo(() => {
     const map = new Map<string, string | null>();
     for (const group of filteredLocations) {
@@ -2610,10 +2627,10 @@ export default function ParkingPassPage() {
 
   useEffect(() => {
     if (!activeLocation) return;
-    if (activeBookableDates.length === 0) return;
-    if (activeBookableDates.includes(selectedDate)) return;
-    setSelectedDate(activeBookableDates[0]);
-  }, [activeBookableDates, activeLocation, selectedDate]);
+    if (activeListingDateKeys.length === 0) return;
+    if (activeListingDateKeys.includes(selectedDate)) return;
+    setSelectedDate(activeListingDateKeys[0]);
+  }, [activeListingDateKeys, activeLocation, selectedDate]);
 
   return (
     <div className="min-h-screen bg-transparent parking-pass-page">
@@ -4519,7 +4536,11 @@ export default function ParkingPassPage() {
                             <Marker
                               key={group.key}
                               position={[coords.lat, coords.lng]}
-                              icon={parkingPassPinIcon}
+                              icon={
+                                bookings.length > 0
+                                  ? parkingPassPinIconOccupied
+                                  : parkingPassPinIcon
+                              }
                               eventHandlers={{
                                 click: () => setActiveLocationKey(group.key),
                               }}
@@ -5203,22 +5224,39 @@ export default function ParkingPassPage() {
                         </p>
                         {!selectedDateAvailable && (
                           <p className="text-[11px] text-amber-700">
-                            No slots on {selectedDateLabel}. Showing next available.
+                            No listing on {selectedDateLabel}. Showing the next scheduled day.
+                          </p>
+                        )}
+                        {selectedDateAvailable && !selectedDateHasOpenSpots && (
+                          <p className="text-[11px] text-amber-700">
+                            Fully booked on {selectedDateLabel}. Select another date to see other days.
                           </p>
                         )}
                         <div className="flex items-center justify-between">
                           <span>Date</span>
-                          {activeBookableDates.length > 1 ? (
+                          {activeListingDateKeys.length > 0 ? (
                             <select
                               className="pp-field h-8 w-auto max-w-[190px] text-[11px]"
                               value={selectedDate}
                               onChange={(event) => setSelectedDate(event.target.value)}
                             >
-                              {activeBookableDates.map((dateKey) => (
-                                <option key={dateKey} value={dateKey}>
-                                  {format(new Date(`${dateKey}T00:00:00`), "EEE, MMM d")}
-                                </option>
-                              ))}
+                              {activeListingDateKeys.map((dateKey) => {
+                                const listing = activeLocation?.listings.find(
+                                  (item) => getListingDateKey(item.date) === dateKey,
+                                );
+                                const open = Boolean(
+                                  listing && listingHasAvailability(listing),
+                                );
+                                const label = `${format(
+                                  new Date(`${dateKey}T00:00:00`),
+                                  "EEE, MMM d",
+                                )}${open ? "" : " • Full"}`;
+                                return (
+                                  <option key={dateKey} value={dateKey}>
+                                    {label}
+                                  </option>
+                                );
+                              })}
                             </select>
                           ) : (
                             <span>

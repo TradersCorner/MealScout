@@ -711,21 +711,19 @@ export class DatabaseStorage implements IStorage {
   private async createDraftParkingPassForHost(
     host: Host,
   ): Promise<boolean> {
-    // Create unpriced draft Parking Pass events so staff/admin can set pricing later.
+    // Create an unpriced draft Parking Pass series (listing defaults). Occurrences are virtual.
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const horizon = new Date(today);
     horizon.setDate(horizon.getDate() + 30);
 
     const existing = await db
-      .select({ id: events.id })
-      .from(events)
+      .select({ id: eventSeries.id })
+      .from(eventSeries)
       .where(
         and(
-          eq(events.hostId, host.id),
-          eq(events.eventType, "parking_pass"),
-          eq(events.requiresPayment, true),
-          gte(events.date, today),
+          eq(eventSeries.hostId, host.id),
+          eq(eventSeries.seriesType, "parking_pass"),
         ),
       )
       .limit(1);
@@ -737,7 +735,7 @@ export class DatabaseStorage implements IStorage {
     const defaultEndTime = PARKING_PASS_MEAL_WINDOWS.dinner.end;
     const spotCount = host.spotCount ?? 1;
 
-    const [series] = await db
+    await db
       .insert(eventSeries)
       .values({
         hostId: host.id,
@@ -751,43 +749,20 @@ export class DatabaseStorage implements IStorage {
         defaultEndTime,
         defaultMaxTrucks: spotCount,
         defaultHardCapEnabled: false,
+        seriesType: "parking_pass",
+        parkingPassDaysOfWeek: [],
+        defaultBreakfastPriceCents: 0,
+        defaultLunchPriceCents: 0,
+        defaultDinnerPriceCents: 0,
+        defaultDailyPriceCents: 0,
+        defaultWeeklyPriceCents: 0,
+        defaultMonthlyPriceCents: 0,
+        defaultHostPriceCents: 0,
         status: "draft",
       })
       .returning();
 
-    const newEvents = [];
-    for (
-      let cursor = new Date(today);
-      cursor < horizon;
-      cursor.setDate(cursor.getDate() + 1)
-    ) {
-      newEvents.push({
-        hostId: host.id,
-        seriesId: series?.id ?? null,
-        name: `Parking Pass - ${host.businessName}`,
-        description: host.address,
-        eventType: "parking_pass",
-        date: new Date(cursor),
-        startTime: defaultStartTime,
-        endTime: defaultEndTime,
-        maxTrucks: spotCount,
-        hardCapEnabled: false,
-        requiresPayment: true,
-        hostPriceCents: 0,
-        breakfastPriceCents: 0,
-        lunchPriceCents: 0,
-        dinnerPriceCents: 0,
-        dailyPriceCents: 0,
-        weeklyPriceCents: 0,
-        monthlyPriceCents: 0,
-      });
-    }
-
-    if (newEvents.length > 0) {
-      await db.insert(events).values(newEvents);
-      return true;
-    }
-    return false;
+    return true;
   }
 
   async ensureDraftParkingPassesForHosts(): Promise<number> {

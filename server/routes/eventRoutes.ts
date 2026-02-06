@@ -8,17 +8,13 @@ import {
   isRestaurantOwner,
 } from "../unifiedAuth";
 import {
-  events as eventsTable,
   eventBookings,
   insertEventInterestSchema,
   restaurants,
 } from "@shared/schema";
 import { asc, eq, inArray, sql } from "drizzle-orm";
 import { forwardGeocode } from "../utils/geocoding";
-import {
-  PARKING_PASS_MEAL_WINDOWS,
-  timeToMinutes,
-} from "@shared/parkingPassSlots";
+import { listParkingPassOccurrences } from "../services/parkingPassVirtual";
 
 export function registerEventRoutes(app: Express) {
   // Get all upcoming events (public)
@@ -47,8 +43,9 @@ export function registerEventRoutes(app: Express) {
   // Parking Pass listings (truck-paid slots only)
   app.get("/api/parking-pass", async (req: any, res) => {
     try {
-      const upcomingEvents = await storage.getAllUpcomingEvents();
-      const hasPricing = (event: (typeof upcomingEvents)[number]) =>
+      const { occurrences } = await listParkingPassOccurrences({ horizonDays: 30 });
+
+      const hasPricing = (event: any) =>
         (event.breakfastPriceCents ?? 0) > 0 ||
         (event.lunchPriceCents ?? 0) > 0 ||
         (event.dinnerPriceCents ?? 0) > 0 ||
@@ -56,74 +53,75 @@ export function registerEventRoutes(app: Express) {
         (event.weeklyPriceCents ?? 0) > 0 ||
         (event.monthlyPriceCents ?? 0) > 0;
 
-      const hostCanAcceptPayments = (event: (typeof upcomingEvents)[number]) =>
+      const hostCanAcceptPayments = (event: any) =>
         Boolean(
-          (event as any)?.host?.stripeConnectAccountId &&
-            (event as any)?.host?.stripeChargesEnabled,
+          event?.host?.stripeConnectAccountId && event?.host?.stripeChargesEnabled,
         );
 
-      const defaultStartTime = PARKING_PASS_MEAL_WINDOWS.breakfast.start;
-      const defaultEndTime = PARKING_PASS_MEAL_WINDOWS.dinner.end;
-      const normalizeParkingPassTimes = (event: any) => {
-        const start = timeToMinutes(event?.startTime);
-        const end = timeToMinutes(event?.endTime);
-        if (start === null || end === null || end <= start) {
-          return { startTime: defaultStartTime, endTime: defaultEndTime };
-        }
-        return { startTime: event.startTime, endTime: event.endTime };
-      };
+      // NOTE: In the Airbnb-style model, occurrences are generated virtually and only persisted when
+      // booked/overridden. While we transition, we also include legacy materialized Parking Pass events.
+      const virtualEvents = occurrences
+        .filter((event) => hasPricing(event))
+        .map((event: any) => ({
+          ...event,
+          paymentsEnabled: hostCanAcceptPayments(event),
+        }));
 
-      // Include all Parking Pass listings with pricing so the map/list doesn't look empty
-      // while hosts are still onboarding payments. The client will disable booking when
-      // payments aren't enabled.
-      const idsToFix: string[] = [];
-      const parkingEvents = upcomingEvents
-        .filter((event) => event.requiresPayment && hasPricing(event))
-        .map((event: any) => {
-          const start = timeToMinutes(event?.startTime);
-          const end = timeToMinutes(event?.endTime);
-          if (start === null || end === null || end <= start) {
-            const id = String(event.id || "").trim();
-            if (id) idsToFix.push(id);
-          }
+      const legacyUpcoming = await storage.getAllUpcomingEvents();
+      const legacyEvents = legacyUpcoming
+        .filter(
+          (event: any) =>
+            event?.eventType === "parking_pass" && event?.requiresPayment && hasPricing(event),
+        )
+        .map((event: any) => ({
+          ...event,
+          paymentsEnabled: hostCanAcceptPayments(event),
+        }));
 
-          const normalized = normalizeParkingPassTimes(event);
-          return {
-            ...event,
-            ...normalized,
-            paymentsEnabled: hostCanAcceptPayments(event),
-          };
-        });
-
-      // Auto-heal legacy listings missing valid parking hours so meal slots (esp. dinner) render correctly.
-      if (idsToFix.length > 0) {
-        try {
-          await db
-            .update(eventsTable)
-            .set({ startTime: defaultStartTime, endTime: defaultEndTime })
-            .where(inArray(eventsTable.id, idsToFix));
-        } catch (error) {
-          console.warn(
-            "[parking-pass] Failed to auto-heal missing start/end times:",
-            error,
-          );
-        }
+      const dedupedById = new Map<string, any>();
+      for (const item of [...virtualEvents, ...legacyEvents]) {
+        dedupedById.set(item.id, item);
       }
+      const parkingEvents = Array.from(dedupedById.values());
 
       // Best-effort: ensure host coordinates exist so map pins can render.
       // We intentionally cap work per request to avoid hammering geocoding providers.
-      const MAX_GEOCODE_PER_REQUEST = 4;
+      const MAX_GEOCODE_PER_REQUEST = 12;
+      const seenHostIds = new Set<string>();
       let geocodeCount = 0;
-      for (let i = 0; i < parkingEvents.length && geocodeCount < MAX_GEOCODE_PER_REQUEST; i += 1) {
-        const event: any = parkingEvents[i];
-        const host: any = event?.host;
-        if (!host?.id) continue;
 
-        const lat = host.latitude !== null && host.latitude !== undefined ? Number(host.latitude) : NaN;
-        const lng = host.longitude !== null && host.longitude !== undefined ? Number(host.longitude) : NaN;
-        const hasCoords = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+      const candidateHosts: any[] = [];
+      for (const event of parkingEvents) {
+        const host: any = (event as any)?.host;
+        const hostId = String(host?.id || "").trim();
+        if (!hostId) continue;
+        if (seenHostIds.has(hostId)) continue;
+        seenHostIds.add(hostId);
+
+        const lat =
+          host.latitude !== null && host.latitude !== undefined
+            ? Number(host.latitude)
+            : NaN;
+        const lng =
+          host.longitude !== null && host.longitude !== undefined
+            ? Number(host.longitude)
+            : NaN;
+        const hasCoords =
+          Number.isFinite(lat) &&
+          Number.isFinite(lng) &&
+          Math.abs(lat) <= 90 &&
+          Math.abs(lng) <= 180;
         if (hasCoords) continue;
 
+        candidateHosts.push(host);
+      }
+
+      for (
+        let index = 0;
+        index < candidateHosts.length && geocodeCount < MAX_GEOCODE_PER_REQUEST;
+        index += 1
+      ) {
+        const host: any = candidateHosts[index];
         const addressParts = [host.address, host.city, host.state, "USA"]
           .map((value: any) => String(value || "").trim())
           .filter((value: string) => value.length > 0);
@@ -138,13 +136,11 @@ export function registerEventRoutes(app: Express) {
         // Persist and patch the in-memory host so this response includes the coords.
         try {
           await storage.updateHostCoordinates(host.id, coords.lat, coords.lng);
-          host.latitude = coords.lat.toString();
-          host.longitude = coords.lng.toString();
         } catch {
           // Ignore persistence errors; response can still use computed coords.
-          host.latitude = coords.lat.toString();
-          host.longitude = coords.lng.toString();
         }
+        host.latitude = coords.lat.toString();
+        host.longitude = coords.lng.toString();
       }
       const eventIds = parkingEvents.map((event) => event.id);
 

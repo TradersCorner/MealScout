@@ -2420,6 +2420,34 @@ export const eventSeries = pgTable(
     defaultEndTime: varchar("default_end_time").notNull(), // HH:MM
     defaultMaxTrucks: integer("default_max_trucks").notNull().default(1),
     defaultHardCapEnabled: boolean("default_hard_cap_enabled").default(false),
+    // Series type: used to virtualize Parking Pass listings without materializing occurrences.
+    seriesType: varchar("series_type").notNull().default("event"), // 'event' | 'open_call' | 'parking_pass'
+    // Parking Pass: days of week as JSON array of numbers (0=Sun..6=Sat).
+    parkingPassDaysOfWeek: jsonb("parking_pass_days_of_week")
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    // Parking Pass: default pricing used for virtual occurrences.
+    defaultBreakfastPriceCents: integer("default_breakfast_price_cents")
+      .notNull()
+      .default(0),
+    defaultLunchPriceCents: integer("default_lunch_price_cents")
+      .notNull()
+      .default(0),
+    defaultDinnerPriceCents: integer("default_dinner_price_cents")
+      .notNull()
+      .default(0),
+    defaultDailyPriceCents: integer("default_daily_price_cents")
+      .notNull()
+      .default(0),
+    defaultWeeklyPriceCents: integer("default_weekly_price_cents")
+      .notNull()
+      .default(0),
+    defaultMonthlyPriceCents: integer("default_monthly_price_cents")
+      .notNull()
+      .default(0),
+    defaultHostPriceCents: integer("default_host_price_cents")
+      .notNull()
+      .default(0),
     status: varchar("status").notNull().default("draft"), // 'draft' | 'published' | 'closed'
     publishedAt: timestamp("published_at"),
     createdAt: timestamp("created_at").defaultNow(),

@@ -148,7 +148,9 @@ export const parseTruckImportFile = async (
     try {
       xlsx = await import("xlsx");
     } catch {
-      throw new Error("XLSX parsing requires the xlsx package.");
+      throw new Error(
+        "XLSX parsing requires the optional xlsx package. Install it with `npm install xlsx`.",
+      );
     }
     const workbook = xlsx.read(buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];

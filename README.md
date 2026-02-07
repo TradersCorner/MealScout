@@ -13,6 +13,7 @@ Active docs and maintenance
 - `CLEANUP_MAP.md` — authoritative cleanup and maintenance guide
 - `DEPLOY.md` — production deployment instructions
 - `EMBED_CONTRACT.md` and `API_ACTIONS.md` — TradeScout integration (do not modify)
+- `WORKFLOW.md` — combined workflow, automation plan, and CI expectations
 
 Quick start (dev)
 ```bash

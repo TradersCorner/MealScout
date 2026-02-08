@@ -25,23 +25,23 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://api.mealscout.thetradescout.com/api/:path*"
+      "destination": "https://mealscout.onrender.com/api/:path*"
     },
     {
       "source": "/socket.io/:path*",
-      "destination": "https://api.mealscout.thetradescout.com/socket.io/:path*"
+      "destination": "https://mealscout.onrender.com/socket.io/:path*"
     },
     {
       "source": "/sitemap.xml",
-      "destination": "https://api.mealscout.thetradescout.com/sitemap.xml"
+      "destination": "https://mealscout.onrender.com/sitemap.xml"
     },
     {
       "source": "/privacy-policy",
-      "destination": "https://api.mealscout.thetradescout.com/privacy-policy"
+      "destination": "https://mealscout.onrender.com/privacy-policy"
     },
     {
       "source": "/data-deletion",
-      "destination": "https://api.mealscout.thetradescout.com/data-deletion"
+      "destination": "https://mealscout.onrender.com/data-deletion"
     },
     {
       "source": "/video/:storyId",
@@ -52,7 +52,7 @@
           "value": "(?i)(facebookexternalhit|twitterbot|slackbot|discordbot|googlebot|bingbot|linkedinbot)"
         }
       ],
-      "destination": "https://api.mealscout.thetradescout.com/video/:storyId"
+      "destination": "https://mealscout.onrender.com/video/:storyId"
     },
     {
       "source": "/(.*)",

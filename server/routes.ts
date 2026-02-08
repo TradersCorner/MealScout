@@ -1557,6 +1557,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ),
         );
 
+      const hostProfilesWithCoords = await Promise.all(
+        hostProfiles.map(async ({ host }) => {
+          const hasCoords =
+            host.latitude &&
+            host.longitude &&
+            !Number.isNaN(Number(host.latitude)) &&
+            !Number.isNaN(Number(host.longitude));
+
+          if (hasCoords || !host.isVerified) {
+            return { host };
+          }
+
+          const geocodeAddress = [host.address, host.city, host.state]
+            .map((part) => (part ?? "").trim())
+            .filter(Boolean)
+            .join(", ");
+
+          if (!geocodeAddress) {
+            return { host };
+          }
+
+          const coords = await forwardGeocode(geocodeAddress).catch(
+            () => null,
+          );
+          if (!coords) {
+            return { host };
+          }
+
+          const latitude = coords.lat.toString();
+          const longitude = coords.lng.toString();
+
+          try {
+            await db
+              .update(hosts)
+              .set({
+                latitude,
+                longitude,
+                updatedAt: new Date(),
+              })
+              .where(eq(hosts.id, host.id));
+          } catch (error) {
+            console.error("Failed to persist host geocode:", error);
+          }
+
+          return {
+            host: {
+              ...host,
+              latitude,
+              longitude,
+            },
+          };
+        }),
+      );
+
       const publicEvents = upcomingEvents.filter(
         (event) => !event.requiresPayment,
       );
@@ -1577,21 +1631,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             latitude: loc.latitude,
             longitude: loc.longitude,
           })),
-          ...hostProfiles.map(({ host }: { host: typeof hosts.$inferSelect }) => ({
+          ...hostProfilesWithCoords.map(
+            ({ host }: { host: typeof hosts.$inferSelect }) => ({
             id: host.id,
             type: "host_location" as const,
             name: host.businessName,
             address: host.address,
             city: host.city,
-          state: host.state,
-          locationType: host.locationType,
-          expectedFootTraffic: host.expectedFootTraffic,
-          notes: host.notes,
-          preferredDates: [],
-          status: host.isVerified ? "verified" : "active",
+            state: host.state,
+            locationType: host.locationType,
+            expectedFootTraffic: host.expectedFootTraffic,
+            notes: host.notes,
+            preferredDates: [],
+            status: host.isVerified ? "verified" : "active",
             latitude: host.latitude,
             longitude: host.longitude,
-          })),
+          }),
+          ),
         ];
 
         const eventLocations = publicEvents.map((event) => ({

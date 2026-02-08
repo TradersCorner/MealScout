@@ -2399,7 +2399,7 @@ export class DatabaseStorage implements IStorage {
   // Admin specific methods
   async getAdminStats(): Promise<any> {
     const [
-      totalUsers,
+      activeUsers,
       totalRestaurants,
       totalDeals,
       activeDeals,
@@ -2407,10 +2407,19 @@ export class DatabaseStorage implements IStorage {
       todayClaims,
       newUsersToday,
     ] = await Promise.all([
-      db.select({ count: sql<number>`cast(count(*) as integer)` }).from(users),
+      db
+        .select({ userType: users.userType })
+        .from(users)
+        .where(or(eq(users.isDisabled, false), isNull(users.isDisabled))),
       db
         .select({ count: sql<number>`cast(count(*) as integer)` })
-        .from(restaurants),
+        .from(restaurants)
+        .where(
+          and(
+            eq(restaurants.isActive, true),
+            or(eq(restaurants.isFoodTruck, false), isNull(restaurants.isFoodTruck)),
+          ),
+        ),
       db.select({ count: sql<number>`cast(count(*) as integer)` }).from(deals),
       db
         .select({ count: sql<number>`cast(count(*) as integer)` })
@@ -2431,6 +2440,54 @@ export class DatabaseStorage implements IStorage {
         .where(gte(users.createdAt, new Date(new Date().setHours(0, 0, 0, 0)))),
     ]);
 
+    const memberCounts = activeUsers.reduce(
+      (acc, user) => {
+        const role = user.userType || "customer";
+        switch (role) {
+          case "customer":
+            acc.customer += 1;
+            break;
+          case "restaurant_owner":
+            acc.restaurantOwner += 1;
+            break;
+          case "food_truck":
+            acc.foodTruck += 1;
+            break;
+          case "host":
+            acc.host += 1;
+            break;
+          case "event_coordinator":
+            acc.eventCoordinator += 1;
+            break;
+          case "staff":
+            acc.staff += 1;
+            break;
+          case "admin":
+            acc.admin += 1;
+            break;
+          case "super_admin":
+            acc.superAdmin += 1;
+            break;
+          default:
+            acc.other += 1;
+        }
+        return acc;
+      },
+      {
+        customer: 0,
+        restaurantOwner: 0,
+        foodTruck: 0,
+        host: 0,
+        eventCoordinator: 0,
+        staff: 0,
+        admin: 0,
+        superAdmin: 0,
+        other: 0,
+      },
+    );
+
+    const totalUsersCount = activeUsers.length;
+
     // Approximate gross revenue from redeemed deal claims
     const revenueResult = await db
       .select({
@@ -2442,7 +2499,7 @@ export class DatabaseStorage implements IStorage {
     const revenue = revenueResult[0]?.sum || 0;
 
     return {
-      totalUsers: totalUsers[0]?.count || 0,
+      totalUsers: totalUsersCount,
       totalRestaurants: totalRestaurants[0]?.count || 0,
       totalDeals: totalDeals[0]?.count || 0,
       activeDeals: activeDeals[0]?.count || 0,
@@ -2450,6 +2507,7 @@ export class DatabaseStorage implements IStorage {
       todayClaims: todayClaims[0]?.count || 0,
       newUsersToday: newUsersToday[0]?.count || 0,
       revenue,
+      memberCounts,
     };
   }
 

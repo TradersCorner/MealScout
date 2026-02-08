@@ -224,7 +224,10 @@
     font-family: var(--font-sans);
     font-optical-sizing: auto;
     font-feature-settings: "ss01" 1, "ss02" 1;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     min-height: 100vh;
     transition: background 1.2s ease-in-out;
   }
@@ -319,15 +322,17 @@
   .pp-glass {
     background: rgba(255, 255, 255, 0.92);
     border: 1px solid rgba(255, 255, 255, 0.68);
-    backdrop-filter: blur(12px);
     color: var(--text-primary);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   .pp-glass-muted {
     background: rgba(255, 255, 255, 0.86);
     border: 1px solid rgba(255, 255, 255, 0.62);
-    backdrop-filter: blur(10px);
     color: var(--text-primary);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   .pp-field {
@@ -371,7 +376,8 @@
     border-color: rgba(15, 23, 42, 0.12) !important;
     background: rgba(255, 255, 255, 0.72) !important;
     color: rgba(15, 23, 42, 0.86) !important;
-    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   .pp-calendar-badge--booking {
@@ -1091,17 +1097,19 @@
   }
 
   .theme-day .nav-bar {
-    background: rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.92);
     border-color: rgba(15, 23, 42, 0.12);
-    backdrop-filter: blur(18px) saturate(140%);
     box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   .theme-night .nav-bar {
-    background: rgba(10, 10, 10, 0.9);
+    background: rgba(10, 10, 10, 0.96);
     border-color: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(12px);
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   .theme-day .nav-link--active,

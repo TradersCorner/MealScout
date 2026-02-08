@@ -1,13 +1,102 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Calendar, MapPin, Users, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function EventsPage() {
+  const { user, isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const isEventCoordinator = isAuthenticated && user?.userType === "event_coordinator";
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [formData, setFormData] = useState({
+    organizationName: "",
+    address: "",
+    city: "",
+    state: "",
+    contactPhone: "",
+    eventName: "",
+    description: "",
+    date: "",
+    startTime: "",
+    endTime: "",
+    maxTrucks: 1,
+  });
+
   const { data: events = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/events/upcoming"],
   });
+
+  const createEvent = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/event-coordinator/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          businessName: formData.organizationName,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          contactPhone: formData.contactPhone,
+          name: formData.eventName,
+          description: formData.description,
+          date: formData.date,
+          startTime: formData.startTime,
+          endTime: formData.endTime,
+          maxTrucks: Number(formData.maxTrucks),
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to create event");
+      }
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/events/upcoming"] });
+      setShowCreateForm(false);
+      setFormData({
+        organizationName: "",
+        address: "",
+        city: "",
+        state: "",
+        contactPhone: "",
+        eventName: "",
+        description: "",
+        date: "",
+        startTime: "",
+        endTime: "",
+        maxTrucks: 1,
+      });
+      toast({
+        title: "Event posted",
+        description: "Your event is now available on the Events page.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to post event",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateEvent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createEvent.isPending) {
+      createEvent.mutate();
+    }
+  };
 
   if (isLoading) {
     return (
@@ -46,6 +135,185 @@ export default function EventsPage() {
               trucks.
             </p>
           </div>
+
+          {isEventCoordinator && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between gap-3">
+                  <CardTitle className="text-lg">Event Coordinator</CardTitle>
+                  <Button
+                    variant={showCreateForm ? "outline" : "default"}
+                    onClick={() => setShowCreateForm((value) => !value)}
+                    data-testid="button-toggle-create-event"
+                  >
+                    {showCreateForm ? "Cancel" : "Post Event"}
+                  </Button>
+                </div>
+              </CardHeader>
+              {showCreateForm && (
+                <CardContent>
+                  <form onSubmit={handleCreateEvent} className="space-y-4">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="organizationName">Organization Name</Label>
+                        <Input
+                          id="organizationName"
+                          required
+                          value={formData.organizationName}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              organizationName: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="contactPhone">Contact Phone</Label>
+                        <Input
+                          id="contactPhone"
+                          required
+                          value={formData.contactPhone}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              contactPhone: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-4 gap-4">
+                      <div className="md:col-span-2 space-y-2">
+                        <Label htmlFor="address">Address</Label>
+                        <Input
+                          id="address"
+                          required
+                          value={formData.address}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, address: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="city">City</Label>
+                        <Input
+                          id="city"
+                          required
+                          value={formData.city}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, city: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="state">State</Label>
+                        <Input
+                          id="state"
+                          required
+                          value={formData.state}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, state: e.target.value }))
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="eventName">Event Name</Label>
+                        <Input
+                          id="eventName"
+                          required
+                          value={formData.eventName}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, eventName: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="maxTrucks">Trucks Needed</Label>
+                        <Input
+                          id="maxTrucks"
+                          type="number"
+                          min={1}
+                          max={50}
+                          required
+                          value={formData.maxTrucks}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              maxTrucks: Math.max(1, Number(e.target.value || 1)),
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="date">Date</Label>
+                        <Input
+                          id="date"
+                          type="date"
+                          required
+                          value={formData.date}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, date: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="startTime">Start Time</Label>
+                        <Input
+                          id="startTime"
+                          type="time"
+                          required
+                          value={formData.startTime}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, startTime: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="endTime">End Time</Label>
+                        <Input
+                          id="endTime"
+                          type="time"
+                          required
+                          value={formData.endTime}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, endTime: e.target.value }))
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        rows={3}
+                        value={formData.description}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, description: e.target.value }))
+                        }
+                      />
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={createEvent.isPending}
+                      data-testid="button-submit-create-event"
+                    >
+                      {createEvent.isPending ? "Posting..." : "Post Event"}
+                    </Button>
+                  </form>
+                </CardContent>
+              )}
+            </Card>
+          )}
         </div>
 
         {/* Events Grid */}

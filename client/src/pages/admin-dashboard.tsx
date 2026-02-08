@@ -57,6 +57,17 @@ interface DashboardStats {
   todayClaims: number;
   revenue: number;
   newUsersToday: number;
+  memberCounts?: {
+    customer: number;
+    restaurantOwner: number;
+    foodTruck: number;
+    host: number;
+    eventCoordinator: number;
+    staff: number;
+    admin: number;
+    superAdmin: number;
+    other: number;
+  };
 }
 
 interface PendingRestaurant {
@@ -2120,6 +2131,17 @@ export default function AdminDashboard() {
     todayClaims: 0,
     revenue: 0,
     newUsersToday: 0,
+    memberCounts: {
+      customer: 0,
+      restaurantOwner: 0,
+      foodTruck: 0,
+      host: 0,
+      eventCoordinator: 0,
+      staff: 0,
+      admin: 0,
+      superAdmin: 0,
+      other: 0,
+    },
   };
 
   const dashboardStats = stats || defaultStats;
@@ -2242,6 +2264,73 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Member Counts
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+              <div>
+                <p className="text-muted-foreground">Customers</p>
+                <p className="font-semibold">
+                  {dashboardStats.memberCounts?.customer ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Restaurant Owners</p>
+                <p className="font-semibold">
+                  {dashboardStats.memberCounts?.restaurantOwner ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Food Trucks</p>
+                <p className="font-semibold">
+                  {dashboardStats.memberCounts?.foodTruck ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Hosts</p>
+                <p className="font-semibold">
+                  {dashboardStats.memberCounts?.host ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Event Coordinators</p>
+                <p className="font-semibold">
+                  {dashboardStats.memberCounts?.eventCoordinator ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Staff</p>
+                <p className="font-semibold">
+                  {dashboardStats.memberCounts?.staff ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Admins</p>
+                <p className="font-semibold">
+                  {(dashboardStats.memberCounts?.admin ?? 0) +
+                    (dashboardStats.memberCounts?.superAdmin ?? 0)}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Super Admin</p>
+                <p className="font-semibold">
+                  {dashboardStats.memberCounts?.superAdmin ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Other</p>
+                <p className="font-semibold">
+                  {dashboardStats.memberCounts?.other ?? 0}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Main Content Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>

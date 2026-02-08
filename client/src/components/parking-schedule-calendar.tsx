@@ -121,15 +121,15 @@ export function ParkingScheduleCalendar({
   }, []);
 
   return (
-    <div className={className}>
-      <div className="parking-schedule-calendar rounded-2xl pp-glass overflow-hidden">
-        <div className="pp-calendar-header flex flex-col gap-2 border-b border-[color:var(--border-subtle)] px-5 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-gray-900">{title}</p>
-              <p className="text-xs text-slate-700">{subtitle}</p>
-            </div>
-            <div className="flex items-center gap-2">
+      <div className={className}>
+        <div className="parking-schedule-calendar rounded-2xl pp-glass overflow-hidden">
+          <div className="pp-calendar-header flex flex-col gap-2 border-b border-[color:var(--border-subtle)] px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">{title}</p>
+                <p className="text-xs text-muted-foreground">{subtitle}</p>
+              </div>
+              <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="icon"
@@ -139,7 +139,7 @@ export function ParkingScheduleCalendar({
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <div className="min-w-[140px] text-center text-sm font-semibold text-gray-900">
+              <div className="min-w-[140px] text-center text-sm font-semibold text-foreground">
                 {format(monthAnchor, "MMMM yyyy")}
               </div>
               <Button
@@ -153,7 +153,7 @@ export function ParkingScheduleCalendar({
               </Button>
             </div>
           </div>
-          <div className="grid grid-cols-7 gap-2 text-[11px] text-slate-600">
+          <div className="grid grid-cols-7 gap-2 text-[11px] text-muted-foreground">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label) => (
               <span key={label} className="text-center uppercase tracking-wide">
                 {label}
@@ -173,7 +173,7 @@ export function ParkingScheduleCalendar({
                 key={key}
                 type="button"
                 onClick={() => setActiveDate(day)}
-                className={`pp-calendar-day min-h-[84px] rounded-xl border px-2 py-2 text-left transition ${
+                className={`pp-calendar-day h-14 sm:h-auto sm:min-h-[84px] rounded-lg border px-2 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                   isActive ? "pp-calendar-day--active" : "pp-calendar-day--idle"
                 } ${isCurrentMonth ? "pp-calendar-day--in-month" : "pp-calendar-day--out-month"}`}
               >
@@ -186,16 +186,29 @@ export function ParkingScheduleCalendar({
                     {format(day, "d")}
                   </span>
                   {dayItems.length > 0 && (
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[10px] text-muted-foreground">
                       {dayItems.length}
                     </span>
                   )}
                 </div>
-                <div className="mt-2 flex flex-col gap-1">
+
+                {/* Mobile: keep cells compact (dots only) */}
+                <div className="mt-2 flex flex-wrap gap-1 sm:hidden">
+                  {dayItems.slice(0, 4).map((item) => (
+                    <span
+                      key={item.id}
+                      className={`h-1.5 w-1.5 rounded-full ${typeDotClass[item.type]}`}
+                      aria-hidden="true"
+                    />
+                  ))}
+                </div>
+
+                {/* Desktop: show labels */}
+                <div className="mt-2 hidden sm:flex sm:flex-col sm:gap-1">
                   {dayItems.slice(0, 2).map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center gap-1 text-[10px] text-slate-700"
+                      className="flex items-center gap-1 text-[10px] text-muted-foreground"
                     >
                       <span
                         className={`h-1.5 w-1.5 rounded-full ${typeDotClass[item.type]}`}
@@ -204,7 +217,7 @@ export function ParkingScheduleCalendar({
                     </div>
                   ))}
                   {dayItems.length > 2 && (
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[10px] text-muted-foreground">
                       +{dayItems.length - 2} more
                     </span>
                   )}
@@ -219,10 +232,10 @@ export function ParkingScheduleCalendar({
         <CardContent className="p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-gray-900">
+              <p className="text-sm font-semibold text-foreground">
                 {format(activeDate, "EEEE, MMM d")}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 {activeItems.length
                   ? `${activeItems.length} stop${
                       activeItems.length === 1 ? "" : "s"
@@ -261,20 +274,20 @@ export function ParkingScheduleCalendar({
                           </Badge>
                         )}
                       </div>
-                      <p className="mt-2 text-sm font-semibold text-gray-900">
+                      <p className="mt-2 text-sm font-semibold text-foreground">
                         {item.title}
                       </p>
                       {item.subtitle && (
-                        <p className="text-xs text-gray-500">{item.subtitle}</p>
+                        <p className="text-xs text-muted-foreground">{item.subtitle}</p>
                       )}
-                      <p className="mt-1 text-xs text-gray-600">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {item.startTime && item.endTime
                           ? `${item.startTime} - ${item.endTime}`
                           : "Time not set"}
                         {item.cleanupEndTime
-                          ? ` • Cleanup until ${item.cleanupEndTime}`
+                          ? ` | Cleanup until ${item.cleanupEndTime}`
                           : ""}
-                        {item.slotLabel ? ` • ${item.slotLabel}` : ""}
+                        {item.slotLabel ? ` | ${item.slotLabel}` : ""}
                       </p>
                     </div>
                     {allowManualEdits &&
@@ -333,7 +346,7 @@ export function ParkingScheduleCalendar({
               ))}
             </div>
           ) : (
-            <div className="mt-4 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-6 text-center text-xs text-gray-500">
+            <div className="mt-4 rounded-xl border border-dashed border-[color:var(--border-subtle)] pp-glass-muted p-6 text-center text-xs text-muted-foreground">
               Choose another day to see scheduled stops.
             </div>
           )}

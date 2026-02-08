@@ -274,7 +274,23 @@ const buildFullAddress = (
   city?: string | null,
   state?: string | null,
 ) =>
-  [address, city, state].filter(Boolean).join(", ");
+  (() => {
+    const base = (address ?? "").trim();
+    if (!base) return "";
+    const baseLower = base.toLowerCase();
+    const normalizedCity = (city ?? "").trim();
+    const normalizedState = (state ?? "").trim();
+
+    const parts: string[] = [base];
+    if (normalizedCity && !baseLower.includes(normalizedCity.toLowerCase())) {
+      parts.push(normalizedCity);
+    }
+    if (normalizedState && !baseLower.includes(normalizedState.toLowerCase())) {
+      parts.push(normalizedState);
+    }
+    parts.push("USA");
+    return parts.join(", ");
+  })();
 
 const haversineKm = (a: GeoPoint, b: GeoPoint) => {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
@@ -366,9 +382,9 @@ const geoAdPinIcon = new L.Icon({
 async function geocodeAddress(address: string): Promise<GeoPoint | null> {
   if (!address) return null;
   const res = await fetch(
-    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&countrycodes=us&q=${encodeURIComponent(
       address
-    )}&limit=1`,
+    )}`,
     {
       headers: { "Accept-Language": "en", "User-Agent": "MealScout/1.0" },
     }
@@ -858,7 +874,7 @@ export default function MapPage() {
 
   // Build a geocoding work list for any host/event without coordinates yet
   useEffect(() => {
-    if (!mapBounds || zoomLevel < 12) {
+    if (!mapBounds) {
       return;
     }
     if (geocodeInFlight.current) {
@@ -868,7 +884,7 @@ export default function MapPage() {
     const addressByKey: Record<string, string> = {};
     const now = Date.now();
     const failureCooldownMs = 6 * 60 * 60 * 1000;
-    const maxQueue = zoomLevel >= 16 ? 25 : 10;
+    const maxQueue = zoomLevel >= 16 ? 30 : 16;
 
     mapLocations?.hostLocations.forEach((host) => {
       const lat = toNumberOrNull(host.latitude);
@@ -877,12 +893,14 @@ export default function MapPage() {
         return;
       }
       if (!hostCoords[host.id]) {
-        queue.push(`host:${host.id}`);
-        addressByKey[`host:${host.id}`] = buildFullAddress(
+        const address = buildFullAddress(
           host.address,
           host.city,
           host.state,
         );
+        if (!address) return;
+        queue.push(`host:${host.id}`);
+        addressByKey[`host:${host.id}`] = address;
       }
     });
 
@@ -893,12 +911,14 @@ export default function MapPage() {
         return;
       }
       if (!eventCoords[event.id] && event.hostAddress) {
-        queue.push(`event:${event.id}`);
-        addressByKey[`event:${event.id}`] = buildFullAddress(
+        const address = buildFullAddress(
           event.hostAddress,
           event.hostCity,
           event.hostState,
         );
+        if (!address) return;
+        queue.push(`event:${event.id}`);
+        addressByKey[`event:${event.id}`] = address;
       }
     });
 
@@ -909,12 +929,14 @@ export default function MapPage() {
         return;
       }
       if (!parkingCoords[event.id] && event.host?.address) {
-        queue.push(`parking:${event.id}`);
-        addressByKey[`parking:${event.id}`] = buildFullAddress(
+        const address = buildFullAddress(
           event.host.address,
           event.host.city,
           event.host.state,
         );
+        if (!address) return;
+        queue.push(`parking:${event.id}`);
+        addressByKey[`parking:${event.id}`] = address;
       }
     });
 

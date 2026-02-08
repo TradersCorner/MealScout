@@ -152,7 +152,9 @@ export default function Navigation() {
   const sharedNavItems: NavItem[] = [
     { path: "/", icon: UtensilsCrossed, label: "Food" },
     { path: "/map", icon: MapPin, label: "Map" },
-    { path: "/parking-pass", icon: ParkingSquare, label: "Parking Pass" },
+    ...(user && canSeeParkingPassNav
+      ? [{ path: "/parking-pass", icon: ParkingSquare, label: "Parking Pass" }]
+      : []),
     { path: "/video", icon: Clapperboard, label: "Video" },
     ...(user ? [{ path: "/profile", icon: User, label: "Profile" }] : []),
   ];
@@ -307,7 +309,9 @@ export default function Navigation() {
                 aria-label={item.label}
               >
                 <item.icon className="w-5 h-5" />
-                <span className="text-xs font-medium">{item.label}</span>
+                <span className="text-[11px] leading-tight font-semibold tracking-normal">
+                  {item.label}
+                </span>
               </Link>
             ) : (
               <button
@@ -325,7 +329,9 @@ export default function Navigation() {
                 ) : (
                   <item.icon className="w-5 h-5" />
                 )}
-                <span className="text-xs font-medium">{item.label}</span>
+                <span className="text-[11px] leading-tight font-semibold tracking-normal">
+                  {item.label}
+                </span>
               </button>
             ),
           )}

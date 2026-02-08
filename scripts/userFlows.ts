@@ -40,12 +40,18 @@ interface RequestConfig {
   token?: string;
 }
 
+type CookieJar = Map<string, string>;
+
 class UserFlowTester {
   private baseUrl: string;
+  private origin: string;
   private flows: FlowResult[] = [];
 
-  constructor(baseUrl: string = 'http://localhost:5000') {
+  constructor(
+    baseUrl: string = process.env.MEALSCOUT_BASE_URL || 'http://localhost:5200',
+  ) {
     this.baseUrl = baseUrl;
+    this.origin = new URL(baseUrl).origin;
   }
 
   private log(message: string, level: 'info' | 'error' | 'success' | 'warn' = 'info') {
@@ -59,7 +65,10 @@ class UserFlowTester {
     console.log(`${colors[level]}${message}${reset}`);
   }
 
-  private makeRequest(config: RequestConfig): Promise<{ status: number; time: number; body?: any }> {
+  private makeRequest(
+    config: RequestConfig,
+    cookieJar?: CookieJar,
+  ): Promise<{ status: number; time: number; body?: any }> {
     return new Promise((resolve, reject) => {
       const client = this.baseUrl.startsWith('https') ? https : http;
       const url = new URL(config.path, this.baseUrl);
@@ -67,11 +76,17 @@ class UserFlowTester {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'User-Agent': 'MealScout-UserFlow/1.0',
+        'Origin': this.origin,
+        'Referer': `${this.origin}/`,
         ...config.headers,
       };
 
       if (config.token) {
         headers['Authorization'] = `Bearer ${config.token}`;
+      }
+
+      if (cookieJar && cookieJar.size > 0) {
+        headers['Cookie'] = this.serializeCookies(cookieJar);
       }
 
       const options = {
@@ -92,6 +107,9 @@ class UserFlowTester {
         });
         res.on('end', () => {
           const time = Date.now() - startTime;
+          if (cookieJar) {
+            this.storeSetCookie(cookieJar, res.headers['set-cookie']);
+          }
           try {
             const body = data ? JSON.parse(data) : undefined;
             resolve({ status: res.statusCode || 500, time, body });
@@ -101,8 +119,12 @@ class UserFlowTester {
         });
       });
 
-      req.on('error', (error) => {
-        reject(new Error(error.message));
+      req.on('error', (error: any) => {
+        const detail =
+          error?.code ||
+          error?.message ||
+          (typeof error === 'string' ? error : '');
+        reject(new Error(detail || 'Request error'));
       });
 
       req.on('timeout', () => {
@@ -124,7 +146,8 @@ class UserFlowTester {
     path: string,
     expectedStatus: number | number[] = 200,
     body?: Record<string, any>,
-    token?: string
+    token?: string,
+    cookieJar?: CookieJar,
   ): Promise<StepResult> {
     const startTime = Date.now();
     try {
@@ -133,7 +156,7 @@ class UserFlowTester {
         path,
         body,
         token,
-      });
+      }, cookieJar);
 
       const responseTime = Date.now() - startTime;
       const statuses = Array.isArray(expectedStatus) ? expectedStatus : [expectedStatus];
@@ -151,9 +174,64 @@ class UserFlowTester {
         name,
         success: false,
         responseTime: Date.now() - startTime,
-        error: error.message,
+        error:
+          error?.message ||
+          error?.code ||
+          (typeof error === 'string' ? error : 'Unknown error'),
       };
     }
+  }
+
+  private makeStep(
+    name: string,
+    success: boolean,
+    responseTime: number,
+    statusCode?: number,
+    error?: string,
+  ): StepResult {
+    return {
+      name,
+      success,
+      responseTime,
+      statusCode,
+      error,
+    };
+  }
+
+  private serializeCookies(cookieJar: CookieJar): string {
+    return Array.from(cookieJar.entries())
+      .map(([key, value]) => `${key}=${value}`)
+      .join('; ');
+  }
+
+  private storeSetCookie(cookieJar: CookieJar, setCookie: string[] | string | undefined) {
+    if (!setCookie) return;
+    const cookies = Array.isArray(setCookie) ? setCookie : [setCookie];
+    for (const cookie of cookies) {
+      const first = cookie.split(';')[0] || '';
+      const eqIndex = first.indexOf('=');
+      if (eqIndex === -1) continue;
+      const name = first.slice(0, eqIndex).trim();
+      const value = first.slice(eqIndex + 1).trim();
+      if (name) {
+        cookieJar.set(name, value);
+      }
+    }
+  }
+
+  private getAdminCredentials() {
+    const email =
+      process.env.MEALSCOUT_ADMIN_EMAIL ||
+      process.env.ADMIN_EMAIL ||
+      '';
+    const password =
+      process.env.MEALSCOUT_ADMIN_PASSWORD ||
+      process.env.ADMIN_PASSWORD ||
+      '';
+    if (!email || !password) {
+      return null;
+    }
+    return { email, password };
   }
 
  /**
@@ -404,13 +482,119 @@ class UserFlowTester {
     );
 
     const duration = Date.now() - flowStart;
-    const flow: FlowResult = { name: 'LLM Integration', steps, duration, success: false };
+    const success = steps.every((s) => s.success);
+    const flow: FlowResult = { name: 'LLM Integration', steps, duration, success };
     this.flows.push(flow);
     this.printFlowResult(flow);
   }
 
   /**
-   * FLOW 7: Analytics & Reporting Journey
+   * FLOW 7: Affiliate Sharing Journey
+   * - Generate affiliate tag
+   * - Create share link
+   * - Track click redirect
+   */
+  async flowAffiliateJourney() {
+    this.log('\nâ†’ Flow 7: Affiliate Sharing Journey', 'info');
+    const flowStart = Date.now();
+    const steps: StepResult[] = [];
+    const session: CookieJar = new Map();
+
+    const adminCreds = this.getAdminCredentials();
+    if (!adminCreds) {
+      steps.push(
+        this.makeStep(
+          '1. Admin login',
+          false,
+          0,
+          undefined,
+          'Set MEALSCOUT_ADMIN_EMAIL/MEALSCOUT_ADMIN_PASSWORD or ADMIN_EMAIL/ADMIN_PASSWORD',
+        ),
+      );
+      const duration = Date.now() - flowStart;
+      const flow: FlowResult = { name: 'Affiliate Sharing', steps, duration, success: false };
+      this.flows.push(flow);
+      this.printFlowResult(flow);
+      return;
+    }
+
+    steps.push(
+      await this.recordStep(
+        '1. Admin login',
+        'POST',
+        '/api/auth/login',
+        200,
+        { email: adminCreds.email, password: adminCreds.password },
+        undefined,
+        session,
+      ),
+    );
+
+    steps.push(
+      await this.recordStep('2. Get affiliate tag', 'GET', '/api/affiliate/tag', 200, undefined, undefined, session),
+    );
+
+    let affiliateCode: string | undefined;
+    {
+      const start = Date.now();
+      const created = await this.makeRequest(
+        {
+          method: 'POST',
+          path: '/api/affiliate/generate-link',
+          body: {
+            baseUrl: this.baseUrl,
+            resourceType: 'page',
+            resourceId: 'home',
+          },
+        },
+        session,
+      );
+      const ok = created.status === 200 && created.body?.code;
+      affiliateCode = created.body?.code;
+      steps.push(
+        this.makeStep(
+          '3. Generate affiliate link',
+          ok,
+          Date.now() - start,
+          created.status,
+          ok ? undefined : `Expected 200 with code, got ${created.status}`,
+        ),
+      );
+    }
+
+    if (affiliateCode) {
+      steps.push(
+        await this.recordStep(
+          '4. Track affiliate click (redirect)',
+          'GET',
+          `/api/affiliate/click/${affiliateCode}`,
+          [302, 301],
+          undefined,
+          undefined,
+          session,
+        ),
+      );
+    } else {
+      steps.push(
+        this.makeStep(
+          '4. Track affiliate click (redirect)',
+          false,
+          0,
+          undefined,
+          'Missing affiliate code from link generation',
+        ),
+      );
+    }
+
+    const duration = Date.now() - flowStart;
+    const success = steps.every((s) => s.success);
+    const flow: FlowResult = { name: 'Affiliate Sharing', steps, duration, success };
+    this.flows.push(flow);
+    this.printFlowResult(flow);
+  }
+
+  /**
+   * FLOW 8: Analytics & Reporting Journey
    * - Validate health/monitoring endpoints
    */
   async flowAnalyticsJourney() {
@@ -433,12 +617,263 @@ class UserFlowTester {
     this.printFlowResult(flow);
   }
 
+  /**
+   * FLOW 8: Host + Truck Booking Journey (Direct Booking)
+   * - Host creates parking pass listing
+   * - Truck books an available spot (no host acceptance)
+   * - Booking appears in truck schedule
+   */
+  async flowHostTruckBooking() {
+    this.log('\nâ†’ Flow 9: Host + Truck Booking Journey', 'info');
+    const flowStart = Date.now();
+    const steps: StepResult[] = [];
+    const session: CookieJar = new Map();
+
+    const adminCreds = this.getAdminCredentials();
+    if (!adminCreds) {
+      steps.push(
+        this.makeStep(
+          '1. Admin login',
+          false,
+          0,
+          undefined,
+          'Set MEALSCOUT_ADMIN_EMAIL/MEALSCOUT_ADMIN_PASSWORD or ADMIN_EMAIL/ADMIN_PASSWORD',
+        ),
+      );
+      const duration = Date.now() - flowStart;
+      const flow: FlowResult = { name: 'Host + Truck Booking', steps, duration, success: false };
+      this.flows.push(flow);
+      this.printFlowResult(flow);
+      return;
+    }
+
+    steps.push(
+      await this.recordStep(
+        '1. Admin login',
+        'POST',
+        '/api/auth/login',
+        200,
+        { email: adminCreds.email, password: adminCreds.password },
+        undefined,
+        session,
+      ),
+    );
+
+    if (!steps[steps.length - 1].success) {
+      const duration = Date.now() - flowStart;
+      const flow: FlowResult = { name: 'Host + Truck Booking', steps, duration, success: false };
+      this.flows.push(flow);
+      this.printFlowResult(flow);
+      return;
+    }
+
+    let hostId: string | undefined;
+    {
+      const start = Date.now();
+      const response = await this.makeRequest({ method: 'GET', path: '/api/hosts/me' }, session);
+      if (response.status === 200 && response.body?.id) {
+        hostId = response.body.id;
+        steps.push(this.makeStep('2. Load host profile', true, Date.now() - start, response.status));
+      } else if (response.status === 404) {
+        const hostPayload = {
+          businessName: `Test Host ${Date.now()}`,
+          address: '100 Test Way',
+          city: 'Austin',
+          state: 'TX',
+          locationType: 'office',
+          contactPhone: '555-000-0000',
+          latitude: 30.2672,
+          longitude: -97.7431,
+          spotCount: 2,
+        };
+        const createStart = Date.now();
+        const created = await this.makeRequest(
+          { method: 'POST', path: '/api/hosts', body: hostPayload },
+          session,
+        );
+        const ok = created.status === 201 && created.body?.id;
+        hostId = created.body?.id;
+        steps.push(
+          this.makeStep(
+            '2. Create host profile',
+            ok,
+            Date.now() - createStart,
+            created.status,
+            ok ? undefined : `Expected 201, got ${created.status}`,
+          ),
+        );
+      } else {
+        steps.push(
+          this.makeStep(
+            '2. Load host profile',
+            false,
+            Date.now() - start,
+            response.status,
+            `Expected 200 or 404, got ${response.status}`,
+          ),
+        );
+      }
+    }
+
+    if (!hostId) {
+      const duration = Date.now() - flowStart;
+      const flow: FlowResult = { name: 'Host + Truck Booking', steps, duration, success: false };
+      this.flows.push(flow);
+      this.printFlowResult(flow);
+      return;
+    }
+
+    let passId: string | undefined;
+    {
+      const payload = {
+        hostId,
+        name: 'Test Parking Pass',
+        description: 'Test parking pass listing',
+        requiresPayment: true,
+        breakfastPriceCents: 1200,
+        lunchPriceCents: 1500,
+        dinnerPriceCents: 1800,
+        daysOfWeek: [new Date().getDay()],
+        maxTrucks: 2,
+      };
+      const start = Date.now();
+      const created = await this.makeRequest(
+        { method: 'POST', path: '/api/hosts/parking-pass', body: payload },
+        session,
+      );
+      const ok =
+        created.status === 201 &&
+        Array.isArray(created.body) &&
+        created.body.length > 0 &&
+        created.body[0]?.id;
+      passId = ok ? created.body[0].id : undefined;
+      steps.push(
+        this.makeStep(
+          '3. Create parking pass listing',
+          ok,
+          Date.now() - start,
+          created.status,
+          ok ? undefined : `Expected 201 with listing array, got ${created.status}`,
+        ),
+      );
+    }
+
+    if (!passId) {
+      const duration = Date.now() - flowStart;
+      const flow: FlowResult = { name: 'Host + Truck Booking', steps, duration, success: false };
+      this.flows.push(flow);
+      this.printFlowResult(flow);
+      return;
+    }
+
+    let truckId: string | undefined;
+    {
+      const start = Date.now();
+      const response = await this.makeRequest(
+        { method: 'GET', path: '/api/restaurants/my' },
+        session,
+      );
+      if (response.status === 200 && Array.isArray(response.body)) {
+        const existing = response.body.find((item: any) => item?.isFoodTruck);
+        if (existing?.id) {
+          truckId = existing.id;
+          steps.push(this.makeStep('4. Load food truck', true, Date.now() - start, response.status));
+        } else {
+          const createStart = Date.now();
+          const truckPayload = {
+            name: `Test Truck ${Date.now()}`,
+            address: '200 Truck Rd',
+            city: 'Austin',
+            state: 'TX',
+            businessType: 'food_truck',
+            isFoodTruck: true,
+            cuisineType: 'Street Food',
+            latitude: 30.2672,
+            longitude: -97.7431,
+          };
+          const created = await this.makeRequest(
+            { method: 'POST', path: '/api/restaurants', body: truckPayload },
+            session,
+          );
+          const ok = created.status === 200 && created.body?.id;
+          truckId = created.body?.id;
+          steps.push(
+            this.makeStep(
+              '4. Create food truck',
+              ok,
+              Date.now() - createStart,
+              created.status,
+              ok ? undefined : `Expected 200, got ${created.status}`,
+            ),
+          );
+        }
+      } else {
+        steps.push(
+          this.makeStep(
+            '4. Load food truck',
+            false,
+            Date.now() - start,
+            response.status,
+            `Expected 200, got ${response.status}`,
+          ),
+        );
+      }
+    }
+
+    if (!truckId) {
+      const duration = Date.now() - flowStart;
+      const flow: FlowResult = { name: 'Host + Truck Booking', steps, duration, success: false };
+      this.flows.push(flow);
+      this.printFlowResult(flow);
+      return;
+    }
+
+    steps.push(
+      await this.recordStep(
+        '5. Book available slot',
+        'POST',
+        `/api/parking-pass/${passId}/book`,
+        200,
+        { truckId, slotTypes: ['lunch'] },
+        undefined,
+        session,
+      ),
+    );
+
+    {
+      const start = Date.now();
+      const response = await this.makeRequest(
+        { method: 'GET', path: '/api/bookings/my-truck' },
+        session,
+      );
+      const ok =
+        response.status === 200 &&
+        Array.isArray(response.body) &&
+        response.body.some((booking: any) => booking?.eventId === passId);
+      steps.push(
+        this.makeStep(
+          '6. Booking shows in truck schedule',
+          ok,
+          Date.now() - start,
+          response.status,
+          ok ? undefined : 'Booking not found in /api/bookings/my-truck',
+        ),
+      );
+    }
+
+    const duration = Date.now() - flowStart;
+    const success = steps.every((s) => s.success);
+    const flow: FlowResult = { name: 'Host + Truck Booking', steps, duration, success };
+    this.flows.push(flow);
+    this.printFlowResult(flow);
+  }
+
   private printFlowResult(flow: FlowResult) {
     const passCount = flow.steps.filter((s) => s.success).length;
     const failCount = flow.steps.length - passCount;
     const avgTime = flow.steps.reduce((a, b) => a + b.responseTime, 0) / flow.steps.length;
 
-    if (flow.success) {
+    if (failCount === 0) {
       this.log(
         `  ✓ ${flow.name}: ${passCount}/${flow.steps.length} passed (${avgTime.toFixed(0)}ms avg)`,
         'success'
@@ -469,15 +904,15 @@ class UserFlowTester {
       successfulSteps += flow.steps.filter((s) => s.success).length;
     }
 
-    const successRate = ((successfulSteps / totalSteps) * 100).toFixed(1);
+    const successRate = Number(((successfulSteps / totalSteps) * 100).toFixed(1));
     console.log(`\nTotal Flows: ${this.flows.length}`);
     console.log(`Total Steps: ${totalSteps}`);
     console.log(`Successful Steps: ${successfulSteps}`);
     console.log(`Success Rate: ${successRate}%\n`);
 
-    if (successRate >= '95') {
+    if (successRate >= 95) {
       this.log('✓ User flows are stable! Ready for production launch.', 'success');
-    } else if (successRate >= '75') {
+    } else if (successRate >= 75) {
       this.log('⚠ Most flows working, but some issues detected. Review failures.', 'warn');
     } else {
       this.log('✗ Multiple flow failures detected. Fix issues before launch.', 'error');
@@ -497,7 +932,9 @@ class UserFlowTester {
       await this.flowRestaurantOwnerJourney();
       await this.flowAwardTrackingJourney();
       await this.flowLLMIntegration();
+      await this.flowAffiliateJourney();
       await this.flowAnalyticsJourney();
+      await this.flowHostTruckBooking();
 
       this.printSummary();
     } catch (error) {
@@ -508,7 +945,10 @@ class UserFlowTester {
 }
 
 // Main execution
-const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
+const baseUrl =
+  process.env.MEALSCOUT_BASE_URL ||
+  process.env.BASE_URL ||
+  'http://127.0.0.1:5200';
 const tester = new UserFlowTester(baseUrl);
 tester.run().catch((err) => {
   console.error('Fatal error:', err);

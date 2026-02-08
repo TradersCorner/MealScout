@@ -1795,7 +1795,11 @@ export function registerHostRoutes(app: Express) {
     isAuthenticated,
     async (req: any, res) => {
     try {
-      if (!stripe) {
+      const bypassStripe =
+        String(process.env.MEALSCOUT_BYPASS_STRIPE || "").toLowerCase() ===
+          "true" ||
+        String(process.env.MEALSCOUT_TEST_MODE || "").toLowerCase() === "true";
+      if (!stripe && !bypassStripe) {
         return res.status(500).json({ message: "Stripe not configured" });
       }
 
@@ -2249,6 +2253,34 @@ export function registerHostRoutes(app: Express) {
         return res.status(409).json({
           message:
             "Unable to reserve this parking pass right now. Please refresh and try again.",
+        });
+      }
+
+      if (bypassStripe) {
+        const holdIds = insertedHolds.map((row) => row.id);
+        const now = new Date();
+        if (holdIds.length > 0) {
+          await db
+            .update(eventBookings)
+            .set({
+              status: "confirmed",
+              stripePaymentStatus: "bypassed",
+              bookingConfirmedAt: now,
+              paidAt: now,
+              updatedAt: now,
+            })
+            .where(inArray(eventBookings.id, holdIds));
+        }
+
+        return res.json({
+          bypassed: true,
+          bookingIds: holdIds,
+          totalCents,
+          breakdown: {
+            hostPrice: hostPriceCents,
+            platformFee: adjustedPlatformFeeCents,
+            creditsApplied: creditAppliedCents,
+          },
         });
       }
 

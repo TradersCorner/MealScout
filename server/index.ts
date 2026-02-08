@@ -38,6 +38,8 @@ const defaultOrigins = [
   "http://localhost:5174",
   "http://localhost:5200",
   "http://localhost:5000",
+  "http://127.0.0.1:5200",
+  "http://127.0.0.1:5000",
 ];
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || defaultOrigins.join(","))

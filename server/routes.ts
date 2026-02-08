@@ -1937,6 +1937,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  // Get claimed deals for user
+  app.get("/api/deals/claimed", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const claimedDeals = await storage.getUserDealClaimsWithDetails(userId);
+      res.json(claimedDeals);
+    } catch (error) {
+      console.error("Error fetching claimed deals:", error);
+      res.status(500).json({ message: "Failed to fetch claimed deals" });
+    }
+  });
+
   // 🔒 SECURITY: Update deal - requires ownership of restaurant
   app.patch(
     "/api/deals/:dealId",
@@ -5610,18 +5622,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     },
   );
-
-  // Get claimed deals for user
-  app.get("/api/deals/claimed", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const claimedDeals = await storage.getUserDealClaimsWithDetails(userId);
-      res.json(claimedDeals);
-    } catch (error) {
-      console.error("Error fetching claimed deals:", error);
-      res.status(500).json({ message: "Failed to fetch claimed deals" });
-    }
-  });
 
   // Get claims for restaurant owner's deals
   app.get(

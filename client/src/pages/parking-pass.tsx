@@ -3851,10 +3851,10 @@ export default function ParkingPassPage() {
             <CardContent className="p-5 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="text-sm font-semibold text-foreground">
                     Live share
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Share your live location in one tap.
                   </p>
                 </div>
@@ -4057,7 +4057,7 @@ export default function ParkingPassPage() {
         )}
 
         {topTab === "schedule" && isTruckViewUser && (
-          <Card className="order-[-9998] rounded-2xl border border-gray-200 bg-white">
+          <Card className="order-[-9998] rounded-2xl pp-glass border border-[color:var(--border-subtle)]">
             <CardContent className="p-5 space-y-6">
               <ParkingScheduleCalendar
                 items={parkingScheduleItems}
@@ -4072,7 +4072,7 @@ export default function ParkingPassPage() {
                 Every booking includes a 30-minute cleanup window after the end time.
               </p>
 
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-4">
+              <div className="rounded-2xl border border-[color:var(--border-subtle)] pp-glass-muted p-4 space-y-4">
                 <div>
                   <p className="text-sm font-semibold text-gray-900">
                     Add manual stop

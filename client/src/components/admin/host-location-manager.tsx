@@ -8,6 +8,24 @@ type HostLocationManagerProps = {
   canEdit?: boolean;
 };
 
+const normalize = (value?: string | null) => (value ?? "").trim();
+
+const includesLoose = (haystack: string, needle: string) =>
+  haystack.toLowerCase().includes(needle.toLowerCase());
+
+const buildGeocodeQuery = (host: any) => {
+  const address = normalize(host?.address);
+  const city = normalize(host?.city);
+  const state = normalize(host?.state);
+  if (!address) return "";
+
+  const parts: string[] = [address];
+  if (city && !includesLoose(address, city)) parts.push(city);
+  if (state && !includesLoose(address, state)) parts.push(state);
+  parts.push("USA");
+  return parts.join(", ");
+};
+
 export default function HostLocationManager({
   canEdit = true,
 }: HostLocationManagerProps) {
@@ -56,7 +74,8 @@ export default function HostLocationManager({
   });
 
   const geocodeHost = async (host: any) => {
-    if (!host.address) {
+    const query = buildGeocodeQuery(host);
+    if (!query) {
       toast({
         title: "Error",
         description: "Host has no address",
@@ -68,8 +87,8 @@ export default function HostLocationManager({
     setGeocoding(true);
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          host.address,
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&countrycodes=us&q=${encodeURIComponent(
+          query,
         )}`,
         { headers: { "User-Agent": "MealScout/1.0" } },
       );
@@ -119,7 +138,17 @@ export default function HostLocationManager({
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <p className="font-medium">{host.businessName}</p>
-                <p className="text-sm text-muted-foreground">{host.address}</p>
+                <p className="text-sm text-muted-foreground">
+                  {normalize(host.address)}
+                  {host.city &&
+                  !includesLoose(normalize(host.address), host.city)
+                    ? `, ${host.city}`
+                    : ""}
+                  {host.state &&
+                  !includesLoose(normalize(host.address), host.state)
+                    ? `, ${host.state}`
+                    : ""}
+                </p>
                 {host.latitude && host.longitude && (
                   <p className="text-xs text-green-600 mt-1">
                     📍 {host.latitude}, {host.longitude}

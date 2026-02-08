@@ -9,7 +9,9 @@ type ForwardGeocodeResult = {
 };
 
 const cache = new Map<string, ReverseGeocodeResult>();
-const forwardCache = new Map<string, ForwardGeocodeResult | null>();
+type ForwardCacheEntry = { value: ForwardGeocodeResult | null; ts: number };
+const forwardCache = new Map<string, ForwardCacheEntry>();
+const FORWARD_FAILURE_TTL_MS = 10 * 60 * 1000;
 
 const roundCoord = (value: number, digits = 3) => {
   const factor = Math.pow(10, digits);
@@ -145,22 +147,25 @@ export async function forwardGeocode(
 ): Promise<ForwardGeocodeResult | null> {
   const key = normalizeAddressKey(address);
   if (!key) return null;
-  if (forwardCache.has(key)) {
-    return forwardCache.get(key) ?? null;
+  const entry = forwardCache.get(key);
+  if (entry) {
+    if (entry.value) return entry.value;
+    if (Date.now() - entry.ts < FORWARD_FAILURE_TTL_MS) return null;
+    forwardCache.delete(key);
   }
 
   const googleResult = await forwardWithGoogle(address);
   if (googleResult) {
-    forwardCache.set(key, googleResult);
+    forwardCache.set(key, { value: googleResult, ts: Date.now() });
     return googleResult;
   }
 
   const nominatimResult = await forwardWithNominatim(address);
   if (nominatimResult) {
-    forwardCache.set(key, nominatimResult);
+    forwardCache.set(key, { value: nominatimResult, ts: Date.now() });
     return nominatimResult;
   }
 
-  forwardCache.set(key, null);
+  forwardCache.set(key, { value: null, ts: Date.now() });
   return null;
 }

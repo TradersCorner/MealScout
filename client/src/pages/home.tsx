@@ -287,7 +287,7 @@ export default function Home() {
       <Navigation />
 
       {/* Header with Logo and Navigation */}
-      <header className="section section--full bg-[hsl(var(--surface))]/85 backdrop-blur-md border-b border-[color:var(--border-subtle)] sticky top-0 z-10 shadow-sm">
+      <header className="section section--full bg-[hsl(var(--surface))] border-b border-[color:var(--border-subtle)] sticky top-0 z-10 shadow-sm">
         <div className="content flex items-center justify-between py-3">
           <div className="flex items-center space-x-2 flex-shrink-0">
             <div className="w-14 h-14 flex items-center justify-center overflow-hidden">

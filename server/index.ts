@@ -3,6 +3,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import compression from "compression";
 import helmet from "helmet";
 import passport from "passport";
+import * as Sentry from "@sentry/node";
 import { registerRoutes } from "./routes";
 import actionRoutes from "./routes/actionRoutes";
 import {
@@ -25,6 +26,8 @@ import { and, eq } from "drizzle-orm";
 validateEnv();
 
 const app = express();
+const sentryDsn = process.env.SENTRY_DSN;
+const sentryEnabled = Boolean(sentryDsn);
 
 // ---- CORS (required for www.mealscout.us -> mealscout.onrender.com) ----
 const defaultOrigins = [
@@ -65,6 +68,42 @@ app.use((req, res, next) => {
 
   next();
 });
+
+// Basic CSRF guard: require same-origin for state-changing requests.
+const csrfSafeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
+app.use((req, res, next) => {
+  if (csrfSafeMethods.has(req.method)) {
+    return next();
+  }
+
+  const origin = (req.headers.origin || req.headers.referer) as
+    | string
+    | undefined;
+  if (!origin) {
+    return res.status(403).json({ message: "Invalid origin" });
+  }
+
+  const isAllowed = allowedOrigins.some((allowed) =>
+    origin.startsWith(allowed),
+  );
+  if (!isAllowed) {
+    return res.status(403).json({ message: "Invalid origin" });
+  }
+
+  next();
+});
+
+if (sentryEnabled) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: process.env.NODE_ENV || "development",
+  });
+
+  const sentryHandlers = (Sentry as any).Handlers;
+  if (sentryHandlers?.requestHandler) {
+    app.use(sentryHandlers.requestHandler());
+  }
+}
 
 // Enhanced global error handlers to prevent server crashes during deployment
 process.on("uncaughtException", (error) => {
@@ -443,6 +482,9 @@ app.use((req, res, next) => {
 
   // Debug endpoint to verify session/cookie forwarding after redirects
   app.get("/api/debug/session", (req: any, res) => {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(404).json({ message: "Not found" });
+    }
     res.json({
       sessionID: req.sessionID || null,
       user: req.user || null,
@@ -940,6 +982,9 @@ app.use((req, res, next) => {
 
     // Log error for debugging
     console.error("❌ Express error middleware:", err);
+    if (sentryEnabled) {
+      Sentry.captureException(err);
+    }
 
     // Send response if not already sent
     if (!res.headersSent) {
@@ -1072,6 +1117,28 @@ app.use((req, res, next) => {
           );
         }
       });
+
+      const enableSessionCleanup =
+        process.env.SESSION_CLEANUP_ENABLED !== "false";
+      if (enableSessionCleanup) {
+        const cleanupIntervalMs = 6 * 60 * 60 * 1000; // 6 hours
+        const runSessionCleanup = async () => {
+          try {
+            await db.execute(sql`delete from sessions where expire < now()`);
+            console.log("✅ Session cleanup completed");
+          } catch (error) {
+            console.warn(
+              "⚠️  Session cleanup failed (non-blocking):",
+              error instanceof Error ? error.message : String(error),
+            );
+          }
+        };
+
+        setTimeout(() => {
+          void runSessionCleanup();
+          setInterval(runSessionCleanup, cleanupIntervalMs);
+        }, 30_000);
+      }
 
       // Perform database validation after server startup - non-blocking
       setTimeout(async () => {

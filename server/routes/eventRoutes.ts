@@ -11,6 +11,8 @@ import {
   eventBookings,
   insertEventInterestSchema,
   restaurants,
+  CLAIM_STATUS,
+  CLAIM_TYPES,
 } from "@shared/schema";
 import { asc, eq, inArray, sql } from "drizzle-orm";
 import { forwardGeocode } from "../utils/geocoding";
@@ -414,6 +416,24 @@ export function registerEventRoutes(app: Express) {
           eventName: parsed.eventName,
           city: parsed.city,
           expectedCrowd: parsed.expectedCrowd,
+        },
+      });
+
+      await storage.createUnifiedClaim({
+        personId: req.user.id,
+        claimType: CLAIM_TYPES.EVENT,
+        status: CLAIM_STATUS.PROVISIONAL,
+        claimData: {
+          eventName: parsed.eventName,
+          date: parsed.date,
+          city: parsed.city,
+          expectedCrowd: parsed.expectedCrowd,
+          contactEmail: parsed.contactEmail,
+          contactPhone: parsed.contactPhone ?? null,
+          notes: parsed.notes ?? null,
+        },
+        metadata: {
+          source: "event_signup",
         },
       });
 

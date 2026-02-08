@@ -61,6 +61,15 @@ interface ParkingPassCompletionReminderParams {
   address?: string;
 }
 
+interface BookingConfirmationParams {
+  to: string;
+  hostName: string;
+  startDate: string;
+  endDate: string;
+  slotSummary?: string;
+  totalCents: number;
+}
+
 // Email templates
 class EmailTemplates {
   public static getBaseTemplate(title: string, content: string): string {
@@ -1101,6 +1110,45 @@ export class EmailService {
     text?: string,
   ): Promise<boolean> {
     return this.sendEmail({ to, subject, html, text });
+  }
+
+  async sendBookingConfirmationEmail(
+    params: BookingConfirmationParams,
+  ): Promise<boolean> {
+    const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:5000";
+    const scheduleUrl = `${baseUrl.replace(/\/+$/, "")}/parking-pass?tab=schedule`;
+    const dateLabel =
+      params.startDate === params.endDate
+        ? params.startDate
+        : `${params.startDate} - ${params.endDate}`;
+    const slotLine = params.slotSummary
+      ? `<p><strong>Slots:</strong> ${params.slotSummary}</p>`
+      : "";
+    const content = `
+      <h2>Parking Pass booking confirmed</h2>
+      <p>Your booking at <strong>${params.hostName}</strong> is confirmed.</p>
+      <p><strong>Dates:</strong> ${dateLabel}</p>
+      ${slotLine}
+      <p><strong>Total:</strong> $${(params.totalCents / 100).toFixed(2)}</p>
+      <p style="margin: 18px 0;">
+        <a href="${scheduleUrl}" class="cta-button">View schedule</a>
+      </p>
+      <p>If the button doesnâ€™t work, paste this link into your browser:</p>
+      <p style="word-break: break-all; color: #f97316;">${scheduleUrl}</p>
+    `;
+
+    const html = EmailTemplates.getBaseTemplate(
+      "Parking Pass confirmed",
+      content,
+    );
+    const text = `Your Parking Pass booking is confirmed at ${params.hostName} for ${dateLabel}. Total: $${(params.totalCents / 100).toFixed(2)}. View schedule: ${scheduleUrl}`;
+    return this.sendEmail({
+      to: params.to,
+      subject: "Your Parking Pass booking is confirmed",
+      html,
+      text,
+      category: "general",
+    });
   }
 
   async sendParkingPassCompletionReminder(

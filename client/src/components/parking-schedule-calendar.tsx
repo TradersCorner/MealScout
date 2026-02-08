@@ -45,6 +45,8 @@ type ParkingScheduleCalendarProps = {
   subtitle?: string;
   allowManualEdits?: boolean;
   onDeleteManual?: (manualId: string) => void;
+  onCancelBooking?: (bookingId: string, item: ParkingScheduleItem) => void;
+  cancelingBookingId?: string | null;
   reportLookup?: Record<string, boolean>;
   onAddReport?: (item: ParkingScheduleItem) => void;
   className?: string;
@@ -73,6 +75,8 @@ export function ParkingScheduleCalendar({
   subtitle = "Auto-updated by Parking Pass bookings. Add manual stops anytime.",
   allowManualEdits = false,
   onDeleteManual,
+  onCancelBooking,
+  cancelingBookingId,
   reportLookup,
   onAddReport,
   className,
@@ -283,6 +287,21 @@ export function ParkingScheduleCalendar({
                           onClick={() => onDeleteManual(item.manualId!)}
                         >
                           Remove
+                        </Button>
+                      )}
+                    {onCancelBooking &&
+                      item.type === "booking" &&
+                      item.bookingId &&
+                      !isBefore(toDate(item.date), today) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onCancelBooking(item.bookingId!, item)}
+                          disabled={cancelingBookingId === item.bookingId}
+                        >
+                          {cancelingBookingId === item.bookingId
+                            ? "Cancelling..."
+                            : "Cancel booking"}
                         </Button>
                       )}
                     {onAddReport && item.reportKey && (

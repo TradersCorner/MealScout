@@ -277,7 +277,12 @@ export default function StaffDashboard() {
           </Card>
         )}
 
-        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+        <Tabs
+          value={selectedTab}
+          onValueChange={(value) =>
+            setSelectedTab(value as "accounts" | "host-locations")
+          }
+        >
           <TabsList className="w-full inline-flex h-auto flex-wrap gap-1 p-1 mb-4">
             <TabsTrigger value="accounts" className="flex-shrink-0">
               Account Creation

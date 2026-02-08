@@ -100,6 +100,9 @@ import {
   type InsertLisaClaim,
   type LisaClaimType,
   type LisaClaimSource,
+  claims,
+  type Claim,
+  type InsertClaim,
 } from "@shared/schema";
 import { PARKING_PASS_MEAL_WINDOWS } from "@shared/parkingPassSlots";
 import { db } from "./db";
@@ -186,6 +189,9 @@ export interface IStorage {
 
   // Telemetry
   createTelemetryEvent(event: InsertTelemetryEvent): Promise<void>;
+
+  // Unified Claims (North Star)
+  createUnifiedClaim(claim: InsertClaim): Promise<Claim>;
 
   // LISA Phase 4A: Claim Persistence (write-only fact recording)
   emitClaim(claim: {
@@ -5811,6 +5817,21 @@ export class DatabaseStorage implements IStorage {
     }
 
     return await query;
+  }
+
+  // ============================================
+  // Unified Claims (North Star)
+  // ============================================
+  async createUnifiedClaim(claim: InsertClaim): Promise<Claim> {
+    const [newClaim] = await db
+      .insert(claims)
+      .values({
+        ...claim,
+        claimData: claim.claimData ?? {},
+        metadata: claim.metadata ?? {},
+      })
+      .returning();
+    return newClaim;
   }
 }
 

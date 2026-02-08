@@ -490,6 +490,9 @@ export default function ParkingPassPage() {
   const [bookedSchedule, setBookedSchedule] = useState<TruckScheduleEntry[]>(
     [],
   );
+  const [cancelingBookingId, setCancelingBookingId] = useState<string | null>(
+    null,
+  );
   const [parkingReports, setParkingReports] = useState<TruckParkingReport[]>(
     [],
   );
@@ -642,6 +645,38 @@ export default function ParkingPassPage() {
     }
   };
 
+
+  const handleCancelBooking = async (bookingId: string) => {
+    if (!bookingId || !truckId) return;
+    if (!window.confirm("Cancel this booking? This cannot be undone.")) {
+      return;
+    }
+
+    setCancelingBookingId(bookingId);
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/cancel`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to cancel booking");
+      }
+      toast({
+        title: "Booking cancelled",
+        description: "Your parking pass booking has been cancelled.",
+      });
+      await reloadBookedSchedule(truckId, { silent: true });
+    } catch (error: any) {
+      toast({
+        title: "Cancellation failed",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setCancelingBookingId(null);
+    }
+  };
   useEffect(() => {
     try {
       const cached = localStorage.getItem(
@@ -4028,6 +4063,8 @@ export default function ParkingPassPage() {
                 items={parkingScheduleItems}
                 allowManualEdits
                 onDeleteManual={handleDeleteSchedule}
+                onCancelBooking={handleCancelBooking}
+                cancelingBookingId={cancelingBookingId}
                 reportLookup={reportLookup}
                 onAddReport={handleOpenReport}
               />

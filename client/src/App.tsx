@@ -15,7 +15,7 @@ import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 
 // Lazy load ALL pages including home for faster initial load
-const Home = lazy(() => import("@/pages/home"));
+const Home = lazy(() => import("@/pages/home-north-star"));
 
 // Lazy load all other pages - they only download when the user navigates to them
 const CustomerSignup = lazy(() => import("@/pages/customer-signup"));

@@ -143,24 +143,41 @@ export const parseTruckImportFile = async (
   const lowerName = fileName.toLowerCase();
   let rows: string[][] = [];
 
-  if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
-    let xlsx: any;
+  if (lowerName.endsWith(".xlsx")) {
+    let ExcelJS: any;
     try {
-      xlsx = await import("xlsx");
+      ExcelJS = await import("exceljs");
     } catch {
-      throw new Error("XLSX parsing requires the xlsx package.");
+      throw new Error("XLSX parsing requires the exceljs package.");
     }
-    const workbook = xlsx.read(buffer, { type: "buffer" });
-    const sheetName = workbook.SheetNames[0];
-    if (!sheetName) {
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
       return { rows: [], headers: [] };
     }
-    const sheet = workbook.Sheets[sheetName];
-    rows = xlsx.utils.sheet_to_json(sheet, {
-      header: 1,
-      defval: "",
-      raw: false,
-    }) as string[][];
+
+    rows = [];
+    worksheet.eachRow((row: any) => {
+      const values = Array.isArray(row.values) ? row.values.slice(1) : [];
+      rows.push(
+        values.map((cell: any) => {
+          if (cell == null) return "";
+          if (typeof cell === "object" && "text" in cell) {
+            return String(cell.text);
+          }
+          if (typeof cell === "object" && "richText" in cell) {
+            return String(
+              cell.richText?.map((part: any) => part.text).join("") || "",
+            );
+          }
+          return String(cell);
+        }),
+      );
+    });
+  } else if (lowerName.endsWith(".xls")) {
+    throw new Error("Legacy .xls files are no longer supported. Save as .xlsx or .csv.");
   } else {
     const text = buffer.toString("utf8");
     rows = parseCsvToRows(text);

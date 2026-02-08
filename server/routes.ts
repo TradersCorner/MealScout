@@ -5109,6 +5109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
 
             const usesHolds = pendingHolds.length > 0;
+            let bookingConfirmed = false;
 
             if (usesHolds) {
               const holdsByEventId = new Map<
@@ -5190,6 +5191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   })
                   .where(eq(eventBookings.id, update.id));
               }
+              bookingConfirmed = true;
             } else {
               const bookingRows = expectedDateKeys.map((dateKey, index) => {
                 const row = eventsByDate.get(dateKey);
@@ -5244,6 +5246,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
 
               await db.insert(eventBookings).values(filteredRows);
+              bookingConfirmed = true;
+            }
+
+            if (bookingConfirmed) {
+              try {
+                const truck = await storage.getRestaurant(truckId);
+                const owner = truck ? await storage.getUser(truck.ownerId) : null;
+                if (owner?.email) {
+                  const endDateKey =
+                    expectedDateKeys[expectedDateKeys.length - 1] ||
+                    startDateKey;
+                  await emailService.sendBookingConfirmationEmail({
+                    to: owner.email,
+                    hostName: host?.businessName || "Host location",
+                    startDate: startDateKey,
+                    endDate: endDateKey,
+                    slotSummary: normalizedSlotTypes.join(", "),
+                    totalCents: amountCents,
+                  });
+                }
+              } catch (emailError) {
+                console.error(
+                  "[WEBHOOK] Error sending booking confirmation:",
+                  emailError,
+                );
+              }
             }
 
             try {

@@ -299,6 +299,14 @@ export default function RestaurantSignup() {
     }
   }, [selectedBusinessType, claimSelection]);
 
+  useEffect(() => {
+    if (selectedBusinessType === "food_truck") {
+      form.setValue("hasParking", false);
+      form.setValue("hasWifi", false);
+      form.setValue("hasOutdoorSeating", false);
+    }
+  }, [selectedBusinessType, form]);
+
   // Persist restaurant business details so owners can resume onboarding
   useEffect(() => {
     const subscription = form.watch((value) => {
@@ -999,11 +1007,13 @@ export default function RestaurantSignup() {
                       <FormField control={form.control} name="instagramUrl" render={({ field }) => (<FormItem><FormLabel>Instagram</FormLabel><FormControl><Input type="url" placeholder="https://..." {...field} /></FormControl><FormMessage /></FormItem>)} />
                       <FormField control={form.control} name="facebookPageUrl" render={({ field }) => (<FormItem><FormLabel>Facebook</FormLabel><FormControl><Input type="url" placeholder="https://..." {...field} /></FormControl><FormMessage /></FormItem>)} />
                     </div>
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      <FormField control={form.control} name="hasParking" render={({ field }) => (<FormItem className="flex items-center gap-2 rounded-md border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-3"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="m-0">Parking Available</FormLabel></FormItem>)} />
-                      <FormField control={form.control} name="hasWifi" render={({ field }) => (<FormItem className="flex items-center gap-2 rounded-md border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-3"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="m-0">Free Wi-Fi</FormLabel></FormItem>)} />
-                      <FormField control={form.control} name="hasOutdoorSeating" render={({ field }) => (<FormItem className="flex items-center gap-2 rounded-md border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-3"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="m-0">Outdoor Seating</FormLabel></FormItem>)} />
-                    </div>
+                    {selectedBusinessType !== "food_truck" && (
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <FormField control={form.control} name="hasParking" render={({ field }) => (<FormItem className="flex items-center gap-2 rounded-md border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-3"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="m-0">Parking Available</FormLabel></FormItem>)} />
+                        <FormField control={form.control} name="hasWifi" render={({ field }) => (<FormItem className="flex items-center gap-2 rounded-md border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-3"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="m-0">Free Wi-Fi</FormLabel></FormItem>)} />
+                        <FormField control={form.control} name="hasOutdoorSeating" render={({ field }) => (<FormItem className="flex items-center gap-2 rounded-md border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-3"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="m-0">Outdoor Seating</FormLabel></FormItem>)} />
+                      </div>
+                    )}
                   </div>
 
                   <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] p-4">

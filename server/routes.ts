@@ -76,6 +76,7 @@ import {
   imageUploads,
   passwordResetTokens,
   users,
+  userAddresses,
   restaurants,
   truckImportListings,
   truckClaimRequests,
@@ -1541,6 +1542,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Public map feed: hosts (open location requests) + upcoming events (hosted slots)
   app.get("/api/map/locations", async (_req, res) => {
     try {
+      const locationKey = (
+        address?: string | null,
+        city?: string | null,
+        state?: string | null,
+      ) =>
+        `${(address ?? "").trim().toLowerCase()}|${(city ?? "")
+          .trim()
+          .toLowerCase()}|${(state ?? "").trim().toLowerCase()}`;
+
       const [openLocations, upcomingEvents] = await Promise.all([
         storage.getOpenLocationRequests(),
         storage.getAllUpcomingEvents(),
@@ -1615,11 +1625,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (event) => !event.requiresPayment,
       );
 
-        const hostLocations = [
-          ...openLocations.map((loc) => ({
-            id: loc.id,
+      const primaryHostLocations = hostProfilesWithCoords.map(
+        ({ host }: { host: typeof hosts.$inferSelect }) => ({
+          id: host.id,
+          type: "host_location" as const,
+          name: host.businessName,
+          address: host.address,
+          city: host.city,
+          state: host.state,
+          locationType: host.locationType,
+          expectedFootTraffic: host.expectedFootTraffic,
+          notes: host.notes,
+          preferredDates: [],
+          status: host.isVerified ? "verified" : "active",
+          latitude: host.latitude,
+          longitude: host.longitude,
+        }),
+      );
+
+      const hostByUserId = new Map<string, typeof hosts.$inferSelect>();
+      hostProfilesWithCoords.forEach(({ host }) => {
+        const existing = hostByUserId.get(host.userId);
+        if (!existing) {
+          hostByUserId.set(host.userId, host);
+          return;
+        }
+        if (!existing.isVerified && host.isVerified) {
+          hostByUserId.set(host.userId, host);
+        }
+      });
+
+      const hostUserIds = Array.from(hostByUserId.keys());
+      const additionalAddressRows = hostUserIds.length
+        ? await db
+            .select({
+              address: userAddresses,
+            })
+            .from(userAddresses)
+            .innerJoin(users, eq(userAddresses.userId, users.id))
+            .where(
+              and(
+                inArray(userAddresses.userId, hostUserIds),
+                isNotNull(userAddresses.address),
+                or(eq(users.isDisabled, false), isNull(users.isDisabled)),
+              ),
+            )
+        : [];
+
+      const seenHostLocationKeys = new Set<string>();
+      primaryHostLocations.forEach((host) => {
+        seenHostLocationKeys.add(locationKey(host.address, host.city, host.state));
+      });
+      openLocations.forEach((loc) => {
+        seenHostLocationKeys.add(locationKey(loc.address, null, null));
+      });
+
+      const additionalHostLocations = await Promise.all(
+        additionalAddressRows.map(async ({ address }) => {
+          const parentHost = hostByUserId.get(address.userId);
+          if (!parentHost) return null;
+
+          const key = locationKey(address.address, address.city, address.state);
+          if (!key || seenHostLocationKeys.has(key)) return null;
+          seenHostLocationKeys.add(key);
+
+          const hasCoords =
+            address.latitude &&
+            address.longitude &&
+            !Number.isNaN(Number(address.latitude)) &&
+            !Number.isNaN(Number(address.longitude));
+
+          let latitude = address.latitude;
+          let longitude = address.longitude;
+
+          if (!hasCoords) {
+            const fullAddress = [address.address, address.city, address.state]
+              .map((part) => (part ?? "").trim())
+              .filter(Boolean)
+              .join(", ");
+
+            if (fullAddress) {
+              const coords = await forwardGeocode(fullAddress).catch(() => null);
+              if (coords) {
+                latitude = coords.lat.toString();
+                longitude = coords.lng.toString();
+                try {
+                  await db
+                    .update(userAddresses)
+                    .set({
+                      latitude,
+                      longitude,
+                      updatedAt: new Date(),
+                    })
+                    .where(eq(userAddresses.id, address.id));
+                } catch (error) {
+                  console.error(
+                    "Failed to persist additional host address geocode:",
+                    error,
+                  );
+                }
+              }
+            }
+          }
+
+          return {
+            id: `${parentHost.id}:addr:${address.id}`,
             type: "host_location" as const,
-            name: loc.businessName,
+            name: parentHost.businessName,
+            address: address.address,
+            city: address.city,
+            state: address.state,
+            locationType: parentHost.locationType,
+            expectedFootTraffic: parentHost.expectedFootTraffic,
+            notes: parentHost.notes,
+            preferredDates: [],
+            status: parentHost.isVerified ? "verified" : "active",
+            latitude,
+            longitude,
+          };
+        }),
+      );
+
+      const hostLocations = [
+        ...openLocations.map((loc) => ({
+          id: loc.id,
+          type: "host_location" as const,
+          name: loc.businessName,
           address: loc.address,
           city: null,
           state: null,
@@ -1628,29 +1759,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           notes: loc.notes,
           preferredDates: loc.preferredDates,
           status: loc.status,
-            latitude: loc.latitude,
-            longitude: loc.longitude,
-          })),
-          ...hostProfilesWithCoords.map(
-            ({ host }: { host: typeof hosts.$inferSelect }) => ({
-            id: host.id,
-            type: "host_location" as const,
-            name: host.businessName,
-            address: host.address,
-            city: host.city,
-            state: host.state,
-            locationType: host.locationType,
-            expectedFootTraffic: host.expectedFootTraffic,
-            notes: host.notes,
-            preferredDates: [],
-            status: host.isVerified ? "verified" : "active",
-            latitude: host.latitude,
-            longitude: host.longitude,
-          }),
-          ),
-        ];
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+        })),
+        ...primaryHostLocations,
+        ...additionalHostLocations.filter(Boolean),
+      ];
 
-        const eventLocations = publicEvents.map((event) => ({
+      const eventLocations = publicEvents.map((event) => ({
         id: event.id,
         type: "event" as const,
         name: event.name || "Host Event",

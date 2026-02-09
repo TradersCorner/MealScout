@@ -173,14 +173,34 @@ export default function AccountSetup() {
   };
 
   const passwordStrength = getPasswordStrength(password);
+  const strengthClass =
+    passwordStrength.color === "red"
+      ? "bg-red-500"
+      : passwordStrength.color === "orange"
+        ? "bg-amber-500"
+        : passwordStrength.color === "blue"
+          ? "bg-blue-500"
+          : passwordStrength.color === "green"
+            ? "bg-emerald-500"
+            : "bg-[color:var(--text-muted)]";
+  const strengthTextClass =
+    passwordStrength.color === "red"
+      ? "text-red-300"
+      : passwordStrength.color === "orange"
+        ? "text-amber-300"
+        : passwordStrength.color === "blue"
+          ? "text-blue-300"
+          : passwordStrength.color === "green"
+            ? "text-emerald-300"
+            : "text-[color:var(--text-muted)]";
 
   // Loading state
   if (!token || isValidatingToken) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen bg-[var(--bg-layered)] flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-[color:var(--border-subtle)] bg-[var(--bg-card)]">
           <CardContent className="pt-6 text-center">
-            <p className="text-gray-600">Validating setup link...</p>
+            <p className="text-[color:var(--text-secondary)]">Validating setup link...</p>
           </CardContent>
         </Card>
       </div>
@@ -190,7 +210,7 @@ export default function AccountSetup() {
   // Invalid or expired token
   if (tokenError || !tokenValidation?.valid) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-indigo-50">
+      <div className="min-h-screen bg-[var(--bg-layered)]">
         <SEOHead
           title="Invalid Setup Link - MealScout"
           description="This account setup link is invalid or has expired."
@@ -200,10 +220,10 @@ export default function AccountSetup() {
           title="Account Setup"
           fallbackHref="/login"
           icon={KeyRound}
-          className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+          className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
         />
         <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] p-4">
-          <Card className="w-full max-w-md">
+          <Card className="w-full max-w-md border-[color:var(--border-subtle)] bg-[var(--bg-card)]">
             <CardHeader>
               <CardTitle className="text-red-600">Invalid Setup Link</CardTitle>
               <CardDescription>
@@ -211,7 +231,7 @@ export default function AccountSetup() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-[color:var(--text-secondary)] mb-4">
                 Please contact support or request a new setup link.
               </p>
               <Button className="w-full" onClick={() => setLocation("/login")}>
@@ -227,14 +247,14 @@ export default function AccountSetup() {
   // Setup complete state
   if (setupComplete) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-indigo-50">
+      <div className="min-h-screen bg-[var(--bg-layered)]">
         <SEOHead
           title="Setup Complete - MealScout"
           description="Your MealScout account is ready!"
           noIndex={true}
         />
         <div className="flex items-center justify-center min-h-screen p-4">
-          <Card className="w-full max-w-md">
+          <Card className="w-full max-w-md border-[color:var(--border-subtle)] bg-[var(--bg-card)]">
             <CardHeader>
               <div className="flex items-center justify-center mb-4">
                 <CheckCircle className="w-16 h-16 text-green-500" />
@@ -254,7 +274,7 @@ export default function AccountSetup() {
 
   // Main setup form
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-[var(--bg-layered)]">
       <SEOHead
         title="Complete Your Account - MealScout"
         description="Set up your MealScout account password and profile."
@@ -264,16 +284,16 @@ export default function AccountSetup() {
         title="Complete Your Account"
         fallbackHref="/login"
         icon={KeyRound}
-        className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
       />
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] p-4">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md border-[color:var(--border-subtle)] bg-[var(--bg-card)]">
           <CardHeader>
             <CardTitle>Welcome to MealScout!</CardTitle>
             <CardDescription>
               Complete your profile to get started
               {tokenValidation?.userEmail && (
-                <span className="block mt-1 font-medium text-gray-700">
+                <span className="block mt-1 font-medium text-[color:var(--text-primary)]">
                   {tokenValidation.userEmail}
                 </span>
               )}
@@ -345,7 +365,7 @@ export default function AccountSetup() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
                     disabled={setupMutation.isPending}
                   >
                     {showPassword ? (
@@ -357,17 +377,15 @@ export default function AccountSetup() {
                 </div>
                 {password && (
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="flex-1 h-1 bg-[var(--bg-surface)] rounded-full overflow-hidden">
                       <div
-                        className={`h-full transition-all duration-300 bg-${passwordStrength.color}-500`}
+                        className={`h-full transition-all duration-300 ${strengthClass}`}
                         style={{
                           width: `${(passwordStrength.level / 4) * 100}%`,
                         }}
                       />
                     </div>
-                    <span
-                      className={`text-xs font-medium text-${passwordStrength.color}-600`}
-                    >
+                    <span className={`text-xs font-medium ${strengthTextClass}`}>
                       {passwordStrength.text}
                     </span>
                   </div>
@@ -395,7 +413,7 @@ export default function AccountSetup() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
                     disabled={setupMutation.isPending}
                   >
                     {showConfirmPassword ? (

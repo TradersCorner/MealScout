@@ -2312,8 +2312,7 @@ export default function AdminDashboard() {
               <div>
                 <p className="text-muted-foreground">Admins</p>
                 <p className="font-semibold">
-                  {(dashboardStats.memberCounts?.admin ?? 0) +
-                    (dashboardStats.memberCounts?.superAdmin ?? 0)}
+                  {dashboardStats.memberCounts?.admin ?? 0}
                 </p>
               </div>
               <div>

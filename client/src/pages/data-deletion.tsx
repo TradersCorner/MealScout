@@ -1,255 +1,170 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Calendar, Mail, MessageCircle } from "lucide-react";
+import type { ReactNode } from "react";
+import { Trash2, Calendar, Mail, MessageCircle, ShieldCheck, AlertTriangle } from "lucide-react";
 import { BackHeader } from "@/components/back-header";
 import { Button } from "@/components/ui/button";
 import { SEOHead } from "@/components/seo-head";
 
+function Panel({
+  title,
+  children,
+  tone = "neutral",
+}: {
+  title: string;
+  children: ReactNode;
+  tone?: "neutral" | "warn" | "danger" | "success";
+}) {
+  const toneClass: Record<string, string> = {
+    neutral: "border-[color:var(--border-subtle)] bg-[var(--bg-surface)] text-[color:var(--text-secondary)]",
+    warn: "border-amber-500/35 bg-amber-500/10 text-amber-200",
+    danger: "border-red-500/35 bg-red-500/10 text-red-200",
+    success: "border-emerald-500/35 bg-emerald-500/10 text-emerald-200",
+  };
+
+  return (
+    <section className={`rounded-2xl border p-5 ${toneClass[tone]}`}>
+      <h3 className="text-base font-bold mb-3">{title}</h3>
+      <div className="text-sm leading-relaxed space-y-2">{children}</div>
+    </section>
+  );
+}
+
+function Bullet({ children }: { children: ReactNode }) {
+  return <p>- {children}</p>;
+}
+
 export default function DataDeletion() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-50">
+    <div className="min-h-screen bg-[var(--bg-layered)] relative overflow-hidden">
       <SEOHead
         title="Data Deletion - MealScout | Delete Your Account & Data"
         description="Learn how to request deletion of your personal data from MealScout. Step-by-step instructions for account deletion and data removal in compliance with privacy regulations."
         keywords="data deletion, account deletion, delete account, remove data, privacy rights"
         canonicalUrl="https://mealscout.us/data-deletion"
       />
+
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[-10rem] right-[-8rem] h-[26rem] w-[26rem] rounded-full bg-[color:var(--action-primary)]/15 blur-3xl" />
+        <div className="absolute bottom-[-10rem] left-[-8rem] h-[24rem] w-[24rem] rounded-full bg-[color:var(--accent)]/20 blur-3xl" />
+      </div>
+
       <BackHeader
         title="Data Deletion Instructions"
         fallbackHref="/"
         icon={Trash2}
         rightActions={
-          <div className="flex items-center space-x-2 text-sm text-gray-500">
-            <Calendar className="w-4 h-4" />
-            <span>Last updated: January 13, 2025</span>
+          <div className="flex items-center gap-2 text-xs text-[color:var(--text-secondary)]">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Last updated: February 9, 2026</span>
           </div>
         }
-        className="bg-white shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
       />
 
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <Card className="shadow-lg">
-          <CardHeader className="text-center pb-8">
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center">
-                <Trash2 className="w-8 h-8 text-white" />
-              </div>
+      <div className="relative z-10 max-w-5xl mx-auto px-4 py-6 space-y-5">
+        <div className="rounded-3xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)]/95 backdrop-blur p-6 shadow-clean-lg">
+          <div className="flex items-start gap-4">
+            <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-[color:var(--action-primary)]/30 bg-[color:var(--action-primary)]/15 shrink-0">
+              <Trash2 className="h-6 w-6 text-[color:var(--action-primary)]" />
+            </span>
+            <div>
+              <h1 className="text-3xl font-black tracking-tight text-[color:var(--text-primary)] mb-2">Delete Account & Data</h1>
+              <p className="text-sm text-[color:var(--text-secondary)]">
+                You can self-delete from your account settings or request manual deletion by email.
+              </p>
             </div>
-            <CardTitle className="text-3xl font-bold text-gray-900 mb-2">
-              Data Deletion Instructions
-            </CardTitle>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              How to request deletion of your personal data from MealScout
+          </div>
+        </div>
+
+        <Panel title="Quick Account Deletion (Self-Service)" tone="neutral">
+          <Bullet>Log in and go to `Profile` -> `Settings`.</Bullet>
+          <Bullet>Open `Account Management` and select `Delete Account`.</Bullet>
+          <Bullet>Confirm with your account email.</Bullet>
+          <Bullet>Deletion is permanent and cannot be undone.</Bullet>
+        </Panel>
+
+        <Panel title="Manual Deletion Request" tone="neutral">
+          <p>If you cannot access your account, contact us directly:</p>
+          <div className="grid gap-3 sm:grid-cols-2 mt-2">
+            <Button
+              variant="outline"
+              onClick={() =>
+                (window.location.href =
+                  "mailto:privacy@mealscout.com?subject=Data Deletion Request")
+              }
+              className="rounded-xl"
+              data-testid="button-email-deletion"
+            >
+              <Mail className="mr-2 h-4 w-4" />
+              privacy@mealscout.com
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => (window.location.href = "/contact?subject=data-deletion")}
+              className="rounded-xl"
+              data-testid="button-contact-deletion"
+            >
+              <MessageCircle className="mr-2 h-4 w-4" />
+              Use Contact Form
+            </Button>
+          </div>
+        </Panel>
+
+        <Panel title="Required Information in Request" tone="warn">
+          <Bullet>Full name on the account.</Bullet>
+          <Bullet>Registration email address.</Bullet>
+          <Bullet>Phone number (if provided).</Bullet>
+          <Bullet>Optional deletion reason.</Bullet>
+          <Bullet>Any additional account identifiers.</Bullet>
+        </Panel>
+
+        <div className="grid gap-5 lg:grid-cols-2">
+          <Panel title="Data We Delete" tone="danger">
+            <Bullet>Profile information and photos.</Bullet>
+            <Bullet>Email and contact details.</Bullet>
+            <Bullet>Location data and preferences.</Bullet>
+            <Bullet>Order history, favorites, reviews, and ratings.</Bullet>
+            <Bullet>Stored payment references and communication records.</Bullet>
+          </Panel>
+
+          <Panel title="Data We May Retain" tone="neutral">
+            <Bullet>Anonymous usage analytics.</Bullet>
+            <Bullet>Financial records for legal/tax compliance.</Bullet>
+            <Bullet>Fraud prevention and security records.</Bullet>
+            <p className="text-xs mt-2 opacity-80">
+              Retained records are minimized and held only as required by law or security policy.
             </p>
-          </CardHeader>
+          </Panel>
+        </div>
 
-          <CardContent className="prose prose-gray max-w-none">
-            <div className="space-y-8">
-              
-              <section>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">Quick Account Deletion</h2>
-                <p className="text-gray-700 leading-relaxed mb-4">
-                  You can delete your MealScout account and all associated data directly from your profile settings:
-                </p>
-                
-                <div className="bg-blue-50 p-6 rounded-lg mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-3">Self-Service Deletion:</h3>
-                  <ol className="text-gray-700 space-y-2 text-sm">
-                    <li>1. Log into your MealScout account</li>
-                    <li>2. Navigate to Profile → Settings</li>
-                    <li>3. Scroll to "Account Management"</li>
-                    <li>4. Click "Delete Account"</li>
-                    <li>5. Confirm deletion by typing your email address</li>
-                  </ol>
-                  <p className="text-sm text-gray-600 mt-3">
-                    ⚠️ This action is permanent and cannot be undone.
-                  </p>
-                </div>
-              </section>
+        <Panel title="Timeline" tone="success">
+          <Bullet>Immediate: account access disabled.</Bullet>
+          <Bullet>Within 7 days: personal data removed from active systems.</Bullet>
+          <Bullet>Within 30 days: backup purge where legally permitted.</Bullet>
+          <Bullet>Confirmation email sent when deletion completes.</Bullet>
+        </Panel>
 
-              <section>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">Manual Deletion Request</h2>
-                <p className="text-gray-700 leading-relaxed mb-4">
-                  If you're unable to access your account or prefer to request deletion manually, you can contact us directly:
-                </p>
-                
-                <div className="grid md:grid-cols-2 gap-6 mb-6">
-                  <div className="bg-gray-50 p-6 rounded-lg">
-                    <div className="flex items-center mb-3">
-                      <Mail className="w-5 h-5 text-blue-600 mr-2" />
-                      <h3 className="font-semibold text-gray-900">Email Request</h3>
-                    </div>
-                    <p className="text-sm text-gray-700 mb-3">
-                      Send an email with your deletion request to:
-                    </p>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="w-full"
-                      onClick={() => window.location.href = 'mailto:privacy@mealscout.com?subject=Data Deletion Request'}
-                      data-testid="button-email-deletion"
-                    >
-                      privacy@mealscout.com
-                    </Button>
-                  </div>
+        <Panel title="Facebook Login Data" tone="neutral">
+          <Bullet>MealScout removes Facebook-sourced profile data from our systems.</Bullet>
+          <Bullet>MealScout access tokens are revoked from our side.</Bullet>
+          <Bullet>Your Facebook account itself is not deleted.</Bullet>
+          <Bullet>For full disconnect, also revoke MealScout in Facebook app permissions.</Bullet>
+        </Panel>
 
-                  <div className="bg-gray-50 p-6 rounded-lg">
-                    <div className="flex items-center mb-3">
-                      <MessageCircle className="w-5 h-5 text-green-600 mr-2" />
-                      <h3 className="font-semibold text-gray-900">Contact Form</h3>
-                    </div>
-                    <p className="text-sm text-gray-700 mb-3">
-                      Submit a deletion request through our contact form:
-                    </p>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="w-full"
-                      onClick={() => window.location.href = '/contact?subject=data-deletion'}
-                      data-testid="button-contact-deletion"
-                    >
-                      Contact Form
-                    </Button>
-                  </div>
-                </div>
-              </section>
+        <div className="rounded-2xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-amber-200 text-sm flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <p>
+            This process supports privacy rights frameworks including GDPR and CCPA. We handle requests promptly and transparently.
+          </p>
+        </div>
 
-              <section>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">Required Information</h2>
-                <p className="text-gray-700 leading-relaxed mb-4">
-                  To process your deletion request, please provide the following information:
-                </p>
-                
-                <div className="bg-yellow-50 p-6 rounded-lg mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-3">Required Details:</h3>
-                  <ul className="text-gray-700 space-y-2 text-sm">
-                    <li>• Full name associated with your account</li>
-                    <li>• Email address used for registration</li>
-                    <li>• Phone number (if provided)</li>
-                    <li>• Reason for deletion (optional but helpful)</li>
-                    <li>• Any additional account identifiers you remember</li>
-                  </ul>
-                </div>
-              </section>
-
-              <section>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">What Gets Deleted</h2>
-                <p className="text-gray-700 leading-relaxed mb-4">
-                  When you request account deletion, we will permanently remove:
-                </p>
-                
-                <div className="grid md:grid-cols-2 gap-6 mb-6">
-                  <div className="bg-red-50 p-6 rounded-lg">
-                    <h3 className="font-semibold text-red-900 mb-3">Personal Data Removed:</h3>
-                    <ul className="text-red-800 space-y-1 text-sm">
-                      <li>• Profile information and photos</li>
-                      <li>• Email address and contact details</li>
-                      <li>• Location data and preferences</li>
-                      <li>• Order history and favorites</li>
-                      <li>• Reviews and ratings</li>
-                      <li>• Payment information</li>
-                      <li>• Communication records</li>
-                    </ul>
-                  </div>
-
-                  <div className="bg-gray-50 p-6 rounded-lg">
-                    <h3 className="font-semibold text-gray-900 mb-3">Data We May Retain:</h3>
-                    <ul className="text-gray-700 space-y-1 text-sm">
-                      <li>• Anonymous usage analytics</li>
-                      <li>• Financial records (tax requirements)</li>
-                      <li>• Legal compliance data</li>
-                      <li>• Fraud prevention records</li>
-                    </ul>
-                    <p className="text-xs text-gray-600 mt-2">
-                      *Retained data is anonymized and cannot be linked back to you
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              <section>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">Timeline & Process</h2>
-                <p className="text-gray-700 leading-relaxed mb-4">
-                  Our data deletion process follows these steps:
-                </p>
-                
-                <div className="bg-green-50 p-6 rounded-lg mb-6">
-                  <h3 className="font-semibold text-green-900 mb-3">Deletion Timeline:</h3>
-                  <div className="space-y-3 text-sm">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-green-200 rounded-full flex items-center justify-center text-green-800 font-semibold mr-3">1</div>
-                      <span className="text-green-800"><strong>Immediate:</strong> Account access disabled</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-green-200 rounded-full flex items-center justify-center text-green-800 font-semibold mr-3">2</div>
-                      <span className="text-green-800"><strong>Within 7 days:</strong> Personal data removed from active systems</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-green-200 rounded-full flex items-center justify-center text-green-800 font-semibold mr-3">3</div>
-                      <span className="text-green-800"><strong>Within 30 days:</strong> Data purged from backups (where legally permitted)</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-green-200 rounded-full flex items-center justify-center text-green-800 font-semibold mr-3">4</div>
-                      <span className="text-green-800"><strong>Confirmation:</strong> Email notification when deletion is complete</span>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">Facebook Login Data</h2>
-                <p className="text-gray-700 leading-relaxed mb-4">
-                  If you signed up using Facebook Login, deleting your MealScout account will:
-                </p>
-                
-                <div className="bg-blue-50 p-6 rounded-lg mb-6">
-                  <ul className="text-blue-800 space-y-2 text-sm">
-                    <li>• Remove all data MealScout obtained from Facebook</li>
-                    <li>• Revoke MealScout's access to your Facebook account</li>
-                    <li>• Delete any Facebook-sourced profile information</li>
-                    <li>• Remove integration with Facebook's sharing features</li>
-                  </ul>
-                  <p className="text-xs text-blue-700 mt-3">
-                    Note: This does not affect your Facebook account itself. To fully disconnect, also revoke MealScout's permissions in your Facebook app settings.
-                  </p>
-                </div>
-              </section>
-
-              <section>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">Need Help?</h2>
-                <p className="text-gray-700 leading-relaxed mb-4">
-                  If you have questions about data deletion or need assistance with the process:
-                </p>
-                
-                <div className="bg-gray-50 p-6 rounded-lg">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">Privacy Team</h3>
-                      <p className="text-sm text-gray-700">privacy@mealscout.com</p>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">Support Team</h3>
-                      <p className="text-sm text-gray-700">support@mealscout.com</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-600 mt-4">
-                    We typically respond to deletion requests within 1-2 business days.
-                  </p>
-                </div>
-              </section>
-
-              <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-lg mt-8">
-                <div className="flex items-center mb-2">
-                  <Trash2 className="w-6 h-6 mr-2" />
-                  <h3 className="text-lg font-semibold">Your Privacy Rights</h3>
-                </div>
-                <p className="text-sm opacity-90">
-                  This page complies with GDPR, CCPA, and other privacy regulations. You have the right to request deletion of your personal data at any time. We are committed to processing these requests promptly and transparently.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="rounded-2xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[color:var(--text-secondary)]">
+          <p className="font-semibold text-[color:var(--text-primary)] mb-1 flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-[color:var(--action-primary)]" />
+            Need help?
+          </p>
+          <p>Privacy: `privacy@mealscout.com`</p>
+          <p>Support: `support@mealscout.com`</p>
+        </div>
       </div>
     </div>
   );

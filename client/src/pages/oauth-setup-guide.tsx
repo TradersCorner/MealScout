@@ -169,7 +169,7 @@ export default function OAuthSetupGuide() {
             </InfoCard>
 
             <InfoCard title="5) Facebook Login Redirect URI" variant="neutral">
-              <p className="mb-2">Products -> Facebook Login -> Settings:</p>
+              <p className="mb-2">Products -&gt; Facebook Login -&gt; Settings:</p>
               <CodeLine>{baseUrl}/api/auth/facebook/callback</CodeLine>
             </InfoCard>
 
@@ -179,10 +179,10 @@ export default function OAuthSetupGuide() {
             </InfoCard>
 
             <InfoCard title="Common Errors" variant="danger">
-              <p>Privacy Policy URL is required -> set `{baseUrl}/privacy-policy`.</p>
-              <p>User Data Deletion URL missing -> set `{baseUrl}/data-deletion`.</p>
-              <p>OAuth Redirect URI mismatch -> add exact callback URL.</p>
-              <p>Cannot load URL -> ensure HTTPS and public accessibility.</p>
+              <p>Privacy Policy URL is required -&gt; set `{baseUrl}/privacy-policy`.</p>
+              <p>User Data Deletion URL missing -&gt; set `{baseUrl}/data-deletion`.</p>
+              <p>OAuth Redirect URI mismatch -&gt; add exact callback URL.</p>
+              <p>Cannot load URL -&gt; ensure HTTPS and public accessibility.</p>
             </InfoCard>
 
             <InfoCard title="Environment Variables" variant="warn">

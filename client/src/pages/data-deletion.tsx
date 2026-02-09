@@ -76,7 +76,7 @@ export default function DataDeletion() {
         </div>
 
         <Panel title="Quick Account Deletion (Self-Service)" tone="neutral">
-          <Bullet>Log in and go to `Profile` -> `Settings`.</Bullet>
+          <Bullet>Log in and go to `Profile` -&gt; `Settings`.</Bullet>
           <Bullet>Open `Account Management` and select `Delete Account`.</Bullet>
           <Bullet>Confirm with your account email.</Bullet>
           <Bullet>Deletion is permanent and cannot be undone.</Bullet>

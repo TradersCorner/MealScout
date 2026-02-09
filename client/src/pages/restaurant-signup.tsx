@@ -1017,8 +1017,20 @@ export default function RestaurantSignup() {
                   </div>
 
                   <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] p-4">
-                    <p className="text-sm font-medium text-[color:var(--text-primary)]">{COPY.pricing.formCard.title}</p>
-                    <p className="mt-1 text-xs text-[color:var(--text-secondary)]">{COPY.pricing.formCard.badge} {COPY.pricing.formCard.monthlyPrice} {COPY.pricing.formCard.monthlySuffix}</p>
+                    <p className="text-sm font-medium text-[color:var(--text-primary)]">
+                      {COPY.pricing.formCard.title}
+                    </p>
+                    <p className="mt-1 text-xs text-[color:var(--text-secondary)]">
+                      {COPY.pricing.formCard.badge}{" "}
+                      <span className="line-through opacity-70">
+                        {COPY.pricing.formCard.originalPrice}
+                      </span>{" "}
+                      <span className="font-semibold text-[color:var(--text-primary)]">
+                        {COPY.pricing.formCard.monthlyPrice}
+                      </span>{" "}
+                      {COPY.pricing.formCard.monthlySuffix} forever for signups
+                      before April 1, 2026
+                    </p>
                   </div>
 
                   <FormField control={form.control} name="acceptTerms" render={({ field }) => (

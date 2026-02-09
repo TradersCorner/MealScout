@@ -1911,9 +1911,9 @@ export class DatabaseStorage implements IStorage {
 
   // Restaurant operations
   async createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant> {
-    // NORTH STAR RULE: Apply pricing lock for restaurants (not trucks) created before March 1, 2026
+    // NORTH STAR RULE: Apply pricing lock for restaurants (not trucks) created before April 1, 2026
     const now = new Date();
-    const priceLockCutoff = new Date("2026-03-01");
+    const priceLockCutoff = new Date("2026-04-01");
     const isRestaurant = !restaurant.isFoodTruck;
 
     let restaurantData = { ...restaurant };

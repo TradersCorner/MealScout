@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+﻿import type { LucideIcon } from "lucide-react";
 import {
   Truck,
   Radar,
@@ -58,7 +58,7 @@ export const roleLandingContent = {
       "MealScout puts your truck on the map hosts actually use. Your profile, schedule, and booking flow are built for how you really move.",
     primaryCta: { label: "List my food truck", href: "/restaurant-signup" },
     secondaryCta: { label: "Sign in", href: "/login" },
-    bullets: ["Free to join", "Full access on sale $25/mo", "Built for bookings"],
+    bullets: ["Free to join", "Full access on sale: $50 -> $25/mo until April 1", "Built for bookings"],
     map: {
       kicker: "Concept map",
       title: "Host hotspots + time slots",
@@ -66,8 +66,8 @@ export const roleLandingContent = {
       hint: "Booking-ready locations",
     },
     stats: [
-      { label: "Bookings", value: "—" },
-      { label: "Next opening", value: "—" },
+      { label: "Bookings", value: "â€”" },
+      { label: "Next opening", value: "â€”" },
     ],
     valueProps: [
       {
@@ -80,7 +80,7 @@ export const roleLandingContent = {
       },
       {
         icon: Sparkles,
-        text: "Free to join, full access on sale $25/mo",
+        text: "Free to join, full access on sale: $50 -> $25/mo until April 1",
       },
     ],
     steps: [
@@ -112,10 +112,10 @@ export const roleLandingContent = {
     starter: {
       kicker: "Start now",
       title: "Free to join",
-      copy: "Build your presence today. Full access is on sale for $25/month.",
+      copy: "Build your presence today. Full access is on sale: $50 -> $25/month for signups before April 1, 2026.",
       bullets: [
         "Signup is free",
-        "Full access on sale for $25/month",
+        "Full access on sale: $50 -> $25/month before April 1, 2026",
         "Cancel anytime",
       ],
     },
@@ -148,8 +148,8 @@ export const roleLandingContent = {
       hint: "Always local",
     },
     stats: [
-      { label: "Profile views", value: "—" },
-      { label: "Specials live", value: "—" },
+      { label: "Profile views", value: "â€”" },
+      { label: "Specials live", value: "â€”" },
     ],
     valueProps: [
       {
@@ -194,10 +194,10 @@ export const roleLandingContent = {
     starter: {
       kicker: "Start now",
       title: "Free to join",
-      copy: "Build your profile today. Full access is on sale for $25/month.",
+      copy: "Build your profile today. Full access is on sale: $50 -> $25/month for signups before April 1, 2026.",
       bullets: [
         "Signup is free",
-        "Full access on sale for $25/month",
+        "Full access on sale: $50 -> $25/month before April 1, 2026",
         "Cancel anytime",
       ],
     },
@@ -230,8 +230,8 @@ export const roleLandingContent = {
       hint: "Local picks",
     },
     stats: [
-      { label: "Profile views", value: "—" },
-      { label: "Specials live", value: "—" },
+      { label: "Profile views", value: "â€”" },
+      { label: "Specials live", value: "â€”" },
     ],
     valueProps: [
       {
@@ -276,10 +276,10 @@ export const roleLandingContent = {
     starter: {
       kicker: "Start now",
       title: "Free to join",
-      copy: "Build your profile today. Full access is on sale for $25/month.",
+      copy: "Build your profile today. Full access is on sale: $50 -> $25/month for signups before April 1, 2026.",
       bullets: [
         "Signup is free",
-        "Full access on sale for $25/month",
+        "Full access on sale: $50 -> $25/month before April 1, 2026",
         "Cancel anytime",
       ],
     },
@@ -299,9 +299,9 @@ export const roleLandingContent = {
       canonicalPath: "/find-food",
     },
     badge: "MealScout for Diners",
-    headline: "Find what’s actually local.",
+    headline: "Find whatâ€™s actually local.",
     subhead:
-      "Discover food trucks, restaurants, and bars nearby—built by locals, updated by locals.",
+      "Discover food trucks, restaurants, and bars nearbyâ€”built by locals, updated by locals.",
     primaryCta: { label: "Start searching", href: "/search" },
     secondaryCta: { label: "Create account", href: "/customer-signup" },
     bullets: ["Local discovery", "Community recommendations", "Share to earn"],
@@ -312,13 +312,13 @@ export const roleLandingContent = {
       hint: "Local favorites",
     },
     stats: [
-      { label: "Nearby spots", value: "—" },
-      { label: "Specials live", value: "—" },
+      { label: "Nearby spots", value: "â€”" },
+      { label: "Specials live", value: "â€”" },
     ],
     valueProps: [
       {
         icon: MapPin,
-        text: "Find what’s open and nearby",
+        text: "Find whatâ€™s open and nearby",
       },
       {
         icon: Users,
@@ -338,7 +338,7 @@ export const roleLandingContent = {
       {
         icon: Utensils,
         title: "Discover specials",
-        copy: "See what’s live now and what locals recommend.",
+        copy: "See whatâ€™s live now and what locals recommend.",
       },
       {
         icon: Users,
@@ -349,7 +349,7 @@ export const roleLandingContent = {
     reasons: {
       title: "Why locals use MealScout",
       items: [
-        "No clutter — just real local options.",
+        "No clutter â€” just real local options.",
         "Recommendations are community-led.",
         "Everything updates in real time.",
         "Your shares always stay yours.",
@@ -394,8 +394,8 @@ export const roleLandingContent = {
       hint: "Bookable addresses",
     },
     stats: [
-      { label: "Locations listed", value: "—" },
-      { label: "Slots live", value: "—" },
+      { label: "Locations listed", value: "â€”" },
+      { label: "Slots live", value: "â€”" },
     ],
     valueProps: [
       {
@@ -476,8 +476,8 @@ export const roleLandingContent = {
       hint: "Local events",
     },
     stats: [
-      { label: "Events live", value: "—" },
-      { label: "Trucks booked", value: "—" },
+      { label: "Events live", value: "â€”" },
+      { label: "Trucks booked", value: "â€”" },
     ],
     valueProps: [
       {
@@ -537,3 +537,4 @@ export const roleLandingContent = {
     },
   },
 } satisfies Record<string, RoleLandingContent>;
+

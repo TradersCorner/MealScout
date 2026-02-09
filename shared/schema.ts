@@ -224,7 +224,7 @@ export const restaurants = pgTable("restaurants", {
   goldenPlateEarnedAt: timestamp("golden_plate_earned_at"),
   goldenPlateCount: integer("golden_plate_count").default(0), // Total times awarded (permanent record)
   rankingScore: integer("ranking_score").default(0), // Calculated from recommendations, favorites, reviews, deal usage
-  // Pricing lock (IMMUTABLE RULE: $25/month if claimed before March 1, 2026)
+  // Pricing lock (IMMUTABLE RULE: $25/month if claimed before April 1, 2026)
   lockedPriceCents: integer("locked_price_cents"), // Price is stored, never recalculated
   priceLockDate: timestamp("price_lock_date"), // When the price lock was applied
   priceLockReason: varchar("price_lock_reason"), // 'early_rollout' or other reason

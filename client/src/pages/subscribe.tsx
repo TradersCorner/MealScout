@@ -1,4 +1,4 @@
-import {
+﻿import {
   useStripe,
   Elements,
   PaymentElement,
@@ -188,8 +188,14 @@ const PlanSelector = ({
   onPromoCodeChange: (value: string) => void;
   onContinue: () => void;
 }) => {
-  const getPricingDisplay = () => "$50 -> $25/month";
-  const getPricingAmount = () => "$25";
+  const getPricingDisplay = () =>
+    "$25/month forever for signups before April 1, 2026";
+  const getPricingAmount = () => (
+    <>
+      <span className="mr-2 text-xl text-gray-400 line-through">$50</span>
+      $25
+    </>
+  );
 
   return (
     <div className="space-y-6">
@@ -753,7 +759,7 @@ export default function Subscribe() {
                   Change your billing frequency or apply a promo code
                 </p>
                 <p className="text-xs text-blue-600 font-medium mb-4">
-                  💡 Use code "BETA" for free access or "TEST1" for $1 testing
+                  ðŸ’¡ Use code "BETA" for free access or "TEST1" for $1 testing
                 </p>
                 <Button
                   onClick={showNewSubscription}
@@ -885,7 +891,7 @@ export default function Subscribe() {
                       Complete Your Payment
                     </h3>
                     <p className="text-sm text-gray-600">
-                        MealScout Restaurant Plan • $50 -&gt; $25/month
+                        MealScout Restaurant Plan - <span className="line-through">$50</span> $25/month (join before April 1, 2026)
                     </p>
                   </CardContent>
                 </Card>
@@ -925,3 +931,4 @@ export default function Subscribe() {
     </div>
   );
 }
+

@@ -1,15 +1,15 @@
-import { useEffect } from "react";
+﻿import { useEffect } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Store, Truck, MapPin, Calendar, Search } from "lucide-react";
+import { Store, MapPin, Calendar, Search } from "lucide-react";
 import Navigation from "@/components/navigation";
 import { SEOHead } from "@/components/seo-head";
 import { authDebugProbe } from "@/lib/authDebug";
 
 const HOME_TITLE = "MealScout | Food Truck Finder & Parking Sourcing";
 const HOME_DESCRIPTION =
-  "MealScout helps food trucks find real places to park and serve — and helps customers find where food trucks are today. Discover food trucks near you or scout verified parking spots, host locations, and opportunities to operate.";
+  "MealScout helps food trucks find real places to park and serve - and helps customers find where food trucks are today. Discover food trucks near you or scout verified parking spots, host locations, and opportunities to operate.";
 
 const canonicalUrl =
   typeof window !== "undefined"
@@ -40,7 +40,7 @@ const schemaData = {
       description: "Paid local discovery for food businesses",
       price: "25.00",
       priceCurrency: "USD",
-      availabilityStarts: "2026-03-01",
+      availabilityStarts: "2026-04-01",
       eligibleCustomerType: "Business",
     },
     {
@@ -72,20 +72,17 @@ export default function Home() {
       <Navigation />
 
       <main className="container max-w-4xl mx-auto px-4 py-12">
-        {/* Hero Section */}
         <div className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
             Find food trucks. Scout places to park.
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            MealScout helps food trucks find real places to park and serve — and
+            MealScout helps food trucks find real places to park and serve - and
             helps customers find where food trucks are today.
           </p>
         </div>
 
-        {/* Four Equal CTAs */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-          {/* List my food truck or restaurant */}
           <Link href="/restaurant-signup">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full border-2 hover:border-orange-500">
               <CardContent className="p-8">
@@ -97,7 +94,10 @@ export default function Home() {
                     List my food truck or restaurant
                   </h3>
                   <p className="text-sm text-gray-600">
-                    Join before March 1 and lock in $50 → $25/month forever
+                    Join before April 1 and lock in{" "}
+                    <span className="line-through text-gray-400">$50</span>{" "}
+                    <span className="font-semibold text-gray-900">$25/month</span>{" "}
+                    forever
                   </p>
                   <Button className="mt-4">Get Started</Button>
                 </div>
@@ -105,7 +105,6 @@ export default function Home() {
             </Card>
           </Link>
 
-          {/* Host food at my location */}
           <Link href="/host-signup">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full border-2 hover:border-emerald-500">
               <CardContent className="p-8">
@@ -127,7 +126,6 @@ export default function Home() {
             </Card>
           </Link>
 
-          {/* Need trucks for an event */}
           <Link href="/event-signup">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full border-2 hover:border-blue-500">
               <CardContent className="p-8">
@@ -149,7 +147,6 @@ export default function Home() {
             </Card>
           </Link>
 
-          {/* Find food near me */}
           <Link href="/search">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full border-2 hover:border-purple-500">
               <CardContent className="p-8">
@@ -172,14 +169,14 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* Trust Signals */}
         <div className="text-center text-sm text-gray-500 space-y-2">
           <p>
-            One identity → many claims → verified → coordinated → monetized
-            where fair
+            One identity - many claims - verified - coordinated - monetized where
+            fair
           </p>
           <p className="font-semibold text-orange-600">
-            🔒 $50 → $25/month forever for restaurants joining before March 1, 2026
+            Locked promo pricing: <span className="line-through">$50</span> $25/month
+            forever for restaurants joining before April 1, 2026
           </p>
           <p className="text-gray-700">
             MealScout is a food truck finder and parking sourcing tool. It is

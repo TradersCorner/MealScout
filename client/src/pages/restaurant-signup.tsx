@@ -625,7 +625,7 @@ export default function RestaurantSignup() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
+      <div className="min-h-screen bg-[var(--bg-layered)]">
         <BackHeader
           title={COPY.unauth.headerTitle}
           fallbackHref="/"
@@ -636,16 +636,16 @@ export default function RestaurantSignup() {
         <div className="px-3 py-3 max-w-4xl mx-auto">
           {/* Compact hero so the form stays above the fold */}
           <div className="text-center mb-3">
-            <div className="inline-flex items-center justify-center px-2 py-0.5 mb-1 rounded-full bg-white/70 border border-orange-200 text-[10px] font-medium text-orange-700 uppercase tracking-wide">
+            <div className="inline-flex items-center justify-center px-2 py-0.5 mb-1 rounded-full bg-[var(--bg-surface-muted)] border border-[color:var(--border-subtle)] text-[10px] font-medium text-[color:var(--text-secondary)] uppercase tracking-wide">
               {COPY.unauth.hero.badge}
             </div>
             <div className="w-10 h-10 mb-1 flex items-center justify-center mx-auto rounded-2xl bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 shadow-md">
               <Store className="w-5 h-5 text-white" />
             </div>
-            <h2 className="text-base font-bold text-gray-900 mb-1">
+            <h2 className="text-base font-bold text-[color:var(--text-primary)] mb-1">
               {COPY.unauth.hero.title}
             </h2>
-            <p className="hidden sm:block text-gray-700 text-xs leading-snug max-w-xl mx-auto mb-2">
+            <p className="hidden sm:block text-[color:var(--text-secondary)] text-xs leading-snug max-w-xl mx-auto mb-2">
               {COPY.unauth.hero.subtitle}
             </p>
             {/* Authentication Section */}
@@ -658,8 +658,8 @@ export default function RestaurantSignup() {
                       onClick={() => setAuthMode("signup")}
                       className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                         authMode === "signup"
-                          ? "bg-red-500 text-white"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          ? "bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)]"
+                          : "bg-[var(--bg-surface)] text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-muted)]"
                       }`}
                     >
                       {COPY.unauth.toggles.signup}
@@ -669,8 +669,8 @@ export default function RestaurantSignup() {
                       onClick={() => setAuthMode("login")}
                       className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                         authMode === "login"
-                          ? "bg-red-500 text-white"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          ? "bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)]"
+                          : "bg-[var(--bg-surface)] text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-muted)]"
                       }`}
                     >
                       {COPY.unauth.toggles.login}
@@ -683,7 +683,7 @@ export default function RestaurantSignup() {
                     onClick={() =>
                       (window.location.href = "/api/auth/google/restaurant")
                     }
-                    className="w-full bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center space-x-3 mb-4 shadow-sm"
+                    className="w-full bg-[var(--bg-card)] border border-[color:var(--border-subtle)] text-[color:var(--text-primary)] px-6 py-3 rounded-lg font-medium hover:bg-[var(--bg-surface-muted)] transition-colors duration-200 flex items-center justify-center space-x-3 mb-4 shadow-sm"
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24">
                       <path
@@ -707,8 +707,8 @@ export default function RestaurantSignup() {
                   </button>
 
                   <div className="relative mb-4">
-                    <hr className="border-gray-200" />
-                    <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-gray-500 text-sm">
+                    <hr className="border-[color:var(--border-subtle)]" />
+                    <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-[var(--bg-card)] px-3 text-[color:var(--text-secondary)] text-sm">
                       {COPY.unauth.divider.or}
                     </span>
                   </div>
@@ -776,7 +776,7 @@ export default function RestaurantSignup() {
                               </FormLabel>
                               <FormControl>
                                 <div className="relative">
-                                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-secondary)] w-4 h-4" />
                                   <Input
                                     data-testid="input-email"
                                     type="email"
@@ -842,7 +842,7 @@ export default function RestaurantSignup() {
                                     onClick={() =>
                                       setShowPassword(!showPassword)
                                     }
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-secondary)] hover:text-[color:var(--text-secondary)]"
                                   >
                                     {showPassword ? (
                                       <EyeOff className="w-4 h-4" />
@@ -887,7 +887,7 @@ export default function RestaurantSignup() {
                                         !showConfirmPassword
                                       )
                                     }
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-secondary)] hover:text-[color:var(--text-secondary)]"
                                   >
                                     {showConfirmPassword ? (
                                       <EyeOff className="w-4 h-4" />
@@ -904,7 +904,7 @@ export default function RestaurantSignup() {
                         <Button
                           data-testid="button-create-account"
                           type="submit"
-                          className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                          className="w-full action-primary hover:bg-[color:var(--action-hover)]"
                           disabled={signupMutation.isPending}
                         >
                           {signupMutation.isPending
@@ -929,7 +929,7 @@ export default function RestaurantSignup() {
                               </FormLabel>
                               <FormControl>
                                 <div className="relative">
-                                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-secondary)] w-4 h-4" />
                                   <Input
                                     data-testid="input-login-email"
                                     type="email"
@@ -974,7 +974,7 @@ export default function RestaurantSignup() {
                                     onClick={() =>
                                       setShowLoginPassword(!showLoginPassword)
                                     }
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-secondary)] hover:text-[color:var(--text-secondary)]"
                                   >
                                     {showLoginPassword ? (
                                       <EyeOff className="w-4 h-4" />
@@ -991,7 +991,7 @@ export default function RestaurantSignup() {
                         <Button
                           data-testid="button-signin"
                           type="submit"
-                          className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                          className="w-full action-primary hover:bg-[color:var(--action-hover)]"
                           disabled={loginMutation.isPending}
                         >
                           {loginMutation.isPending
@@ -1001,7 +1001,7 @@ export default function RestaurantSignup() {
                         <div className="text-center mt-4">
                           <Link href="/forgot-password">
                             <span
-                              className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer text-sm"
+                              className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)] font-medium cursor-pointer text-sm"
                               data-testid="link-forgot-password"
                             >
                               {COPY.unauth.forgotPassword}
@@ -1034,14 +1034,14 @@ export default function RestaurantSignup() {
                   />
                 </svg>
               </div>
-              <h3 className="font-bold text-gray-900 text-2xl mb-4">
+              <h3 className="font-bold text-[color:var(--text-primary)] text-2xl mb-4">
                 Reach More Customers
               </h3>
-              <p className="text-gray-600 text-lg leading-relaxed mb-4">
+              <p className="text-[color:var(--text-secondary)] text-lg leading-relaxed mb-4">
                 Target hungry customers within walking distance of your
                 restaurant when they're actively looking for deals.
               </p>
-              <ul className="text-gray-600 space-y-2">
+              <ul className="text-[color:var(--text-secondary)] space-y-2">
                 <li className="flex items-center">
                   <svg
                     className="w-4 h-4 text-green-500 mr-2"
@@ -1109,14 +1109,14 @@ export default function RestaurantSignup() {
                   />
                 </svg>
               </div>
-              <h3 className="font-bold text-gray-900 text-2xl mb-4">
+              <h3 className="font-bold text-[color:var(--text-primary)] text-2xl mb-4">
                 Fill Slow Periods
               </h3>
-              <p className="text-gray-600 text-lg leading-relaxed mb-4">
+              <p className="text-[color:var(--text-secondary)] text-lg leading-relaxed mb-4">
                 Boost revenue during off-peak hours with targeted lunch and
                 dinner deals that bring customers when you need them most.
               </p>
-              <ul className="text-gray-600 space-y-2">
+              <ul className="text-[color:var(--text-secondary)] space-y-2">
                 <li className="flex items-center">
                   <svg
                     className="w-4 h-4 text-green-500 mr-2"
@@ -1184,14 +1184,14 @@ export default function RestaurantSignup() {
                   />
                 </svg>
               </div>
-              <h3 className="font-bold text-gray-900 text-2xl mb-4">
+              <h3 className="font-bold text-[color:var(--text-primary)] text-2xl mb-4">
                 Track Performance
               </h3>
-              <p className="text-gray-600 text-lg leading-relaxed mb-4">
+              <p className="text-[color:var(--text-secondary)] text-lg leading-relaxed mb-4">
                 Get detailed analytics on your deal performance and optimize
                 your campaigns for maximum ROI and customer acquisition.
               </p>
-              <ul className="text-gray-600 space-y-2">
+              <ul className="text-[color:var(--text-secondary)] space-y-2">
                 <li className="flex items-center">
                   <svg
                     className="w-4 h-4 text-green-500 mr-2"
@@ -1245,31 +1245,31 @@ export default function RestaurantSignup() {
           </div>
 
           {/* Pricing Card */}
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/50 rounded-3xl p-12 shadow-2xl text-center mb-16">
-            <h3 className="font-bold text-gray-900 text-3xl mb-6">
+          <div className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-3xl p-12 shadow-clean-lg text-center mb-16">
+            <h3 className="font-bold text-[color:var(--text-primary)] text-3xl mb-6">
               {COPY.pricing.hero.title}
             </h3>
 
             {/* Single pricing tier */}
             <div className="max-w-2xl mx-auto">
-                <div className="bg-white/70 rounded-2xl p-8 border border-blue-200/30 mb-8">
+                <div className="bg-[var(--bg-surface)] rounded-2xl p-8 border border-[color:var(--border-subtle)] mb-8">
                   <div className="flex items-center justify-center mb-6">
-                    <span className="text-4xl font-semibold text-gray-400 line-through mr-3">
+                    <span className="text-4xl font-semibold text-[color:var(--text-secondary)] line-through mr-3">
                       {COPY.pricing.hero.originalPrice}
                     </span>
-                    <span className="text-6xl font-bold text-blue-600">
+                    <span className="text-6xl font-bold text-[color:var(--action-primary)]">
                       {COPY.pricing.hero.monthlyPrice}
                     </span>
-                    <span className="text-gray-600 text-2xl ml-2">
+                    <span className="text-[color:var(--text-secondary)] text-2xl ml-2">
                       {COPY.pricing.hero.monthlySuffix}
                     </span>
                   </div>
-                  <p className="text-gray-600 text-xl mb-6">
+                  <p className="text-[color:var(--text-secondary)] text-xl mb-6">
                     {COPY.pricing.hero.coreLine}
                   </p>
                 </div>
 
-              <h4 className="font-bold text-gray-900 text-xl mb-6">
+              <h4 className="font-bold text-[color:var(--text-primary)] text-xl mb-6">
                 {COPY.pricing.hero.everythingIncludedTitle}
               </h4>
               <div className="grid md:grid-cols-2 gap-4 text-left">
@@ -1291,7 +1291,7 @@ export default function RestaurantSignup() {
                             d="M5 13l4 4L19 7"
                           />
                         </svg>
-                        <span className="text-gray-700">{item}</span>
+                        <span className="text-[color:var(--text-secondary)]">{item}</span>
                       </div>
                     ))}
                 </div>
@@ -1313,7 +1313,7 @@ export default function RestaurantSignup() {
                             d="M5 13l4 4L19 7"
                           />
                         </svg>
-                        <span className="text-gray-700">{item}</span>
+                        <span className="text-[color:var(--text-secondary)]">{item}</span>
                       </div>
                     ))}
                 </div>
@@ -1323,10 +1323,10 @@ export default function RestaurantSignup() {
 
           {/* Final CTA */}
           <div className="text-center">
-            <h3 className="text-3xl font-bold text-gray-900 mb-4">
+            <h3 className="text-3xl font-bold text-[color:var(--text-primary)] mb-4">
               {COPY.unauth.finalCta.title}
             </h3>
-            <p className="text-gray-600 text-lg mb-8 max-w-2xl mx-auto">
+            <p className="text-[color:var(--text-secondary)] text-lg mb-8 max-w-2xl mx-auto">
               {COPY.unauth.finalCta.subtitle}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -1339,7 +1339,7 @@ export default function RestaurantSignup() {
                     signupSection.scrollIntoView({ behavior: "smooth" });
                   }
                 }}
-                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-10 py-4 rounded-2xl font-bold text-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
+                className="action-primary hover:bg-[color:var(--action-hover)] text-white px-10 py-4 rounded-2xl font-bold text-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
               >
                 {COPY.unauth.finalCta.primaryButton}
               </button>
@@ -1354,7 +1354,7 @@ export default function RestaurantSignup() {
                     setAuthMode("login");
                   }
                 }}
-                className="border-2 border-gray-300 hover:bg-gray-50 text-gray-700 hover:text-gray-800 px-10 py-4 rounded-2xl font-bold text-xl transition-all duration-200"
+                className="border border-[color:var(--border-subtle)] hover:bg-[var(--bg-surface-muted)] text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] px-10 py-4 rounded-2xl font-bold text-xl transition-all duration-200"
               >
                 {COPY.unauth.finalCta.secondaryButton}
               </button>
@@ -1366,7 +1366,7 @@ export default function RestaurantSignup() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
+    <div className="min-h-screen bg-[var(--bg-layered)]">
       <SEOHead
         title={COPY.meta.title}
         description={COPY.meta.description}
@@ -1400,13 +1400,13 @@ export default function RestaurantSignup() {
             <div className="absolute -bottom-3 -right-3 w-20 h-20 bg-white/20 rounded-full blur-xl"></div>
           </div>
           <h2
-            className="text-4xl font-bold text-gray-900 mb-4"
+            className="text-4xl font-bold text-[color:var(--text-primary)] mb-4"
             data-testid="text-hero-title"
           >
             {mainHero.title}
           </h2>
           <p
-            className="text-gray-600 text-xl leading-relaxed max-w-2xl mx-auto"
+            className="text-[color:var(--text-secondary)] text-xl leading-relaxed max-w-2xl mx-auto"
             data-testid="text-hero-subtitle"
           >
             {mainHero.subtitle}
@@ -1438,13 +1438,13 @@ export default function RestaurantSignup() {
               </svg>
             </div>
             <h3
-              className="font-bold text-gray-900 text-lg mb-2"
+              className="font-bold text-[color:var(--text-primary)] text-lg mb-2"
               data-testid="text-benefit-local-title"
             >
               {COPY.benefits.compact.local.title}
             </h3>
             <p
-              className="text-gray-600 leading-relaxed"
+              className="text-[color:var(--text-secondary)] leading-relaxed"
               data-testid="text-benefit-local-desc"
             >
               {COPY.benefits.compact.local.desc}
@@ -1468,13 +1468,13 @@ export default function RestaurantSignup() {
               </svg>
             </div>
             <h3
-              className="font-bold text-gray-900 text-lg mb-2"
+              className="font-bold text-[color:var(--text-primary)] text-lg mb-2"
               data-testid="text-benefit-meals-title"
             >
               {COPY.benefits.compact.allDay.title}
             </h3>
             <p
-              className="text-gray-600 leading-relaxed"
+              className="text-[color:var(--text-secondary)] leading-relaxed"
               data-testid="text-benefit-meals-desc"
             >
               {COPY.benefits.compact.allDay.desc}
@@ -1498,13 +1498,13 @@ export default function RestaurantSignup() {
               </svg>
             </div>
             <h3
-              className="font-bold text-gray-900 text-lg mb-2"
+              className="font-bold text-[color:var(--text-primary)] text-lg mb-2"
               data-testid="text-benefit-track-title"
             >
               {COPY.benefits.compact.track.title}
             </h3>
             <p
-              className="text-gray-600 leading-relaxed"
+              className="text-[color:var(--text-secondary)] leading-relaxed"
               data-testid="text-benefit-track-desc"
             >
               {COPY.benefits.compact.track.desc}
@@ -1517,14 +1517,16 @@ export default function RestaurantSignup() {
           <div className="flex items-center justify-center space-x-4 mb-4">
             <div
               className={`flex items-center space-x-2 ${
-                currentStep === "restaurant" ? "text-red-600" : "text-green-600"
+                currentStep === "restaurant"
+                  ? "text-[color:var(--action-primary)]"
+                  : "text-emerald-600"
               }`}
             >
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center ${
                   currentStep === "restaurant"
-                    ? "bg-red-100 border-2 border-red-600"
-                    : "bg-green-100"
+                    ? "bg-[var(--bg-surface-muted)] border-2 border-[color:var(--action-primary)]"
+                    : "bg-emerald-100"
                 }`}
               >
                 {currentStep === "verification" ? (
@@ -1535,19 +1537,19 @@ export default function RestaurantSignup() {
               </div>
               <span className="font-medium">{COPY.steps.businessDetails}</span>
             </div>
-            <div className="w-16 h-0.5 bg-gray-300"></div>
+            <div className="w-16 h-0.5 bg-[color:var(--border-subtle)]"></div>
             <div
               className={`flex items-center space-x-2 ${
                 currentStep === "verification"
-                  ? "text-red-600"
-                  : "text-gray-400"
+                  ? "text-[color:var(--action-primary)]"
+                  : "text-[color:var(--text-secondary)]"
               }`}
             >
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center ${
                   currentStep === "verification"
-                    ? "bg-red-100 border-2 border-red-600"
-                    : "bg-gray-100"
+                    ? "bg-[var(--bg-surface-muted)] border-2 border-[color:var(--action-primary)]"
+                    : "bg-[var(--bg-surface)]"
                 }`}
               >
                 <span className="font-bold">2</span>
@@ -1573,7 +1575,7 @@ export default function RestaurantSignup() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel
-                        className="text-lg font-semibold text-gray-900"
+                        className="text-lg font-semibold text-[color:var(--text-primary)]"
                         data-testid="label-business-name"
                       >
                         {COPY.forms.restaurant.nameLabel}
@@ -1582,7 +1584,7 @@ export default function RestaurantSignup() {
                         <Input
                           placeholder={COPY.forms.restaurant.namePlaceholder}
                           {...field}
-                          className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
+                          className="py-4 px-4 text-lg border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
                           data-testid="input-business-name"
                         />
                       </FormControl>
@@ -1597,7 +1599,7 @@ export default function RestaurantSignup() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel
-                        className="text-lg font-semibold text-gray-900"
+                        className="text-lg font-semibold text-[color:var(--text-primary)]"
                         data-testid="label-business-type"
                       >
                         {COPY.forms.restaurant.businessTypeLabel}
@@ -1608,7 +1610,7 @@ export default function RestaurantSignup() {
                       >
                         <FormControl>
                           <SelectTrigger
-                            className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md"
+                            className="py-4 px-4 text-lg border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md"
                             data-testid="select-business-type"
                           >
                             <SelectValue
@@ -1630,17 +1632,17 @@ export default function RestaurantSignup() {
                 />
 
                 {selectedBusinessType === "food_truck" && (
-                  <div className="space-y-3 rounded-xl border border-orange-200 bg-orange-50/60 p-4">
+                  <div className="space-y-3 rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] p-4">
                     <div>
-                      <h3 className="text-base font-semibold text-gray-900">
+                      <h3 className="text-base font-semibold text-[color:var(--text-primary)]">
                         {COPY.forms.restaurant.claimTitle}
                       </h3>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-[color:var(--text-secondary)]">
                         {COPY.forms.restaurant.claimDescription}
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">
+                      <label className="text-sm font-medium text-[color:var(--text-secondary)]">
                         {COPY.forms.restaurant.claimSearchLabel}
                       </label>
                       <div className="flex flex-col gap-2 sm:flex-row">
@@ -1650,7 +1652,7 @@ export default function RestaurantSignup() {
                           placeholder={
                             COPY.forms.restaurant.claimSearchPlaceholder
                           }
-                          className="py-3 px-4 text-base border-0 bg-white/80 focus:bg-white focus:ring-2 focus:ring-orange-400/30 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
+                          className="py-3 px-4 text-base border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
                           data-testid="input-claim-search"
                         />
                         <Button
@@ -1666,14 +1668,14 @@ export default function RestaurantSignup() {
                     </div>
 
                     {claimSelection && (
-                      <div className="rounded-lg border border-orange-200 bg-white px-3 py-2 text-sm">
-                        <div className="font-semibold text-gray-900">
+                      <div className="rounded-lg border border-[color:var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-sm">
+                        <div className="font-semibold text-[color:var(--text-primary)]">
                           {COPY.forms.restaurant.claimSelectedLabel}
                         </div>
-                        <div className="text-gray-700">
+                        <div className="text-[color:var(--text-secondary)]">
                           {claimSelection.name}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-[color:var(--text-secondary)]">
                           {claimSelection.address}
                           {claimSelection.city ? `, ${claimSelection.city}` : ""}
                           {claimSelection.state
@@ -1697,13 +1699,13 @@ export default function RestaurantSignup() {
                         {claimResults.map((listing) => (
                           <div
                             key={listing.id}
-                            className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
+                            className="flex flex-col gap-2 rounded-lg border border-[color:var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
                           >
                             <div>
-                              <div className="font-semibold text-gray-900">
+                              <div className="font-semibold text-[color:var(--text-primary)]">
                                 {listing.name}
                               </div>
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-[color:var(--text-secondary)]">
                                 {listing.address}
                                 {listing.city ? `, ${listing.city}` : ""}
                                 {listing.state ? `, ${listing.state}` : ""}
@@ -1723,11 +1725,11 @@ export default function RestaurantSignup() {
                     )}
 
                     {claimError && (
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-[color:var(--text-secondary)]">
                         {claimError}
                       </div>
                     )}
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-[color:var(--text-secondary)]">
                       {COPY.forms.restaurant.claimDisclaimer}
                     </div>
                   </div>
@@ -1739,7 +1741,7 @@ export default function RestaurantSignup() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel
-                        className="text-lg font-semibold text-gray-900"
+                        className="text-lg font-semibold text-[color:var(--text-primary)]"
                         data-testid="label-address"
                       >
                         {COPY.forms.restaurant.addressLabel}
@@ -1748,7 +1750,7 @@ export default function RestaurantSignup() {
                         <Input
                           placeholder={COPY.forms.restaurant.addressPlaceholder}
                           {...field}
-                          className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
+                          className="py-4 px-4 text-lg border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
                           data-testid="input-address"
                         />
                       </FormControl>
@@ -1764,7 +1766,7 @@ export default function RestaurantSignup() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel
-                          className="text-lg font-semibold text-gray-900"
+                          className="text-lg font-semibold text-[color:var(--text-primary)]"
                           data-testid="label-phone"
                         >
                           {COPY.forms.restaurant.phoneLabel}
@@ -1774,7 +1776,7 @@ export default function RestaurantSignup() {
                             type="tel"
                             placeholder={COPY.forms.restaurant.phonePlaceholder}
                             {...field}
-                            className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
+                            className="py-4 px-4 text-lg border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
                             data-testid="input-phone"
                           />
                         </FormControl>
@@ -1788,7 +1790,7 @@ export default function RestaurantSignup() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel
-                          className="text-lg font-semibold text-gray-900"
+                          className="text-lg font-semibold text-[color:var(--text-primary)]"
                           data-testid="label-cuisine"
                         >
                           {COPY.forms.restaurant.cuisineLabel}
@@ -1799,7 +1801,7 @@ export default function RestaurantSignup() {
                         >
                           <FormControl>
                             <SelectTrigger
-                              className="py-4 px-4 text-lg border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md"
+                              className="py-4 px-4 text-lg border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md"
                               data-testid="select-cuisine"
                             >
                               <SelectValue
@@ -1966,12 +1968,12 @@ export default function RestaurantSignup() {
                 </div>
 
                 {/* Business Profile Section */}
-                <div className="space-y-6 pt-6 border-t border-gray-200">
+                <div className="space-y-6 pt-6 border-t border-[color:var(--border-subtle)]">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-2">
                       Business Profile
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-[color:var(--text-secondary)]">
                       Help customers find you and understand what makes your
                       business special
                     </p>
@@ -1982,9 +1984,9 @@ export default function RestaurantSignup() {
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-base font-semibold text-gray-900">
+                        <FormLabel className="text-base font-semibold text-[color:var(--text-primary)]">
                           About Your Business{" "}
-                          <span className="text-sm font-normal text-gray-500">
+                          <span className="text-sm font-normal text-[color:var(--text-secondary)]">
                             (Optional)
                           </span>
                         </FormLabel>
@@ -1994,10 +1996,10 @@ export default function RestaurantSignup() {
                             {...field}
                             rows={4}
                             maxLength={500}
-                            className="w-full py-3 px-4 text-base border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200 resize-none"
+                            className="w-full py-3 px-4 text-base border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md transition-all duration-200 resize-none"
                           />
                         </FormControl>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-[color:var(--text-secondary)]">
                           {field.value?.length || 0}/500 characters
                         </p>
                         <FormMessage />
@@ -2011,9 +2013,9 @@ export default function RestaurantSignup() {
                       name="websiteUrl"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-base font-semibold text-gray-900">
+                          <FormLabel className="text-base font-semibold text-[color:var(--text-primary)]">
                             Website{" "}
-                            <span className="text-sm font-normal text-gray-500">
+                            <span className="text-sm font-normal text-[color:var(--text-secondary)]">
                               (Optional)
                             </span>
                           </FormLabel>
@@ -2022,7 +2024,7 @@ export default function RestaurantSignup() {
                               type="url"
                               placeholder="https://yourrestaurant.com"
                               {...field}
-                              className="py-4 px-4 text-base border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
+                              className="py-4 px-4 text-base border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
                             />
                           </FormControl>
                           <FormMessage />
@@ -2035,9 +2037,9 @@ export default function RestaurantSignup() {
                       name="instagramUrl"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-base font-semibold text-gray-900">
+                          <FormLabel className="text-base font-semibold text-[color:var(--text-primary)]">
                             Instagram{" "}
-                            <span className="text-sm font-normal text-gray-500">
+                            <span className="text-sm font-normal text-[color:var(--text-secondary)]">
                               (Optional)
                             </span>
                           </FormLabel>
@@ -2046,7 +2048,7 @@ export default function RestaurantSignup() {
                               type="url"
                               placeholder="https://instagram.com/yourrestaurant"
                               {...field}
-                              className="py-4 px-4 text-base border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
+                              className="py-4 px-4 text-base border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
                             />
                           </FormControl>
                           <FormMessage />
@@ -2060,9 +2062,9 @@ export default function RestaurantSignup() {
                     name="facebookPageUrl"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-base font-semibold text-gray-900">
+                        <FormLabel className="text-base font-semibold text-[color:var(--text-primary)]">
                           Facebook Business Page{" "}
-                          <span className="text-sm font-normal text-gray-500">
+                          <span className="text-sm font-normal text-[color:var(--text-secondary)]">
                             (Optional)
                           </span>
                         </FormLabel>
@@ -2071,7 +2073,7 @@ export default function RestaurantSignup() {
                             type="url"
                             placeholder="https://facebook.com/yourrestaurant"
                             {...field}
-                            className="py-4 px-4 text-base border-0 bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-red-500/20 rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
+                            className="py-4 px-4 text-base border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
                           />
                         </FormControl>
                         <FormMessage />
@@ -2080,10 +2082,10 @@ export default function RestaurantSignup() {
                   />
 
                   <div>
-                    <h4 className="text-base font-semibold text-gray-900 mb-3">
+                    <h4 className="text-base font-semibold text-[color:var(--text-primary)] mb-3">
                       Amenities
                     </h4>
-                    <p className="text-sm text-gray-600 mb-4">
+                    <p className="text-sm text-[color:var(--text-secondary)] mb-4">
                       Select features available at your location
                     </p>
                     <div className="space-y-3">
@@ -2091,7 +2093,7 @@ export default function RestaurantSignup() {
                         control={form.control}
                         name="hasParking"
                         render={({ field }) => (
-                          <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border border-gray-200 p-4 bg-white/50">
+                          <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border border-[color:var(--border-subtle)] p-4 bg-[var(--bg-surface)]">
                             <FormControl>
                               <Checkbox
                                 checked={field.value}
@@ -2099,7 +2101,7 @@ export default function RestaurantSignup() {
                               />
                             </FormControl>
                             <div className="flex-1">
-                              <FormLabel className="text-base font-medium text-gray-900 cursor-pointer">
+                              <FormLabel className="text-base font-medium text-[color:var(--text-primary)] cursor-pointer">
                                 Parking Available
                               </FormLabel>
                             </div>
@@ -2111,7 +2113,7 @@ export default function RestaurantSignup() {
                         control={form.control}
                         name="hasWifi"
                         render={({ field }) => (
-                          <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border border-gray-200 p-4 bg-white/50">
+                          <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border border-[color:var(--border-subtle)] p-4 bg-[var(--bg-surface)]">
                             <FormControl>
                               <Checkbox
                                 checked={field.value}
@@ -2119,7 +2121,7 @@ export default function RestaurantSignup() {
                               />
                             </FormControl>
                             <div className="flex-1">
-                              <FormLabel className="text-base font-medium text-gray-900 cursor-pointer">
+                              <FormLabel className="text-base font-medium text-[color:var(--text-primary)] cursor-pointer">
                                 Free Wi-Fi
                               </FormLabel>
                             </div>
@@ -2131,7 +2133,7 @@ export default function RestaurantSignup() {
                         control={form.control}
                         name="hasOutdoorSeating"
                         render={({ field }) => (
-                          <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border border-gray-200 p-4 bg-white/50">
+                          <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border border-[color:var(--border-subtle)] p-4 bg-[var(--bg-surface)]">
                             <FormControl>
                               <Checkbox
                                 checked={field.value}
@@ -2139,7 +2141,7 @@ export default function RestaurantSignup() {
                               />
                             </FormControl>
                             <div className="flex-1">
-                              <FormLabel className="text-base font-medium text-gray-900 cursor-pointer">
+                              <FormLabel className="text-base font-medium text-[color:var(--text-primary)] cursor-pointer">
                                 Outdoor Seating
                               </FormLabel>
                             </div>
@@ -2149,8 +2151,8 @@ export default function RestaurantSignup() {
                     </div>
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                    <p className="text-sm text-blue-900">
+                  <div className="bg-[var(--bg-surface-muted)] border border-[color:var(--border-subtle)] rounded-xl p-4">
+                    <p className="text-sm text-[color:var(--text-primary)]">
                       <strong>Note for Food Trucks & Bars:</strong> You can set
                       operating hours later in your dashboard. We know schedules
                       can be flexible!
@@ -2158,42 +2160,42 @@ export default function RestaurantSignup() {
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/50 rounded-2xl p-8 shadow-lg">
+                <div className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-2xl p-8 shadow-clean">
                   <h3
-                    className="font-bold text-gray-900 text-xl mb-6"
+                    className="font-bold text-[color:var(--text-primary)] text-xl mb-6"
                     data-testid="text-pricing-title"
                   >
                     {COPY.pricing.formCard.title}
                   </h3>
 
                   {/* Single Plan */}
-                  <div className="bg-white rounded-xl p-8 border-2 border-red-500 shadow-lg text-center mb-6 relative">
-                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-red-500 text-white text-sm font-bold px-4 py-1 rounded-full">
+                  <div className="bg-[var(--bg-surface)] rounded-xl p-8 border border-[color:var(--action-primary)] shadow-clean text-center mb-6 relative">
+                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)] text-sm font-bold px-4 py-1 rounded-full">
                       {COPY.pricing.formCard.badge}
                     </div>
-                    <div className="text-5xl font-bold text-red-600 mb-2">
-                      <span className="text-gray-400 line-through text-3xl mr-2 align-middle">
+                    <div className="text-5xl font-bold text-[color:var(--action-primary)] mb-2">
+                      <span className="text-[color:var(--text-secondary)] line-through text-3xl mr-2 align-middle">
                         {COPY.pricing.formCard.originalPrice}
                       </span>
                       {COPY.pricing.formCard.monthlyPrice}
                     </div>
-                    <div className="text-lg text-gray-600 mb-4">
+                    <div className="text-lg text-[color:var(--text-secondary)] mb-4">
                       {COPY.pricing.formCard.monthlySuffix}
                     </div>
-                    <div className="text-xl font-semibold text-gray-900 mb-4">
+                    <div className="text-xl font-semibold text-[color:var(--text-primary)] mb-4">
                       {COPY.pricing.formCard.unlimitedTitle}
                     </div>
-                    <div className="text-gray-600 text-base">
+                    <div className="text-[color:var(--text-secondary)] text-base">
                       {COPY.pricing.formCard.unlimitedBody}
                     </div>
                   </div>
 
                   {/* Features List */}
                   <div className="bg-[var(--bg-surface-muted)] rounded-lg p-6 border border-[color:var(--border-subtle)]">
-                    <h4 className="font-semibold text-gray-900 mb-4">
+                    <h4 className="font-semibold text-[color:var(--text-primary)] mb-4">
                       {COPY.pricing.formCard.everythingIncludedTitle}
                     </h4>
-                    <div className="grid md:grid-cols-2 gap-3 text-sm text-gray-700">
+                    <div className="grid md:grid-cols-2 gap-3 text-sm text-[color:var(--text-secondary)]">
                       {COPY.pricing.formCard.features.map((item) => (
                         <div key={item} className="flex items-center">
                           <svg
@@ -2218,11 +2220,11 @@ export default function RestaurantSignup() {
 
 
                 {/* NORTH STAR: Pricing Lock Notice */}
-                <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-6">
-                  <h4 className="font-bold text-orange-900 mb-2 flex items-center">
-                    🔒 Price Lock Guarantee
+                <div className="bg-[var(--bg-surface-muted)] border border-[color:var(--border-subtle)] rounded-xl p-6">
+                  <h4 className="font-bold text-[color:var(--text-primary)] mb-2 flex items-center">
+                    Price Lock Guarantee
                   </h4>
-                  <p className="text-sm text-orange-800 leading-relaxed">
+                  <p className="text-sm text-[color:var(--text-secondary)] leading-relaxed">
                     I understand businesses joining before{" "}
                     <strong>March 1, 2026</strong> are locked at{" "}
                     <strong>$50 -&gt; $25/month forever</strong>. This price lock applies
@@ -2245,18 +2247,18 @@ export default function RestaurantSignup() {
                       </FormControl>
                       <div className="space-y-1 leading-none">
                         <FormLabel
-                          className="text-gray-600 leading-relaxed text-base"
+                          className="text-[color:var(--text-secondary)] leading-relaxed text-base"
                           data-testid="label-terms"
                         >
                           {COPY.terms.labelPrefix}{" "}
                           <Link href="/terms-of-service">
-                            <span className="text-red-600 font-medium underline hover:text-red-700 cursor-pointer">
+                            <span className="text-[color:var(--accent-text)] font-medium underline hover:text-[color:var(--accent-text-hover)] cursor-pointer">
                               {COPY.terms.termsText}
                             </span>
                           </Link>{" "}
                           {COPY.terms.andText}{" "}
                           <Link href="/privacy-policy">
-                            <span className="text-red-600 font-medium underline hover:text-red-700 cursor-pointer">
+                            <span className="text-[color:var(--accent-text)] font-medium underline hover:text-[color:var(--accent-text-hover)] cursor-pointer">
                               {COPY.terms.privacyText}
                             </span>
                           </Link>
@@ -2269,7 +2271,7 @@ export default function RestaurantSignup() {
 
                 <Button
                   type="submit"
-                  className="w-full py-4 font-bold text-xl rounded-2xl bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white border-0 shadow-xl hover:shadow-2xl transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                  className="w-full py-4 font-bold text-xl rounded-2xl action-primary hover:bg-[color:var(--action-hover)] text-white border-0 shadow-xl hover:shadow-2xl transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                   disabled={createRestaurantMutation.isPending}
                   data-testid="button-start-trial"
                 >
@@ -2288,27 +2290,27 @@ export default function RestaurantSignup() {
             {/* Minimal verification header */}
             <div className="flex items-start justify-between">
               <div>
-                <div className="inline-flex items-center px-2 py-1 rounded-full bg-red-50 text-red-700 text-[10px] font-semibold uppercase tracking-wide mb-1">
+                <div className="inline-flex items-center px-2 py-1 rounded-full bg-[var(--bg-surface-muted)] text-[color:var(--action-primary)] text-[10px] font-semibold uppercase tracking-wide mb-1">
                   Verify business
                 </div>
-                <h2 className="text-base font-semibold text-gray-900">
+                <h2 className="text-base font-semibold text-[color:var(--text-primary)]">
                   {COPY.verification.title}
                 </h2>
-                <p className="text-xs text-gray-600 mt-1 max-w-md">
+                <p className="text-xs text-[color:var(--text-secondary)] mt-1 max-w-md">
                   {COPY.verification.intro}
                 </p>
               </div>
-              <Upload className="w-6 h-6 text-red-500" />
+              <Upload className="w-6 h-6 text-[color:var(--action-primary)]" />
             </div>
 
-            <Card className="border-dashed border-red-200 bg-red-50/40">
+            <Card className="border-dashed border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)]">
               <CardContent className="pt-4 pb-4">
-                <ul className="list-disc list-inside space-y-1 text-xs text-gray-700 ml-1">
+                <ul className="list-disc list-inside space-y-1 text-xs text-[color:var(--text-secondary)] ml-1">
                   {COPY.verification.bullets.map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
-                <p className="text-[11px] text-blue-800 bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mt-3">
+                <p className="text-[11px] text-[color:var(--text-secondary)] bg-[var(--bg-surface)] border border-[color:var(--border-subtle)] rounded-md px-3 py-2 mt-3">
                   {COPY.verification.whyVerify}
                 </p>
               </CardContent>
@@ -2344,7 +2346,7 @@ export default function RestaurantSignup() {
 
               <div className="flex flex-col sm:flex-row gap-3">
                 {claimSelection ? (
-                  <div className="text-xs text-gray-500 flex items-center">
+                  <div className="text-xs text-[color:var(--text-secondary)] flex items-center">
                     {COPY.verification.claimRequiredNote}
                   </div>
                 ) : (
@@ -2352,7 +2354,7 @@ export default function RestaurantSignup() {
                     type="button"
                     variant="outline"
                     onClick={handleSkipVerification}
-                    className="text-gray-600 hover:text-gray-800"
+                    className="text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
                     data-testid="button-skip-verification"
                   >
                     {COPY.verification.skipButton}
@@ -2364,7 +2366,7 @@ export default function RestaurantSignup() {
                     createVerificationRequestMutation.isPending ||
                     verificationDocuments.length === 0
                   }
-                  className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 flex items-center space-x-2"
+                  className="action-primary hover:bg-[color:var(--action-hover)] flex items-center space-x-2"
                   data-testid="button-submit-verification"
                 >
                   {createVerificationRequestMutation.isPending ? (
@@ -2386,3 +2388,9 @@ export default function RestaurantSignup() {
     </div>
   );
 }
+
+
+
+
+
+

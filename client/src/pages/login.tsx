@@ -129,7 +129,7 @@ export default function Login() {
             data-testid="button-google-signin"
           >
             {isProcessing ? (
-              <div className="animate-spin w-5 h-5 mr-3 border-2 border-gray-600 border-t-transparent rounded-full" />
+              <div className="animate-spin w-5 h-5 mr-3 border-2 border-[color:var(--text-secondary)] border-t-transparent rounded-full" />
             ) : (
               <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
                 <path
@@ -177,10 +177,10 @@ export default function Login() {
           {/* Divider */}
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className="w-full border-t border-[color:var(--border-subtle)]"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-4 text-gray-500">
+              <span className="bg-[var(--bg-card)] px-4 text-[color:var(--text-secondary)]">
                 Or continue with email
               </span>
             </div>
@@ -233,7 +233,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
                   data-testid="button-toggle-password"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -264,7 +264,7 @@ export default function Login() {
               <div className="text-center">
                 <Link
                   href="/forgot-password"
-                  className="text-red-600 hover:text-red-700 text-sm"
+                  className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)] text-sm"
                 >
                   Forgot your password?
                 </Link>
@@ -273,8 +273,8 @@ export default function Login() {
           )}
 
           {/* Trust indicators */}
-          <div className="pt-4 border-t border-gray-200">
-            <div className="flex items-center justify-center space-x-6 text-xs text-gray-500">
+          <div className="pt-4 border-t border-[color:var(--border-subtle)]">
+            <div className="flex items-center justify-center space-x-6 text-xs text-[color:var(--text-secondary)]">
               <div className="flex items-center space-x-1">
                 <svg
                   className="w-3 h-3 text-green-500"
@@ -329,31 +329,31 @@ export default function Login() {
 
         {/* Business Link */}
         <div className="mt-8 text-center">
-          <p className="text-gray-600 text-sm mb-3">
+          <p className="text-[color:var(--text-secondary)] text-sm mb-3">
             Looking to promote your business?
           </p>
           <Link href="/customer-signup?role=business">
             <button
-              className="py-2 px-4 font-medium text-blue-600 border-2 border-blue-300 hover:bg-blue-50 hover:border-blue-400 rounded-lg transition-all duration-200"
+              className="py-2 px-4 font-medium text-[color:var(--action-primary)] border border-[color:var(--action-primary)] hover:bg-[var(--bg-surface-muted)] rounded-lg transition-all duration-200"
               data-testid="link-business-signup"
             >
-              Business Sign Up →
+              Business Sign Up -&gt;
             </button>
           </Link>
         </div>
 
         {/* Legal Links */}
         <div className="mt-6 text-center">
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-[color:var(--text-secondary)]">
             By using MealScout, you agree to our{" "}
             <Link href="/terms-of-service">
-              <span className="text-blue-600 underline hover:text-blue-700 cursor-pointer">
+              <span className="text-[color:var(--accent-text)] underline hover:text-[color:var(--accent-text-hover)] cursor-pointer">
                 Terms of Service
               </span>
             </Link>{" "}
             and{" "}
             <Link href="/privacy-policy">
-              <span className="text-blue-600 underline hover:text-blue-700 cursor-pointer">
+              <span className="text-[color:var(--accent-text)] underline hover:text-[color:var(--accent-text-hover)] cursor-pointer">
                 Privacy Policy
               </span>
             </Link>
@@ -363,3 +363,4 @@ export default function Login() {
     </div>
   );
 }
+

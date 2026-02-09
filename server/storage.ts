@@ -2487,6 +2487,16 @@ export class DatabaseStorage implements IStorage {
     );
 
     const totalUsersCount = activeUsers.length;
+    const memberCountsTotal =
+      memberCounts.customer +
+      memberCounts.restaurantOwner +
+      memberCounts.foodTruck +
+      memberCounts.host +
+      memberCounts.eventCoordinator +
+      memberCounts.staff +
+      memberCounts.admin +
+      memberCounts.superAdmin +
+      memberCounts.other;
 
     // Approximate gross revenue from redeemed deal claims
     const revenueResult = await db
@@ -2503,6 +2513,8 @@ export class DatabaseStorage implements IStorage {
       totalRestaurants: totalRestaurants[0]?.count || 0,
       totalRestaurantProfiles: totalRestaurants[0]?.count || 0,
       totalRestaurantOwners: memberCounts.restaurantOwner,
+      memberCountsTotal,
+      unclassifiedUsers: Math.max(0, totalUsersCount - memberCountsTotal),
       totalDeals: totalDeals[0]?.count || 0,
       activeDeals: activeDeals[0]?.count || 0,
       totalClaims: totalClaims[0]?.count || 0,

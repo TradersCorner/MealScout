@@ -1561,7 +1561,7 @@ export default function RestaurantSignup() {
 
         {/* Restaurant Form */}
         {currentStep === "restaurant" && (
-          <div className="bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-xl p-8">
+          <div className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-2xl shadow-clean-lg p-8">
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit, handleRestaurantInvalid)}
@@ -2189,7 +2189,7 @@ export default function RestaurantSignup() {
                   </div>
 
                   {/* Features List */}
-                  <div className="bg-white/70 rounded-lg p-6 border border-gray-200/50">
+                  <div className="bg-[var(--bg-surface-muted)] rounded-lg p-6 border border-[color:var(--border-subtle)]">
                     <h4 className="font-semibold text-gray-900 mb-4">
                       {COPY.pricing.formCard.everythingIncludedTitle}
                     </h4>

@@ -127,7 +127,7 @@ Keep but inactive unless approved for activation:
 - [In Progress] Audit remaining legacy-styled pages and patch to current design system.
 - [In Progress] Verify parking pass visibility and event posting role rules in production.
 - [In Progress] Run map pin parity audit: host address count vs rendered pin count.
-- [Pending] Reconcile admin counts against DB queries and lock definitions.
+- [In Progress] Reconcile admin counts against DB queries and lock definitions.
 - [Pending] Run full booking and Stripe onboarding smoke test in production mode.
 
 ## Execution Log
@@ -136,3 +136,4 @@ Keep but inactive unless approved for activation:
 - `restaurant-signup` high-visibility header/card styles moved to current tokenized theme system.
 - Added `/api/admin/map-pin-audit` and a `Map Pin Parity` admin overview panel to quantify mapped vs missing host pins.
 - Reconciled admin restaurant metrics into explicit profile vs owner-account counts.
+- Added one-click admin geocode retry (`POST /api/admin/map-pin-audit/retry-geocode`) and wired it into the admin dashboard parity card.

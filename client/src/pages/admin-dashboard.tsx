@@ -53,6 +53,8 @@ interface DashboardStats {
   totalRestaurants: number;
   totalRestaurantProfiles?: number;
   totalRestaurantOwners?: number;
+  memberCountsTotal?: number;
+  unclassifiedUsers?: number;
   totalDeals: number;
   activeDeals: number;
   totalClaims: number;
@@ -1042,6 +1044,28 @@ export default function AdminDashboard() {
     queryKey: ["/api/admin/map-pin-audit"],
     enabled: !!adminUser && selectedTab === "overview",
     staleTime: 60 * 1000,
+  });
+  const retryMapPinGeocode = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/map-pin-audit/retry-geocode", {
+        limit: 50,
+      });
+      return res.json();
+    },
+    onSuccess: async (result: any) => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/admin/map-pin-audit"] });
+      toast({
+        title: "Map geocode retry complete",
+        description: `Updated ${result?.updated?.total ?? 0} locations.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Map geocode retry failed",
+        description: error?.message || "Unable to retry geocoding.",
+        variant: "destructive",
+      });
+    },
   });
 
   const { data: parkingPasses = [] } = useQuery<any[]>({
@@ -2309,6 +2333,10 @@ export default function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            <p className="text-xs text-muted-foreground mb-3">
+              Role total {dashboardStats.memberCountsTotal ?? 0} of {dashboardStats.totalUsers} users
+              {dashboardStats.unclassifiedUsers ? ` • ${dashboardStats.unclassifiedUsers} unclassified` : ""}
+            </p>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
               <div>
                 <p className="text-muted-foreground">Customers</p>
@@ -2376,6 +2404,16 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              <div className="flex justify-end mb-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => retryMapPinGeocode.mutate()}
+                  disabled={retryMapPinGeocode.isPending}
+                >
+                  {retryMapPinGeocode.isPending ? "Retrying..." : "Retry Missing Geocodes"}
+                </Button>
+              </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                 <div>
                   <p className="text-muted-foreground">Rendered host pins</p>

@@ -10,6 +10,7 @@ import { emailService } from "../emailService";
 import { db } from "../db";
 import multer from "multer";
 import { parseTruckImportFile } from "../utils/truckImport";
+import { forwardGeocode } from "../utils/geocoding";
 import {
   deals,
   eventBookings,
@@ -387,6 +388,170 @@ export function registerAdminManagementRoutes(app: Express) {
       } catch (error) {
         console.error("Error building map pin audit:", error);
         res.status(500).json({ message: "Failed to build map pin audit" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/map-pin-audit/retry-geocode",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const normalize = (value?: string | null) =>
+          (value || "").trim().toLowerCase();
+        const keyFor = (
+          address?: string | null,
+          city?: string | null,
+          state?: string | null,
+        ) => `${normalize(address)}|${normalize(city)}|${normalize(state)}`;
+        const hasCoords = (
+          lat?: string | number | null,
+          lng?: string | number | null,
+        ) =>
+          lat !== null &&
+          lat !== undefined &&
+          lng !== null &&
+          lng !== undefined &&
+          Number.isFinite(Number(lat)) &&
+          Number.isFinite(Number(lng));
+
+        const requestedLimit = Number(req.body?.limit ?? 30);
+        const limit = Number.isFinite(requestedLimit)
+          ? Math.max(1, Math.min(100, Math.floor(requestedLimit)))
+          : 30;
+
+        const hostProfiles = await db
+          .select({ host: hosts })
+          .from(hosts)
+          .innerJoin(users, eq(hosts.userId, users.id))
+          .where(
+            and(
+              sql`${hosts.address} IS NOT NULL`,
+              eq(hosts.isVerified, true),
+              or(eq(users.isDisabled, false), isNull(users.isDisabled)),
+            ),
+          );
+
+        const hostByUserId = new Map<string, (typeof hosts.$inferSelect)>();
+        hostProfiles.forEach(({ host }) => {
+          const existing = hostByUserId.get(host.userId);
+          if (!existing) {
+            hostByUserId.set(host.userId, host);
+            return;
+          }
+          if (!existing.isVerified && host.isVerified) {
+            hostByUserId.set(host.userId, host);
+          }
+        });
+
+        const hostUserIds = Array.from(hostByUserId.keys());
+        const additionalAddressRows = hostUserIds.length
+          ? await db
+              .select({ address: userAddresses })
+              .from(userAddresses)
+              .innerJoin(users, eq(userAddresses.userId, users.id))
+              .where(
+                and(
+                  inArray(userAddresses.userId, hostUserIds),
+                  sql`${userAddresses.address} IS NOT NULL`,
+                  or(eq(users.isDisabled, false), isNull(users.isDisabled)),
+                ),
+              )
+          : [];
+
+        const seenKeys = new Set<string>();
+        hostProfiles.forEach(({ host }) => {
+          seenKeys.add(keyFor(host.address, host.city, host.state));
+        });
+
+        const failures: Array<{ source: string; id: string; address: string }> = [];
+        let primaryUpdated = 0;
+        let additionalUpdated = 0;
+        let attempted = 0;
+
+        const primaryQueue = hostProfiles
+          .map(({ host }) => host)
+          .filter(
+            (host) =>
+              !hasCoords(host.latitude, host.longitude) &&
+              Boolean((host.address || "").trim()),
+          );
+
+        for (const host of primaryQueue) {
+          if (attempted >= limit) break;
+          const address = [host.address, host.city, host.state]
+            .map((part) => (part || "").trim())
+            .filter(Boolean)
+            .join(", ");
+          if (!address) continue;
+          attempted += 1;
+          const coords = await forwardGeocode(address).catch(() => null);
+          if (!coords) {
+            failures.push({ source: "host_profile", id: host.id, address });
+            continue;
+          }
+          await db
+            .update(hosts)
+            .set({
+              latitude: coords.lat.toString(),
+              longitude: coords.lng.toString(),
+              updatedAt: new Date(),
+            })
+            .where(eq(hosts.id, host.id));
+          primaryUpdated += 1;
+        }
+
+        const additionalQueue = additionalAddressRows
+          .map(({ address }) => address)
+          .filter((address) => {
+            if (hasCoords(address.latitude, address.longitude)) return false;
+            const key = keyFor(address.address, address.city, address.state);
+            if (!key) return false;
+            if (seenKeys.has(key)) return false;
+            seenKeys.add(key);
+            return true;
+          });
+
+        for (const addressRow of additionalQueue) {
+          if (attempted >= limit) break;
+          const address = [addressRow.address, addressRow.city, addressRow.state]
+            .map((part) => (part || "").trim())
+            .filter(Boolean)
+            .join(", ");
+          if (!address) continue;
+          attempted += 1;
+          const coords = await forwardGeocode(address).catch(() => null);
+          if (!coords) {
+            failures.push({ source: "host_address", id: addressRow.id, address });
+            continue;
+          }
+          await db
+            .update(userAddresses)
+            .set({
+              latitude: coords.lat.toString(),
+              longitude: coords.lng.toString(),
+              updatedAt: new Date(),
+            })
+            .where(eq(userAddresses.id, addressRow.id));
+          additionalUpdated += 1;
+        }
+
+        res.json({
+          attempted,
+          updated: {
+            primaryHostProfiles: primaryUpdated,
+            additionalHostAddresses: additionalUpdated,
+            total: primaryUpdated + additionalUpdated,
+          },
+          failures: {
+            total: failures.length,
+            sample: failures.slice(0, 20),
+          },
+        });
+      } catch (error) {
+        console.error("Error retrying admin map geocode:", error);
+        res.status(500).json({ message: "Failed to retry geocoding" });
       }
     },
   );

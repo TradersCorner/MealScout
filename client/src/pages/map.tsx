@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+﻿import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   MapContainer,
@@ -51,13 +51,6 @@ const userLocationIcon = L.divIcon({
   `,
   iconSize: [40, 40],
   iconAnchor: [20, 20],
-});
-
-const parkingPassPinIcon = new L.Icon({
-  iconUrl: mealScoutIcon,
-  iconSize: [36, 36],
-  iconAnchor: [18, 36],
-  popupAnchor: [0, -30],
 });
 
 // Component to handle map controls
@@ -113,7 +106,7 @@ function MapControls({
         data-testid="button-zoom-out"
         title="Zoom out"
       >
-        −
+        âˆ’
       </Button>
       <Button
         variant="secondary"
@@ -239,26 +232,6 @@ type EventLocation = {
   hostLongitude?: number | string | null;
 };
 
-type ParkingPassLocation = {
-  id: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  status: string;
-  host: HostLocation & { city?: string | null; state?: string | null };
-  bookings?: Array<{
-    truckId: string;
-    truckName: string;
-    slotType?: string | null;
-    spotNumber?: number | null;
-  }>;
-};
-
-type ParkingPassLocationGroup = {
-  key: string;
-  host: ParkingPassLocation["host"];
-  listings: ParkingPassLocation[];
-};
 
 type MapLocationsResponse = {
   hostLocations: HostLocation[];
@@ -297,9 +270,6 @@ const buildFullAddress = (
     parts.push("USA");
     return parts.join(", ");
   })();
-
-const getParkingLocationKey = (listing: ParkingPassLocation) =>
-  listing.host?.id || listing.host?.address || listing.id;
 
 const haversineKm = (a: GeoPoint, b: GeoPoint) => {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
@@ -443,9 +413,6 @@ export default function MapPage() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [hostCoords, setHostCoords] = useState<Record<string, GeoPoint>>({});
   const [eventCoords, setEventCoords] = useState<Record<string, GeoPoint>>({});
-  const [parkingCoords, setParkingCoords] = useState<Record<string, GeoPoint>>(
-    {},
-  );
   const geocodeInFlight = useRef(false);
   const [geocodeCache, setGeocodeCache] = useState<
     Record<string, GeocodeCacheEntry>
@@ -596,7 +563,10 @@ export default function MapPage() {
         }
       : undefined,
     enabled: !!userLocation,
-    staleTime: 30 * 1000,
+    staleTime: 5 * 1000,
+    refetchInterval: 15 * 1000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 
   const liveTrucks = Array.isArray(liveTrucksData) ? liveTrucksData : [];
@@ -707,15 +677,6 @@ export default function MapPage() {
     return eventCoords[event.id] ?? null;
   };
 
-  const resolveParkingCoords = (group: ParkingPassLocationGroup) => {
-    const lat = toNumberOrNull(group.host?.latitude);
-    const lng = toNumberOrNull(group.host?.longitude);
-    if (lat !== null && lng !== null) {
-      return { lat, lng };
-    }
-    return parkingCoords[group.key] ?? null;
-  };
-
   const formatDistance = (coords: GeoPoint) => {
     if (!userLocation) return null;
     const distanceKm = haversineKm(userLocation, coords);
@@ -723,11 +684,6 @@ export default function MapPage() {
       return `${Math.round(distanceKm * 1000)} m`;
     }
     return `${distanceKm.toFixed(1)} km`;
-  };
-
-  const formatSlotType = (slot?: string | null) => {
-    if (!slot) return null;
-    return slot.charAt(0).toUpperCase() + slot.slice(1);
   };
 
   const handleGeoAdClick = (ad: GeoAd) => {
@@ -743,45 +699,12 @@ export default function MapPage() {
       if (!res.ok) throw new Error("Failed to load map locations");
       return res.json();
     },
-    staleTime: 60 * 60 * 1000,
-    gcTime: 24 * 60 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
-
-  const { data: parkingPassLocations = [] } = useQuery<ParkingPassLocation[]>({
-    queryKey: ["/api/parking-pass"],
-    queryFn: async () => {
-      const res = await fetch("/api/parking-pass");
-      if (!res.ok) throw new Error("Failed to load parking pass listings");
-      return res.json();
-    },
-    staleTime: 15 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  });
-
-  const parkingPassLocationGroups = useMemo(() => {
-    const byHost = new Map<string, ParkingPassLocationGroup>();
-    const sorted = [...parkingPassLocations].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-    );
-    sorted.forEach((listing) => {
-      const key = getParkingLocationKey(listing);
-      const existing = byHost.get(key);
-      if (existing) {
-        existing.listings.push(listing);
-      } else {
-        byHost.set(key, { key, host: listing.host, listings: [listing] });
-      }
-    });
-    byHost.forEach((group) => {
-      group.listings.sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-      );
-    });
-    return Array.from(byHost.values());
-  }, [parkingPassLocations]);
 
   const visibleHostLocations = useMemo(() => {
     if (!mapBounds || !mapLocations?.hostLocations?.length) return [];
@@ -800,15 +723,6 @@ export default function MapPage() {
       return mapBounds.contains([coords.lat, coords.lng]);
     });
   }, [mapLocations, eventCoords, mapBounds]);
-
-  const visibleParkingLocations = useMemo(() => {
-    if (!mapBounds || !parkingPassLocationGroups.length) return [];
-    return parkingPassLocationGroups.filter((group) => {
-      const coords = resolveParkingCoords(group);
-      if (!coords) return false;
-      return mapBounds.contains([coords.lat, coords.lng]);
-    });
-  }, [parkingPassLocationGroups, parkingCoords, mapBounds]);
 
   const hostedTruckIds = useMemo(() => {
     const ids = new Set<string>();
@@ -870,21 +784,6 @@ export default function MapPage() {
       setEventCoords((prev) => ({ ...prev, ...nextEvents }));
     }
   }, [mapLocations]);
-
-  useEffect(() => {
-    if (!parkingPassLocationGroups.length) return;
-    const nextParking: Record<string, GeoPoint> = {};
-    parkingPassLocationGroups.forEach((group) => {
-      const lat = toNumberOrNull(group.host?.latitude);
-      const lng = toNumberOrNull(group.host?.longitude);
-      if (lat !== null && lng !== null) {
-        nextParking[group.key] = { lat, lng };
-      }
-    });
-    if (Object.keys(nextParking).length) {
-      setParkingCoords((prev) => ({ ...prev, ...nextParking }));
-    }
-  }, [parkingPassLocationGroups]);
 
   // Build a geocoding work list for any host/event without coordinates yet
   useEffect(() => {
@@ -1034,8 +933,7 @@ export default function MapPage() {
   const liveTruckPins = visibleLiveTrucks.length;
   const hostPins = visibleHostLocations.length;
   const eventPins = visibleEventLocations.length;
-  const parkingPins = visibleParkingLocations.length;
-  const activityPins = liveTruckPins + hostPins + eventPins + parkingPins;
+  const activityPins = liveTruckPins + hostPins + eventPins;
   const isNightTheme =
     typeof document !== "undefined" &&
     document.documentElement.classList.contains("theme-night");
@@ -1093,15 +991,15 @@ export default function MapPage() {
         {/* Location Status */}
         {locationError && (
           <div className="text-xs text-red-600 mb-4 bg-red-50 border border-red-200 rounded p-2">
-            ⚠️ {locationError}
+            âš ï¸ {locationError}
           </div>
         )}
         {userLocation && (
           <div className="text-xs text-muted-foreground mb-4">
-            📍 Located: {userLocation.lat.toFixed(4)},{" "}
+            ðŸ“ Located: {userLocation.lat.toFixed(4)},{" "}
             {userLocation.lng.toFixed(4)}
             {liveTruckPins > 0 &&
-              ` • ${liveTruckPins} truck${
+              ` â€¢ ${liveTruckPins} truck${
                 liveTruckPins === 1 ? "" : "s"
               } nearby`}
           </div>
@@ -1232,7 +1130,7 @@ export default function MapPage() {
                           {truck.name}
                         </div>
                         <div className="text-xs text-slate-500">
-                          Food Truck • Live now
+                          Food Truck â€¢ Live now
                         </div>
                         {distanceLabel && (
                           <div className="text-xs text-slate-500">
@@ -1369,7 +1267,7 @@ export default function MapPage() {
                           </div>
                         )}
                         <div className="text-xs text-slate-500">
-                          {new Date(event.date).toLocaleDateString()} •{" "}
+                          {new Date(event.date).toLocaleDateString()} â€¢{" "}
                           {event.startTime} - {event.endTime}
                         </div>
                         {distanceLabel && (
@@ -1391,130 +1289,6 @@ export default function MapPage() {
                             Directions
                           </Button>
                         </div>
-                      </div>
-                    </Popup>
-                  </Marker>
-                );
-              })}
-
-              {/* Parking Pass Markers */}
-              {visibleParkingLocations.map((group) => {
-                const coords = resolveParkingCoords(group);
-                if (!coords) return null;
-                const hostedTruck = findNearbyTruck(coords);
-                const primaryListing = group.listings[0];
-                if (!primaryListing) return null;
-                const hostName = primaryListing.host?.businessName || "Host location";
-                const title = hostedTruck ? hostedTruck.truck.name : hostName;
-                const subtitle = hostedTruck ? `At ${hostName}` : "Hosts food trucks";
-                const distanceLabel = formatDistance(coords);
-                const bookings = Array.isArray(primaryListing.bookings)
-                  ? primaryListing.bookings
-                  : [];
-                const bookingPreview = bookings.slice(0, 3);
-                return (
-                  <Marker
-                    key={`parking-${group.key}`}
-                    position={[coords.lat, coords.lng]}
-                    icon={parkingPassPinIcon}
-                  >
-                    <Popup>
-                      <div className="min-w-56 space-y-1 rounded-xl bg-white text-slate-900 p-3 shadow-lg">
-                        <div className="font-semibold text-sm">{title}</div>
-                        <div className="text-xs text-slate-500">{subtitle}</div>
-                        {primaryListing.host?.address && (
-                          <div className="text-xs text-slate-500">
-                            {primaryListing.host.address}
-                          </div>
-                        )}
-                        <div className="text-xs text-slate-500">
-                          {new Date(primaryListing.date).toLocaleDateString()} •{" "}
-                          {primaryListing.startTime === "00:00" &&
-                          primaryListing.endTime === "23:59"
-                            ? "Any time"
-                            : `${primaryListing.startTime} - ${primaryListing.endTime}`}
-                        </div>
-                        {distanceLabel && (
-                          <div className="text-xs text-slate-500">
-                            {distanceLabel} away
-                          </div>
-                        )}
-                        {bookings.length > 0 ? (
-                          <div className="pt-1 text-xs text-slate-500">
-                            <div className="font-semibold text-slate-700">
-                              Scheduled trucks
-                            </div>
-                            <div className="space-y-1 mt-1">
-                              {bookingPreview.map((booking) => {
-                                const slotLabel = formatSlotType(
-                                  booking.slotType,
-                                );
-                                const spotLabel = booking.spotNumber
-                                  ? `Spot ${booking.spotNumber}`
-                                  : null;
-                                return (
-                                  <div
-                                    key={`${booking.truckId}-${booking.slotType || "slot"}`}
-                                  >
-                                    {booking.truckName}
-                                    {slotLabel ? ` · ${slotLabel}` : ""}
-                                    {spotLabel ? ` · ${spotLabel}` : ""}
-                                  </div>
-                                );
-                              })}
-                              {bookings.length > 3 && (
-                                <div className="text-[11px] text-slate-400">
-                                  +{bookings.length - 3} more
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-xs text-slate-500 pt-1">
-                            No bookings yet
-                          </div>
-                        )}
-                        {hostedTruck ? (
-                          <div className="grid grid-cols-2 gap-2 pt-2">
-                            <Button
-                              size="sm"
-                              className="w-full"
-                              onClick={() => {
-                                window.location.href = `/restaurant/${hostedTruck.truck.id}`;
-                              }}
-                            >
-                              View menu
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => {
-                                window.open(
-                                  `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
-                                  "_blank",
-                                );
-                              }}
-                            >
-                              Directions
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="pt-2">
-                            <Button
-                              size="sm"
-                              className="w-full"
-                              onClick={() => {
-                                window.open(
-                                  `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
-                                  "_blank",
-                                );
-                              }}
-                            >
-                              Directions
-                            </Button>
-                          </div>
-                        )}
                       </div>
                     </Popup>
                   </Marker>
@@ -1659,3 +1433,4 @@ export default function MapPage() {
     </div>
   );
 }
+

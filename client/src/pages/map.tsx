@@ -743,7 +743,10 @@ export default function MapPage() {
       if (!res.ok) throw new Error("Failed to load map locations");
       return res.json();
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const { data: parkingPassLocations = [] } = useQuery<ParkingPassLocation[]>({
@@ -753,7 +756,9 @@ export default function MapPage() {
       if (!res.ok) throw new Error("Failed to load parking pass listings");
       return res.json();
     },
-    staleTime: 2 * 60 * 1000,
+    staleTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const parkingPassLocationGroups = useMemo(() => {
@@ -813,12 +818,6 @@ export default function MapPage() {
       const nearby = findNearbyTruck(coords);
       if (nearby) ids.add(nearby.truck.id);
     });
-    visibleParkingLocations.forEach((group) => {
-      const coords = resolveParkingCoords(group);
-      if (!coords) return;
-      const nearby = findNearbyTruck(coords);
-      if (nearby) ids.add(nearby.truck.id);
-    });
     visibleEventLocations.forEach((event) => {
       const coords = resolveEventCoords(event);
       if (!coords) return;
@@ -828,10 +827,8 @@ export default function MapPage() {
     return ids;
   }, [
     visibleHostLocations,
-    visibleParkingLocations,
     visibleEventLocations,
     resolveHostCoords,
-    resolveParkingCoords,
     resolveEventCoords,
     findNearbyTruck,
   ]);
@@ -939,24 +936,6 @@ export default function MapPage() {
       }
     });
 
-    parkingPassLocationGroups.forEach((group) => {
-      const lat = toNumberOrNull(group.host?.latitude);
-      const lng = toNumberOrNull(group.host?.longitude);
-      if (lat !== null && lng !== null) {
-        return;
-      }
-      if (!parkingCoords[group.key] && group.host?.address) {
-        const address = buildFullAddress(
-          group.host.address,
-          group.host.city,
-          group.host.state,
-        );
-        if (!address) return;
-        queue.push(`parking:${group.key}`);
-        addressByKey[`parking:${group.key}`] = address;
-      }
-    });
-
     if (queue.length) {
       const limitedQueue = queue.slice(0, maxQueue);
       geocodeInFlight.current = true;
@@ -964,7 +943,6 @@ export default function MapPage() {
         try {
           const newHostCoords: Record<string, GeoPoint> = {};
           const newEventCoords: Record<string, GeoPoint> = {};
-          const newParkingCoords: Record<string, GeoPoint> = {};
           const newFailures: Record<string, GeocodeFailureEntry> = {};
 
           for (const key of limitedQueue) {
@@ -977,8 +955,6 @@ export default function MapPage() {
                 newHostCoords[key.replace("host:", "")] = point;
               } else if (key.startsWith("event:")) {
                 newEventCoords[key.replace("event:", "")] = point;
-              } else if (key.startsWith("parking:")) {
-                newParkingCoords[key.replace("parking:", "")] = point;
               }
               continue;
             }
@@ -997,8 +973,6 @@ export default function MapPage() {
               newHostCoords[key.replace("host:", "")] = point;
             } else if (key.startsWith("event:")) {
               newEventCoords[key.replace("event:", "")] = point;
-            } else if (key.startsWith("parking:")) {
-              newParkingCoords[key.replace("parking:", "")] = point;
             }
             setGeocodeCache((prev) => ({
               ...prev,
@@ -1014,9 +988,6 @@ export default function MapPage() {
           if (Object.keys(newEventCoords).length) {
             setEventCoords((prev) => ({ ...prev, ...newEventCoords }));
           }
-          if (Object.keys(newParkingCoords).length) {
-            setParkingCoords((prev) => ({ ...prev, ...newParkingCoords }));
-          }
           if (Object.keys(newFailures).length) {
             setGeocodeFailures((prev) => ({ ...prev, ...newFailures }));
           }
@@ -1027,10 +998,8 @@ export default function MapPage() {
     }
   }, [
     mapLocations,
-    parkingPassLocationGroups,
     hostCoords,
     eventCoords,
-    parkingCoords,
     geocodeCache,
     geocodeFailures,
     mapBounds,

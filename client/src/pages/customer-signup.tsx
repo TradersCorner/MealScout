@@ -398,7 +398,7 @@ export default function CustomerSignup() {
                       <FormLabel>Email</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)] w-4 h-4" />
                           <Input
                             data-testid="input-email"
                             type="email"
@@ -495,7 +495,7 @@ export default function CustomerSignup() {
                             data-testid="button-toggle-password"
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
                           >
                             {showPassword ? (
                               <EyeOff className="w-4 h-4" />
@@ -531,7 +531,7 @@ export default function CustomerSignup() {
                             onClick={() =>
                               setShowConfirmPassword(!showConfirmPassword)
                             }
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
                           >
                             {showConfirmPassword ? (
                               <EyeOff className="w-4 h-4" />

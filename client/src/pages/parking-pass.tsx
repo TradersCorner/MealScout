@@ -2512,8 +2512,9 @@ export default function ParkingPassPage() {
     () =>
       filteredLocations
         .map((group) => {
+          // Prefer address-keyed coordinates so multi-address hosts don't collapse to one pin.
           const coords =
-            getLocationCoords(group.host) || parkingCoords[group.key] || null;
+            parkingCoords[group.key] || getLocationCoords(group.host) || null;
           return coords ? { group, coords } : null;
         })
         .filter(
@@ -2526,8 +2527,8 @@ export default function ParkingPassPage() {
   );
   const mapCenter = useMemo(() => {
     const activeCoords = activeLocation
-      ? getLocationCoords(activeLocation.host) ||
-        parkingCoords[activeLocation.key] ||
+      ? parkingCoords[activeLocation.key] ||
+        getLocationCoords(activeLocation.host) ||
         null
       : null;
     return activeCoords || mapLocations[0]?.coords || defaultMapCenter;
@@ -2536,15 +2537,11 @@ export default function ParkingPassPage() {
   useEffect(() => {
     if (geocodeInFlight.current) return;
     const queue = filteredLocations
-      .filter((group) => {
-        const hostLat = parseCoord(group.host?.latitude);
-        const hostLng = parseCoord(group.host?.longitude);
-        if (hostLat !== null && hostLng !== null) return false;
-        return (
-          !parkingCoords[group.key] && Boolean(buildHostAddress(group.host))
-        );
-      })
-      .slice(0, 8);
+      .filter(
+        (group) =>
+          !parkingCoords[group.key] && Boolean(buildHostAddress(group.host)),
+      )
+      .slice(0, 20);
 
     if (!queue.length) return;
 

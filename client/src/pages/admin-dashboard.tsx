@@ -84,6 +84,13 @@ interface PendingRestaurant {
 }
 
 interface MapPinAudit {
+  sampleMissing?: Array<{
+    id: string;
+    source: "open_request" | "host_profile" | "host_address";
+    address?: string | null;
+    city?: string | null;
+    state?: string | null;
+  }>;
   renderedHostLocationCandidates: {
     total: number;
     mappable: number;
@@ -1063,6 +1070,33 @@ export default function AdminDashboard() {
       toast({
         title: "Map geocode retry failed",
         description: error?.message || "Unable to retry geocoding.",
+        variant: "destructive",
+      });
+    },
+  });
+  const retryMapPinGeocodeItem = useMutation({
+    mutationFn: async (payload: {
+      source: "open_request" | "host_profile" | "host_address";
+      id: string;
+    }) => {
+      const res = await apiRequest(
+        "POST",
+        "/api/admin/map-pin-audit/retry-geocode-item",
+        payload,
+      );
+      return res.json();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/admin/map-pin-audit"] });
+      toast({
+        title: "Location updated",
+        description: "Geocode retried for the selected location.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Location retry failed",
+        description: error?.message || "Unable to retry this location.",
         variant: "destructive",
       });
     },
@@ -2444,6 +2478,39 @@ export default function AdminDashboard() {
                   </p>
                 </div>
               </div>
+              {!!mapPinAudit.sampleMissing?.length && (
+                <div className="mt-4 space-y-2">
+                  <p className="text-xs text-muted-foreground">Sample missing locations</p>
+                  {mapPinAudit.sampleMissing.map((missing) => (
+                    <div
+                      key={`${missing.source}:${missing.id}`}
+                      className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 rounded-md border border-[color:var(--border-subtle)] p-2"
+                    >
+                      <div className="text-xs">
+                        <div className="font-medium text-foreground">
+                          {[missing.address, missing.city, missing.state]
+                            .filter(Boolean)
+                            .join(", ") || "(no address)"}
+                        </div>
+                        <div className="text-muted-foreground">{missing.source}</div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={retryMapPinGeocodeItem.isPending}
+                        onClick={() =>
+                          retryMapPinGeocodeItem.mutate({
+                            source: missing.source,
+                            id: missing.id,
+                          })
+                        }
+                      >
+                        Retry row
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

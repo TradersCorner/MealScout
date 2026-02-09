@@ -25,6 +25,7 @@ import {
   truckClaimRequests,
   users,
   userAddresses,
+  locationRequests,
   affiliateShareEvents,
   affiliateCommissionLedger,
   affiliateWithdrawals,
@@ -552,6 +553,114 @@ export function registerAdminManagementRoutes(app: Express) {
       } catch (error) {
         console.error("Error retrying admin map geocode:", error);
         res.status(500).json({ message: "Failed to retry geocoding" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/map-pin-audit/retry-geocode-item",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const source = String(req.body?.source || "");
+        const id = String(req.body?.id || "");
+        if (!source || !id) {
+          return res.status(400).json({ message: "source and id are required" });
+        }
+
+        if (source === "host_profile") {
+          const rows = await db.select().from(hosts).where(eq(hosts.id, id)).limit(1);
+          const host = rows[0];
+          if (!host) return res.status(404).json({ message: "Host not found" });
+          const address = [host.address, host.city, host.state]
+            .map((part) => (part || "").trim())
+            .filter(Boolean)
+            .join(", ");
+          if (!address) {
+            return res.status(400).json({ message: "Host address is empty" });
+          }
+          const coords = await forwardGeocode(address).catch(() => null);
+          if (!coords) {
+            return res.status(422).json({ message: "Unable to geocode host address" });
+          }
+          await db
+            .update(hosts)
+            .set({
+              latitude: coords.lat.toString(),
+              longitude: coords.lng.toString(),
+              updatedAt: new Date(),
+            })
+            .where(eq(hosts.id, id));
+          return res.json({ ok: true, source, id, address, coords });
+        }
+
+        if (source === "host_address") {
+          const rows = await db
+            .select()
+            .from(userAddresses)
+            .where(eq(userAddresses.id, id))
+            .limit(1);
+          const addressRow = rows[0];
+          if (!addressRow) {
+            return res.status(404).json({ message: "Host address not found" });
+          }
+          const address = [addressRow.address, addressRow.city, addressRow.state]
+            .map((part) => (part || "").trim())
+            .filter(Boolean)
+            .join(", ");
+          if (!address) {
+            return res.status(400).json({ message: "Address is empty" });
+          }
+          const coords = await forwardGeocode(address).catch(() => null);
+          if (!coords) {
+            return res.status(422).json({ message: "Unable to geocode host address" });
+          }
+          await db
+            .update(userAddresses)
+            .set({
+              latitude: coords.lat.toString(),
+              longitude: coords.lng.toString(),
+              updatedAt: new Date(),
+            })
+            .where(eq(userAddresses.id, id));
+          return res.json({ ok: true, source, id, address, coords });
+        }
+
+        if (source === "open_request") {
+          const rows = await db
+            .select()
+            .from(locationRequests)
+            .where(eq(locationRequests.id, id))
+            .limit(1);
+          const requestRow = rows[0];
+          if (!requestRow) {
+            return res.status(404).json({ message: "Open request not found" });
+          }
+          const address = (requestRow.address || "").trim();
+          if (!address) {
+            return res.status(400).json({ message: "Open request address is empty" });
+          }
+          const coords = await forwardGeocode(address).catch(() => null);
+          if (!coords) {
+            return res
+              .status(422)
+              .json({ message: "Unable to geocode open request address" });
+          }
+          await db
+            .update(locationRequests)
+            .set({
+              latitude: coords.lat.toString(),
+              longitude: coords.lng.toString(),
+            })
+            .where(eq(locationRequests.id, id));
+          return res.json({ ok: true, source, id, address, coords });
+        }
+
+        return res.status(400).json({ message: "Unsupported source type" });
+      } catch (error) {
+        console.error("Error retrying map geocode item:", error);
+        res.status(500).json({ message: "Failed to retry geocode item" });
       }
     },
   );

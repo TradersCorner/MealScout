@@ -137,3 +137,4 @@ Keep but inactive unless approved for activation:
 - Added `/api/admin/map-pin-audit` and a `Map Pin Parity` admin overview panel to quantify mapped vs missing host pins.
 - Reconciled admin restaurant metrics into explicit profile vs owner-account counts.
 - Added one-click admin geocode retry (`POST /api/admin/map-pin-audit/retry-geocode`) and wired it into the admin dashboard parity card.
+- Added row-level retry (`POST /api/admin/map-pin-audit/retry-geocode-item`) with sample missing locations listed directly in admin.

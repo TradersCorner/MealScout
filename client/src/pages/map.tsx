@@ -254,6 +254,12 @@ type ParkingPassLocation = {
   }>;
 };
 
+type ParkingPassLocationGroup = {
+  key: string;
+  host: ParkingPassLocation["host"];
+  listings: ParkingPassLocation[];
+};
+
 type MapLocationsResponse = {
   hostLocations: HostLocation[];
   eventLocations: EventLocation[];
@@ -291,6 +297,9 @@ const buildFullAddress = (
     parts.push("USA");
     return parts.join(", ");
   })();
+
+const getParkingLocationKey = (listing: ParkingPassLocation) =>
+  listing.host?.id || listing.host?.address || listing.id;
 
 const haversineKm = (a: GeoPoint, b: GeoPoint) => {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
@@ -698,13 +707,13 @@ export default function MapPage() {
     return eventCoords[event.id] ?? null;
   };
 
-  const resolveParkingCoords = (event: ParkingPassLocation) => {
-    const lat = toNumberOrNull(event.host?.latitude);
-    const lng = toNumberOrNull(event.host?.longitude);
+  const resolveParkingCoords = (group: ParkingPassLocationGroup) => {
+    const lat = toNumberOrNull(group.host?.latitude);
+    const lng = toNumberOrNull(group.host?.longitude);
     if (lat !== null && lng !== null) {
       return { lat, lng };
     }
-    return parkingCoords[event.id] ?? null;
+    return parkingCoords[group.key] ?? null;
   };
 
   const formatDistance = (coords: GeoPoint) => {
@@ -747,16 +756,24 @@ export default function MapPage() {
     staleTime: 2 * 60 * 1000,
   });
 
-  const uniqueParkingPassLocations = useMemo(() => {
-    const byHost = new Map<string, ParkingPassLocation>();
+  const parkingPassLocationGroups = useMemo(() => {
+    const byHost = new Map<string, ParkingPassLocationGroup>();
     const sorted = [...parkingPassLocations].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
     );
-    sorted.forEach((event) => {
-      const key = event.host?.id || event.host?.address || event.id;
-      if (!byHost.has(key)) {
-        byHost.set(key, event);
+    sorted.forEach((listing) => {
+      const key = getParkingLocationKey(listing);
+      const existing = byHost.get(key);
+      if (existing) {
+        existing.listings.push(listing);
+      } else {
+        byHost.set(key, { key, host: listing.host, listings: [listing] });
       }
+    });
+    byHost.forEach((group) => {
+      group.listings.sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      );
     });
     return Array.from(byHost.values());
   }, [parkingPassLocations]);
@@ -780,13 +797,13 @@ export default function MapPage() {
   }, [mapLocations, eventCoords, mapBounds]);
 
   const visibleParkingLocations = useMemo(() => {
-    if (!mapBounds || !uniqueParkingPassLocations.length) return [];
-    return uniqueParkingPassLocations.filter((event) => {
-      const coords = resolveParkingCoords(event);
+    if (!mapBounds || !parkingPassLocationGroups.length) return [];
+    return parkingPassLocationGroups.filter((group) => {
+      const coords = resolveParkingCoords(group);
       if (!coords) return false;
       return mapBounds.contains([coords.lat, coords.lng]);
     });
-  }, [uniqueParkingPassLocations, parkingCoords, mapBounds]);
+  }, [parkingPassLocationGroups, parkingCoords, mapBounds]);
 
   const hostedTruckIds = useMemo(() => {
     const ids = new Set<string>();
@@ -796,8 +813,8 @@ export default function MapPage() {
       const nearby = findNearbyTruck(coords);
       if (nearby) ids.add(nearby.truck.id);
     });
-    visibleParkingLocations.forEach((event) => {
-      const coords = resolveParkingCoords(event);
+    visibleParkingLocations.forEach((group) => {
+      const coords = resolveParkingCoords(group);
       if (!coords) return;
       const nearby = findNearbyTruck(coords);
       if (nearby) ids.add(nearby.truck.id);
@@ -858,19 +875,19 @@ export default function MapPage() {
   }, [mapLocations]);
 
   useEffect(() => {
-    if (!uniqueParkingPassLocations.length) return;
+    if (!parkingPassLocationGroups.length) return;
     const nextParking: Record<string, GeoPoint> = {};
-    uniqueParkingPassLocations.forEach((event) => {
-      const lat = toNumberOrNull(event.host?.latitude);
-      const lng = toNumberOrNull(event.host?.longitude);
+    parkingPassLocationGroups.forEach((group) => {
+      const lat = toNumberOrNull(group.host?.latitude);
+      const lng = toNumberOrNull(group.host?.longitude);
       if (lat !== null && lng !== null) {
-        nextParking[event.id] = { lat, lng };
+        nextParking[group.key] = { lat, lng };
       }
     });
     if (Object.keys(nextParking).length) {
       setParkingCoords((prev) => ({ ...prev, ...nextParking }));
     }
-  }, [uniqueParkingPassLocations]);
+  }, [parkingPassLocationGroups]);
 
   // Build a geocoding work list for any host/event without coordinates yet
   useEffect(() => {
@@ -922,21 +939,21 @@ export default function MapPage() {
       }
     });
 
-    uniqueParkingPassLocations.forEach((event) => {
-      const lat = toNumberOrNull(event.host?.latitude);
-      const lng = toNumberOrNull(event.host?.longitude);
+    parkingPassLocationGroups.forEach((group) => {
+      const lat = toNumberOrNull(group.host?.latitude);
+      const lng = toNumberOrNull(group.host?.longitude);
       if (lat !== null && lng !== null) {
         return;
       }
-      if (!parkingCoords[event.id] && event.host?.address) {
+      if (!parkingCoords[group.key] && group.host?.address) {
         const address = buildFullAddress(
-          event.host.address,
-          event.host.city,
-          event.host.state,
+          group.host.address,
+          group.host.city,
+          group.host.state,
         );
         if (!address) return;
-        queue.push(`parking:${event.id}`);
-        addressByKey[`parking:${event.id}`] = address;
+        queue.push(`parking:${group.key}`);
+        addressByKey[`parking:${group.key}`] = address;
       }
     });
 
@@ -1010,7 +1027,7 @@ export default function MapPage() {
     }
   }, [
     mapLocations,
-    uniqueParkingPassLocations,
+    parkingPassLocationGroups,
     hostCoords,
     eventCoords,
     parkingCoords,
@@ -1412,21 +1429,23 @@ export default function MapPage() {
               })}
 
               {/* Parking Pass Markers */}
-              {visibleParkingLocations.map((event) => {
-                const coords = resolveParkingCoords(event);
+              {visibleParkingLocations.map((group) => {
+                const coords = resolveParkingCoords(group);
                 if (!coords) return null;
                 const hostedTruck = findNearbyTruck(coords);
-                const hostName = event.host?.businessName || "Host location";
+                const primaryListing = group.listings[0];
+                if (!primaryListing) return null;
+                const hostName = primaryListing.host?.businessName || "Host location";
                 const title = hostedTruck ? hostedTruck.truck.name : hostName;
                 const subtitle = hostedTruck ? `At ${hostName}` : "Hosts food trucks";
                 const distanceLabel = formatDistance(coords);
-                const bookings = Array.isArray(event.bookings)
-                  ? event.bookings
+                const bookings = Array.isArray(primaryListing.bookings)
+                  ? primaryListing.bookings
                   : [];
                 const bookingPreview = bookings.slice(0, 3);
                 return (
                   <Marker
-                    key={`parking-${event.id}`}
+                    key={`parking-${group.key}`}
                     position={[coords.lat, coords.lng]}
                     icon={parkingPassPinIcon}
                   >
@@ -1434,17 +1453,17 @@ export default function MapPage() {
                       <div className="min-w-56 space-y-1 rounded-xl bg-white text-slate-900 p-3 shadow-lg">
                         <div className="font-semibold text-sm">{title}</div>
                         <div className="text-xs text-slate-500">{subtitle}</div>
-                        {event.host?.address && (
+                        {primaryListing.host?.address && (
                           <div className="text-xs text-slate-500">
-                            {event.host.address}
+                            {primaryListing.host.address}
                           </div>
                         )}
                         <div className="text-xs text-slate-500">
-                          {new Date(event.date).toLocaleDateString()} •{" "}
-                          {event.startTime === "00:00" &&
-                          event.endTime === "23:59"
+                          {new Date(primaryListing.date).toLocaleDateString()} •{" "}
+                          {primaryListing.startTime === "00:00" &&
+                          primaryListing.endTime === "23:59"
                             ? "Any time"
-                            : `${event.startTime} - ${event.endTime}`}
+                            : `${primaryListing.startTime} - ${primaryListing.endTime}`}
                         </div>
                         {distanceLabel && (
                           <div className="text-xs text-slate-500">

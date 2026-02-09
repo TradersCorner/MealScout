@@ -95,7 +95,7 @@ export default function Sitemap() {
     {
       category: "Legal & Support",
       icon: Shield,
-      color: "bg-gray-100 text-gray-600",
+      color: "bg-gray-100 text-[color:var(--text-secondary)]",
       pages: [
         { title: "Privacy Policy", href: "/privacy-policy", description: "How we protect and use your data" },
         { title: "Terms of Service", href: "/terms-of-service", description: "Terms and conditions for using MealScout" },
@@ -112,7 +112,7 @@ export default function Sitemap() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-[var(--bg-layered)]">
       <SEOHead
         title="Sitemap - Complete MealScout Navigation & Page Directory"
         description="Browse all MealScout pages, features, and sections. Find deals, account management, restaurant partnerships, support resources, and more in our complete site directory."
@@ -125,7 +125,7 @@ export default function Sitemap() {
         title="Site Map"
         fallbackHref="/"
         icon={Globe}
-        className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
       />
 
       <div className="px-4 py-8 max-w-6xl mx-auto">
@@ -134,8 +134,8 @@ export default function Sitemap() {
           <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 rounded-3xl mb-8 flex items-center justify-center mx-auto shadow-2xl">
             <Globe className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">Site Map</h1>
-          <p className="text-xl text-gray-600 leading-relaxed max-w-3xl mx-auto">
+          <h1 className="text-4xl font-bold text-[color:var(--text-primary)] mb-6">Site Map</h1>
+          <p className="text-xl text-[color:var(--text-secondary)] leading-relaxed max-w-3xl mx-auto">
             Find everything MealScout has to offer. Browse our complete directory of pages, 
             features, and resources to discover local food deals and restaurant partnerships.
           </p>
@@ -146,9 +146,9 @@ export default function Sitemap() {
           {siteStructure.map((section, sectionIndex) => {
             const IconComponent = section.icon;
             return (
-              <Card key={sectionIndex} className="bg-white/90 backdrop-blur-sm shadow-xl">
+              <Card key={sectionIndex} className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean-lg">
                 <CardHeader>
-                  <CardTitle className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                  <CardTitle className="text-2xl font-bold text-[color:var(--text-primary)] flex items-center gap-3">
                     <div className={`w-8 h-8 ${section.color} rounded-xl flex items-center justify-center`}>
                       <IconComponent className="w-5 h-5" />
                     </div>
@@ -159,14 +159,14 @@ export default function Sitemap() {
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {section.pages.map((page, pageIndex) => (
                       <Link key={pageIndex} href={page.href}>
-                        <div className="p-4 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors group cursor-pointer border border-transparent hover:border-blue-200">
+                        <div className="p-4 rounded-lg bg-[var(--bg-surface)] hover:bg-blue-50 transition-colors group cursor-pointer border border-transparent hover:border-blue-200">
                           <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-semibold text-gray-900 group-hover:text-blue-600">
+                            <h3 className="font-semibold text-[color:var(--text-primary)] group-hover:text-blue-600">
                               {page.title}
                             </h3>
-                            <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-blue-500" />
+                            <ExternalLink className="w-4 h-4 text-[color:var(--text-muted)] group-hover:text-blue-500" />
                           </div>
-                          <p className="text-sm text-gray-600 leading-relaxed">
+                          <p className="text-sm text-[color:var(--text-secondary)] leading-relaxed">
                             {page.description}
                           </p>
                         </div>
@@ -180,9 +180,9 @@ export default function Sitemap() {
         </div>
 
         {/* Popular Locations */}
-        <Card className="bg-white/90 backdrop-blur-sm shadow-xl mb-8">
+        <Card className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean-lg mb-8">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+            <CardTitle className="text-2xl font-bold text-[color:var(--text-primary)] flex items-center gap-3">
               <div className="w-8 h-8 bg-red-100 text-red-600 rounded-xl flex items-center justify-center">
                 <MapPin className="w-5 h-5" />
               </div>
@@ -190,17 +190,17 @@ export default function Sitemap() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-600 mb-6">
+            <p className="text-[color:var(--text-secondary)] mb-6">
               Discover food deals in these popular cities where MealScout has active restaurant partners:
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {popularLocations.map((location, index) => (
-                <div key={index} className="p-3 rounded-lg bg-gray-50 text-center text-sm font-medium text-gray-700">
+                <div key={index} className="p-3 rounded-lg bg-[var(--bg-surface)] text-center text-sm font-medium text-[color:var(--text-secondary)]">
                   {location}
                 </div>
               ))}
             </div>
-            <p className="text-sm text-gray-500 mt-4 text-center">
+            <p className="text-sm text-[color:var(--text-secondary)] mt-4 text-center">
               Use the search feature to find deals in these cities and many more locations.
             </p>
           </CardContent>
@@ -208,21 +208,21 @@ export default function Sitemap() {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="text-center p-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg">
+          <div className="text-center p-6 bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-2xl shadow-clean">
             <div className="text-3xl font-bold text-blue-600 mb-2">50+</div>
-            <div className="text-gray-600 font-medium">Total Pages</div>
+            <div className="text-[color:var(--text-secondary)] font-medium">Total Pages</div>
           </div>
-          <div className="text-center p-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg">
+          <div className="text-center p-6 bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-2xl shadow-clean">
             <div className="text-3xl font-bold text-blue-600 mb-2">25+</div>
-            <div className="text-gray-600 font-medium">Cities Covered</div>
+            <div className="text-[color:var(--text-secondary)] font-medium">Cities Covered</div>
           </div>
-          <div className="text-center p-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg">
+          <div className="text-center p-6 bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-2xl shadow-clean">
             <div className="text-3xl font-bold text-blue-600 mb-2">15+</div>
-            <div className="text-gray-600 font-medium">Cuisine Categories</div>
+            <div className="text-[color:var(--text-secondary)] font-medium">Cuisine Categories</div>
           </div>
-          <div className="text-center p-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg">
+          <div className="text-center p-6 bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-2xl shadow-clean">
             <div className="text-3xl font-bold text-blue-600 mb-2">500+</div>
-            <div className="text-gray-600 font-medium">Restaurant Partners</div>
+            <div className="text-[color:var(--text-secondary)] font-medium">Restaurant Partners</div>
           </div>
         </div>
 
@@ -234,7 +234,7 @@ export default function Sitemap() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/">
-              <button className="bg-white text-blue-600 hover:bg-gray-100 font-semibold px-8 py-3 rounded-lg">
+              <button className="bg-white text-blue-600 hover:bg-[var(--bg-surface-muted)] font-semibold px-8 py-3 rounded-lg">
                 <Home className="w-4 h-4 mr-2 inline" />
                 Go to Home
               </button>

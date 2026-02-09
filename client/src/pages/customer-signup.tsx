@@ -257,7 +257,7 @@ export default function CustomerSignup() {
     customerSignupMutation.isPending || businessSignupMutation.isPending;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 flex flex-col">
+    <div className="min-h-screen bg-[var(--bg-layered)] flex flex-col">
       <SEOHead
         title="Sign Up - MealScout | Create Free Account"
         description="Join MealScout for free and start discovering exclusive food deals from local restaurants. Save your favorites, track deals, and never miss amazing dining discounts."
@@ -269,7 +269,7 @@ export default function CustomerSignup() {
         title="Create Account"
         fallbackHref="/"
         icon={UserPlus}
-        className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
       />
 
       <main className="flex-1 px-4 py-2 max-w-md mx-auto flex flex-col justify-between">
@@ -280,10 +280,10 @@ export default function CustomerSignup() {
             <div className="w-10 h-10 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 rounded-2xl mb-1 flex items-center justify-center mx-auto shadow-md ring-2 ring-white/70">
               <UserPlus className="w-5 h-5 text-white drop-shadow" />
             </div>
-            <h2 className="text-lg font-bold text-gray-900 mb-1 tracking-tight">
+            <h2 className="text-lg font-bold text-[color:var(--text-primary)] mb-1 tracking-tight">
               Create Your MealScout Account
             </h2>
-            <p className="text-gray-600 text-xs leading-snug max-w-sm mx-auto">
+            <p className="text-[color:var(--text-secondary)] text-xs leading-snug max-w-sm mx-auto">
               {accountType === "business"
                 ? "Create your login so we can connect your restaurant or truck, list your deals, and pass savings directly to your regulars."
                 : accountType === "host"
@@ -293,17 +293,17 @@ export default function CustomerSignup() {
           </div>
 
           {/* Signup Form */}
-          <div className="bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-xl p-4">
+          <div className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-2xl shadow-clean-lg p-4">
             {/* Account type selection inside form */}
             <div className="flex justify-center mb-4">
-              <div className="inline-flex rounded-full bg-white border border-gray-200 shadow-sm text-[11px] font-medium text-gray-700 overflow-hidden">
+              <div className="inline-flex rounded-full bg-[var(--bg-surface)] border border-[color:var(--border-subtle)] shadow-sm text-[11px] font-medium text-[color:var(--text-secondary)] overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setAccountType("diner")}
                   className={`px-3 py-1 transition-colors ${
                     accountType === "diner"
-                      ? "bg-orange-500 text-white"
-                      : "bg-transparent text-gray-700 hover:bg-gray-100"
+                      ? "bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)]"
+                      : "bg-transparent text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-muted)]"
                   }`}
                 >
                   Diner
@@ -311,10 +311,10 @@ export default function CustomerSignup() {
                 <button
                   type="button"
                   onClick={() => setAccountType("host")}
-                  className={`px-3 py-1 border-l border-gray-200 transition-colors ${
+                  className={`px-3 py-1 border-l border-[color:var(--border-subtle)] transition-colors ${
                     accountType === "host"
-                      ? "bg-orange-500 text-white"
-                      : "bg-transparent text-gray-700 hover:bg-gray-100"
+                      ? "bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)]"
+                      : "bg-transparent text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-muted)]"
                   }`}
                 >
                   Host / Event Organizer
@@ -322,10 +322,10 @@ export default function CustomerSignup() {
                 <button
                   type="button"
                   onClick={() => setAccountType("business")}
-                  className={`px-3 py-1 border-l border-gray-200 transition-colors ${
+                  className={`px-3 py-1 border-l border-[color:var(--border-subtle)] transition-colors ${
                     accountType === "business"
-                      ? "bg-orange-500 text-white"
-                      : "bg-transparent text-gray-700 hover:bg-gray-100"
+                      ? "bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)]"
+                      : "bg-transparent text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-muted)]"
                   }`}
                 >
                   Restaurant / Food Truck
@@ -334,10 +334,10 @@ export default function CustomerSignup() {
             </div>
 
             <div className="text-center mb-4">
-              <h3 className="text-lg font-bold text-gray-900 mb-1">
+              <h3 className="text-lg font-bold text-[color:var(--text-primary)] mb-1">
                 Sign Up with Email
               </h3>
-              <p className="text-gray-600 text-xs">
+              <p className="text-[color:var(--text-secondary)] text-xs">
                 {accountType === "business"
                   ? "This login powers your business dashboard. Pricing stays transparent and your discounts go straight to your guests."
                   : accountType === "host"
@@ -550,7 +550,7 @@ export default function CustomerSignup() {
                   data-testid="button-create-account"
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3 font-semibold text-base rounded-2xl bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white border-0 shadow-lg hover:shadow-xl transform hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  className="w-full py-3 font-semibold text-base rounded-2xl bg-[color:var(--action-primary)] hover:bg-[color:var(--action-hover)] text-[color:var(--action-primary-text)] border-0 shadow-clean hover:shadow-clean-lg transform hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
                   {isSubmitting ? (
                     <div className="animate-spin w-5 h-5 mr-3 border-2 border-white border-t-transparent rounded-full" />
@@ -561,7 +561,7 @@ export default function CustomerSignup() {
             </Form>
 
             {/* Divider + Login Link (compressed) */}
-            <div className="mt-3 flex items-center justify-between text-xs text-gray-600">
+            <div className="mt-3 flex items-center justify-between text-xs text-[color:var(--text-secondary)]">
               <span>Already have an account?</span>
               <Link href="/login">
                 <button
@@ -575,7 +575,7 @@ export default function CustomerSignup() {
             </div>
 
             {/* Trust indicators (compressed) */}
-            <div className="mt-3 border-t border-gray-200 pt-2 flex items-center justify-center gap-4 text-[11px] leading-tight text-gray-500">
+            <div className="mt-3 border-t border-[color:var(--border-subtle)] pt-2 flex items-center justify-center gap-4 text-[11px] leading-tight text-[color:var(--text-muted)]">
               <div className="flex items-center space-x-1">
                 <svg
                   className="w-3 h-3 text-green-500"
@@ -642,7 +642,7 @@ export default function CustomerSignup() {
 
         {/* Bottom: Legal Links */}
         <div className="mt-2 text-center">
-          <p className="text-[11px] text-gray-500">
+          <p className="text-[11px] text-[color:var(--text-muted)]">
             By creating an account, you agree to our{" "}
             <Link href="/terms-of-service">
               <span className="text-blue-600 underline hover:text-blue-700 cursor-pointer">

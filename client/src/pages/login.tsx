@@ -80,14 +80,14 @@ export default function Login() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 flex items-center justify-center">
-        <div className="animate-spin w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full" />
+      <div className="min-h-screen bg-[var(--bg-layered)] flex items-center justify-center">
+        <div className="animate-spin w-12 h-12 border-4 border-[color:var(--action-primary)] border-t-transparent rounded-full" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
+    <div className="min-h-screen bg-[var(--bg-layered)]">
       <SEOHead
         title="Login - MealScout | Access Your Account"
         description="Log in to MealScout to discover exclusive food deals, save your favorite restaurants, and track your claimed deals. Join thousands of users finding amazing dining discounts."
@@ -99,25 +99,25 @@ export default function Login() {
         title="Log In"
         fallbackHref="/"
         icon={UserCheck}
-        className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
       />
 
       <div className="px-6 py-8 max-w-md mx-auto">
         {/* Welcome Section */}
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          <h2 className="text-2xl font-bold text-[color:var(--text-primary)] mb-2">
             Welcome Back
           </h2>
-          <p className="text-gray-600 text-sm">
+          <p className="text-[color:var(--text-secondary)] text-sm">
             Log in to access your saved deals and favorites
           </p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white/95 backdrop-blur-sm border border-gray-200/50 rounded-2xl shadow-xl p-8">
+        <div className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-2xl shadow-clean-lg p-8">
           <div className="text-center mb-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Sign In</h3>
-            <p className="text-gray-600 text-sm">
+            <h3 className="text-xl font-bold text-[color:var(--text-primary)] mb-2">Sign In</h3>
+            <p className="text-[color:var(--text-secondary)] text-sm">
               Choose your preferred method
             </p>
           </div>
@@ -125,7 +125,7 @@ export default function Login() {
           <button
             onClick={handleGoogleLogin}
             disabled={isProcessing}
-            className="w-full py-4 px-6 font-semibold text-lg rounded-xl bg-white border-2 border-gray-300 text-gray-800 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 mb-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-md hover:shadow-lg"
+            className="w-full py-4 px-6 font-semibold text-lg rounded-xl bg-[var(--bg-surface)] border border-[color:var(--border-subtle)] text-[color:var(--text-primary)] hover:bg-[var(--bg-surface-muted)] transition-all duration-200 mb-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-clean"
             data-testid="button-google-signin"
           >
             {isProcessing ? (
@@ -157,7 +157,7 @@ export default function Login() {
           <button
             onClick={handleFacebookLogin}
             disabled={isProcessing}
-            className="w-full py-4 px-6 font-semibold text-lg rounded-xl bg-[#1877F2] text-white hover:bg-[#166fe5] transition-all duration-200 mb-6 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-md hover:shadow-lg"
+            className="w-full py-4 px-6 font-semibold text-lg rounded-xl bg-[#1877F2] text-white hover:bg-[#166fe5] transition-all duration-200 mb-6 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-clean"
             data-testid="button-facebook-login"
           >
             {isProcessing ? (
@@ -191,7 +191,7 @@ export default function Login() {
             <div className="space-y-4">
               <button
                 onClick={() => setShowEmailLogin(true)}
-                className="w-full py-4 px-6 font-semibold text-lg rounded-xl border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg"
+                className="w-full py-4 px-6 font-semibold text-lg rounded-xl border border-[color:var(--border-subtle)] text-[color:var(--text-primary)] hover:bg-[var(--bg-surface-muted)] transition-all duration-200 flex items-center justify-center shadow-clean"
                 data-testid="button-email-login"
               >
                 Sign In with Email
@@ -200,9 +200,9 @@ export default function Login() {
               <Link href="/customer-signup">
                 <button
                   data-testid="button-customer-signup"
-                  className="w-full py-3 px-4 font-medium text-sm rounded-lg border-2 border-red-400 text-red-600 hover:bg-red-50 hover:border-red-500 transition-all duration-200 flex items-center justify-center"
+                  className="w-full py-3 px-4 font-medium text-sm rounded-lg border border-[color:var(--action-primary)] text-[color:var(--action-primary)] hover:bg-[var(--bg-surface-muted)] transition-all duration-200 flex items-center justify-center"
                 >
-                  CREATE ACCOUNT
+                  Create Account
                 </button>
               </Link>
             </div>
@@ -214,7 +214,7 @@ export default function Login() {
                   placeholder="Email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-red-400 focus:outline-none text-lg"
+                  className="w-full px-4 py-3 rounded-xl border border-[color:var(--border-subtle)] bg-[var(--field-bg)] focus:outline-none focus:ring-2 focus:ring-[color:var(--action-primary)] text-lg"
                   data-testid="input-email"
                   required
                 />
@@ -226,7 +226,7 @@ export default function Login() {
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-red-400 focus:outline-none text-lg pr-12"
+                  className="w-full px-4 py-3 rounded-xl border border-[color:var(--border-subtle)] bg-[var(--field-bg)] focus:outline-none focus:ring-2 focus:ring-[color:var(--action-primary)] text-lg pr-12"
                   data-testid="input-password"
                   required
                 />
@@ -243,7 +243,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={isLoggingIn}
-                className="w-full py-4 px-6 font-semibold text-lg rounded-xl bg-red-500 text-white hover:bg-red-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-md hover:shadow-lg"
+                className="w-full py-4 px-6 font-semibold text-lg rounded-xl bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)] hover:bg-[color:var(--action-hover)] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-clean"
                 data-testid="button-login-submit"
               >
                 {isLoggingIn ? (
@@ -255,10 +255,10 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => setShowEmailLogin(false)}
-                className="w-full text-center text-gray-600 hover:text-gray-800 transition-colors"
+                className="w-full text-center text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] transition-colors"
                 data-testid="button-back-to-options"
               >
-                ← Back to login options
+                Back to login options
               </button>
 
               <div className="text-center">

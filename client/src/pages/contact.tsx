@@ -80,7 +80,7 @@ export default function Contact() {
         title="Contact Us"
         fallbackHref="/"
         icon={Mail}
-        className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
       />
 
       <div className="px-4 py-8 max-w-6xl mx-auto">
@@ -89,10 +89,10 @@ export default function Contact() {
           <div className="w-24 h-24 bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 rounded-3xl mb-8 flex items-center justify-center mx-auto shadow-2xl">
             <Mail className="w-12 h-12 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">
+          <h1 className="text-4xl font-bold text-[color:var(--text-primary)] mb-6">
             Email Support
           </h1>
-          <p className="text-xl text-gray-600 leading-relaxed max-w-3xl mx-auto">
+          <p className="text-xl text-[color:var(--text-secondary)] leading-relaxed max-w-3xl mx-auto">
             Have a question or need help? Email us and include the page you were on.
           </p>
         </div>
@@ -102,19 +102,19 @@ export default function Contact() {
           {contactMethods.map((method, index) => {
             const IconComponent = method.icon;
             return (
-              <Card key={index} className="p-6 bg-white/90 backdrop-blur-sm shadow-xl hover:shadow-2xl transition-shadow">
+              <Card key={index} className="p-6 bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean-lg hover:shadow-clean-lg transition-shadow">
                 <CardContent className="p-0 text-center">
                   <div className={`w-16 h-16 ${method.color} rounded-2xl flex items-center justify-center mx-auto mb-6`}>
                     <IconComponent className="w-8 h-8" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">{method.title}</h3>
-                  <p className="text-gray-600 mb-6 leading-relaxed">{method.description}</p>
+                  <h3 className="text-xl font-bold text-[color:var(--text-primary)] mb-3">{method.title}</h3>
+                  <p className="text-[color:var(--text-secondary)] mb-6 leading-relaxed">{method.description}</p>
                   <div className="space-y-2 mb-6">
-                    <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
+                    <div className="flex items-center justify-center space-x-2 text-sm text-[color:var(--text-secondary)]">
                       <Mail className="w-4 h-4" />
                       <span>{method.contact}</span>
                     </div>
-                    <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
+                    <div className="flex items-center justify-center space-x-2 text-sm text-[color:var(--text-secondary)]">
                       <Clock className="w-4 h-4" />
                       <span>Response: {method.response}</span>
                     </div>
@@ -136,9 +136,9 @@ export default function Contact() {
 
         <div className="space-y-8">
             {/* Quick Help */}
-            <Card className="bg-white/90 backdrop-blur-sm shadow-xl">
+            <Card className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean-lg">
               <CardHeader>
-                <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
+                <CardTitle className="text-xl font-bold text-[color:var(--text-primary)] flex items-center gap-3">
                   <HelpCircle className="w-5 h-5 text-blue-600" />
                   Quick Help Topics
                 </CardTitle>
@@ -148,7 +148,7 @@ export default function Contact() {
                   {quickHelp.map((topic, index) => (
                     <button
                       key={index}
-                      className="w-full text-left p-3 rounded-lg bg-gray-50 hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm"
+                      className="w-full text-left p-3 rounded-lg bg-[var(--bg-surface)] hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm"
                       data-testid={`button-quick-help-${index}`}
                     >
                       {topic}
@@ -159,28 +159,28 @@ export default function Contact() {
             </Card>
 
             {/* Office Info */}
-            <Card className="bg-white/90 backdrop-blur-sm shadow-xl">
+            <Card className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean-lg">
               <CardHeader>
-                <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
+                <CardTitle className="text-xl font-bold text-[color:var(--text-primary)] flex items-center gap-3">
                   <MapPin className="w-5 h-5 text-green-600" />
                   Our Information
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-start space-x-3">
-                  <Mail className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <Mail className="w-5 h-5 text-[color:var(--text-muted)] mt-0.5" />
                   <div>
-                    <div className="font-semibold text-gray-900">Email</div>
-                    <div className="text-gray-600">info.mealscout@gmail.com</div>
+                    <div className="font-semibold text-[color:var(--text-primary)]">Email</div>
+                    <div className="text-[color:var(--text-secondary)]">info.mealscout@gmail.com</div>
                   </div>
                 </div>
                 
                 <div className="flex items-start space-x-3">
-                  <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <MapPin className="w-5 h-5 text-[color:var(--text-muted)] mt-0.5" />
                   <div>
-                    <div className="font-semibold text-gray-900">Headquarters</div>
-                    <div className="text-gray-600">United States</div>
-                    <div className="text-gray-600">Serving 25+ Cities</div>
+                    <div className="font-semibold text-[color:var(--text-primary)]">Headquarters</div>
+                    <div className="text-[color:var(--text-secondary)]">United States</div>
+                    <div className="text-[color:var(--text-secondary)]">Serving 25+ Cities</div>
                   </div>
                 </div>
               </CardContent>
@@ -191,10 +191,10 @@ export default function Contact() {
               <CardContent className="p-6 text-center">
                 <h3 className="text-xl font-bold mb-4">Typical Response Times</h3>
                 <div className="space-y-2 text-sm opacity-90">
-                  <div>✓ General inquiries: within 24 hours</div>
-                  <div>✓ Technical support: within 24 hours</div>
-                  <div>✓ Partnerships: within 24 hours</div>
-                  <div>✓ Press inquiries: within 24 hours</div>
+                  <div>- General inquiries: within 24 hours</div>
+                  <div>- Technical support: within 24 hours</div>
+                  <div>- Partnerships: within 24 hours</div>
+                  <div>- Press inquiries: within 24 hours</div>
                 </div>
               </CardContent>
             </Card>

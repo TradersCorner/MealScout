@@ -19,7 +19,7 @@ export default function About() {
     "@context": "https://schema.org",
     "@type": "Organization",
     "name": "MealScout",
-    "description": "MealScout helps food trucks find real places to park and serve — and helps customers find where food trucks are today.",
+    "description": "MealScout helps food trucks find real places to park and serve - and helps customers find where food trucks are today.",
     "url": "https://mealscout.us",
     "logo": "https://mealscout.us/logo.png",
     "foundingDate": "2024",
@@ -75,7 +75,7 @@ export default function About() {
         title="About MealScout"
         fallbackHref="/"
         icon={Globe}
-        className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
       />
 
       <div className="px-4 py-8 max-w-6xl mx-auto">
@@ -84,11 +84,11 @@ export default function About() {
           <div className="w-24 h-24 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 rounded-3xl mb-8 flex items-center justify-center mx-auto shadow-2xl">
             <Heart className="w-12 h-12 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">
-            Connecting Food Trucks with Places to Park — and Customers with Food Trucks
+          <h1 className="text-4xl font-bold text-[color:var(--text-primary)] mb-6">
+            Connecting Food Trucks with Places to Park - and Customers with Food Trucks
           </h1>
-          <p className="text-xl text-gray-600 leading-relaxed max-w-3xl mx-auto">
-            MealScout helps food trucks find real places to park and serve — and helps customers find where food trucks are today. 
+          <p className="text-xl text-[color:var(--text-secondary)] leading-relaxed max-w-3xl mx-auto">
+            MealScout helps food trucks find real places to park and serve - and helps customers find where food trucks are today. 
             Discover food trucks near you or scout verified parking spots, host locations, and opportunities to operate.
           </p>
         </div>
@@ -98,13 +98,13 @@ export default function About() {
           {stats.map((stat, index) => {
             const IconComponent = stat.icon;
             return (
-              <Card key={index} className="text-center p-6 bg-white/80 backdrop-blur-sm shadow-lg">
+              <Card key={index} className="text-center p-6 bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean">
                 <CardContent className="p-0">
                   <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <IconComponent className="w-6 h-6 text-red-600" />
                   </div>
-                  <div className="text-3xl font-bold text-gray-900 mb-2">{stat.number}</div>
-                  <div className="text-gray-600 font-medium">{stat.label}</div>
+                  <div className="text-3xl font-bold text-[color:var(--text-primary)] mb-2">{stat.number}</div>
+                  <div className="text-[color:var(--text-secondary)] font-medium">{stat.label}</div>
                 </CardContent>
               </Card>
             );
@@ -112,15 +112,15 @@ export default function About() {
         </div>
 
         {/* Mission Section */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 lg:p-12 shadow-xl mb-16">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">Our Mission</h2>
+        <div className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-3xl p-8 lg:p-12 shadow-clean-lg mb-16">
+          <h2 className="text-3xl font-bold text-[color:var(--text-primary)] mb-6 text-center">Our Mission</h2>
           <div className="grid lg:grid-cols-2 gap-8 items-center">
             <div>
-              <p className="text-lg text-gray-700 leading-relaxed mb-6">
+              <p className="text-lg text-[color:var(--text-secondary)] leading-relaxed mb-6">
                 We believe great food brings communities together. Our mission is to help food trucks
                 operate legally and reliably by making real parking locations easy to find.
               </p>
-              <p className="text-lg text-gray-700 leading-relaxed mb-6">
+              <p className="text-lg text-[color:var(--text-secondary)] leading-relaxed mb-6">
                 By focusing on real-time discovery and verified host locations, we create clear
                 connections between trucks and customers in the moments that matter most.
               </p>
@@ -143,20 +143,20 @@ export default function About() {
 
         {/* Features Grid */}
         <div className="mb-16">
-          <h2 className="text-3xl font-bold text-gray-900 mb-12 text-center">Why Choose MealScout?</h2>
+          <h2 className="text-3xl font-bold text-[color:var(--text-primary)] mb-12 text-center">Why Choose MealScout?</h2>
           <div className="grid md:grid-cols-2 gap-8">
             {features.map((feature, index) => {
               const IconComponent = feature.icon;
               return (
-                <Card key={index} className="p-6 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow">
+                <Card key={index} className="p-6 bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean hover:shadow-clean-lg transition-shadow">
                   <CardContent className="p-0">
                     <div className="flex items-start space-x-4">
                       <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center flex-shrink-0">
                         <IconComponent className="w-6 h-6 text-red-600" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-semibold text-gray-900 mb-3">{feature.title}</h3>
-                        <p className="text-gray-600 leading-relaxed">{feature.description}</p>
+                        <h3 className="text-xl font-semibold text-[color:var(--text-primary)] mb-3">{feature.title}</h3>
+                        <p className="text-[color:var(--text-secondary)] leading-relaxed">{feature.description}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -187,8 +187,8 @@ export default function About() {
 
         {/* CTA Section */}
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">Ready to Start Exploring?</h2>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+          <h2 className="text-3xl font-bold text-[color:var(--text-primary)] mb-6">Ready to Start Exploring?</h2>
+          <p className="text-xl text-[color:var(--text-secondary)] mb-8 max-w-2xl mx-auto">
             Join thousands of food lovers who are already discovering amazing deals in their neighborhood.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -198,7 +198,7 @@ export default function About() {
               </Button>
             </Link>
             <Link href="/how-it-works">
-              <Button size="lg" variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold px-8 py-3">
+              <Button size="lg" variant="outline" className="border-[color:var(--border-subtle)] text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface)] font-semibold px-8 py-3">
                 Learn How It Works
               </Button>
             </Link>

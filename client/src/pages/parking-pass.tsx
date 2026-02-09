@@ -363,8 +363,21 @@ const buildHostAddress = (host?: Host | null) => {
 const getListingDateKey = (value: string) =>
   new Date(value).toISOString().split("T")[0];
 
-const getLocationKey = (listing: ParkingPassListing) =>
-  listing.host?.id || listing.host?.address || listing.id;
+const normalizeLocationPart = (value: string | null | undefined) =>
+  (value || "").trim().toLowerCase().replace(/\s+/g, " ");
+
+const getLocationKey = (listing: ParkingPassListing) => {
+  const addressKey = [
+    normalizeLocationPart(listing.host?.address),
+    normalizeLocationPart(listing.host?.city),
+    normalizeLocationPart(listing.host?.state),
+  ]
+    .filter(Boolean)
+    .join("|");
+
+  if (addressKey) return addressKey;
+  return listing.host?.id || listing.id;
+};
 
 const parkingPassPinIcon = new L.Icon({
   iconUrl: mealScoutIcon,

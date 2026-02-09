@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft, Building2, MapPin, UserRound, ClipboardList } from "lucide-react";
 
 const locationTypeOptions = [
   { value: "office", label: "Office / Corporate" },
@@ -195,211 +195,248 @@ function HostSignup() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-rose-600" />
+      <div className="min-h-screen bg-[var(--bg-layered)] flex items-center justify-center">
+        <div className="inline-flex items-center gap-3 rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)] px-4 py-3 shadow-clean">
+          <Loader2 className="h-5 w-5 animate-spin text-[color:var(--action-primary)]" />
+          <span className="text-sm font-medium text-[color:var(--text-secondary)]">Loading host signup</span>
+        </div>
       </div>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-12">
-        <div className="bg-white shadow-sm rounded-xl p-8 border border-slate-200 text-center">
-          <h1 className="text-3xl font-bold text-slate-900 mb-4">
-            Become a MealScout Host
-          </h1>
-          <p className="text-slate-600 mb-8">
-            Sign in to create your host profile and start managing food truck
-            events.
-          </p>
-          <Button asChild size="lg">
-            <a href="/login?redirect=/host-signup">Sign in to continue</a>
-          </Button>
+      <div className="min-h-screen bg-[var(--bg-layered)] relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-[-8rem] left-[-7rem] h-[24rem] w-[24rem] rounded-full bg-[color:var(--action-primary)]/15 blur-3xl" />
+          <div className="absolute bottom-[-9rem] right-[-6rem] h-[24rem] w-[24rem] rounded-full bg-[color:var(--accent)]/20 blur-3xl" />
+        </div>
+        <div className="relative z-10 min-h-screen px-4 py-8 flex items-center justify-center">
+          <div className="w-full max-w-lg rounded-3xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)]/95 backdrop-blur p-8 shadow-clean-lg text-center">
+            <span className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[color:var(--action-primary)]/15 border border-[color:var(--action-primary)]/30">
+              <Building2 className="h-7 w-7 text-[color:var(--action-primary)]" />
+            </span>
+            <h1 className="text-3xl font-black tracking-tight text-[color:var(--text-primary)] mb-3">
+              Become a MealScout Host
+            </h1>
+            <p className="text-[color:var(--text-secondary)] mb-7">
+              Sign in to create your host profile, place your location on the map, and publish availability for trucks.
+            </p>
+            <Button asChild className="h-11 rounded-xl action-primary hover:bg-[color:var(--action-hover)]">
+              <a href="/login?redirect=/host-signup">Sign in to continue</a>
+            </Button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-12">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">
-          Create Host Profile
-        </h1>
-        <p className="text-slate-600">
-          Tell us about your location to start hosting food trucks.
-        </p>
+    <div className="min-h-screen bg-[var(--bg-layered)] relative overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[-8rem] right-[-8rem] h-[24rem] w-[24rem] rounded-full bg-[color:var(--action-primary)]/15 blur-3xl" />
+        <div className="absolute bottom-[-10rem] left-[-7rem] h-[24rem] w-[24rem] rounded-full bg-[color:var(--accent)]/20 blur-3xl" />
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white shadow-sm rounded-xl border border-slate-200 p-8 space-y-6"
-      >
-        {errors.submit && (
-          <div className="p-4 bg-rose-50 text-rose-700 rounded-lg text-sm">
-            {errors.submit}
-          </div>
-        )}
+      <div className="relative z-10 mx-auto w-full max-w-5xl px-4 py-8">
+        <a
+          href="/"
+          className="mb-4 inline-flex items-center gap-2 text-xs font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] transition-colors"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back to app
+        </a>
 
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">
-            Business Details
-          </h2>
-
-          <div className="grid gap-2">
-            <Label htmlFor="businessName">Business Name</Label>
-            <Input
-              id="businessName"
-              value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
-              placeholder="e.g. Tech Park Plaza"
-            />
-            {errors.businessName && (
-              <p className="text-sm text-rose-600">{errors.businessName}</p>
-            )}
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="address">Address</Label>
-            <Input
-              id="address"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="123 Main St"
-            />
-            {errors.address && (
-              <p className="text-sm text-rose-600">{errors.address}</p>
-            )}
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="city">City</Label>
-              <Input
-                id="city"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="e.g. Austin"
-              />
-              {errors.city && (
-                <p className="text-sm text-rose-600">{errors.city}</p>
-              )}
+        <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+          <section className="rounded-3xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)]/90 backdrop-blur p-6 shadow-clean-lg h-fit">
+            <span className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-[color:var(--action-primary)]/30 bg-[color:var(--action-primary)]/15">
+              <Building2 className="h-6 w-6 text-[color:var(--action-primary)]" />
+            </span>
+            <h1 className="text-3xl font-black tracking-tight text-[color:var(--text-primary)] mb-3">
+              Create Host Profile
+            </h1>
+            <p className="text-sm leading-relaxed text-[color:var(--text-secondary)] mb-5">
+              Tell us about your location to make it discoverable on MealScout and start publishing truck opportunities.
+            </p>
+            <div className="space-y-3">
+              <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-xs text-[color:var(--text-secondary)]">
+                <span className="font-semibold text-[color:var(--text-primary)]">Step 1:</span> Business and location details
+              </div>
+              <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-xs text-[color:var(--text-secondary)]">
+                <span className="font-semibold text-[color:var(--text-primary)]">Step 2:</span> Contact and operations context
+              </div>
+              <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-xs text-[color:var(--text-secondary)]">
+                <span className="font-semibold text-[color:var(--text-primary)]">Step 3:</span> Submit and publish host presence
+              </div>
             </div>
+          </section>
 
-            <div className="grid gap-2">
-              <Label htmlFor="state">State</Label>
-              <Input
-                id="state"
-                value={state}
-                onChange={(e) => setState(e.target.value)}
-                placeholder="e.g. TX"
-              />
-              {errors.state && (
-                <p className="text-sm text-rose-600">{errors.state}</p>
-              )}
-            </div>
-          </div>
+          <form
+            onSubmit={handleSubmit}
+            className="rounded-3xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)]/95 backdrop-blur p-6 shadow-clean-lg space-y-6"
+          >
+            {errors.submit && (
+              <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                {errors.submit}
+              </div>
+            )}
 
-          <div className="grid gap-2">
-            <Label htmlFor="locationType">Location Type</Label>
-            <select
-              id="locationType"
-              value={locationType}
-              onChange={(e) => setLocationType(e.target.value)}
-              className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            <section className="space-y-4">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-[color:var(--action-primary)]" />
+                <h2 className="text-base font-bold text-[color:var(--text-primary)]">Business Details</h2>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="businessName" className="text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">Business Name</Label>
+                <Input
+                  id="businessName"
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                  placeholder="e.g. Tech Park Plaza"
+                  className="h-11 rounded-xl border-[color:var(--border-subtle)] bg-[var(--field-bg)]"
+                />
+                {errors.businessName && <p className="text-xs text-red-300">{errors.businessName}</p>}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="address" className="text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">Address</Label>
+                <Input
+                  id="address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="123 Main St"
+                  className="h-11 rounded-xl border-[color:var(--border-subtle)] bg-[var(--field-bg)]"
+                />
+                {errors.address && <p className="text-xs text-red-300">{errors.address}</p>}
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="city" className="text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">City</Label>
+                  <Input
+                    id="city"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="e.g. Austin"
+                    className="h-11 rounded-xl border-[color:var(--border-subtle)] bg-[var(--field-bg)]"
+                  />
+                  {errors.city && <p className="text-xs text-red-300">{errors.city}</p>}
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="state" className="text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">State</Label>
+                  <Input
+                    id="state"
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    placeholder="e.g. TX"
+                    className="h-11 rounded-xl border-[color:var(--border-subtle)] bg-[var(--field-bg)]"
+                  />
+                  {errors.state && <p className="text-xs text-red-300">{errors.state}</p>}
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="locationType" className="text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">Location Type</Label>
+                <select
+                  id="locationType"
+                  value={locationType}
+                  onChange={(e) => setLocationType(e.target.value)}
+                  className="h-11 rounded-xl border border-[color:var(--border-subtle)] bg-[var(--field-bg)] px-3 text-sm text-[color:var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--action-primary)]"
+                >
+                  <option value="">Select a type...</option>
+                  {locationTypeOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.locationType && <p className="text-xs text-red-300">{errors.locationType}</p>}
+              </div>
+            </section>
+
+            <section className="space-y-4">
+              <div className="flex items-center gap-2">
+                <UserRound className="h-4 w-4 text-[color:var(--action-primary)]" />
+                <h2 className="text-base font-bold text-[color:var(--text-primary)]">Contact Information</h2>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="contactName" className="text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">Contact Name</Label>
+                <Input
+                  id="contactName"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="Jane Doe"
+                  className="h-11 rounded-xl border-[color:var(--border-subtle)] bg-[var(--field-bg)]"
+                />
+                {errors.contactName && <p className="text-xs text-red-300">{errors.contactName}</p>}
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="contactEmail" className="text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">Email</Label>
+                  <Input
+                    id="contactEmail"
+                    type="email"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="jane@example.com"
+                    className="h-11 rounded-xl border-[color:var(--border-subtle)] bg-[var(--field-bg)]"
+                  />
+                  {errors.contactEmail && <p className="text-xs text-red-300">{errors.contactEmail}</p>}
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="contactPhone" className="text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">Phone</Label>
+                  <Input
+                    id="contactPhone"
+                    type="tel"
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(e.target.value)}
+                    placeholder="(555) 123-4567"
+                    className="h-11 rounded-xl border-[color:var(--border-subtle)] bg-[var(--field-bg)]"
+                  />
+                  {errors.contactPhone && <p className="text-xs text-red-300">{errors.contactPhone}</p>}
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-4 w-4 text-[color:var(--action-primary)]" />
+                <h2 className="text-base font-bold text-[color:var(--text-primary)]">Additional Details</h2>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="description" className="text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">Description / Notes</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Tell trucks about parking, power availability, loading zones, or site rules..."
+                  className="min-h-[120px] rounded-xl border-[color:var(--border-subtle)] bg-[var(--field-bg)]"
+                />
+              </div>
+            </section>
+
+            <Button
+              type="submit"
+              className="w-full h-11 rounded-xl action-primary hover:bg-[color:var(--action-hover)] font-semibold"
+              disabled={isSubmitting}
             >
-              <option value="">Select a type...</option>
-              {locationTypeOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            {errors.locationType && (
-              <p className="text-sm text-rose-600">{errors.locationType}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">
-            Contact Information
-          </h2>
-
-          <div className="grid gap-2">
-            <Label htmlFor="contactName">Contact Name</Label>
-            <Input
-              id="contactName"
-              value={contactName}
-              onChange={(e) => setContactName(e.target.value)}
-              placeholder="Jane Doe"
-            />
-            {errors.contactName && (
-              <p className="text-sm text-rose-600">{errors.contactName}</p>
-            )}
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="contactEmail">Email</Label>
-              <Input
-                id="contactEmail"
-                type="email"
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                placeholder="jane@example.com"
-              />
-              {errors.contactEmail && (
-                <p className="text-sm text-rose-600">{errors.contactEmail}</p>
+              {isSubmitting ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Creating Profile...
+                </span>
+              ) : (
+                "Create Host Profile"
               )}
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="contactPhone">Phone</Label>
-              <Input
-                id="contactPhone"
-                type="tel"
-                value={contactPhone}
-                onChange={(e) => setContactPhone(e.target.value)}
-                placeholder="(555) 123-4567"
-              />
-              {errors.contactPhone && (
-                <p className="text-sm text-rose-600">{errors.contactPhone}</p>
-              )}
-            </div>
-          </div>
+            </Button>
+          </form>
         </div>
-
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">
-            Additional Details
-          </h2>
-
-          <div className="grid gap-2">
-            <Label htmlFor="description">Description / Notes</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Tell trucks about parking, power availability, or specific rules..."
-              className="h-32"
-            />
-          </div>
-        </div>
-
-        <div className="pt-4">
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating Profile...
-              </>
-            ) : (
-              "Create Host Profile"
-            )}
-          </Button>
-        </div>
-      </form>
+      </div>
     </div>
   );
 }

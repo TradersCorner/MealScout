@@ -13,9 +13,7 @@ import { TimeOfDayBackground } from "@/components/TimeOfDayBackground";
 // Eager load only critical pages (home, login) - everything else lazy loads
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
-
-// Lazy load ALL pages including home for faster initial load
-const Home = lazy(() => import("@/pages/home"));
+import Home from "@/pages/home";
 
 // Lazy load all other pages - they only download when the user navigates to them
 const CustomerSignup = lazy(() => import("@/pages/customer-signup"));

@@ -17,7 +17,7 @@ export function useAuth() {
     refetch,
   } = useQuery<User & { requiresPasswordReset?: boolean }>({
     queryKey: ["/api/auth/user"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
+    queryFn: getQueryFn({ on401: "returnNull", timeoutMs: 6000 }),
     retry: false,
     refetchOnWindowFocus: false,
     refetchOnMount: true,

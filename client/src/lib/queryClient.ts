@@ -47,14 +47,37 @@ export async function apiRequest(
 type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
+  timeoutMs?: number;
 }) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
+  ({ on401: unauthorizedBehavior, timeoutMs }) =>
   async ({ queryKey }) => {
     const path = queryKey.join("/") as string;
     const url = apiUrl(path);
-    const res = await fetch(url, {
-      credentials: "include",
-    });
+    const controller =
+      typeof AbortController !== "undefined" && timeoutMs
+        ? new AbortController()
+        : null;
+    const timeoutId =
+      controller && timeoutMs
+        ? globalThis.setTimeout(() => controller.abort(), timeoutMs)
+        : null;
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        credentials: "include",
+        signal: controller?.signal,
+      });
+    } catch (error: any) {
+      if (error?.name === "AbortError") {
+        throw new Error("Request timeout");
+      }
+      throw error;
+    } finally {
+      if (timeoutId !== null) {
+        globalThis.clearTimeout(timeoutId);
+      }
+    }
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;

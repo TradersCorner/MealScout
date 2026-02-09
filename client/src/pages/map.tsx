@@ -60,14 +60,19 @@ function MapControls({
   onCenterUser,
   userLocation,
   zoomLevel,
+  isNightTheme,
 }: {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onCenterUser: () => void;
   userLocation: { lat: number; lng: number } | null;
   zoomLevel: number;
+  isNightTheme: boolean;
 }) {
   const map = useMap();
+  const controlClassName = isNightTheme
+    ? "w-9 h-9 p-0 rounded-full bg-slate-900/85 border border-white/20 shadow-lg backdrop-blur text-white"
+    : "w-9 h-9 p-0 rounded-full bg-white border border-slate-200 shadow-md text-slate-900";
 
   const handleZoomIn = () => {
     map.zoomIn();
@@ -91,7 +96,7 @@ function MapControls({
       <Button
         variant="secondary"
         size="sm"
-        className="w-9 h-9 p-0 rounded-full bg-white/90 border border-white/60 shadow-lg backdrop-blur"
+        className={controlClassName}
         onClick={handleZoomIn}
         data-testid="button-zoom-in"
         title="Zoom in"
@@ -101,7 +106,7 @@ function MapControls({
       <Button
         variant="secondary"
         size="sm"
-        className="w-9 h-9 p-0 rounded-full bg-white/90 border border-white/60 shadow-lg backdrop-blur"
+        className={controlClassName}
         onClick={handleZoomOut}
         data-testid="button-zoom-out"
         title="Zoom out"
@@ -111,7 +116,7 @@ function MapControls({
       <Button
         variant="secondary"
         size="sm"
-        className="w-9 h-9 p-0 rounded-full bg-white/90 border border-white/60 shadow-lg backdrop-blur"
+        className={controlClassName}
         onClick={handleCenterUser}
         disabled={!userLocation}
         data-testid="button-center-location"
@@ -959,7 +964,13 @@ export default function MapPage() {
         canonicalUrl="https://mealscout.us/map"
       />
       {/* Header */}
-      <header className="px-6 py-5 bg-white/90 backdrop-blur border-b border-border relative z-10">
+      <header
+        className={`px-6 py-5 border-b border-border relative z-10 ${
+          isNightTheme
+            ? "bg-slate-950/75 backdrop-blur text-white"
+            : "bg-white text-slate-900"
+        }`}
+      >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
@@ -1302,6 +1313,7 @@ export default function MapPage() {
                 onCenterUser={handleCenterOnUser}
                 userLocation={userLocation}
                 zoomLevel={zoomLevel}
+                isNightTheme={isNightTheme}
               />
               <MapViewportWatcher
                 onZoomChange={setZoomLevel}

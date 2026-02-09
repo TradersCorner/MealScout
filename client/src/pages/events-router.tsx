@@ -28,10 +28,7 @@ export default function EventsRouter() {
   useEffect(() => {
     if (isLoading || !user) return;
     if (roleState.isMultiRole) return;
-    if (roleState.isEventCoordinator) {
-      setLocation("/event-coordinator/dashboard");
-      return;
-    }
+    // Keep event coordinators on /events so posting lives on the Events page.
     if (roleState.isTruck) {
       setLocation("/truck-discovery");
     }

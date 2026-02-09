@@ -1144,6 +1144,17 @@
     background: rgba(255, 255, 255, 0.06);
   }
 
+  .nav-link {
+    text-rendering: geometricPrecision;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-shadow: none;
+  }
+
+  .nav-link span {
+    letter-spacing: 0.01em;
+  }
+
   .theme-day .text-primary,
   .theme-night .text-primary {
     color: var(--text-primary);

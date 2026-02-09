@@ -630,7 +630,7 @@ export default function RestaurantSignup() {
           title={COPY.unauth.headerTitle}
           fallbackHref="/"
           icon={Store}
-          className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+          className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
         />
 
         <div className="px-3 py-3 max-w-4xl mx-auto">
@@ -650,7 +650,7 @@ export default function RestaurantSignup() {
             </p>
             {/* Authentication Section */}
             <div className="max-w-md mx-auto" data-signup-section>
-              <Card className="bg-white/90 backdrop-blur-sm shadow-xl">
+              <Card className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean-lg">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-center space-x-4 mb-6">
                     <button
@@ -1377,7 +1377,7 @@ export default function RestaurantSignup() {
         title={COPY.main.backHeaderTitle}
         fallbackHref="/"
         icon={Store}
-        className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
       />
 
       <div className="px-6 py-12 max-w-4xl mx-auto">

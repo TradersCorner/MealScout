@@ -302,7 +302,7 @@ export default function Navigation() {
               <Link
                 key={item.path}
                 href={item.path}
-                className={`nav-link flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
+                className={`nav-link flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-colors duration-200 ${
                   location === item.path ? "nav-link--active" : "nav-link--inactive"
                 }`}
                 data-testid={`nav-${item.label.toLowerCase()}`}
@@ -318,7 +318,7 @@ export default function Navigation() {
                 key={item.label}
                 onClick={item.onClick}
                 disabled={isReporting}
-                className={`nav-link flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-all duration-200 ${
+                className={`nav-link flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-colors duration-200 ${
                   item.isBug ? "nav-bug" : "nav-link--inactive"
                 } ${isReporting ? "opacity-80 cursor-not-allowed" : ""}`}
                 data-testid={`nav-${item.label.toLowerCase()}`}

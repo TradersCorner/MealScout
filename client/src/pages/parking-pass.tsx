@@ -343,8 +343,22 @@ const pointsMatch = (left: GeoPoint | null, right: GeoPoint | null) => {
   );
 };
 
-const buildHostAddress = (host?: Host | null) =>
-  [host?.address, host?.city, host?.state].filter(Boolean).join(", ");
+const buildHostAddress = (host?: Host | null) => {
+  const base = (host?.address ?? "").trim();
+  if (!base) return "";
+  const baseLower = base.toLowerCase();
+  const city = (host?.city ?? "").trim();
+  const state = (host?.state ?? "").trim();
+  const parts: string[] = [base];
+  if (city && !baseLower.includes(city.toLowerCase())) {
+    parts.push(city);
+  }
+  if (state && !baseLower.includes(state.toLowerCase())) {
+    parts.push(state);
+  }
+  parts.push("USA");
+  return parts.join(", ");
+};
 
 const getListingDateKey = (value: string) =>
   new Date(value).toISOString().split("T")[0];

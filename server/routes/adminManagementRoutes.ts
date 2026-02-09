@@ -228,6 +228,169 @@ export function registerAdminManagementRoutes(app: Express) {
     }
   );
 
+  app.get(
+    "/api/admin/map-pin-audit",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (_req: any, res) => {
+      try {
+        const normalize = (value?: string | null) =>
+          (value || "").trim().toLowerCase();
+        const keyFor = (
+          address?: string | null,
+          city?: string | null,
+          state?: string | null,
+        ) => `${normalize(address)}|${normalize(city)}|${normalize(state)}`;
+        const hasCoords = (
+          lat?: string | number | null,
+          lng?: string | number | null,
+        ) =>
+          lat !== null &&
+          lat !== undefined &&
+          lng !== null &&
+          lng !== undefined &&
+          Number.isFinite(Number(lat)) &&
+          Number.isFinite(Number(lng));
+
+        const openLocations = await storage.getOpenLocationRequests();
+        const hostProfiles = await db
+          .select({ host: hosts })
+          .from(hosts)
+          .innerJoin(users, eq(hosts.userId, users.id))
+          .where(
+            and(
+              sql`${hosts.address} IS NOT NULL`,
+              or(eq(users.isDisabled, false), isNull(users.isDisabled)),
+            ),
+          );
+
+        const hostByUserId = new Map<string, (typeof hosts.$inferSelect)>();
+        hostProfiles.forEach(({ host }) => {
+          const existing = hostByUserId.get(host.userId);
+          if (!existing) {
+            hostByUserId.set(host.userId, host);
+            return;
+          }
+          if (!existing.isVerified && host.isVerified) {
+            hostByUserId.set(host.userId, host);
+          }
+        });
+
+        const hostUserIds = Array.from(hostByUserId.keys());
+        const additionalAddressRows = hostUserIds.length
+          ? await db
+              .select({ address: userAddresses })
+              .from(userAddresses)
+              .innerJoin(users, eq(userAddresses.userId, users.id))
+              .where(
+                and(
+                  inArray(userAddresses.userId, hostUserIds),
+                  sql`${userAddresses.address} IS NOT NULL`,
+                  or(eq(users.isDisabled, false), isNull(users.isDisabled)),
+                ),
+              )
+          : [];
+
+        const primaryHostLocations = hostProfiles.map(({ host }) => ({
+          id: host.id,
+          address: host.address,
+          city: host.city,
+          state: host.state,
+          mappable: hasCoords(host.latitude, host.longitude),
+        }));
+
+        const openHostLocations = openLocations.map((loc) => ({
+          id: loc.id,
+          address: loc.address,
+          city: null,
+          state: null,
+          mappable: hasCoords(loc.latitude, loc.longitude),
+        }));
+
+        const seenKeys = new Set<string>();
+        primaryHostLocations.forEach((loc) => {
+          seenKeys.add(keyFor(loc.address, loc.city, loc.state));
+        });
+        openHostLocations.forEach((loc) => {
+          seenKeys.add(keyFor(loc.address, null, null));
+        });
+
+        let additionalIncluded = 0;
+        let additionalSkippedDuplicates = 0;
+        const additionalIncludedLocations: Array<{
+          id: string;
+          address: string;
+          city?: string | null;
+          state?: string | null;
+          mappable: boolean;
+        }> = [];
+
+        additionalAddressRows.forEach(({ address }) => {
+          const key = keyFor(address.address, address.city, address.state);
+          if (!key || seenKeys.has(key)) {
+            additionalSkippedDuplicates += 1;
+            return;
+          }
+          seenKeys.add(key);
+          additionalIncluded += 1;
+          additionalIncludedLocations.push({
+            id: address.id,
+            address: address.address,
+            city: address.city,
+            state: address.state,
+            mappable: hasCoords(address.latitude, address.longitude),
+          });
+        });
+
+        const renderedCandidates = [
+          ...openHostLocations.map((loc) => ({ ...loc, source: "open_request" })),
+          ...primaryHostLocations.map((loc) => ({
+            ...loc,
+            source: "host_profile",
+          })),
+          ...additionalIncludedLocations.map((loc) => ({
+            ...loc,
+            source: "host_address",
+          })),
+        ];
+
+        const renderedMappable = renderedCandidates.filter((loc) => loc.mappable);
+        const renderedMissing = renderedCandidates.filter((loc) => !loc.mappable);
+
+        res.json({
+          openLocationRequests: {
+            total: openHostLocations.length,
+            mappable: openHostLocations.filter((loc) => loc.mappable).length,
+            missingCoords: openHostLocations.filter((loc) => !loc.mappable).length,
+          },
+          primaryHostProfiles: {
+            total: primaryHostLocations.length,
+            mappable: primaryHostLocations.filter((loc) => loc.mappable).length,
+            missingCoords: primaryHostLocations.filter((loc) => !loc.mappable).length,
+          },
+          additionalHostAddresses: {
+            total: additionalAddressRows.length,
+            included: additionalIncluded,
+            skippedDuplicates: additionalSkippedDuplicates,
+            mappable: additionalIncludedLocations.filter((loc) => loc.mappable)
+              .length,
+            missingCoords: additionalIncludedLocations.filter((loc) => !loc.mappable)
+              .length,
+          },
+          renderedHostLocationCandidates: {
+            total: renderedCandidates.length,
+            mappable: renderedMappable.length,
+            missingCoords: renderedMissing.length,
+          },
+          sampleMissing: renderedMissing.slice(0, 20),
+        });
+      } catch (error) {
+        console.error("Error building map pin audit:", error);
+        res.status(500).json({ message: "Failed to build map pin audit" });
+      }
+    },
+  );
+
   // Admin endpoint to sync subscriptions from Stripe to database
   app.post(
     "/api/admin/subscriptions/sync",

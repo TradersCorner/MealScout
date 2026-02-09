@@ -51,6 +51,8 @@ import {
 interface DashboardStats {
   totalUsers: number;
   totalRestaurants: number;
+  totalRestaurantProfiles?: number;
+  totalRestaurantOwners?: number;
   totalDeals: number;
   activeDeals: number;
   totalClaims: number;
@@ -77,6 +79,31 @@ interface PendingRestaurant {
   cuisineType: string;
   createdAt: string;
   isActive: boolean;
+}
+
+interface MapPinAudit {
+  renderedHostLocationCandidates: {
+    total: number;
+    mappable: number;
+    missingCoords: number;
+  };
+  primaryHostProfiles: {
+    total: number;
+    mappable: number;
+    missingCoords: number;
+  };
+  additionalHostAddresses: {
+    total: number;
+    included: number;
+    skippedDuplicates: number;
+    mappable: number;
+    missingCoords: number;
+  };
+  openLocationRequests: {
+    total: number;
+    mappable: number;
+    missingCoords: number;
+  };
 }
 
 const FOOT_TRAFFIC_OPTIONS = [
@@ -1009,6 +1036,12 @@ export default function AdminDashboard() {
   const { data: users = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/users"],
     enabled: !!adminUser && selectedTab === "users",
+  });
+
+  const { data: mapPinAudit } = useQuery<MapPinAudit>({
+    queryKey: ["/api/admin/map-pin-audit"],
+    enabled: !!adminUser && selectedTab === "overview",
+    staleTime: 60 * 1000,
   });
 
   const { data: parkingPasses = [] } = useQuery<any[]>({
@@ -2210,18 +2243,22 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Restaurants
+                Restaurant Profiles
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
                 <div className="text-2xl font-bold">
-                  {dashboardStats.totalRestaurants}
+                  {dashboardStats.totalRestaurantProfiles ??
+                    dashboardStats.totalRestaurants}
                 </div>
                 <Store className="w-5 h-5 text-primary" />
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {pendingRestaurants.length} pending
+                {dashboardStats.totalRestaurantOwners ??
+                  dashboardStats.memberCounts?.restaurantOwner ??
+                  0}{" "}
+                owner accounts • {pendingRestaurants.length} pending
               </p>
             </CardContent>
           </Card>
@@ -2330,6 +2367,48 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {mapPinAudit && (
+          <Card className="mb-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Map Pin Parity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Rendered host pins</p>
+                  <p className="font-semibold">
+                    {mapPinAudit.renderedHostLocationCandidates.mappable}/
+                    {mapPinAudit.renderedHostLocationCandidates.total}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Primary hosts mapped</p>
+                  <p className="font-semibold">
+                    {mapPinAudit.primaryHostProfiles.mappable}/
+                    {mapPinAudit.primaryHostProfiles.total}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Extra addresses mapped</p>
+                  <p className="font-semibold">
+                    {mapPinAudit.additionalHostAddresses.mappable}/
+                    {mapPinAudit.additionalHostAddresses.included}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Open requests mapped</p>
+                  <p className="font-semibold">
+                    {mapPinAudit.openLocationRequests.mappable}/
+                    {mapPinAudit.openLocationRequests.total}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Main Content Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>

@@ -126,7 +126,7 @@ Keep but inactive unless approved for activation:
 ## Immediate Next Actions
 - [In Progress] Audit remaining legacy-styled pages and patch to current design system.
 - [In Progress] Verify parking pass visibility and event posting role rules in production.
-- [Pending] Run map pin parity audit: host address count vs rendered pin count.
+- [In Progress] Run map pin parity audit: host address count vs rendered pin count.
 - [Pending] Reconcile admin counts against DB queries and lock definitions.
 - [Pending] Run full booking and Stripe onboarding smoke test in production mode.
 
@@ -134,3 +134,5 @@ Keep but inactive unless approved for activation:
 - Event coordinator routing updated so `/events` remains the primary coordinator surface for posting.
 - Navigation rendering hardened for sharper mobile labels (reduced all-property transitions and enforced crisp text rendering rules).
 - `restaurant-signup` high-visibility header/card styles moved to current tokenized theme system.
+- Added `/api/admin/map-pin-audit` and a `Map Pin Parity` admin overview panel to quantify mapped vs missing host pins.
+- Reconciled admin restaurant metrics into explicit profile vs owner-account counts.

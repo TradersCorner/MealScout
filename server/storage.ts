@@ -2501,6 +2501,8 @@ export class DatabaseStorage implements IStorage {
     return {
       totalUsers: totalUsersCount,
       totalRestaurants: totalRestaurants[0]?.count || 0,
+      totalRestaurantProfiles: totalRestaurants[0]?.count || 0,
+      totalRestaurantOwners: memberCounts.restaurantOwner,
       totalDeals: totalDeals[0]?.count || 0,
       activeDeals: activeDeals[0]?.count || 0,
       totalClaims: totalClaims[0]?.count || 0,

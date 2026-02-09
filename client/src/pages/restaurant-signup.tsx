@@ -1018,7 +1018,7 @@ export default function RestaurantSignup() {
 
           {/* Key Benefits */}
           <div className="grid md:grid-cols-3 gap-8 mb-16">
-            <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-gray-200/50 hover:shadow-2xl transition-all duration-300">
+            <div className="bg-[var(--bg-card)] rounded-2xl p-8 shadow-clean-lg border border-[color:var(--border-subtle)] transition-all duration-300">
               <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mb-6 shadow-lg">
                 <svg
                   className="w-8 h-8 text-white"
@@ -1093,7 +1093,7 @@ export default function RestaurantSignup() {
               </ul>
             </div>
 
-            <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-gray-200/50 hover:shadow-2xl transition-all duration-300">
+            <div className="bg-[var(--bg-card)] rounded-2xl p-8 shadow-clean-lg border border-[color:var(--border-subtle)] transition-all duration-300">
               <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-6 shadow-lg">
                 <svg
                   className="w-8 h-8 text-white"
@@ -1168,7 +1168,7 @@ export default function RestaurantSignup() {
               </ul>
             </div>
 
-            <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-gray-200/50 hover:shadow-2xl transition-all duration-300">
+            <div className="bg-[var(--bg-card)] rounded-2xl p-8 shadow-clean-lg border border-[color:var(--border-subtle)] transition-all duration-300">
               <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mb-6 shadow-lg">
                 <svg
                   className="w-8 h-8 text-white"
@@ -1415,7 +1415,7 @@ export default function RestaurantSignup() {
 
         {/* Benefits */}
         <div className="grid md:grid-cols-3 gap-6 mb-16">
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-200/50 hover:shadow-2xl transition-all duration-300">
+          <div className="bg-[var(--bg-card)] rounded-2xl p-6 shadow-clean-lg border border-[color:var(--border-subtle)] transition-all duration-300">
             <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-4 shadow-lg">
               <svg
                 className="w-7 h-7 text-white"
@@ -1451,7 +1451,7 @@ export default function RestaurantSignup() {
             </p>
           </div>
 
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-200/50 hover:shadow-2xl transition-all duration-300">
+          <div className="bg-[var(--bg-card)] rounded-2xl p-6 shadow-clean-lg border border-[color:var(--border-subtle)] transition-all duration-300">
             <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mb-4 shadow-lg">
               <svg
                 className="w-7 h-7 text-white"
@@ -1481,7 +1481,7 @@ export default function RestaurantSignup() {
             </p>
           </div>
 
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-200/50 hover:shadow-2xl transition-all duration-300">
+          <div className="bg-[var(--bg-card)] rounded-2xl p-6 shadow-clean-lg border border-[color:var(--border-subtle)] transition-all duration-300">
             <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mb-4 shadow-lg">
               <svg
                 className="w-7 h-7 text-white"

@@ -287,7 +287,7 @@ export default function Home() {
       <Navigation />
 
       {/* Header with Logo and Navigation */}
-      <header className="section section--full bg-[hsl(var(--surface))] border-b border-[color:var(--border-subtle)] sticky top-0 z-10 shadow-sm">
+      <header className="section section--full bg-[var(--bg-card)] border-b border-[color:var(--border-subtle)] sticky top-0 z-10 shadow-clean">
         <div className="content flex items-center justify-between py-3">
           <div className="flex items-center space-x-2 flex-shrink-0">
             <div className="w-14 h-14 flex items-center justify-center overflow-hidden">
@@ -308,7 +308,7 @@ export default function Home() {
                   variant="ghost"
                   size="icon"
                   onClick={() => setNavigateTo("/login")}
-                  className="text-primary hover:text-[color:var(--accent-text-hover)]"
+                  className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)]"
                   title="Login"
                 >
                   <LogIn className="w-5 h-5" />
@@ -317,7 +317,7 @@ export default function Home() {
                   variant="ghost"
                   size="icon"
                   onClick={() => setNavigateTo("/customer-signup")}
-                  className="text-primary hover:text-[color:var(--accent-text-hover)]"
+                  className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)]"
                   title="Customer Sign Up"
                 >
                   <UserPlus className="w-5 h-5" />
@@ -328,7 +328,7 @@ export default function Home() {
                   onClick={() =>
                     setNavigateTo("/customer-signup?role=business")
                   }
-                  className="text-primary hover:text-[color:var(--accent-text-hover)]"
+                  className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)]"
                   title="Restaurant/Bar/Food Truck Sign Up"
                 >
                   <Store className="w-5 h-5" />
@@ -338,7 +338,7 @@ export default function Home() {
                   size="icon"
                   onClick={retryLocation}
                   disabled={isLoadingLocation}
-                  className="text-primary hover:text-[color:var(--accent-text-hover)]"
+                  className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)]"
                   title="Refresh Location"
                 >
                   {isLoadingLocation ? (
@@ -354,7 +354,7 @@ export default function Home() {
                   {locationName.split(",")[0]}
                 </span>
                 <div
-                  className="w-2 h-2 rounded-full bg-emerald-500"
+                  className="w-2 h-2 rounded-full bg-[color:var(--status-success)]"
                   title="Real-time location active"
                 />
                 <Button
@@ -362,7 +362,7 @@ export default function Home() {
                   size="icon"
                   onClick={retryLocation}
                   disabled={isLoadingLocation}
-                  className="text-primary hover:text-[color:var(--accent-text-hover)] w-7 h-7"
+                  className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)] w-7 h-7"
                   title="Refresh Location"
                 >
                   {isLoadingLocation ? (
@@ -400,7 +400,7 @@ export default function Home() {
               onSearch={(query) =>
                 setNavigateTo(`/search?q=${encodeURIComponent(query)}`)
               }
-              className="mb-6 shadow-lg"
+              className="mb-6 shadow-clean-lg"
               placeholder="Search deals, restaurants..."
             />
 
@@ -409,7 +409,7 @@ export default function Home() {
                 {geoAds.map((ad) => (
                   <div
                     key={ad.id}
-                    className="rounded-2xl border border-[color:var(--border-subtle)] bg-[color:var(--bg-card)] p-4 shadow-sm"
+                    className="rounded-2xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-clean"
                   >
                     {ad.mediaUrl && (
                       <img
@@ -445,10 +445,10 @@ export default function Home() {
             <div className="flex space-x-2 overflow-x-auto pb-1">
               <Link href="/deals/featured">
                 <Button
-                  className="filter-pill filter-pill--active flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-semibold shadow-md hover:shadow-lg transition-all"
+                  className="filter-pill filter-pill--active flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-semibold shadow-clean hover:shadow-clean-lg transition-all"
                   size="sm"
                 >
-                  <Sparkles className="w-4 h-4 mr-1.5" /> 🔥 Hot Deals
+                  <Sparkles className="w-4 h-4 mr-1.5" />  Hot Deals
                 </Button>
               </Link>
               <Link href="/category/pizza">
@@ -457,7 +457,7 @@ export default function Home() {
                   size="sm"
                   className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
                 >
-                  🍕 Pizza
+                   Pizza
                 </Button>
               </Link>
               <Link href="/category/burgers">
@@ -466,7 +466,7 @@ export default function Home() {
                   size="sm"
                   className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
                 >
-                  🍔 Burgers
+                   Burgers
                 </Button>
               </Link>
               <Link href="/category/sushi">
@@ -475,7 +475,7 @@ export default function Home() {
                   size="sm"
                   className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
                 >
-                  🍣 Sushi
+                   Sushi
                 </Button>
               </Link>
               <Link href="/category/chinese">
@@ -484,7 +484,7 @@ export default function Home() {
                   size="sm"
                   className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
                 >
-                  🥡 Chinese
+                   Chinese
                 </Button>
               </Link>
               <Link href="/category/mexican">
@@ -493,7 +493,7 @@ export default function Home() {
                   size="sm"
                   className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
                 >
-                  🌮 Tacos
+                   Tacos
                 </Button>
               </Link>
               <Link href="/category/breakfast">
@@ -502,7 +502,7 @@ export default function Home() {
                   size="sm"
                   className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
                 >
-                  🥐 Breakfast
+                   Breakfast
                 </Button>
               </Link>
               <Link href="/category/seafood">
@@ -511,7 +511,7 @@ export default function Home() {
                   size="sm"
                   className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
                 >
-                  🦞 Seafood
+                   Seafood
                 </Button>
               </Link>
               <Link href="/category/bbq">
@@ -520,7 +520,7 @@ export default function Home() {
                   size="sm"
                   className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
                 >
-                  🍖 BBQ
+                   BBQ
                 </Button>
               </Link>
               <Link href="/category/dessert">
@@ -529,7 +529,7 @@ export default function Home() {
                   size="sm"
                   className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
                 >
-                  🍰 Desserts
+                   Desserts
                 </Button>
               </Link>
               <Link href="/category/coffee">
@@ -538,7 +538,7 @@ export default function Home() {
                   size="sm"
                   className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
                 >
-                  ☕ Coffee
+                   Coffee
                 </Button>
               </Link>
               <Link href="/category/healthy">
@@ -547,7 +547,7 @@ export default function Home() {
                   size="sm"
                   className="filter-pill flex-shrink-0 rounded-full px-3.5 py-2 text-sm sm:text-base font-medium"
                 >
-                  🥗 Healthy
+                   Healthy
                 </Button>
               </Link>
             </div>
@@ -599,7 +599,7 @@ export default function Home() {
                 variant="link"
                 className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)] p-0 h-auto text-xs"
               >
-                View Map →
+                View Map {"->"}
               </Button>
             </Link>
           </div>
@@ -651,7 +651,7 @@ export default function Home() {
                 variant="link"
                 className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)] p-0 h-auto mt-1"
               >
-                See all nearby deals →
+                See all nearby deals {"->"}
               </Button>
             </Link>
           </div>
@@ -661,13 +661,13 @@ export default function Home() {
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="flex-shrink-0 w-56 bg-[hsl(var(--surface-hover))]/60 rounded-lg h-48 animate-pulse"
+                  className="flex-shrink-0 w-56 bg-[var(--bg-surface-muted)]/60 rounded-lg h-48 animate-pulse"
                 />
               ))}
             </div>
           ) : featuredError ? (
-            <div className="text-center py-8 text-red-500 text-sm">
-              We couldnt load deals right now. Try again in a bit.
+            <div className="text-center py-8 text-[color:var(--status-error)] text-sm">
+              We couldn't load deals right now. Try again in a bit.
             </div>
           ) : sortedFeaturedDeals.length > 0 ? (
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6">
@@ -738,9 +738,9 @@ export default function Home() {
             </div>
 
                 <div className="space-y-2 mb-4">
-                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-center gap-3">
-                    <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Heart className="w-4 h-4 text-[hsl(var(--primary))]" />
+                  <div className="bg-[var(--bg-card)] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-center gap-3">
+                    <div className="w-8 h-8 bg-[var(--bg-surface-muted)] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Heart className="w-4 h-4 text-[color:var(--accent-text)]" />
                     </div>
                     <div className="flex-1">
                       <h4 className="font-semibold text-foreground text-xs">
@@ -755,9 +755,9 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-center gap-3">
-                    <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Truck className="w-4 h-4 text-[hsl(var(--primary))]" />
+                  <div className="bg-[var(--bg-card)] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-center gap-3">
+                    <div className="w-8 h-8 bg-[var(--bg-surface-muted)] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Truck className="w-4 h-4 text-[color:var(--accent-text)]" />
                     </div>
                     <div className="flex-1">
                       <h4 className="font-semibold text-foreground text-xs">
@@ -772,9 +772,9 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-center gap-3">
-                    <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Bell className="w-4 h-4 text-[hsl(var(--primary))]" />
+                  <div className="bg-[var(--bg-card)] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-center gap-3">
+                    <div className="w-8 h-8 bg-[var(--bg-surface-muted)] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Bell className="w-4 h-4 text-[color:var(--accent-text)]" />
                     </div>
                     <div className="flex-1">
                       <h4 className="font-semibold text-foreground text-xs">
@@ -813,9 +813,9 @@ export default function Home() {
                 </div>
 
                 <div className="space-y-2 mb-4">
-                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-start gap-3">
-                    <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-[hsl(var(--primary))] font-bold text-xs">
+                  <div className="bg-[var(--bg-card)] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-start gap-3">
+                    <div className="w-8 h-8 bg-[var(--bg-surface-muted)] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-[color:var(--accent-text)] font-bold text-xs">
                         1
                       </span>
                     </div>
@@ -829,9 +829,9 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-start gap-3">
-                    <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-[hsl(var(--primary))] font-bold text-xs">
+                  <div className="bg-[var(--bg-card)] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-start gap-3">
+                    <div className="w-8 h-8 bg-[var(--bg-surface-muted)] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-[color:var(--accent-text)] font-bold text-xs">
                         2
                       </span>
                     </div>
@@ -845,9 +845,9 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="bg-[hsl(var(--surface))] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-start gap-3">
-                    <div className="w-8 h-8 bg-[hsl(var(--surface-hover))] rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-[hsl(var(--primary))] font-bold text-xs">
+                  <div className="bg-[var(--bg-card)] p-3 rounded-xl border border-[color:var(--border-subtle)] flex items-start gap-3">
+                    <div className="w-8 h-8 bg-[var(--bg-surface-muted)] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-[color:var(--accent-text)] font-bold text-xs">
                         3
                       </span>
                     </div>
@@ -880,12 +880,12 @@ export default function Home() {
                   {[1, 2, 3].map((i) => (
                     <div
                       key={i}
-                      className="h-40 rounded-xl bg-[hsl(var(--surface-hover))]/60 animate-pulse"
+                      className="h-40 rounded-xl bg-[var(--bg-surface-muted)]/60 animate-pulse"
                     />
                   ))}
                 </div>
               ) : featuredError ? (
-                <div className="text-center py-8 text-red-500 text-sm">
+                <div className="text-center py-8 text-[color:var(--status-error)] text-sm">
                   We couldn't load deals right now. Try again in a bit.
                 </div>
               ) : sortedFeaturedDeals.length > 0 ? (
@@ -912,13 +912,13 @@ export default function Home() {
               <h4 className="font-semibold text-foreground">Product</h4>
               <Link
                 href="/how-it-works"
-                className="block text-muted-foreground hover:text-[hsl(var(--primary))]"
+                className="block text-muted-foreground hover:text-[color:var(--accent-text)]"
               >
                 How It Works
               </Link>
               <Link
                 href="/faq"
-                className="block text-muted-foreground hover:text-[hsl(var(--primary))]"
+                className="block text-muted-foreground hover:text-[color:var(--accent-text)]"
               >
                 FAQ
               </Link>
@@ -927,13 +927,13 @@ export default function Home() {
               <h4 className="font-semibold text-foreground">Company</h4>
               <Link
                 href="/about"
-                className="block text-muted-foreground hover:text-[hsl(var(--primary))]"
+                className="block text-muted-foreground hover:text-[color:var(--accent-text)]"
               >
                 About
               </Link>
               <Link
                 href="/contact"
-                className="block text-muted-foreground hover:text-[hsl(var(--primary))]"
+                className="block text-muted-foreground hover:text-[color:var(--accent-text)]"
               >
                 Contact
               </Link>
@@ -942,13 +942,13 @@ export default function Home() {
               <h4 className="font-semibold text-foreground">Legal</h4>
               <Link
                 href="/privacy-policy"
-                className="block text-muted-foreground hover:text-[hsl(var(--primary))]"
+                className="block text-muted-foreground hover:text-[color:var(--accent-text)]"
               >
                 Privacy
               </Link>
               <Link
                 href="/terms-of-service"
-                className="block text-muted-foreground hover:text-[hsl(var(--primary))]"
+                className="block text-muted-foreground hover:text-[color:var(--accent-text)]"
               >
                 Terms
               </Link>
@@ -957,13 +957,13 @@ export default function Home() {
               <h4 className="font-semibold text-foreground">Support</h4>
               <Link
                 href="/faq"
-                className="block text-muted-foreground hover:text-[hsl(var(--primary))]"
+                className="block text-muted-foreground hover:text-[color:var(--accent-text)]"
               >
                 Help Center
               </Link>
               <Link
                 href="/status"
-                className="block text-muted-foreground hover:text-[hsl(var(--primary))]"
+                className="block text-muted-foreground hover:text-[color:var(--accent-text)]"
               >
                 Status
               </Link>
@@ -984,3 +984,9 @@ export default function Home() {
     </div>
   );
 }
+
+
+
+
+
+

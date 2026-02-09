@@ -439,9 +439,9 @@ function ManualUserCreation({ adminUser }: { adminUser?: any }) {
   return (
     <div className="space-y-4">
       {inviteSentEmail && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-2">
-          <p className="font-semibold text-green-800">Setup Email Sent</p>
-          <p className="text-sm text-green-700">
+        <div className="p-4 bg-[color:var(--status-success)]/10 border border-[color:var(--status-success)]/30 rounded-lg space-y-2">
+          <p className="font-semibold text-[color:var(--status-success)]">Setup Email Sent</p>
+          <p className="text-sm text-[color:var(--status-success)]">
             Invite sent to {inviteSentEmail}. The user will finish their profile
             and set a password from the link.
           </p>
@@ -602,8 +602,8 @@ function ManualUserCreation({ adminUser }: { adminUser?: any }) {
               </div>
             </div>
 
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-xs text-blue-800">
+            <div className="p-3 bg-[color:var(--accent-text)]/10 border border-[color:var(--border-subtle)] rounded-md">
+              <p className="text-xs text-[color:var(--accent-text)]">
                 <strong>Note:</strong> Restaurant will be created as verified
                 and active. No document verification required for manual
                 onboarding.
@@ -637,8 +637,8 @@ function ManualUserCreation({ adminUser }: { adminUser?: any }) {
               </div>
             </div>
 
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-xs text-blue-800">
+            <div className="p-3 bg-[color:var(--accent-text)]/10 border border-[color:var(--border-subtle)] rounded-md">
+              <p className="text-xs text-[color:var(--accent-text)]">
                 <strong>Note:</strong> Staff member will need to be assigned to
                 a restaurant after creation.
               </p>
@@ -659,7 +659,7 @@ function ManualUserCreation({ adminUser }: { adminUser?: any }) {
                   <strong>Event Coordinator:</strong> Organizes food truck
                   events and coordinates logistics.
                   <br />
-                  <strong className="text-red-700">
+                  <strong className="text-[color:var(--status-error)]">
                     IMPORTANT: NO payments go through us. They handle all
                     payments directly.
                   </strong>
@@ -677,8 +677,8 @@ function ManualUserCreation({ adminUser }: { adminUser?: any }) {
                 Host Location Information
               </h4>
 
-              <div className="p-3 bg-green-50 border border-green-200 rounded-md mb-3">
-                <p className="text-xs text-green-800">
+              <div className="p-3 bg-[color:var(--status-success)]/10 border border-[color:var(--status-success)]/30 rounded-md mb-3">
+                <p className="text-xs text-[color:var(--status-success)]">
                   <strong>Host Model:</strong> Hosts create lots with 1+ spots.
                   They set rental prices (hourly/daily/weekly/monthly).
                   <br />
@@ -718,7 +718,7 @@ function ManualUserCreation({ adminUser }: { adminUser?: any }) {
                     className="w-full px-3 py-2 border rounded-md"
                     placeholder="123 Main St, City, State 12345"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-[color:var(--text-muted)] mt-1">
                     Coordinates will be automatically geocoded from this address
                   </p>
                 </div>
@@ -798,8 +798,8 @@ function ManualUserCreation({ adminUser }: { adminUser?: any }) {
               </div>
             </div>
 
-            <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-xs text-green-800">
+            <div className="p-3 bg-[color:var(--status-success)]/10 border border-[color:var(--status-success)]/30 rounded-md">
+              <p className="text-xs text-[color:var(--status-success)]">
                 <strong>Host Account:</strong> Can list parking spots and event
                 spaces for food trucks to use. Will have access to host
                 dashboard.
@@ -2594,9 +2594,9 @@ export default function AdminDashboard() {
                 <CardTitle>Platform Health</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-[color:var(--status-success)]/10 rounded-lg">
                   <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
+                    <CheckCircle className="w-5 h-5 text-[color:var(--status-success)]" />
                     <span className="font-medium">System Status</span>
                   </div>
                   <Badge variant="default">Operational</Badge>
@@ -3135,13 +3135,13 @@ export default function AdminDashboard() {
                                           />
                                         ) : (
                                           <div
-                                            className="w-20 h-20 bg-gray-100 rounded flex items-center justify-center cursor-pointer border"
+                                            className="w-20 h-20 bg-[var(--bg-surface-muted)] rounded flex items-center justify-center cursor-pointer border"
                                             onClick={() =>
                                               window.open(doc, "_blank")
                                             }
                                             data-testid={`doc-document-${request.id}-${index}`}
                                           >
-                                            <i className="fas fa-file-pdf text-2xl text-red-500"></i>
+                                            <i className="fas fa-file-pdf text-2xl text-[color:var(--status-error)]"></i>
                                           </div>
                                         )}
                                       </div>
@@ -5703,3 +5703,8 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+
+
+
+

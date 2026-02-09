@@ -62,8 +62,8 @@ export function CancelSeriesDialog({
       // Show success feedback
       alert(
         `Series cancelled successfully!\n\n` +
-        `• ${data.futureOccurrencesCancelled} future occurrence(s) cancelled\n` +
-        `• ${data.trucksNotified} truck(s) notified by email`
+        `- ${data.futureOccurrencesCancelled} future occurrence(s) cancelled\n` +
+        `- ${data.trucksNotified} truck(s) notified by email`
       );
     },
     onError: (error) => {
@@ -90,7 +90,7 @@ export function CancelSeriesDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-red-600">
+          <DialogTitle className="flex items-center gap-2 text-[color:var(--status-error)]">
             <AlertCircle className="h-5 w-5" />
             Cancel Event Series
           </DialogTitle>
@@ -100,9 +100,9 @@ export function CancelSeriesDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-            <h4 className="font-semibold text-red-900 mb-2">{seriesName}</h4>
-            <div className="space-y-1 text-sm text-red-800">
+          <div className="rounded-lg border border-[color:var(--status-error)]/30 bg-[color:var(--status-error)]/10 p-4">
+            <h4 className="font-semibold text-[color:var(--status-error)] mb-2">{seriesName}</h4>
+            <div className="space-y-1 text-sm text-[color:var(--status-error)]">
               <p>
                 <strong>{futureOccurrencesCount}</strong> future occurrence{futureOccurrencesCount !== 1 ? "s" : ""} will be cancelled
               </p>
@@ -112,8 +112,8 @@ export function CancelSeriesDialog({
             </div>
           </div>
 
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-sm text-yellow-900">
+          <div className="bg-[color:var(--status-warning)]/10 border border-[color:var(--status-warning)]/30 rounded-lg p-4">
+            <p className="text-sm text-[color:var(--status-warning)]">
               <strong>Note:</strong> This action cannot be undone. All interested and accepted trucks will be notified automatically.
             </p>
           </div>
@@ -123,10 +123,10 @@ export function CancelSeriesDialog({
               type="checkbox"
               checked={isConfirmed}
               onChange={(e) => setIsConfirmed(e.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-gray-300"
+              className="mt-1 h-4 w-4 rounded border-[var(--border-subtle)]"
               disabled={cancelSeriesMutation.isPending}
             />
-            <span className="text-sm text-gray-700">
+            <span className="text-sm text-[color:var(--text-secondary)]">
               I understand that cancelling this series will remove all future occurrences and notify all affected trucks. This action cannot be reversed.
             </span>
           </label>
@@ -152,3 +152,5 @@ export function CancelSeriesDialog({
     </Dialog>
   );
 }
+
+

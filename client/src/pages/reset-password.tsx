@@ -113,11 +113,11 @@ export default function ResetPassword() {
   const passwordStrength = getPasswordStrength(password);
   const strengthTextClass =
     passwordStrength.color === "red"
-      ? "text-red-300"
+      ? "text-[color:var(--status-error)]"
       : passwordStrength.color === "orange"
         ? "text-amber-300"
         : passwordStrength.color === "blue"
-          ? "text-blue-300"
+          ? "text-[color:var(--accent-text)]"
           : passwordStrength.color === "green"
             ? "text-emerald-300"
             : "text-[color:var(--text-muted)]";
@@ -130,7 +130,7 @@ export default function ResetPassword() {
           title="Reset Password"
           fallbackHref="/forgot-password"
           icon={KeyRound}
-          className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
+          className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
         />
 
         <div className="px-6 py-12 max-w-md mx-auto">
@@ -174,7 +174,7 @@ export default function ResetPassword() {
           title="Reset Password"
           fallbackHref="/forgot-password"
           icon={KeyRound}
-          className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
+          className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
         />
 
         <div className="px-6 py-12 max-w-md mx-auto">
@@ -212,7 +212,7 @@ export default function ResetPassword() {
         title="Reset Password"
         fallbackHref="/forgot-password"
         icon={KeyRound}
-        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
 
       <div className="px-6 py-12 max-w-md mx-auto">
@@ -260,13 +260,13 @@ export default function ResetPassword() {
                       {password && (
                         <div className="mt-2">
                           <div className="flex items-center space-x-2">
-                            <div className="flex-1 bg-gray-200 rounded-full h-2">
+                            <div className="flex-1 bg-[var(--bg-subtle)] rounded-full h-2">
                               <div
                                 className={`h-2 rounded-full transition-all duration-300 ${
-                                  passwordStrength.level === 1 ? 'w-1/4 bg-red-500' :
+                                  passwordStrength.level === 1 ? 'w-1/4 bg-[color:var(--status-error)]' :
                                   passwordStrength.level === 2 ? 'w-2/4 bg-orange-500' :
-                                  passwordStrength.level === 3 ? 'w-3/4 bg-blue-500' :
-                                  passwordStrength.level === 4 ? 'w-full bg-green-500' : 'w-0'
+                                  passwordStrength.level === 3 ? 'w-3/4 bg-[color:var(--accent-text)]/100' :
+                                  passwordStrength.level === 4 ? 'w-full bg-[color:var(--status-success)]/100' : 'w-0'
                                 }`}
                               />
                             </div>
@@ -353,3 +353,7 @@ export default function ResetPassword() {
     </div>
   );
 }
+
+
+
+

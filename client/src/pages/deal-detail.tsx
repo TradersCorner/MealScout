@@ -124,13 +124,13 @@ export default function DealDetail() {
 
   if (dealLoading || restaurantLoading) {
     return (
-      <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-white min-h-screen">
+      <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-layered)] min-h-screen">
         <div className="animate-pulse">
-          <div className="w-full h-64 bg-muted"></div>
+          <div className="w-full h-64 bg-[var(--bg-surface-muted)]"></div>
           <div className="p-4 space-y-4">
-            <div className="h-6 bg-muted rounded w-3/4"></div>
-            <div className="h-4 bg-muted rounded w-1/2"></div>
-            <div className="h-20 bg-muted rounded"></div>
+            <div className="h-6 bg-[var(--bg-surface-muted)] rounded w-3/4"></div>
+            <div className="h-4 bg-[var(--bg-surface-muted)] rounded w-1/2"></div>
+            <div className="h-20 bg-[var(--bg-surface-muted)] rounded"></div>
           </div>
         </div>
       </div>
@@ -139,7 +139,7 @@ export default function DealDetail() {
 
   if (!deal) {
     return (
-      <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-white min-h-screen flex items-center justify-center">
+      <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-layered)] min-h-screen flex items-center justify-center">
         <Card>
           <CardContent className="p-6 text-center">
             <i className="fas fa-exclamation-triangle text-muted-foreground text-3xl mb-4"></i>
@@ -199,7 +199,7 @@ export default function DealDetail() {
   };
 
   return (
-    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-white min-h-screen">
+    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-layered)] min-h-screen">
       <SEOHead
         title={`${dealTitle} - ${restaurantName} | MealScout`}
         description={`${dealDescription}. ${
@@ -217,31 +217,31 @@ export default function DealDetail() {
         title="Special Details"
         fallbackHref="/"
         icon={Tag}
-        className="bg-white sticky top-0 z-10"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean sticky top-0 z-10"
       />
 
       {/* Action Buttons */}
-      <div className="bg-white px-4 py-2 border-b border-border sticky top-16 z-10">
+      <div className="bg-[hsl(var(--background))/0.94] px-4 py-2 border-b border-[color:var(--border-subtle)] sticky top-16 z-10">
         <div className="flex justify-end space-x-2">
           <button
-            className="p-2 rounded-full hover:bg-muted"
+            className="p-2 rounded-full hover:bg-[var(--bg-surface-muted)]"
             onClick={() => setShowShareModal(true)}
             data-testid="button-share"
           >
             <i className="fas fa-share text-foreground"></i>
           </button>
           <button
-            className="p-2 rounded-full hover:bg-muted"
+            className="p-2 rounded-full hover:bg-[var(--bg-surface-muted)]"
             data-testid="button-favorite"
           >
-            <i className="fas fa-heart text-muted-foreground hover:text-primary"></i>
+            <i className="fas fa-heart text-muted-foreground hover:text-[color:var(--accent-text)]"></i>
           </button>
         </div>
       </div>
 
       {/* Deal Image */}
       <div className="relative">
-        <div className="w-full h-64 bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center">
+        <div className="w-full h-64 bg-gradient-to-r from-[color:var(--accent-text)]/12 to-[color:var(--status-warning)]/12 flex items-center justify-center">
           {(deal as Deal)?.imageUrl ? (
             <img
               src={(deal as Deal).imageUrl}
@@ -253,11 +253,11 @@ export default function DealDetail() {
               referrerPolicy="no-referrer"
             />
           ) : (
-            <i className="fas fa-utensils text-primary text-4xl"></i>
+            <i className="fas fa-utensils text-[color:var(--accent-text)] text-4xl"></i>
           )}
         </div>
         <div
-          className="absolute top-4 left-4 bg-accent text-accent-foreground px-3 py-1 rounded-full font-bold text-sm"
+          className="absolute top-4 left-4 bg-[color:var(--accent-text)]/15 text-[color:var(--accent-text)] px-3 py-1 rounded-full font-bold text-sm"
           data-testid="text-discount-badge"
         >
           {formatDiscount(deal as Deal)}
@@ -285,7 +285,7 @@ export default function DealDetail() {
                 </div>
               )}
               <div className="flex items-center space-x-1">
-                <i className="fas fa-star text-yellow-400"></i>
+                <i className="fas fa-star text-[color:var(--status-warning)]"></i>
                 <span data-testid="text-restaurant-rating">
                   {(rating as any)?.rating &&
                   typeof (rating as any).rating === "number"
@@ -299,13 +299,13 @@ export default function DealDetail() {
               </div>
             </div>
           </div>
-          <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
+          <div className="w-16 h-16 bg-[color:var(--accent-text)] rounded-full flex items-center justify-center">
             <i className="fas fa-utensils text-white text-xl"></i>
           </div>
         </div>
 
         {/* Deal Description */}
-        <Card className="bg-muted/50 mb-6">
+        <Card className="bg-[var(--bg-surface-muted)] mb-6 border-[color:var(--border-subtle)] shadow-clean">
           <CardContent className="p-4">
             <h2
               className="font-semibold text-foreground mb-2"
@@ -342,7 +342,7 @@ export default function DealDetail() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-3 gap-3 mb-6">
-          <Card>
+          <Card className="bg-[var(--bg-layered)] border-[color:var(--border-subtle)] shadow-clean">
             <CardContent className="text-center p-3">
               <i className="fas fa-clock text-secondary text-lg mb-1"></i>
               <p
@@ -354,9 +354,9 @@ export default function DealDetail() {
               <p className="text-xs text-muted-foreground">Pickup time</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-[var(--bg-layered)] border-[color:var(--border-subtle)] shadow-clean">
             <CardContent className="text-center p-3">
-              <i className="fas fa-phone text-primary text-lg mb-1"></i>
+              <i className="fas fa-phone text-[color:var(--accent-text)] text-lg mb-1"></i>
               <p className="text-xs font-medium text-foreground">Call Now</p>
               <p
                 className="text-xs text-muted-foreground"
@@ -366,9 +366,9 @@ export default function DealDetail() {
               </p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-[var(--bg-layered)] border-[color:var(--border-subtle)] shadow-clean">
             <CardContent className="text-center p-3">
-              <i className="fas fa-directions text-accent text-lg mb-1"></i>
+              <i className="fas fa-directions text-[color:var(--accent-text)] text-lg mb-1"></i>
               <p className="text-xs font-medium text-foreground">Directions</p>
               {(restaurant as Restaurant)?.address && (
                 <p
@@ -393,7 +393,7 @@ export default function DealDetail() {
                 Recent Reviews
               </h3>
               <button
-                className="text-primary text-sm font-medium"
+                className="text-[color:var(--accent-text)] text-sm font-medium"
                 data-testid="button-see-all-reviews"
               >
                 See all
@@ -404,10 +404,10 @@ export default function DealDetail() {
               {(reviews as any[])
                 .slice(0, 2)
                 .map((review: any, index: number) => (
-                  <Card key={review.id}>
+                  <Card key={review.id} className="bg-[var(--bg-layered)] border-[color:var(--border-subtle)] shadow-clean">
                     <CardContent className="p-4">
                       <div className="flex items-center space-x-3 mb-2">
-                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full bg-[var(--bg-surface-muted)] flex items-center justify-center">
                           <i className="fas fa-user text-muted-foreground text-xs"></i>
                         </div>
                         <div className="flex-1">
@@ -418,13 +418,13 @@ export default function DealDetail() {
                             >
                               {review.user?.firstName || "Anonymous"}
                             </p>
-                            <div className="flex text-yellow-400">
+                            <div className="flex text-[color:var(--status-warning)]">
                               {[...Array(5)].map((_, i) => (
                                 <i
                                   key={i}
                                   className={`fas fa-star text-xs ${
                                     i < review.rating
-                                      ? "text-yellow-400"
+                                      ? "text-[color:var(--status-warning)]"
                                       : "text-muted-foreground"
                                   }`}
                                 ></i>
@@ -454,10 +454,10 @@ export default function DealDetail() {
       </div>
 
       {/* Bottom Action Bar */}
-      <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-white border-t border-border px-4 py-4">
+      <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-[hsl(var(--background))/0.94] border-t border-[color:var(--border-subtle)] px-4 py-4 shadow-clean">
         <div className="flex items-center space-x-3">
           <Button
-            className="flex-1 py-3 font-semibold text-sm food-gradient-primary border-0"
+            className="flex-1 py-3 font-semibold text-sm food-gradient-primary border-0 shadow-clean"
             onClick={() => setShowClaimModal(true)}
             disabled={!isAuthenticated}
             data-testid="button-claim-deal"
@@ -514,3 +514,12 @@ export default function DealDetail() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+

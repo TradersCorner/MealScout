@@ -175,23 +175,23 @@ export default function AccountSetup() {
   const passwordStrength = getPasswordStrength(password);
   const strengthClass =
     passwordStrength.color === "red"
-      ? "bg-red-500"
+      ? "bg-[color:var(--status-error)]"
       : passwordStrength.color === "orange"
-        ? "bg-amber-500"
+        ? "bg-[color:var(--status-warning)]"
         : passwordStrength.color === "blue"
-          ? "bg-blue-500"
+          ? "bg-[color:var(--accent-text)]"
           : passwordStrength.color === "green"
-            ? "bg-emerald-500"
+            ? "bg-[color:var(--status-success)]"
             : "bg-[color:var(--text-muted)]";
   const strengthTextClass =
     passwordStrength.color === "red"
-      ? "text-red-300"
+      ? "text-[color:var(--status-error)]"
       : passwordStrength.color === "orange"
-        ? "text-amber-300"
+        ? "text-[color:var(--status-warning)]"
         : passwordStrength.color === "blue"
-          ? "text-blue-300"
+          ? "text-[color:var(--accent-text)]"
           : passwordStrength.color === "green"
-            ? "text-emerald-300"
+            ? "text-[color:var(--status-success)]"
             : "text-[color:var(--text-muted)]";
 
   // Loading state
@@ -220,12 +220,12 @@ export default function AccountSetup() {
           title="Account Setup"
           fallbackHref="/login"
           icon={KeyRound}
-          className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
+          className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
         />
         <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] p-4">
           <Card className="w-full max-w-md border-[color:var(--border-subtle)] bg-[var(--bg-card)]">
             <CardHeader>
-              <CardTitle className="text-red-600">Invalid Setup Link</CardTitle>
+              <CardTitle className="text-[color:var(--status-error)]">Invalid Setup Link</CardTitle>
               <CardDescription>
                 This account setup link has expired or has already been used.
               </CardDescription>
@@ -257,9 +257,9 @@ export default function AccountSetup() {
           <Card className="w-full max-w-md border-[color:var(--border-subtle)] bg-[var(--bg-card)]">
             <CardHeader>
               <div className="flex items-center justify-center mb-4">
-                <CheckCircle className="w-16 h-16 text-green-500" />
+                <CheckCircle className="w-16 h-16 text-[color:var(--status-success)]" />
               </div>
-              <CardTitle className="text-center text-green-600">
+              <CardTitle className="text-center text-[color:var(--status-success)]">
                 Account Setup Complete!
               </CardTitle>
               <CardDescription className="text-center">
@@ -284,7 +284,7 @@ export default function AccountSetup() {
         title="Complete Your Account"
         fallbackHref="/login"
         icon={KeyRound}
-        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] p-4">
         <Card className="w-full max-w-md border-[color:var(--border-subtle)] bg-[var(--bg-card)]">
@@ -311,7 +311,7 @@ export default function AccountSetup() {
                     disabled={setupMutation.isPending}
                   />
                   {form.formState.errors.firstName && (
-                    <p className="text-sm text-red-600">
+                    <p className="text-sm text-[color:var(--status-error)]">
                       {form.formState.errors.firstName.message}
                     </p>
                   )}
@@ -325,7 +325,7 @@ export default function AccountSetup() {
                     disabled={setupMutation.isPending}
                   />
                   {form.formState.errors.lastName && (
-                    <p className="text-sm text-red-600">
+                    <p className="text-sm text-[color:var(--status-error)]">
                       {form.formState.errors.lastName.message}
                     </p>
                   )}
@@ -334,7 +334,7 @@ export default function AccountSetup() {
 
               <div className="space-y-2">
                 <Label htmlFor="phone">
-                  Phone Number <span className="text-red-500">*</span>
+                  Phone Number <span className="text-[color:var(--status-error)]">*</span>
                 </Label>
                 <Input
                   id="phone"
@@ -343,7 +343,7 @@ export default function AccountSetup() {
                   disabled={setupMutation.isPending}
                 />
                 {form.formState.errors.phone && (
-                  <p className="text-sm text-red-600">
+                  <p className="text-sm text-[color:var(--status-error)]">
                     {form.formState.errors.phone.message}
                   </p>
                 )}
@@ -351,7 +351,7 @@ export default function AccountSetup() {
 
               <div className="space-y-2">
                 <Label htmlFor="password">
-                  Create Password <span className="text-red-500">*</span>
+                  Create Password <span className="text-[color:var(--status-error)]">*</span>
                 </Label>
                 <div className="relative">
                   <Input
@@ -391,7 +391,7 @@ export default function AccountSetup() {
                   </div>
                 )}
                 {form.formState.errors.password && (
-                  <p className="text-sm text-red-600">
+                  <p className="text-sm text-[color:var(--status-error)]">
                     {form.formState.errors.password.message}
                   </p>
                 )}
@@ -399,7 +399,7 @@ export default function AccountSetup() {
 
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">
-                  Confirm Password <span className="text-red-500">*</span>
+                  Confirm Password <span className="text-[color:var(--status-error)]">*</span>
                 </Label>
                 <div className="relative">
                   <Input
@@ -424,7 +424,7 @@ export default function AccountSetup() {
                   </button>
                 </div>
                 {form.formState.errors.confirmPassword && (
-                  <p className="text-sm text-red-600">
+                  <p className="text-sm text-[color:var(--status-error)]">
                     {form.formState.errors.confirmPassword.message}
                   </p>
                 )}
@@ -444,6 +444,10 @@ export default function AccountSetup() {
     </div>
   );
 }
+
+
+
+
 
 
 

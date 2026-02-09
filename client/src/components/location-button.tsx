@@ -522,9 +522,9 @@ export default function LocationButton({
         {isLoading ? (
           <Loader2 size={iconSize} className="animate-spin" />
         ) : status === "success" ? (
-          <CheckCircle size={iconSize} className="text-green-600" />
+          <CheckCircle size={iconSize} className="text-[color:var(--status-success)]" />
         ) : status === "error" ? (
-          <XCircle size={iconSize} className="text-red-600" />
+          <XCircle size={iconSize} className="text-[color:var(--status-error)]" />
         ) : (
           <MapPin size={iconSize} />
         )}
@@ -555,13 +555,13 @@ export default function LocationButton({
                 <>
                   <CheckCircle
                     size={iconSize}
-                    className="text-green-600 mr-2"
+                    className="text-[color:var(--status-success)] mr-2"
                   />
                   Location Found
                 </>
               ) : status === "error" ? (
                 <>
-                  <XCircle size={iconSize} className="text-red-600 mr-2" />
+                  <XCircle size={iconSize} className="text-[color:var(--status-error)] mr-2" />
                   Location Error
                 </>
               ) : (
@@ -644,7 +644,7 @@ export default function LocationButton({
             </>
           ) : status === "success" ? (
             <>
-              <CheckCircle size={iconSize} className="text-green-600 mr-2" />
+              <CheckCircle size={iconSize} className="text-[color:var(--status-success)] mr-2" />
               Location Found
             </>
           ) : status === "error" ? (
@@ -669,3 +669,4 @@ export default function LocationButton({
     </div>
   );
 }
+

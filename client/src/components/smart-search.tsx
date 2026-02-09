@@ -147,7 +147,7 @@ export default function SmartSearch({
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
-      <div className="smart-search-shell relative flex items-center gap-2 rounded-full px-3 py-2 shadow-md">
+      <div className="smart-search-shell relative flex items-center gap-2 rounded-full px-3 py-2 shadow-clean-lg">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--accent-text)] w-5 h-5 z-10" />
           <Input
@@ -164,7 +164,7 @@ export default function SmartSearch({
         </div>
         <Button
           onClick={() => handleSearch(value)}
-          className="smart-search-button px-5 sm:px-6 py-2.5 text-sm sm:text-base font-semibold rounded-full shadow-lg hover:shadow-xl focus:ring-2 focus:ring-[#F59E0B]/40 focus:ring-offset-0"
+          className="smart-search-button px-5 sm:px-6 py-2.5 text-sm sm:text-base font-semibold rounded-full shadow-clean-lg hover:shadow-clean-lg focus:ring-2 focus:ring-[#F59E0B]/40 focus:ring-offset-0"
           data-testid="button-search"
         >
           Search
@@ -173,7 +173,7 @@ export default function SmartSearch({
 
       {/* Search Suggestions Dropdown */}
       {isOpen && showSuggestions && (
-        <Card className="absolute top-full left-0 right-0 mt-2 max-h-96 overflow-y-auto z-50 shadow-xl border-2">
+        <Card className="absolute top-full left-0 right-0 mt-2 max-h-96 overflow-y-auto z-50 shadow-clean-lg border-2">
           <CardContent className="p-0">
             {/* Current search results */}
             {value.length >= 2 && suggestions && suggestions.length > 0 && (
@@ -288,3 +288,4 @@ export default function SmartSearch({
     </div>
   );
 }
+

@@ -377,7 +377,7 @@ export function CreateSeriesDialog({ open, onOpenChange, onSeriesCreated }: Crea
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-4 border p-4 rounded-md border-slate-200 bg-slate-50">
+                <div className="flex items-center space-x-4 border p-4 rounded-md border-[var(--border-subtle)] bg-[var(--bg-surface)]">
                   <Switch
                     id="default-hard-cap"
                     checked={defaultHardCapEnabled}
@@ -423,12 +423,12 @@ export function CreateSeriesDialog({ open, onOpenChange, onSeriesCreated }: Crea
 
               <div className="max-h-96 overflow-y-auto space-y-2 border rounded-md p-4">
                 {previewOccurrences.map((occ, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-md text-sm">
+                  <div key={idx} className="flex items-center justify-between p-3 bg-[var(--bg-surface)] rounded-md text-sm">
                     <div className="flex items-center gap-3">
                       <Calendar className="h-4 w-4 text-slate-500" />
                       <span className="font-medium">{format(occ.date, "EEEE, MMMM d, yyyy")}</span>
                     </div>
-                    <div className="flex items-center gap-4 text-slate-600">
+                    <div className="flex items-center gap-4 text-[color:var(--text-muted)]">
                       <span>{occ.startTime} - {occ.endTime}</span>
                       <span>{occ.maxTrucks} trucks</span>
                       {occ.hardCapEnabled && (
@@ -498,3 +498,4 @@ export function CreateSeriesDialog({ open, onOpenChange, onSeriesCreated }: Crea
     </>
   );
 }
+

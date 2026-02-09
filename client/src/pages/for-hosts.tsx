@@ -4,3 +4,6 @@ import { roleLandingContent } from "@/content/role-landing";
 export default function ForHosts() {
   return <RoleLandingPage content={roleLandingContent.hosts} />;
 }
+
+
+

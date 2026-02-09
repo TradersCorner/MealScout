@@ -153,12 +153,12 @@ export function VideoUploadModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+      <div className="bg-[var(--bg-surface)] rounded-lg shadow-clean-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-[var(--border-subtle)] flex justify-between items-center">
           <h2 className="text-xl font-bold">Share Your Food Story</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-[color:var(--text-muted)] hover:text-[color:var(--text-muted)]"
           >
             ✕
           </button>
@@ -166,13 +166,13 @@ export function VideoUploadModal({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+            <div className="p-3 bg-[color:var(--status-error)]/10 border border-red-200 rounded text-[color:var(--status-error)] text-sm">
               {error}
             </div>
           )}
 
           {/* Lifetime info */}
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-[color:var(--text-muted)]">
             Videos appear in MealScout for 7 days.
           </p>
 
@@ -185,14 +185,14 @@ export function VideoUploadModal({
 
           {/* Recommendation hint (soft, non-blocking) */}
           {!restaurantId && (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-[color:var(--text-muted)]">
               Tag a restaurant so this counts as a recommendation. You can recommend each restaurant once.
             </p>
           )}
 
           {/* Video Upload */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-2">
               Video (max 30 seconds, max 50MB)
             </label>
             <input
@@ -200,10 +200,10 @@ export function VideoUploadModal({
               accept="video/*"
               onChange={handleFileChange}
               disabled={isLoading}
-              className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full p-2 border border-[var(--border-subtle)] rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             {file && (
-              <p className="mt-2 text-sm text-green-600">
+              <p className="mt-2 text-sm text-[color:var(--status-success)]">
                 ✓ Video selected ({duration}s)
               </p>
             )}
@@ -211,7 +211,7 @@ export function VideoUploadModal({
 
           {/* Title */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-2">
               Title *
             </label>
             <input
@@ -221,14 +221,14 @@ export function VideoUploadModal({
               placeholder="What did you eat? (max 100 chars)"
               maxLength={100}
               disabled={isLoading}
-              className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full p-2 border border-[var(--border-subtle)] rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-            <p className="text-xs text-gray-500 mt-1">{title.length}/100</p>
+            <p className="text-xs text-[color:var(--text-muted)] mt-1">{title.length}/100</p>
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-2">
               Description (optional)
             </label>
             <textarea
@@ -238,14 +238,14 @@ export function VideoUploadModal({
               maxLength={500}
               disabled={isLoading}
               rows={3}
-              className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="w-full p-2 border border-[var(--border-subtle)] rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             />
-            <p className="text-xs text-gray-500 mt-1">{description.length}/500</p>
+            <p className="text-xs text-[color:var(--text-muted)] mt-1">{description.length}/500</p>
           </div>
 
           {/* Hashtags */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-2">
               Hashtags (max 10)
             </label>
             <div className="flex gap-2 mb-2">
@@ -261,13 +261,13 @@ export function VideoUploadModal({
                 }}
                 placeholder="Add hashtags..."
                 disabled={isLoading || hashtags.length >= 10}
-                className="flex-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="flex-1 p-2 border border-[var(--border-subtle)] rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <button
                 type="button"
                 onClick={handleAddHashtag}
                 disabled={isLoading || hashtags.length >= 10}
-                className="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                className="px-3 py-2 bg-[var(--bg-subtle)] rounded hover:bg-[var(--bg-subtle)] disabled:opacity-50"
               >
                 Add
               </button>
@@ -276,13 +276,13 @@ export function VideoUploadModal({
               {hashtags.map((tag) => (
                 <div
                   key={tag}
-                  className="flex items-center gap-2 px-3 py-1 bg-blue-100 rounded-full text-sm text-blue-700"
+                  className="flex items-center gap-2 px-3 py-1 bg-[color:var(--accent-text)]/12 rounded-full text-sm text-[color:var(--accent-text)]"
                 >
                   {tag}
                   <button
                     type="button"
                     onClick={() => handleRemoveHashtag(tag)}
-                    className="text-blue-500 hover:text-blue-700"
+                    className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text)]"
                   >
                     ✕
                   </button>
@@ -292,19 +292,19 @@ export function VideoUploadModal({
           </div>
 
           {/* Buttons */}
-          <div className="flex gap-3 pt-4 border-t border-gray-200">
+          <div className="flex gap-3 pt-4 border-t border-[var(--border-subtle)]">
             <button
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="flex-1 py-2 px-4 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+              className="flex-1 py-2 px-4 border border-[var(--border-subtle)] rounded hover:bg-[var(--bg-surface)] disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading || !file || !title}
-              className="flex-1 py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              className="flex-1 py-2 px-4 bg-[color:var(--accent-text)] text-white rounded hover:bg-[color:var(--accent-text-hover)] disabled:opacity-50"
             >
               {isLoading ? 'Uploading...' : 'Share Story'}
             </button>
@@ -314,3 +314,4 @@ export function VideoUploadModal({
     </div>
   );
 }
+

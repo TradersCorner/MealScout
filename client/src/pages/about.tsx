@@ -75,13 +75,13 @@ export default function About() {
         title="About MealScout"
         fallbackHref="/"
         icon={Globe}
-        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
 
       <div className="px-4 py-8 max-w-6xl mx-auto">
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <div className="w-24 h-24 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 rounded-3xl mb-8 flex items-center justify-center mx-auto shadow-2xl">
+          <div className="w-24 h-24 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 rounded-3xl mb-8 flex items-center justify-center mx-auto shadow-clean-lg">
             <Heart className="w-12 h-12 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-[color:var(--text-primary)] mb-6">
@@ -100,8 +100,8 @@ export default function About() {
             return (
               <Card key={index} className="text-center p-6 bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean">
                 <CardContent className="p-0">
-                  <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <IconComponent className="w-6 h-6 text-red-600" />
+                  <div className="w-12 h-12 bg-[color:var(--accent-text)]/12 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <IconComponent className="w-6 h-6 text-[color:var(--accent-text)]" />
                   </div>
                   <div className="text-3xl font-bold text-[color:var(--text-primary)] mb-2">{stat.number}</div>
                   <div className="text-[color:var(--text-secondary)] font-medium">{stat.label}</div>
@@ -133,8 +133,8 @@ export default function About() {
             <div className="relative">
               <div className="w-full h-64 bg-gradient-to-br from-red-200 to-orange-200 rounded-2xl flex items-center justify-center">
                 <div className="text-center">
-                  <MapPin className="w-16 h-16 text-red-600 mx-auto mb-4" />
-                  <p className="text-red-800 font-semibold">Connecting Communities</p>
+                  <MapPin className="w-16 h-16 text-[color:var(--accent-text)] mx-auto mb-4" />
+                  <p className="text-[color:var(--accent-text)] font-semibold">Connecting Communities</p>
                 </div>
               </div>
             </div>
@@ -151,8 +151,8 @@ export default function About() {
                 <Card key={index} className="p-6 bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean hover:shadow-clean-lg transition-shadow">
                   <CardContent className="p-0">
                     <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center flex-shrink-0">
-                        <IconComponent className="w-6 h-6 text-red-600" />
+                      <div className="w-12 h-12 bg-[color:var(--accent-text)]/12 rounded-2xl flex items-center justify-center flex-shrink-0">
+                        <IconComponent className="w-6 h-6 text-[color:var(--accent-text)]" />
                       </div>
                       <div>
                         <h3 className="text-xl font-semibold text-[color:var(--text-primary)] mb-3">{feature.title}</h3>
@@ -208,3 +208,7 @@ export default function About() {
     </div>
   );
 }
+
+
+
+

@@ -143,7 +143,7 @@ export default function RoleLandingPage({
           <div className="relative">
             <div className="absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl" style={{ backgroundColor: "rgba(242,138,46,0.25)" }} />
             <div className="absolute -bottom-8 -left-8 h-28 w-28 rounded-full blur-2xl" style={{ backgroundColor: "rgba(198,91,23,0.18)" }} />
-            <Card className="border shadow-2xl" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
+            <Card className="border shadow-clean-lg" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
               <CardContent className="p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -196,7 +196,7 @@ export default function RoleLandingPage({
           </div>
         </section>
 
-        <section className="grid gap-4 rounded-3xl border p-6 text-sm shadow-lg md:grid-cols-3" style={{ backgroundColor: "var(--card-muted)", borderColor: "var(--border)", color: "var(--ink-dark-muted)" }}>
+        <section className="grid gap-4 rounded-3xl border p-6 text-sm shadow-clean-lg md:grid-cols-3" style={{ backgroundColor: "var(--card-muted)", borderColor: "var(--border)", color: "var(--ink-dark-muted)" }}>
           {content.valueProps.map((value) => (
             <div key={value.text} className="flex items-center gap-3">
               <value.icon className="h-5 w-5 text-[var(--accent)]" />
@@ -238,7 +238,7 @@ export default function RoleLandingPage({
             </CardContent>
           </Card>
 
-          <Card className="border shadow-xl" style={{ backgroundColor: "var(--panel-dark-bg)", borderColor: "var(--panel-dark-border)" }}>
+          <Card className="border shadow-clean-lg" style={{ backgroundColor: "var(--panel-dark-bg)", borderColor: "var(--panel-dark-border)" }}>
             <CardContent className="p-6 space-y-3">
               <p className="text-xs uppercase tracking-[0.2em] text-[var(--ink-soft)]">
                 {content.starter.kicker}
@@ -261,7 +261,7 @@ export default function RoleLandingPage({
           </Card>
         </section>
 
-        <section className="rounded-3xl px-6 py-10 text-center shadow-2xl" style={{ backgroundColor: "var(--panel-dark-bg)" }}>
+        <section className="rounded-3xl px-6 py-10 text-center shadow-clean-lg" style={{ backgroundColor: "var(--panel-dark-bg)" }}>
           <h2 className="text-3xl font-semibold text-[var(--ink)]">
             {content.finalCta.title}
           </h2>
@@ -294,3 +294,4 @@ export default function RoleLandingPage({
     </div>
   );
 }
+

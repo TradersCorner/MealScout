@@ -35,7 +35,7 @@ export default function Contact() {
       icon: HelpCircle,
       contact: "info.mealscout@gmail.com",
       response: "Within 24 hours",
-      color: "bg-blue-100 text-blue-600"
+      color: "bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]"
     },
     {
       title: "Restaurant Partnerships",
@@ -43,7 +43,7 @@ export default function Contact() {
       icon: Building,
       contact: "info.mealscout@gmail.com",
       response: "Within 24 hours",
-      color: "bg-green-100 text-green-600"
+      color: "bg-[color:var(--status-success)]/12 text-[color:var(--status-success)]"
     },
     {
       title: "Press & Media",
@@ -80,13 +80,13 @@ export default function Contact() {
         title="Contact Us"
         fallbackHref="/"
         icon={Mail}
-        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
 
       <div className="px-4 py-8 max-w-6xl mx-auto">
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <div className="w-24 h-24 bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 rounded-3xl mb-8 flex items-center justify-center mx-auto shadow-2xl">
+          <div className="w-24 h-24 bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 rounded-3xl mb-8 flex items-center justify-center mx-auto shadow-clean-lg">
             <Mail className="w-12 h-12 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-[color:var(--text-primary)] mb-6">
@@ -139,7 +139,7 @@ export default function Contact() {
             <Card className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean-lg">
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-[color:var(--text-primary)] flex items-center gap-3">
-                  <HelpCircle className="w-5 h-5 text-blue-600" />
+                  <HelpCircle className="w-5 h-5 text-[color:var(--accent-text)]" />
                   Quick Help Topics
                 </CardTitle>
               </CardHeader>
@@ -148,7 +148,7 @@ export default function Contact() {
                   {quickHelp.map((topic, index) => (
                     <button
                       key={index}
-                      className="w-full text-left p-3 rounded-lg bg-[var(--bg-surface)] hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm"
+                      className="w-full text-left p-3 rounded-lg bg-[var(--bg-surface)] hover:bg-[color:var(--accent-text)]/10 hover:text-[color:var(--accent-text)] transition-colors text-sm"
                       data-testid={`button-quick-help-${index}`}
                     >
                       {topic}
@@ -162,7 +162,7 @@ export default function Contact() {
             <Card className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean-lg">
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-[color:var(--text-primary)] flex items-center gap-3">
-                  <MapPin className="w-5 h-5 text-green-600" />
+                  <MapPin className="w-5 h-5 text-[color:var(--status-success)]" />
                   Our Information
                 </CardTitle>
               </CardHeader>
@@ -187,7 +187,7 @@ export default function Contact() {
             </Card>
 
             {/* Response Times */}
-            <Card className="bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-xl">
+            <Card className="bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-clean-lg">
               <CardContent className="p-6 text-center">
                 <h3 className="text-xl font-bold mb-4">Typical Response Times</h3>
                 <div className="space-y-2 text-sm opacity-90">
@@ -203,3 +203,6 @@ export default function Contact() {
     </div>
   );
 }
+
+
+

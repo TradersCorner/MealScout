@@ -1,5 +1,5 @@
 /**
- * Admin Moderation v1 — UI Only
+ * Admin Moderation v1 - UI Only
  * - This UI controls visibility only (hide/restore/remove)
  * - No editing, ranking, messaging, or payments
  * - All copy sourced from ADMIN_MODERATION_COPY
@@ -261,7 +261,7 @@ function ModerationHeader({ selectionMode, onToggleSelection, selectedCount }: M
   return (
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-3">
-        <Shield className="w-6 h-6 text-primary" />
+        <Shield className="w-6 h-6 text-[color:var(--accent-text)]" />
         <div>
           <h1 className="text-2xl font-bold">{COPY.page.title}</h1>
         </div>
@@ -337,7 +337,7 @@ function ModerationFilters({ typeFilter, statusFilter, onChange }: ModerationFil
 }
 
 /**
- * Batch Actions v2 — Guards:
+ * Batch Actions v2 - Guards:
  * - Batch Hide/Restore only (no batch Remove)
  * - Per-item reasons required (no global reason)
  * - Sequential execution with partial success allowed
@@ -353,7 +353,7 @@ function BatchActionBar({ selectedCount, onBatchHide, onBatchRestore, disabled }
   if (selectedCount === 0) return null;
 
   return (
-    <Card className="mb-6 bg-primary/5 border-primary/20">
+    <Card className="mb-6 bg-[color:var(--accent-text)]/8 border-[color:var(--accent-text)]/20">
       <CardContent className="pt-6">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -448,22 +448,22 @@ function ModerationEvidencePane({ videoId, disabled }: ModerationEvidencePanePro
       </Button>
 
       {isExpanded && (
-        <div className="mt-3 space-y-2 text-xs bg-gray-50 p-3 rounded">
+        <div className="mt-3 space-y-2 text-xs bg-[var(--bg-surface-muted)] p-3 rounded">
           {!evidence ? (
-            <p className="text-gray-500 italic">{COPY.evidence.noEvidence}</p>
+            <p className="text-[color:var(--text-muted)] italic">{COPY.evidence.noEvidence}</p>
           ) : (
             <>
               {evidence.reportCount > 0 && (
                 <div className="flex justify-between">
-                  <span className="font-medium text-gray-700">{COPY.evidence.reportCount}:</span>
-                  <span className="text-gray-600">{evidence.reportCount}</span>
+                  <span className="font-medium text-[color:var(--text-secondary)]">{COPY.evidence.reportCount}:</span>
+                  <span className="text-[color:var(--text-secondary)]">{evidence.reportCount}</span>
                 </div>
               )}
 
               {evidence.reportTimestamps.length > 0 && (
                 <div className="flex justify-between">
-                  <span className="font-medium text-gray-700">{COPY.evidence.reportTimestamps}:</span>
-                  <span className="text-gray-600">
+                  <span className="font-medium text-[color:var(--text-secondary)]">{COPY.evidence.reportTimestamps}:</span>
+                  <span className="text-[color:var(--text-secondary)]">
                     {evidence.reportTimestamps.map(t => t.toLocaleDateString()).join(', ')}
                   </span>
                 </div>
@@ -471,8 +471,8 @@ function ModerationEvidencePane({ videoId, disabled }: ModerationEvidencePanePro
 
               {evidence.reporterIds.length > 0 && (
                 <div className="flex justify-between">
-                  <span className="font-medium text-gray-700">{COPY.evidence.reportersRedacted}:</span>
-                  <span className="text-gray-600 font-mono text-xs">
+                  <span className="font-medium text-[color:var(--text-secondary)]">{COPY.evidence.reportersRedacted}:</span>
+                  <span className="text-[color:var(--text-secondary)] font-mono text-xs">
                     {evidence.reporterIds.join(', ')}
                   </span>
                 </div>
@@ -480,8 +480,8 @@ function ModerationEvidencePane({ videoId, disabled }: ModerationEvidencePanePro
 
               {evidence.videoAge && (
                 <div className="flex justify-between">
-                  <span className="font-medium text-gray-700">{COPY.evidence.videoAge}:</span>
-                  <span className="text-gray-600">
+                  <span className="font-medium text-[color:var(--text-secondary)]">{COPY.evidence.videoAge}:</span>
+                  <span className="text-[color:var(--text-secondary)]">
                     {evidence.videoAge.toLocaleDateString()}
                   </span>
                 </div>
@@ -489,22 +489,22 @@ function ModerationEvidencePane({ videoId, disabled }: ModerationEvidencePanePro
 
               {evidence.views !== undefined && (
                 <div className="flex justify-between">
-                  <span className="font-medium text-gray-700">{COPY.evidence.views}:</span>
-                  <span className="text-gray-600">{evidence.views.toLocaleString()}</span>
+                  <span className="font-medium text-[color:var(--text-secondary)]">{COPY.evidence.views}:</span>
+                  <span className="text-[color:var(--text-secondary)]">{evidence.views.toLocaleString()}</span>
                 </div>
               )}
 
               {evidence.likes !== undefined && (
                 <div className="flex justify-between">
-                  <span className="font-medium text-gray-700">{COPY.evidence.likes}:</span>
-                  <span className="text-gray-600">{evidence.likes.toLocaleString()}</span>
+                  <span className="font-medium text-[color:var(--text-secondary)]">{COPY.evidence.likes}:</span>
+                  <span className="text-[color:var(--text-secondary)]">{evidence.likes.toLocaleString()}</span>
                 </div>
               )}
 
               <div className="border-t pt-2 mt-2">
-                <div className="font-medium text-gray-700 mb-1">{COPY.evidence.priorActions}:</div>
+                <div className="font-medium text-[color:var(--text-secondary)] mb-1">{COPY.evidence.priorActions}:</div>
                 {evidence.priorActions.length === 0 ? (
-                  <p className="text-gray-500 italic">{COPY.evidence.noPriorActions}</p>
+                  <p className="text-[color:var(--text-muted)] italic">{COPY.evidence.noPriorActions}</p>
                 ) : (
                   <ul className="space-y-1">
                     {evidence.priorActions.map((action, idx) => {
@@ -515,7 +515,7 @@ function ModerationEvidencePane({ videoId, disabled }: ModerationEvidencePanePro
                         : COPY.evidence.action.remove;
                       
                       return (
-                        <li key={idx} className="text-gray-600">
+                        <li key={idx} className="text-[color:var(--text-secondary)]">
                           {action.timestamp.toLocaleDateString()} - {actionLabel}
                           {action.reason && ` (${action.reason})`}
                         </li>
@@ -719,7 +719,7 @@ function PerItemReasonModal({ open, items, onComplete, onCancel }: PerItemReason
                         </SelectContent>
                       </Select>
                       {hasReason && (
-                        <span className="text-xs text-green-600 font-medium">
+                        <span className="text-xs text-[color:var(--status-success)] font-medium">
                           {COPY.batch.reasonAssigned}
                         </span>
                       )}
@@ -798,10 +798,10 @@ interface UserVideoModerationCardProps {
 }
 
 function UserVideoModerationCard({ item, disabled, selectionMode, selected, onToggleSelect, onHide, onRestore, onRemove, onExport }: UserVideoModerationCardProps) {
-  const statusColor = item.status === 'visible' ? 'bg-green-100 text-green-800' : item.status === 'hidden' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
+  const statusColor = item.status === 'visible' ? 'bg-[color:var(--status-success)]/12 text-[color:var(--status-success)]' : item.status === 'hidden' ? 'bg-[color:var(--status-warning)]/15 text-[color:var(--status-warning)]' : 'bg-[color:var(--status-error)]/12 text-[color:var(--status-error)]';
 
   return (
-    <Card className={`${item.status !== 'visible' ? 'opacity-60' : ''} ${selected ? 'ring-2 ring-primary' : ''}`}>
+    <Card className={`${item.status !== 'visible' ? 'opacity-60' : ''} ${selected ? 'ring-2 ring-[color:var(--accent-text)]' : ''}`}>
       <CardContent className="pt-6">
         <div className="flex gap-4">
           {selectionMode && (
@@ -813,7 +813,7 @@ function UserVideoModerationCard({ item, disabled, selectionMode, selected, onTo
               />
             </div>
           )}
-          <div className="w-32 h-48 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500 flex-shrink-0">
+          <div className="w-32 h-48 bg-[color:var(--border-subtle)] rounded flex items-center justify-center text-xs text-[color:var(--text-muted)] flex-shrink-0">
             {item.videoUrl ? (
               <video src={item.videoUrl} className="w-full h-full object-cover rounded" />
             ) : (
@@ -825,7 +825,7 @@ function UserVideoModerationCard({ item, disabled, selectionMode, selected, onTo
             <div className="flex items-center gap-2">
               <Badge variant="outline">{COPY.labels.recommendation}</Badge>
               {item.isGoldenFork && (
-                <Badge className="bg-yellow-100 text-yellow-800">{COPY.labels.goldenFork}</Badge>
+                <Badge className="bg-[color:var(--status-warning)]/15 text-[color:var(--status-warning)]">{COPY.labels.goldenFork}</Badge>
               )}
               <Badge className={statusColor}>{item.status}</Badge>
             </div>
@@ -837,7 +837,7 @@ function UserVideoModerationCard({ item, disabled, selectionMode, selected, onTo
               <div>
                 <span className="font-medium">{COPY.labels.restaurant}:</span> {item.restaurantName}
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-[color:var(--text-muted)]">
                 {new Date(item.createdAt).toLocaleDateString()}
               </div>
             </div>
@@ -872,10 +872,10 @@ interface RestaurantAdModerationCardProps {
 }
 
 function RestaurantAdModerationCard({ item, disabled, selectionMode, selected, onToggleSelect, onHide, onRestore, onRemove, onExport }: RestaurantAdModerationCardProps) {
-  const statusColor = item.status === 'visible' ? 'bg-green-100 text-green-800' : item.status === 'hidden' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
+  const statusColor = item.status === 'visible' ? 'bg-[color:var(--status-success)]/12 text-[color:var(--status-success)]' : item.status === 'hidden' ? 'bg-[color:var(--status-warning)]/15 text-[color:var(--status-warning)]' : 'bg-[color:var(--status-error)]/12 text-[color:var(--status-error)]';
 
   return (
-    <Card className={`${item.status !== 'visible' ? 'opacity-60' : ''} ${selected ? 'ring-2 ring-primary' : ''}`}>
+    <Card className={`${item.status !== 'visible' ? 'opacity-60' : ''} ${selected ? 'ring-2 ring-[color:var(--accent-text)]' : ''}`}>
       <CardContent className="pt-6">
         <div className="flex gap-4">
           {selectionMode && (
@@ -887,7 +887,7 @@ function RestaurantAdModerationCard({ item, disabled, selectionMode, selected, o
               />
             </div>
           )}
-          <div className="w-32 h-48 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500 flex-shrink-0">
+          <div className="w-32 h-48 bg-[color:var(--border-subtle)] rounded flex items-center justify-center text-xs text-[color:var(--text-muted)] flex-shrink-0">
             {item.videoUrl ? (
               <video src={item.videoUrl} className="w-full h-full object-cover rounded" />
             ) : (
@@ -897,7 +897,7 @@ function RestaurantAdModerationCard({ item, disabled, selectionMode, selected, o
 
           <div className="flex-1 space-y-2">
             <div className="flex items-center gap-2">
-              <Badge className="bg-blue-100 text-blue-800">{COPY.labels.sponsored}</Badge>
+              <Badge className="bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]">{COPY.labels.sponsored}</Badge>
               <Badge className={statusColor}>{item.status}</Badge>
             </div>
 
@@ -905,10 +905,10 @@ function RestaurantAdModerationCard({ item, disabled, selectionMode, selected, o
               <div>
                 <span className="font-medium">{COPY.labels.restaurant}:</span> {item.restaurantName}
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-[color:var(--text-muted)]">
                 <span className="font-medium">{COPY.labels.campaign}:</span> {item.campaignId}
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-[color:var(--text-muted)]">
                 {new Date(item.createdAt).toLocaleDateString()}
               </div>
             </div>
@@ -1290,7 +1290,7 @@ export default function AdminModerationVideosPage() {
       setExportModalOpen(false);
 
       /**
-       * Evidence Export v1 — Server Contract (stub)
+       * Evidence Export v1 - Server Contract (stub)
        * 
        * Endpoint: GET /api/admin/export-evidence/:videoId
        * 
@@ -1332,7 +1332,7 @@ export default function AdminModerationVideosPage() {
   const selectedItems = moderationItems.filter((item) => selectedIds.has(item.videoId));
 
   return (
-    <div className="max-w-7xl mx-auto min-h-screen bg-background p-6">
+    <div className="max-w-7xl mx-auto min-h-screen bg-[var(--bg-layered)] p-6">
       <ModerationHeader 
         selectionMode={selectionMode}
         onToggleSelection={handleToggleSelectionMode}
@@ -1356,7 +1356,7 @@ export default function AdminModerationVideosPage() {
 
       {uiState.state === 'loading' && (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+          <div className="animate-spin w-8 h-8 border-4 border-[color:var(--accent-text)] border-t-transparent rounded-full" />
           <span className="ml-3 text-muted-foreground">{COPY.page.loading}</span>
         </div>
       )}
@@ -1414,3 +1414,9 @@ export default function AdminModerationVideosPage() {
     </div>
   );
 }
+
+
+
+
+
+

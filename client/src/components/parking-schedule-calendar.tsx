@@ -268,7 +268,7 @@ export function ParkingScheduleCalendar({
                         {item.isPublic === false && (
                           <Badge
                             variant="outline"
-                            className="text-[10px] border-slate-200 text-slate-500"
+                            className="text-[10px] border-[var(--border-subtle)] text-slate-500"
                           >
                             Private
                           </Badge>
@@ -355,3 +355,4 @@ export function ParkingScheduleCalendar({
     </div>
   );
 }
+

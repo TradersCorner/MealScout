@@ -145,7 +145,7 @@ export default function ChangePassword() {
                 placeholder="Enter your temporary password"
               />
               {errors.currentPassword && (
-                <p className="text-sm text-red-600">{errors.currentPassword}</p>
+                <p className="text-sm text-[color:var(--status-error)]">{errors.currentPassword}</p>
               )}
             </div>
 
@@ -161,7 +161,7 @@ export default function ChangePassword() {
                 placeholder="At least 8 characters"
               />
               {errors.newPassword && (
-                <p className="text-sm text-red-600">{errors.newPassword}</p>
+                <p className="text-sm text-[color:var(--status-error)]">{errors.newPassword}</p>
               )}
             </div>
 
@@ -177,7 +177,7 @@ export default function ChangePassword() {
                 placeholder="Re-enter your new password"
               />
               {errors.confirmPassword && (
-                <p className="text-sm text-red-600">{errors.confirmPassword}</p>
+                <p className="text-sm text-[color:var(--status-error)]">{errors.confirmPassword}</p>
               )}
             </div>
 
@@ -193,9 +193,9 @@ export default function ChangePassword() {
           </form>
 
           {changePassword.isSuccess && (
-            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <p className="text-sm text-green-800">
+            <div className="mt-4 p-3 bg-[color:var(--status-success)]/10 border border-[color:var(--status-success)]/30 rounded-lg flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-[color:var(--status-success)]" />
+              <p className="text-sm text-[color:var(--status-success)]">
                 Password changed successfully! Redirecting...
               </p>
             </div>
@@ -205,3 +205,7 @@ export default function ChangePassword() {
     </div>
   );
 }
+
+
+
+

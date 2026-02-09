@@ -45,7 +45,7 @@ export default function HelpSupportPage() {
         {/* Contact Options */}
         <div>
           <h2 className="text-lg font-semibold text-foreground mb-4">Contact Us</h2>
-          <Card className="border-0 shadow-md">
+          <Card className="border-0 shadow-clean-lg">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
@@ -85,7 +85,7 @@ export default function HelpSupportPage() {
           <h2 className="text-lg font-semibold text-foreground mb-4">Frequently Asked Questions</h2>
           <div className="space-y-3">
             {faqItems.map((item) => (
-              <Card key={item.id} className="border-0 shadow-md">
+              <Card key={item.id} className="border-0 shadow-clean-lg">
                 <CardContent className="p-4">
                   <h3 className="font-semibold text-foreground mb-2">{item.question}</h3>
                   <p className="text-sm text-muted-foreground">{item.answer}</p>
@@ -142,3 +142,6 @@ export default function HelpSupportPage() {
     </div>
   );
 }
+
+
+

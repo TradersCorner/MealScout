@@ -1,5 +1,5 @@
 /**
- * Appeal Intake v1 — Read-Only Appeals Registry
+ * Appeal Intake v1 - Read-Only Appeals Registry
  * 
  * CRITICAL GUARDRAIL:
  * Appeals do not alter moderation outcomes.
@@ -69,7 +69,7 @@ function AppealsHeader() {
   return (
     <div className="mb-6">
       <div className="flex items-center gap-3 mb-2">
-        <FileText className="w-6 h-6 text-primary" />
+        <FileText className="w-6 h-6 text-[color:var(--accent-text)]" />
         <h1 className="text-2xl font-bold">{COPY.page.title}</h1>
       </div>
       <p className="text-sm text-muted-foreground">{COPY.page.subtitle}</p>
@@ -109,8 +109,8 @@ function AppealDetailDrawer({ appeal, onClose }: AppealDetailDrawerProps) {
   if (!appeal) return null;
 
   const statusColor = appeal.status === 'received' 
-    ? 'bg-blue-100 text-blue-800' 
-    : 'bg-gray-100 text-gray-800';
+    ? 'bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]' 
+    : 'bg-[color:var(--border-subtle)]/50 text-[color:var(--text-secondary)]';
 
   const actionLabel = appeal.referencedDecision.action === 'hide'
     ? COPY.actions.hide
@@ -134,21 +134,21 @@ function AppealDetailDrawer({ appeal, onClose }: AppealDetailDrawerProps) {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">{COPY.detail.appeal.id}:</span>
+                <span className="text-sm font-medium text-[color:var(--text-secondary)]">{COPY.detail.appeal.id}:</span>
                 <span className="text-sm font-mono">{appeal.id}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">{COPY.detail.appeal.submittedAt}:</span>
+                <span className="text-sm font-medium text-[color:var(--text-secondary)]">{COPY.detail.appeal.submittedAt}:</span>
                 <span className="text-sm">{appeal.submittedAt.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">{COPY.detail.appeal.status}:</span>
+                <span className="text-sm font-medium text-[color:var(--text-secondary)]">{COPY.detail.appeal.status}:</span>
                 <Badge className={statusColor}>
                   {appeal.status === 'received' ? COPY.status.received : COPY.status.reviewed}
                 </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">{COPY.detail.appeal.party}:</span>
+                <span className="text-sm font-medium text-[color:var(--text-secondary)]">{COPY.detail.appeal.party}:</span>
                 <span className="text-sm font-mono">{appeal.appealingPartyId}</span>
               </div>
             </CardContent>
@@ -161,20 +161,20 @@ function AppealDetailDrawer({ appeal, onClose }: AppealDetailDrawerProps) {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">{COPY.detail.decision.decisionId}:</span>
+                <span className="text-sm font-medium text-[color:var(--text-secondary)]">{COPY.detail.decision.decisionId}:</span>
                 <span className="text-sm font-mono">{appeal.referencedDecision.decisionId}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">{COPY.detail.decision.date}:</span>
+                <span className="text-sm font-medium text-[color:var(--text-secondary)]">{COPY.detail.decision.date}:</span>
                 <span className="text-sm">{appeal.referencedDecision.date.toLocaleDateString()}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">{COPY.detail.decision.action}:</span>
+                <span className="text-sm font-medium text-[color:var(--text-secondary)]">{COPY.detail.decision.action}:</span>
                 <span className="text-sm font-semibold">{actionLabel}</span>
               </div>
               <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-gray-700">{COPY.detail.decision.reason}:</span>
-                <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                <span className="text-sm font-medium text-[color:var(--text-secondary)]">{COPY.detail.decision.reason}:</span>
+                <p className="text-sm text-[color:var(--text-secondary)] bg-[var(--bg-surface-muted)] p-3 rounded">
                   {appeal.referencedDecision.reason || COPY.detail.decision.noReason}
                 </p>
               </div>
@@ -197,7 +197,7 @@ function AppealDetailDrawer({ appeal, onClose }: AppealDetailDrawerProps) {
                         href={link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
+                        className="text-[color:var(--accent-text)] hover:underline"
                       >
                         {COPY.detail.evidence.link} {idx + 1}
                       </a>
@@ -241,11 +241,11 @@ function AppealsList({ appeals, onViewDetails }: AppealsListProps) {
           <TableBody>
             {appeals.map((appeal) => {
               const statusColor = appeal.status === 'received'
-                ? 'bg-blue-100 text-blue-800'
-                : 'bg-gray-100 text-gray-800';
+                ? 'bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]'
+                : 'bg-[color:var(--border-subtle)]/50 text-[color:var(--text-secondary)]';
 
               return (
-                <TableRow key={appeal.id} className="hover:bg-muted/50">
+                <TableRow key={appeal.id} className="hover:bg-[var(--bg-surface-muted)]">
                   <TableCell className="font-mono text-xs">{appeal.id.slice(0, 8)}...</TableCell>
                   <TableCell className="text-sm">{appeal.submittedAt.toLocaleDateString()}</TableCell>
                   <TableCell>
@@ -352,14 +352,14 @@ export default function AdminModerationAppealsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto min-h-screen bg-[var(--bg-app)] p-6">
+    <div className="max-w-7xl mx-auto min-h-screen bg-[var(--bg-layered)] p-6">
       <AppealsHeader />
 
       <StatusFilter value={statusFilter} onChange={setStatusFilter} />
 
       {isLoading && (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+          <div className="animate-spin w-8 h-8 border-4 border-[color:var(--accent-text)] border-t-transparent rounded-full" />
           <span className="ml-3 text-muted-foreground">{COPY.page.loading}</span>
         </div>
       )}
@@ -386,3 +386,7 @@ export default function AdminModerationAppealsPage() {
     </div>
   );
 }
+
+
+
+

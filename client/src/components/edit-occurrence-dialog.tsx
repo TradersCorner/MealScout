@@ -194,8 +194,8 @@ export function EditOccurrenceDialog({
         )}
 
         <div className="space-y-4">
-          <div className="bg-slate-50 border rounded-md p-3 text-sm">
-            <div className="flex items-center gap-2 text-slate-600">
+          <div className="bg-[var(--bg-surface)] border rounded-md p-3 text-sm">
+            <div className="flex items-center gap-2 text-[color:var(--text-muted)]">
               <Calendar className="h-4 w-4" />
               <span className="font-medium">{format(new Date(event.date), "EEEE, MMMM d, yyyy")}</span>
             </div>
@@ -238,7 +238,7 @@ export function EditOccurrenceDialog({
             </div>
           </div>
 
-          <div className="border p-4 rounded-md border-slate-200 bg-white">
+          <div className="border p-4 rounded-md border-[var(--border-subtle)] bg-[var(--bg-surface)]">
             <div className="flex items-center justify-between gap-4">
               <div className="space-y-1">
                 <p className="font-semibold text-slate-900">Slot pricing</p>
@@ -342,21 +342,21 @@ export function EditOccurrenceDialog({
               </div>
             </div>
 
-            <div className="mt-4 rounded-md border bg-slate-50 p-3 text-sm">
+            <div className="mt-4 rounded-md border bg-[var(--bg-surface)] p-3 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-slate-600">Daily</span>
+                <span className="text-[color:var(--text-muted)]">Daily</span>
                 <span className="font-medium text-slate-900">
                   {formatMoney(slotSumDollars)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-600">Weekly</span>
+                <span className="text-[color:var(--text-muted)]">Weekly</span>
                 <span className="font-medium text-slate-900">
                   {formatMoney(weeklyFinalDollars)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-600">Monthly</span>
+                <span className="text-[color:var(--text-muted)]">Monthly</span>
                 <span className="font-medium text-slate-900">
                   {formatMoney(monthlyFinalDollars)}
                 </span>
@@ -364,7 +364,7 @@ export function EditOccurrenceDialog({
             </div>
           </div>
 
-          <div className="flex items-center space-x-4 border p-4 rounded-md border-slate-200 bg-slate-50">
+          <div className="flex items-center space-x-4 border p-4 rounded-md border-[var(--border-subtle)] bg-[var(--bg-surface)]">
             <Switch
               id="edit-hard-cap"
               checked={hardCapEnabled}
@@ -408,3 +408,4 @@ export function EditOccurrenceDialog({
     </Dialog>
   );
 }
+

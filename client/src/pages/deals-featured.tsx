@@ -77,7 +77,7 @@ export default function FeaturedDealsPage() {
   };
 
   return (
-    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">
+    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
       <SEOHead
         title="Time-Sensitive Specials - MealScout | Nearby Limited-Time Offers"
         description="Discover time-sensitive food specials near you. Limited-time offers from local restaurants, sorted by proximity."
@@ -85,7 +85,7 @@ export default function FeaturedDealsPage() {
         canonicalUrl="https://mealscout.us/deals/featured"
       />
       {/* Header */}
-      <header className="px-6 py-6 bg-white border-b border-border">
+      <header className="px-6 py-6 bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean">
         <div className="flex items-center mb-6">
           <Link href="/">
             <Button variant="ghost" size="sm" className="mr-3 -ml-2" data-testid="button-back-featured">
@@ -93,7 +93,7 @@ export default function FeaturedDealsPage() {
             </Button>
           </Link>
           <div className="flex items-center">
-            <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-pink-500 rounded-lg flex items-center justify-center mr-3 shadow-sm">
+            <div className="w-8 h-8 bg-gradient-to-r from-[color:var(--accent-text)] to-[color:var(--status-error)] rounded-lg flex items-center justify-center mr-3 shadow-clean">
               <Star className="w-4 h-4 text-white" />
             </div>
             <div>
@@ -128,7 +128,7 @@ export default function FeaturedDealsPage() {
             {geoAds.map((ad) => (
               <div
                 key={ad.id}
-                className="rounded-2xl border border-[color:var(--border-subtle)] bg-[color:var(--bg-card)] p-4 shadow-sm"
+                className="rounded-2xl border border-[color:var(--border-subtle)] bg-[color:var(--bg-card)] p-4 shadow-clean"
               >
                 {ad.mediaUrl && (
                   <img
@@ -163,7 +163,7 @@ export default function FeaturedDealsPage() {
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-2xl overflow-hidden animate-pulse shadow-md">
+              <div key={i} className="bg-[var(--bg-card)] rounded-2xl overflow-hidden animate-pulse shadow-clean border border-[color:var(--border-subtle)]">
                 <div className="w-full h-48 bg-muted"></div>
                 <div className="p-6 space-y-3">
                   <div className="h-6 bg-muted rounded-lg w-3/4"></div>
@@ -180,8 +180,8 @@ export default function FeaturedDealsPage() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <div className="w-20 h-20 bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Star className="w-8 h-8 text-red-500" />
+            <div className="w-20 h-20 bg-[color:var(--accent-text)]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Star className="w-8 h-8 text-[color:var(--accent-text)]" />
             </div>
             <h3 className="font-bold text-lg text-foreground mb-2">No time-sensitive specials yet</h3>
             <p className="text-muted-foreground mb-6">
@@ -200,3 +200,6 @@ export default function FeaturedDealsPage() {
     </div>
   );
 }
+
+
+

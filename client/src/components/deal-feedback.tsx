@@ -122,7 +122,7 @@ export function DealFeedback({ dealId, compact = false }: DealFeedbackProps) {
                     className={`h-5 w-5 ${
                       star <= (hoveredRating || rating)
                         ? 'fill-yellow-400 text-yellow-400'
-                        : 'text-gray-300'
+                        : 'text-[color:var(--text-muted)]'
                     }`}
                   />
                 </button>
@@ -189,7 +189,7 @@ export function DealFeedback({ dealId, compact = false }: DealFeedbackProps) {
                 className={`h-8 w-8 ${
                   star <= (hoveredRating || rating)
                     ? 'fill-yellow-400 text-yellow-400'
-                    : 'text-gray-300'
+                    : 'text-[color:var(--text-muted)]'
                 }`}
               />
             </button>
@@ -281,3 +281,4 @@ export function DealFeedback({ dealId, compact = false }: DealFeedbackProps) {
     </div>
   );
 }
+

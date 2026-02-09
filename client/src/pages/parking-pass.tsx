@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
 import {
@@ -2541,7 +2542,7 @@ export default function ParkingPassPage() {
       Array<PublicMapLocation & { coords: GeoPoint; addressLabel: string }>
     >();
     const locations = mapLocationsData?.hostLocations ?? [];
-    locations.forEach((loc) => {
+    locations.forEach((loc: PublicMapLocation) => {
       if (loc.type !== "host_location" || !loc.hostId) return;
       const lat = parseCoord(loc.latitude);
       const lng = parseCoord(loc.longitude);
@@ -2586,8 +2587,8 @@ export default function ParkingPassPage() {
               coords,
               addressLabel: buildAddressLabel(
                 group.host.address,
-                group.host.city,
-                group.host.state,
+                group.host.city ?? "",
+                group.host.state ?? "",
               ),
             },
           ];
@@ -2679,7 +2680,7 @@ export default function ParkingPassPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
         <h1 className="text-2xl font-bold mb-2">Parking Pass is for food trucks only</h1>
-        <p className="text-gray-600 mb-4 max-w-md">
+        <p className="text-[color:var(--text-muted)] mb-4 max-w-md">
           Restaurant and bar accounts can’t book parking pass slots. Switch to a food truck profile to access Parking Pass.
         </p>
         <Button onClick={() => setLocation("/dashboard")}>Back to Dashboard</Button>
@@ -2783,8 +2784,8 @@ export default function ParkingPassPage() {
     <div className="min-h-screen bg-transparent parking-pass-page">
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Parking Pass</h1>
-          <p className="text-xs text-gray-500">
+          <h1 className="text-2xl font-bold text-[color:var(--text-primary)]">Parking Pass</h1>
+          <p className="text-xs text-[color:var(--text-muted)]">
             Book available parking spots by day and time.
           </p>
         </div>
@@ -2809,13 +2810,13 @@ export default function ParkingPassPage() {
 
         <div className="flex flex-col gap-6">
         {topTab === "host" && showHostParkingPass && !host && (
-          <div className="rounded-2xl border border-orange-200 bg-orange-50/70 p-4 text-sm text-orange-800">
+          <div className="rounded-2xl border border-[color:var(--status-warning)]/30 bg-orange-50/70 p-4 text-sm text-[color:var(--status-warning)]">
             Loading your host tools...
           </div>
         )}
 
         {topTab === "host" && showHostParkingPass && (
-          <div className="rounded-2xl pp-glass p-4 shadow-sm space-y-3">
+          <div className="rounded-2xl pp-glass p-4 shadow-clean space-y-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-base font-semibold text-slate-900 font-display">
@@ -2858,7 +2859,7 @@ export default function ParkingPassPage() {
         )}
 
         {topTab === "host" && hostToolsTab === "payments" && showHostParkingPass && (
-          <div className="rounded-2xl pp-glass p-5 shadow-sm space-y-3">
+          <div className="rounded-2xl pp-glass p-5 shadow-clean space-y-3">
             <div>
               <p className="text-base font-semibold text-slate-900 font-display">
                 Payments
@@ -2903,7 +2904,7 @@ export default function ParkingPassPage() {
         {topTab === "host" && hostToolsTab === "location" && showHostParkingPass && host && (
           <div
             id="parking-pass-settings"
-            className="rounded-2xl border border-orange-200 bg-orange-50/70 p-4"
+            className="rounded-2xl border border-[color:var(--status-warning)]/30 bg-orange-50/70 p-4"
           >
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
@@ -2924,7 +2925,7 @@ export default function ParkingPassPage() {
                       id="hostSelect"
                       value={selectedHostId}
                       onChange={(event) => setSelectedHostId(event.target.value)}
-                      className="h-9 rounded-md border border-orange-200 bg-white px-2 text-xs"
+                      className="h-9 rounded-md border border-[color:var(--status-warning)]/30 bg-[var(--bg-surface)] px-2 text-xs"
                     >
                       {hosts.map((item) => (
                         <option key={item.id} value={item.id}>
@@ -2946,13 +2947,13 @@ export default function ParkingPassPage() {
               </div>
             </div>
             {!host ? (
-              <div className="mt-4 rounded-xl border border-orange-200 bg-white/60 p-4 text-xs text-orange-800">
+              <div className="mt-4 rounded-xl border border-[color:var(--status-warning)]/30 bg-[var(--bg-surface)]/60 p-4 text-xs text-[color:var(--status-warning)]">
                 Loading your parking pass locations...
               </div>
             ) : (
               <div className="mt-4 grid gap-6 lg:grid-cols-[1.35fr_0.65fr]">
                 <div className="space-y-4">
-                    <div className="rounded-xl border border-orange-200 bg-white p-4 space-y-3">
+                    <div className="rounded-xl border border-[color:var(--status-warning)]/30 bg-[var(--bg-surface)] p-4 space-y-3">
                     <div>
                       <p className="text-sm font-semibold text-orange-900">
                         Blackout dates
@@ -2996,7 +2997,7 @@ export default function ParkingPassPage() {
                             key={dateKey}
                             type="button"
                             onClick={() => handleRemoveBlackout(dateKey)}
-                            className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs text-orange-900 hover:bg-orange-100"
+                            className="rounded-full border border-[color:var(--status-warning)]/30 bg-orange-50 px-3 py-1 text-xs text-orange-900 hover:bg-orange-100"
                             disabled={
                               isSavingBlackout ||
                               dateKey <= new Date().toISOString().split("T")[0]
@@ -3009,7 +3010,7 @@ export default function ParkingPassPage() {
                     )}
                   </div>
 
-                <div className="rounded-xl border border-orange-200 bg-white p-4 space-y-4">
+                <div className="rounded-xl border border-[color:var(--status-warning)]/30 bg-[var(--bg-surface)] p-4 space-y-4">
                     <div className="flex items-center justify-between gap-4">
                       <div>
                         <h3 className="text-base font-semibold text-orange-900">
@@ -3120,7 +3121,7 @@ export default function ParkingPassPage() {
                                 : current,
                             )
                           }
-                          className="w-full rounded-md border border-orange-200 bg-white px-3 py-2 text-sm"
+                          className="w-full rounded-md border border-[color:var(--status-warning)]/30 bg-[var(--bg-surface)] px-3 py-2 text-sm"
                         >
                           <option value="office">Office</option>
                           <option value="bar">Bar</option>
@@ -3130,7 +3131,7 @@ export default function ParkingPassPage() {
                         </select>
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-orange-200 bg-white p-4 space-y-3">
+                    <div className="rounded-2xl border border-[color:var(--status-warning)]/30 bg-[var(--bg-surface)] p-4 space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <p className="text-sm font-semibold text-orange-900">
@@ -3163,7 +3164,7 @@ export default function ParkingPassPage() {
                           </Button>
                         </div>
                       </div>
-                      <div className="relative h-64 w-full overflow-hidden rounded-xl border border-orange-200 bg-orange-100/20">
+                      <div className="relative h-64 w-full overflow-hidden rounded-xl border border-[color:var(--status-warning)]/30 bg-orange-100/20">
                         <MapContainer
                           center={[settingsMapCenter.lat, settingsMapCenter.lng]}
                           zoom={settingsMapZoom}
@@ -3213,7 +3214,7 @@ export default function ParkingPassPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-orange-200 pp-glass-muted p-4 space-y-3">
+                  <div className="rounded-2xl border border-[color:var(--status-warning)]/30 pp-glass-muted p-4 space-y-3">
                     <p className="text-sm font-semibold text-orange-900">
                       Add another parking location
                     </p>
@@ -3294,7 +3295,7 @@ export default function ParkingPassPage() {
                               locationType: event.target.value,
                             }))
                           }
-                          className="w-full rounded-md border border-orange-200 bg-white px-3 py-2 text-sm"
+                          className="w-full rounded-md border border-[color:var(--status-warning)]/30 bg-[var(--bg-surface)] px-3 py-2 text-sm"
                         >
                           <option value="office">Office</option>
                           <option value="bar">Bar</option>
@@ -3314,7 +3315,7 @@ export default function ParkingPassPage() {
                         </Button>
                       </div>
                     </div>
-                    <div className="mt-4 rounded-xl border border-orange-200 bg-white p-3 space-y-3">
+                    <div className="mt-4 rounded-xl border border-[color:var(--status-warning)]/30 bg-[var(--bg-surface)] p-3 space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <p className="text-xs font-semibold text-orange-900">
@@ -3333,7 +3334,7 @@ export default function ParkingPassPage() {
                           {isGeocodingNewPin ? "Setting pin..." : "Use address"}
                         </Button>
                       </div>
-                      <div className="relative h-56 w-full overflow-hidden rounded-lg border border-orange-200 bg-orange-100/20">
+                      <div className="relative h-56 w-full overflow-hidden rounded-lg border border-[color:var(--status-warning)]/30 bg-orange-100/20">
                         <MapContainer
                           center={[
                             newLocationMapCenter.lat,
@@ -3399,7 +3400,7 @@ export default function ParkingPassPage() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-orange-200 bg-white p-4 space-y-4">
+                <div className="rounded-xl border border-[color:var(--status-warning)]/30 bg-[var(--bg-surface)] p-4 space-y-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <h3 className="text-base font-semibold text-orange-900">
@@ -3454,7 +3455,7 @@ export default function ParkingPassPage() {
         {topTab === "host" && hostToolsTab === "listings" && showHostParkingPass && host && (
           <>
         {isCreating && (
-          <div className="bg-white p-6 rounded-2xl border border-orange-200 shadow-sm">
+          <div className="bg-[var(--bg-surface)] p-6 rounded-2xl border border-[color:var(--status-warning)]/30 shadow-clean">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
                 <h2 className="text-2xl font-semibold text-slate-900">
@@ -3464,7 +3465,7 @@ export default function ParkingPassPage() {
                   Set parking hours and what each slot costs.
                 </p>
               </div>
-              <div className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-600">
+              <div className="rounded-full border border-[var(--border-subtle)] px-3 py-1 text-xs text-[color:var(--text-muted)]">
                 {host.businessName}
               </div>
             </div>
@@ -3482,7 +3483,7 @@ export default function ParkingPassPage() {
               )}
 
               <div className="grid gap-4 md:grid-cols-[1.2fr_1fr]">
-                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]/70 p-4">
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h3 className="text-base font-semibold text-slate-900">
@@ -3498,7 +3499,7 @@ export default function ParkingPassPage() {
                         checked={anyTime}
                         onCheckedChange={setAnyTime}
                       />
-                      <Label htmlFor="anyTime" className="text-xs text-slate-600">
+                      <Label htmlFor="anyTime" className="text-xs text-[color:var(--text-muted)]">
                         Any time
                       </Label>
                     </div>
@@ -3524,7 +3525,7 @@ export default function ParkingPassPage() {
                               className={`rounded-md border px-3 py-2 text-xs font-medium transition ${
                                 selected
                                   ? "border-orange-300 bg-orange-100 text-orange-900"
-                                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                                  : "border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[color:var(--text-muted)] hover:bg-[var(--bg-surface)]"
                               }`}
                               onClick={() =>
                                 setDaysOfWeek((current) =>
@@ -3584,7 +3585,7 @@ export default function ParkingPassPage() {
                   )}
                 </div>
 
-                <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">
+                <div className="rounded-xl border border-[color:var(--status-warning)]/30 bg-orange-50/60 p-4">
                   <h3 className="text-base font-semibold text-orange-900">
                     Price preview
                   </h3>
@@ -3622,13 +3623,13 @@ export default function ParkingPassPage() {
                       </span>
                     </div>
                   </div>
-                  <p className="mt-4 text-xs text-orange-800">
+                  <p className="mt-4 text-xs text-[color:var(--status-warning)]">
                     Trucks see your price plus the MealScout fee.
                   </p>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
                 <h3 className="text-base font-semibold text-slate-900 mb-2">
                   Set slot pricing
                 </h3>
@@ -3636,7 +3637,7 @@ export default function ParkingPassPage() {
                   Set any slot to $0 if you don't want to offer it.
                 </p>
                 <div className="grid gap-4 md:grid-cols-3">
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                  <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 space-y-2">
                     <Label htmlFor="breakfastPrice">Breakfast</Label>
                     <Input
                       id="breakfastPrice"
@@ -3650,7 +3651,7 @@ export default function ParkingPassPage() {
                     />
                     <p className="text-xs text-slate-500">Early shift pricing.</p>
                   </div>
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                  <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 space-y-2">
                     <Label htmlFor="lunchPrice">Lunch</Label>
                     <Input
                       id="lunchPrice"
@@ -3664,7 +3665,7 @@ export default function ParkingPassPage() {
                     />
                     <p className="text-xs text-slate-500">Peak traffic slot.</p>
                   </div>
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                  <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 space-y-2">
                     <Label htmlFor="dinnerPrice">Dinner</Label>
                     <Input
                       id="dinnerPrice"
@@ -3681,7 +3682,7 @@ export default function ParkingPassPage() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
                 <h3 className="text-base font-semibold text-slate-900 mb-2">
                   Weekly & monthly rates (optional)
                 </h3>
@@ -3690,7 +3691,7 @@ export default function ParkingPassPage() {
                   totals.
                 </p>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                  <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 space-y-2">
                     <Label htmlFor="weeklyOverride">Weekly rate</Label>
                     <Input
                       id="weeklyOverride"
@@ -3713,7 +3714,7 @@ export default function ParkingPassPage() {
                         : "—"}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                  <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 space-y-2">
                     <Label htmlFor="monthlyOverride">Monthly rate</Label>
                     <Input
                       id="monthlyOverride"
@@ -3739,7 +3740,7 @@ export default function ParkingPassPage() {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-4 border p-4 rounded-xl border-slate-200 bg-slate-50">
+              <div className="flex items-center space-x-4 border p-4 rounded-xl border-[var(--border-subtle)] bg-[var(--bg-surface)]">
                 <Switch
                   id="hard-cap"
                   checked={hardCapEnabled}
@@ -3787,7 +3788,7 @@ export default function ParkingPassPage() {
 
             <TabsContent value="upcoming" className="space-y-4">
               {upcomingListings.length === 0 ? (
-                <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                <div className="text-center py-12 bg-[var(--bg-surface)] rounded-xl border border-dashed border-slate-300">
                   <Calendar className="mx-auto h-12 w-12 text-slate-300 mb-3" />
                   <h3 className="text-lg font-medium text-slate-900">
                     No upcoming parking pass listings
@@ -3804,7 +3805,7 @@ export default function ParkingPassPage() {
                   {upcomingListings.map((listing) => (
                     <div
                       key={listing.id}
-                      className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between"
+                      className="bg-[var(--bg-surface)] p-6 rounded-xl border border-[var(--border-subtle)] shadow-clean flex items-center justify-between"
                     >
                       <div className="flex items-center gap-6">
                         <div className="flex flex-col items-center justify-center w-16 h-16 bg-rose-50 rounded-lg text-rose-700">
@@ -3817,7 +3818,7 @@ export default function ParkingPassPage() {
                         </div>
 
                         <div>
-                          <div className="flex items-center gap-4 text-sm text-slate-600 mb-1">
+                          <div className="flex items-center gap-4 text-sm text-[color:var(--text-muted)] mb-1">
                             <span className="flex items-center gap-1">
                               <Clock className="h-4 w-4" />
                               {listing.startTime === "00:00" &&
@@ -3831,7 +3832,7 @@ export default function ParkingPassPage() {
                               {listing.maxTrucks !== 1 ? "s" : ""}
                             </span>
                             {listing.requiresPayment && (
-                              <span className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded-full px-2 py-0.5">
+                              <span className="text-xs text-orange-700 bg-orange-50 border border-[color:var(--status-warning)]/30 rounded-full px-2 py-0.5">
                                 Daily {formatCents(listing.dailyPriceCents)} / Weekly{" "}
                                 {formatCents(listing.weeklyPriceCents)} / Monthly{" "}
                                 {formatCents(listing.monthlyPriceCents)}
@@ -3855,7 +3856,7 @@ export default function ParkingPassPage() {
                                 listing.status === "open"
                                   ? "bg-emerald-100 text-emerald-800"
                                   : listing.status === "filled"
-                                    ? "bg-blue-100 text-blue-800"
+                                    ? "bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]"
                                     : "bg-slate-100 text-slate-800"
                               }`}
                             >
@@ -3887,7 +3888,7 @@ export default function ParkingPassPage() {
 
             <TabsContent value="past" className="space-y-4">
               {pastListings.length === 0 ? (
-                <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                <div className="text-center py-12 bg-[var(--bg-surface)] rounded-xl border border-dashed border-slate-300">
                   <Clock className="mx-auto h-12 w-12 text-slate-300 mb-3" />
                   <h3 className="text-lg font-medium text-slate-900">
                     No past parking pass listings
@@ -3901,10 +3902,10 @@ export default function ParkingPassPage() {
                   {pastListings.map((listing) => (
                     <div
                       key={listing.id}
-                      className="bg-slate-50 p-6 rounded-xl border border-slate-200 flex items-center justify-between"
+                      className="bg-[var(--bg-surface)] p-6 rounded-xl border border-[var(--border-subtle)] flex items-center justify-between"
                     >
                       <div className="flex items-center gap-6">
-                        <div className="flex flex-col items-center justify-center w-16 h-16 bg-slate-200 rounded-lg text-slate-600">
+                        <div className="flex flex-col items-center justify-center w-16 h-16 bg-slate-200 rounded-lg text-[color:var(--text-muted)]">
                           <span className="text-xs font-bold uppercase">
                             {format(new Date(listing.date), "MMM")}
                           </span>
@@ -3921,7 +3922,7 @@ export default function ParkingPassPage() {
                             </span>
                           </div>
                           <div className="flex items-center gap-2 mt-2">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-600">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-[color:var(--text-muted)]">
                               Completed
                             </span>
                           </div>
@@ -3959,7 +3960,7 @@ export default function ParkingPassPage() {
         )}
 
         {topTab === "schedule" && isTruckViewUser && (
-          <Card className="rounded-2xl border border-gray-200 bg-white">
+          <Card className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
             <CardContent className="p-5 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -4021,13 +4022,13 @@ export default function ParkingPassPage() {
         )}
 
         {topTab === "schedule" && isTruckViewUser && (
-          <Card className="rounded-2xl pp-glass shadow-sm">
+          <Card className="rounded-2xl pp-glass shadow-clean">
             <CardContent className="p-5 space-y-6">
               <div>
-                <p className="text-sm font-semibold text-gray-900">
+                <p className="text-sm font-semibold text-[color:var(--text-primary)]">
                   Social autopost
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-[color:var(--text-muted)]">
                   Link your socials and choose which updates should prompt a post.
                 </p>
               </div>
@@ -4180,16 +4181,16 @@ export default function ParkingPassPage() {
                 reportLookup={reportLookup}
                 onAddReport={handleOpenReport}
               />
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-[color:var(--text-muted)]">
                 Every booking includes a 30-minute cleanup window after the end time.
               </p>
 
               <div className="rounded-2xl border border-[color:var(--border-subtle)] pp-glass-muted p-4 space-y-4">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="text-sm font-semibold text-[color:var(--text-primary)]">
                     Add manual stop
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-[color:var(--text-muted)]">
                     Share where you will be parked even if it isn’t a Parking Pass
                     location.
                   </p>
@@ -4290,7 +4291,7 @@ export default function ParkingPassPage() {
                   />
                 </div>
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 text-xs text-gray-600">
+                  <label className="flex items-center gap-2 text-xs text-[color:var(--text-muted)]">
                     <input
                       type="checkbox"
                       checked={scheduleForm.isPublic}
@@ -4325,22 +4326,22 @@ export default function ParkingPassPage() {
                   </DialogHeader>
                   {reportDraft && (
                     <div className="space-y-4">
-                      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
-                        <p className="font-semibold text-gray-800">
+                      <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-xs text-[color:var(--text-muted)]">
+                        <p className="font-semibold text-[color:var(--text-primary)]">
                           {reportDraft.locationName || "Parking stop"}
                         </p>
-                        <p className="text-gray-600">
+                        <p className="text-[color:var(--text-muted)]">
                           {[reportDraft.address, reportDraft.city, reportDraft.state]
                             .filter(Boolean)
                             .join(", ")}
                         </p>
-                        <p className="text-gray-500">{reportDraft.date}</p>
+                        <p className="text-[color:var(--text-muted)]">{reportDraft.date}</p>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-2">
                           <Label>Overall rating (1-5)</Label>
                           <select
-                            className="h-9 w-full rounded-md border border-gray-200 bg-white px-2 text-sm"
+                            className="h-9 w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 text-sm"
                             value={reportDraft.rating || ""}
                             onChange={(event) =>
                               handleReportFieldChange("rating", event.target.value)
@@ -4357,7 +4358,7 @@ export default function ParkingPassPage() {
                         <div className="space-y-2">
                           <Label>Spot cleanliness on arrival</Label>
                           <select
-                            className="h-9 w-full rounded-md border border-gray-200 bg-white px-2 text-sm"
+                            className="h-9 w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 text-sm"
                             value={reportDraft.arrivalCleanliness || ""}
                             onChange={(event) =>
                               handleReportFieldChange(
@@ -4460,7 +4461,7 @@ export default function ParkingPassPage() {
                             handlePostPromptMessage(event.target.value)
                           }
                         />
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-[color:var(--text-muted)]">
                           Link: {postPrompt.link}
                         </p>
                       </div>
@@ -4476,7 +4477,7 @@ export default function ParkingPassPage() {
                           ).map((platform) => (
                             <label
                               key={platform.key}
-                              className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs"
+                              className="flex items-center gap-2 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-xs"
                             >
                               <input
                                 type="checkbox"
@@ -4487,7 +4488,7 @@ export default function ParkingPassPage() {
                             </label>
                           ))}
                         </div>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-[color:var(--text-muted)]">
                           Instagram will open with the caption copied to your
                           clipboard.
                         </p>
@@ -4522,17 +4523,17 @@ export default function ParkingPassPage() {
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-gray-900">
+              <p className="text-sm font-semibold text-[color:var(--text-primary)]">
                 Find parking pass spots
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-[color:var(--text-muted)]">
                 Search by city or address. Pick a spot first, then choose from its open dates.
               </p>
             </div>
           </div>
           <div className="grid gap-4 lg:grid-cols-[1.35fr_0.9fr]">
             <div className="space-y-4 order-1 lg:order-none">
-                  <div className="rounded-2xl pp-glass p-4 shadow-sm space-y-3">
+                  <div className="rounded-2xl pp-glass p-4 shadow-clean space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold text-slate-800">
@@ -4560,7 +4561,7 @@ export default function ParkingPassPage() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[11px] font-semibold text-slate-600">
+                  <p className="text-[11px] font-semibold text-[color:var(--text-muted)]">
                     City or address
                   </p>
                   <Input
@@ -4604,7 +4605,7 @@ export default function ParkingPassPage() {
                 </div>
               ) : viewMode === "map" ? (
                 <div className="space-y-3">
-                  <div className="rounded-2xl pp-glass shadow-sm overflow-hidden">
+                  <div className="rounded-2xl pp-glass shadow-clean overflow-hidden">
                     <div className="relative h-72 w-full bg-slate-100/60">
                       <MapContainer
                         center={[mapCenter.lat, mapCenter.lng]}
@@ -4699,11 +4700,11 @@ export default function ParkingPassPage() {
                                   <p className="font-semibold text-orange-600">
                                     {group.host.businessName}
                                   </p>
-                                  <p className="text-gray-600">
+                                  <p className="text-[color:var(--text-muted)]">
                                     {addressLabel}
                                   </p>
                                   {displayListing && (
-                                    <p className="text-gray-600">
+                                    <p className="text-[color:var(--text-muted)]">
                                       {format(
                                         new Date(displayListing.date),
                                         "EEE, MMM d",
@@ -4725,7 +4726,7 @@ export default function ParkingPassPage() {
                                         : "No open dates right now."}
                                     </p>
                                   )}
-                                  <p className="text-gray-600">
+                                  <p className="text-[color:var(--text-muted)]">
                                     {availability}
                                   </p>
                                   {listingForDate && slotOptions.length > 0 ? (
@@ -4762,7 +4763,7 @@ export default function ParkingPassPage() {
                                         })}
                                       </div>
                                       <div className="flex items-center justify-between">
-                                        <span className="text-[11px] text-gray-500">
+                                        <span className="text-[11px] text-[color:var(--text-muted)]">
                                           Includes a $10/day MealScout fee. Cleanup
                                           time is 30 minutes after the end time.
                                         </span>
@@ -4786,12 +4787,12 @@ export default function ParkingPassPage() {
                                       </div>
                                     </div>
                                   ) : (
-                                    <p className="text-[11px] text-gray-500">
+                                    <p className="text-[11px] text-[color:var(--text-muted)]">
                                       Choose a day with availability.
                                     </p>
                                   )}
                                   {bookings.length > 0 ? (
-                                    <div className="pt-1 text-[11px] text-gray-500 space-y-1">
+                                    <div className="pt-1 text-[11px] text-[color:var(--text-muted)] space-y-1">
                                       {bookings
                                         .slice(0, 3)
                                         .map((booking) => (
@@ -4811,7 +4812,7 @@ export default function ParkingPassPage() {
                                       )}
                                     </div>
                                   ) : (
-                                    <p className="pt-1 text-[11px] text-gray-500">
+                                    <p className="pt-1 text-[11px] text-[color:var(--text-muted)]">
                                       No bookings yet
                                     </p>
                                   )}
@@ -4822,12 +4823,12 @@ export default function ParkingPassPage() {
                         })}
                       </MapContainer>
                       {mapPins.length === 0 && (
-                        <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500 pointer-events-none">
+                        <div className="absolute inset-0 flex items-center justify-center text-sm text-[color:var(--text-muted)] pointer-events-none">
                           No mappable locations yet.
                         </div>
                       )}
                     </div>
-                    <div className="border-t border-[color:var(--border-subtle)] px-4 py-2 text-xs text-slate-600">
+                    <div className="border-t border-[color:var(--border-subtle)] px-4 py-2 text-xs text-[color:var(--text-muted)]">
                       Tap a location below to update the map.
                     </div>
                   </div>
@@ -4906,7 +4907,7 @@ export default function ParkingPassPage() {
                               setActiveLocationKey(group.key);
                             }
                           }}
-                          className={`w-full rounded-2xl border px-4 py-3 space-y-2 transition cursor-pointer shadow-sm ${
+                          className={`w-full rounded-2xl border px-4 py-3 space-y-2 transition cursor-pointer shadow-clean ${
                             isActive
                               ? "border-orange-300 pp-glass ring-2 ring-orange-200"
                               : "border-[color:var(--border-subtle)] pp-glass-muted hover:opacity-95"
@@ -4917,7 +4918,7 @@ export default function ParkingPassPage() {
                               <span className="text-[15px] font-semibold text-orange-500 font-display">
                                 {group.host.businessName}
                               </span>
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-[color:var(--text-muted)]">
                                 {displayListing
                                   ? format(
                                       new Date(displayListing.date),
@@ -4955,14 +4956,14 @@ export default function ParkingPassPage() {
                               </p>
                             )}
                             {listingForDate?.availableSpotNumbers && (
-                              <p className="text-[11px] text-slate-600">
+                              <p className="text-[11px] text-[color:var(--text-muted)]">
                                 {listingForDate.availableSpotNumbers.length > 0
                                   ? `Open spot${listingForDate.availableSpotNumbers.length > 1 ? "s" : ""}: ${listingForDate.availableSpotNumbers.join(", ")}`
                                   : "Fully booked"}
                               </p>
                             )}
                             {bookings.length > 0 ? (
-                              <div className="text-[11px] text-slate-600">
+                              <div className="text-[11px] text-[color:var(--text-muted)]">
                                 Booked trucks:{" "}
                                 {bookings
                                   .slice(0, 2)
@@ -4973,7 +4974,7 @@ export default function ParkingPassPage() {
                                   : ""}
                               </div>
                             ) : (
-                              <div className="text-[11px] text-gray-500">
+                              <div className="text-[11px] text-[color:var(--text-muted)]">
                                 No bookings yet
                               </div>
                             )}
@@ -5024,7 +5025,7 @@ export default function ParkingPassPage() {
                           )}
                           {hasAvailability ? (
                             <div className="flex items-center justify-between gap-3 pt-2">
-                              <p className="text-[11px] text-gray-500">
+                              <p className="text-[11px] text-[color:var(--text-muted)]">
                                 Includes a $10/day MealScout fee per host. Cleanup
                                 time is 30 minutes after the end time.
                               </p>
@@ -5046,7 +5047,7 @@ export default function ParkingPassPage() {
                               )}
                             </div>
                           ) : (
-                            <p className="text-[11px] text-gray-500">
+                            <p className="text-[11px] text-[color:var(--text-muted)]">
                               {listingForDate ? "Fully booked." : "No open dates right now."}
                             </p>
                           )}
@@ -5136,7 +5137,7 @@ export default function ParkingPassPage() {
                             setActiveLocationKey(group.key);
                           }
                         }}
-                        className={`w-full text-left rounded-2xl border px-4 py-3 space-y-2 transition cursor-pointer shadow-sm ${
+                        className={`w-full text-left rounded-2xl border px-4 py-3 space-y-2 transition cursor-pointer shadow-clean ${
                           isActive
                             ? "border-orange-300 pp-glass ring-2 ring-orange-200"
                             : "border-[color:var(--border-subtle)] pp-glass-muted hover:opacity-95"
@@ -5146,7 +5147,7 @@ export default function ParkingPassPage() {
                            <span className="text-[15px] font-semibold text-orange-500 font-display">
                              {group.host.businessName}
                            </span>
-                          <span className="text-xs text-slate-600">
+                          <span className="text-xs text-[color:var(--text-muted)]">
                             {displayListing
                               ? format(new Date(displayListing.date), "EEE, MMM d")
                               : "No dates listed"}
@@ -5180,7 +5181,7 @@ export default function ParkingPassPage() {
                             </p>
                           )}
                           {!isActive && nextBookableDateByGroup.get(group.key) && (
-                            <p className="text-[11px] text-slate-600">
+                            <p className="text-[11px] text-[color:var(--text-muted)]">
                               Next open:{" "}
                               {format(
                                 new Date(
@@ -5191,7 +5192,7 @@ export default function ParkingPassPage() {
                             </p>
                           )}
                           {listingForDate?.availableSpotNumbers && (
-                            <p className="text-[11px] text-slate-600">
+                            <p className="text-[11px] text-[color:var(--text-muted)]">
                               {listingForDate.availableSpotNumbers.length > 0
                                 ? `Open spot${listingForDate.availableSpotNumbers.length > 1 ? "s" : ""}: ${listingForDate.availableSpotNumbers.join(", ")}`
                                 : "Fully booked"}
@@ -5244,7 +5245,7 @@ export default function ParkingPassPage() {
                         )}
                         {hasAvailability ? (
                           <div className="flex items-center justify-between gap-3 pt-2">
-                            <p className="text-[11px] text-gray-500">
+                            <p className="text-[11px] text-[color:var(--text-muted)]">
                               Includes a $10/day MealScout fee per host. Cleanup
                               time is 30 minutes after the end time.
                             </p>
@@ -5266,7 +5267,7 @@ export default function ParkingPassPage() {
                             )}
                           </div>
                         ) : (
-                          <p className="text-[11px] text-gray-500">
+                          <p className="text-[11px] text-[color:var(--text-muted)]">
                             {listingForDate ? "Fully booked." : "No open dates right now."}
                           </p>
                         )}
@@ -5284,13 +5285,13 @@ export default function ParkingPassPage() {
 
             <div className="space-y-4 order-2 lg:order-none">
               {cartItems.length > 0 && (
-                <div className="rounded-2xl pp-glass p-4 shadow-sm space-y-3">
+                <div className="rounded-2xl pp-glass p-4 shadow-clean space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">
+                      <p className="text-sm font-semibold text-[color:var(--text-primary)]">
                         Booking cart
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-[color:var(--text-muted)]">
                         Separate charges per host.
                       </p>
                     </div>
@@ -5304,11 +5305,11 @@ export default function ParkingPassPage() {
                         key={item.listing.id}
                         className="rounded-xl pp-glass-muted px-3 py-2 text-xs text-slate-700"
                       >
-                        <div className="flex items-center justify-between text-sm text-gray-900">
+                        <div className="flex items-center justify-between text-sm text-[color:var(--text-primary)]">
                           <span className="text-orange-500">{item.listing.host.businessName}</span>
                           <button
                             type="button"
-                            className="text-xs text-gray-500 underline"
+                            className="text-xs text-[color:var(--text-muted)] underline"
                             onClick={() => removeCartItem(item.listing.id)}
                           >
                             remove
@@ -5331,7 +5332,7 @@ export default function ParkingPassPage() {
                         <span>MealScout fee</span>
                         <span>${(cartTotals.feeCents / 100).toFixed(2)}</span>
                       </div>
-                      <div className="flex items-center justify-between font-semibold text-gray-900">
+                      <div className="flex items-center justify-between font-semibold text-[color:var(--text-primary)]">
                         <span>Total</span>
                         <span>${(cartTotals.totalCents / 100).toFixed(2)}</span>
                       </div>
@@ -5340,19 +5341,19 @@ export default function ParkingPassPage() {
                 </div>
               )}
 
-              <Card className="rounded-2xl pp-glass shadow-sm">
+              <Card className="rounded-2xl pp-glass shadow-clean">
                 <CardContent className="p-5 space-y-3">
                   <div>
                     <p className="text-base font-semibold text-slate-900 font-display">
                       {activeLocation?.host.businessName || "Select a location"}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-[color:var(--text-muted)]">
                       {activeLocation?.host.address || "Choose a spot to see details."}
                     </p>
                   </div>
                   {activeListing && (
                     <>
-                      <div className="flex flex-wrap gap-2 text-xs text-gray-600">
+                      <div className="flex flex-wrap gap-2 text-xs text-[color:var(--text-muted)]">
                         <span className="rounded-full pp-chip px-2 py-1">
                           {activeListing.host.locationType || "Location"}
                         </span>
@@ -5448,7 +5449,7 @@ export default function ParkingPassPage() {
                                 className="flex items-center justify-between"
                               >
                                 <span>{booking.truckName}</span>
-                                <span className="text-[11px] text-gray-500">
+                                <span className="text-[11px] text-[color:var(--text-muted)]">
                                   {booking.slotType
                                     ? formatSlotLabel(booking.slotType)
                                     : "Booked"}
@@ -5459,21 +5460,21 @@ export default function ParkingPassPage() {
                               </div>
                             ))}
                             {activeListingBookings.length > 5 && (
-                              <div className="text-[11px] text-gray-500">
+                              <div className="text-[11px] text-[color:var(--text-muted)]">
                                 +{activeListingBookings.length - 5} more
                               </div>
                             )}
                           </div>
                         </div>
                       ) : (
-                        <p className="text-[11px] text-gray-500">
+                        <p className="text-[11px] text-[color:var(--text-muted)]">
                           No bookings yet.
                         </p>
                       )}
                       {selectedDateAvailable && activeListingForDate ? (
                         <>
                           <div className="space-y-2">
-                            <p className="text-xs font-semibold text-gray-700">
+                            <p className="text-xs font-semibold text-[color:var(--text-secondary)]">
                               Slot pricing
                             </p>
                             <div className="grid grid-cols-2 gap-2">
@@ -5541,7 +5542,7 @@ export default function ParkingPassPage() {
                           </div>
                           {activeListingForDate.status === "open" && (
                             <div className="flex items-center justify-between gap-3 pt-2">
-                              <p className="text-[11px] text-gray-500">
+                              <p className="text-[11px] text-[color:var(--text-muted)]">
                                 Includes a $10/day MealScout fee per host. Cleanup
                                 time is 30 minutes after the end time.
                               </p>
@@ -5559,7 +5560,7 @@ export default function ParkingPassPage() {
                           )}
                         </>
                       ) : (
-                        <p className="text-[11px] text-gray-500">
+                        <p className="text-[11px] text-[color:var(--text-muted)]">
                           Pick a day with availability to view slot pricing.
                         </p>
                       )}
@@ -5572,9 +5573,9 @@ export default function ParkingPassPage() {
 
         {hasCartTotal && (
           <div className="fixed bottom-4 left-0 right-0 z-50 px-4 lg:hidden">
-            <div className="mx-auto max-w-md rounded-2xl pp-glass shadow-lg p-3 flex items-center justify-between gap-3">
+            <div className="mx-auto max-w-md rounded-2xl pp-glass shadow-clean-lg p-3 flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[11px] text-slate-600">Cart ({cartItems.length})</p>
+                <p className="text-[11px] text-[color:var(--text-muted)]">Cart ({cartItems.length})</p>
                 <p className="text-base font-semibold text-slate-900">
                   ${(cartTotals.totalCents / 100).toFixed(2)}
                 </p>
@@ -5614,4 +5615,8 @@ export default function ParkingPassPage() {
     </div>
   );
 }
+
+
+
+
 

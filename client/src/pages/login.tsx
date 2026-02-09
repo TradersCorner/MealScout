@@ -99,7 +99,7 @@ export default function Login() {
         title="Log In"
         fallbackHref="/"
         icon={UserCheck}
-        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
 
       <div className="px-6 py-8 max-w-md mx-auto">
@@ -277,7 +277,7 @@ export default function Login() {
             <div className="flex items-center justify-center space-x-6 text-xs text-[color:var(--text-secondary)]">
               <div className="flex items-center space-x-1">
                 <svg
-                  className="w-3 h-3 text-green-500"
+                  className="w-3 h-3 text-[color:var(--status-success)]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -293,7 +293,7 @@ export default function Login() {
               </div>
               <div className="flex items-center space-x-1">
                 <svg
-                  className="w-3 h-3 text-green-500"
+                  className="w-3 h-3 text-[color:var(--status-success)]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -309,7 +309,7 @@ export default function Login() {
               </div>
               <div className="flex items-center space-x-1">
                 <svg
-                  className="w-3 h-3 text-green-500"
+                  className="w-3 h-3 text-[color:var(--status-success)]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -363,4 +363,7 @@ export default function Login() {
     </div>
   );
 }
+
+
+
 

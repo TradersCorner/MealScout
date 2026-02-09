@@ -39,7 +39,7 @@ export default function VideoDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
         <div className="animate-pulse p-6 space-y-4">
           <div className="w-full h-96 bg-muted rounded-2xl"></div>
           <div className="h-8 bg-muted rounded w-3/4"></div>
@@ -51,7 +51,7 @@ export default function VideoDetailPage() {
 
   if (!video) {
     return (
-      <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
         <div className="text-center py-12">
           <h2 className="text-xl font-bold mb-4">Video not found</h2>
           <Link href="/video">
@@ -116,7 +116,7 @@ export default function VideoDetailPage() {
   ];
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+    <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
       <SEOHead
         title={`${videoTitle} ${
           restaurantName ? `at ${restaurantName}` : ""
@@ -129,7 +129,12 @@ export default function VideoDetailPage() {
         schemaData={videoSchema}
       />
 
-      <BackHeader title="Video" fallbackHref="/video" icon={Video} />
+      <BackHeader
+        title="Video"
+        fallbackHref="/video"
+        icon={Video}
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
+      />
 
       {/* Video Player */}
       <div className="relative w-full bg-black aspect-[9/16]">
@@ -159,7 +164,7 @@ export default function VideoDetailPage() {
             {videoTitle}
           </h1>
           {videoData.description && (
-            <p className="text-gray-700 leading-relaxed">
+            <p className="text-[color:var(--text-secondary)] leading-relaxed">
               {videoData.description}
             </p>
           )}
@@ -191,12 +196,12 @@ export default function VideoDetailPage() {
 
         {/* Creator & Restaurant */}
         <div className="space-y-3">
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
+          <div className="flex items-center space-x-2 text-sm text-[color:var(--text-secondary)]">
             <User className="w-4 h-4" />
             <span>{creatorName}</span>
           </div>
           {restaurantName && (
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <div className="flex items-center space-x-2 text-sm text-[color:var(--text-secondary)]">
               <MapPin className="w-4 h-4" />
               <Link
                 href={`/restaurants/${videoData.restaurantId}`}
@@ -206,14 +211,14 @@ export default function VideoDetailPage() {
               </Link>
             </div>
           )}
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
+          <div className="flex items-center space-x-2 text-sm text-[color:var(--text-secondary)]">
             <Calendar className="w-4 h-4" />
             <span>{new Date(videoData.createdAt).toLocaleDateString()}</span>
           </div>
         </div>
 
         {/* Engagement */}
-        <div className="flex items-center space-x-4 pt-4 border-t border-gray-200">
+        <div className="flex items-center space-x-4 pt-4 border-t border-[color:var(--border-subtle)]">
           <Button variant="outline" size="sm">
             <Heart className="w-4 h-4 mr-2" />
             {videoData.likeCount || 0}
@@ -235,9 +240,11 @@ export default function VideoDetailPage() {
 
         {/* Restaurant CTA */}
         {restaurantData && (
-          <div className="bg-gradient-to-r from-orange-50 to-red-50 p-4 rounded-xl border border-orange-200">
+          <div className="bg-[linear-gradient(110deg,rgba(255,77,46,0.08),rgba(245,158,11,0.08))] p-4 rounded-xl border border-[color:var(--border-subtle)]">
             <h3 className="font-semibold mb-2">{restaurantName}</h3>
-            <p className="text-sm text-gray-600 mb-3">{location}</p>
+            <p className="text-sm text-[color:var(--text-secondary)] mb-3">
+              {location}
+            </p>
             <Link href={`/restaurants/${videoData.restaurantId}`}>
               <Button className="w-full">View Restaurant & Deals</Button>
             </Link>
@@ -245,7 +252,7 @@ export default function VideoDetailPage() {
         )}
 
         {/* FAQ Section - SEO optimized, minimal UI */}
-        <div className="pt-8 border-t border-gray-200">
+        <div className="pt-8 border-t border-[color:var(--border-subtle)]">
           <MinimalFAQ items={faqItems} title="About This Video" />
         </div>
       </div>
@@ -254,3 +261,6 @@ export default function VideoDetailPage() {
     </div>
   );
 }
+
+
+

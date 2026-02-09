@@ -236,33 +236,33 @@ export default function FAQ() {
         title="Frequently Asked Questions"
         fallbackHref="/"
         icon={HelpCircle}
-        className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+        className="bg-[var(--bg-surface)]/95 backdrop-blur-sm border-b border-[var(--border-subtle)]/50 shadow-clean"
       />
 
       <div className="px-4 py-8 max-w-4xl mx-auto">
         {/* Intro Section */}
         <div className="text-center mb-12">
-          <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 rounded-3xl mb-8 flex items-center justify-center mx-auto shadow-2xl">
+          <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 rounded-3xl mb-8 flex items-center justify-center mx-auto shadow-clean-lg">
             <HelpCircle className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">How Can We Help You?</h1>
-          <p className="text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
+          <h1 className="text-4xl font-bold text-[color:var(--text-primary)] mb-6">How Can We Help You?</h1>
+          <p className="text-xl text-[color:var(--text-muted)] leading-relaxed max-w-2xl mx-auto">
             Clear, role-based answers so you can move fast and stay in control locally.
           </p>
         </div>
 
         {/* FAQ Sections */}
         {faqs.map((section, sectionIndex) => (
-          <Card key={sectionIndex} className="mb-8 bg-white/90 backdrop-blur-sm shadow-xl">
+          <Card key={sectionIndex} className="mb-8 bg-[var(--bg-surface)]/90 backdrop-blur-sm shadow-clean-lg">
             <CardHeader>
-              <CardTitle className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                {section.category === "Getting Started" && <Clock className="w-6 h-6 text-blue-600" />}
+              <CardTitle className="text-2xl font-bold text-[color:var(--text-primary)] flex items-center gap-3">
+                {section.category === "Getting Started" && <Clock className="w-6 h-6 text-[color:var(--accent-text)]" />}
                 {section.category === "Food Trucks" && <Truck className="w-6 h-6 text-orange-600" />}
                 {section.category === "Hosts" && <Building2 className="w-6 h-6 text-emerald-600" />}
                 {section.category === "Restaurants & Bars" && <Shield className="w-6 h-6 text-purple-600" />}
                 {section.category === "Events" && <CalendarDays className="w-6 h-6 text-indigo-600" />}
                 {section.category === "Accounts & Affiliates" && <Users className="w-6 h-6 text-pink-600" />}
-                {section.category === "Troubleshooting" && <HelpCircle className="w-6 h-6 text-gray-600" />}
+                {section.category === "Troubleshooting" && <HelpCircle className="w-6 h-6 text-[color:var(--text-muted)]" />}
                 {section.category}
               </CardTitle>
             </CardHeader>
@@ -270,10 +270,10 @@ export default function FAQ() {
               <Accordion type="single" collapsible className="w-full">
                 {section.questions.map((faq, faqIndex) => (
                   <AccordionItem key={faqIndex} value={`${sectionIndex}-${faqIndex}`}>
-                    <AccordionTrigger className="text-left font-semibold text-gray-800 hover:text-blue-600">
+                    <AccordionTrigger className="text-left font-semibold text-[color:var(--text-primary)] hover:text-[color:var(--accent-text)]">
                       {faq.question}
                     </AccordionTrigger>
-                    <AccordionContent className="text-gray-600 leading-relaxed">
+                    <AccordionContent className="text-[color:var(--text-muted)] leading-relaxed">
                       {faq.answer}
                     </AccordionContent>
                   </AccordionItem>
@@ -291,7 +291,7 @@ export default function FAQ() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/contact">
-              <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 font-semibold px-8 py-3">
+              <Button size="lg" className="bg-[var(--bg-surface)] text-[color:var(--accent-text)] hover:bg-[var(--bg-subtle)] font-semibold px-8 py-3">
                 <Mail className="w-4 h-4 mr-2" />
                 Contact Support
               </Button>
@@ -302,3 +302,7 @@ export default function FAQ() {
     </div>
   );
 }
+
+
+
+

@@ -43,7 +43,7 @@ const InputOTPSlot = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "relative flex h-12 w-12 items-center justify-center rounded-lg border border-slate-300 bg-white/90 text-lg font-semibold text-slate-900 shadow-sm transition-all",
+        "relative flex h-12 w-12 items-center justify-center rounded-lg border border-slate-300 bg-[var(--bg-surface)]/90 text-lg font-semibold text-slate-900 shadow-clean transition-all",
         isActive && "z-10 ring-2 ring-orange-400 ring-offset-2 ring-offset-orange-50",
         className
       )}
@@ -71,3 +71,4 @@ const InputOTPSeparator = React.forwardRef<
 InputOTPSeparator.displayName = "InputOTPSeparator"
 
 export { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator }
+

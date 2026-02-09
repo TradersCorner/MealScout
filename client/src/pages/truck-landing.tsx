@@ -117,7 +117,7 @@ export default function TruckLanding() {
                 <Popup>
                   <div className="text-sm">
                     <div className="font-semibold">{host.name}</div>
-                    <div className="text-xs text-slate-600">{host.address}</div>
+                    <div className="text-xs text-[color:var(--text-muted)]">{host.address}</div>
                   </div>
                 </Popup>
               </Marker>
@@ -128,3 +128,6 @@ export default function TruckLanding() {
     />
   );
 }
+
+
+

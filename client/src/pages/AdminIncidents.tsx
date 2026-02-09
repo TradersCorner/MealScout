@@ -65,13 +65,13 @@ interface AuditLog {
 const getSeverityColor = (severity: Severity) => {
   switch (severity) {
     case 'low':
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]';
     case 'medium':
       return 'bg-yellow-100 text-yellow-800';
     case 'high':
       return 'bg-orange-100 text-orange-800';
     case 'critical':
-      return 'bg-red-100 text-red-800';
+      return 'bg-[color:var(--status-error)]/12 text-[color:var(--status-error)]';
   }
 };
 
@@ -91,13 +91,13 @@ const getSeverityIcon = (severity: Severity) => {
 const getStatusColor = (status: IncidentStatus) => {
   switch (status) {
     case 'new':
-      return 'bg-red-100 text-red-800';
+      return 'bg-[color:var(--status-error)]/12 text-[color:var(--status-error)]';
     case 'acknowledged':
       return 'bg-yellow-100 text-yellow-800';
     case 'resolved':
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]';
     case 'closed':
-      return 'bg-green-100 text-green-800';
+      return 'bg-[color:var(--status-success)]/12 text-[color:var(--status-success)]';
   }
 };
 
@@ -229,7 +229,7 @@ export default function AdminIncidents() {
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold">Security Operations Center</h1>
-        <p className="text-gray-600">Monitor and manage incidents in real-time</p>
+        <p className="text-[color:var(--text-muted)]">Monitor and manage incidents in real-time</p>
       </div>
 
       {/* Stats */}
@@ -247,7 +247,7 @@ export default function AdminIncidents() {
             <CardTitle className="text-sm font-medium">New</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.new}</div>
+            <div className="text-2xl font-bold text-[color:var(--status-error)]">{stats.new}</div>
           </CardContent>
         </Card>
         <Card>
@@ -263,7 +263,7 @@ export default function AdminIncidents() {
             <CardTitle className="text-sm font-medium">Resolved</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.resolved}</div>
+            <div className="text-2xl font-bold text-[color:var(--accent-text)]">{stats.resolved}</div>
           </CardContent>
         </Card>
         <Card>
@@ -271,7 +271,7 @@ export default function AdminIncidents() {
             <CardTitle className="text-sm font-medium">Critical</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.critical}</div>
+            <div className="text-2xl font-bold text-[color:var(--status-error)]">{stats.critical}</div>
           </CardContent>
         </Card>
       </div>
@@ -349,7 +349,7 @@ export default function AdminIncidents() {
                 </TableHeader>
                 <TableBody>
                   {filteredIncidents.map((incident) => (
-                    <TableRow key={incident.id} className="hover:bg-gray-50">
+                    <TableRow key={incident.id} className="hover:bg-[var(--bg-surface)]">
                       <TableCell className="font-mono text-xs">{incident.id.slice(0, 8)}</TableCell>
                       <TableCell className="text-sm">{incident.ruleId}</TableCell>
                       <TableCell>
@@ -404,36 +404,36 @@ export default function AdminIncidents() {
                 <TabsContent value="overview" className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Severity</label>
+                      <label className="text-sm font-medium text-[color:var(--text-muted)]">Severity</label>
                       <Badge className={getSeverityColor(selectedIncident.severity)}>
                         {selectedIncident.severity.toUpperCase()}
                       </Badge>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Status</label>
+                      <label className="text-sm font-medium text-[color:var(--text-muted)]">Status</label>
                       <Badge className={getStatusColor(selectedIncident.status)}>
                         {selectedIncident.status.toUpperCase()}
                       </Badge>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Rule ID</label>
+                      <label className="text-sm font-medium text-[color:var(--text-muted)]">Rule ID</label>
                       <p className="text-sm font-mono">{selectedIncident.ruleId}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Created By</label>
+                      <label className="text-sm font-medium text-[color:var(--text-muted)]">Created By</label>
                       <p className="text-sm">{selectedIncident.userId}</p>
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Metadata</label>
-                    <pre className="bg-gray-100 p-3 rounded text-xs overflow-auto max-h-40">
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">Metadata</label>
+                    <pre className="bg-[var(--bg-subtle)] p-3 rounded text-xs overflow-auto max-h-40">
                       {JSON.stringify(selectedIncident.metadata, null, 2)}
                     </pre>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-500">Actions</label>
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">Actions</label>
                     <div className="flex gap-2">
                       {selectedIncident.status === 'new' && (
                         <Button
@@ -482,35 +482,35 @@ export default function AdminIncidents() {
                 <TabsContent value="timeline" className="space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-start gap-4">
-                      <div className="text-sm font-medium text-gray-500 w-24">Created</div>
+                      <div className="text-sm font-medium text-[color:var(--text-muted)] w-24">Created</div>
                       <div>
                         <p className="text-sm">{new Date(selectedIncident.createdAt).toLocaleString()}</p>
                       </div>
                     </div>
                     {selectedIncident.acknowledgedAt && (
                       <div className="flex items-start gap-4">
-                        <div className="text-sm font-medium text-gray-500 w-24">Acknowledged</div>
+                        <div className="text-sm font-medium text-[color:var(--text-muted)] w-24">Acknowledged</div>
                         <div>
                           <p className="text-sm">{new Date(selectedIncident.acknowledgedAt).toLocaleString()}</p>
-                          <p className="text-xs text-gray-500">by {selectedIncident.acknowledgedBy}</p>
+                          <p className="text-xs text-[color:var(--text-muted)]">by {selectedIncident.acknowledgedBy}</p>
                         </div>
                       </div>
                     )}
                     {selectedIncident.resolvedAt && (
                       <div className="flex items-start gap-4">
-                        <div className="text-sm font-medium text-gray-500 w-24">Resolved</div>
+                        <div className="text-sm font-medium text-[color:var(--text-muted)] w-24">Resolved</div>
                         <div>
                           <p className="text-sm">{new Date(selectedIncident.resolvedAt).toLocaleString()}</p>
-                          <p className="text-xs text-gray-500">by {selectedIncident.resolvedBy}</p>
+                          <p className="text-xs text-[color:var(--text-muted)]">by {selectedIncident.resolvedBy}</p>
                         </div>
                       </div>
                     )}
                     {selectedIncident.closedAt && (
                       <div className="flex items-start gap-4">
-                        <div className="text-sm font-medium text-gray-500 w-24">Closed</div>
+                        <div className="text-sm font-medium text-[color:var(--text-muted)] w-24">Closed</div>
                         <div>
                           <p className="text-sm">{new Date(selectedIncident.closedAt).toLocaleString()}</p>
-                          <p className="text-xs text-gray-500">by {selectedIncident.closedBy}</p>
+                          <p className="text-xs text-[color:var(--text-muted)]">by {selectedIncident.closedBy}</p>
                         </div>
                       </div>
                     )}
@@ -544,12 +544,12 @@ export default function AdminIncidents() {
 
                 <TabsContent value="signature" className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Signature Hash</label>
-                    <p className="text-xs font-mono break-all bg-gray-100 p-3 rounded mt-1">
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">Signature Hash</label>
+                    <p className="text-xs font-mono break-all bg-[var(--bg-subtle)] p-3 rounded mt-1">
                       {selectedIncident.signatureHash}
                     </p>
                   </div>
-                  <div className="text-xs text-gray-600 bg-blue-50 p-3 rounded">
+                  <div className="text-xs text-[color:var(--text-muted)] bg-[color:var(--accent-text)]/10 p-3 rounded">
                     <p className="font-medium mb-1">✅ Cryptographic Signature</p>
                     <p>This incident is signed with HMAC-SHA256. Any modification to the incident record will invalidate the signature.</p>
                   </div>
@@ -562,3 +562,7 @@ export default function AdminIncidents() {
     </div>
   );
 }
+
+
+
+

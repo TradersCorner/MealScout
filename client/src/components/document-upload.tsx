@@ -198,7 +198,7 @@ export default function DocumentUpload({
               "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
               dragOver 
                 ? "border-primary bg-primary/5" 
-                : "border-gray-300 hover:border-gray-400"
+                : "border-[var(--border-subtle)] hover:border-[var(--border-strong)]"
             )}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -206,13 +206,13 @@ export default function DocumentUpload({
             onClick={openFileDialog}
             data-testid="upload-dropzone"
           >
-            <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <Upload className="mx-auto h-12 w-12 text-[color:var(--text-muted)] mb-4" />
             <div className="space-y-2">
               <p className="text-lg font-medium">Drop files here or click to upload</p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-[color:var(--text-muted)]">
                 Supported formats: JPG, PNG, PDF (max {formatFileSize(maxFileSize)} each)
               </p>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-[color:var(--text-muted)]">
                 Maximum {maxFiles} files allowed
               </p>
             </div>
@@ -229,7 +229,7 @@ export default function DocumentUpload({
           />
 
           {isUploading && (
-            <div className="mt-4 flex items-center space-x-2 text-sm text-gray-600">
+            <div className="mt-4 flex items-center space-x-2 text-sm text-[color:var(--text-muted)]">
               <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
               <span>Processing files...</span>
             </div>
@@ -251,20 +251,20 @@ export default function DocumentUpload({
               {documents.map((doc) => (
                 <div
                   key={doc.id}
-                  className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50"
+                  className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-[var(--bg-surface)]"
                   data-testid={`document-item-${doc.id}`}
                 >
                   <div className="flex-shrink-0">
                     {doc.type === 'image' ? (
-                      <Image className="w-6 h-6 text-blue-500" />
+                      <Image className="w-6 h-6 text-[color:var(--accent-text)]" />
                     ) : (
-                      <FileText className="w-6 h-6 text-red-500" />
+                      <FileText className="w-6 h-6 text-[color:var(--status-error)]" />
                     )}
                   </div>
                   
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{doc.name}</p>
-                    <p className="text-xs text-gray-500">{formatFileSize(doc.size)}</p>
+                    <p className="text-xs text-[color:var(--text-muted)]">{formatFileSize(doc.size)}</p>
                   </div>
 
                   <div className="flex items-center space-x-2">
@@ -307,7 +307,7 @@ export default function DocumentUpload({
           data-testid="preview-modal"
         >
           <div 
-            className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-auto"
+            className="bg-[var(--bg-surface)] rounded-lg max-w-4xl max-h-[90vh] overflow-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b flex items-center justify-between">
@@ -331,12 +331,12 @@ export default function DocumentUpload({
                 />
               ) : (
                 <div className="text-center py-8">
-                  <FileText className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                  <FileText className="w-16 h-16 mx-auto text-[color:var(--text-muted)] mb-4" />
                   <p className="text-lg font-medium">PDF Preview</p>
-                  <p className="text-sm text-gray-500 mt-2">
+                  <p className="text-sm text-[color:var(--text-muted)] mt-2">
                     {previewDocument.name} - {formatFileSize(previewDocument.size)}
                   </p>
-                  <p className="text-xs text-gray-400 mt-4">
+                  <p className="text-xs text-[color:var(--text-muted)] mt-4">
                     PDF files will be processed when you submit the verification request
                   </p>
                 </div>
@@ -348,3 +348,4 @@ export default function DocumentUpload({
     </div>
   );
 }
+

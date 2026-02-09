@@ -186,7 +186,7 @@ export default function RestaurantDetailPage() {
 
   if (restaurantLoading) {
     return (
-      <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
         <div className="animate-pulse">
           <div className="w-full h-64 bg-muted"></div>
           <div className="p-6 space-y-4">
@@ -201,7 +201,7 @@ export default function RestaurantDetailPage() {
 
   if (!restaurant) {
     return (
-      <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
         <div className="text-center py-12">
           <h2 className="text-xl font-bold mb-4">Restaurant not found</h2>
           <Link href="/">
@@ -221,7 +221,7 @@ export default function RestaurantDetailPage() {
   const reviewCount = Array.isArray(reviews) ? reviews.length : 0;
 
   const rightActions = (
-    <Button variant="ghost" size="sm" className="bg-white/90 backdrop-blur-sm" data-testid="button-save-restaurant">
+    <Button variant="ghost" size="sm" className="bg-[var(--bg-card)]/90 backdrop-blur-sm" data-testid="button-save-restaurant">
       <Heart className="w-4 h-4" />
     </Button>
   );
@@ -253,7 +253,7 @@ export default function RestaurantDetailPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+    <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
       <SEOHead
         title={`${restaurantName} - ${cuisineType} Restaurant | MealScout`}
         description={description}
@@ -266,16 +266,17 @@ export default function RestaurantDetailPage() {
         fallbackHref="/"
         icon={Store}
         rightActions={rightActions}
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
       
       {/* Header Image */}
-      <div className="relative h-48 bg-gradient-to-br from-red-100 to-orange-100 overflow-hidden">
+      <div className="relative h-48 bg-[linear-gradient(110deg,rgba(255,77,46,0.12),rgba(245,158,11,0.12))] overflow-hidden">
         <div className="absolute inset-0 bg-black/20"></div>
         
         {/* Restaurant Image Placeholder */}
         <div className="w-full h-full flex items-center justify-center">
           <div className="text-center text-white/80">
-            <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div className="w-20 h-20 bg-[var(--bg-card)]/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <span className="text-2xl">--</span>
             </div>
           </div>
@@ -289,7 +290,7 @@ export default function RestaurantDetailPage() {
             <h1 className="text-2xl font-bold text-foreground flex items-center space-x-2" data-testid="text-restaurant-name">
               <span>{(restaurant as any)?.name}</span>
               {(restaurant as any)?.isVerified && (
-                <CheckCircle className="w-5 h-5 text-green-500" data-testid="icon-verified-restaurant" />
+                <CheckCircle className="w-5 h-5 text-[color:var(--status-success)]" data-testid="icon-verified-restaurant" />
               )}
             </h1>
             {(restaurant as any)?.cuisineType && (
@@ -311,7 +312,7 @@ export default function RestaurantDetailPage() {
           {/* Rating */}
           <div className="flex items-center space-x-4 mb-4">
             <div className="flex items-center space-x-1">
-              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+              <Star className="w-4 h-4 fill-[color:var(--status-warning)] text-[color:var(--status-warning)]" />
               <span className="font-semibold" data-testid="text-rating">
                 {currentRating.toFixed(1)}
               </span>
@@ -319,7 +320,7 @@ export default function RestaurantDetailPage() {
                 ({reviewCount} reviews)
               </span>
             </div>
-            <div className="flex items-center space-x-1 text-sm text-green-600">
+            <div className="flex items-center space-x-1 text-sm text-[color:var(--status-success)]">
               <Clock className="w-4 h-4" />
               <span>Open now</span>
             </div>
@@ -492,7 +493,7 @@ export default function RestaurantDetailPage() {
               Parking Schedule
             </h2>
             {scheduleLoading ? (
-              <Card>
+              <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
                 <CardContent className="p-6 text-center text-muted-foreground">
                   Loading schedule...
                 </CardContent>
@@ -503,7 +504,7 @@ export default function RestaurantDetailPage() {
                 subtitle="Auto-updated by Parking Pass bookings and public manual stops."
               />
             ) : (
-              <Card>
+              <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
                 <CardContent className="p-6 text-center text-muted-foreground">
                   No upcoming parking schedule yet.
                 </CardContent>
@@ -524,7 +525,7 @@ export default function RestaurantDetailPage() {
               ))}
             </div>
           ) : (
-            <Card>
+            <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
               <CardContent className="p-6 text-center">
                 <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <span className="text-2xl">-</span>
@@ -553,7 +554,7 @@ export default function RestaurantDetailPage() {
                 <Card key={review.id}>
                   <CardContent className="p-4">
                     <div className="flex items-start space-x-3">
-                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-[color:var(--accent-text)]/12 rounded-full flex items-center justify-center">
                         <span className="text-sm font-medium">U</span>
                       </div>
                       <div className="flex-1">
@@ -563,7 +564,7 @@ export default function RestaurantDetailPage() {
                             {[1, 2, 3, 4, 5].map((star) => (
                               <Star 
                                 key={star} 
-                                className={`w-3 h-3 ${star <= (review.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} 
+                                className={`w-3 h-3 ${star <= (review.rating || 0) ? 'fill-[color:var(--status-warning)] text-[color:var(--status-warning)]' : 'text-[color:var(--border-strong)]'}`} 
                               />
                             ))}
                           </div>
@@ -576,7 +577,7 @@ export default function RestaurantDetailPage() {
               ))}
             </div>
           ) : (
-            <Card>
+            <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
               <CardContent className="p-6 text-center">
                 <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Star className="w-6 h-6 text-muted-foreground" />
@@ -589,7 +590,7 @@ export default function RestaurantDetailPage() {
         </div>
 
         {/* FAQ Section - SEO optimized, minimal UI */}
-        <div className="mt-12 pt-8 border-t border-gray-200">
+        <div className="mt-12 pt-8 border-t border-[color:var(--border-subtle)]">
           <MinimalFAQ
             items={[
               {
@@ -618,3 +619,8 @@ export default function RestaurantDetailPage() {
     </div>
   );
 }
+
+
+
+
+

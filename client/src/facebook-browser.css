@@ -78,22 +78,6 @@
   transform: translate3d(0, 0, 0);
 }
 
-/* Improve hover states for touch in Facebook browser */
-@media (hover: none) and (pointer: coarse) {
-  .facebook-browser .hover\:bg-gray-50:hover {
-    background-color: rgb(249 250 251 / var(--tw-bg-opacity));
-  }
-
-  .facebook-browser .hover\:bg-red-600:hover {
-    background-color: rgb(220 38 38 / var(--tw-bg-opacity));
-  }
-
-  .facebook-browser .hover\:shadow-lg:hover {
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1),
-      0 4px 6px -4px rgb(0 0 0 / 0.1);
-  }
-}
-
 /* Fix safe area handling for Facebook browser */
 .facebook-browser {
   padding-top: env(safe-area-inset-top);
@@ -126,3 +110,4 @@
 /* Build trigger 2: keep Vercel in sync */
 /* Build trigger 3: force webhook */
 /* Build trigger 4: correct author email */
+

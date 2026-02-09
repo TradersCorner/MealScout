@@ -4,7 +4,7 @@ import { VIDEO_FEED_COPY as COPY } from '@/copy/videoFeed.copy';
 import ShareButton from '@/components/share-button';
 
 /**
- * Video Feed v1 — COPY + TYPE LOCK
+ * Video Feed v1 - COPY + TYPE LOCK
  * - User videos are recommendations, never ads
  * - Restaurant videos are ads, never recommendations
  * - Do not merge UI, copy, or limits
@@ -175,9 +175,9 @@ function UserVideoCard({ video, isVisible }: UserVideoCardProps) {
   };
 
   return (
-    <div className="bg-black text-white rounded-lg overflow-hidden mb-4">
+    <div className="bg-[var(--bg-card)] text-[color:var(--text-primary)] rounded-lg overflow-hidden mb-4">
       {/* Video */}
-      <div className="relative bg-black aspect-[9/16] flex items-center justify-center">
+      <div className="relative bg-[var(--bg-app)] aspect-[9/16] flex items-center justify-center">
         <video
           ref={videoRef}
           src={video.videoUrl}
@@ -192,26 +192,26 @@ function UserVideoCard({ video, isVisible }: UserVideoCardProps) {
       {/* Story Info */}
       <div className="p-4">
         {video.isRecommendation && (
-          <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-300 border border-yellow-500/40">
+          <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-[color:var(--text-secondary)]">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[color:var(--status-warning)]/15 text-[color:var(--status-warning)] border border-[color:var(--status-warning)]/40">
               {COPY.userVideo.badge}
             </span>
           </div>
         )}
         <h3 className="font-semibold text-lg mb-1">{video.title}</h3>
         {video.description && (
-          <p className="text-gray-300 text-sm mb-3 line-clamp-2">
+          <p className="text-[color:var(--text-muted)] text-sm mb-3 line-clamp-2">
             {video.description}
           </p>
         )}
 
         {/* Engagement Stats */}
-        <div className="flex gap-4 mb-4 text-sm text-gray-300">
+        <div className="flex gap-4 mb-4 text-sm text-[color:var(--text-muted)]">
           <div>
-            👁️ {video.viewCount} {COPY.userVideo.engagement.viewsLabel}
+            Views: {video.viewCount} {COPY.userVideo.engagement.viewsLabel}
           </div>
           <div>
-            💬 {video.commentCount} {COPY.userVideo.engagement.commentsLabel}
+            Comments: {video.commentCount} {COPY.userVideo.engagement.commentsLabel}
           </div>
         </div>
 
@@ -222,17 +222,17 @@ function UserVideoCard({ video, isVisible }: UserVideoCardProps) {
             disabled={isLoadingLike}
             className={`flex-1 py-2 px-4 rounded font-medium transition ${
               liked
-                ? 'bg-red-500 hover:bg-red-600'
-                : 'bg-gray-700 hover:bg-gray-600'
+                ? 'bg-[color:var(--status-error)]/100 hover:bg-[color:var(--status-error)]'
+                : 'bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface)]'
             } disabled:opacity-50`}
           >
-            {liked ? `❤️ ${COPY.userVideo.actions.liked}` : `🍴 ${COPY.userVideo.actions.like}`} {likeCount > 0 && `(${likeCount})`}
+            {liked ? COPY.userVideo.actions.liked : COPY.userVideo.actions.like} {likeCount > 0 && `(${likeCount})`}
           </button>
           <button
             onClick={() => setShowComments(!showComments)}
-            className="flex-1 py-2 px-4 bg-gray-700 hover:bg-gray-600 rounded font-medium transition"
+            className="flex-1 py-2 px-4 bg-[var(--bg-surface-muted)] hover:bg-[var(--bg-surface)] rounded font-medium transition"
           >
-            💬 {COPY.userVideo.actions.comment}
+            {COPY.userVideo.actions.comment}
           </button>
         </div>
         <div className="mt-3">
@@ -248,8 +248,8 @@ function UserVideoCard({ video, isVisible }: UserVideoCardProps) {
 
         {/* Comments Section */}
         {showComments && (
-          <div className="mt-4 pt-4 border-t border-gray-600">
-            <p className="text-sm text-gray-400">{COPY.userVideo.comments.placeholder}</p>
+          <div className="mt-4 pt-4 border-t border-[var(--border-strong)]">
+            <p className="text-sm text-[color:var(--text-muted)]">{COPY.userVideo.comments.placeholder}</p>
           </div>
         )}
       </div>
@@ -263,8 +263,8 @@ interface RestaurantAdCardProps {
 
 function RestaurantAdCard({ video }: RestaurantAdCardProps) {
   return (
-    <div className="bg-gray-950 text-white rounded-lg overflow-hidden mb-4 border border-gray-800">
-      <div className="relative bg-black aspect-[9/16] flex items-center justify-center">
+    <div className="bg-[var(--bg-card)] text-[color:var(--text-primary)] rounded-lg overflow-hidden mb-4 border border-[var(--border-subtle)]">
+      <div className="relative bg-[var(--bg-app)] aspect-[9/16] flex items-center justify-center">
         {video.mediaUrl ? (
           <video
             src={video.mediaUrl}
@@ -275,11 +275,11 @@ function RestaurantAdCard({ video }: RestaurantAdCardProps) {
             controls
           />
         ) : (
-          <div className="flex items-center justify-center w-full h-full text-gray-400 text-sm">
+          <div className="flex items-center justify-center w-full h-full text-[color:var(--text-muted)] text-sm">
             {video.title}
           </div>
         )}
-        <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-gray-900/80 text-xs uppercase tracking-wide border border-gray-600">
+        <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-[var(--bg-surface)]/80 text-xs uppercase tracking-wide text-[color:var(--text-secondary)] border border-[var(--border-strong)]">
           {COPY.restaurantAd.badge}
         </div>
       </div>
@@ -287,14 +287,14 @@ function RestaurantAdCard({ video }: RestaurantAdCardProps) {
       <div className="p-4 space-y-2">
         <h3 className="font-semibold text-base">{video.title}</h3>
         {video.affiliateName && (
-          <p className="text-xs text-gray-400">{video.affiliateName}</p>
+          <p className="text-xs text-[color:var(--text-muted)]">{video.affiliateName}</p>
         )}
         <div className="pt-2">
           <a
             href={video.targetUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-gray-100 text-gray-900 text-sm font-semibold hover:bg-white transition"
+            className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-[var(--bg-subtle)] text-[color:var(--text-primary)] text-sm font-semibold hover:bg-[var(--bg-surface)] transition"
           >
             {video.ctaText || COPY.restaurantAd.learnMore}
           </a>
@@ -369,7 +369,7 @@ export function VideoFeed({ onUploadClick }: VideoFeedProps) {
   if (feedState.state === 'loading') {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" aria-label={COPY.feed.loading} />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[color:var(--accent-text)]" aria-label={COPY.feed.loading} />
       </div>
     );
   }
@@ -377,7 +377,7 @@ export function VideoFeed({ onUploadClick }: VideoFeedProps) {
   if (feedState.state === 'error') {
     return (
       <div className="p-6 text-center">
-        <p className="text-red-600 mb-4">{COPY.feed.error}</p>
+        <p className="text-[color:var(--status-error)] mb-4">{COPY.feed.error}</p>
         <button
           type="button"
           onClick={() => {
@@ -385,7 +385,7 @@ export function VideoFeed({ onUploadClick }: VideoFeedProps) {
             // Let react-query refetch using its existing behavior
             void fetchNextPage();
           }}
-          className="inline-flex items-center px-4 py-2 rounded-md bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition"
+          className="inline-flex items-center px-4 py-2 rounded-md bg-[color:var(--status-error)] text-white text-sm font-medium hover:bg-[color:var(--status-error)] transition"
         >
           {COPY.feed.retry}
         </button>
@@ -442,13 +442,13 @@ export function VideoFeed({ onUploadClick }: VideoFeedProps) {
   if (feedItems.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500 mb-4">{COPY.feed.empty}</p>
+        <p className="text-[color:var(--text-muted)] mb-4">{COPY.feed.empty}</p>
         {onUploadClick && (
           <button
             onClick={onUploadClick}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-6 py-2 bg-[color:var(--accent-text)] text-white rounded-lg hover:bg-[color:var(--accent-text-hover)]"
           >
-            📹 {COPY.feed.emptyCta}
+             {COPY.feed.emptyCta}
           </button>
         )}
       </div>
@@ -463,7 +463,7 @@ export function VideoFeed({ onUploadClick }: VideoFeedProps) {
           onClick={onUploadClick}
           className="w-full mb-4 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-red-600 transition"
         >
-          📹 {COPY.feed.uploadCta}
+           {COPY.feed.uploadCta}
         </button>
       )}
 
@@ -488,3 +488,5 @@ export function VideoFeed({ onUploadClick }: VideoFeedProps) {
     </div>
   );
 }
+
+

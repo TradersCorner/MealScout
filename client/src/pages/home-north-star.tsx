@@ -1,4 +1,4 @@
-﻿import { useEffect } from "react";
+import { useEffect } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -73,10 +73,10 @@ export default function Home() {
 
       <main className="container max-w-4xl mx-auto px-4 py-12">
         <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-[color:var(--text-primary)] mb-4">
             Find food trucks. Scout places to park.
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-xl text-[color:var(--text-muted)] max-w-2xl mx-auto">
             MealScout helps food trucks find real places to park and serve - and
             helps customers find where food trucks are today.
           </p>
@@ -84,19 +84,19 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
           <Link href="/restaurant-signup">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full border-2 hover:border-orange-500">
+            <Card className="hover:shadow-clean-lg transition-shadow cursor-pointer h-full border-2 hover:border-[color:var(--status-warning)]">
               <CardContent className="p-8">
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center">
                     <Store className="w-8 h-8 text-orange-600" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900">
+                  <h3 className="text-xl font-semibold text-[color:var(--text-primary)]">
                     List my food truck or restaurant
                   </h3>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-[color:var(--text-muted)]">
                     Join before April 1 and lock in{" "}
-                    <span className="line-through text-gray-400">$50</span>{" "}
-                    <span className="font-semibold text-gray-900">$25/month</span>{" "}
+                    <span className="line-through text-[color:var(--text-muted)]">$50</span>{" "}
+                    <span className="font-semibold text-[color:var(--text-primary)]">$25/month</span>{" "}
                     forever
                   </p>
                   <Button className="mt-4">Get Started</Button>
@@ -106,16 +106,16 @@ export default function Home() {
           </Link>
 
           <Link href="/host-signup">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full border-2 hover:border-emerald-500">
+            <Card className="hover:shadow-clean-lg transition-shadow cursor-pointer h-full border-2 hover:border-[color:var(--status-success)]">
               <CardContent className="p-8">
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
                     <MapPin className="w-8 h-8 text-emerald-600" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900">
+                  <h3 className="text-xl font-semibold text-[color:var(--text-primary)]">
                     Host food at my location
                   </h3>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-[color:var(--text-muted)]">
                     Free forever. Unlock local food truck supply.
                   </p>
                   <Button variant="outline" className="mt-4">
@@ -127,16 +127,16 @@ export default function Home() {
           </Link>
 
           <Link href="/event-signup">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full border-2 hover:border-blue-500">
+            <Card className="hover:shadow-clean-lg transition-shadow cursor-pointer h-full border-2 hover:border-[color:var(--accent-text)]">
               <CardContent className="p-8">
                 <div className="flex flex-col items-center text-center space-y-4">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Calendar className="w-8 h-8 text-blue-600" />
+                  <div className="w-16 h-16 bg-[color:var(--accent-text)]/12 rounded-full flex items-center justify-center">
+                    <Calendar className="w-8 h-8 text-[color:var(--accent-text)]" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900">
+                  <h3 className="text-xl font-semibold text-[color:var(--text-primary)]">
                     Need trucks for an event
                   </h3>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-[color:var(--text-muted)]">
                     Free forever. No event organizer fees.
                   </p>
                   <Button variant="outline" className="mt-4">
@@ -148,16 +148,16 @@ export default function Home() {
           </Link>
 
           <Link href="/search">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full border-2 hover:border-purple-500">
+            <Card className="hover:shadow-clean-lg transition-shadow cursor-pointer h-full border-2 hover:border-[color:var(--accent-text)]">
               <CardContent className="p-8">
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
                     <Search className="w-8 h-8 text-purple-600" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900">
+                  <h3 className="text-xl font-semibold text-[color:var(--text-primary)]">
                     Find food near me
                   </h3>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-[color:var(--text-muted)]">
                     Discover deals, trucks, and local restaurants.
                   </p>
                   <Button variant="outline" className="mt-4">
@@ -169,7 +169,7 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="text-center text-sm text-gray-500 space-y-2">
+        <div className="text-center text-sm text-[color:var(--text-muted)] space-y-2">
           <p>
             One identity - many claims - verified - coordinated - monetized where
             fair
@@ -178,7 +178,7 @@ export default function Home() {
             Locked promo pricing: <span className="line-through">$50</span> $25/month
             forever for restaurants joining before April 1, 2026
           </p>
-          <p className="text-gray-700">
+          <p className="text-[color:var(--text-secondary)]">
             MealScout is a food truck finder and parking sourcing tool. It is
             not delivery, not a marketplace, and not events-only.
           </p>
@@ -187,3 +187,7 @@ export default function Home() {
     </div>
   );
 }
+
+
+
+

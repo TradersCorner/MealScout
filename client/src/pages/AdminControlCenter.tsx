@@ -55,14 +55,14 @@ export default function AdminControlCenter() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-app)]">
+    <div className="min-h-screen bg-[var(--bg-layered)]">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-[var(--bg-surface)] border-b border-[var(--border-subtle)]">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold">Admin Control Center</h1>
-              <p className="text-gray-600 mt-1">
+              <p className="text-[color:var(--text-muted)] mt-1">
                 MealScout Operations & Moderation
               </p>
             </div>
@@ -70,8 +70,8 @@ export default function AdminControlCenter() {
               <div
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
                   health?.status === "healthy"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
+                    ? "bg-[color:var(--status-success)]/12 text-[color:var(--status-success)]"
+                    : "bg-[color:var(--status-error)]/12 text-[color:var(--status-error)]"
                 }`}
               >
                 <div className="w-2 h-2 rounded-full bg-current" />
@@ -98,10 +98,10 @@ export default function AdminControlCenter() {
                     {stats?.incidents?.total || 0}
                   </div>
                   <div className="flex gap-2 text-xs">
-                    <span className="text-red-600 font-medium">
+                    <span className="text-[color:var(--status-error)] font-medium">
                       {stats?.incidents?.open || 0} new
                     </span>
-                    <span className="text-orange-600 font-medium">
+                    <span className="text-[color:var(--status-warning)] font-medium">
                       {stats?.incidents?.critical || 0} critical
                     </span>
                   </div>
@@ -120,7 +120,7 @@ export default function AdminControlCenter() {
                   <div className="text-2xl font-bold">
                     {stats?.tickets?.open || 0}
                   </div>
-                  <div className="text-xs text-yellow-600 font-medium">
+                  <div className="text-xs text-[color:var(--status-warning)] font-medium">
                     {stats?.tickets?.highPriority || 0} high priority
                   </div>
                 </div>
@@ -138,7 +138,7 @@ export default function AdminControlCenter() {
                   <div className="text-2xl font-bold">
                     {stats?.moderation?.recentEvents || 0}
                   </div>
-                  <div className="text-xs text-gray-600">Last 7 days</div>
+                  <div className="text-xs text-[color:var(--text-muted)]">Last 7 days</div>
                 </div>
               </CardContent>
             </Card>
@@ -152,7 +152,7 @@ export default function AdminControlCenter() {
                   <div className="text-2xl font-bold">
                     {stats?.users?.total || 0}
                   </div>
-                  <div className="text-xs text-gray-600">Total registered</div>
+                  <div className="text-xs text-[color:var(--text-muted)]">Total registered</div>
                 </div>
               </CardContent>
             </Card>
@@ -194,11 +194,11 @@ export default function AdminControlCenter() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 border rounded-lg">
+                  <div className="p-4 border border-[var(--border-subtle)] rounded-lg">
                     <h3 className="font-medium mb-2 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4" /> Incidents
                     </h3>
-                    <p className="text-sm text-gray-600 mb-3">
+                    <p className="text-sm text-[color:var(--text-muted)] mb-3">
                       View and manage security incidents with signatures and
                       timelines.
                     </p>
@@ -211,11 +211,11 @@ export default function AdminControlCenter() {
                     </Button>
                   </div>
 
-                  <div className="p-4 border rounded-lg">
+                  <div className="p-4 border border-[var(--border-subtle)] rounded-lg">
                     <h3 className="font-medium mb-2 flex items-center gap-2">
                       <Ticket className="w-4 h-4" /> Support Tickets
                     </h3>
-                    <p className="text-sm text-gray-600 mb-3">
+                    <p className="text-sm text-[color:var(--text-muted)] mb-3">
                       Handle user support requests and resolve issues.
                     </p>
                     <Button
@@ -227,11 +227,11 @@ export default function AdminControlCenter() {
                     </Button>
                   </div>
 
-                  <div className="p-4 border rounded-lg">
+                  <div className="p-4 border border-[var(--border-subtle)] rounded-lg">
                     <h3 className="font-medium mb-2 flex items-center gap-2">
                       <Shield className="w-4 h-4" /> Moderation
                     </h3>
-                    <p className="text-sm text-gray-600 mb-3">
+                    <p className="text-sm text-[color:var(--text-muted)] mb-3">
                       Review reported content and take moderation actions.
                     </p>
                     <Button
@@ -243,11 +243,11 @@ export default function AdminControlCenter() {
                     </Button>
                   </div>
 
-                  <div className="p-4 border rounded-lg">
+                  <div className="p-4 border border-[var(--border-subtle)] rounded-lg">
                     <h3 className="font-medium mb-2 flex items-center gap-2">
                       <Activity className="w-4 h-4" /> Audit Logs
                     </h3>
-                    <p className="text-sm text-gray-600 mb-3">
+                    <p className="text-sm text-[color:var(--text-muted)] mb-3">
                       Search and filter all platform activity.
                     </p>
                     <Button
@@ -273,7 +273,7 @@ export default function AdminControlCenter() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">Incidents module loading...</p>
+                <p className="text-[color:var(--text-muted)]">Incidents module loading...</p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -288,7 +288,7 @@ export default function AdminControlCenter() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">
+                <p className="text-[color:var(--text-muted)]">
                   Support tickets module loading...
                 </p>
               </CardContent>
@@ -305,7 +305,7 @@ export default function AdminControlCenter() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">
+                <p className="text-[color:var(--text-muted)]">
                   Moderation events module loading...
                 </p>
               </CardContent>
@@ -320,7 +320,7 @@ export default function AdminControlCenter() {
                 <CardDescription>View system audit logs</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">Audit logs module loading...</p>
+                <p className="text-[color:var(--text-muted)]">Audit logs module loading...</p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -336,40 +336,40 @@ export default function AdminControlCenter() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 border rounded-lg">
+                  <div className="p-4 border border-[var(--border-subtle)] rounded-lg">
                     <h3 className="font-medium mb-2">Database Connection</h3>
-                    <Badge className="bg-green-100 text-green-800">
+                    <Badge className="bg-[color:var(--status-success)]/12 text-[color:var(--status-success)]">
                       Connected
                     </Badge>
                   </div>
 
-                  <div className="p-4 border rounded-lg">
+                  <div className="p-4 border border-[var(--border-subtle)] rounded-lg">
                     <h3 className="font-medium mb-2">Server Status</h3>
-                    <Badge className="bg-green-100 text-green-800">
+                    <Badge className="bg-[color:var(--status-success)]/12 text-[color:var(--status-success)]">
                       Operational
                     </Badge>
                   </div>
 
-                  <div className="p-4 border rounded-lg">
+                  <div className="p-4 border border-[var(--border-subtle)] rounded-lg">
                     <h3 className="font-medium mb-2">Escalations Job</h3>
                     <div className="flex items-center gap-2 text-sm">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <CheckCircle className="w-4 h-4 text-[color:var(--status-success)]" />
                       <span>Running (every 15 minutes)</span>
                     </div>
                   </div>
 
-                  <div className="p-4 border rounded-lg">
+                  <div className="p-4 border border-[var(--border-subtle)] rounded-lg">
                     <h3 className="font-medium mb-2">Auto-Close Job</h3>
                     <div className="flex items-center gap-2 text-sm">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <CheckCircle className="w-4 h-4 text-[color:var(--status-success)]" />
                       <span>Running (daily)</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-900">
-                    ℹ️ All background jobs are configured and running. Check
+                <div className="p-4 bg-[color:var(--accent-text)]/10 border border-[color:var(--accent-text)]/30 rounded-lg">
+                  <p className="text-sm text-[color:var(--accent-text)]">
+                    Info: All background jobs are configured and running. Check
                     Vercel Cron for scheduled execution in production.
                   </p>
                 </div>
@@ -381,3 +381,7 @@ export default function AdminControlCenter() {
     </div>
   );
 }
+
+
+
+

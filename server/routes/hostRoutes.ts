@@ -2288,6 +2288,10 @@ export function registerHostRoutes(app: Express) {
       // If the host has Stripe Connect payouts enabled, create a direct charge on their Connect account
       // and collect the MealScout application fee. Otherwise, charge on the platform account so the
       // booking can still go through (host payout will be handled later).
+      if (!stripe) {
+        return res.status(500).json({ message: "Stripe is not configured" });
+      }
+
       let paymentIntent: Stripe.PaymentIntent;
       try {
         const intentParams: Stripe.PaymentIntentCreateParams = {

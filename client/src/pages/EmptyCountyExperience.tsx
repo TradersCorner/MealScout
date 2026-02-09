@@ -86,15 +86,15 @@ export default function EmptyCountyExperience({ county, state }: EmptyCountyProp
       </Card>
 
       {/* Step 2: Early Backer Reframe */}
-      <Card className="border-2 border-blue-200 bg-blue-50">
+      <Card className="border-2 border-[color:var(--accent-text)]/30 bg-[color:var(--accent-text)]/10">
         <CardHeader>
           <div className="flex items-start gap-3">
-            <Heart className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
+            <Heart className="w-6 h-6 text-[color:var(--accent-text)] flex-shrink-0 mt-1" />
             <div>
               <CardTitle className="text-lg">You're Early</CardTitle>
               <CardDescription className="mt-2">
                 MealScout is just starting in your area. Shape your local food scene —{' '}
-                <span className="font-semibold text-blue-700">earn money doing it</span>.
+                <span className="font-semibold text-[color:var(--accent-text)]">earn money doing it</span>.
               </CardDescription>
             </div>
           </div>
@@ -113,9 +113,9 @@ export default function EmptyCountyExperience({ county, state }: EmptyCountyProp
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <h4 className="font-semibold text-green-900 mb-2">💰 Get Paid for Recommendations</h4>
-            <p className="text-sm text-green-800">
+          <div className="bg-[color:var(--status-success)]/10 border border-[color:var(--status-success)]/30 rounded-lg p-4">
+            <h4 className="font-semibold text-[color:var(--status-success)] mb-2">💰 Get Paid for Recommendations</h4>
+            <p className="text-sm text-[color:var(--status-success)]">
               If a restaurant you recommend joins MealScout as a paid partner, you'll earn
               recurring commissions every month they stay active.
             </p>
@@ -141,7 +141,7 @@ export default function EmptyCountyExperience({ county, state }: EmptyCountyProp
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-[color:var(--text-muted)]">
             Featured national offers coming soon...
           </p>
         </CardContent>
@@ -168,7 +168,7 @@ export default function EmptyCountyExperience({ county, state }: EmptyCountyProp
                   onChange={(e) =>
                     setFormData({ ...formData, restaurantName: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md mt-1"
+                  className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-md mt-1"
                   placeholder="e.g., Joe's Pizza"
                 />
               </div>
@@ -180,7 +180,7 @@ export default function EmptyCountyExperience({ county, state }: EmptyCountyProp
                   onChange={(e) =>
                     setFormData({ ...formData, category: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md mt-1"
+                  className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-md mt-1"
                 >
                   <option value="">Select category</option>
                   <option value="pizza">Pizza</option>
@@ -199,7 +199,7 @@ export default function EmptyCountyExperience({ county, state }: EmptyCountyProp
                   type="text"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md mt-1"
+                  className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-md mt-1"
                   placeholder="123 Main St"
                 />
               </div>
@@ -210,7 +210,7 @@ export default function EmptyCountyExperience({ county, state }: EmptyCountyProp
                   type="url"
                   value={formData.website}
                   onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md mt-1"
+                  className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-md mt-1"
                   placeholder="https://..."
                 />
               </div>
@@ -223,7 +223,7 @@ export default function EmptyCountyExperience({ county, state }: EmptyCountyProp
                   onChange={(e) =>
                     setFormData({ ...formData, phoneNumber: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md mt-1"
+                  className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-md mt-1"
                   placeholder="(555) 123-4567"
                 />
               </div>
@@ -236,7 +236,7 @@ export default function EmptyCountyExperience({ county, state }: EmptyCountyProp
                     setFormData({ ...formData, description: e.target.value })
                   }
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md mt-1"
+                  className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-md mt-1"
                   placeholder="Tell us what makes this restaurant special..."
                 />
               </div>
@@ -264,3 +264,7 @@ export default function EmptyCountyExperience({ county, state }: EmptyCountyProp
     </div>
   );
 }
+
+
+
+

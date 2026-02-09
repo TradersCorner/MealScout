@@ -34,10 +34,11 @@ export function LocationDebug({
       <div className="absolute z-50 hidden group-hover:block bottom-full left-0 mb-2 p-2 bg-black/90 text-white text-xs rounded whitespace-nowrap">
         <div>State: {state}</div>
         <div>Last: {timeAgo}</div>
-        <div className="text-gray-400 text-[10px]">
+        <div className="text-[color:var(--text-muted)] text-[10px]">
           {restaurantId.slice(0, 8)}
         </div>
       </div>
     </div>
   );
 }
+

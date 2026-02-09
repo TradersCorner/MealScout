@@ -149,20 +149,20 @@ export default function EventCoordinatorDashboard() {
 
   if (isLoading || isLoadingPage) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-rose-600" />
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-layered)]">
+        <Loader2 className="h-8 w-8 animate-spin text-[color:var(--accent-text)]" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-12">
+    <div className="max-w-5xl mx-auto px-4 py-12 bg-[var(--bg-layered)] min-h-screen">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">
+          <h1 className="text-3xl font-bold text-[color:var(--text-primary)]">
             Event Coordinator Dashboard
           </h1>
-          <p className="text-slate-600">
+          <p className="text-[color:var(--text-secondary)]">
             Post events and invite food trucks. Payments are handled offline.
           </p>
         </div>
@@ -178,11 +178,11 @@ export default function EventCoordinatorDashboard() {
       </div>
 
       {isCreating && (
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-8 event-form">
+        <div className="bg-[var(--bg-card)] p-6 rounded-xl border border-[color:var(--border-subtle)] shadow-clean mb-8 event-form">
           <h2 className="text-lg font-semibold mb-4">Create Event</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             {createError && (
-              <div className="p-3 bg-rose-50 text-rose-700 rounded-md text-sm">
+              <div className="p-3 bg-[color:var(--status-error)]/10 text-[color:var(--status-error)] rounded-md text-sm">
                 {createError}
               </div>
             )}
@@ -352,7 +352,9 @@ export default function EventCoordinatorDashboard() {
 
       <Tabs defaultValue="upcoming" className="w-full">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-slate-900">Your Events</h2>
+          <h2 className="text-xl font-semibold text-[color:var(--text-primary)]">
+            Your Events
+          </h2>
           <TabsList>
             <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
             <TabsTrigger value="past">Past</TabsTrigger>
@@ -363,7 +365,7 @@ export default function EventCoordinatorDashboard() {
           {events.filter(
             (e) => new Date(e.date) >= new Date(new Date().setHours(0, 0, 0, 0)),
           ).length === 0 ? (
-            <Card className="p-8 text-center text-slate-600">
+            <Card className="p-8 text-center text-[color:var(--text-secondary)] bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
               No upcoming events yet.
             </Card>
           ) : (
@@ -375,16 +377,16 @@ export default function EventCoordinatorDashboard() {
                     new Date(new Date().setHours(0, 0, 0, 0)),
                 )
                 .map((event) => (
-                  <Card key={event.id} className="p-5 space-y-2">
+                  <Card key={event.id} className="p-5 space-y-2 bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-slate-900">
+                      <h3 className="font-semibold text-[color:var(--text-primary)]">
                         {event.name || "Food Truck Event"}
                       </h3>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-[color:var(--text-muted)]">
                         {event.status}
                       </span>
                     </div>
-                    <div className="text-sm text-slate-600 space-y-1">
+                    <div className="text-sm text-[color:var(--text-secondary)] space-y-1">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
                         {format(new Date(event.date), "MMMM d, yyyy")}
@@ -408,7 +410,7 @@ export default function EventCoordinatorDashboard() {
           {events.filter(
             (e) => new Date(e.date) < new Date(new Date().setHours(0, 0, 0, 0)),
           ).length === 0 ? (
-            <Card className="p-8 text-center text-slate-600">
+            <Card className="p-8 text-center text-[color:var(--text-secondary)] bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
               No past events yet.
             </Card>
           ) : (
@@ -420,11 +422,11 @@ export default function EventCoordinatorDashboard() {
                     new Date(new Date().setHours(0, 0, 0, 0)),
                 )
                 .map((event) => (
-                  <Card key={event.id} className="p-5 space-y-2">
-                    <h3 className="font-semibold text-slate-900">
+                  <Card key={event.id} className="p-5 space-y-2 bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
+                    <h3 className="font-semibold text-[color:var(--text-primary)]">
                       {event.name || "Food Truck Event"}
                     </h3>
-                    <div className="text-sm text-slate-600 space-y-1">
+                    <div className="text-sm text-[color:var(--text-secondary)] space-y-1">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
                         {format(new Date(event.date), "MMMM d, yyyy")}
@@ -443,3 +445,7 @@ export default function EventCoordinatorDashboard() {
     </div>
   );
 }
+
+
+
+

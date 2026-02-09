@@ -52,7 +52,7 @@ export default function RestaurantCard({ restaurant, userLocation, showDistance 
     (Date.now() - new Date(restaurant.lastBroadcastAt).getTime()) < 300000; // 5 minutes
   return (
     <Link href={`/restaurant/${restaurant.id}`}>
-      <Card className={`bg-card border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer ${
+      <Card className={`bg-card border rounded-xl overflow-hidden shadow-clean hover:shadow-clean-lg transition-all duration-200 cursor-pointer ${
         restaurant.isFoodTruck ? 'border-orange-200 hover:border-orange-300' : 'border-border'
       } ${isLiveFoodTruck ? 'ring-2 ring-orange-200 ring-opacity-50' : ''}`} 
       data-testid={`card-restaurant-${restaurant.id}`}>
@@ -60,7 +60,7 @@ export default function RestaurantCard({ restaurant, userLocation, showDistance 
           {/* Food Truck Live Badge */}
           {isLiveFoodTruck && (
             <div className="absolute top-2 right-2 z-10">
-              <div className="flex items-center bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg animate-pulse" data-testid={`badge-live-${restaurant.id}`}>
+              <div className="flex items-center bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-1 rounded-full text-xs font-bold shadow-clean-lg animate-pulse" data-testid={`badge-live-${restaurant.id}`}>
                 <Radio className="w-3 h-3 mr-1" />
                 LIVE
               </div>
@@ -72,7 +72,7 @@ export default function RestaurantCard({ restaurant, userLocation, showDistance 
               <h3 className="font-semibold text-foreground mb-1 flex items-center space-x-2" data-testid={`text-restaurant-name-${restaurant.id}`}>
                 <span>{restaurant.name}</span>
                 {restaurant.isVerified && (
-                  <CheckCircle className="w-4 h-4 text-green-500" data-testid={`icon-verified-${restaurant.id}`} />
+                  <CheckCircle className="w-4 h-4 text-[color:var(--status-success)]" data-testid={`icon-verified-${restaurant.id}`} />
                 )}
                 {restaurant.isFoodTruck && (
                   <Truck className="w-4 h-4 text-orange-500" data-testid={`icon-food-truck-${restaurant.id}`} />
@@ -169,3 +169,4 @@ export default function RestaurantCard({ restaurant, userLocation, showDistance 
     </Link>
   );
 }
+

@@ -20,7 +20,7 @@ export default function NotificationsPage() {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="max-w-md mx-auto bg-[var(--bg-app)] min-h-screen relative pb-20">
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
         <div className="text-center py-12">
           <Bell className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Sign in required</h2>
@@ -36,19 +36,19 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-[var(--bg-app)] min-h-screen relative pb-20">
+    <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
       <BackHeader
         title="Notifications"
         subtitle="Manage how you receive updates"
         fallbackHref="/profile"
         icon={Bell}
-        className="bg-white border-b border-border"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
 
       {/* Content */}
       <div className="px-6 py-6 space-y-6">
         {/* Delivery Methods */}
-        <Card>
+        <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
           <CardHeader>
             <CardTitle className="text-lg flex items-center">
               <Smartphone className="w-5 h-5 mr-2" />
@@ -93,7 +93,7 @@ export default function NotificationsPage() {
         </Card>
 
         {/* Content Types */}
-        <Card>
+        <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
           <CardHeader>
             <CardTitle className="text-lg flex items-center">
               <Bell className="w-5 h-5 mr-2" />
@@ -153,3 +153,6 @@ export default function NotificationsPage() {
     </div>
   );
 }
+
+
+

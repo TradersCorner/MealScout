@@ -276,7 +276,7 @@ export default function DealEdit() {
 
   if (isLoading || dealLoading) {
     return (
-      <div className="max-w-4xl mx-auto bg-white min-h-screen flex items-center justify-center">
+      <div className="max-w-4xl mx-auto bg-[var(--bg-layered)] min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
           <p className="text-muted-foreground">Loading deal...</p>
@@ -287,7 +287,7 @@ export default function DealEdit() {
 
   if (!isAuthenticated) {
     return (
-      <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen flex items-center justify-center">
         <Card>
           <CardContent className="p-6">
             <p className="text-center text-muted-foreground mb-4">Please log in to edit deals</p>
@@ -302,7 +302,7 @@ export default function DealEdit() {
 
   if (dealError || !deal) {
     return (
-      <div className="max-w-4xl mx-auto bg-white min-h-screen flex items-center justify-center">
+      <div className="max-w-4xl mx-auto bg-[var(--bg-layered)] min-h-screen flex items-center justify-center">
         <Card>
           <CardContent className="p-6 text-center">
             <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
@@ -339,7 +339,7 @@ export default function DealEdit() {
         rightActions={
           <div className="flex items-center space-x-2">
             {deal.isActive ? (
-              <Badge className="bg-green-500">Active</Badge>
+              <Badge className="bg-[color:var(--status-success)]/100">Active</Badge>
             ) : (
               <Badge variant="secondary">Inactive</Badge>
             )}
@@ -782,7 +782,7 @@ export default function DealEdit() {
                 <CardTitle className="text-lg">Special Preview</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-white rounded-lg border overflow-hidden">
+                <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] overflow-hidden">
                   {dealPreviewData.image && (
                     <img
                       src={dealPreviewData.image}
@@ -794,7 +794,7 @@ export default function DealEdit() {
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="font-bold text-lg">{dealPreviewData.title}</h3>
                       {dealPreviewData.isActive ? (
-                        <Badge className="bg-green-500">Active</Badge>
+                        <Badge className="bg-[color:var(--status-success)]/100">Active</Badge>
                       ) : (
                         <Badge variant="secondary">Inactive</Badge>
                       )}
@@ -824,3 +824,7 @@ export default function DealEdit() {
     </div>
   );
 }
+
+
+
+

@@ -119,18 +119,18 @@ export default function AdminAffiliateManagement() {
         </CardHeader>
         <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="relative w-full md:max-w-sm">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-[color:var(--text-muted)]" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, email, tag..."
-              className="w-full rounded-md border border-gray-200 py-2 pl-9 pr-3 text-sm"
+              className="w-full rounded-md border border-[var(--border-subtle)] py-2 pl-9 pr-3 text-sm"
             />
           </div>
           <select
             value={userType}
             onChange={(e) => setUserType(e.target.value)}
-            className="rounded-md border border-gray-200 px-3 py-2 text-sm"
+            className="rounded-md border border-[var(--border-subtle)] px-3 py-2 text-sm"
           >
             <option value="all">All user types</option>
             <option value="customer">Customer</option>
@@ -171,14 +171,14 @@ export default function AdminAffiliateManagement() {
                 {filtered.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-[color:var(--text-primary)]">
                         {user.firstName || "Unnamed"} {user.lastName || ""}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-[color:var(--text-muted)]">
                         {user.email || "No email"}
                       </div>
                     </TableCell>
-                    <TableCell className="text-xs uppercase text-gray-600">
+                    <TableCell className="text-xs uppercase text-[color:var(--text-muted)]">
                       {user.userType || "unknown"}
                     </TableCell>
                     <TableCell className="text-sm">
@@ -193,7 +193,7 @@ export default function AdminAffiliateManagement() {
                     <TableCell>{formatCurrency(user.mealScoutRevenueCents)}</TableCell>
                     <TableCell>{formatCurrency(user.affiliateEarningsCents)}</TableCell>
                     <TableCell>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-[color:var(--text-muted)]">
                         {formatCurrency(user.subscriptionRevenueCents)} /{" "}
                         {formatCurrency(user.bookingRevenueCents)}
                       </div>
@@ -211,7 +211,7 @@ export default function AdminAffiliateManagement() {
                 ))}
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center text-sm text-gray-500">
+                    <TableCell colSpan={11} className="text-center text-sm text-[color:var(--text-muted)]">
                       No matching users found.
                     </TableCell>
                   </TableRow>
@@ -239,7 +239,7 @@ export default function AdminAffiliateManagement() {
                 max="100"
                 value={percent}
                 onChange={(e) => setPercent(e.target.value)}
-                className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                className="mt-2 w-full rounded-md border border-[var(--border-subtle)] px-3 py-2 text-sm"
               />
             </div>
             <div>
@@ -248,7 +248,7 @@ export default function AdminAffiliateManagement() {
                 type="text"
                 value={closerId}
                 onChange={(e) => setCloserId(e.target.value)}
-                className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                className="mt-2 w-full rounded-md border border-[var(--border-subtle)] px-3 py-2 text-sm"
               />
             </div>
             <div>
@@ -257,10 +257,10 @@ export default function AdminAffiliateManagement() {
                 type="text"
                 value={bookerId}
                 onChange={(e) => setBookerId(e.target.value)}
-                className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                className="mt-2 w-full rounded-md border border-[var(--border-subtle)] px-3 py-2 text-sm"
               />
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-[color:var(--status-error)]">{error}</p>}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setEditing(null)}>
                 Cancel
@@ -275,3 +275,7 @@ export default function AdminAffiliateManagement() {
     </div>
   );
 }
+
+
+
+

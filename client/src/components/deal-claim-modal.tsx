@@ -135,7 +135,7 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-2xl border-0">
+      <Card className="w-full max-w-md shadow-clean-lg border-0">
         <CardContent className="p-8">
           {step === 'confirm' && (
             <div className="text-center">
@@ -180,7 +180,7 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
               {/* Preview of the Facebook post */}
               <div className="bg-muted/50 rounded-xl p-4 mb-6 text-left border border-border/30">
                 <div className="flex items-center space-x-3 mb-3">
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-[color:var(--accent-text)] rounded-full flex items-center justify-center">
                     <i className="fab fa-facebook-f text-white text-sm"></i>
                   </div>
                   <span className="font-semibold text-foreground">Your Name</span>
@@ -201,7 +201,7 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
               <div className="space-y-3">
                 <Button
                   onClick={handleFacebookPost}
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 border-0 font-bold"
+                  className="w-full py-3 bg-[color:var(--accent-text)] hover:bg-[color:var(--accent-text-hover)] border-0 font-bold"
                   disabled={!facebookAvailable}
                   data-testid="button-share-facebook"
                 >
@@ -234,7 +234,7 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
                   ✅ Your deal has been claimed successfully!
                 </p>
                 {shareStatus === 'succeeded' && (
-                  <p className="text-blue-600 font-medium">
+                  <p className="text-[color:var(--accent-text)] font-medium">
                     📱 Successfully shared on Facebook!
                   </p>
                 )}
@@ -275,3 +275,4 @@ export default function DealClaimModal({ dealId, onClose, isOpen }: DealClaimMod
     </div>
   );
 }
+

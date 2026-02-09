@@ -50,7 +50,7 @@ export default function DealShareModal({ isOpen, onClose, deal }: DealShareModal
   }, [deal.id, isOpen]);
   
   // Create share text
-  const shareText = `🍽️ Amazing deal at ${deal.restaurant?.name || 'this restaurant'}!\n\n${deal.title}\n${deal.discountValue}% OFF (Min order: $${deal.minOrderAmount || '15'})\n\nCheck it out on MealScout:`;
+  const shareText = `Amazing deal at ${deal.restaurant?.name || 'this restaurant'}!\n\n${deal.title}\n${deal.discountValue}% OFF (Min order: $${deal.minOrderAmount || '15'})\n\nCheck it out on MealScout:`;
 
   const handleCopyLink = async () => {
     try {
@@ -98,28 +98,28 @@ export default function DealShareModal({ isOpen, onClose, deal }: DealShareModal
     {
       name: "Facebook",
       icon: Facebook,
-      color: "bg-blue-600 hover:bg-blue-700",
+      color: "bg-[color:var(--accent-text)] hover:bg-[color:var(--accent-text-hover)]",
       onClick: handleFacebookShare,
       testId: "button-share-facebook"
     },
     {
       name: "Twitter",
       icon: Twitter,
-      color: "bg-sky-500 hover:bg-sky-600",
+      color: "bg-[color:var(--accent-text)] hover:bg-[color:var(--accent-text-hover)]",
       onClick: handleTwitterShare,
       testId: "button-share-twitter"
     },
     {
       name: "WhatsApp",
       icon: MessageCircle,
-      color: "bg-green-600 hover:bg-green-700",
+      color: "bg-[color:var(--status-success)] hover:bg-[color:var(--status-success)]",
       onClick: handleWhatsAppShare,
       testId: "button-share-whatsapp"
     },
     {
       name: "Email",
       icon: Mail,
-      color: "bg-gray-600 hover:bg-gray-700",
+      color: "bg-[color:var(--text-secondary)] hover:bg-[color:var(--text-primary)]",
       onClick: handleEmailShare,
       testId: "button-share-email"
     },
@@ -142,7 +142,7 @@ export default function DealShareModal({ isOpen, onClose, deal }: DealShareModal
               {deal.title}
             </h3>
             <p className="text-xs text-muted-foreground mb-2">
-              {deal.restaurant?.name || 'Restaurant'} • {deal.restaurant?.cuisineType || 'Food'}
+              {deal.restaurant?.name || 'Restaurant'} - {deal.restaurant?.cuisineType || 'Food'}
             </p>
             <div className="flex items-center space-x-2">
               <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full font-semibold">
@@ -174,7 +174,7 @@ export default function DealShareModal({ isOpen, onClose, deal }: DealShareModal
                 data-testid="button-copy-link"
               >
                 {copied ? (
-                  <Check className="w-4 h-4 text-green-600" />
+                  <Check className="w-4 h-4 text-[color:var(--status-success)]" />
                 ) : (
                   <Copy className="w-4 h-4" />
                 )}
@@ -214,3 +214,5 @@ export default function DealShareModal({ isOpen, onClose, deal }: DealShareModal
     </Dialog>
   );
 }
+
+

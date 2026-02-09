@@ -168,19 +168,19 @@ export default function HowItWorks() {
         title="How It Works"
         fallbackHref="/"
         icon={CheckCircle}
-        className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+        className="bg-[var(--bg-surface)]/95 backdrop-blur-sm border-b border-[var(--border-subtle)]/50 shadow-clean"
       />
 
       <div className="px-4 py-8 max-w-6xl mx-auto">
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <div className="w-24 h-24 bg-gradient-to-br from-green-500 via-blue-500 to-indigo-500 rounded-3xl mb-8 flex items-center justify-center mx-auto shadow-2xl">
-            <CheckCircle className="w-12 h-12 text-white" />
+          <div className="w-24 h-24 bg-gradient-to-br from-green-500 via-blue-500 to-indigo-500 rounded-3xl mb-8 flex items-center justify-center mx-auto shadow-clean-lg">
+            <CheckCircle className="w-12 h-12 text-[color:var(--text-inverse)]" />
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">
+          <h1 className="text-4xl font-bold text-[color:var(--text-primary)] mb-6">
             Built Local. Built By Locals.
           </h1>
-          <p className="text-xl text-gray-600 leading-relaxed max-w-3xl mx-auto">
+          <p className="text-xl text-[color:var(--text-muted)] leading-relaxed max-w-3xl mx-auto">
             MealScout gives every role a clear, focused path—so you can move fast, stay in control, and grow locally.
           </p>
         </div>
@@ -196,35 +196,35 @@ export default function HowItWorks() {
                 <div className={isEven ? 'lg:order-2' : ''}>
                   <div className="flex items-center mb-6">
                     <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-blue-500 rounded-2xl flex items-center justify-center mr-4">
-                      <IconComponent className="w-8 h-8 text-white" />
+                      <IconComponent className="w-8 h-8 text-[color:var(--text-inverse)]" />
                     </div>
                     <div>
-                      <div className="text-sm font-bold text-blue-600 mb-1">STEP {step.number}</div>
-                      <h2 className="text-3xl font-bold text-gray-900">{step.title}</h2>
+                      <div className="text-sm font-bold text-[color:var(--accent-text)] mb-1">STEP {step.number}</div>
+                      <h2 className="text-3xl font-bold text-[color:var(--text-primary)]">{step.title}</h2>
                     </div>
                   </div>
                   
-                  <p className="text-xl text-gray-600 leading-relaxed mb-8">
+                  <p className="text-xl text-[color:var(--text-muted)] leading-relaxed mb-8">
                     {step.description}
                   </p>
                   
                   <div className="space-y-3">
                     {step.details.map((detail, detailIndex) => (
                       <div key={detailIndex} className="flex items-center space-x-3">
-                        <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                        <span className="text-gray-700">{detail}</span>
+                        <CheckCircle className="w-5 h-5 text-[color:var(--status-success)] flex-shrink-0" />
+                        <span className="text-[color:var(--text-secondary)]">{detail}</span>
                       </div>
                     ))}
                   </div>
                 </div>
                 
                 <div className={`relative ${isEven ? 'lg:order-1' : ''}`}>
-                  <Card className="p-8 bg-white/90 backdrop-blur-sm shadow-xl">
+                  <Card className="p-8 bg-[var(--bg-surface)]/90 backdrop-blur-sm shadow-clean-lg">
                     <CardContent className="p-0">
                       <div className="w-full h-64 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center">
                         <div className="text-center">
-                          <IconComponent className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                          <p className="text-gray-600 font-semibold">Step {step.number} Visual</p>
+                          <IconComponent className="w-16 h-16 text-[color:var(--text-muted)] mx-auto mb-4" />
+                          <p className="text-[color:var(--text-muted)] font-semibold">Step {step.number} Visual</p>
                         </div>
                       </div>
                     </CardContent>
@@ -237,28 +237,28 @@ export default function HowItWorks() {
 
         {/* User Guides */}
         <div className="mb-16">
-          <h2 className="text-3xl font-bold text-gray-900 mb-12 text-center">
+          <h2 className="text-3xl font-bold text-[color:var(--text-primary)] mb-12 text-center">
             Guides by User Type
           </h2>
           <div className="grid gap-6 lg:grid-cols-2">
             {guides.map((guide, index) => {
               const IconComponent = guide.icon;
               return (
-                <Card key={index} className="p-6 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow">
+                <Card key={index} className="p-6 bg-[var(--bg-surface)]/80 backdrop-blur-sm shadow-clean-lg hover:shadow-clean-lg transition-shadow">
                   <CardContent className="p-0 space-y-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
-                        <IconComponent className="w-6 h-6 text-blue-600" />
+                      <div className="w-12 h-12 bg-[color:var(--accent-text)]/12 rounded-2xl flex items-center justify-center">
+                        <IconComponent className="w-6 h-6 text-[color:var(--accent-text)]" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-semibold text-gray-900">{guide.title}</h3>
-                        <p className="text-sm text-gray-600">{guide.description}</p>
+                        <h3 className="text-xl font-semibold text-[color:var(--text-primary)]">{guide.title}</h3>
+                        <p className="text-sm text-[color:var(--text-muted)]">{guide.description}</p>
                       </div>
                     </div>
-                    <div className="space-y-2 text-sm text-gray-700">
+                    <div className="space-y-2 text-sm text-[color:var(--text-secondary)]">
                       {guide.details.map((detail, detailIndex) => (
                         <div key={detailIndex} className="flex items-center space-x-2">
-                          <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                          <CheckCircle className="w-4 h-4 text-[color:var(--status-success)] flex-shrink-0" />
                           <span>{detail}</span>
                         </div>
                       ))}
@@ -278,20 +278,20 @@ export default function HowItWorks() {
         </div>
 
         {/* CTA Section */}
-        <div className="bg-gradient-to-r from-green-500 to-blue-500 rounded-3xl p-8 lg:p-12 text-white text-center">
+        <div className="bg-gradient-to-r from-green-500 to-blue-500 rounded-3xl p-8 lg:p-12 text-[color:var(--text-inverse)] text-center">
           <h2 className="text-3xl font-bold mb-6">Ready to Start Saving?</h2>
           <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto">
             Start local. Stay in control. Build real relationships through food.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/login">
-              <Button size="lg" className="bg-white text-green-600 hover:bg-gray-100 font-semibold px-8 py-3">
+              <Button size="lg" className="bg-[var(--bg-surface)] text-[color:var(--status-success)] hover:bg-[var(--bg-subtle)] font-semibold px-8 py-3">
                 Get Started Free
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
             <Link href="/about">
-              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 font-semibold px-8 py-3">
+              <Button size="lg" variant="outline" className="border-[var(--border-strong)] text-[color:var(--text-inverse)] hover:bg-[color:var(--bg-surface)]/10 font-semibold px-8 py-3">
                 Learn More About Us
               </Button>
             </Link>
@@ -301,3 +301,7 @@ export default function HowItWorks() {
     </div>
   );
 }
+
+
+
+

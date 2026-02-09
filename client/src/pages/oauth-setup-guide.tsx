@@ -39,7 +39,7 @@ function InfoCard({
   const styles: Record<string, string> = {
     neutral: "border-[color:var(--border-subtle)] bg-[var(--bg-surface)] text-[color:var(--text-secondary)]",
     warn: "border-amber-500/40 bg-amber-500/10 text-amber-200",
-    danger: "border-red-500/40 bg-red-500/10 text-red-200",
+    danger: "border-[color:var(--status-error)]/40 bg-[color:var(--status-error)]/10 text-[color:var(--status-error)]",
     success: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
   };
 
@@ -79,7 +79,7 @@ export default function OAuthSetupGuide() {
         title="OAuth Configuration Guide"
         fallbackHref="/admin/dashboard"
         icon={Settings}
-        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
 
       <div className="relative z-10 max-w-6xl mx-auto px-4 py-6 space-y-6">
@@ -230,3 +230,7 @@ export default function OAuthSetupGuide() {
     </div>
   );
 }
+
+
+
+

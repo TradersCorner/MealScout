@@ -108,8 +108,8 @@ export default function NotificationSettings() {
           {/* Monitoring Status */}
           {settings.enabled && (
             <div className="flex items-center space-x-2 text-sm">
-              <MapPin className="w-4 h-4 text-green-600" />
-              <span className={isMonitoring ? "text-green-600" : "text-orange-600"}>
+              <MapPin className="w-4 h-4 text-[color:var(--status-success)]" />
+              <span className={isMonitoring ? "text-[color:var(--status-success)]" : "text-orange-600"}>
                 {isMonitoring ? "Monitoring Active" : "Monitoring Inactive"}
               </span>
             </div>

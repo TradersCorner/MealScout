@@ -487,7 +487,7 @@ export default function DealCreation() {
 
   if (isLoading) {
     return (
-      <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     );
@@ -495,7 +495,7 @@ export default function DealCreation() {
 
   if (!isAuthenticated) {
     return (
-      <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen flex items-center justify-center">
         <Card>
           <CardContent className="p-6">
             <p className="text-center text-muted-foreground mb-4">
@@ -517,7 +517,7 @@ export default function DealCreation() {
 
   if (!Array.isArray(restaurants) || restaurants.length === 0) {
     return (
-      <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen flex items-center justify-center">
         <Card>
           <CardContent className="p-6 text-center">
             <i className="fas fa-store text-muted-foreground text-3xl mb-4"></i>
@@ -536,7 +536,7 @@ export default function DealCreation() {
   // Show loading while checking subscription
   if (isSubscriptionLoading) {
     return (
-      <div className="max-w-md mx-auto bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 min-h-screen flex items-center justify-center">
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     );
@@ -561,10 +561,10 @@ export default function DealCreation() {
       (subscription as any).status
     );
     return (
-      <div className="max-w-md mx-auto bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 min-h-screen flex items-center justify-center px-4">
-        <Card className="w-full shadow-xl border-orange-200/70">
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen flex items-center justify-center px-4">
+        <Card className="w-full shadow-clean-lg border-[color:var(--border-subtle)]">
           <CardContent className="p-6 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-orange-100 text-orange-600 text-2xl mb-3">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)] text-2xl mb-3">
               💳
             </div>
             <h2 className="text-lg font-semibold mb-1">
@@ -589,7 +589,7 @@ export default function DealCreation() {
   }
 
   return (
-    <div className="max-w-md mx-auto bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 min-h-screen">
+    <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen">
       <BackHeader
         title="Create a new special"
         fallbackHref="/restaurant-owner-dashboard"
@@ -608,12 +608,12 @@ export default function DealCreation() {
       />
 
       <div className="px-4 py-5 pb-24 space-y-4">
-        <div className="rounded-2xl bg-white/80 backdrop-blur-sm border border-orange-100 px-4 py-3 flex items-start space-x-3">
+        <div className="rounded-2xl bg-[var(--bg-card)]/80 backdrop-blur-sm border border-[color:var(--border-subtle)] px-4 py-3 flex items-start space-x-3">
           <div className="mt-0.5">
-            <Sparkles className="w-4 h-4 text-orange-500" />
+            <Sparkles className="w-4 h-4 text-[color:var(--accent-text)]" />
           </div>
-          <div className="text-xs text-gray-700">
-            <p className="font-semibold text-gray-900 mb-1">
+          <div className="text-xs text-[color:var(--text-secondary)]">
+            <p className="font-semibold text-[color:var(--text-primary)] mb-1">
               Turn one-time diners into regulars
             </p>
             <p>
@@ -628,7 +628,7 @@ export default function DealCreation() {
         {showPreview && (
           <div className="mb-6">
             <div className="flex items-center space-x-2 mb-3">
-              <Sparkles className="w-4 h-4 text-primary" />
+              <Sparkles className="w-4 h-4 text-[color:var(--accent-text)]" />
               <h3 className="text-sm font-semibold text-foreground">
                 Live Preview
               </h3>
@@ -637,7 +637,7 @@ export default function DealCreation() {
               </Badge>
             </div>
 
-            <Card className="overflow-hidden border-0 shadow-xl rounded-2xl bg-white">
+            <Card className="overflow-hidden border-0 shadow-clean-lg rounded-2xl bg-[var(--bg-card)]">
               <div className="relative">
                 {dealPreviewData.image ? (
                   <img
@@ -646,17 +646,17 @@ export default function DealCreation() {
                     className="w-full h-36 object-cover"
                   />
                 ) : (
-                  <div className="w-full h-36 bg-gradient-to-br from-orange-100 via-red-100 to-yellow-100 flex items-center justify-center">
+                  <div className="w-full h-36 bg-[linear-gradient(110deg,rgba(255,77,46,0.12),rgba(245,158,11,0.12))] flex items-center justify-center">
                     <div className="text-center">
-                      <Upload className="w-8 h-8 text-orange-500 mx-auto mb-1" />
-                      <p className="text-xs text-gray-700 font-medium">
+                      <Upload className="w-8 h-8 text-[color:var(--accent-text)] mx-auto mb-1" />
+                      <p className="text-xs text-[color:var(--text-secondary)] font-medium">
                         Add a photo to see how your deal pops in the feed
                       </p>
                     </div>
                   </div>
                 )}
 
-                <div className="absolute bottom-2 right-2 bg-gradient-to-r from-red-500 to-orange-500 text-white px-2 py-1 rounded-md text-sm font-bold shadow-lg">
+                <div className="absolute bottom-2 right-2 bg-[linear-gradient(110deg,rgba(255,77,46,0.9),rgba(245,158,11,0.9))] text-white px-2 py-1 rounded-md text-sm font-bold shadow-clean">
                   {dealPreviewData.dealType === "percentage"
                     ? `${dealPreviewData.discountValue}% OFF`
                     : `$${dealPreviewData.discountValue} OFF`}
@@ -698,7 +698,7 @@ export default function DealCreation() {
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-6 bg-white/90 border border-orange-100 rounded-2xl px-4 py-5 shadow-sm"
+            className="space-y-6 bg-[var(--bg-card)]/90 border border-[color:var(--border-subtle)] rounded-2xl px-4 py-5 shadow-clean"
           >
             {/* Deal Image - REQUIRED */}
             <FormField
@@ -1366,7 +1366,7 @@ export default function DealCreation() {
                     handleDealShareMessage(event.target.value)
                   }
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-[color:var(--text-muted)]">
                   Link: {dealSharePrompt.link}
                 </p>
               </div>
@@ -1382,7 +1382,7 @@ export default function DealCreation() {
                   ).map((platform) => (
                     <label
                       key={platform.key}
-                      className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs"
+                      className="flex items-center gap-2 rounded-md border border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] px-3 py-2 text-xs"
                     >
                       <input
                         type="checkbox"
@@ -1393,7 +1393,7 @@ export default function DealCreation() {
                     </label>
                   ))}
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-[color:var(--text-muted)]">
                   Instagram will open with the caption copied to your clipboard.
                 </p>
               </div>
@@ -1426,3 +1426,25 @@ export default function DealCreation() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -60,37 +60,43 @@ export default function OrdersPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "active":
-        return <Clock className="w-4 h-4 text-orange-500" />;
+        return (
+          <Clock className="w-4 h-4 text-[color:var(--status-warning)]" />
+        );
       case "completed":
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
+        return (
+          <CheckCircle className="w-4 h-4 text-[color:var(--status-success)]" />
+        );
       case "cancelled":
-        return <XCircle className="w-4 h-4 text-red-500" />;
+        return <XCircle className="w-4 h-4 text-[color:var(--status-error)]" />;
       default:
-        return <Clock className="w-4 h-4 text-gray-500" />;
+        return (
+          <Clock className="w-4 h-4 text-[color:var(--text-secondary)]" />
+        );
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-orange-100 text-orange-800";
+        return "bg-[color:var(--status-warning)]/15 text-[color:var(--status-warning)]";
       case "completed":
-        return "bg-green-100 text-green-800";
+        return "bg-[color:var(--status-success)]/15 text-[color:var(--status-success)]";
       case "cancelled":
-        return "bg-red-100 text-red-800";
+        return "bg-[color:var(--status-error)]/15 text-[color:var(--status-error)]";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-[color:var(--border-subtle)]/40 text-[color:var(--text-secondary)]";
     }
   };
 
   if (!isAuthenticated) {
     return (
-      <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
         <BackHeader
           title="Deal History"
           fallbackHref="/"
           icon={Receipt}
-          className="bg-white border-b border-border"
+          className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
         />
 
         <div className="px-6 py-12 text-center">
@@ -112,7 +118,7 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+    <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
       <SEOHead
         title="Deal History - MealScout | My Orders & Claims"
         description="View your complete deal history and claimed deals. Track active orders, see past purchases, and review your savings on MealScout."
@@ -124,12 +130,12 @@ export default function OrdersPage() {
         title="Deal History"
         fallbackHref="/"
         icon={Receipt}
-        className="bg-white border-b border-border"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
 
       {/* Tabs */}
-      <div className="px-6 py-4 bg-white border-b border-border">
-        <div className="flex bg-muted rounded-xl p-1">
+      <div className="px-6 py-4 bg-[var(--bg-card)] border-b border-[color:var(--border-subtle)]">
+        <div className="flex bg-[var(--bg-surface-muted)] rounded-xl p-1">
           <Button
             variant={activeTab === "active" ? "default" : "ghost"}
             size="sm"
@@ -158,7 +164,7 @@ export default function OrdersPage() {
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="bg-white rounded-2xl p-6 shadow-md animate-pulse"
+                className="bg-[var(--bg-card)] rounded-2xl p-6 shadow-clean animate-pulse border border-[color:var(--border-subtle)]"
               >
                 <div className="flex justify-between items-start mb-3">
                   <div className="h-6 bg-muted rounded w-3/4"></div>
@@ -179,7 +185,7 @@ export default function OrdersPage() {
               return (
                 <div
                   key={claim.id}
-                  className="bg-white rounded-2xl p-6 shadow-md"
+                  className="bg-[var(--bg-card)] rounded-2xl p-6 shadow-clean border border-[color:var(--border-subtle)]"
                   data-testid={`order-${claim.id}`}
                 >
                   <div className="flex justify-between items-start mb-3">
@@ -221,7 +227,7 @@ export default function OrdersPage() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <div className="w-20 h-20 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div className="w-20 h-20 bg-[var(--bg-surface-muted)] rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Receipt className="w-8 h-8 text-muted-foreground" />
             </div>
             <h3 className="font-bold text-lg text-foreground mb-2">
@@ -245,3 +251,6 @@ export default function OrdersPage() {
     </div>
   );
 }
+
+
+

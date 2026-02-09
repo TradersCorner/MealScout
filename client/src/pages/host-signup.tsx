@@ -276,7 +276,7 @@ function HostSignup() {
             className="rounded-3xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)]/95 backdrop-blur p-6 shadow-clean-lg space-y-6"
           >
             {errors.submit && (
-              <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              <div className="rounded-xl border border-[color:var(--status-error)]/40 bg-[color:var(--status-error)]/10 px-4 py-3 text-sm text-[color:var(--status-error)]">
                 {errors.submit}
               </div>
             )}
@@ -296,7 +296,7 @@ function HostSignup() {
                   placeholder="e.g. Tech Park Plaza"
                   className="h-11 rounded-xl border-[color:var(--border-subtle)] bg-[var(--field-bg)]"
                 />
-                {errors.businessName && <p className="text-xs text-red-300">{errors.businessName}</p>}
+                {errors.businessName && <p className="text-xs text-[color:var(--status-error)]">{errors.businessName}</p>}
               </div>
 
               <div className="grid gap-2">
@@ -308,7 +308,7 @@ function HostSignup() {
                   placeholder="123 Main St"
                   className="h-11 rounded-xl border-[color:var(--border-subtle)] bg-[var(--field-bg)]"
                 />
-                {errors.address && <p className="text-xs text-red-300">{errors.address}</p>}
+                {errors.address && <p className="text-xs text-[color:var(--status-error)]">{errors.address}</p>}
               </div>
 
               <div className="grid sm:grid-cols-2 gap-4">
@@ -321,7 +321,7 @@ function HostSignup() {
                     placeholder="e.g. Austin"
                     className="h-11 rounded-xl border-[color:var(--border-subtle)] bg-[var(--field-bg)]"
                   />
-                  {errors.city && <p className="text-xs text-red-300">{errors.city}</p>}
+                  {errors.city && <p className="text-xs text-[color:var(--status-error)]">{errors.city}</p>}
                 </div>
 
                 <div className="grid gap-2">
@@ -333,7 +333,7 @@ function HostSignup() {
                     placeholder="e.g. TX"
                     className="h-11 rounded-xl border-[color:var(--border-subtle)] bg-[var(--field-bg)]"
                   />
-                  {errors.state && <p className="text-xs text-red-300">{errors.state}</p>}
+                  {errors.state && <p className="text-xs text-[color:var(--status-error)]">{errors.state}</p>}
                 </div>
               </div>
 
@@ -352,7 +352,7 @@ function HostSignup() {
                     </option>
                   ))}
                 </select>
-                {errors.locationType && <p className="text-xs text-red-300">{errors.locationType}</p>}
+                {errors.locationType && <p className="text-xs text-[color:var(--status-error)]">{errors.locationType}</p>}
               </div>
             </section>
 
@@ -371,7 +371,7 @@ function HostSignup() {
                   placeholder="Jane Doe"
                   className="h-11 rounded-xl border-[color:var(--border-subtle)] bg-[var(--field-bg)]"
                 />
-                {errors.contactName && <p className="text-xs text-red-300">{errors.contactName}</p>}
+                {errors.contactName && <p className="text-xs text-[color:var(--status-error)]">{errors.contactName}</p>}
               </div>
 
               <div className="grid sm:grid-cols-2 gap-4">
@@ -385,7 +385,7 @@ function HostSignup() {
                     placeholder="jane@example.com"
                     className="h-11 rounded-xl border-[color:var(--border-subtle)] bg-[var(--field-bg)]"
                   />
-                  {errors.contactEmail && <p className="text-xs text-red-300">{errors.contactEmail}</p>}
+                  {errors.contactEmail && <p className="text-xs text-[color:var(--status-error)]">{errors.contactEmail}</p>}
                 </div>
 
                 <div className="grid gap-2">
@@ -398,7 +398,7 @@ function HostSignup() {
                     placeholder="(555) 123-4567"
                     className="h-11 rounded-xl border-[color:var(--border-subtle)] bg-[var(--field-bg)]"
                   />
-                  {errors.contactPhone && <p className="text-xs text-red-300">{errors.contactPhone}</p>}
+                  {errors.contactPhone && <p className="text-xs text-[color:var(--status-error)]">{errors.contactPhone}</p>}
                 </div>
               </div>
             </section>
@@ -442,3 +442,7 @@ function HostSignup() {
 }
 
 export default HostSignup;
+
+
+
+

@@ -28,12 +28,12 @@ export default function VideoPage() {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-[var(--border-subtle)] px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-foreground">Video</h1>
         {isAuthenticated && (
           <button
             onClick={handleUploadClick}
-            className="px-3 py-1.5 rounded-full text-sm font-medium bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-sm hover:from-orange-600 hover:to-red-600 transition"
+            className="px-3 py-1.5 rounded-full text-sm font-medium bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-clean hover:from-orange-600 hover:to-red-600 transition"
           >
             Upload
           </button>
@@ -67,3 +67,6 @@ export default function VideoPage() {
     </div>
   );
 }
+
+
+

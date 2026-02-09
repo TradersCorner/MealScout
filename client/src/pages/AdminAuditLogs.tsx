@@ -139,7 +139,7 @@ export default function AdminAuditLogs() {
             {/* Row 1: Search and time range */}
             <div className="flex gap-4 flex-wrap">
               <div className="flex-1 min-w-64 relative">
-                <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+                <Search className="w-4 h-4 absolute left-3 top-3 text-[color:var(--text-muted)]" />
                 <Input
                   placeholder="Search by ID, user, or resource..."
                   value={filters.search}
@@ -202,7 +202,7 @@ export default function AdminAuditLogs() {
           <div className="overflow-x-auto border rounded-lg">
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50">
+                <TableRow className="bg-[var(--bg-subtle)]">
                   <TableHead className="font-semibold">Timestamp</TableHead>
                   <TableHead className="font-semibold">Action</TableHead>
                   <TableHead className="font-semibold">User</TableHead>
@@ -213,14 +213,14 @@ export default function AdminAuditLogs() {
               </TableHeader>
               <TableBody>
                 {logs.map((log) => (
-                  <TableRow key={log.id} className="hover:bg-gray-50 text-sm">
+                  <TableRow key={log.id} className="hover:bg-[var(--bg-subtle)] text-sm">
                     <TableCell className="whitespace-nowrap">
                       {new Date(log.createdAt).toLocaleString()}
                     </TableCell>
-                    <TableCell className="font-medium text-blue-600">{log.action}</TableCell>
+                    <TableCell className="font-medium text-[color:var(--accent-text)]">{log.action}</TableCell>
                     <TableCell className="font-mono text-xs">{log.userId.slice(0, 8)}</TableCell>
                     <TableCell className="text-xs">
-                      <span className="inline-block px-2 py-1 bg-gray-100 rounded">
+                      <span className="inline-block px-2 py-1 bg-[var(--bg-subtle)] rounded">
                         {log.resourceType}:{log.resourceId.slice(0, 8)}
                       </span>
                     </TableCell>
@@ -239,7 +239,7 @@ export default function AdminAuditLogs() {
               </TableBody>
             </Table>
             {logs.length === 0 && (
-              <div className="text-center py-8 text-gray-500">No logs match your filters</div>
+              <div className="text-center py-8 text-[color:var(--text-muted)]">No logs match your filters</div>
             )}
           </div>
         </CardContent>
@@ -259,31 +259,31 @@ export default function AdminAuditLogs() {
                 {/* Basic Info Grid */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Timestamp</label>
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">Timestamp</label>
                     <p className="text-sm mt-1 font-mono">
                       {new Date(selectedLog.createdAt).toLocaleString()}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">User ID</label>
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">User ID</label>
                     <p className="text-sm mt-1 font-mono">{selectedLog.userId}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Action</label>
-                    <p className="text-sm mt-1 font-mono text-blue-600">{selectedLog.action}</p>
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">Action</label>
+                    <p className="text-sm mt-1 font-mono text-[color:var(--accent-text)]">{selectedLog.action}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">IP Address</label>
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">IP Address</label>
                     <p className="text-sm mt-1 font-mono">{selectedLog.ip}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Resource</label>
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">Resource</label>
                     <p className="text-sm mt-1 font-mono">
                       {selectedLog.resourceType}:{selectedLog.resourceId}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">User Agent</label>
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">User Agent</label>
                     <p className="text-sm mt-1 font-mono truncate">{selectedLog.userAgent}</p>
                   </div>
                 </div>
@@ -292,7 +292,7 @@ export default function AdminAuditLogs() {
                 {Object.keys(selectedLog.metadata).length > 0 && (
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-medium text-gray-500">Metadata</label>
+                      <label className="text-sm font-medium text-[color:var(--text-muted)]">Metadata</label>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -301,7 +301,7 @@ export default function AdminAuditLogs() {
                         <Copy className="w-4 h-4 mr-1" /> Copy
                       </Button>
                     </div>
-                    <pre className="p-3 bg-gray-100 rounded border border-gray-300 text-xs overflow-x-auto">
+                    <pre className="p-3 bg-[var(--bg-subtle)] rounded border border-[var(--border-subtle)] text-xs overflow-x-auto">
                       {JSON.stringify(selectedLog.metadata, null, 2)}
                     </pre>
                   </div>
@@ -325,3 +325,7 @@ export default function AdminAuditLogs() {
     </div>
   );
 }
+
+
+
+

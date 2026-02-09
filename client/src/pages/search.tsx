@@ -307,7 +307,7 @@ export default function SearchPage() {
     : "Search for food deals near you. Filter by category, price range, and more. Discover nearby discounts from local restaurants.";
 
   return (
-    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">
+    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
       <SEOHead
         title={`${searchTitle} | MealScout`}
         description={searchDescription}
@@ -317,7 +317,7 @@ export default function SearchPage() {
         canonicalUrl="https://mealscout.us/search"
       />
       {/* Header */}
-      <header className="px-6 py-6 bg-white border-b border-border">
+      <header className="px-6 py-6 bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Search Deals</h1>
@@ -374,7 +374,7 @@ export default function SearchPage() {
 
         {/* Advanced Filters Panel */}
         {showFilters && (
-          <Card className="mb-6">
+          <Card className="mb-6 bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
             <CardContent className="p-4 space-y-4">
               {/* Sort By */}
               <div>
@@ -464,7 +464,7 @@ export default function SearchPage() {
                     href={`/restaurant/${restaurant.id}`}
                     data-testid={`card-restaurant-${restaurant.id}`}
                   >
-                    <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                    <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean hover:shadow-clean-lg transition-shadow cursor-pointer">
                       <CardContent className="p-4">
                         <div className="flex items-start gap-3">
                           <div className="flex-1">
@@ -513,7 +513,7 @@ export default function SearchPage() {
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="bg-white rounded-2xl overflow-hidden animate-pulse shadow-md"
+                className="bg-[var(--bg-card)] rounded-2xl overflow-hidden animate-pulse shadow-clean border border-[color:var(--border-subtle)]"
               >
                 <div className="w-full h-48 bg-muted"></div>
                 <div className="p-6 space-y-3">
@@ -531,7 +531,7 @@ export default function SearchPage() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <div className="w-20 h-20 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div className="w-20 h-20 bg-[var(--bg-surface-muted)] rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Search className="w-8 h-8 text-muted-foreground" />
             </div>
             <h3 className="font-bold text-lg text-foreground mb-2">
@@ -566,3 +566,6 @@ export default function SearchPage() {
     </div>
   );
 }
+
+
+

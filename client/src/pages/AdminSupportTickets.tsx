@@ -44,30 +44,30 @@ interface SupportTicket {
 const getPriorityColor = (priority: string) => {
   switch (priority) {
     case 'critical':
-      return 'bg-red-100 text-red-800';
+      return 'bg-[color:var(--status-error)]/12 text-[color:var(--status-error)]';
     case 'high':
       return 'bg-orange-100 text-orange-800';
     case 'normal':
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]';
     case 'low':
-      return 'bg-green-100 text-green-800';
+      return 'bg-[color:var(--status-success)]/12 text-[color:var(--status-success)]';
     default:
-      return 'bg-gray-100 text-gray-800';
+      return 'bg-[var(--bg-subtle)] text-[color:var(--text-primary)]';
   }
 };
 
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'open':
-      return 'bg-red-100 text-red-800';
+      return 'bg-[color:var(--status-error)]/12 text-[color:var(--status-error)]';
     case 'in-progress':
       return 'bg-yellow-100 text-yellow-800';
     case 'resolved':
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]';
     case 'closed':
-      return 'bg-green-100 text-green-800';
+      return 'bg-[color:var(--status-success)]/12 text-[color:var(--status-success)]';
     default:
-      return 'bg-gray-100 text-gray-800';
+      return 'bg-[var(--bg-subtle)] text-[color:var(--text-primary)]';
   }
 };
 
@@ -182,7 +182,7 @@ export default function AdminSupportTickets() {
               </TableHeader>
               <TableBody>
                 {tickets.map((ticket) => (
-                  <TableRow key={ticket.id} className="hover:bg-gray-50">
+                  <TableRow key={ticket.id} className="hover:bg-[var(--bg-surface)]">
                     <TableCell className="font-medium">{ticket.subject}</TableCell>
                     <TableCell className="text-sm">{ticket.category}</TableCell>
                     <TableCell>
@@ -233,36 +233,36 @@ export default function AdminSupportTickets() {
                 {/* Ticket Info */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Category</label>
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">Category</label>
                     <p className="text-sm mt-1">{selectedTicket.category}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Priority</label>
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">Priority</label>
                     <Badge className={`${getPriorityColor(selectedTicket.priority)} mt-1`}>
                       {selectedTicket.priority.toUpperCase()}
                     </Badge>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Status</label>
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">Status</label>
                     <Badge className={`${getStatusColor(selectedTicket.status)} mt-1`}>
                       {selectedTicket.status.toUpperCase()}
                     </Badge>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Created</label>
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">Created</label>
                     <p className="text-sm mt-1">{new Date(selectedTicket.createdAt).toLocaleString()}</p>
                   </div>
                 </div>
 
                 {/* Description */}
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Description</label>
-                  <p className="text-sm mt-2 p-3 bg-gray-50 rounded border">{selectedTicket.description}</p>
+                  <label className="text-sm font-medium text-[color:var(--text-muted)]">Description</label>
+                  <p className="text-sm mt-2 p-3 bg-[var(--bg-subtle)] rounded border">{selectedTicket.description}</p>
                 </div>
 
                 {/* Admin Notes */}
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Admin Notes</label>
+                  <label className="text-sm font-medium text-[color:var(--text-muted)]">Admin Notes</label>
                   <Textarea
                     value={adminNotes}
                     onChange={(e) => setAdminNotes(e.target.value)}
@@ -273,7 +273,7 @@ export default function AdminSupportTickets() {
 
                 {/* Status Update */}
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Update Status</label>
+                  <label className="text-sm font-medium text-[color:var(--text-muted)]">Update Status</label>
                   <div className="flex gap-2 mt-2">
                     {selectedTicket.status === 'open' && (
                       <>
@@ -328,3 +328,7 @@ export default function AdminSupportTickets() {
     </div>
   );
 }
+
+
+
+

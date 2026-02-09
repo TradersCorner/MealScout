@@ -554,7 +554,7 @@ export default function DealCard({ deal }: DealCardProps) {
               referrerPolicy="no-referrer"
             />
             {/* Deal Badge - top left */}
-            <div className="absolute top-1.5 left-1.5 bg-[#F59E0B] text-[#111111] px-1.5 py-0.5 rounded-lg shadow-lg">
+            <div className="absolute top-1.5 left-1.5 bg-[#F59E0B] text-[#111111] px-1.5 py-0.5 rounded-lg shadow-clean-lg">
               <span className="font-bold text-sm leading-none">
                 {formatDiscount()} OFF
               </span>
@@ -570,7 +570,7 @@ export default function DealCard({ deal }: DealCardProps) {
               onMouseDown={() => setForkPressed(true)}
               onMouseUp={() => setForkPressed(false)}
               onMouseLeave={() => setForkPressed(false)}
-              className="absolute top-1.5 right-1.5 w-7 h-7 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-all duration-300 hover:scale-110 z-10"
+              className="absolute top-1.5 right-1.5 w-7 h-7 bg-[var(--bg-surface)]/95 backdrop-blur-sm rounded-full flex items-center justify-center shadow-clean-lg hover:bg-[var(--bg-surface)] transition-all duration-300 hover:scale-110 z-10"
               title="Recommend this restaurant"
             >
               <GoldenForkIcon
@@ -698,10 +698,10 @@ export default function DealCard({ deal }: DealCardProps) {
             className="absolute inset-0 bg-black/50"
             onClick={() => setShowRecommendModal(false)}
           />
-          <div className="relative w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-yellow-200/60">
+          <div className="relative w-full max-w-md rounded-3xl shadow-clean-lg overflow-hidden border border-yellow-200/60">
             {/* Hero header */}
             <div className="bg-gradient-to-br from-yellow-200 via-amber-200 to-yellow-300 px-5 py-4 flex items-start gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-white/80 border border-yellow-300 flex items-center justify-center shadow-md">
+              <div className="w-12 h-12 rounded-2xl bg-[var(--bg-surface)]/80 border border-yellow-300 flex items-center justify-center shadow-clean-lg">
                 <GoldenForkIcon className="w-7 h-7 text-yellow-700" />
               </div>
               <div className="flex-1">
@@ -722,7 +722,7 @@ export default function DealCard({ deal }: DealCardProps) {
               </div>
             </div>
 
-            <div className="bg-white px-5 pb-5 pt-4">
+            <div className="bg-[var(--bg-surface)] px-5 pb-5 pt-4">
               <label className="block text-sm font-semibold text-primary mb-1">
                 Add context (optional)
               </label>
@@ -755,7 +755,7 @@ export default function DealCard({ deal }: DealCardProps) {
                 <div
                   className={`w-9 h-9 rounded-lg flex items-center justify-center border ${
                     recommendSelection
-                      ? "bg-white text-yellow-700 border-yellow-300"
+                      ? "bg-[var(--bg-surface)] text-yellow-700 border-yellow-300"
                       : "bg-card text-muted border-subtle"
                   }`}
                 >
@@ -771,7 +771,7 @@ export default function DealCard({ deal }: DealCardProps) {
                       : "One recommendation per restaurant"}
                   </div>
                   {recommendError && (
-                    <div className="text-red-600 text-xs mt-1">
+                    <div className="text-[color:var(--status-error)] text-xs mt-1">
                       {recommendError}
                     </div>
                   )}
@@ -795,7 +795,7 @@ export default function DealCard({ deal }: DealCardProps) {
                 <div
                   className={`w-9 h-9 rounded-lg flex items-center justify-center border ${
                     followSelection
-                      ? "bg-white text-emerald-600 border-emerald-300"
+                      ? "bg-[var(--bg-surface)] text-emerald-600 border-emerald-300"
                       : "bg-card text-muted border-subtle"
                   }`}
                 >
@@ -809,7 +809,7 @@ export default function DealCard({ deal }: DealCardProps) {
                     Get updates when specials go live
                   </div>
                   {followError && (
-                    <div className="text-red-600 text-xs mt-1">
+                    <div className="text-[color:var(--status-error)] text-xs mt-1">
                       {followError}
                     </div>
                   )}
@@ -844,7 +844,7 @@ export default function DealCard({ deal }: DealCardProps) {
                 <div
                   className={`w-9 h-9 rounded-lg flex items-center justify-center border ${
                     favoriteSelection
-                      ? "bg-white text-yellow-600 border-yellow-300"
+                      ? "bg-[var(--bg-surface)] text-yellow-600 border-yellow-300"
                     : "bg-card text-muted border-subtle"
                   }`}
                 >
@@ -870,7 +870,7 @@ export default function DealCard({ deal }: DealCardProps) {
                     </div>
                   )}
                   {favoriteError && (
-                    <div className="text-red-600 text-xs mt-1">
+                    <div className="text-[color:var(--status-error)] text-xs mt-1">
                       {favoriteError}
                     </div>
                   )}
@@ -886,7 +886,7 @@ export default function DealCard({ deal }: DealCardProps) {
                   Cancel
                 </Button>
                 <Button
-                  className="h-9 bg-yellow-500 hover:bg-yellow-600 text-white text-sm shadow-md shadow-yellow-200/80"
+                  className="h-9 bg-yellow-500 hover:bg-yellow-600 text-white text-sm shadow-clean-lg shadow-yellow-200/80"
                   onClick={handleRecommendSubmit}
                   disabled={
                     recommendSubmitting || favoriteLoading || followLoading
@@ -918,3 +918,4 @@ export default function DealCard({ deal }: DealCardProps) {
     </div>
   );
 }
+

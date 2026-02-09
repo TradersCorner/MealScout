@@ -310,7 +310,7 @@ export function registerAdminManagementRoutes(app: Express) {
           );
 
         const hostByUserId = new Map<string, (typeof hosts.$inferSelect)>();
-        hostProfiles.forEach(({ host }) => {
+        hostProfiles.forEach(({ host }: { host: typeof hosts.$inferSelect }) => {
           const existing = hostByUserId.get(host.userId);
           if (!existing) {
             hostByUserId.set(host.userId, host);
@@ -336,21 +336,42 @@ export function registerAdminManagementRoutes(app: Express) {
               )
           : [];
 
-        const primaryHostLocations = hostProfiles.map(({ host }) => ({
+        const primaryHostLocations: Array<{
+          id: string;
+          address: string | null;
+          city?: string | null;
+          state?: string | null;
+          mappable: boolean;
+        }> = hostProfiles.map(
+          ({ host }: { host: typeof hosts.$inferSelect }) => ({
           id: host.id,
           address: host.address,
           city: host.city,
           state: host.state,
           mappable: hasCoords(host.latitude, host.longitude),
-        }));
+        }),
+        );
 
-        const openHostLocations = openLocations.map((loc) => ({
+        const openHostLocations: Array<{
+          id: string;
+          address: string | null;
+          city: string | null;
+          state: string | null;
+          mappable: boolean;
+        }> = openLocations.map(
+          (loc: {
+            id: string;
+            address: string | null;
+            latitude?: string | number | null;
+            longitude?: string | number | null;
+          }) => ({
           id: loc.id,
           address: loc.address,
           city: null,
           state: null,
           mappable: hasCoords(loc.latitude, loc.longitude),
-        }));
+        }),
+        );
 
         const seenKeys = new Set<string>();
         primaryHostLocations.forEach((loc) => {
@@ -370,7 +391,8 @@ export function registerAdminManagementRoutes(app: Express) {
           mappable: boolean;
         }> = [];
 
-        additionalAddressRows.forEach(({ address }) => {
+        additionalAddressRows.forEach(
+          ({ address }: { address: typeof userAddresses.$inferSelect }) => {
           const key = keyFor(address.address, address.city, address.state);
           if (!key || seenKeys.has(key)) {
             additionalSkippedDuplicates += 1;
@@ -385,7 +407,8 @@ export function registerAdminManagementRoutes(app: Express) {
             state: address.state,
             mappable: hasCoords(address.latitude, address.longitude),
           });
-        });
+        },
+        );
 
         const renderedCandidates = [
           ...openHostLocations.map((loc) => ({ ...loc, source: "open_request" })),
@@ -478,7 +501,7 @@ export function registerAdminManagementRoutes(app: Express) {
           );
 
         const hostByUserId = new Map<string, (typeof hosts.$inferSelect)>();
-        hostProfiles.forEach(({ host }) => {
+        hostProfiles.forEach(({ host }: { host: typeof hosts.$inferSelect }) => {
           const existing = hostByUserId.get(host.userId);
           if (!existing) {
             hostByUserId.set(host.userId, host);
@@ -505,7 +528,7 @@ export function registerAdminManagementRoutes(app: Express) {
           : [];
 
         const seenKeys = new Set<string>();
-        hostProfiles.forEach(({ host }) => {
+        hostProfiles.forEach(({ host }: { host: typeof hosts.$inferSelect }) => {
           seenKeys.add(keyFor(host.address, host.city, host.state));
         });
 
@@ -515,9 +538,9 @@ export function registerAdminManagementRoutes(app: Express) {
         let attempted = 0;
 
         const primaryQueue = hostProfiles
-          .map(({ host }) => host)
+          .map(({ host }: { host: typeof hosts.$inferSelect }) => host)
           .filter(
-            (host) =>
+            (host: typeof hosts.$inferSelect) =>
               !hasCoords(host.latitude, host.longitude) &&
               Boolean((host.address || "").trim()),
           );
@@ -547,8 +570,8 @@ export function registerAdminManagementRoutes(app: Express) {
         }
 
         const additionalQueue = additionalAddressRows
-          .map(({ address }) => address)
-          .filter((address) => {
+          .map(({ address }: { address: typeof userAddresses.$inferSelect }) => address)
+          .filter((address: typeof userAddresses.$inferSelect) => {
             if (hasCoords(address.latitude, address.longitude)) return false;
             const key = keyFor(address.address, address.city, address.state);
             if (!key) return false;

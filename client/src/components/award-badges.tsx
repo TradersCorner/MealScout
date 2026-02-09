@@ -107,11 +107,11 @@ export function GoldenForkBadge({
             <p className="font-bold" style={{ color: GOLD.base }}>
               Golden Fork Food Reviewer
             </p>
-            <p className="text-xs text-gray-300">
+            <p className="text-xs text-[color:var(--text-muted)]">
               Awarded to influential food reviewers
             </p>
             {influenceScore !== undefined && (
-              <p className="text-xs text-gray-300 mt-1">
+              <p className="text-xs text-[color:var(--text-muted)] mt-1">
                 Influence Score: {influenceScore}
               </p>
             )}
@@ -161,12 +161,12 @@ export function GoldenPlateBadge({
             <p className="font-bold" style={{ color: GOLD.dark }}>
               Golden Plate Winner
             </p>
-            <p className="text-xs text-gray-300">
+            <p className="text-xs text-[color:var(--text-muted)]">
               Earned by restaurants through community consensus
             </p>
-            {year && <p className="text-xs text-gray-300 mt-1">Year: {year}</p>}
+            {year && <p className="text-xs text-[color:var(--text-muted)] mt-1">Year: {year}</p>}
             {count && count > 1 && (
-              <p className="text-xs text-gray-300 mt-1">{count}x Champion</p>
+              <p className="text-xs text-[color:var(--text-muted)] mt-1">{count}x Champion</p>
             )}
           </div>
         </TooltipContent>
@@ -174,3 +174,4 @@ export function GoldenPlateBadge({
     </TooltipProvider>
   );
 }
+

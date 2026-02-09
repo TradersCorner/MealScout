@@ -26,7 +26,7 @@ export default function Sitemap() {
     {
       category: "Main Pages",
       icon: Home,
-      color: "bg-blue-100 text-blue-600",
+      color: "bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]",
       pages: [
         { title: "Home", href: "/", description: "Discover local food deals near you" },
         { title: "About Us", href: "/about", description: "Learn about MealScout's mission and values" },
@@ -44,7 +44,7 @@ export default function Sitemap() {
     {
       category: "User Features",
       icon: User,
-      color: "bg-green-100 text-green-600", 
+      color: "bg-[color:var(--status-success)]/12 text-[color:var(--status-success)]", 
       pages: [
         { title: "Sign Up", href: "/login", description: "Create your free MealScout account" },
         { title: "Search Deals", href: "/search", description: "Find deals by location, cuisine, or restaurant" },
@@ -95,7 +95,7 @@ export default function Sitemap() {
     {
       category: "Legal & Support",
       icon: Shield,
-      color: "bg-gray-100 text-[color:var(--text-secondary)]",
+      color: "bg-[var(--bg-subtle)] text-[color:var(--text-secondary)]",
       pages: [
         { title: "Privacy Policy", href: "/privacy-policy", description: "How we protect and use your data" },
         { title: "Terms of Service", href: "/terms-of-service", description: "Terms and conditions for using MealScout" },
@@ -125,14 +125,14 @@ export default function Sitemap() {
         title="Site Map"
         fallbackHref="/"
         icon={Globe}
-        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
 
       <div className="px-4 py-8 max-w-6xl mx-auto">
         {/* Hero Section */}
         <div className="text-center mb-12">
-          <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 rounded-3xl mb-8 flex items-center justify-center mx-auto shadow-2xl">
-            <Globe className="w-10 h-10 text-white" />
+          <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 rounded-3xl mb-8 flex items-center justify-center mx-auto shadow-clean-lg">
+            <Globe className="w-10 h-10 text-[color:var(--text-inverse)]" />
           </div>
           <h1 className="text-4xl font-bold text-[color:var(--text-primary)] mb-6">Site Map</h1>
           <p className="text-xl text-[color:var(--text-secondary)] leading-relaxed max-w-3xl mx-auto">
@@ -159,12 +159,12 @@ export default function Sitemap() {
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {section.pages.map((page, pageIndex) => (
                       <Link key={pageIndex} href={page.href}>
-                        <div className="p-4 rounded-lg bg-[var(--bg-surface)] hover:bg-blue-50 transition-colors group cursor-pointer border border-transparent hover:border-blue-200">
+                        <div className="p-4 rounded-lg bg-[var(--bg-surface)] hover:bg-[color:var(--accent-text)]/10 transition-colors group cursor-pointer border border-transparent hover:border-[color:var(--accent-text)]/30">
                           <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-semibold text-[color:var(--text-primary)] group-hover:text-blue-600">
+                            <h3 className="font-semibold text-[color:var(--text-primary)] group-hover:text-[color:var(--accent-text)]">
                               {page.title}
                             </h3>
-                            <ExternalLink className="w-4 h-4 text-[color:var(--text-muted)] group-hover:text-blue-500" />
+                            <ExternalLink className="w-4 h-4 text-[color:var(--text-muted)] group-hover:text-[color:var(--accent-text)]" />
                           </div>
                           <p className="text-sm text-[color:var(--text-secondary)] leading-relaxed">
                             {page.description}
@@ -183,7 +183,7 @@ export default function Sitemap() {
         <Card className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean-lg mb-8">
           <CardHeader>
             <CardTitle className="text-2xl font-bold text-[color:var(--text-primary)] flex items-center gap-3">
-              <div className="w-8 h-8 bg-red-100 text-red-600 rounded-xl flex items-center justify-center">
+              <div className="w-8 h-8 bg-[color:var(--status-error)]/12 text-[color:var(--status-error)] rounded-xl flex items-center justify-center">
                 <MapPin className="w-5 h-5" />
               </div>
               Popular Locations
@@ -209,38 +209,38 @@ export default function Sitemap() {
         {/* Quick Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="text-center p-6 bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-2xl shadow-clean">
-            <div className="text-3xl font-bold text-blue-600 mb-2">50+</div>
+            <div className="text-3xl font-bold text-[color:var(--accent-text)] mb-2">50+</div>
             <div className="text-[color:var(--text-secondary)] font-medium">Total Pages</div>
           </div>
           <div className="text-center p-6 bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-2xl shadow-clean">
-            <div className="text-3xl font-bold text-blue-600 mb-2">25+</div>
+            <div className="text-3xl font-bold text-[color:var(--accent-text)] mb-2">25+</div>
             <div className="text-[color:var(--text-secondary)] font-medium">Cities Covered</div>
           </div>
           <div className="text-center p-6 bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-2xl shadow-clean">
-            <div className="text-3xl font-bold text-blue-600 mb-2">15+</div>
+            <div className="text-3xl font-bold text-[color:var(--accent-text)] mb-2">15+</div>
             <div className="text-[color:var(--text-secondary)] font-medium">Cuisine Categories</div>
           </div>
           <div className="text-center p-6 bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-2xl shadow-clean">
-            <div className="text-3xl font-bold text-blue-600 mb-2">500+</div>
+            <div className="text-3xl font-bold text-[color:var(--accent-text)] mb-2">500+</div>
             <div className="text-[color:var(--text-secondary)] font-medium">Restaurant Partners</div>
           </div>
         </div>
 
         {/* CTA Section */}
-        <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-3xl p-8 lg:p-12 text-white text-center">
+        <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-3xl p-8 lg:p-12 text-[color:var(--text-inverse)] text-center">
           <h2 className="text-3xl font-bold mb-6">Ready to Explore?</h2>
           <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto">
             Start discovering amazing food deals in your neighborhood today.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/">
-              <button className="bg-white text-blue-600 hover:bg-[var(--bg-surface-muted)] font-semibold px-8 py-3 rounded-lg">
+              <button className="bg-[var(--bg-surface)] text-[color:var(--accent-text)] hover:bg-[var(--bg-surface-muted)] font-semibold px-8 py-3 rounded-lg">
                 <Home className="w-4 h-4 mr-2 inline" />
                 Go to Home
               </button>
             </Link>
             <Link href="/search">
-              <button className="border-2 border-white text-white hover:bg-white/10 font-semibold px-8 py-3 rounded-lg">
+              <button className="border-2 border-[var(--border-strong)] text-[color:var(--text-inverse)] hover:bg-[color:var(--bg-surface)]/10 font-semibold px-8 py-3 rounded-lg">
                 <Search className="w-4 h-4 mr-2 inline" />
                 Search Deals
               </button>
@@ -251,3 +251,7 @@ export default function Sitemap() {
     </div>
   );
 }
+
+
+
+

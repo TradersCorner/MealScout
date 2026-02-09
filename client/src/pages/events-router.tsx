@@ -49,9 +49,9 @@ export default function EventsRouter() {
   if (roleState.isMultiRole) {
     return (
       <div className="max-w-xl mx-auto px-4 py-8 space-y-4">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 space-y-2">
-          <h1 className="text-lg font-semibold text-gray-900">Events</h1>
-          <p className="text-sm text-gray-600">
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 space-y-2">
+          <h1 className="text-lg font-semibold text-[color:var(--text-primary)]">Events</h1>
+          <p className="text-sm text-[color:var(--text-muted)]">
             Choose the events experience you want to use right now.
           </p>
         </div>
@@ -86,3 +86,7 @@ export default function EventsRouter() {
 
   return <EventsPage />;
 }
+
+
+
+

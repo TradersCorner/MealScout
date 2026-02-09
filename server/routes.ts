@@ -77,6 +77,7 @@ import {
   passwordResetTokens,
   users,
   userAddresses,
+  locationRequests,
   restaurants,
   truckImportListings,
   truckClaimRequests,
@@ -1629,7 +1630,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ),
         );
 
-      const hostProfilesWithCoords = hostProfiles.map(({ host }) => ({ host }));
+      const hostProfilesWithCoords = hostProfiles.map(
+        ({ host }: { host: typeof hosts.$inferSelect }) => ({ host }),
+      );
 
       const publicEvents = upcomingEvents.filter(
         (event) => !event.requiresPayment,
@@ -1655,7 +1658,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       const hostByUserId = new Map<string, typeof hosts.$inferSelect>();
-      hostProfilesWithCoords.forEach(({ host }) => {
+      hostProfilesWithCoords.forEach(
+        ({ host }: { host: typeof hosts.$inferSelect }) => {
         const existing = hostByUserId.get(host.userId);
         if (!existing) {
           hostByUserId.set(host.userId, host);
@@ -1664,7 +1668,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!existing.isVerified && host.isVerified) {
           hostByUserId.set(host.userId, host);
         }
-      });
+      },
+      );
 
       const hostUserIds = Array.from(hostByUserId.keys());
       const additionalAddressRows = hostUserIds.length
@@ -1684,14 +1689,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : [];
 
       const seenHostLocationKeys = new Set<string>();
-      primaryHostLocations.forEach((host) => {
+      primaryHostLocations.forEach(
+        (host: { address?: string | null; city?: string | null; state?: string | null }) => {
         seenHostLocationKeys.add(locationKey(host.address, host.city, host.state));
-      });
+      },
+      );
       openLocations.forEach((loc) => {
         seenHostLocationKeys.add(locationKey(loc.address, null, null));
       });
 
-      const additionalHostLocations = additionalAddressRows.map(({ address }) => {
+      const additionalHostLocations = additionalAddressRows.map(
+        ({ address }: { address: typeof userAddresses.$inferSelect }) => {
         const parentHost = hostByUserId.get(address.userId);
         if (!parentHost) return null;
 
@@ -1716,7 +1724,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           longitude: address.longitude,
           userAddressId: address.id,
         };
-      });
+      },
+      );
 
       const hostLocations = [
         ...openLocations.map((loc) => ({

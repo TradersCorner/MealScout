@@ -195,7 +195,7 @@ function QueueDepthCard({ data }: QueueDepthCardProps) {
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">{COPY.metrics.queueDepth.resolved}</span>
-            <span className="text-2xl font-bold text-green-600">{data.resolved}</span>
+            <span className="text-2xl font-bold text-[color:var(--status-success)]">{data.resolved}</span>
           </div>
           <div className="flex justify-between items-center pt-3 border-t">
             <span className="text-sm font-medium">{COPY.metrics.queueDepth.total}</span>
@@ -234,7 +234,7 @@ function ActionDistributionCard({ data }: ActionDistributionCardProps) {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">{COPY.metrics.actionDistribution.remove}</span>
-              <span className="text-lg font-semibold text-red-600">{data.remove}</span>
+              <span className="text-lg font-semibold text-[color:var(--status-error)]">{data.remove}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">{COPY.metrics.actionDistribution.dismiss}</span>
@@ -508,3 +508,7 @@ export default function AdminModerationMetricsPage() {
     </div>
   );
 }
+
+
+
+

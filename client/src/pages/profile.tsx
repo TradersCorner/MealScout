@@ -50,13 +50,13 @@ export default function ProfilePage() {
     ? {
         href: "/event-coordinator/dashboard",
         title: "Manage Your Events",
-        description: "View and update your upcoming events →",
+        description: "View and update your upcoming events ->",
         Icon: Calendar,
       }
     : {
         href: "/event-signup",
         title: "Book Trucks for Your Event",
-        description: "Festivals, concerts, markets — connect with vendors →",
+        description: "Festivals, concerts, markets - connect with vendors ->",
         Icon: PartyPopper,
       };
 
@@ -81,10 +81,10 @@ export default function ProfilePage() {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">
+      <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
       <header className="px-6 py-6 bg-[hsl(var(--background))] border-b border-white/5">
           <h1 className="text-2xl font-bold text-foreground flex items-center">
-            <User className="w-6 h-6 text-primary mr-3" />
+            <User className="w-6 h-6 text-[color:var(--accent-text)] mr-3" />
             Profile
           </h1>
         </header>
@@ -186,7 +186,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-app)] min-h-screen relative pb-20">
+    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
       <SEOHead
         title="My Profile - MealScout | Account Settings"
         description="Manage your MealScout profile, view account settings, update preferences, and access your deal history. Customize your food deal discovery experience."
@@ -195,14 +195,14 @@ export default function ProfilePage() {
         noIndex={true}
       />
       {/* Header */}
-      <header className="px-6 py-6 bg-gradient-to-br from-primary/10 to-primary/5 border-b border-white/5">
+      <header className="px-6 py-6 bg-[linear-gradient(110deg,rgba(255,77,46,0.10),rgba(245,158,11,0.08))] border-b border-[color:var(--border-subtle)] shadow-clean">
         <h1 className="text-2xl font-bold text-foreground flex items-center mb-6">
-          <User className="w-6 h-6 text-primary mr-3" />
+          <User className="w-6 h-6 text-[color:var(--accent-text)] mr-3" />
           Profile
         </h1>
 
         {/* User Info Card */}
-        <Card className="bg-[hsl(var(--surface))] border border-white/5 shadow-lg">
+        <Card className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean-lg">
           <CardContent className="p-6">
             <div className="flex items-center space-x-4">
               {user?.profileImageUrl ? (
@@ -215,7 +215,7 @@ export default function ProfilePage() {
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
+                <div className="w-16 h-16 bg-[color:var(--accent-text)] rounded-full flex items-center justify-center">
                   <User className="w-8 h-8 text-white" />
                 </div>
               )}
@@ -235,7 +235,7 @@ export default function ProfilePage() {
                   {user?.email}
                 </p>
                 <div className="flex items-center mt-2">
-                  <Star className="w-4 h-4 text-yellow-500 mr-1" />
+                  <Star className="w-4 h-4 text-[color:var(--status-warning)] mr-1" />
                   <span
                     className="text-sm font-medium text-foreground"
                     data-testid="text-user-type"
@@ -255,9 +255,9 @@ export default function ProfilePage() {
 
       {/* Stats Section - Removed mock data */}
       <div className="px-6 py-6">
-        <Card className="border border-gray-200">
+        <Card className="border border-[color:var(--border-subtle)]">
           <CardContent className="p-6">
-            <div className="space-y-3 text-sm text-gray-600">
+            <div className="space-y-3 text-sm text-[color:var(--text-secondary)]">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
                 <span>Joined {userStats.joinedDate}</span>
@@ -276,14 +276,14 @@ export default function ProfilePage() {
       {/* Affiliate Link (Prominent) */}
       {affiliateTag && (
         <div className="px-6 pb-2">
-          <Card className="border border-strong bg-[color:var(--bg-card)] shadow-lg">
+          <Card className="border border-strong bg-[color:var(--bg-card)] shadow-clean-lg">
             <CardContent className="p-6 space-y-3">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl action-primary flex items-center justify-center">
                   <LinkIcon className="w-5 h-5 text-[color:var(--action-primary-text)]" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-base font-bold text-primary">
+                  <h3 className="text-base font-bold text-[color:var(--accent-text)]">
                     Affiliate Link
                   </h3>
                   <p className="text-sm text-secondary">
@@ -292,7 +292,7 @@ export default function ProfilePage() {
                 </div>
               </div>
               <div className="flex flex-col gap-2 md:flex-row md:items-center">
-                <div className="flex-1 flex items-center rounded-md border border-subtle bg-surface-muted px-3 py-2 text-sm text-primary">
+                <div className="flex-1 flex items-center rounded-md border border-subtle bg-surface-muted px-3 py-2 text-sm text-[color:var(--accent-text)]">
                   <span className="text-secondary mr-1">
                     {`${window.location.origin}/ref/`}
                   </span>
@@ -330,24 +330,24 @@ export default function ProfilePage() {
         {/* Business Opportunities Section */}
         {showEventCta && (
           <div className="mb-6 space-y-4">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+            <h3 className="text-sm font-semibold text-[color:var(--text-muted)] uppercase tracking-wide">
               Business Opportunities
             </h3>
 
             {/* Event Organizer CTA */}
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 transition-all cursor-pointer border border-purple-200">
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 transition-all cursor-pointer border border-[color:var(--border-subtle)]">
               <CardContent className="p-0">
                 <Link href={eventCta.href}>
                   <div className="p-5">
                     <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-purple-500/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                        <eventCta.Icon className="w-6 h-6 text-purple-600" />
+                      <div className="w-12 h-12 bg-[color:var(--accent-text)]/100/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                        <eventCta.Icon className="w-6 h-6 text-[color:var(--accent-text)]" />
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-gray-900 font-bold text-base mb-1">
+                        <h3 className="text-[color:var(--text-primary)] font-bold text-base mb-1">
                           {eventCta.title}
                         </h3>
-                        <p className="text-gray-600 text-sm">
+                        <p className="text-[color:var(--text-secondary)] text-sm">
                           {eventCta.description}
                         </p>
                       </div>
@@ -362,7 +362,7 @@ export default function ProfilePage() {
         <div className="space-y-2">
           {menuItems.map((item, index) => (
             <Link key={index} href={item.href}>
-              <Card className="bg-[hsl(var(--surface))] hover:bg-[hsl(var(--surface-hover))] transition-colors cursor-pointer border border-white/5 shadow-md">
+              <Card className="bg-[var(--bg-card)] hover:bg-[var(--bg-surface-muted)] transition-colors cursor-pointer border border-[color:var(--border-subtle)] shadow-clean">
                 <CardContent className="p-4">
                   <div
                     className="flex items-center justify-between"
@@ -393,7 +393,7 @@ export default function ProfilePage() {
           {/* Restaurant Owner Option (de-emphasized in menu) */}
           {user?.userType === "customer" && (
             <Link href="/restaurant-signup">
-              <Card className="bg-[hsl(var(--surface))] hover:bg-[hsl(var(--surface-hover))] transition-colors cursor-pointer border border-white/5 shadow-md">
+              <Card className="bg-[var(--bg-card)] hover:bg-[var(--bg-surface-muted)] transition-colors cursor-pointer border border-[color:var(--border-subtle)] shadow-clean">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -411,7 +411,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Logout Button */}
-        <Card className="bg-[hsl(var(--surface))] hover:bg-[hsl(var(--surface-hover))] transition-colors cursor-pointer border border-white/5 shadow-md mt-6">
+        <Card className="bg-[var(--bg-card)] hover:bg-[var(--bg-surface-muted)] transition-colors cursor-pointer border border-[color:var(--border-subtle)] shadow-clean mt-6">
           <CardContent className="p-4">
             <button
               onClick={async () => {
@@ -433,10 +433,10 @@ export default function ProfilePage() {
               data-testid="button-logout"
             >
               <div className="flex items-center space-x-3">
-                <LogOut className="w-5 h-5 text-red-500" />
-                <span className="font-medium text-red-500">Sign Out</span>
+                <LogOut className="w-5 h-5 text-[color:var(--status-error)]" />
+                <span className="font-medium text-[color:var(--status-error)]">Sign Out</span>
               </div>
-              <ChevronRight className="w-4 h-4 text-red-400" />
+              <ChevronRight className="w-4 h-4 text-[color:var(--status-error)]" />
             </button>
           </CardContent>
         </Card>
@@ -446,3 +446,9 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-﻿import type { LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   Truck,
   Radar,
@@ -66,8 +66,8 @@ export const roleLandingContent = {
       hint: "Booking-ready locations",
     },
     stats: [
-      { label: "Bookings", value: "â€”" },
-      { label: "Next opening", value: "â€”" },
+      { label: "Bookings", value: "--" },
+      { label: "Next opening", value: "--" },
     ],
     valueProps: [
       {
@@ -148,8 +148,8 @@ export const roleLandingContent = {
       hint: "Always local",
     },
     stats: [
-      { label: "Profile views", value: "â€”" },
-      { label: "Specials live", value: "â€”" },
+      { label: "Profile views", value: "--" },
+      { label: "Specials live", value: "--" },
     ],
     valueProps: [
       {
@@ -230,8 +230,8 @@ export const roleLandingContent = {
       hint: "Local picks",
     },
     stats: [
-      { label: "Profile views", value: "â€”" },
-      { label: "Specials live", value: "â€”" },
+      { label: "Profile views", value: "--" },
+      { label: "Specials live", value: "--" },
     ],
     valueProps: [
       {
@@ -299,9 +299,9 @@ export const roleLandingContent = {
       canonicalPath: "/find-food",
     },
     badge: "MealScout for Diners",
-    headline: "Find whatâ€™s actually local.",
+    headline: "Find what's actually local.",
     subhead:
-      "Discover food trucks, restaurants, and bars nearbyâ€”built by locals, updated by locals.",
+      "Discover food trucks, restaurants, and bars nearby--built by locals, updated by locals.",
     primaryCta: { label: "Start searching", href: "/search" },
     secondaryCta: { label: "Create account", href: "/customer-signup" },
     bullets: ["Local discovery", "Community recommendations", "Share to earn"],
@@ -312,13 +312,13 @@ export const roleLandingContent = {
       hint: "Local favorites",
     },
     stats: [
-      { label: "Nearby spots", value: "â€”" },
-      { label: "Specials live", value: "â€”" },
+      { label: "Nearby spots", value: "--" },
+      { label: "Specials live", value: "--" },
     ],
     valueProps: [
       {
         icon: MapPin,
-        text: "Find whatâ€™s open and nearby",
+        text: "Find what's open and nearby",
       },
       {
         icon: Users,
@@ -338,7 +338,7 @@ export const roleLandingContent = {
       {
         icon: Utensils,
         title: "Discover specials",
-        copy: "See whatâ€™s live now and what locals recommend.",
+        copy: "See what's live now and what locals recommend.",
       },
       {
         icon: Users,
@@ -349,7 +349,7 @@ export const roleLandingContent = {
     reasons: {
       title: "Why locals use MealScout",
       items: [
-        "No clutter â€” just real local options.",
+        "No clutter -- just real local options.",
         "Recommendations are community-led.",
         "Everything updates in real time.",
         "Your shares always stay yours.",
@@ -394,8 +394,8 @@ export const roleLandingContent = {
       hint: "Bookable addresses",
     },
     stats: [
-      { label: "Locations listed", value: "â€”" },
-      { label: "Slots live", value: "â€”" },
+      { label: "Locations listed", value: "--" },
+      { label: "Slots live", value: "--" },
     ],
     valueProps: [
       {
@@ -476,8 +476,8 @@ export const roleLandingContent = {
       hint: "Local events",
     },
     stats: [
-      { label: "Events live", value: "â€”" },
-      { label: "Trucks booked", value: "â€”" },
+      { label: "Events live", value: "--" },
+      { label: "Trucks booked", value: "--" },
     ],
     valueProps: [
       {
@@ -537,4 +537,5 @@ export const roleLandingContent = {
     },
   },
 } satisfies Record<string, RoleLandingContent>;
+
 

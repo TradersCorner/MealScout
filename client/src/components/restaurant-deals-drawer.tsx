@@ -182,17 +182,17 @@ export default function RestaurantDealsDrawer({
       className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center md:items-center"
       onClick={handleBackgroundClick}
     >
-      <div className="bg-white rounded-t-3xl md:rounded-3xl w-full max-w-2xl h-[90vh] md:h-[80vh] overflow-hidden shadow-2xl flex flex-col">
+      <div className="bg-[var(--bg-surface)] rounded-t-3xl md:rounded-3xl w-full max-w-2xl h-[90vh] md:h-[80vh] overflow-hidden shadow-clean-lg flex flex-col">
         {/* Header */}
-        <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-100">
+        <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-[var(--border-subtle)]">
           <div>
             <h2
-              className="text-xl font-bold text-gray-900"
+              className="text-xl font-bold text-[color:var(--text-primary)]"
               data-testid="text-restaurant-deals-title"
             >
               {restaurantName}
             </h2>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-[color:var(--text-muted)]">
               {deals
                 ? `${deals.length} specials available`
                 : "Loading specials..."}
@@ -201,17 +201,17 @@ export default function RestaurantDealsDrawer({
           <button
             onClick={handleClose}
             data-testid="button-close-drawer"
-            className="rounded-full p-2 hover:bg-gray-100 transition-colors flex items-center justify-center"
+            className="rounded-full p-2 hover:bg-[var(--bg-subtle)] transition-colors flex items-center justify-center"
             type="button"
             style={{ minWidth: "40px", minHeight: "40px" }}
           >
-            <X className="w-5 h-5 text-gray-600" />
+            <X className="w-5 h-5 text-[color:var(--text-muted)]" />
           </button>
         </div>
 
         {/* Restaurant Profile Snapshot */}
         {deals && deals.length > 0 && deals[0].restaurant && (
-          <div className="flex-shrink-0 bg-gradient-to-br from-gray-50 to-white border-b border-gray-100 p-4">
+          <div className="flex-shrink-0 bg-gradient-to-br from-gray-50 to-white border-b border-[var(--border-subtle)] p-4">
             <div className="flex items-start gap-3">
               {/* Restaurant Icon/Avatar */}
               <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -245,20 +245,20 @@ export default function RestaurantDealsDrawer({
                     >
                       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                     </svg>
-                    <span className="text-sm font-semibold text-gray-900">
+                    <span className="text-sm font-semibold text-[color:var(--text-primary)]">
                       4.5
                     </span>
                   </div>
-                  <span className="text-sm text-gray-400">•</span>
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-[color:var(--text-muted)]">•</span>
+                  <span className="text-sm text-[color:var(--text-muted)]">
                     {deals[0].restaurant.cuisineType || "Restaurant"}
                   </span>
-                  <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                  <span className="px-2 py-0.5 bg-[color:var(--status-success)]/12 text-[color:var(--status-success)] text-xs font-medium rounded-full">
                     Open now
                   </span>
                 </div>
 
-                <div className="flex items-center gap-3 text-xs text-gray-500">
+                <div className="flex items-center gap-3 text-xs text-[color:var(--text-muted)]">
                   {deals[0].restaurant.phone && (
                     <div className="flex items-center gap-1">
                       <Phone className="w-3 h-3" />
@@ -289,15 +289,15 @@ export default function RestaurantDealsDrawer({
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading specials...</p>
+                <p className="text-[color:var(--text-muted)]">Loading specials...</p>
               </div>
             </div>
           ) : deals && deals.length > 0 ? (
             <div className="h-full flex flex-col">
               {/* Deal counter */}
-              <div className="p-4 bg-gray-50 border-b border-gray-100">
+              <div className="p-4 bg-[var(--bg-surface)] border-b border-[var(--border-subtle)]">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-[color:var(--text-muted)]">
                     Special {currentDealIndex + 1} of {deals.length}
                   </span>
                   <div className="flex space-x-2">
@@ -328,12 +328,12 @@ export default function RestaurantDealsDrawer({
               {/* Current deal display */}
               <div className="flex-1 overflow-y-auto p-6">
                 <Card
-                  className="border-0 shadow-lg"
+                  className="border-0 shadow-clean-lg"
                   data-testid={`card-restaurant-deal-${deals[currentDealIndex].id}`}
                 >
                   <CardContent className="p-0">
                     {/* Deal Image */}
-                    <div className="relative h-48 bg-gray-100 overflow-hidden rounded-t-xl">
+                    <div className="relative h-48 bg-[var(--bg-subtle)] overflow-hidden rounded-t-xl">
                       <img
                         src={
                           deals[currentDealIndex].imageUrl ||
@@ -350,7 +350,7 @@ export default function RestaurantDealsDrawer({
                       />
 
                       {/* Deal badge */}
-                      <div className="absolute top-4 right-4 bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-2xl text-sm font-bold shadow-xl">
+                      <div className="absolute top-4 right-4 bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-2xl text-sm font-bold shadow-clean-lg">
                         {formatDiscount(
                           deals[currentDealIndex].dealType,
                           deals[currentDealIndex].discountValue
@@ -362,14 +362,14 @@ export default function RestaurantDealsDrawer({
                     {/* Deal Content */}
                     <div className="p-6">
                       <h3
-                        className="text-xl font-bold text-gray-900 mb-3"
+                        className="text-xl font-bold text-[color:var(--text-primary)] mb-3"
                         data-testid={`text-deal-title-${deals[currentDealIndex].id}`}
                       >
                         {deals[currentDealIndex].title}
                       </h3>
 
                       <p
-                        className="text-gray-600 mb-4 leading-relaxed"
+                        className="text-[color:var(--text-muted)] mb-4 leading-relaxed"
                         data-testid={`text-deal-description-${deals[currentDealIndex].id}`}
                       >
                         {deals[currentDealIndex].description}
@@ -378,7 +378,7 @@ export default function RestaurantDealsDrawer({
                       {/* Promo highlight */}
                       <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-2xl p-4 mb-6">
                         <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+                          <div className="w-8 h-8 bg-[color:var(--status-error)]/100 rounded-full flex items-center justify-center">
                             <svg
                               width="14"
                               height="14"
@@ -390,14 +390,14 @@ export default function RestaurantDealsDrawer({
                             </svg>
                           </div>
                           <div>
-                            <span className="text-red-700 font-bold text-lg">
+                            <span className="text-[color:var(--status-error)] font-bold text-lg">
                               {formatDiscount(
                                 deals[currentDealIndex].dealType,
                                 deals[currentDealIndex].discountValue
                               )}{" "}
                               off
                             </span>
-                            <p className="text-red-600 text-sm">
+                            <p className="text-[color:var(--status-error)] text-sm">
                               orders $
                               {deals[currentDealIndex].minOrderAmount || "15"}+
                             </p>
@@ -419,7 +419,7 @@ export default function RestaurantDealsDrawer({
               </div>
 
               {/* Deal dots indicator */}
-              <div className="p-4 border-t border-gray-100">
+              <div className="p-4 border-t border-[var(--border-subtle)]">
                 <div className="flex justify-center space-x-2">
                   {deals.map((_: any, index: number) => (
                     <button
@@ -427,8 +427,8 @@ export default function RestaurantDealsDrawer({
                       onClick={() => setCurrentDealIndex(index)}
                       className={`w-2 h-2 rounded-full transition-colors ${
                         index === currentDealIndex
-                          ? "bg-red-500"
-                          : "bg-gray-300"
+                          ? "bg-[color:var(--status-error)]/100"
+                          : "bg-[var(--bg-subtle)]"
                       }`}
                       data-testid={`button-deal-dot-${index}`}
                     />
@@ -439,7 +439,7 @@ export default function RestaurantDealsDrawer({
           ) : (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <p className="text-gray-600">
+                <p className="text-[color:var(--text-muted)]">
                   No specials available for this restaurant.
                 </p>
               </div>
@@ -459,3 +459,4 @@ export default function RestaurantDealsDrawer({
     </div>
   );
 }
+

@@ -37,7 +37,7 @@ export default function CityLanding() {
     return (
       <div className="max-w-5xl mx-auto px-4 py-12">
         <h1 className="text-3xl font-bold mb-2">City Not Found</h1>
-        <p className="text-slate-600">This city may not have any activity yet.</p>
+        <p className="text-[color:var(--text-muted)]">This city may not have any activity yet.</p>
       </div>
     );
   }
@@ -54,20 +54,20 @@ export default function CityLanding() {
           <h1 className="text-4xl font-bold text-slate-900">
             Food Trucks in {data.city.name}
           </h1>
-          <p className="text-slate-600 mt-2">Updated {new Date(data.updatedAt).toLocaleString()}</p>
+          <p className="text-[color:var(--text-muted)] mt-2">Updated {new Date(data.updatedAt).toLocaleString()}</p>
         </div>
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold mb-3">Featured Trucks</h2>
           {data.trucks.length === 0 ? (
-            <p className="text-slate-600">No trucks yet. Be the first to join.</p>
+            <p className="text-[color:var(--text-muted)]">No trucks yet. Be the first to join.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {data.trucks.slice(0, 12).map((t: any) => (
                 <Link key={t.id} href={`/restaurant/${t.id}`}>
                   <a className="block border rounded-lg p-4 hover:shadow transition">
                     <div className="font-semibold">{t.name}</div>
-                    <div className="text-sm text-slate-600">{t.cuisineType || "Cuisine"}</div>
+                    <div className="text-sm text-[color:var(--text-muted)]">{t.cuisineType || "Cuisine"}</div>
                   </a>
                 </Link>
               ))}
@@ -78,14 +78,14 @@ export default function CityLanding() {
         <section className="mb-8">
           <h2 className="text-2xl font-semibold mb-3">Restaurants</h2>
           {data.restaurants.length === 0 ? (
-            <p className="text-slate-600">No restaurants yet.</p>
+            <p className="text-[color:var(--text-muted)]">No restaurants yet.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {data.restaurants.slice(0, 12).map((r: any) => (
                 <Link key={r.id} href={`/restaurant/${r.id}`}>
                   <a className="block border rounded-lg p-4 hover:shadow transition">
                     <div className="font-semibold">{r.name}</div>
-                    <div className="text-sm text-slate-600">{r.cuisineType || "Cuisine"}</div>
+                    <div className="text-sm text-[color:var(--text-muted)]">{r.cuisineType || "Cuisine"}</div>
                   </a>
                 </Link>
               ))}
@@ -96,13 +96,13 @@ export default function CityLanding() {
         <section className="mb-8">
           <h2 className="text-2xl font-semibold mb-3">Upcoming Events</h2>
           {data.events.length === 0 ? (
-            <p className="text-slate-600">No upcoming events yet.</p>
+            <p className="text-[color:var(--text-muted)]">No upcoming events yet.</p>
           ) : (
             <div className="space-y-3">
               {data.events.slice(0, 10).map((e: any) => (
                 <div key={e.id} className="border rounded-lg p-4">
                   <div className="font-semibold">{e.name || "Food Truck Event"}</div>
-                  <div className="text-sm text-slate-600">
+                  <div className="text-sm text-[color:var(--text-muted)]">
                     {new Date(e.date).toLocaleDateString()} — {e.startTime} to {e.endTime}
                   </div>
                 </div>
@@ -114,7 +114,7 @@ export default function CityLanding() {
         <section className="mb-8">
           <h2 className="text-2xl font-semibold mb-3">Top Cuisines</h2>
           {data.cuisines.length === 0 ? (
-            <p className="text-slate-600">No cuisines yet.</p>
+            <p className="text-[color:var(--text-muted)]">No cuisines yet.</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {data.cuisines.map((c: any) => (
@@ -133,7 +133,7 @@ export default function CityLanding() {
               {data.stories.map((s: any) => (
                 <a key={s.id} href={s.videoUrl} target="_blank" rel="noreferrer" className="block border rounded-lg p-4 hover:shadow transition">
                   <div className="font-semibold">{s.title}</div>
-                  <div className="text-sm text-slate-600">{s.cuisine || ""}</div>
+                  <div className="text-sm text-[color:var(--text-muted)]">{s.cuisine || ""}</div>
                 </a>
               ))}
             </div>
@@ -143,3 +143,6 @@ export default function CityLanding() {
     </div>
   );
 }
+
+
+

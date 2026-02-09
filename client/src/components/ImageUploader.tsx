@@ -142,12 +142,12 @@ export default function ImageUploader({
           </div>
         ) : (
           <div
-            className={`${aspectRatio} w-full flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors`}
+            className={`${aspectRatio} w-full flex flex-col items-center justify-center border-2 border-dashed border-[var(--border-subtle)] rounded-lg cursor-pointer hover:border-primary transition-colors`}
             onClick={() => fileInputRef.current?.click()}
           >
-            <ImageIcon className="h-12 w-12 text-gray-400 mb-2" />
-            <p className="text-sm text-gray-600">Click to upload image</p>
-            <p className="text-xs text-gray-400 mt-1">Max {maxSizeMB}MB</p>
+            <ImageIcon className="h-12 w-12 text-[color:var(--text-muted)] mb-2" />
+            <p className="text-sm text-[color:var(--text-muted)]">Click to upload image</p>
+            <p className="text-xs text-[color:var(--text-muted)] mt-1">Max {maxSizeMB}MB</p>
           </div>
         )}
       </Card>
@@ -182,3 +182,4 @@ export default function ImageUploader({
     </div>
   );
 }
+

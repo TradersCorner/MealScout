@@ -30,10 +30,10 @@ export function LocationDot({
     lastConfirmedAt &&
     Date.now() - new Date(lastConfirmedAt).getTime() < 30 * 60 * 1000;
 
-  const dotClass = state === "green" ? "bg-green-500" : "bg-amber-400";
+  const dotClass = state === "green" ? "bg-[color:var(--status-success)]/100" : "bg-amber-400";
 
   const pulseClass = isPulse
-    ? "animate-pulse shadow-lg shadow-green-500/50"
+    ? "animate-pulse shadow-clean-lg shadow-green-500/50"
     : "";
 
   return (
@@ -43,3 +43,4 @@ export function LocationDot({
     />
   );
 }
+

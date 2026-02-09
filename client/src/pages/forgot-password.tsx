@@ -62,20 +62,20 @@ export default function ForgotPassword() {
           title="Password Reset"
           fallbackHref="/login"
           icon={KeyRound}
-          className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+          className="bg-[var(--bg-surface)]/95 backdrop-blur-sm border-b border-[var(--border-subtle)]/50 shadow-clean"
         />
 
         <div className="px-6 py-12 max-w-md mx-auto">
-          <Card className="bg-white/95 backdrop-blur-sm shadow-xl border-0">
+          <Card className="bg-[var(--bg-surface)]/95 backdrop-blur-sm shadow-clean-lg border-0">
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full mx-auto mb-6 flex items-center justify-center">
                 <CheckCircle className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Check Your Email</h2>
-              <p className="text-gray-600 text-center mb-6">
+              <h2 className="text-2xl font-bold text-[color:var(--text-primary)] mb-4">Check Your Email</h2>
+              <p className="text-[color:var(--text-muted)] text-center mb-6">
                 If an account with that email exists, we've sent you a password reset link.
               </p>
-              <p className="text-sm text-gray-500 mb-6">
+              <p className="text-sm text-[color:var(--text-muted)] mb-6">
                 Didn't receive the email? Check your spam folder or try again in a few minutes.
               </p>
               <div className="space-y-4">
@@ -116,19 +116,19 @@ export default function ForgotPassword() {
         title="Reset Password"
         fallbackHref="/login"
         icon={KeyRound}
-        className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+        className="bg-[var(--bg-surface)]/95 backdrop-blur-sm border-b border-[var(--border-subtle)]/50 shadow-clean"
       />
 
       <div className="px-6 py-12 max-w-md mx-auto">
-        <Card className="bg-white/95 backdrop-blur-sm shadow-xl border-0">
+        <Card className="bg-[var(--bg-surface)]/95 backdrop-blur-sm shadow-clean-lg border-0">
           <CardHeader className="text-center pb-2">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-[color:var(--accent-text-hover)] rounded-full mx-auto mb-4 flex items-center justify-center">
               <KeyRound className="w-8 h-8 text-white" />
             </div>
-            <CardTitle className="text-2xl font-bold text-gray-900">Forgot Your Password?</CardTitle>
+            <CardTitle className="text-2xl font-bold text-[color:var(--text-primary)]">Forgot Your Password?</CardTitle>
           </CardHeader>
           <CardContent className="px-8 pb-8">
-            <p className="text-gray-600 text-center mb-6">
+            <p className="text-[color:var(--text-muted)] text-center mb-6">
               No worries! Enter your email address below and we'll send you a link to reset your password.
             </p>
 
@@ -139,15 +139,15 @@ export default function ForgotPassword() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-gray-700 font-medium">Email Address</FormLabel>
+                      <FormLabel className="text-[color:var(--text-secondary)] font-medium">Email Address</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)] w-5 h-5" />
                           <Input
                             {...field}
                             type="email"
                             placeholder="Enter your email address"
-                            className="pl-10 py-3 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                            className="pl-10 py-3 border-[var(--border-subtle)] focus:border-blue-500 focus:ring-blue-500"
                             disabled={forgotPasswordMutation.isPending}
                             data-testid="input-email"
                           />
@@ -160,7 +160,7 @@ export default function ForgotPassword() {
 
                 <Button
                   type="submit"
-                  className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                  className="w-full py-3 bg-gradient-to-r from-[color:var(--accent-text)] to-[color:var(--accent-text-hover)] hover:from-[color:var(--accent-text-hover)] hover:to-[color:var(--accent-text-hover)] text-white font-semibold rounded-lg shadow-clean-lg hover:shadow-clean-lg transition-all duration-200"
                   disabled={forgotPasswordMutation.isPending}
                   data-testid="button-send-reset-link"
                 >
@@ -177,10 +177,10 @@ export default function ForgotPassword() {
             </Form>
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-[color:var(--text-muted)]">
                 Remember your password?{" "}
                 <Link href="/login">
-                  <span className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer" data-testid="link-back-to-login">
+                  <span className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text)] font-medium cursor-pointer" data-testid="link-back-to-login">
                     Back to Login
                   </span>
                 </Link>
@@ -188,16 +188,16 @@ export default function ForgotPassword() {
             </div>
 
             {/* Security info */}
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <div className="flex items-center justify-center space-x-4 text-xs text-gray-500">
+            <div className="mt-6 pt-4 border-t border-[var(--border-subtle)]">
+              <div className="flex items-center justify-center space-x-4 text-xs text-[color:var(--text-muted)]">
                 <div className="flex items-center space-x-1">
-                  <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3 text-[color:var(--status-success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                   </svg>
                   <span>Secure</span>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3 text-[color:var(--status-success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                   </svg>
                   <span>Link expires in 1 hour</span>
@@ -210,3 +210,6 @@ export default function ForgotPassword() {
     </div>
   );
 }
+
+
+

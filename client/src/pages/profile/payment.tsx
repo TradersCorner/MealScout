@@ -30,7 +30,7 @@ export default function PaymentMethodsPage() {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
         <div className="text-center py-12">
           <CreditCard className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Sign in required</h2>
@@ -45,18 +45,18 @@ export default function PaymentMethodsPage() {
     const baseClasses = "w-8 h-6 rounded flex items-center justify-center text-xs font-bold text-white";
     switch (type.toLowerCase()) {
       case 'visa':
-        return <div className={`${baseClasses} bg-blue-600`}>VISA</div>;
+        return <div className={`${baseClasses} bg-[color:var(--action-primary)]`}>VISA</div>;
       case 'mastercard':
-        return <div className={`${baseClasses} bg-red-500`}>MC</div>;
+        return <div className={`${baseClasses} bg-[color:var(--status-warning)]`}>MC</div>;
       case 'amex':
-        return <div className={`${baseClasses} bg-green-600`}>AMEX</div>;
+        return <div className={`${baseClasses} bg-[color:var(--status-success)]`}>AMEX</div>;
       default:
         return <CreditCard className="w-6 h-6 text-muted-foreground" />;
     }
   };
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+    <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
       <BackHeader
         title="Payment Methods"
         subtitle="Manage your cards and payment options"
@@ -68,20 +68,20 @@ export default function PaymentMethodsPage() {
             Add
           </Button>
         }
-        className="bg-white border-b border-border"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
 
       {/* Content */}
       <div className="px-6 py-6 space-y-4">
         {paymentMethods.map((method) => (
-          <Card key={method.id} className="border-0 shadow-md">
+          <Card key={method.id} className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   {getCardIcon(method.type)}
                   <div>
                     <div className="flex items-center space-x-2 mb-1">
-                      <p className="font-semibold text-foreground">•••• {method.lastFour}</p>
+                      <p className="font-semibold text-foreground">**** {method.lastFour}</p>
                       {method.isDefault && (
                         <Badge variant="secondary">Default</Badge>
                       )}
@@ -100,7 +100,7 @@ export default function PaymentMethodsPage() {
         ))}
 
         {/* Add New Payment Method Card */}
-        <Card className="border-2 border-dashed border-muted-foreground/20 bg-muted/10">
+        <Card className="border-2 border-dashed border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)]">
           <CardContent className="p-6 text-center">
             <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-3">
               <Plus className="w-6 h-6 text-primary" />
@@ -116,13 +116,13 @@ export default function PaymentMethodsPage() {
         </Card>
 
         {/* Security Info */}
-        <Card className="bg-green-50 border-green-200">
+        <Card className="bg-[color:var(--status-success)]/10 border-[color:var(--status-success)]/30">
           <CardContent className="p-4">
             <div className="flex items-start space-x-3">
-              <Shield className="w-5 h-5 text-green-600 mt-0.5" />
+              <Shield className="w-5 h-5 text-[color:var(--status-success)] mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-green-800 mb-1">Your payments are secure</p>
-                <p className="text-xs text-green-700">
+                <p className="text-sm font-medium text-[color:var(--status-success)] mb-1">Your payments are secure</p>
+                <p className="text-xs text-[color:var(--text-secondary)]">
                   We use industry-standard encryption to protect your payment information.
                 </p>
               </div>
@@ -135,3 +135,6 @@ export default function PaymentMethodsPage() {
     </div>
   );
 }
+
+
+

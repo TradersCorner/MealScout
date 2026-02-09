@@ -352,8 +352,8 @@ function HostDashboard() {
 
   if (isLoading || isLoadingPage) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-rose-600" />
+      <div className="flex items-center justify-center min-h-screen bg-[var(--bg-layered)]">
+        <Loader2 className="h-8 w-8 animate-spin text-[color:var(--accent-text)]" />
       </div>
     );
   }
@@ -361,14 +361,14 @@ function HostDashboard() {
   if (!host) return null;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-12">
+    <div className="max-w-5xl mx-auto px-4 py-12 bg-[var(--bg-layered)] min-h-screen">
       {!host.stripeChargesEnabled && (
-        <Alert className="mb-6 border-orange-200 bg-orange-50">
-          <AlertCircle className="h-4 w-4 text-orange-600" />
-          <AlertTitle className="text-orange-900">
+        <Alert className="mb-6 border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning)]/10">
+          <AlertCircle className="h-4 w-4 text-[color:var(--status-warning)]" />
+          <AlertTitle className="text-[color:var(--text-primary)]">
             Enable Payments to Accept Bookings
           </AlertTitle>
-          <AlertDescription className="text-orange-800">
+          <AlertDescription className="text-[color:var(--text-secondary)]">
             <p className="mb-3">
               Set up payments to receive booking fees from trucks. You set your
               price per slot and get paid automatically.
@@ -376,7 +376,7 @@ function HostDashboard() {
             <div className="flex flex-wrap gap-2">
               <Button
                 onClick={handleEnablePayments}
-                className="bg-orange-600 hover:bg-orange-700"
+                className="bg-[color:var(--accent-text)] hover:bg-[color:var(--action-hover)]"
               >
                 Enable Payments with Stripe
               </Button>
@@ -394,25 +394,25 @@ function HostDashboard() {
 
       <div className="flex flex-col gap-4 mb-8 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">
+          <h1 className="text-3xl font-bold text-[color:var(--text-primary)]">
             {host.businessName}
           </h1>
-          <p className="text-slate-600">{host.address}</p>
+          <p className="text-[color:var(--text-secondary)]">{host.address}</p>
         </div>
         {hosts.length > 1 && (
           <div className="flex items-center gap-2">
-            <Label htmlFor="hostSelect" className="text-sm text-slate-600">
+            <Label htmlFor="hostSelect" className="text-sm text-[color:var(--text-secondary)]">
               Property
             </Label>
             <select
               id="hostSelect"
               value={selectedHostId}
               onChange={(event) => setSelectedHostId(event.target.value)}
-              className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm"
+              className="h-10 rounded-md border border-[color:var(--border-subtle)] bg-[var(--bg-card)] px-3 text-sm"
             >
               {hosts.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.businessName} � {item.address}
+                  {item.businessName}  {item.address}
                 </option>
               ))}
             </select>
@@ -422,20 +422,20 @@ function HostDashboard() {
 
       <section className="mb-12">
         <div className="mb-4">
-          <h2 className="text-xl font-semibold text-slate-900">
+          <h2 className="text-xl font-semibold text-[color:var(--text-primary)]">
             Event Series (Open Calls)
           </h2>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-[color:var(--text-secondary)]">
             Create multi-day or recurring events and publish when ready.
           </p>
         </div>
 
         <form
           onSubmit={handleCreateSeries}
-          className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4"
+          className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-xl p-6 shadow-clean space-y-4"
         >
           {seriesError && (
-            <div className="p-3 bg-rose-50 text-rose-700 rounded-md text-sm">
+            <div className="p-3 bg-[color:var(--status-error)]/10 text-[color:var(--status-error)] rounded-md text-sm">
               {seriesError}
             </div>
           )}
@@ -556,7 +556,7 @@ function HostDashboard() {
               {recurrenceOptions.map((option) => (
                 <label
                   key={option.value}
-                  className="flex items-center gap-2 text-sm text-slate-700"
+                  className="flex items-center gap-2 text-sm text-[color:var(--text-secondary)]"
                 >
                   <Checkbox
                     checked={seriesForm.recurrenceDays.includes(option.value)}
@@ -566,12 +566,12 @@ function HostDashboard() {
                 </label>
               ))}
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-[color:var(--text-muted)]">
               Leave blank for a single occurrence on the start date.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 text-sm text-slate-700">
+          <div className="flex items-center gap-2 text-sm text-[color:var(--text-secondary)]">
             <Checkbox
               checked={seriesForm.defaultHardCapEnabled}
               onCheckedChange={(value) =>
@@ -584,7 +584,7 @@ function HostDashboard() {
             Enforce hard capacity per occurrence
           </div>
 
-          <div className="flex items-center justify-between text-xs text-slate-500">
+          <div className="flex items-center justify-between text-xs text-[color:var(--text-muted)]">
             <span>Timezone: America/New_York</span>
             <span>Status: Draft on create</span>
           </div>
@@ -596,7 +596,7 @@ function HostDashboard() {
 
         <div className="mt-8">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold text-slate-900">
+            <h3 className="text-lg font-semibold text-[color:var(--text-primary)]">
               Your Series
             </h3>
             <Button
@@ -609,11 +609,11 @@ function HostDashboard() {
           </div>
 
           {seriesLoading ? (
-            <div className="flex items-center gap-2 text-sm text-slate-500">
+            <div className="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading series...
             </div>
           ) : seriesList.length === 0 ? (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-[color:var(--text-muted)]">
               No event series yet. Create your first series above.
             </p>
           ) : (
@@ -621,19 +621,19 @@ function HostDashboard() {
               {seriesList.map((series) => (
                 <div
                   key={series.id}
-                  className="border border-slate-200 rounded-xl p-4 bg-white"
+                  className="border border-[color:var(--border-subtle)] rounded-xl p-4 bg-[var(--bg-card)]"
                 >
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <h4 className="text-base font-semibold text-slate-900">
+                      <h4 className="text-base font-semibold text-[color:var(--text-primary)]">
                         {series.name}
                       </h4>
-                      <p className="text-xs text-slate-500">
-                        {series.startDate?.slice(0, 10)} →{" "}
-                        {series.endDate?.slice(0, 10)} · {series.defaultStartTime}-
+                      <p className="text-xs text-[color:var(--text-muted)]">
+                        {series.startDate?.slice(0, 10)} {"->"}{" "}
+                        {series.endDate?.slice(0, 10)} - {series.defaultStartTime}-
                         {series.defaultEndTime}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-[color:var(--text-muted)]">
                         Status: {series.status}
                       </p>
                     </div>
@@ -672,17 +672,17 @@ function HostDashboard() {
                   </div>
 
                   {occurrencesBySeries[series.id] && (
-                    <div className="mt-4 border-t border-slate-100 pt-3">
+                    <div className="mt-4 border-t border-[color:var(--border-subtle)] pt-3">
                       {occurrencesBySeries[series.id].length === 0 ? (
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-[color:var(--text-muted)]">
                           No occurrences generated yet.
                         </p>
                       ) : (
-                        <ul className="text-xs text-slate-600 space-y-1">
+                        <ul className="text-xs text-[color:var(--text-secondary)] space-y-1">
                           {occurrencesBySeries[series.id].map((occurrence) => (
                             <li key={occurrence.id}>
-                              {occurrence.date?.slice(0, 10)} ·{" "}
-                              {occurrence.startTime}-{occurrence.endTime} ·{" "}
+                              {occurrence.date?.slice(0, 10)} -{" "}
+                              {occurrence.startTime}-{occurrence.endTime} -{" "}
                               {occurrence.status}
                             </li>
                           ))}
@@ -702,3 +702,11 @@ function HostDashboard() {
 }
 
 export default HostDashboard;
+
+
+
+
+
+
+
+

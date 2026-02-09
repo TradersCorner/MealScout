@@ -126,8 +126,8 @@ export default function ReviewsPage() {
             <Star
               className={`w-full h-full ${
                 star <= rating
-                  ? "fill-yellow-400 text-yellow-400"
-                  : "fill-none text-gray-300"
+                  ? "fill-[color:var(--status-warning)] text-[color:var(--status-warning)]"
+                  : "fill-none text-[color:var(--border-strong)]"
               }`}
             />
           </button>
@@ -150,9 +150,9 @@ export default function ReviewsPage() {
     : "0.0";
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+    <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
       {/* Header */}
-      <header className="px-6 py-6 bg-white border-b border-border">
+      <header className="px-6 py-6 bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean">
         <div className="flex items-center space-x-4 mb-4">
           <Link href={`/restaurant/${restaurantId}`}>
             <Button variant="ghost" size="sm" className="p-2">
@@ -185,7 +185,7 @@ export default function ReviewsPage() {
 
       <div className="px-6 py-6 space-y-6">
         {/* Write Review Section */}
-        <Card>
+        <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
           <CardHeader>
             <CardTitle className="text-lg">Write a Review</CardTitle>
           </CardHeader>
@@ -237,7 +237,7 @@ export default function ReviewsPage() {
           {isLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
-                <Card key={i} className="animate-pulse">
+                <Card key={i} className="animate-pulse bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
                   <CardContent className="p-4">
                     <div className="flex space-x-3">
                       <div className="w-10 h-10 bg-muted rounded-full" />
@@ -254,7 +254,7 @@ export default function ReviewsPage() {
           ) : reviews.length > 0 ? (
             <div className="space-y-4">
               {reviews.map((review) => (
-                <Card key={review.id}>
+                <Card key={review.id} className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
                   <CardContent className="p-4">
                     <div className="flex space-x-3">
                       {/* User Avatar */}
@@ -306,7 +306,7 @@ export default function ReviewsPage() {
               ))}
             </div>
           ) : (
-            <Card>
+            <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
               <CardContent className="p-8 text-center">
                 <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-foreground mb-2">
@@ -325,3 +325,6 @@ export default function ReviewsPage() {
     </div>
   );
 }
+
+
+

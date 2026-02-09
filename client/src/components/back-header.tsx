@@ -31,7 +31,7 @@ export function BackHeader({
   };
 
   return (
-    <header className={`sticky top-0 z-50 bg-white border-b border-border px-4 py-4 ${className}`}>
+    <header className={`sticky top-0 z-50 bg-[var(--bg-surface)] border-b border-border px-4 py-4 ${className}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <Button 

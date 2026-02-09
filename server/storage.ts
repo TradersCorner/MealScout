@@ -2441,7 +2441,20 @@ export class DatabaseStorage implements IStorage {
     ]);
 
     const memberCounts = activeUsers.reduce(
-      (acc, user) => {
+      (
+        acc: {
+          customer: number;
+          restaurantOwner: number;
+          foodTruck: number;
+          host: number;
+          eventCoordinator: number;
+          staff: number;
+          admin: number;
+          superAdmin: number;
+          other: number;
+        },
+        user: typeof users.$inferSelect,
+      ) => {
         const role = user.userType || "customer";
         switch (role) {
           case "customer":

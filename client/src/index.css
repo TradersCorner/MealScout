@@ -265,31 +265,7 @@
     /* Slightly softer so text/cards stay crisp on dark photography */
     mix-blend-mode: soft-light;
     opacity: 0.38;
-  }
-
-  /* Night mode: boost contrast for common “muted” Tailwind text colors */
-  .theme-night .text-gray-500,
-  .theme-night .text-slate-500,
-  .theme-night .text-zinc-500,
-  .theme-night .text-neutral-500 {
-    color: var(--text-secondary) !important;
-  }
-
-  .theme-night .text-gray-600,
-  .theme-night .text-slate-600,
-  .theme-night .text-zinc-600,
-  .theme-night .text-neutral-600 {
-    color: var(--text-muted) !important;
-  }
-
-  .theme-night .text-gray-400,
-  .theme-night .text-slate-400,
-  .theme-night .text-zinc-400,
-  .theme-night .text-neutral-400 {
-    color: rgba(255, 255, 255, 0.62) !important;
-  }
-
-  /* Leaflet popup: default is white; in night mode it clashes with our light text overrides. */
+  }/* Leaflet popup: default is white; in night mode it clashes with our light text overrides. */
   .theme-night .leaflet-popup-content-wrapper,
   .theme-night .leaflet-popup-tip {
     background: rgba(16, 14, 12, 0.92) !important;
@@ -318,7 +294,7 @@
     color: inherit;
   }
 
-  /* Parking Pass: consistent “glass” surfaces + readable text in night mode */
+  /* Parking Pass: consistent "glass" surfaces + readable text in night mode */
   .pp-glass {
     background: rgba(255, 255, 255, 0.92);
     border: 1px solid rgba(255, 255, 255, 0.68);
@@ -491,34 +467,6 @@
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
   }
 
-  .theme-night .parking-pass-page .text-gray-900,
-  .theme-night .parking-pass-page .text-slate-900,
-  .theme-night .parking-pass-page .text-zinc-900,
-  .theme-night .parking-pass-page .text-neutral-900 {
-    color: rgba(255, 255, 255, 0.94) !important;
-  }
-
-  .theme-night .parking-pass-page .text-slate-700,
-  .theme-night .parking-pass-page .text-gray-700,
-  .theme-night .parking-pass-page .text-zinc-700,
-  .theme-night .parking-pass-page .text-neutral-700 {
-    color: rgba(255, 255, 255, 0.84) !important;
-  }
-
-  .theme-night .parking-pass-page .text-gray-600,
-  .theme-night .parking-pass-page .text-slate-600,
-  .theme-night .parking-pass-page .text-zinc-600,
-  .theme-night .parking-pass-page .text-neutral-600 {
-    color: rgba(255, 255, 255, 0.78) !important;
-  }
-
-  .theme-night .parking-pass-page .text-gray-500,
-  .theme-night .parking-pass-page .text-slate-500,
-  .theme-night .parking-pass-page .text-zinc-500,
-  .theme-night .parking-pass-page .text-neutral-500 {
-    color: rgba(255, 255, 255, 0.72) !important;
-  }
-
   .theme-night .parking-pass-page input::placeholder,
   .theme-night .parking-pass-page textarea::placeholder {
     color: rgba(255, 255, 255, 0.55);
@@ -571,24 +519,7 @@
 
   .section--surface-2 {
     background: var(--bg-surface-muted);
-  }
-
-  /* Global surface overrides */
-  .bg-white {
-    background-color: var(--bg-surface);
-  }
-
-  .bg-gray-50 {
-    background-color: var(--bg-surface-muted);
-  }
-
-  .border-gray-200,
-  .border-slate-200,
-  .border-gray-100 {
-    border-color: var(--border-subtle);
-  }
-
-  /* Warm light card surface */
+  }/* Warm light card surface */
   .card-light {
     background-color: var(--bg-card);
     color: var(--text-primary);
@@ -1029,27 +960,6 @@
     color: var(--text-primary);
   }
 
-  .theme-day .text-gray-500,
-  .theme-day .text-slate-500,
-  .theme-day .text-zinc-500,
-  .theme-day .text-neutral-500 {
-    color: #334155 !important;
-  }
-
-  .theme-day .text-gray-600,
-  .theme-day .text-slate-600,
-  .theme-day .text-zinc-600,
-  .theme-day .text-neutral-600 {
-    color: #1f2937 !important;
-  }
-
-  .theme-day .text-gray-400,
-  .theme-day .text-slate-400,
-  .theme-day .text-zinc-400,
-  .theme-day .text-neutral-400 {
-    color: #475569 !important;
-  }
-
   .theme-day .leaflet-tile {
     filter: contrast(1.12) saturate(1.06);
   }
@@ -1399,3 +1309,5 @@
     }
   }
 }
+
+

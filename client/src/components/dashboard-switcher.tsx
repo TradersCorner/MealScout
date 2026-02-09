@@ -58,21 +58,21 @@ export default function DashboardSwitcher({ defaultView = 'admin' }: DashboardSw
       label: 'Admin View',
       icon: Shield,
       description: 'Platform administration and management',
-      color: 'bg-red-100 text-red-800'
+      color: 'bg-[color:var(--status-error)]/12 text-[color:var(--status-error)]'
     },
     {
       type: 'user' as DashboardType,
       label: 'Customer View',
       icon: User,
       description: 'Experience what customers see',
-      color: 'bg-blue-100 text-blue-800'
+      color: 'bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]'
     },
     {
       type: 'restaurant' as DashboardType,
       label: 'Restaurant View',
       icon: Store,
       description: 'Experience what restaurant owners see',
-      color: 'bg-green-100 text-green-800'
+      color: 'bg-[color:var(--status-success)]/12 text-[color:var(--status-success)]'
     }
   ];
 
@@ -92,7 +92,7 @@ export default function DashboardSwitcher({ defaultView = 'admin' }: DashboardSw
   return (
     <div className="min-h-screen bg-background">
       {/* Dashboard Switcher Header */}
-      <div className="sticky top-0 z-50 bg-white border-b border-border shadow-sm">
+      <div className="sticky top-0 z-50 bg-[var(--bg-surface)] border-b border-border shadow-clean">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-4">
@@ -173,7 +173,7 @@ export default function DashboardSwitcher({ defaultView = 'admin' }: DashboardSw
               variant={currentView === dashboard.type ? "default" : "secondary"}
               size="icon"
               onClick={() => setCurrentView(dashboard.type)}
-              className="shadow-lg"
+              className="shadow-clean-lg"
               data-testid={`button-mobile-switch-${dashboard.type}`}
             >
               <dashboard.icon className="h-4 w-4" />
@@ -184,3 +184,5 @@ export default function DashboardSwitcher({ defaultView = 'admin' }: DashboardSw
     </div>
   );
 }
+
+

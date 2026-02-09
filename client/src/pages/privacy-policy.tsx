@@ -22,7 +22,7 @@ export default function PrivacyPolicy() {
             <span>Last updated: January 13, 2025</span>
           </div>
         }
-        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
 
       {/* Main Content */}
@@ -118,7 +118,7 @@ export default function PrivacyPolicy() {
                 <p className="text-[color:var(--text-secondary)] leading-relaxed mb-4">
                   Our Service integrates with third-party services that have their own privacy policies. We encourage you to review their privacy practices:
                 </p>
-                <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="bg-[color:var(--accent-text)]/10 p-4 rounded-lg">
                   <h3 className="font-semibold text-[color:var(--text-primary)] mb-2">We use these third-party services:</h3>
                   <ul className="text-[color:var(--text-secondary)] space-y-1 text-sm">
                     <li>- <strong>Google OAuth:</strong> For secure authentication</li>
@@ -151,7 +151,7 @@ export default function PrivacyPolicy() {
                 <p className="text-[color:var(--text-secondary)] leading-relaxed mb-4">
                   Location data is essential to our Service's functionality. Here's how we handle location information:
                 </p>
-                <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                <div className="bg-[color:var(--accent-text)]/10 p-4 rounded-lg mb-4">
                   <h3 className="font-semibold text-[color:var(--text-primary)] mb-2">Collection:</h3>
                   <ul className="text-[color:var(--text-secondary)] space-y-1 text-sm">
                     <li>- GPS coordinates when you use location-based features</li>
@@ -159,7 +159,7 @@ export default function PrivacyPolicy() {
                     <li>- Address information you provide for business verification</li>
                   </ul>
                 </div>
-                <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                <div className="bg-[color:var(--accent-text)]/10 p-4 rounded-lg mb-4">
                   <h3 className="font-semibold text-[color:var(--text-primary)] mb-2">Usage:</h3>
                   <ul className="text-[color:var(--text-secondary)] space-y-1 text-sm">
                     <li>- Show nearby deals and restaurants</li>
@@ -282,19 +282,19 @@ export default function PrivacyPolicy() {
                 <div className="bg-[var(--bg-surface)] p-4 rounded-lg mb-4">
                   <p className="text-[color:var(--text-secondary)]">
                     <strong>Privacy Officer:</strong>{" "}
-                    <a href="mailto:info.mealscout@gmail.com" className="text-blue-600 hover:text-blue-700 underline">
+                    <a href="mailto:info.mealscout@gmail.com" className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text)] underline">
                       info.mealscout@gmail.com
                     </a>
                   </p>
                   <p className="text-[color:var(--text-secondary)]">
                     <strong>General Inquiries:</strong>{" "}
-                    <a href="mailto:info.mealscout@gmail.com" className="text-blue-600 hover:text-blue-700 underline">
+                    <a href="mailto:info.mealscout@gmail.com" className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text)] underline">
                       info.mealscout@gmail.com
                     </a>
                   </p>
                   <p className="text-[color:var(--text-secondary)]">
                     <strong>Phone:</strong>{" "}
-                    <a href="tel:+19856626247" className="text-blue-600 hover:text-blue-700 underline">
+                    <a href="tel:+19856626247" className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text)] underline">
                       (985) 662-6247
                     </a>
                   </p>
@@ -307,12 +307,12 @@ export default function PrivacyPolicy() {
             </div>
 
             {/* Privacy Notice */}
-            <div className="mt-12 p-6 bg-green-50 border border-green-200 rounded-lg">
+            <div className="mt-12 p-6 bg-[color:var(--status-success)]/10 border border-[color:var(--status-success)]/30 rounded-lg">
               <div className="flex items-start space-x-3">
-                <Lock className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                <Lock className="w-5 h-5 text-[color:var(--status-success)] mt-0.5 flex-shrink-0" />
                 <div>
-                  <h3 className="font-semibold text-green-900 mb-1">Privacy Commitment</h3>
-                  <p className="text-green-800 text-sm">
+                  <h3 className="font-semibold text-[color:var(--status-success)] mb-1">Privacy Commitment</h3>
+                  <p className="text-[color:var(--status-success)] text-sm">
                     This Privacy Policy is compliant with GDPR, CCPA/CPRA, and other major privacy regulations. We are committed to protecting your privacy and being transparent about our data practices.
                   </p>
                 </div>
@@ -324,4 +324,8 @@ export default function PrivacyPolicy() {
     </div>
   );
 }
+
+
+
+
 

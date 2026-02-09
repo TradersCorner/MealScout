@@ -258,14 +258,14 @@ export default function AffiliateEarnings() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
         <h1 className="text-2xl font-bold mb-2">Sign in to view your affiliate earnings</h1>
-        <p className="text-gray-600 mb-4 max-w-md">
+        <p className="text-[color:var(--text-muted)] mb-4 max-w-md">
           Create a free MealScout account or sign in to access your affiliate dashboard, track earnings, and manage your links.
         </p>
         <div className="flex gap-3">
-          <a href="/login" className="inline-flex items-center px-4 py-2 rounded-md bg-red-600 text-white text-sm font-medium hover:bg-red-700">
+          <a href="/login" className="inline-flex items-center px-4 py-2 rounded-md bg-[color:var(--accent-text)] text-white text-sm font-medium hover:bg-[color:var(--accent-text-hover)]">
             Sign In
           </a>
-          <a href="/customer-signup?role=affiliate" className="inline-flex items-center px-4 py-2 rounded-md border border-gray-300 text-sm font-medium hover:bg-gray-50">
+          <a href="/customer-signup?role=affiliate" className="inline-flex items-center px-4 py-2 rounded-md border border-[var(--border-subtle)] text-sm font-medium hover:bg-[var(--bg-surface)]">
             Create Affiliate Account
           </a>
         </div>
@@ -278,7 +278,7 @@ export default function AffiliateEarnings() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Affiliate Dashboard</h1>
-        <p className="text-gray-600 mt-2">
+        <p className="text-[color:var(--text-muted)] mt-2">
           Earn commissions when MealScout gets paid on subscriptions you refer.
         </p>
       </div>
@@ -297,7 +297,7 @@ export default function AffiliateEarnings() {
                 type="text"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
-                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-[var(--border-subtle)] px-3 py-2 text-sm"
                 placeholder="user1234"
               />
             </div>
@@ -306,10 +306,10 @@ export default function AffiliateEarnings() {
             </Button>
           </div>
           {tagError ? (
-            <p className="text-xs text-red-600">{tagError}</p>
+            <p className="text-xs text-[color:var(--status-error)]">{tagError}</p>
           ) : (
-            <p className="text-xs text-gray-500">
-              Current tag: <span className="font-medium text-gray-700">{affiliateTag || 'user1234'}</span>
+            <p className="text-xs text-[color:var(--text-muted)]">
+              Current tag: <span className="font-medium text-[color:var(--text-primary)]">{affiliateTag || 'user1234'}</span>
             </p>
           )}
         </CardContent>
@@ -319,32 +319,32 @@ export default function AffiliateEarnings() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500">Total Earned</CardTitle>
+            <CardTitle className="text-sm font-medium text-[color:var(--text-muted)]">Total Earned</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(stats?.wallet.totalEarned || 0)}</div>
-            <p className="text-xs text-gray-500 mt-1">All time</p>
+            <p className="text-xs text-[color:var(--text-muted)] mt-1">All time</p>
           </CardContent>
         </Card>
 
-        <Card className="border-green-200 bg-green-50">
+        <Card className="border-[color:var(--status-success)]/30 bg-[color:var(--status-success)]/10">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-green-700">Available Balance</CardTitle>
+            <CardTitle className="text-sm font-medium text-[color:var(--status-success)]">Available Balance</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-[color:var(--status-success)]">
               {formatCurrency(stats?.wallet.availableBalance || 0)}
             </div>
             <Button
               size="sm"
               variant="outline"
-              className="mt-2 w-full bg-green-600 text-white hover:bg-green-700"
+              className="mt-2 w-full bg-[color:var(--status-success)] text-white hover:bg-[color:var(--status-success)]"
               onClick={() => setWithdrawalDialog(true)}
               disabled={!stats || parseFloat(stats.wallet.availableBalance.toString()) < 5}
             >
               Request Cashout
             </Button>
-            <p className="mt-2 text-xs text-green-700">
+            <p className="mt-2 text-xs text-[color:var(--status-success)]">
               Cashouts are manual. You can also spend credits on bookings or monthly fees.
             </p>
           </CardContent>
@@ -364,11 +364,11 @@ export default function AffiliateEarnings() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500">Conversion Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-[color:var(--text-muted)]">Conversion Rate</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.stats.conversionRate}%</div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-[color:var(--text-muted)] mt-1">
               {stats?.stats.totalConversions || 0} of {stats?.stats.totalClicks || 0} clicks
             </p>
           </CardContent>
@@ -393,7 +393,7 @@ export default function AffiliateEarnings() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">{stats?.stats.totalLinks || 0}</div>
-                <p className="text-xs text-gray-500 mt-2">Tracking URLs you've shared</p>
+                <p className="text-xs text-[color:var(--text-muted)] mt-2">Tracking URLs you've shared</p>
               </CardContent>
             </Card>
 
@@ -403,7 +403,7 @@ export default function AffiliateEarnings() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">{stats?.stats.totalClicks || 0}</div>
-                <p className="text-xs text-gray-500 mt-2">People visited your link</p>
+                <p className="text-xs text-[color:var(--text-muted)] mt-2">People visited your link</p>
               </CardContent>
             </Card>
 
@@ -413,7 +413,7 @@ export default function AffiliateEarnings() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">{stats?.stats.totalConversions || 0}</div>
-                <p className="text-xs text-gray-500 mt-2">Restaurant signups</p>
+                <p className="text-xs text-[color:var(--text-muted)] mt-2">Restaurant signups</p>
               </CardContent>
             </Card>
           </div>
@@ -426,11 +426,11 @@ export default function AffiliateEarnings() {
             <CardContent className="space-y-4">
               <div className="flex gap-4">
                 <div className="flex-shrink-0">
-                  <Share2 className="w-5 h-5 text-blue-600" />
+                  <Share2 className="w-5 h-5 text-[color:var(--accent-text)]" />
                 </div>
                 <div>
                   <h4 className="font-medium">1. Share a Link</h4>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-[color:var(--text-muted)]">
                     Share any restaurant, deal, or collection from MealScout
                   </p>
                 </div>
@@ -438,11 +438,11 @@ export default function AffiliateEarnings() {
 
               <div className="flex gap-4">
                 <div className="flex-shrink-0">
-                  <TrendingUp className="w-5 h-5 text-blue-600" />
+                  <TrendingUp className="w-5 h-5 text-[color:var(--accent-text)]" />
                 </div>
                 <div>
                   <h4 className="font-medium">2. Someone Signs Up</h4>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-[color:var(--text-muted)]">
                     A restaurant owner clicks your link and becomes a paid subscriber
                   </p>
                 </div>
@@ -450,11 +450,11 @@ export default function AffiliateEarnings() {
 
               <div className="flex gap-4">
                 <div className="flex-shrink-0">
-                  <DollarSign className="w-5 h-5 text-green-600" />
+                  <DollarSign className="w-5 h-5 text-[color:var(--status-success)]" />
                 </div>
                 <div>
                   <h4 className="font-medium">3. Earn Recurring Commissions</h4>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-[color:var(--text-muted)]">
                     Get 10% of their subscription value every month they stay active
                   </p>
                 </div>
@@ -476,14 +476,14 @@ export default function AffiliateEarnings() {
                   {stats.recentLinks.map((link) => (
                     <div
                       key={link.id}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-[var(--bg-surface)]"
                     >
                       <div className="flex-1">
                         <p className="font-mono text-sm font-medium">{link.code}</p>
-                        <p className="text-xs text-gray-500 truncate">{link.fullUrl}</p>
+                        <p className="text-xs text-[color:var(--text-muted)] truncate">{link.fullUrl}</p>
                         <div className="flex gap-2 mt-2">
                           <Badge variant="outline">{link.resourceType}</Badge>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-[color:var(--text-muted)]">
                             {link.clickCount || 0} clicks • {link.conversions || 0} signups
                           </span>
                         </div>
@@ -499,7 +499,7 @@ export default function AffiliateEarnings() {
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-gray-500 py-8">
+                <p className="text-center text-[color:var(--text-muted)] py-8">
                   No links yet. Start sharing to earn!
                 </p>
               )}
@@ -528,7 +528,7 @@ export default function AffiliateEarnings() {
                   </TableHeader>
                   <TableBody>
                     <TableRow>
-                      <TableCell className="text-sm text-gray-500">
+                      <TableCell className="text-sm text-[color:var(--text-muted)]">
                         Commissions will appear here
                       </TableCell>
                     </TableRow>
@@ -569,9 +569,9 @@ export default function AffiliateEarnings() {
                               variant="outline"
                               className={
                                 withdrawal.status === 'completed'
-                                  ? 'border-green-200 text-green-700'
+                                  ? 'border-[color:var(--status-success)]/30 text-[color:var(--status-success)]'
                                   : withdrawal.status === 'rejected'
-                                  ? 'border-red-200 text-red-700'
+                                  ? 'border-[color:var(--status-error)]/30 text-[color:var(--status-error)]'
                                   : 'border-yellow-200 text-yellow-700'
                               }
                             >
@@ -582,7 +582,7 @@ export default function AffiliateEarnings() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell className="text-sm text-gray-500">
+                        <TableCell className="text-sm text-[color:var(--text-muted)]">
                           No withdrawals yet
                         </TableCell>
                       </TableRow>
@@ -609,7 +609,7 @@ export default function AffiliateEarnings() {
             <div>
               <label className="text-sm font-medium">Amount</label>
               <div className="flex mt-2">
-                <span className="inline-flex items-center px-3 bg-gray-100 rounded-l-md">
+                <span className="inline-flex items-center px-3 bg-[var(--bg-subtle)] rounded-l-md">
                   $
                 </span>
                 <input
@@ -618,7 +618,7 @@ export default function AffiliateEarnings() {
                   step="0.01"
                   value={withdrawalAmount}
                   onChange={(e) => setWithdrawalAmount(e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-r-md"
+                  className="flex-1 px-3 py-2 border border-[var(--border-subtle)] rounded-r-md"
                   placeholder="0.00"
                 />
               </div>
@@ -632,7 +632,7 @@ export default function AffiliateEarnings() {
                   setWithdrawalMethod(e.target.value as 'paypal' | 'ach' | 'other');
                   setWithdrawalError(null);
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-md mt-2"
               >
                 <option value="paypal">PayPal</option>
                 <option value="ach">ACH (Bank Transfer)</option>
@@ -649,7 +649,7 @@ export default function AffiliateEarnings() {
                   onChange={(e) =>
                     setWithdrawalDetails((prev) => ({ ...prev, paypalEmail: e.target.value }))
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                  className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-md mt-2"
                   placeholder="name@example.com"
                 />
               </div>
@@ -665,7 +665,7 @@ export default function AffiliateEarnings() {
                     onChange={(e) =>
                       setWithdrawalDetails((prev) => ({ ...prev, achAccountName: e.target.value }))
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                    className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-md mt-2"
                     placeholder="Full name on account"
                   />
                 </div>
@@ -677,7 +677,7 @@ export default function AffiliateEarnings() {
                     onChange={(e) =>
                       setWithdrawalDetails((prev) => ({ ...prev, achBankName: e.target.value }))
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                    className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-md mt-2"
                     placeholder="Your bank"
                   />
                 </div>
@@ -690,7 +690,7 @@ export default function AffiliateEarnings() {
                       onChange={(e) =>
                         setWithdrawalDetails((prev) => ({ ...prev, achRoutingNumber: e.target.value }))
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                      className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-md mt-2"
                       placeholder="9-digit routing"
                     />
                   </div>
@@ -702,7 +702,7 @@ export default function AffiliateEarnings() {
                       onChange={(e) =>
                         setWithdrawalDetails((prev) => ({ ...prev, achAccountNumber: e.target.value }))
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                      className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-md mt-2"
                       placeholder="Account number"
                     />
                   </div>
@@ -718,7 +718,7 @@ export default function AffiliateEarnings() {
                   onChange={(e) =>
                     setWithdrawalDetails((prev) => ({ ...prev, otherInstructions: e.target.value }))
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                  className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-md mt-2"
                   placeholder="Tell us how you want to be paid (PayPal, ACH, check, etc.)"
                 />
               </div>
@@ -729,25 +729,25 @@ export default function AffiliateEarnings() {
               <textarea
                 value={withdrawalNotes}
                 onChange={(e) => setWithdrawalNotes(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-md mt-2"
                 placeholder="Any extra details or preferred timing"
               />
             </div>
 
             {withdrawalError && (
-              <p className="text-sm text-red-600">{withdrawalError}</p>
+              <p className="text-sm text-[color:var(--status-error)]">{withdrawalError}</p>
             )}
 
             <div className="flex gap-2">
               <button
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50"
+                className="flex-1 px-4 py-2 border border-[var(--border-subtle)] rounded-md text-sm font-medium hover:bg-[var(--bg-surface)]"
                 onClick={() => setWithdrawalDialog(false)}
                 disabled={withdrawalSubmitting}
               >
                 Cancel
               </button>
               <button
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-70"
+                className="flex-1 px-4 py-2 bg-[color:var(--accent-text)] text-white rounded-md text-sm font-medium hover:bg-[color:var(--accent-text-hover)] disabled:opacity-70"
                 onClick={handleWithdrawalSubmit}
                 disabled={withdrawalSubmitting}
               >
@@ -760,3 +760,7 @@ export default function AffiliateEarnings() {
     </div>
   );
 }
+
+
+
+

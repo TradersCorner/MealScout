@@ -150,7 +150,7 @@ export default function HostLocationManager({
                     : ""}
                 </p>
                 {host.latitude && host.longitude && (
-                  <p className="text-xs text-green-600 mt-1">
+                  <p className="text-xs text-[color:var(--status-success)] mt-1">
                     📍 {host.latitude}, {host.longitude}
                   </p>
                 )}
@@ -224,3 +224,4 @@ export default function HostLocationManager({
     </div>
   );
 }
+

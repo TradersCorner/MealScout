@@ -152,38 +152,38 @@ function PaymentForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Pricing Breakdown */}
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2 text-sm">
-        <div className="flex items-center justify-between text-gray-700">
+      <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-2 text-sm">
+        <div className="flex items-center justify-between text-[color:var(--text-secondary)]">
           <span>Host Location Fee</span>
           <span className="font-medium">
             ${(breakdown.hostPrice / 100).toFixed(2)}
           </span>
         </div>
-        <div className="flex items-center justify-between text-gray-700">
+        <div className="flex items-center justify-between text-[color:var(--text-secondary)]">
           <span>MealScout Platform Fee</span>
           <span className="font-medium">
             ${(breakdown.platformFee / 100).toFixed(2)}
           </span>
         </div>
         {breakdown.creditsApplied ? (
-          <div className="flex items-center justify-between text-green-700">
+          <div className="flex items-center justify-between text-[color:var(--status-success)]">
             <span>Credits Applied</span>
             <span className="font-medium">
               -${(breakdown.creditsApplied / 100).toFixed(2)}
             </span>
           </div>
         ) : null}
-        <div className="border-t border-gray-300 pt-2 flex items-center justify-between font-semibold text-gray-900">
+        <div className="border-t border-[var(--border-subtle)] pt-2 flex items-center justify-between font-semibold text-[color:var(--text-primary)]">
           <span>Total</span>
           <span className="text-lg">${(totalCents / 100).toFixed(2)}</span>
         </div>
-        <p className="text-xs text-gray-600 pt-1">
+        <p className="text-xs text-[color:var(--text-muted)] pt-1">
           All fees included. No hidden charges.
         </p>
       </div>
 
       {/* Stripe Payment Element */}
-      <div className="border border-gray-200 rounded-lg p-4 bg-white">
+      <div className="border border-[var(--border-subtle)] rounded-lg p-4 bg-[var(--bg-surface)]">
         <PaymentElement />
       </div>
 
@@ -215,7 +215,7 @@ function PaymentForm({
       </div>
 
       {/* Terms Notice */}
-      <p className="text-xs text-gray-500 text-center">
+      <p className="text-xs text-[color:var(--text-muted)] text-center">
         By confirming payment, you acknowledge bookings are non-refundable once confirmed.
       </p>
     </form>
@@ -380,30 +380,30 @@ export function BookingPaymentModal({
                   className={`rounded-full border px-2.5 py-1 font-semibold ${
                     stage === "review"
                       ? "border-orange-200 bg-orange-50 text-orange-900"
-                      : "border-gray-200 bg-gray-50 text-gray-600"
+                      : "border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[color:var(--text-muted)]"
                   }`}
                 >
                   1. Review
                 </span>
-                <span className="h-px flex-1 bg-gray-200" />
+                <span className="h-px flex-1 bg-[var(--bg-subtle)]" />
                 <span
                   className={`rounded-full border px-2.5 py-1 font-semibold ${
                     stage === "pay"
                       ? "border-orange-200 bg-orange-50 text-orange-900"
-                      : "border-gray-200 bg-gray-50 text-gray-600"
+                      : "border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[color:var(--text-muted)]"
                   }`}
                 >
                   2. Pay
                 </span>
               </div>
 
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
-                <p className="font-semibold text-gray-900">{eventDetails.hostName}</p>
-                <p className="text-xs text-gray-600">
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-sm text-[color:var(--text-secondary)]">
+                <p className="font-semibold text-[color:var(--text-primary)]">{eventDetails.hostName}</p>
+                <p className="text-xs text-[color:var(--text-muted)]">
                   {eventDetails.date} · {eventDetails.startTime} - {eventDetails.endTime}
                 </p>
                 {eventDetails.slotSummary ? (
-                  <p className="mt-1 text-xs text-gray-600">
+                  <p className="mt-1 text-xs text-[color:var(--text-muted)]">
                     Slots: {eventDetails.slotSummary}
                   </p>
                 ) : null}
@@ -413,17 +413,17 @@ export function BookingPaymentModal({
         </DialogHeader>
 
         {!clientSecret && (
-          <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-gray-900">Credits</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-sm font-semibold text-[color:var(--text-primary)]">Credits</p>
+                <p className="text-xs text-[color:var(--text-muted)]">
                   Credits reduce the MealScout platform fee.
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-[11px] text-gray-500">Available</p>
-                <p className="text-base font-semibold text-gray-900">
+                <p className="text-[11px] text-[color:var(--text-muted)]">Available</p>
+                <p className="text-base font-semibold text-[color:var(--text-primary)]">
                   ${(creditBalance || 0).toFixed(2)}
                 </p>
               </div>
@@ -431,12 +431,12 @@ export function BookingPaymentModal({
 
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-3">
-                <label className="text-xs font-semibold text-gray-600">
+                <label className="text-xs font-semibold text-[color:var(--text-muted)]">
                   Apply credits
                 </label>
                 <button
                   type="button"
-                  className="text-xs text-gray-600 underline"
+                  className="text-xs text-[color:var(--text-muted)] underline"
                   onClick={() =>
                     setCreditsToApply(String((creditBalance || 0).toFixed(2)))
                   }
@@ -450,10 +450,10 @@ export function BookingPaymentModal({
                 step="0.01"
                 value={creditsToApply}
                 onChange={(e) => setCreditsToApply(e.target.value)}
-                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-[var(--border-subtle)] px-3 py-2 text-sm"
                 placeholder="0.00"
               />
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[11px] text-[color:var(--text-muted)]">
                 Your spot is held briefly while you check out. Closing this window releases the hold.
               </p>
             </div>
@@ -489,7 +489,7 @@ export function BookingPaymentModal({
         {isLoading && (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
-            <span className="ml-3 text-gray-600">Preparing payment...</span>
+            <span className="ml-3 text-[color:var(--text-muted)]">Preparing payment...</span>
           </div>
         )}
 
@@ -521,3 +521,4 @@ export function BookingPaymentModal({
     </Dialog>
   );
 }
+

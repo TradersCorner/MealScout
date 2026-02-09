@@ -1041,17 +1041,17 @@ export default function RestaurantOwnerDashboard() {
       case "breakfast":
         return "bg-yellow-100 text-yellow-800";
       case "lunch":
-        return "bg-blue-100 text-blue-800";
+        return "bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]";
       case "dinner":
         return "bg-purple-100 text-purple-800";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-[var(--bg-surface-muted)] text-[color:var(--text-secondary)]";
     }
   };
 
   if (loadingRestaurants) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-[var(--bg-layered)]">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     );
@@ -1059,7 +1059,7 @@ export default function RestaurantOwnerDashboard() {
 
   if (restaurants.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 bg-[var(--bg-layered)] min-h-screen">
         <div className="max-w-2xl mx-auto text-center space-y-6">
           <Store className="h-16 w-16 mx-auto text-muted-foreground" />
           <h1 className="text-3xl font-bold">No Restaurant Found</h1>
@@ -1077,7 +1077,7 @@ export default function RestaurantOwnerDashboard() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 bg-[var(--bg-layered)] min-h-screen">
       <SEOHead
         title="Restaurant Dashboard - MealScout | Manage Your Specials"
         description="Manage your restaurant specials, view analytics, track performance, and engage with customers. Access insights on special claims, views, conversion rates, and customer feedback."
@@ -1119,13 +1119,13 @@ export default function RestaurantOwnerDashboard() {
             </Link>
           </div>
         }
-        className="bg-white border-b border-border mb-8"
+        className="bg-[var(--bg-card)] border-b border-border mb-8"
       />
 
       {/* Restaurant Selector */}
       {restaurants.length > 1 && (
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-2">
             Select Restaurant
           </label>
           <select
@@ -1491,7 +1491,7 @@ export default function RestaurantOwnerDashboard() {
                           )?.totalViews?.toLocaleString() || 0}
                         </p>
                       </div>
-                      <Eye className="h-8 w-8 text-blue-500" />
+                      <Eye className="h-8 w-8 text-[color:var(--accent-text)]" />
                     </div>
                     {comparison &&
                       (comparison as any)?.changes &&
@@ -1501,15 +1501,15 @@ export default function RestaurantOwnerDashboard() {
                           <TrendingUp
                             className={`h-3 w-3 mr-1 ${
                               (comparison as any).changes.viewsChange >= 0
-                                ? "text-green-500"
-                                : "text-red-500"
+                                ? "text-[color:var(--status-success)]"
+                                : "text-[color:var(--status-error)]"
                             }`}
                           />
                           <span
                             className={
                               (comparison as any).changes.viewsChange >= 0
-                                ? "text-green-500"
-                                : "text-red-500"
+                                ? "text-[color:var(--status-success)]"
+                                : "text-[color:var(--status-error)]"
                             }
                           >
                             {(comparison as any).changes.viewsChange >= 0
@@ -1542,7 +1542,7 @@ export default function RestaurantOwnerDashboard() {
                           )?.totalClaims?.toLocaleString() || 0}
                         </p>
                       </div>
-                      <ShoppingCart className="h-8 w-8 text-green-500" />
+                      <ShoppingCart className="h-8 w-8 text-[color:var(--status-success)]" />
                     </div>
                     {comparison &&
                       (comparison as any)?.changes &&
@@ -1552,15 +1552,15 @@ export default function RestaurantOwnerDashboard() {
                           <TrendingUp
                             className={`h-3 w-3 mr-1 ${
                               (comparison as any).changes.claimsChange >= 0
-                                ? "text-green-500"
-                                : "text-red-500"
+                                ? "text-[color:var(--status-success)]"
+                                : "text-[color:var(--status-error)]"
                             }`}
                           />
                           <span
                             className={
                               (comparison as any).changes.claimsChange >= 0
-                                ? "text-green-500"
-                                : "text-red-500"
+                                ? "text-[color:var(--status-success)]"
+                                : "text-[color:var(--status-error)]"
                             }
                           >
                             {(comparison as any).changes.claimsChange >= 0
@@ -1606,15 +1606,15 @@ export default function RestaurantOwnerDashboard() {
                           <TrendingUp
                             className={`h-3 w-3 mr-1 ${
                               (comparison as any).changes.revenueChange >= 0
-                                ? "text-green-500"
-                                : "text-red-500"
+                                ? "text-[color:var(--status-success)]"
+                                : "text-[color:var(--status-error)]"
                             }`}
                           />
                           <span
                             className={
                               (comparison as any).changes.revenueChange >= 0
-                                ? "text-green-500"
-                                : "text-red-500"
+                                ? "text-[color:var(--status-success)]"
+                                : "text-[color:var(--status-error)]"
                             }
                           >
                             {(comparison as any).changes.revenueChange >= 0
@@ -1661,16 +1661,16 @@ export default function RestaurantOwnerDashboard() {
                             className={`h-3 w-3 mr-1 ${
                               (comparison as any).changes
                                 .conversionRateChange >= 0
-                                ? "text-green-500"
-                                : "text-red-500"
+                                ? "text-[color:var(--status-success)]"
+                                : "text-[color:var(--status-error)]"
                             }`}
                           />
                           <span
                             className={
                               (comparison as any).changes
                                 .conversionRateChange >= 0
-                                ? "text-green-500"
-                                : "text-red-500"
+                                ? "text-[color:var(--status-success)]"
+                                : "text-[color:var(--status-error)]"
                             }
                           >
                             {(comparison as any).changes.conversionRateChange >=
@@ -1723,7 +1723,7 @@ export default function RestaurantOwnerDashboard() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-blue-200 dark:border-blue-800">
+                <Card className="border-[color:var(--border-subtle)] dark:border-blue-800">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -1743,7 +1743,7 @@ export default function RestaurantOwnerDashboard() {
                           )}
                         </p>
                       </div>
-                      <Zap className="h-8 w-8 text-blue-500" />
+                      <Zap className="h-8 w-8 text-[color:var(--accent-text)]" />
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
                       Times shown in recommendations •{" "}
@@ -2120,18 +2120,18 @@ export default function RestaurantOwnerDashboard() {
                         <div
                           className={`p-2 rounded-lg ${
                             connectionStatus === "connected"
-                              ? "bg-green-100"
+                              ? "bg-[color:var(--status-success)]/12"
                               : connectionStatus === "connecting"
                                 ? "bg-yellow-100"
-                                : "bg-gray-100"
+                                : "bg-[var(--bg-surface-muted)]"
                           }`}
                         >
                           {connectionStatus === "connected" ? (
-                            <Radio className="h-5 w-5 text-green-600" />
+                            <Radio className="h-5 w-5 text-[color:var(--status-success)]" />
                           ) : connectionStatus === "connecting" ? (
                             <Loader2 className="h-5 w-5 text-yellow-600 animate-spin" />
                           ) : (
-                            <WifiOff className="h-5 w-5 text-gray-600" />
+                            <WifiOff className="h-5 w-5 text-[color:var(--text-secondary)]" />
                           )}
                         </div>
                         <div>
@@ -2152,7 +2152,7 @@ export default function RestaurantOwnerDashboard() {
                           <Button
                             onClick={handleStartBroadcasting}
                             disabled={startFoodTruckSessionMutation.isPending}
-                            className="bg-green-600 hover:bg-green-700"
+                            className="bg-[color:var(--status-success)] hover:bg-[color:var(--status-success)]"
                             data-testid="button-start-broadcasting"
                           >
                             {startFoodTruckSessionMutation.isPending ? (
@@ -2192,12 +2192,12 @@ export default function RestaurantOwnerDashboard() {
                       <div className="text-center p-3 bg-muted/50 rounded-lg">
                         <div className="flex items-center justify-center mb-1">
                           {connectionStatus === "connected" && isConnected ? (
-                            <Wifi className="h-4 w-4 text-green-500" />
+                            <Wifi className="h-4 w-4 text-[color:var(--status-success)]" />
                           ) : connectionStatus === "connected" &&
                             !isConnected ? (
                             <Zap className="h-4 w-4 text-yellow-500" />
                           ) : (
-                            <WifiOff className="h-4 w-4 text-red-500" />
+                            <WifiOff className="h-4 w-4 text-[color:var(--status-error)]" />
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -2214,7 +2214,7 @@ export default function RestaurantOwnerDashboard() {
                               : connectionStatus}
                         </p>
                         {wsError && (
-                          <p className="text-xs text-red-500 mt-1">
+                          <p className="text-xs text-[color:var(--status-error)] mt-1">
                             WS: {wsError}
                           </p>
                         )}
@@ -2222,7 +2222,7 @@ export default function RestaurantOwnerDashboard() {
 
                       <div className="text-center p-3 bg-muted/50 rounded-lg">
                         <div className="flex items-center justify-center mb-1">
-                          <Activity className="h-4 w-4 text-blue-500" />
+                          <Activity className="h-4 w-4 text-[color:var(--accent-text)]" />
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Updates Sent
@@ -2317,15 +2317,15 @@ export default function RestaurantOwnerDashboard() {
 
                   {/* Error Display */}
                   {locationError && (
-                    <div className="p-4 border border-red-200 bg-red-50 rounded-lg">
+                    <div className="p-4 border border-[color:var(--status-error)]/30 bg-[color:var(--status-error)]/10 rounded-lg">
                       <div className="flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4 text-red-500" />
-                        <span className="text-sm font-medium text-red-800">
+                        <AlertCircle className="h-4 w-4 text-[color:var(--status-error)]" />
+                        <span className="text-sm font-medium text-[color:var(--status-error)]">
                           Location Error
                         </span>
                       </div>
                       <p
-                        className="text-sm text-red-700 mt-1"
+                        className="text-sm text-[color:var(--status-error)] mt-1"
                         data-testid="text-location-error"
                       >
                         {locationError}
@@ -2334,12 +2334,12 @@ export default function RestaurantOwnerDashboard() {
                   )}
 
                   {/* Tips and Information */}
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h4 className="font-medium text-blue-900 mb-2 flex items-center gap-2">
+                  <div className="p-4 bg-[color:var(--accent-text)]/10 border border-[color:var(--border-subtle)] rounded-lg">
+                    <h4 className="font-medium text-[color:var(--accent-text)] mb-2 flex items-center gap-2">
                       <Smartphone className="h-4 w-4" />
                       Broadcasting Tips
                     </h4>
-                    <ul className="text-sm text-blue-800 space-y-1">
+                    <ul className="text-sm text-[color:var(--accent-text)] space-y-1">
                       <li>• Keep GPS enabled for accurate location tracking</li>
                       <li>
                         • Location updates every 30 seconds or when you move 50+
@@ -2364,8 +2364,8 @@ export default function RestaurantOwnerDashboard() {
                 <div className="p-4 border rounded-lg">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-3">
-                      <div className="p-2 rounded-lg bg-blue-100">
-                        <MapPin className="h-5 w-5 text-blue-600" />
+                      <div className="p-2 rounded-lg bg-[color:var(--accent-text)]/12">
+                        <MapPin className="h-5 w-5 text-[color:var(--accent-text)]" />
                       </div>
                       <div>
                         <h3 className="font-medium">
@@ -2416,15 +2416,15 @@ export default function RestaurantOwnerDashboard() {
 
                   {/* Location Update Error */}
                   {locationUpdateError && (
-                    <div className="mt-3 p-3 border border-red-200 bg-red-50 rounded-lg">
+                    <div className="mt-3 p-3 border border-[color:var(--status-error)]/30 bg-[color:var(--status-error)]/10 rounded-lg">
                       <div className="flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4 text-red-500" />
-                        <span className="text-sm font-medium text-red-800">
+                        <AlertCircle className="h-4 w-4 text-[color:var(--status-error)]" />
+                        <span className="text-sm font-medium text-[color:var(--status-error)]">
                           Update Error
                         </span>
                       </div>
                       <p
-                        className="text-sm text-red-700 mt-1"
+                        className="text-sm text-[color:var(--status-error)] mt-1"
                         data-testid="text-location-update-error"
                       >
                         {locationUpdateError}
@@ -2440,8 +2440,8 @@ export default function RestaurantOwnerDashboard() {
                 <div className="p-4 border rounded-lg">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-3">
-                      <div className="p-2 rounded-lg bg-green-100">
-                        <Clock className="h-5 w-5 text-green-600" />
+                      <div className="p-2 rounded-lg bg-[color:var(--status-success)]/12">
+                        <Clock className="h-5 w-5 text-[color:var(--status-success)]" />
                       </div>
                       <div>
                         <h3 className="font-medium">Operating Hours</h3>
@@ -2611,3 +2611,10 @@ export default function RestaurantOwnerDashboard() {
     </div>
   );
 }
+
+
+
+
+
+
+

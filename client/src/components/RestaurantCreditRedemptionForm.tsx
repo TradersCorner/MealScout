@@ -119,14 +119,14 @@ const RestaurantCreditRedemptionForm: React.FC<RestaurantCreditRedemptionFormPro
   const isFormValid = selectedUserId && creditAmount > 0 && (!userBalance || creditAmount <= userBalance);
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">Accept MealScout Credits</h2>
+    <div className="max-w-2xl mx-auto p-6 bg-[var(--bg-surface)] rounded-lg shadow-clean-lg">
+      <h2 className="text-2xl font-bold mb-6 text-[color:var(--text-primary)]">Accept MealScout Credits</h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* User Selection */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Customer <span className="text-red-500">*</span>
+          <label className="block text-sm font-medium text-[color:var(--text-secondary)]">
+            Customer <span className="text-[color:var(--status-error)]">*</span>
           </label>
           <div className="relative">
             <input
@@ -137,21 +137,21 @@ const RestaurantCreditRedemptionForm: React.FC<RestaurantCreditRedemptionFormPro
                 setShowUserSuggestions(true);
               }}
               placeholder="Search by email..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-[var(--border-subtle)] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
 
             {/* Autocomplete Suggestions */}
             {showUserSuggestions && searchResults && searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-lg mt-1 shadow-lg z-10">
+              <div className="absolute top-full left-0 right-0 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg mt-1 shadow-clean-lg z-10">
                 {searchResults.map((user: User) => (
                   <button
                     key={user.id}
                     type="button"
                     onClick={() => handleUserSelect(user)}
-                    className="w-full px-4 py-2 text-left hover:bg-gray-100 border-b last:border-b-0"
+                    className="w-full px-4 py-2 text-left hover:bg-[var(--bg-subtle)] border-b last:border-b-0"
                   >
                     <div className="font-medium">{user.name || user.email}</div>
-                    <div className="text-sm text-gray-500">{user.email}</div>
+                    <div className="text-sm text-[color:var(--text-muted)]">{user.email}</div>
                   </button>
                 ))}
               </div>
@@ -160,22 +160,22 @@ const RestaurantCreditRedemptionForm: React.FC<RestaurantCreditRedemptionFormPro
 
           {/* User Balance Display */}
           {selectedUserId && (
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="mt-3 p-3 bg-[color:var(--accent-text)]/10 border border-blue-200 rounded-lg">
               {balanceLoading ? (
-                <p className="text-sm text-gray-600">Loading balance...</p>
+                <p className="text-sm text-[color:var(--text-muted)]">Loading balance...</p>
               ) : userBalance !== undefined ? (
                 <div className="space-y-1">
-                  <p className="text-sm text-gray-600">
-                    Available balance: <span className="font-bold text-blue-600">${userBalance.toFixed(2)}</span>
+                  <p className="text-sm text-[color:var(--text-muted)]">
+                    Available balance: <span className="font-bold text-[color:var(--accent-text)]">${userBalance.toFixed(2)}</span>
                   </p>
                   {creditAmount > userBalance && (
-                    <p className="text-sm text-red-600">
+                    <p className="text-sm text-[color:var(--status-error)]">
                       ⚠️ Credit amount exceeds available balance
                     </p>
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-red-600">Unable to fetch user balance</p>
+                <p className="text-sm text-[color:var(--status-error)]">Unable to fetch user balance</p>
               )}
             </div>
           )}
@@ -183,8 +183,8 @@ const RestaurantCreditRedemptionForm: React.FC<RestaurantCreditRedemptionFormPro
 
         {/* Credit Amount */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Credit Amount ($) <span className="text-red-500">*</span>
+          <label className="block text-sm font-medium text-[color:var(--text-secondary)]">
+            Credit Amount ($) <span className="text-[color:var(--status-error)]">*</span>
           </label>
           <input
             type="number"
@@ -193,10 +193,10 @@ const RestaurantCreditRedemptionForm: React.FC<RestaurantCreditRedemptionFormPro
             step="0.01"
             min="0"
             placeholder="0.00"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-2 border border-[var(--border-subtle)] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           {creditAmount > 0 && (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-[color:var(--text-muted)]">
               User will have ${((userBalance || 0) - creditAmount).toFixed(2)} remaining after this redemption
             </p>
           )}
@@ -204,36 +204,36 @@ const RestaurantCreditRedemptionForm: React.FC<RestaurantCreditRedemptionFormPro
 
         {/* Order Reference */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Order Reference <span className="text-gray-400 text-xs">(optional)</span>
+          <label className="block text-sm font-medium text-[color:var(--text-secondary)]">
+            Order Reference <span className="text-[color:var(--text-muted)] text-xs">(optional)</span>
           </label>
           <input
             type="text"
             value={orderReference}
             onChange={(e) => setOrderReference(e.target.value)}
             placeholder="e.g., Order #12345 or Invoice ABC123"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-2 border border-[var(--border-subtle)] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
 
         {/* Notes */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Notes <span className="text-gray-400 text-xs">(optional)</span>
+          <label className="block text-sm font-medium text-[color:var(--text-secondary)]">
+            Notes <span className="text-[color:var(--text-muted)] text-xs">(optional)</span>
           </label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Add any details about this redemption..."
             rows={3}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            className="w-full px-4 py-2 border border-[var(--border-subtle)] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
           />
         </div>
 
         {/* Info Box */}
-        <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-          <h3 className="font-medium text-gray-800 mb-2">How it works:</h3>
-          <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+        <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg">
+          <h3 className="font-medium text-[color:var(--text-primary)] mb-2">How it works:</h3>
+          <ul className="text-sm text-[color:var(--text-muted)] space-y-1 list-disc list-inside">
             <li>User's credit balance is immediately deducted</li>
             <li>Credit goes into pending settlement (settled weekly, Sundays)</li>
             <li>You'll receive a Stripe payout when the batch is processed</li>
@@ -243,19 +243,19 @@ const RestaurantCreditRedemptionForm: React.FC<RestaurantCreditRedemptionFormPro
 
         {/* Success/Error Messages */}
         {acceptCreditsMutation.isSuccess && (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm font-medium text-green-800">
+          <div className="p-4 bg-[color:var(--status-success)]/10 border border-green-200 rounded-lg">
+            <p className="text-sm font-medium text-[color:var(--status-success)]">
               ✓ Credit redeemed successfully!
             </p>
-            <p className="text-xs text-green-700 mt-1">
+            <p className="text-xs text-[color:var(--status-success)] mt-1">
               Redemption ID: {acceptCreditsMutation.data?.redemption?.id}
             </p>
           </div>
         )}
 
         {acceptCreditsMutation.isError && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm font-medium text-red-800">
+          <div className="p-4 bg-[color:var(--status-error)]/10 border border-red-200 rounded-lg">
+            <p className="text-sm font-medium text-[color:var(--status-error)]">
               Error: {acceptCreditsMutation.error instanceof Error ? acceptCreditsMutation.error.message : 'Unknown error'}
             </p>
           </div>
@@ -267,8 +267,8 @@ const RestaurantCreditRedemptionForm: React.FC<RestaurantCreditRedemptionFormPro
           disabled={!isFormValid || acceptCreditsMutation.isPending}
           className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
             isFormValid && !acceptCreditsMutation.isPending
-              ? 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              ? 'bg-[color:var(--accent-text)] text-white hover:bg-[color:var(--accent-text-hover)] active:bg-[color:var(--accent-text-hover)]'
+              : 'bg-[var(--bg-subtle)] text-[color:var(--text-muted)] cursor-not-allowed'
           }`}
         >
           {acceptCreditsMutation.isPending ? (
@@ -286,3 +286,5 @@ const RestaurantCreditRedemptionForm: React.FC<RestaurantCreditRedemptionFormPro
 };
 
 export default RestaurantCreditRedemptionForm;
+
+

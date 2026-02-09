@@ -199,7 +199,7 @@ export default function AddressesPage() {
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2].map((i) => (
-              <Card key={i} className="border-0 shadow-md">
+              <Card key={i} className="border-0 shadow-clean-lg">
                 <CardContent className="p-4">
                   <div className="flex items-start space-x-3">
                     <div className="w-10 h-10 bg-muted rounded-lg animate-pulse" />
@@ -215,7 +215,7 @@ export default function AddressesPage() {
           </div>
         ) : (
           addresses.map((address) => (
-            <Card key={address.id} className="border-0 shadow-md">
+            <Card key={address.id} className="border-0 shadow-clean-lg">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-3">
@@ -271,7 +271,7 @@ export default function AddressesPage() {
 
         {/* Add New Address Form */}
         {showAddForm ? (
-          <Card className="border-0 shadow-md">
+          <Card className="border-0 shadow-clean-lg">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-foreground">Add New Address</h3>
@@ -378,7 +378,7 @@ export default function AddressesPage() {
                     type="checkbox"
                     id="isDefault"
                     {...form.register("isDefault")}
-                    className="rounded border-gray-300"
+                    className="rounded border-[var(--border-subtle)]"
                     data-testid="checkbox-is-default"
                   />
                   <Label htmlFor="isDefault" className="text-sm">
@@ -432,3 +432,6 @@ export default function AddressesPage() {
     </div>
   );
 }
+
+
+

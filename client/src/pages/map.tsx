@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   MapContainer,
@@ -71,8 +71,8 @@ function MapControls({
 }) {
   const map = useMap();
   const controlClassName = isNightTheme
-    ? "w-9 h-9 p-0 rounded-full bg-slate-900/85 border border-white/20 shadow-lg backdrop-blur text-white"
-    : "w-9 h-9 p-0 rounded-full bg-white border border-slate-200 shadow-md text-slate-900";
+    ? "w-9 h-9 p-0 rounded-full bg-[var(--bg-card)]/90 border border-white/20 shadow-clean-lg backdrop-blur text-[color:var(--text-primary)]"
+    : "w-9 h-9 p-0 rounded-full bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean text-[color:var(--text-primary)]";
 
   const handleZoomIn = () => {
     map.zoomIn();
@@ -111,7 +111,7 @@ function MapControls({
         data-testid="button-zoom-out"
         title="Zoom out"
       >
-        âˆ’
+        −
       </Button>
       <Button
         variant="secondary"
@@ -969,15 +969,15 @@ export default function MapPage() {
       />
       {/* Header */}
       <header
-        className={`px-6 py-5 border-b border-border relative z-10 ${
+        className={`px-6 py-5 border-b border-[color:var(--border-subtle)] relative z-10 ${
           isNightTheme
-            ? "bg-slate-950/75 backdrop-blur text-white"
-            : "bg-white text-slate-900"
+            ? "bg-[var(--bg-card)]/90 backdrop-blur text-[color:var(--text-primary)]"
+            : "bg-[var(--bg-card)] text-[color:var(--text-primary)]"
         }`}
       >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-[var(--bg-card)] shadow-clean flex items-center justify-center">
               <img
                 src={mealScoutIcon}
                 alt="MealScout"
@@ -1005,16 +1005,16 @@ export default function MapPage() {
 
         {/* Location Status */}
         {locationError && (
-          <div className="text-xs text-red-600 mb-4 bg-red-50 border border-red-200 rounded p-2">
-            âš ï¸ {locationError}
+          <div className="text-xs text-[color:var(--status-error)] mb-4 bg-[color:var(--status-error)]/10 border border-[color:var(--status-error)]/30 rounded p-2">
+            ⚠️ {locationError}
           </div>
         )}
         {userLocation && (
           <div className="text-xs text-muted-foreground mb-4">
-            ðŸ“ Located: {userLocation.lat.toFixed(4)},{" "}
+            📍 Located: {userLocation.lat.toFixed(4)},{" "}
             {userLocation.lng.toFixed(4)}
             {liveTruckPins > 0 &&
-              ` â€¢ ${liveTruckPins} truck${
+              ` • ${liveTruckPins} truck${
                 liveTruckPins === 1 ? "" : "s"
               } nearby`}
           </div>
@@ -1045,8 +1045,8 @@ export default function MapPage() {
                   icon={userLocationIcon}
                 >
                   <Popup>
-                    <div className="text-center rounded-xl bg-slate-900 text-white px-3 py-2 shadow-lg">
-                      <div className="text-xs uppercase tracking-wide text-slate-300">
+                    <div className="text-center rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] px-3 py-2 shadow-clean-lg">
+                      <div className="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">
                         MealScout
                       </div>
                       <div className="font-semibold text-sm">You are here</div>
@@ -1063,13 +1063,13 @@ export default function MapPage() {
                   icon={geoAdPinIcon}
                 >
                   <Popup>
-                    <div className="min-w-52 rounded-xl bg-white text-slate-900 p-3 shadow-lg space-y-1">
-                      <div className="text-[10px] uppercase tracking-wide text-slate-400">
+                    <div className="min-w-52 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg space-y-1">
+                      <div className="text-[10px] uppercase tracking-wide text-[color:var(--text-muted)]">
                         Sponsored
                       </div>
                       <div className="font-semibold text-sm">{ad.title}</div>
                       {ad.body && (
-                        <div className="text-xs text-slate-500">{ad.body}</div>
+                        <div className="text-xs text-[color:var(--text-muted)]">{ad.body}</div>
                       )}
                       <Button
                         size="sm"
@@ -1099,18 +1099,18 @@ export default function MapPage() {
                     }}
                   >
                     <Popup>
-                      <div className="min-w-52 rounded-xl bg-white text-slate-900 p-3 shadow-lg space-y-1">
+                      <div className="min-w-52 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg space-y-1">
                         <div className="font-semibold text-sm">
                           {deal.restaurant.name}
                         </div>
-                        <div className="text-xs text-slate-500">
+                        <div className="text-xs text-[color:var(--text-muted)]">
                           Deal available
                         </div>
                         <div className="flex items-center justify-between pt-1 text-xs">
-                          <span className="font-semibold text-amber-600">
+                          <span className="font-semibold text-[color:var(--status-warning)]">
                             {deal.discountValue}% OFF
                           </span>
-                          <span className="text-slate-500">
+                          <span className="text-[color:var(--text-muted)]">
                             Min ${deal.minOrderAmount}
                           </span>
                         </div>
@@ -1140,15 +1140,15 @@ export default function MapPage() {
                     icon={truckPinIcon}
                   >
                     <Popup>
-                      <div className="min-w-52 rounded-xl bg-white text-slate-900 p-3 shadow-lg space-y-1">
+                      <div className="min-w-52 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg space-y-1">
                         <div className="font-semibold text-sm">
                           {truck.name}
                         </div>
-                        <div className="text-xs text-slate-500">
-                          Food Truck â€¢ Live now
+                        <div className="text-xs text-[color:var(--text-muted)]">
+                          Food Truck • Live now
                         </div>
                         {distanceLabel && (
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-[color:var(--text-muted)]">
                             {distanceLabel} away
                           </div>
                         )}
@@ -1199,14 +1199,14 @@ export default function MapPage() {
                     icon={hostedTruck ? hostPinActiveIcon : hostPinIcon}
                   >
                     <Popup>
-                      <div className="min-w-56 space-y-1 rounded-xl bg-white text-slate-900 p-3 shadow-lg">
+                      <div className="min-w-56 space-y-1 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg">
                         <div className="font-semibold text-sm">{title}</div>
-                        <div className="text-xs text-slate-500">{subtitle}</div>
-                        <div className="text-xs text-slate-500">
+                        <div className="text-xs text-[color:var(--text-muted)]">{subtitle}</div>
+                        <div className="text-xs text-[color:var(--text-muted)]">
                           {host.address}
                         </div>
                         {distanceLabel && (
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-[color:var(--text-muted)]">
                             {distanceLabel} away
                           </div>
                         )}
@@ -1273,20 +1273,20 @@ export default function MapPage() {
                     icon={eventPinIcon}
                   >
                     <Popup>
-                      <div className="min-w-56 space-y-1 rounded-xl bg-white text-slate-900 p-3 shadow-lg">
+                      <div className="min-w-56 space-y-1 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg">
                         <div className="font-semibold text-sm">{title}</div>
-                        <div className="text-xs text-slate-500">{subtitle}</div>
+                        <div className="text-xs text-[color:var(--text-muted)]">{subtitle}</div>
                         {event.hostAddress && (
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-[color:var(--text-muted)]">
                             {event.hostAddress}
                           </div>
                         )}
-                        <div className="text-xs text-slate-500">
-                          {new Date(event.date).toLocaleDateString()} â€¢{" "}
+                        <div className="text-xs text-[color:var(--text-muted)]">
+                          {new Date(event.date).toLocaleDateString()} •{" "}
                           {event.startTime} - {event.endTime}
                         </div>
                         {distanceLabel && (
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-[color:var(--text-muted)]">
                             {distanceLabel} away
                           </div>
                         )}
@@ -1329,7 +1329,7 @@ export default function MapPage() {
           {/* Empty map overlay messaging */}
           {!isLoading && !isLocating && deals.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-background/90 rounded-xl px-4 py-3 text-center shadow-sm max-w-xs">
+              <div className="bg-[var(--bg-card)]/90 rounded-xl px-4 py-3 text-center shadow-clean max-w-xs">
                 <p className="text-sm font-medium text-foreground mb-1">
                   {hasLocation
                     ? "No trucks nearby right now"
@@ -1347,7 +1347,7 @@ export default function MapPage() {
 
         {/* Selected Deal Info Card */}
         {selectedDeal && (
-          <Card className="absolute bottom-4 left-4 right-4 z-20 shadow-lg">
+          <Card className="absolute bottom-4 left-4 right-4 z-20 shadow-clean-lg">
             <CardContent className="p-4">
               <div className="flex justify-between items-start mb-2">
                 <div className="flex-1">
@@ -1389,8 +1389,8 @@ export default function MapPage() {
 
       {/* List View Overlay */}
       {showList && (
-        <div className="absolute inset-0 bg-white z-40 overflow-y-auto">
-          <header className="px-6 py-6 bg-white border-b border-border sticky top-0">
+        <div className="absolute inset-0 bg-[var(--bg-card)] z-40 overflow-y-auto">
+          <header className="px-6 py-6 bg-[var(--bg-card)] border-b border-[color:var(--border-subtle)] sticky top-0">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-foreground">
                 Nearby Deals
@@ -1412,7 +1412,7 @@ export default function MapPage() {
                 {[1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className="bg-white rounded-2xl overflow-hidden animate-pulse shadow-md"
+                    className="bg-[var(--bg-card)] rounded-2xl overflow-hidden animate-pulse shadow-clean"
                   >
                     <div className="w-full h-48 bg-muted"></div>
                     <div className="p-6 space-y-3">
@@ -1449,4 +1449,12 @@ export default function MapPage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
 

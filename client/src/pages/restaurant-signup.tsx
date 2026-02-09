@@ -1,4 +1,4 @@
-﻿import { useReducer, useState, useEffect, useMemo } from "react";
+import { useReducer, useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -635,7 +635,7 @@ export default function RestaurantSignup() {
           title={COPY.unauth.headerTitle}
           fallbackHref="/"
           icon={Store}
-          className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
+          className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
         />
 
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
@@ -850,7 +850,7 @@ export default function RestaurantSignup() {
         title={COPY.main.backHeaderTitle}
         fallbackHref="/"
         icon={Store}
-        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
 
       <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
@@ -979,7 +979,7 @@ export default function RestaurantSignup() {
                             <SelectItem value="burgers">Burgers</SelectItem>
                             <SelectItem value="cajun">Cajun</SelectItem>
                             <SelectItem value="caribbean">Caribbean</SelectItem>
-                            <SelectItem value="coffee">Coffee & Café</SelectItem>
+                            <SelectItem value="coffee">Coffee & Caf�</SelectItem>
                             <SelectItem value="dessert">Dessert</SelectItem>
                             <SelectItem value="healthy">Healthy & Bowls</SelectItem>
                             <SelectItem value="keto">Keto & Low-Carb</SelectItem>
@@ -1103,4 +1103,7 @@ export default function RestaurantSignup() {
     </div>
   );
 }
+
+
+
 

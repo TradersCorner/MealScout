@@ -44,7 +44,7 @@ export default function BusinessSnapshot({ business }: BusinessSnapshotProps) {
     <div>
       <Card 
         ref={cardRef}
-        className="card-light rounded-2xl hover:shadow-xl transition-all duration-300 cursor-pointer border border-subtle shadow-sm group overflow-hidden" 
+        className="card-light rounded-2xl hover:shadow-clean-lg transition-all duration-300 cursor-pointer border border-subtle shadow-clean group overflow-hidden" 
         onClick={() => setShowDealsDrawer(true)}
       >
         <CardContent className="p-0">
@@ -170,3 +170,4 @@ export default function BusinessSnapshot({ business }: BusinessSnapshotProps) {
     </div>
   );
 }
+

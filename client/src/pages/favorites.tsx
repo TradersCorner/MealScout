@@ -30,15 +30,15 @@ export default function FavoritesPage() {
 
   if (authState === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-layered)]">
+        <div className="w-10 h-10 border-4 border-[color:var(--accent-text)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="max-w-md mx-auto bg-background min-h-screen flex flex-col items-center justify-center px-6 text-center">
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen flex flex-col items-center justify-center px-6 text-center">
         <SEOHead
           title="My Favorites - MealScout | Saved Deals & Restaurants"
           description="Sign in to save your favorite restaurants and specials so you can get back to them quickly."
@@ -46,14 +46,14 @@ export default function FavoritesPage() {
           canonicalUrl="https://mealscout.us/favorites"
           noIndex={true}
         />
-        <div className="w-16 h-16 bg-orange-50 dark:bg-orange-900/30 rounded-2xl flex items-center justify-center mb-4">
-          <Heart className="w-8 h-8 text-orange-500" />
+        <div className="w-16 h-16 bg-[color:var(--accent-text)]/12 rounded-2xl flex items-center justify-center mb-4">
+          <Heart className="w-8 h-8 text-[color:var(--accent-text)]" />
         </div>
         <h1 className="text-2xl font-bold text-foreground mb-2">
           Save specials you care about
         </h1>
         <p className="text-muted-foreground mb-6">
-          Sign in to bookmark restaurants and specials and come back to them anytime. No ordering required — just keep track of what looks good.
+          Sign in to bookmark restaurants and specials and come back to them anytime. No ordering required - just keep track of what looks good.
         </p>
         <div className="flex flex-col gap-3 w-full max-w-sm">
           <Link href="/login">
@@ -72,7 +72,7 @@ export default function FavoritesPage() {
   }
 
   return (
-    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen relative pb-20">
+    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
       <SEOHead
         title="My Favorites - MealScout | Saved Deals & Restaurants"
         description="View your saved favorite restaurants and specials. Quick access to the food specials you love most. Never lose track of great dining discounts."
@@ -84,7 +84,7 @@ export default function FavoritesPage() {
         title="Favorites"
         fallbackHref="/"
         icon={Heart}
-        className="bg-white border-b border-border"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
         subtitle="Your saved specials and restaurants"
       />
 
@@ -95,7 +95,7 @@ export default function FavoritesPage() {
           <div className="space-y-4 mb-8">
             <div className="h-6 bg-muted rounded w-48 animate-pulse"></div>
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="animate-pulse">
+              <Card key={i} className="animate-pulse bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-muted rounded-full"></div>
@@ -115,12 +115,12 @@ export default function FavoritesPage() {
             </h2>
             <div className="space-y-3">
               {restaurantFavorites.map((favorite: any) => (
-                <Card key={favorite.id} className="hover:shadow-md transition-shadow">
+                <Card key={favorite.id} className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean hover:shadow-clean-lg transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4 flex-1">
-                        <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-                          <Heart className="w-6 h-6 text-orange-500" />
+                        <div className="w-12 h-12 bg-[color:var(--accent-text)]/12 rounded-full flex items-center justify-center">
+                          <Heart className="w-6 h-6 text-[color:var(--accent-text)]" />
                         </div>
                         <div className="flex-1">
                           <h3 className="font-semibold text-foreground">{favorite.restaurant.name}</h3>
@@ -151,8 +151,8 @@ export default function FavoritesPage() {
           </div>
         ) : user ? (
           <div className="text-center py-8 mb-8">
-            <div className="w-16 h-16 bg-orange-50 dark:bg-orange-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Heart className="w-8 h-8 text-orange-500" />
+            <div className="w-16 h-16 bg-[color:var(--accent-text)]/12 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Heart className="w-8 h-8 text-[color:var(--accent-text)]" />
             </div>
             <h3 className="font-semibold text-lg text-foreground mb-2">No favorite restaurants yet</h3>
             <p className="text-muted-foreground mb-4">
@@ -172,7 +172,7 @@ export default function FavoritesPage() {
           <div className="space-y-4">
             <div className="h-6 bg-muted rounded w-32 animate-pulse"></div>
             {[1, 2].map((i) => (
-              <div key={i} className="bg-white rounded-2xl overflow-hidden animate-pulse shadow-md">
+              <div key={i} className="bg-[var(--bg-card)] rounded-2xl overflow-hidden animate-pulse shadow-clean border border-[color:var(--border-subtle)]">
                 <div className="w-full h-48 bg-muted"></div>
                 <div className="p-6 space-y-3">
                   <div className="h-6 bg-muted rounded-lg w-3/4"></div>
@@ -197,8 +197,8 @@ export default function FavoritesPage() {
         {/* Empty state when no favorites at all */}
         {!loadingFavorites && !loadingDeals && !user && (
           <div className="text-center py-12">
-            <div className="w-20 h-20 bg-red-50 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Heart className="w-8 h-8 text-red-500" />
+            <div className="w-20 h-20 bg-[color:var(--status-error)]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Heart className="w-8 h-8 text-[color:var(--status-error)]" />
             </div>
             <h3 className="font-bold text-lg text-foreground mb-2">Sign in to see favorites</h3>
             <p className="text-muted-foreground mb-6">
@@ -213,9 +213,9 @@ export default function FavoritesPage() {
         )}
 
         {/* Tips Section */}
-        <div className="mt-12 p-6 bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl border border-red-100">
+        <div className="mt-12 p-6 bg-[linear-gradient(110deg,rgba(255,77,46,0.10),rgba(244,63,94,0.10))] rounded-2xl border border-[color:var(--border-subtle)]">
           <h3 className="font-bold text-foreground mb-3 flex items-center">
-            <Heart className="w-5 h-5 text-red-500 mr-2" />
+            <Heart className="w-5 h-5 text-[color:var(--accent-text)] mr-2" />
             Pro Tip
           </h3>
           <p className="text-sm text-muted-foreground">
@@ -228,3 +228,7 @@ export default function FavoritesPage() {
     </div>
   );
 }
+
+
+
+

@@ -184,21 +184,21 @@ export default function WelcomeLocationModal({
                 className="px-4"
               >
                 {isSearching ? (
-                  <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-[var(--border-strong)] border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <Search className="w-4 h-4" />
                 )}
               </Button>
             </div>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-[color:var(--status-error)]">{error}</p>}
           </div>
 
           {/* Skip option */}
           <Button
             onClick={onSkip}
             variant="ghost"
-            className="w-full text-gray-600 hover:text-gray-900"
+            className="w-full text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
           >
             Skip for now
           </Button>
@@ -213,3 +213,5 @@ export default function WelcomeLocationModal({
     </Dialog>
   );
 }
+
+

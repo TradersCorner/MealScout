@@ -122,7 +122,7 @@ export default function CategoryPage() {
 
   if (!config) {
     return (
-      <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
         <div className="text-center py-12">
           <h2 className="text-xl font-bold mb-4">Category not found</h2>
           <Link href="/">
@@ -235,9 +235,9 @@ export default function CategoryPage() {
   });
 
   return (
-    <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
+    <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
       {/* Header */}
-      <header className="px-6 py-6 bg-white border-b border-border">
+      <header className="px-6 py-6 bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean">
         <div className="flex items-center mb-6">
           <Link href="/">
             <Button
@@ -251,7 +251,7 @@ export default function CategoryPage() {
           </Link>
           <div className="flex items-center">
             <div
-              className={`w-8 h-8 bg-gradient-to-r ${config.gradient} rounded-lg flex items-center justify-center mr-3 shadow-sm`}
+              className={`w-8 h-8 bg-gradient-to-r ${config.gradient} rounded-lg flex items-center justify-center mr-3 shadow-clean`}
             >
               <config.icon className="w-3.5 h-3.5 text-white" />
             </div>
@@ -294,7 +294,7 @@ export default function CategoryPage() {
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="bg-white rounded-2xl overflow-hidden animate-pulse shadow-md"
+                className="bg-[var(--bg-card)] rounded-2xl overflow-hidden animate-pulse shadow-clean border border-[color:var(--border-subtle)]"
               >
                 <div className="w-full h-48 bg-muted"></div>
                 <div className="p-6 space-y-3">
@@ -336,3 +336,6 @@ export default function CategoryPage() {
     </div>
   );
 }
+
+
+

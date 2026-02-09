@@ -30,11 +30,11 @@ const LEVEL_NAMES = [
 ];
 
 const LEVEL_COLORS = [
-  'bg-blue-50 text-blue-700',
-  'bg-green-50 text-green-700',
+  'bg-[color:var(--accent-text)]/10 text-[color:var(--accent-text)]',
+  'bg-[color:var(--status-success)]/10 text-[color:var(--status-success)]',
   'bg-yellow-50 text-yellow-700',
   'bg-orange-50 text-orange-700',
-  'bg-red-50 text-red-700',
+  'bg-[color:var(--status-error)]/10 text-[color:var(--status-error)]',
   'bg-purple-50 text-purple-700',
 ];
 
@@ -58,7 +58,7 @@ export function TopReviewersLeaderboard() {
 
   if (error) {
     return (
-      <div className="p-4 text-center text-red-600">
+      <div className="p-4 text-center text-[color:var(--status-error)]">
         Failed to load leaderboard
       </div>
     );
@@ -73,15 +73,15 @@ export function TopReviewersLeaderboard() {
         return (
           <div
             key={reviewer.userId}
-            className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:shadow-md transition"
+            className="flex items-center gap-3 p-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg hover:shadow-clean-lg transition"
           >
             {/* Rank */}
-            <div className="text-lg font-bold text-gray-600 w-8 text-center">
+            <div className="text-lg font-bold text-[color:var(--text-muted)] w-8 text-center">
               #{index + 1}
             </div>
 
             {/* Avatar */}
-            <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
+            <div className="w-10 h-10 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
               {reviewer.profileImageUrl && (
                 <img
                   src={getOptimizedImageUrl(reviewer.profileImageUrl, "medium")}
@@ -112,10 +112,10 @@ export function TopReviewersLeaderboard() {
 
             {/* Stats */}
             <div className="text-right">
-              <p className="font-bold text-lg text-red-500">
+              <p className="font-bold text-lg text-[color:var(--status-error)]">
                 ❤️ {reviewer.totalFavorites}
               </p>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-[color:var(--text-muted)]">
                 📹 {reviewer.totalStories} stories
               </p>
             </div>
@@ -150,7 +150,7 @@ export function TrendingStoriesLeaderboard() {
 
   if (error) {
     return (
-      <div className="p-4 text-center text-red-600">
+      <div className="p-4 text-center text-[color:var(--status-error)]">
         Failed to load trending stories
       </div>
     );
@@ -168,8 +168,8 @@ export function TrendingStoriesLeaderboard() {
             onClick={() => setTimeframe(tf)}
             className={`px-3 py-1 text-sm rounded-full transition ${
               timeframe === tf
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                ? 'bg-[color:var(--accent-text)] text-white'
+                : 'bg-[var(--bg-subtle)] text-[color:var(--text-secondary)] hover:bg-[var(--bg-subtle)]'
             }`}
           >
             {tf === 'day' && '📅 Today'}
@@ -185,7 +185,7 @@ export function TrendingStoriesLeaderboard() {
         {stories.map((story: TrendingStory, index: number) => (
           <div
             key={story.id}
-            className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:shadow-md transition"
+            className="flex items-center gap-3 p-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg hover:shadow-clean-lg transition"
           >
             {/* Rank Badge */}
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-white font-bold text-lg">
@@ -195,15 +195,15 @@ export function TrendingStoriesLeaderboard() {
             {/* Story Info */}
             <div className="flex-1 min-w-0">
               <p className="font-semibold truncate">{story.title}</p>
-              <p className="text-sm text-gray-600">by {story.creatorName}</p>
+              <p className="text-sm text-[color:var(--text-muted)]">by {story.creatorName}</p>
             </div>
 
             {/* Stats */}
             <div className="text-right text-sm">
-              <p className="font-semibold text-red-500">
+              <p className="font-semibold text-[color:var(--status-error)]">
                 ❤️ {story.likeCount}
               </p>
-              <p className="text-gray-600">👁️ {story.viewCount}</p>
+              <p className="text-[color:var(--text-muted)]">👁️ {story.viewCount}</p>
             </div>
           </div>
         ))}
@@ -219,20 +219,20 @@ export function LeaderboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Top Reviewers */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
+        <div className="bg-[var(--bg-surface)] p-6 rounded-lg border border-[var(--border-subtle)]">
           <h2 className="text-xl font-bold mb-4">⭐ Top Food Critics</h2>
           <TopReviewersLeaderboard />
         </div>
 
         {/* Trending Stories */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
+        <div className="bg-[var(--bg-surface)] p-6 rounded-lg border border-[var(--border-subtle)]">
           <h2 className="text-xl font-bold mb-4">🔥 Trending Stories</h2>
           <TrendingStoriesLeaderboard />
         </div>
       </div>
 
       {/* Reviewer Level Info */}
-      <div className="mt-8 bg-blue-50 p-6 rounded-lg border border-blue-200">
+      <div className="mt-8 bg-[color:var(--accent-text)]/10 p-6 rounded-lg border border-blue-200">
         <h3 className="text-lg font-bold mb-3">📚 Reviewer Levels</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
           {LEVEL_NAMES.map((name, idx) => (
@@ -244,7 +244,7 @@ export function LeaderboardPage() {
             </div>
           ))}
         </div>
-        <p className="mt-4 text-sm text-gray-700">
+        <p className="mt-4 text-sm text-[color:var(--text-secondary)]">
           Earn <span className="font-bold">favorites</span> on your video stories
           to level up and unlock golden fork awards!
         </p>
@@ -252,3 +252,4 @@ export function LeaderboardPage() {
     </div>
   );
 }
+

@@ -269,7 +269,7 @@ export default function CustomerSignup() {
         title="Create Account"
         fallbackHref="/"
         icon={UserPlus}
-        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
 
       <main className="flex-1 px-4 py-2 max-w-md mx-auto flex flex-col justify-between">
@@ -277,7 +277,7 @@ export default function CustomerSignup() {
         <div>
           {/* Welcome Section (highly compressed) */}
           <div className="text-center mb-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 rounded-2xl mb-1 flex items-center justify-center mx-auto shadow-md ring-2 ring-white/70">
+            <div className="w-10 h-10 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 rounded-2xl mb-1 flex items-center justify-center mx-auto shadow-clean-lg ring-2 ring-white/70">
               <UserPlus className="w-5 h-5 text-white drop-shadow" />
             </div>
             <h2 className="text-lg font-bold text-[color:var(--text-primary)] mb-1 tracking-tight">
@@ -296,7 +296,7 @@ export default function CustomerSignup() {
           <div className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-2xl shadow-clean-lg p-4">
             {/* Account type selection inside form */}
             <div className="flex justify-center mb-4">
-              <div className="inline-flex rounded-full bg-[var(--bg-surface)] border border-[color:var(--border-subtle)] shadow-sm text-[11px] font-medium text-[color:var(--text-secondary)] overflow-hidden">
+              <div className="inline-flex rounded-full bg-[var(--bg-surface)] border border-[color:var(--border-subtle)] shadow-clean text-[11px] font-medium text-[color:var(--text-secondary)] overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setAccountType("diner")}
@@ -566,7 +566,7 @@ export default function CustomerSignup() {
               <Link href="/login">
                 <button
                   type="button"
-                  className="text-blue-600 underline hover:text-blue-700"
+                  className="text-[color:var(--accent-text)] underline hover:text-[color:var(--accent-text)]"
                   data-testid="button-sign-in"
                 >
                   Sign in
@@ -578,7 +578,7 @@ export default function CustomerSignup() {
             <div className="mt-3 border-t border-[color:var(--border-subtle)] pt-2 flex items-center justify-center gap-4 text-[11px] leading-tight text-[color:var(--text-muted)]">
               <div className="flex items-center space-x-1">
                 <svg
-                  className="w-3 h-3 text-green-500"
+                  className="w-3 h-3 text-[color:var(--status-success)]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -598,7 +598,7 @@ export default function CustomerSignup() {
               </div>
               <div className="flex items-center space-x-1">
                 <svg
-                  className="w-3 h-3 text-green-500"
+                  className="w-3 h-3 text-[color:var(--status-success)]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -618,7 +618,7 @@ export default function CustomerSignup() {
               </div>
               <div className="flex items-center space-x-1">
                 <svg
-                  className="w-3 h-3 text-green-500"
+                  className="w-3 h-3 text-[color:var(--status-success)]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -645,13 +645,13 @@ export default function CustomerSignup() {
           <p className="text-[11px] text-[color:var(--text-muted)]">
             By creating an account, you agree to our{" "}
             <Link href="/terms-of-service">
-              <span className="text-blue-600 underline hover:text-blue-700 cursor-pointer">
+              <span className="text-[color:var(--accent-text)] underline hover:text-[color:var(--accent-text)] cursor-pointer">
                 Terms of Service
               </span>
             </Link>{" "}
             and{" "}
             <Link href="/privacy-policy">
-              <span className="text-blue-600 underline hover:text-blue-700 cursor-pointer">
+              <span className="text-[color:var(--accent-text)] underline hover:text-[color:var(--accent-text)] cursor-pointer">
                 Privacy Policy
               </span>
             </Link>
@@ -661,3 +661,6 @@ export default function CustomerSignup() {
     </div>
   );
 }
+
+
+

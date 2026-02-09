@@ -5,3 +5,6 @@ export default function ForBars() {
   return <RoleLandingPage content={roleLandingContent.bars} />;
 }
 
+
+
+

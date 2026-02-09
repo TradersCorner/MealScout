@@ -33,28 +33,28 @@ export function VideoTranscript({
     <section className={`video-transcript ${className}`} lang={language}>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors rounded-lg border border-gray-200"
+        className="w-full flex items-center justify-between px-4 py-3 bg-[var(--bg-surface)] hover:bg-[var(--bg-subtle)] transition-colors rounded-lg border border-[var(--border-subtle)]"
         aria-expanded={isExpanded}
         aria-controls="transcript-content"
       >
-        <div className="flex items-center space-x-2 text-sm font-medium text-gray-700">
+        <div className="flex items-center space-x-2 text-sm font-medium text-[color:var(--text-secondary)]">
           <FileText className="w-4 h-4" />
           <span>Video Transcript</span>
         </div>
         {isExpanded ? (
-          <ChevronUp className="w-4 h-4 text-gray-500" />
+          <ChevronUp className="w-4 h-4 text-[color:var(--text-muted)]" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-gray-500" />
+          <ChevronDown className="w-4 h-4 text-[color:var(--text-muted)]" />
         )}
       </button>
       
       <div
         id="transcript-content"
-        className={`transcript-text mt-2 px-4 py-3 bg-white border border-gray-200 rounded-lg transition-all duration-200 overflow-hidden ${
+        className={`transcript-text mt-2 px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg transition-all duration-200 overflow-hidden ${
           isExpanded ? "max-h-[600px] overflow-y-auto" : "max-h-0 border-0 py-0"
         }`}
       >
-        <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+        <div className="text-sm text-[color:var(--text-secondary)] leading-relaxed whitespace-pre-wrap">
           {transcript}
         </div>
       </div>
@@ -76,11 +76,12 @@ export function MinimalTranscript({
   }
 
   return (
-    <section className={`minimal-transcript text-xs text-gray-600 ${className}`} lang={language}>
-      <h4 className="font-medium text-gray-700 mb-2 text-sm">Transcript</h4>
+    <section className={`minimal-transcript text-xs text-[color:var(--text-muted)] ${className}`} lang={language}>
+      <h4 className="font-medium text-[color:var(--text-secondary)] mb-2 text-sm">Transcript</h4>
       <div className="leading-relaxed whitespace-pre-wrap">
         {transcript}
       </div>
     </section>
   );
 }
+

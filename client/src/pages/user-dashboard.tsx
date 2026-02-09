@@ -140,13 +140,13 @@ export default function UserDashboard() {
   const getDealTypeColor = (type: string) => {
     switch (type) {
       case "breakfast":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-[color:var(--status-warning)]/15 text-[color:var(--status-warning)]";
       case "lunch":
-        return "bg-blue-100 text-blue-800";
+        return "bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]";
       case "dinner":
-        return "bg-purple-100 text-purple-800";
+        return "bg-[color:var(--status-error)]/12 text-[color:var(--status-error)]";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-[color:var(--border-subtle)]/50 text-[color:var(--text-secondary)]";
     }
   };
 
@@ -166,7 +166,7 @@ export default function UserDashboard() {
   }
 
   return (
-    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-background min-h-screen pb-20">
+    <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-layered)] min-h-screen pb-20">
       <SEOHead
         title="My Dashboard - MealScout | Track Your Specials & Savings"
         description="View your personal dashboard with special history, savings tracker, favorite restaurants, and personalized recommendations. Track your food special journey on MealScout."
@@ -175,7 +175,7 @@ export default function UserDashboard() {
         noIndex={true}
       />
       {/* Header */}
-      <header className="px-6 py-6 bg-gradient-to-br from-primary/10 to-primary/5 border-b border-border">
+      <header className="px-6 py-6 bg-[linear-gradient(110deg,rgba(255,77,46,0.10),rgba(245,158,11,0.08))] border-b border-[color:var(--border-subtle)] shadow-clean">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">My Dashboard</h1>
@@ -196,7 +196,7 @@ export default function UserDashboard() {
       {/* Stats Overview */}
       <div className="px-6 py-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card>
+          <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
             <CardHeader className="pb-2">
               <CardDescription className="flex items-center gap-2">
                 <Receipt className="h-4 w-4" />
@@ -208,19 +208,19 @@ export default function UserDashboard() {
             </CardHeader>
           </Card>
 
-          <Card>
+          <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
             <CardHeader className="pb-2">
               <CardDescription className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
                 Total Saved
               </CardDescription>
-              <CardTitle className="text-2xl text-green-600">
+              <CardTitle className="text-2xl text-[color:var(--status-success)]">
                 {formatCurrency(userStats?.totalSavings || 0)}
               </CardTitle>
             </CardHeader>
           </Card>
 
-          <Card>
+          <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
             <CardHeader className="pb-2">
               <CardDescription className="flex items-center gap-2">
                 <Heart className="h-4 w-4" />
@@ -232,7 +232,7 @@ export default function UserDashboard() {
             </CardHeader>
           </Card>
 
-          <Card>
+          <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
             <CardHeader className="pb-2">
               <CardDescription className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
@@ -270,7 +270,7 @@ export default function UserDashboard() {
             </div>
 
             {claimedLoading ? (
-              <Card>
+              <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
                 <CardContent className="flex items-center justify-center py-12">
                   <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
                 </CardContent>
@@ -280,7 +280,7 @@ export default function UserDashboard() {
                 {claimedDeals.slice(0, 5).map((claim) => (
                   <Card
                     key={claim.id}
-                    className="hover:shadow-md transition-shadow"
+                    className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean hover:shadow-clean-lg transition-shadow"
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
@@ -325,7 +325,7 @@ export default function UserDashboard() {
                 ))}
               </div>
             ) : (
-              <Card>
+              <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
                 <CardContent className="text-center py-12">
                   <Gift className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-2">
@@ -356,7 +356,7 @@ export default function UserDashboard() {
             </div>
 
             {nearbyLoading ? (
-              <Card>
+              <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
                 <CardContent className="flex items-center justify-center py-12">
                   <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
                 </CardContent>
@@ -366,7 +366,7 @@ export default function UserDashboard() {
                 {nearbyDeals.slice(0, 5).map((deal) => (
                   <Card
                     key={deal.id}
-                    className="hover:shadow-md transition-shadow"
+                    className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean hover:shadow-clean-lg transition-shadow"
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
@@ -417,7 +417,7 @@ export default function UserDashboard() {
                 ))}
               </div>
             ) : (
-              <Card>
+              <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
                 <CardContent className="text-center py-12">
                   <MapPin className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-2">
@@ -445,7 +445,7 @@ export default function UserDashboard() {
             </div>
 
             {favoritesLoading ? (
-              <Card>
+              <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
                 <CardContent className="flex items-center justify-center py-12">
                   <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
                 </CardContent>
@@ -455,13 +455,13 @@ export default function UserDashboard() {
                 {favoriteRestaurants.slice(0, 5).map((restaurant) => (
                   <Card
                     key={restaurant.id}
-                    className="hover:shadow-md transition-shadow"
+                    className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean hover:shadow-clean-lg transition-shadow"
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center">
-                            <Utensils className="h-6 w-6 text-primary" />
+                          <div className="w-12 h-12 bg-[color:var(--accent-text)]/12 rounded-lg flex items-center justify-center">
+                            <Utensils className="h-6 w-6 text-[color:var(--accent-text)]" />
                           </div>
                           <div>
                             <h4 className="font-semibold">{restaurant.name}</h4>
@@ -469,7 +469,7 @@ export default function UserDashboard() {
                               {restaurant.cuisineType}
                             </p>
                             <div className="flex items-center gap-1 mt-1">
-                              <Star className="h-3 w-3 text-yellow-500 fill-current" />
+                              <Star className="h-3 w-3 text-[color:var(--status-warning)] fill-current" />
                               <span className="text-xs text-muted-foreground">
                                 {(restaurant as any).averageRating?.toFixed(
                                   1
@@ -494,7 +494,7 @@ export default function UserDashboard() {
                 ))}
               </div>
             ) : (
-              <Card>
+              <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
                 <CardContent className="text-center py-12">
                   <Heart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-2">
@@ -518,7 +518,7 @@ export default function UserDashboard() {
                 {recommendedDeals.slice(0, 5).map((deal) => (
                   <Card
                     key={deal.id}
-                    className="hover:shadow-md transition-shadow"
+                    className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean hover:shadow-clean-lg transition-shadow"
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
@@ -567,7 +567,7 @@ export default function UserDashboard() {
                 ))}
               </div>
             ) : (
-              <Card>
+              <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
                 <CardContent className="text-center py-12">
                   <ChefHat className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-2">
@@ -587,3 +587,10 @@ export default function UserDashboard() {
     </div>
   );
 }
+
+
+
+
+
+
+

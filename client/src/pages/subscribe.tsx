@@ -1,4 +1,4 @@
-﻿import {
+import {
   useStripe,
   Elements,
   PaymentElement,
@@ -155,7 +155,7 @@ const PaymentForm = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="bg-white border border-border rounded-lg p-4">
+      <div className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-lg p-4 shadow-clean">
         <PaymentElement
           options={{
             layout: "tabs",
@@ -192,7 +192,9 @@ const PlanSelector = ({
     "$25/month forever for signups before April 1, 2026";
   const getPricingAmount = () => (
     <>
-      <span className="mr-2 text-xl text-gray-400 line-through">$50</span>
+      <span className="mr-2 text-xl text-[color:var(--text-muted)] line-through">
+        $50
+      </span>
       $25
     </>
   );
@@ -200,33 +202,40 @@ const PlanSelector = ({
   return (
     <div className="space-y-6">
       {/* Monthly Only */}
-      <Card className="bg-gradient-to-r from-green-50 to-teal-50 border-green-200">
+      <Card className="bg-[linear-gradient(110deg,rgba(34,197,94,0.12),rgba(20,184,166,0.12))] border-[color:var(--border-subtle)] shadow-clean">
         <CardContent className="p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">
+          <h3 className="text-xl font-bold text-[color:var(--text-primary)] mb-4 text-center">
             Monthly Plan
           </h3>
           <div className="grid grid-cols-1 gap-4">
             <div
-              className="border rounded-lg p-4 text-center border-green-500 bg-green-50 shadow-md"
+              className="border rounded-lg p-4 text-center border-[color:var(--status-success)]/40 bg-[color:var(--status-success)]/10 shadow-clean"
               onClick={() => onBillingIntervalChange("month")}
               data-testid="card-billing-monthly"
             >
-              <div className="font-semibold text-gray-900 mb-1">Monthly</div>
-              <div className="text-2xl font-bold text-green-600 mb-2">
-                <span className="line-through text-gray-400 mr-2">$50</span>$25
+              <div className="font-semibold text-[color:var(--text-primary)] mb-1">
+                Monthly
               </div>
-              <div className="text-sm text-gray-600">per month</div>
+              <div className="text-2xl font-bold text-[color:var(--status-success)] mb-2">
+                <span className="line-through text-[color:var(--text-muted)] mr-2">
+                  $50
+                </span>
+                $25
+              </div>
+              <div className="text-sm text-[color:var(--text-secondary)]">
+                per month
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Promo Code */}
-      <Card>
+      <Card className="border-[color:var(--border-subtle)] bg-[var(--bg-card)] shadow-clean">
         <CardContent className="p-6">
           <Label
             htmlFor="promoCode"
-            className="text-base font-semibold text-gray-900 mb-2 block"
+            className="text-base font-semibold text-[color:var(--text-primary)] mb-2 block"
           >
             Promo Code (Optional)
           </Label>
@@ -246,24 +255,26 @@ const PlanSelector = ({
       </Card>
 
       {/* Summary and Continue */}
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+      <Card className="bg-[linear-gradient(110deg,rgba(59,130,246,0.12),rgba(99,102,241,0.12))] border-[color:var(--border-subtle)] shadow-clean">
         <CardContent className="p-6">
           <div className="text-center">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">
+            <h3 className="text-lg font-bold text-[color:var(--text-primary)] mb-2">
               Plan Summary
             </h3>
             <div className="flex justify-center items-center space-x-2 mb-2">
-              <Check className="w-5 h-5 text-green-600" />
-              <span className="font-semibold">MealScout Premium Plan</span>
+              <Check className="w-5 h-5 text-[color:var(--status-success)]" />
+              <span className="font-semibold text-[color:var(--text-primary)]">
+                MealScout Premium Plan
+              </span>
             </div>
-            <div className="text-3xl font-bold text-blue-600 mb-2">
+            <div className="text-3xl font-bold text-[color:var(--accent-text)] mb-2">
               {getPricingAmount()}
             </div>
-            <div className="text-sm text-gray-600 mb-4">
+            <div className="text-sm text-[color:var(--text-secondary)] mb-4">
               {getPricingDisplay()}
             </div>
             {promoCode && (
-              <div className="text-sm text-green-600 mb-4">
+              <div className="text-sm text-[color:var(--status-success)] mb-4">
                 Promo code: {promoCode}
               </div>
             )}
@@ -323,21 +334,21 @@ const SubscriptionManagement = () => {
     switch (status) {
       case "active":
         return (
-          <Badge className="bg-green-500">
+          <Badge className="bg-[color:var(--status-success)]/15 text-[color:var(--status-success)]">
             <CheckCircle className="h-3 w-3 mr-1" />
             Active
           </Badge>
         );
       case "canceled":
         return (
-          <Badge variant="destructive">
+          <Badge className="bg-[color:var(--status-error)]/15 text-[color:var(--status-error)]">
             <AlertCircle className="h-3 w-3 mr-1" />
             Cancelled
           </Badge>
         );
       case "past_due":
         return (
-          <Badge variant="destructive">
+          <Badge className="bg-[color:var(--status-error)]/15 text-[color:var(--status-error)]">
             <AlertCircle className="h-3 w-3 mr-1" />
             Past Due
           </Badge>
@@ -359,7 +370,7 @@ const SubscriptionManagement = () => {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
         <CardContent className="flex items-center justify-center py-12">
           <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
         </CardContent>
@@ -369,7 +380,7 @@ const SubscriptionManagement = () => {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
@@ -400,8 +411,8 @@ const SubscriptionManagement = () => {
               </div>
 
               {subscriptionStatus.cancelAtPeriodEnd && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                  <div className="flex items-center gap-2 text-amber-800">
+                <div className="bg-[color:var(--status-warning)]/10 border border-[color:var(--status-warning)]/30 rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-[color:var(--status-warning)]">
                     <AlertCircle className="h-4 w-4" />
                     <span className="text-sm font-medium">
                       Subscription will cancel at the end of the billing period
@@ -414,19 +425,19 @@ const SubscriptionManagement = () => {
                 <h4 className="font-medium mb-2">Subscription Features</h4>
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
                     Create unlimited meal deals
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
                     Reach customers within 10km radius
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
                     Analytics and insights dashboard
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
                     Priority customer support
                   </li>
                 </ul>
@@ -481,7 +492,7 @@ const SubscriptionManagement = () => {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
         <CardHeader>
           <CardTitle>Billing History</CardTitle>
           <CardDescription>
@@ -663,7 +674,7 @@ export default function Subscribe() {
 
   if (isLoading) {
     return (
-      <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen flex items-center justify-center">
         <div
           className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"
           aria-label="Loading"
@@ -674,8 +685,8 @@ export default function Subscribe() {
 
   if (!isAuthenticated) {
     return (
-      <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
-        <Card>
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen flex items-center justify-center">
+        <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
           <CardContent className="p-6">
             <p className="text-center text-muted-foreground mb-4">
               Please log in to manage your subscription
@@ -697,14 +708,15 @@ export default function Subscribe() {
   // Show message if Stripe is not configured
   if (!stripePromise) {
     return (
-      <div className="max-w-md mx-auto bg-white min-h-screen">
+      <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen">
         <BackHeader
           title="Pricing & Subscriptions"
           fallbackHref="/restaurant-owner-dashboard"
           icon={CreditCard}
+          className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
         />
         <div className="px-4 py-6 flex items-center justify-center min-h-[50vh]">
-          <Card>
+          <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
             <CardContent className="p-6 text-center">
               <i className="fas fa-cog text-muted-foreground text-3xl mb-4"></i>
               <h2 className="text-lg font-semibold text-foreground mb-2">
@@ -736,11 +748,12 @@ export default function Subscribe() {
     hasActiveSubscription && subscriptionState.status === "selecting";
 
   return (
-    <div className="max-w-md mx-auto bg-white min-h-screen">
+    <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen">
       <BackHeader
         title="Pricing & Subscriptions"
         fallbackHref="/restaurant-owner-dashboard"
         icon={CreditCard}
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
 
       <div className="px-4 py-6">
@@ -750,16 +763,16 @@ export default function Subscribe() {
             <SubscriptionManagement />
 
             {/* Option to upgrade/change plan */}
-            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+            <Card className="bg-[linear-gradient(110deg,rgba(59,130,246,0.12),rgba(168,85,247,0.12))] border-[color:var(--border-subtle)] shadow-clean">
               <CardContent className="p-6 text-center">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                <h3 className="text-lg font-bold text-[color:var(--text-primary)] mb-2">
                   Change Plan or Use Promo Code
                 </h3>
-                <p className="text-sm text-gray-600 mb-2">
+                <p className="text-sm text-[color:var(--text-secondary)] mb-2">
                   Change your billing frequency or apply a promo code
                 </p>
-                <p className="text-xs text-blue-600 font-medium mb-4">
-                  ðŸ’¡ Use code "BETA" for free access or "TEST1" for $1 testing
+                <p className="text-xs text-[color:var(--accent-text)] font-medium mb-4">
+                  Tip: Use code "BETA" for free access or "TEST1" for $1 testing
                 </p>
                 <Button
                   onClick={showNewSubscription}
@@ -779,9 +792,9 @@ export default function Subscribe() {
           <div className="space-y-6">
             {/* If user has active subscription, show note about changing plans */}
             {hasActiveSubscription && (
-              <Card className="bg-amber-50 border-amber-200">
+              <Card className="bg-[color:var(--status-warning)]/10 border-[color:var(--status-warning)]/30 shadow-clean">
                 <CardContent className="p-4">
-                  <div className="flex items-center gap-2 text-amber-800">
+                  <div className="flex items-center gap-2 text-[color:var(--status-warning)]">
                     <AlertCircle className="h-4 w-4" />
                     <span className="text-sm font-medium">
                       You currently have an active subscription. Selecting a new
@@ -792,7 +805,7 @@ export default function Subscribe() {
               </Card>
             )}
 
-            <Card>
+            <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
               <CardHeader>
                 <CardTitle>Apply Credits</CardTitle>
                 <CardDescription>
@@ -800,7 +813,7 @@ export default function Subscribe() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="text-sm text-gray-700">
+                <div className="text-sm text-[color:var(--text-secondary)]">
                   Available: ${Number(creditBalanceData?.balance || 0).toFixed(2)}
                 </div>
                 <div className="space-y-2">
@@ -814,7 +827,7 @@ export default function Subscribe() {
                     onChange={(e) => setCreditsToApply(e.target.value)}
                     placeholder="0.00"
                   />
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-[color:var(--text-muted)]">
                     Credits apply to the upcoming invoice only.
                   </p>
                 </div>
@@ -831,7 +844,7 @@ export default function Subscribe() {
 
             {/* If user has active subscription, show option to go back to management */}
             {hasActiveSubscription && (
-              <Card>
+              <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
                 <CardContent className="p-4 text-center">
                   <Button
                     variant="outline"
@@ -885,13 +898,17 @@ export default function Subscribe() {
               options={{ clientSecret: subscriptionState.clientSecret }}
             >
               <div className="space-y-6">
-                <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+                <Card className="bg-[linear-gradient(110deg,rgba(59,130,246,0.12),rgba(99,102,241,0.12))] border-[color:var(--border-subtle)] shadow-clean">
                   <CardContent className="p-6 text-center">
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">
+                    <h3 className="text-lg font-bold text-[color:var(--text-primary)] mb-2">
                       Complete Your Payment
                     </h3>
-                    <p className="text-sm text-gray-600">
-                        MealScout Restaurant Plan - <span className="line-through">$50</span> $25/month (join before April 1, 2026)
+                    <p className="text-sm text-[color:var(--text-secondary)]">
+                      MealScout Restaurant Plan -{" "}
+                      <span className="line-through text-[color:var(--text-muted)]">
+                        $50
+                      </span>{" "}
+                      $25/month (join before April 1, 2026)
                     </p>
                   </CardContent>
                 </Card>
@@ -908,7 +925,7 @@ export default function Subscribe() {
 
         {subscriptionState.status === "error" && (
           <div className="flex items-center justify-center min-h-[50vh]">
-            <Card>
+            <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
               <CardContent className="p-6 text-center">
                 <i className="fas fa-exclamation-triangle text-destructive text-3xl mb-4"></i>
                 <h2 className="text-lg font-semibold text-foreground mb-2">
@@ -931,4 +948,7 @@ export default function Subscribe() {
     </div>
   );
 }
+
+
+
 

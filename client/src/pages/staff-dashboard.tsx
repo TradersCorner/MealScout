@@ -202,7 +202,7 @@ export default function StaffDashboard() {
   ) {
     return (
       <div className="max-w-md mx-auto mt-20 p-6 text-center">
-        <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+        <AlertCircle className="w-16 h-16 text-[color:var(--status-error)] mx-auto mb-4" />
         <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
         <p className="text-muted-foreground mb-6">
           This dashboard is only accessible to staff members and administrators.
@@ -231,9 +231,9 @@ export default function StaffDashboard() {
 
         {/* Created Account Display */}
         {createdAccount && (
-          <Card className="mb-8 border-green-500 bg-green-50">
+          <Card className="mb-8 border-green-500 bg-[color:var(--status-success)]/10">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-green-700">
+              <CardTitle className="flex items-center gap-2 text-[color:var(--status-success)]">
                 <CheckCircle2 className="w-5 h-5" />
                 Account Created Successfully
               </CardTitle>
@@ -245,7 +245,7 @@ export default function StaffDashboard() {
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <span className="font-semibold">Temp Password:</span>
-                <code className="bg-white px-3 py-1 rounded border text-sm break-all">
+                <code className="bg-[var(--bg-surface)] px-3 py-1 rounded border text-sm break-all">
                   {createdAccount.tempPassword}
                 </code>
                 <Button
@@ -609,3 +609,7 @@ export default function StaffDashboard() {
     </div>
   );
 }
+
+
+
+

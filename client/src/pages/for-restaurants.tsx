@@ -5,3 +5,6 @@ export default function ForRestaurants() {
   return <RoleLandingPage content={roleLandingContent.restaurants} />;
 }
 
+
+
+

@@ -42,30 +42,30 @@ interface ModerationEvent {
 const getSeverityColor = (severity: string) => {
   switch (severity) {
     case 'low':
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]';
     case 'medium':
-      return 'bg-yellow-100 text-yellow-800';
+      return 'bg-[color:var(--status-warning)]/15 text-[color:var(--status-warning)]';
     case 'high':
-      return 'bg-orange-100 text-orange-800';
+      return 'bg-[color:var(--status-warning)]/15 text-[color:var(--status-warning)]';
     case 'critical':
-      return 'bg-red-100 text-red-800';
+      return 'bg-[color:var(--status-error)]/12 text-[color:var(--status-error)]';
     default:
-      return 'bg-gray-100 text-gray-800';
+      return 'bg-[var(--bg-subtle)] text-[color:var(--text-primary)]';
   }
 };
 
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'open':
-      return 'bg-red-100 text-red-800';
+      return 'bg-[color:var(--status-error)]/12 text-[color:var(--status-error)]';
     case 'under-review':
-      return 'bg-yellow-100 text-yellow-800';
+      return 'bg-[color:var(--status-warning)]/15 text-[color:var(--status-warning)]';
     case 'dismissed':
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]';
     case 'action-taken':
-      return 'bg-green-100 text-green-800';
+      return 'bg-[color:var(--status-success)]/12 text-[color:var(--status-success)]';
     default:
-      return 'bg-gray-100 text-gray-800';
+      return 'bg-[var(--bg-subtle)] text-[color:var(--text-primary)]';
   }
 };
 
@@ -165,7 +165,7 @@ export default function AdminModerationEvents() {
               </TableHeader>
               <TableBody>
                 {events.map((event) => (
-                  <TableRow key={event.id} className="hover:bg-gray-50">
+                  <TableRow key={event.id} className="hover:bg-[var(--bg-surface)]">
                     <TableCell className="font-medium text-sm">{event.eventType}</TableCell>
                     <TableCell>
                       <Badge className={getSeverityColor(event.severity)}>
@@ -215,23 +215,23 @@ export default function AdminModerationEvents() {
                 {/* Event Info */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Severity</label>
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">Severity</label>
                     <Badge className={`${getSeverityColor(selectedEvent.severity)} mt-1`}>
                       {selectedEvent.severity.toUpperCase()}
                     </Badge>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Status</label>
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">Status</label>
                     <Badge className={`${getStatusColor(selectedEvent.status)} mt-1`}>
                       {selectedEvent.status.toUpperCase()}
                     </Badge>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Reason</label>
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">Reason</label>
                     <p className="text-sm mt-1">{selectedEvent.reason}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Created</label>
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">Created</label>
                     <p className="text-sm mt-1">{new Date(selectedEvent.createdAt).toLocaleString()}</p>
                   </div>
                 </div>
@@ -239,14 +239,14 @@ export default function AdminModerationEvents() {
                 {/* Description */}
                 {selectedEvent.description && (
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Description</label>
-                    <p className="text-sm mt-2 p-3 bg-gray-50 rounded border">{selectedEvent.description}</p>
+                    <label className="text-sm font-medium text-[color:var(--text-muted)]">Description</label>
+                    <p className="text-sm mt-2 p-3 bg-[var(--bg-subtle)] rounded border border-[var(--border-subtle)]">{selectedEvent.description}</p>
                   </div>
                 )}
 
                 {/* Review Actions */}
-                <div className="space-y-3 p-3 bg-blue-50 border border-blue-200 rounded">
-                  <label className="text-sm font-medium text-gray-700">Take Action</label>
+                <div className="space-y-3 p-3 bg-[color:var(--accent-text)]/10 border border-[color:var(--accent-text)]/30 rounded">
+                  <label className="text-sm font-medium text-[color:var(--text-muted)]">Take Action</label>
                   <div className="flex gap-2 flex-wrap">
                     <Button
                       size="sm"
@@ -302,3 +302,7 @@ export default function AdminModerationEvents() {
     </div>
   );
 }
+
+
+
+

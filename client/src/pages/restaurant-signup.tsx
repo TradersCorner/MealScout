@@ -1,4 +1,4 @@
-import { useReducer, useState, useEffect, useMemo } from "react";
+﻿import { useReducer, useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -31,16 +31,13 @@ import {
   Mail,
   Eye,
   EyeOff,
-  CheckCircle,
-  Upload,
   ArrowLeft,
   ArrowRight,
+  Store,
 } from "lucide-react";
 import DocumentUpload from "@/components/document-upload";
 import { BackHeader } from "@/components/back-header";
-import { Store } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
-import mealScoutLogo from "@assets/meal-scout-icon.png";
 import { HOST_ONBOARDING_COPY as COPY } from "@/copy/hostOnboarding.copy";
 import {
   PASSWORD_REGEX,
@@ -202,7 +199,7 @@ export default function RestaurantSignup() {
     }
   }, [isAuthenticated, user, setLocation]);
 
-  // Hosts/event coordinators are not restaurants/food trucks – send them to host tools
+  // Hosts/event coordinators are not restaurants/food trucks - send them to host tools
   useEffect(() => {
     if (!isAuthenticated || !user || !hostCheckDone) return;
     if (user.userType === "customer" && isHost) {
@@ -633,732 +630,200 @@ export default function RestaurantSignup() {
           className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
         />
 
-        <div className="px-3 py-3 max-w-4xl mx-auto">
-          {/* Compact hero so the form stays above the fold */}
-          <div className="text-center mb-3">
-            <div className="inline-flex items-center justify-center px-2 py-0.5 mb-1 rounded-full bg-[var(--bg-surface-muted)] border border-[color:var(--border-subtle)] text-[10px] font-medium text-[color:var(--text-secondary)] uppercase tracking-wide">
-              {COPY.unauth.hero.badge}
-            </div>
-            <div className="w-10 h-10 mb-1 flex items-center justify-center mx-auto rounded-2xl bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 shadow-md">
-              <Store className="w-5 h-5 text-white" />
-            </div>
-            <h2 className="text-base font-bold text-[color:var(--text-primary)] mb-1">
-              {COPY.unauth.hero.title}
-            </h2>
-            <p className="hidden sm:block text-[color:var(--text-secondary)] text-xs leading-snug max-w-xl mx-auto mb-2">
-              {COPY.unauth.hero.subtitle}
-            </p>
-            {/* Authentication Section */}
-            <div className="max-w-md mx-auto" data-signup-section>
-              <Card className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean-lg">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-center space-x-4 mb-6">
-                    <button
-                      data-testid="button-signup-toggle"
-                      onClick={() => setAuthMode("signup")}
-                      className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                        authMode === "signup"
-                          ? "bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)]"
-                          : "bg-[var(--bg-surface)] text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-muted)]"
-                      }`}
-                    >
-                      {COPY.unauth.toggles.signup}
-                    </button>
-                    <button
-                      data-testid="button-login-toggle"
-                      onClick={() => setAuthMode("login")}
-                      className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                        authMode === "login"
-                          ? "bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)]"
-                          : "bg-[var(--bg-surface)] text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-muted)]"
-                      }`}
-                    >
-                      {COPY.unauth.toggles.login}
-                    </button>
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+          <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+            <Card className="border-[color:var(--border-subtle)] bg-[var(--bg-card)] shadow-clean-lg">
+              <CardContent className="p-6 sm:p-8">
+                <div className="inline-flex items-center rounded-full border border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text-secondary)]">
+                  {COPY.unauth.hero.badge}
+                </div>
+                <h1 className="mt-4 text-3xl font-black leading-tight text-[color:var(--text-primary)] sm:text-4xl">
+                  {COPY.unauth.hero.title}
+                </h1>
+                <p className="mt-3 max-w-xl text-sm leading-relaxed text-[color:var(--text-secondary)] sm:text-base">
+                  {COPY.unauth.hero.subtitle}
+                </p>
+                <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-xs text-[color:var(--text-secondary)]">
+                    {COPY.benefits.compact.local.title}
                   </div>
-
-                  {/* Google OAuth Button */}
-                  <button
-                    data-testid="button-google-signin"
-                    onClick={() =>
-                      (window.location.href = "/api/auth/google/restaurant")
-                    }
-                    className="w-full bg-[var(--bg-card)] border border-[color:var(--border-subtle)] text-[color:var(--text-primary)] px-6 py-3 rounded-lg font-medium hover:bg-[var(--bg-surface-muted)] transition-colors duration-200 flex items-center justify-center space-x-3 mb-4 shadow-sm"
-                  >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24">
-                      <path
-                        fill="#4285f4"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      />
-                      <path
-                        fill="#34a853"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      />
-                      <path
-                        fill="#fbbc05"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                      />
-                      <path
-                        fill="#ea4335"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                      />
-                    </svg>
-                    <span>{COPY.unauth.oauth.button}</span>
-                  </button>
-
-                  <div className="relative mb-4">
-                    <hr className="border-[color:var(--border-subtle)]" />
-                    <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-[var(--bg-card)] px-3 text-[color:var(--text-secondary)] text-sm">
-                      {COPY.unauth.divider.or}
-                    </span>
+                  <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-xs text-[color:var(--text-secondary)]">
+                    {COPY.benefits.compact.allDay.title}
                   </div>
-
-                  {/* Email/Password Forms */}
-                  {authMode === "signup" ? (
-                    <Form {...signupForm}>
-                      <form
-                        onSubmit={signupForm.handleSubmit(onSignup)}
-                        className="space-y-4"
-                      >
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={signupForm.control}
-                            name="firstName"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>
-                                  {COPY.forms.signup.firstNameLabel}
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    data-testid="input-first-name"
-                                    autoComplete="given-name"
-                                    placeholder={
-                                      COPY.forms.signup.firstNamePlaceholder
-                                    }
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={signupForm.control}
-                            name="lastName"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>
-                                  {COPY.forms.signup.lastNameLabel}
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    data-testid="input-last-name"
-                                    autoComplete="family-name"
-                                    placeholder={
-                                      COPY.forms.signup.lastNamePlaceholder
-                                    }
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                        <FormField
-                          control={signupForm.control}
-                          name="email"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>
-                                {COPY.forms.signup.emailLabel}
-                              </FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-secondary)] w-4 h-4" />
-                                  <Input
-                                    data-testid="input-email"
-                                    type="email"
-                                    autoComplete="email"
-                                    placeholder={
-                                      COPY.forms.signup.emailPlaceholder
-                                    }
-                                    className="pl-10"
-                                    {...field}
-                                  />
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={signupForm.control}
-                          name="phone"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>
-                                {COPY.forms.signup.phoneLabel}
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  data-testid="input-phone"
-                                  type="tel"
-                                  autoComplete="tel"
-                                  placeholder={
-                                    COPY.forms.signup.phonePlaceholder
-                                  }
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={signupForm.control}
-                          name="password"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>
-                                {COPY.forms.signup.passwordLabel}
-                              </FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <Input
-                                    data-testid="input-password"
-                                    type={showPassword ? "text" : "password"}
-                                    autoComplete="new-password"
-                                    placeholder={
-                                      COPY.forms.signup.passwordPlaceholder
-                                    }
-                                    className="pr-10"
-                                    {...field}
-                                  />
-                                  <button
-                                    type="button"
-                                    data-testid="button-toggle-password"
-                                    onClick={() =>
-                                      setShowPassword(!showPassword)
-                                    }
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-secondary)] hover:text-[color:var(--text-secondary)]"
-                                  >
-                                    {showPassword ? (
-                                      <EyeOff className="w-4 h-4" />
-                                    ) : (
-                                      <Eye className="w-4 h-4" />
-                                    )}
-                                  </button>
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={signupForm.control}
-                          name="confirmPassword"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>
-                                {COPY.forms.signup.confirmPasswordLabel}
-                              </FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <Input
-                                    data-testid="input-confirm-password"
-                                    type={
-                                      showConfirmPassword ? "text" : "password"
-                                    }
-                                    autoComplete="new-password"
-                                    placeholder={
-                                      COPY.forms.signup
-                                        .confirmPasswordPlaceholder
-                                    }
-                                    className="pr-10"
-                                    {...field}
-                                  />
-                                  <button
-                                    type="button"
-                                    data-testid="button-toggle-confirm-password"
-                                    onClick={() =>
-                                      setShowConfirmPassword(
-                                        !showConfirmPassword
-                                      )
-                                    }
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-secondary)] hover:text-[color:var(--text-secondary)]"
-                                  >
-                                    {showConfirmPassword ? (
-                                      <EyeOff className="w-4 h-4" />
-                                    ) : (
-                                      <Eye className="w-4 h-4" />
-                                    )}
-                                  </button>
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button
-                          data-testid="button-create-account"
-                          type="submit"
-                          className="w-full action-primary hover:bg-[color:var(--action-hover)]"
-                          disabled={signupMutation.isPending}
-                        >
-                          {signupMutation.isPending
-                            ? COPY.unauth.signupCta.buttonPending
-                            : COPY.unauth.signupCta.buttonIdle}
-                        </Button>
-                      </form>
-                    </Form>
-                  ) : (
-                    <Form {...loginForm}>
-                      <form
-                        onSubmit={loginForm.handleSubmit(onLogin)}
-                        className="space-y-4"
-                      >
-                        <FormField
-                          control={loginForm.control}
-                          name="email"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>
-                                {COPY.forms.login.emailLabel}
-                              </FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-secondary)] w-4 h-4" />
-                                  <Input
-                                    data-testid="input-login-email"
-                                    type="email"
-                                    autoComplete="username"
-                                    placeholder={
-                                      COPY.forms.login.emailPlaceholder
-                                    }
-                                    className="pl-10"
-                                    {...field}
-                                  />
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={loginForm.control}
-                          name="password"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>
-                                {COPY.forms.login.passwordLabel}
-                              </FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <Input
-                                    data-testid="input-login-password"
-                                    type={
-                                      showLoginPassword ? "text" : "password"
-                                    }
-                                    autoComplete="current-password"
-                                    placeholder={
-                                      COPY.forms.login.passwordPlaceholder
-                                    }
-                                    className="pr-10"
-                                    {...field}
-                                  />
-                                  <button
-                                    type="button"
-                                    data-testid="button-toggle-login-password"
-                                    onClick={() =>
-                                      setShowLoginPassword(!showLoginPassword)
-                                    }
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-secondary)] hover:text-[color:var(--text-secondary)]"
-                                  >
-                                    {showLoginPassword ? (
-                                      <EyeOff className="w-4 h-4" />
-                                    ) : (
-                                      <Eye className="w-4 h-4" />
-                                    )}
-                                  </button>
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button
-                          data-testid="button-signin"
-                          type="submit"
-                          className="w-full action-primary hover:bg-[color:var(--action-hover)]"
-                          disabled={loginMutation.isPending}
-                        >
-                          {loginMutation.isPending
-                            ? COPY.unauth.loginCta.buttonPending
-                            : COPY.unauth.loginCta.buttonIdle}
-                        </Button>
-                        <div className="text-center mt-4">
-                          <Link href="/forgot-password">
-                            <span
-                              className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)] font-medium cursor-pointer text-sm"
-                              data-testid="link-forgot-password"
-                            >
-                              {COPY.unauth.forgotPassword}
-                            </span>
-                          </Link>
-                        </div>
-                      </form>
-                    </Form>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* Key Benefits */}
-          <div className="grid md:grid-cols-3 gap-8 mb-16">
-            <div className="bg-[var(--bg-card)] rounded-2xl p-8 shadow-clean-lg border border-[color:var(--border-subtle)] transition-all duration-300">
-              <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mb-6 shadow-lg">
-                <svg
-                  className="w-8 h-8 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                  />
-                </svg>
-              </div>
-              <h3 className="font-bold text-[color:var(--text-primary)] text-2xl mb-4">
-                Reach More Customers
-              </h3>
-              <p className="text-[color:var(--text-secondary)] text-lg leading-relaxed mb-4">
-                Target hungry customers within walking distance of your
-                restaurant when they're actively looking for deals.
-              </p>
-              <ul className="text-[color:var(--text-secondary)] space-y-2">
-                <li className="flex items-center">
-                  <svg
-                    className="w-4 h-4 text-green-500 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  Hyper-local targeting
-                </li>
-                <li className="flex items-center">
-                  <svg
-                    className="w-4 h-4 text-green-500 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  Peak hunger times
-                </li>
-                <li className="flex items-center">
-                  <svg
-                    className="w-4 h-4 text-green-500 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  Mobile-first audience
-                </li>
-              </ul>
-            </div>
-
-            <div className="bg-[var(--bg-card)] rounded-2xl p-8 shadow-clean-lg border border-[color:var(--border-subtle)] transition-all duration-300">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-6 shadow-lg">
-                <svg
-                  className="w-8 h-8 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                  />
-                </svg>
-              </div>
-              <h3 className="font-bold text-[color:var(--text-primary)] text-2xl mb-4">
-                Fill Slow Periods
-              </h3>
-              <p className="text-[color:var(--text-secondary)] text-lg leading-relaxed mb-4">
-                Boost revenue during off-peak hours with targeted lunch and
-                dinner deals that bring customers when you need them most.
-              </p>
-              <ul className="text-[color:var(--text-secondary)] space-y-2">
-                <li className="flex items-center">
-                  <svg
-                    className="w-4 h-4 text-green-500 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  Time-based targeting
-                </li>
-                <li className="flex items-center">
-                  <svg
-                    className="w-4 h-4 text-green-500 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  Flexible deal scheduling
-                </li>
-                <li className="flex items-center">
-                  <svg
-                    className="w-4 h-4 text-green-500 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  Revenue optimization
-                </li>
-              </ul>
-            </div>
-
-            <div className="bg-[var(--bg-card)] rounded-2xl p-8 shadow-clean-lg border border-[color:var(--border-subtle)] transition-all duration-300">
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mb-6 shadow-lg">
-                <svg
-                  className="w-8 h-8 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                  />
-                </svg>
-              </div>
-              <h3 className="font-bold text-[color:var(--text-primary)] text-2xl mb-4">
-                Track Performance
-              </h3>
-              <p className="text-[color:var(--text-secondary)] text-lg leading-relaxed mb-4">
-                Get detailed analytics on your deal performance and optimize
-                your campaigns for maximum ROI and customer acquisition.
-              </p>
-              <ul className="text-[color:var(--text-secondary)] space-y-2">
-                <li className="flex items-center">
-                  <svg
-                    className="w-4 h-4 text-green-500 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  Real-time analytics
-                </li>
-                <li className="flex items-center">
-                  <svg
-                    className="w-4 h-4 text-green-500 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  Customer insights
-                </li>
-                <li className="flex items-center">
-                  <svg
-                    className="w-4 h-4 text-green-500 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  ROI tracking
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Pricing Card */}
-          <div className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-3xl p-12 shadow-clean-lg text-center mb-16">
-            <h3 className="font-bold text-[color:var(--text-primary)] text-3xl mb-6">
-              {COPY.pricing.hero.title}
-            </h3>
-
-            {/* Single pricing tier */}
-            <div className="max-w-2xl mx-auto">
-                <div className="bg-[var(--bg-surface)] rounded-2xl p-8 border border-[color:var(--border-subtle)] mb-8">
-                  <div className="flex items-center justify-center mb-6">
-                    <span className="text-4xl font-semibold text-[color:var(--text-secondary)] line-through mr-3">
-                      {COPY.pricing.hero.originalPrice}
-                    </span>
-                    <span className="text-6xl font-bold text-[color:var(--action-primary)]">
-                      {COPY.pricing.hero.monthlyPrice}
-                    </span>
-                    <span className="text-[color:var(--text-secondary)] text-2xl ml-2">
-                      {COPY.pricing.hero.monthlySuffix}
-                    </span>
+                  <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-xs text-[color:var(--text-secondary)]">
+                    {COPY.benefits.compact.track.title}
                   </div>
-                  <p className="text-[color:var(--text-secondary)] text-xl mb-6">
-                    {COPY.pricing.hero.coreLine}
-                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-[color:var(--border-subtle)] bg-[var(--bg-card)] shadow-clean-lg" data-signup-section>
+              <CardContent className="p-6">
+                <div className="mb-5 grid grid-cols-2 rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface)] p-1">
+                  <Button
+                    type="button"
+                    data-testid="button-signup-toggle"
+                    onClick={() => setAuthMode("signup")}
+                    className={authMode === "signup" ? "action-primary" : ""}
+                    variant={authMode === "signup" ? "default" : "ghost"}
+                  >
+                    {COPY.unauth.toggles.signup}
+                  </Button>
+                  <Button
+                    type="button"
+                    data-testid="button-login-toggle"
+                    onClick={() => setAuthMode("login")}
+                    className={authMode === "login" ? "action-primary" : ""}
+                    variant={authMode === "login" ? "default" : "ghost"}
+                  >
+                    {COPY.unauth.toggles.login}
+                  </Button>
                 </div>
 
-              <h4 className="font-bold text-[color:var(--text-primary)] text-xl mb-6">
-                {COPY.pricing.hero.everythingIncludedTitle}
-              </h4>
-              <div className="grid md:grid-cols-2 gap-4 text-left">
-                <div className="space-y-3">
-                  {COPY.pricing.hero.everythingIncludedBullets
-                    .slice(0, 4)
-                    .map((item) => (
-                      <div key={item} className="flex items-center">
-                        <svg
-                          className="w-5 h-5 text-green-500 mr-3"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                        <span className="text-[color:var(--text-secondary)]">{item}</span>
+                <Button
+                  type="button"
+                  data-testid="button-google-signin"
+                  variant="outline"
+                  onClick={() => (window.location.href = "/api/auth/google/restaurant")}
+                  className="mb-4 w-full justify-center gap-2 border-[color:var(--border-subtle)]"
+                >
+                  <svg className="h-5 w-5" viewBox="0 0 24 24">
+                    <path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                    <path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                  </svg>
+                  {COPY.unauth.oauth.button}
+                </Button>
+
+                <div className="relative mb-4">
+                  <div className="border-t border-[color:var(--border-subtle)]" />
+                  <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-[var(--bg-card)] px-3 text-xs text-[color:var(--text-secondary)]">
+                    {COPY.unauth.divider.or}
+                  </span>
+                </div>
+
+                {authMode === "signup" ? (
+                  <Form {...signupForm}>
+                    <form onSubmit={signupForm.handleSubmit(onSignup)} className="space-y-4">
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <FormField control={signupForm.control} name="firstName" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{COPY.forms.signup.firstNameLabel}</FormLabel>
+                            <FormControl>
+                              <Input data-testid="input-first-name" autoComplete="given-name" placeholder={COPY.forms.signup.firstNamePlaceholder} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={signupForm.control} name="lastName" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{COPY.forms.signup.lastNameLabel}</FormLabel>
+                            <FormControl>
+                              <Input data-testid="input-last-name" autoComplete="family-name" placeholder={COPY.forms.signup.lastNamePlaceholder} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
                       </div>
-                    ))}
-                </div>
-                <div className="space-y-3">
-                  {COPY.pricing.hero.everythingIncludedBullets
-                    .slice(4)
-                    .map((item) => (
-                      <div key={item} className="flex items-center">
-                        <svg
-                          className="w-5 h-5 text-green-500 mr-3"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                        <span className="text-[color:var(--text-secondary)]">{item}</span>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {/* Final CTA */}
-          <div className="text-center">
-            <h3 className="text-3xl font-bold text-[color:var(--text-primary)] mb-4">
-              {COPY.unauth.finalCta.title}
-            </h3>
-            <p className="text-[color:var(--text-secondary)] text-lg mb-8 max-w-2xl mx-auto">
-              {COPY.unauth.finalCta.subtitle}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <button
-                onClick={() => {
-                  const signupSection = document.querySelector(
-                    "[data-signup-section]"
-                  );
-                  if (signupSection) {
-                    signupSection.scrollIntoView({ behavior: "smooth" });
-                  }
-                }}
-                className="action-primary hover:bg-[color:var(--action-hover)] text-white px-10 py-4 rounded-2xl font-bold text-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
-              >
-                {COPY.unauth.finalCta.primaryButton}
-              </button>
-              <button
-                onClick={() => {
-                  const signupSection = document.querySelector(
-                    "[data-signup-section]"
-                  );
-                  if (signupSection) {
-                    signupSection.scrollIntoView({ behavior: "smooth" });
-                    // Switch to login mode
-                    setAuthMode("login");
-                  }
-                }}
-                className="border border-[color:var(--border-subtle)] hover:bg-[var(--bg-surface-muted)] text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] px-10 py-4 rounded-2xl font-bold text-xl transition-all duration-200"
-              >
-                {COPY.unauth.finalCta.secondaryButton}
-              </button>
-            </div>
+                      <FormField control={signupForm.control} name="email" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{COPY.forms.signup.emailLabel}</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--text-secondary)]" />
+                              <Input data-testid="input-email" type="email" autoComplete="email" placeholder={COPY.forms.signup.emailPlaceholder} className="pl-9" {...field} />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+
+                      <FormField control={signupForm.control} name="phone" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{COPY.forms.signup.phoneLabel}</FormLabel>
+                          <FormControl>
+                            <Input data-testid="input-phone" type="tel" autoComplete="tel" placeholder={COPY.forms.signup.phonePlaceholder} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+
+                      <FormField control={signupForm.control} name="password" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{COPY.forms.signup.passwordLabel}</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input data-testid="input-password" type={showPassword ? "text" : "password"} autoComplete="new-password" placeholder={COPY.forms.signup.passwordPlaceholder} className="pr-10" {...field} />
+                              <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--text-secondary)]" onClick={() => setShowPassword(!showPassword)}>
+                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+
+                      <FormField control={signupForm.control} name="confirmPassword" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{COPY.forms.signup.confirmPasswordLabel}</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input data-testid="input-confirm-password" type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" placeholder={COPY.forms.signup.confirmPasswordPlaceholder} className="pr-10" {...field} />
+                              <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--text-secondary)]" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+
+                      <Button type="submit" className="w-full action-primary hover:bg-[color:var(--action-hover)]" disabled={signupMutation.isPending} data-testid="button-signup-submit">
+                        {signupMutation.isPending ? COPY.unauth.signupCta.buttonPending : COPY.unauth.signupCta.buttonIdle}
+                      </Button>
+                    </form>
+                  </Form>
+                ) : (
+                  <Form {...loginForm}>
+                    <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
+                      <FormField control={loginForm.control} name="email" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{COPY.forms.login.emailLabel}</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--text-secondary)]" />
+                              <Input data-testid="input-login-email" type="email" autoComplete="email" placeholder={COPY.forms.login.emailPlaceholder} className="pl-9" {...field} />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+
+                      <FormField control={loginForm.control} name="password" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{COPY.forms.login.passwordLabel}</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input data-testid="input-login-password" type={showLoginPassword ? "text" : "password"} autoComplete="current-password" placeholder={COPY.forms.login.passwordPlaceholder} className="pr-10" {...field} />
+                              <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--text-secondary)]" onClick={() => setShowLoginPassword(!showLoginPassword)}>
+                                {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+
+                      <Button type="submit" className="w-full action-primary hover:bg-[color:var(--action-hover)]" disabled={loginMutation.isPending} data-testid="button-login-submit">
+                        {loginMutation.isPending ? COPY.unauth.loginCta.buttonPending : COPY.unauth.loginCta.buttonIdle}
+                      </Button>
+                    </form>
+                  </Form>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
@@ -1380,1017 +845,240 @@ export default function RestaurantSignup() {
         className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
       />
 
-      <div className="px-6 py-12 max-w-4xl mx-auto">
-        {/* Hero Section */}
-        <div className="text-center mb-16">
-          <div className="w-32 h-32 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 rounded-3xl mb-8 flex items-center justify-center mx-auto relative overflow-hidden shadow-2xl">
-            <div className="absolute inset-0 bg-black/10"></div>
-            <svg
-              className="w-16 h-16 text-white relative z-10 drop-shadow-lg"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 104 0 2 2 0 00-4 0zm6 0a2 2 0 104 0 2 2 0 00-4 0z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <div className="absolute -top-2 -left-2 w-16 h-16 bg-white/20 rounded-full blur-xl"></div>
-            <div className="absolute -bottom-3 -right-3 w-20 h-20 bg-white/20 rounded-full blur-xl"></div>
-          </div>
-          <h2
-            className="text-4xl font-bold text-[color:var(--text-primary)] mb-4"
-            data-testid="text-hero-title"
-          >
-            {mainHero.title}
-          </h2>
-          <p
-            className="text-[color:var(--text-secondary)] text-xl leading-relaxed max-w-2xl mx-auto"
-            data-testid="text-hero-subtitle"
-          >
-            {mainHero.subtitle}
-          </p>
-        </div>
-
-        {/* Benefits */}
-        <div className="grid md:grid-cols-3 gap-6 mb-16">
-          <div className="bg-[var(--bg-card)] rounded-2xl p-6 shadow-clean-lg border border-[color:var(--border-subtle)] transition-all duration-300">
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-4 shadow-lg">
-              <svg
-                className="w-7 h-7 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+        <Card className="mb-6 border-[color:var(--border-subtle)] bg-[var(--bg-card)] shadow-clean-lg">
+          <CardContent className="p-6">
+            <div className="inline-flex items-center rounded-full border border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text-secondary)]">
+              {COPY.main.hero.badge}
             </div>
-            <h3
-              className="font-bold text-[color:var(--text-primary)] text-lg mb-2"
-              data-testid="text-benefit-local-title"
-            >
-              {COPY.benefits.compact.local.title}
-            </h3>
-            <p
-              className="text-[color:var(--text-secondary)] leading-relaxed"
-              data-testid="text-benefit-local-desc"
-            >
-              {COPY.benefits.compact.local.desc}
+            <h1 className="mt-3 text-2xl font-black leading-tight text-[color:var(--text-primary)] sm:text-3xl">
+              {mainHero.title}
+            </h1>
+            <p className="mt-2 text-sm text-[color:var(--text-secondary)] sm:text-base">
+              {mainHero.subtitle}
             </p>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="bg-[var(--bg-card)] rounded-2xl p-6 shadow-clean-lg border border-[color:var(--border-subtle)] transition-all duration-300">
-            <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mb-4 shadow-lg">
-              <svg
-                className="w-7 h-7 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <h3
-              className="font-bold text-[color:var(--text-primary)] text-lg mb-2"
-              data-testid="text-benefit-meals-title"
-            >
-              {COPY.benefits.compact.allDay.title}
-            </h3>
-            <p
-              className="text-[color:var(--text-secondary)] leading-relaxed"
-              data-testid="text-benefit-meals-desc"
-            >
-              {COPY.benefits.compact.allDay.desc}
-            </p>
+        <div className="mb-5 flex items-center justify-center gap-4">
+          <div className={`flex items-center gap-2 rounded-full border px-3 py-1 text-sm ${currentStep === "restaurant" ? "border-[color:var(--action-primary)] bg-[var(--bg-surface-muted)] text-[color:var(--action-primary)]" : "border-[color:var(--border-subtle)] text-[color:var(--text-secondary)]"}`}>
+            <span className="font-bold">1</span>
+            <span>{COPY.steps.businessDetails}</span>
           </div>
-
-          <div className="bg-[var(--bg-card)] rounded-2xl p-6 shadow-clean-lg border border-[color:var(--border-subtle)] transition-all duration-300">
-            <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mb-4 shadow-lg">
-              <svg
-                className="w-7 h-7 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                />
-              </svg>
-            </div>
-            <h3
-              className="font-bold text-[color:var(--text-primary)] text-lg mb-2"
-              data-testid="text-benefit-track-title"
-            >
-              {COPY.benefits.compact.track.title}
-            </h3>
-            <p
-              className="text-[color:var(--text-secondary)] leading-relaxed"
-              data-testid="text-benefit-track-desc"
-            >
-              {COPY.benefits.compact.track.desc}
-            </p>
+          <div className="h-px w-8 bg-[color:var(--border-subtle)]" />
+          <div className={`flex items-center gap-2 rounded-full border px-3 py-1 text-sm ${currentStep === "verification" ? "border-[color:var(--action-primary)] bg-[var(--bg-surface-muted)] text-[color:var(--action-primary)]" : "border-[color:var(--border-subtle)] text-[color:var(--text-secondary)]"}`}>
+            <span className="font-bold">2</span>
+            <span>{COPY.steps.businessVerification}</span>
           </div>
         </div>
 
-        {/* Steps Progress Indicator */}
-        <div className="mb-8">
-          <div className="flex items-center justify-center space-x-4 mb-4">
-            <div
-              className={`flex items-center space-x-2 ${
-                currentStep === "restaurant"
-                  ? "text-[color:var(--action-primary)]"
-                  : "text-emerald-600"
-              }`}
-            >
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  currentStep === "restaurant"
-                    ? "bg-[var(--bg-surface-muted)] border-2 border-[color:var(--action-primary)]"
-                    : "bg-emerald-100"
-                }`}
-              >
-                {currentStep === "verification" ? (
-                  <CheckCircle className="w-5 h-5" />
-                ) : (
-                  <span className="font-bold">1</span>
-                )}
-              </div>
-              <span className="font-medium">{COPY.steps.businessDetails}</span>
-            </div>
-            <div className="w-16 h-0.5 bg-[color:var(--border-subtle)]"></div>
-            <div
-              className={`flex items-center space-x-2 ${
-                currentStep === "verification"
-                  ? "text-[color:var(--action-primary)]"
-                  : "text-[color:var(--text-secondary)]"
-              }`}
-            >
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  currentStep === "verification"
-                    ? "bg-[var(--bg-surface-muted)] border-2 border-[color:var(--action-primary)]"
-                    : "bg-[var(--bg-surface)]"
-                }`}
-              >
-                <span className="font-bold">2</span>
-              </div>
-              <span className="font-medium">
-                {COPY.steps.businessVerification}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Restaurant Form */}
         {currentStep === "restaurant" && (
-          <div className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-2xl shadow-clean-lg p-8">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit, handleRestaurantInvalid)}
-                className="space-y-8"
-              >
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel
-                        className="text-lg font-semibold text-[color:var(--text-primary)]"
-                        data-testid="label-business-name"
-                      >
-                        {COPY.forms.restaurant.nameLabel}
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder={COPY.forms.restaurant.namePlaceholder}
-                          {...field}
-                          className="py-4 px-4 text-lg border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
-                          data-testid="input-business-name"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="businessType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel
-                        className="text-lg font-semibold text-[color:var(--text-primary)]"
-                        data-testid="label-business-type"
-                      >
-                        {COPY.forms.restaurant.businessTypeLabel}
-                      </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger
-                            className="py-4 px-4 text-lg border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md"
-                            data-testid="select-business-type"
-                          >
-                            <SelectValue
-                              placeholder={
-                                COPY.forms.restaurant.businessTypePlaceholder
-                              }
-                            />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="food_truck">Food Truck</SelectItem>
-                          <SelectItem value="restaurant">Restaurant</SelectItem>
-                          <SelectItem value="bar">Bar</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {selectedBusinessType === "food_truck" && (
-                  <div className="space-y-3 rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] p-4">
-                    <div>
-                      <h3 className="text-base font-semibold text-[color:var(--text-primary)]">
-                        {COPY.forms.restaurant.claimTitle}
-                      </h3>
-                      <p className="text-sm text-[color:var(--text-secondary)]">
-                        {COPY.forms.restaurant.claimDescription}
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-[color:var(--text-secondary)]">
-                        {COPY.forms.restaurant.claimSearchLabel}
-                      </label>
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <Input
-                          value={claimQuery}
-                          onChange={(e) => setClaimQuery(e.target.value)}
-                          placeholder={
-                            COPY.forms.restaurant.claimSearchPlaceholder
-                          }
-                          className="py-3 px-4 text-base border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
-                          data-testid="input-claim-search"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleClaimSearch}
-                          disabled={claimLoading}
-                          data-testid="button-claim-search"
-                        >
-                          {COPY.forms.restaurant.claimSearchButton}
-                        </Button>
-                      </div>
-                    </div>
-
-                    {claimSelection && (
-                      <div className="rounded-lg border border-[color:var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-sm">
-                        <div className="font-semibold text-[color:var(--text-primary)]">
-                          {COPY.forms.restaurant.claimSelectedLabel}
-                        </div>
-                        <div className="text-[color:var(--text-secondary)]">
-                          {claimSelection.name}
-                        </div>
-                        <div className="text-xs text-[color:var(--text-secondary)]">
-                          {claimSelection.address}
-                          {claimSelection.city ? `, ${claimSelection.city}` : ""}
-                          {claimSelection.state
-                            ? `, ${claimSelection.state}`
-                            : ""}
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setClaimSelection(null)}
-                          data-testid="button-claim-clear"
-                        >
-                          {COPY.forms.restaurant.claimClearButton}
-                        </Button>
-                      </div>
-                    )}
-
-                    {claimResults.length > 0 && !claimSelection && (
-                      <div className="space-y-2">
-                        {claimResults.map((listing) => (
-                          <div
-                            key={listing.id}
-                            className="flex flex-col gap-2 rounded-lg border border-[color:var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
-                          >
-                            <div>
-                              <div className="font-semibold text-[color:var(--text-primary)]">
-                                {listing.name}
-                              </div>
-                              <div className="text-xs text-[color:var(--text-secondary)]">
-                                {listing.address}
-                                {listing.city ? `, ${listing.city}` : ""}
-                                {listing.state ? `, ${listing.state}` : ""}
-                              </div>
-                            </div>
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={() => applyClaimSelection(listing)}
-                              data-testid={`button-claim-select-${listing.id}`}
-                            >
-                              {COPY.forms.restaurant.claimSelectButton}
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {claimError && (
-                      <div className="text-xs text-[color:var(--text-secondary)]">
-                        {claimError}
-                      </div>
-                    )}
-                    <div className="text-xs text-[color:var(--text-secondary)]">
-                      {COPY.forms.restaurant.claimDisclaimer}
-                    </div>
-                  </div>
-                )}
-
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel
-                        className="text-lg font-semibold text-[color:var(--text-primary)]"
-                        data-testid="label-address"
-                      >
-                        {COPY.forms.restaurant.addressLabel}
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder={COPY.forms.restaurant.addressPlaceholder}
-                          {...field}
-                          className="py-4 px-4 text-lg border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
-                          data-testid="input-address"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
+          <Card className="border-[color:var(--border-subtle)] bg-[var(--bg-card)] shadow-clean-lg">
+            <CardContent className="p-6">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit, handleRestaurantInvalid)} className="space-y-6">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FormField control={form.control} name="name" render={({ field }) => (
                       <FormItem>
-                        <FormLabel
-                          className="text-lg font-semibold text-[color:var(--text-primary)]"
-                          data-testid="label-phone"
-                        >
-                          {COPY.forms.restaurant.phoneLabel}
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="tel"
-                            placeholder={COPY.forms.restaurant.phonePlaceholder}
-                            {...field}
-                            className="py-4 px-4 text-lg border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
-                            data-testid="input-phone"
-                          />
-                        </FormControl>
+                        <FormLabel data-testid="label-business-name">{COPY.forms.restaurant.nameLabel}</FormLabel>
+                        <FormControl><Input placeholder={COPY.forms.restaurant.namePlaceholder} data-testid="input-business-name" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="cuisineType"
-                    render={({ field }) => (
+                    )} />
+                    <FormField control={form.control} name="businessType" render={({ field }) => (
                       <FormItem>
-                        <FormLabel
-                          className="text-lg font-semibold text-[color:var(--text-primary)]"
-                          data-testid="label-cuisine"
-                        >
-                          {COPY.forms.restaurant.cuisineLabel}
-                        </FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger
-                              className="py-4 px-4 text-lg border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md"
-                              data-testid="select-cuisine"
-                            >
-                              <SelectValue
-                                placeholder={
-                                  COPY.forms.restaurant.cuisinePlaceholder
-                                }
-                              />
-                            </SelectTrigger>
-                          </FormControl>
+                        <FormLabel data-testid="label-business-type">{COPY.forms.restaurant.businessTypeLabel}</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl><SelectTrigger data-testid="select-business-type"><SelectValue placeholder={COPY.forms.restaurant.businessTypePlaceholder} /></SelectTrigger></FormControl>
                           <SelectContent>
-                            {/* American Cuisines */}
+                            <SelectItem value="food_truck">Food Truck</SelectItem>
+                            <SelectItem value="restaurant">Restaurant</SelectItem>
+                            <SelectItem value="bar">Bar</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
+
+                  {selectedBusinessType === "food_truck" && (
+                    <div className="space-y-3 rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] p-4">
+                      <h3 className="text-sm font-semibold text-[color:var(--text-primary)]">{COPY.forms.restaurant.claimTitle}</h3>
+                      <p className="text-xs text-[color:var(--text-secondary)]">{COPY.forms.restaurant.claimDescription}</p>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Input value={claimQuery} onChange={(e) => setClaimQuery(e.target.value)} placeholder={COPY.forms.restaurant.claimSearchPlaceholder} data-testid="input-claim-search" />
+                        <Button type="button" variant="outline" onClick={handleClaimSearch} disabled={claimLoading} data-testid="button-claim-search">{COPY.forms.restaurant.claimSearchButton}</Button>
+                      </div>
+                      {claimSelection && (
+                        <div className="rounded-lg border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-3 text-xs">
+                          <p className="font-semibold text-[color:var(--text-primary)]">{COPY.forms.restaurant.claimSelectedLabel}</p>
+                          <p className="text-[color:var(--text-secondary)]">{claimSelection.name}</p>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => setClaimSelection(null)} data-testid="button-claim-clear">{COPY.forms.restaurant.claimClearButton}</Button>
+                        </div>
+                      )}
+                      {claimResults.length > 0 && !claimSelection && (
+                        <div className="space-y-2">
+                          {claimResults.map((listing) => (
+                            <div key={listing.id} className="flex items-center justify-between rounded-lg border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-3 text-xs">
+                              <p className="font-medium text-[color:var(--text-primary)]">{listing.name}</p>
+                              <Button type="button" size="sm" onClick={() => applyClaimSelection(listing)} data-testid={`button-claim-select-${listing.id}`}>{COPY.forms.restaurant.claimSelectButton}</Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {claimError && <p className="text-xs text-[color:var(--text-secondary)]">{claimError}</p>}
+                    </div>
+                  )}
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FormField control={form.control} name="address" render={({ field }) => (
+                      <FormItem className="sm:col-span-2">
+                        <FormLabel data-testid="label-address">{COPY.forms.restaurant.addressLabel}</FormLabel>
+                        <FormControl><Input placeholder={COPY.forms.restaurant.addressPlaceholder} data-testid="input-address" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="city" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel data-testid="label-city">{COPY.forms.restaurant.cityLabel}</FormLabel>
+                        <FormControl><Input placeholder={COPY.forms.restaurant.cityPlaceholder} data-testid="input-city" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="state" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel data-testid="label-state">{COPY.forms.restaurant.stateLabel}</FormLabel>
+                        <FormControl><Input placeholder={COPY.forms.restaurant.statePlaceholder} data-testid="input-state" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="phone" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel data-testid="label-phone">{COPY.forms.restaurant.phoneLabel}</FormLabel>
+                        <FormControl><Input type="tel" placeholder={COPY.forms.restaurant.phonePlaceholder} data-testid="input-phone" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="cuisineType" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel data-testid="label-cuisine-type">{COPY.forms.restaurant.cuisineLabel}</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl><SelectTrigger data-testid="select-cuisine"><SelectValue placeholder={COPY.forms.restaurant.cuisinePlaceholder} /></SelectTrigger></FormControl>
+                          <SelectContent>
                             <SelectItem value="american">American</SelectItem>
-                            <SelectItem value="bbq">
-                              BBQ & Smokehouse
-                            </SelectItem>
-                            <SelectItem value="southern">
-                              Southern & Soul Food
-                            </SelectItem>
-                            <SelectItem value="cajun">
-                              Cajun & Creole
-                            </SelectItem>
-                            <SelectItem value="tex-mex">Tex-Mex</SelectItem>
-                            <SelectItem value="burgers">
-                              Burgers & Fries
-                            </SelectItem>
-                            <SelectItem value="deli">
-                              Deli & Sandwiches
-                            </SelectItem>
-                            <SelectItem value="wings">
-                              Wings & Sports Bar
-                            </SelectItem>
-
-                            {/* International Cuisines */}
-                            <SelectItem value="italian">Italian</SelectItem>
-                            <SelectItem value="pizza">Pizza</SelectItem>
-                            <SelectItem value="mexican">Mexican</SelectItem>
-                            <SelectItem value="chinese">Chinese</SelectItem>
-                            <SelectItem value="japanese">
-                              Japanese & Sushi
-                            </SelectItem>
-                            <SelectItem value="korean">Korean</SelectItem>
-                            <SelectItem value="thai">Thai</SelectItem>
-                            <SelectItem value="vietnamese">
-                              Vietnamese
-                            </SelectItem>
-                            <SelectItem value="indian">Indian</SelectItem>
-                            <SelectItem value="mediterranean">
-                              Mediterranean
-                            </SelectItem>
-                            <SelectItem value="greek">Greek</SelectItem>
-                            <SelectItem value="middle-eastern">
-                              Middle Eastern
-                            </SelectItem>
-                            <SelectItem value="french">French</SelectItem>
-                            <SelectItem value="german">German</SelectItem>
-                            <SelectItem value="british">
-                              British & Pub Food
-                            </SelectItem>
-                            <SelectItem value="spanish">
-                              Spanish & Tapas
-                            </SelectItem>
-                            <SelectItem value="latin-american">
-                              Latin American
-                            </SelectItem>
+                            <SelectItem value="bbq">BBQ</SelectItem>
+                            <SelectItem value="breakfast">Breakfast</SelectItem>
+                            <SelectItem value="burgers">Burgers</SelectItem>
+                            <SelectItem value="cajun">Cajun</SelectItem>
                             <SelectItem value="caribbean">Caribbean</SelectItem>
-                            <SelectItem value="african">African</SelectItem>
-                            <SelectItem value="ethiopian">Ethiopian</SelectItem>
-                            <SelectItem value="moroccan">Moroccan</SelectItem>
-                            <SelectItem value="turkish">Turkish</SelectItem>
-                            <SelectItem value="lebanese">Lebanese</SelectItem>
-                            <SelectItem value="persian">Persian</SelectItem>
-                            <SelectItem value="russian">Russian</SelectItem>
-
-                            {/* Specialty Categories */}
-                            <SelectItem value="seafood">Seafood</SelectItem>
-                            <SelectItem value="steakhouse">
-                              Steakhouse
-                            </SelectItem>
-                            <SelectItem value="vegetarian">
-                              Vegetarian
-                            </SelectItem>
-                            <SelectItem value="vegan">Vegan</SelectItem>
-                            <SelectItem value="organic">
-                              Organic & Farm-to-Table
-                            </SelectItem>
-                            <SelectItem value="gluten-free">
-                              Gluten-Free
-                            </SelectItem>
-                            <SelectItem value="halal">Halal</SelectItem>
-                            <SelectItem value="kosher">Kosher</SelectItem>
-
-                            {/* Food Types */}
-                            <SelectItem value="fast-casual">
-                              Fast Casual
-                            </SelectItem>
-                            <SelectItem value="fine-dining">
-                              Fine Dining
-                            </SelectItem>
-                            <SelectItem value="casual-dining">
-                              Casual Dining
-                            </SelectItem>
-                            <SelectItem value="food-truck">
-                              Food Truck Fusion
-                            </SelectItem>
-                            <SelectItem value="street-food">
-                              Street Food
-                            </SelectItem>
-                            <SelectItem value="comfort-food">
-                              Comfort Food
-                            </SelectItem>
-                            <SelectItem value="breakfast">
-                              Breakfast & Brunch
-                            </SelectItem>
-                            <SelectItem value="coffee">
-                              Coffee & Café
-                            </SelectItem>
-                            <SelectItem value="bakery">
-                              Bakery & Pastries
-                            </SelectItem>
-                            <SelectItem value="desserts">
-                              Desserts & Sweets
-                            </SelectItem>
-                            <SelectItem value="ice-cream">
-                              Ice Cream & Frozen Treats
-                            </SelectItem>
-                            <SelectItem value="juice-bar">
-                              Juice Bar & Smoothies
-                            </SelectItem>
-                            <SelectItem value="bar">Bar & Cocktails</SelectItem>
-                            <SelectItem value="brewery">
-                              Brewery & Craft Beer
-                            </SelectItem>
-                            <SelectItem value="wine-bar">Wine Bar</SelectItem>
-
-                            {/* Trending & Fusion */}
-                            <SelectItem value="fusion">
-                              Fusion Cuisine
-                            </SelectItem>
-                            <SelectItem value="gastropub">Gastropub</SelectItem>
-                            <SelectItem value="ramen">
-                              Ramen & Noodles
-                            </SelectItem>
-                            <SelectItem value="poke">
-                              Poke & Hawaiian
-                            </SelectItem>
-                            <SelectItem value="boba">
-                              Boba Tea & Asian Drinks
-                            </SelectItem>
-                            <SelectItem value="healthy">
-                              Healthy & Bowls
-                            </SelectItem>
-                            <SelectItem value="keto">
-                              Keto & Low-Carb
-                            </SelectItem>
+                            <SelectItem value="coffee">Coffee & Café</SelectItem>
+                            <SelectItem value="dessert">Dessert</SelectItem>
+                            <SelectItem value="healthy">Healthy & Bowls</SelectItem>
+                            <SelectItem value="keto">Keto & Low-Carb</SelectItem>
                             <SelectItem value="paleo">Paleo</SelectItem>
-
                             <SelectItem value="other">Other</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
                       </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Business Profile Section */}
-                <div className="space-y-6 pt-6 border-t border-[color:var(--border-subtle)]">
-                  <div>
-                    <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-2">
-                      Business Profile
-                    </h3>
-                    <p className="text-sm text-[color:var(--text-secondary)]">
-                      Help customers find you and understand what makes your
-                      business special
-                    </p>
+                    )} />
                   </div>
 
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
+                  <div className="space-y-4 rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface)] p-4">
+                    <FormField control={form.control} name="description" render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-base font-semibold text-[color:var(--text-primary)]">
-                          About Your Business{" "}
-                          <span className="text-sm font-normal text-[color:var(--text-secondary)]">
-                            (Optional)
-                          </span>
-                        </FormLabel>
+                        <FormLabel>About Your Business <span className="font-normal text-[color:var(--text-secondary)]">(Optional)</span></FormLabel>
                         <FormControl>
-                          <textarea
-                            placeholder="Tell customers what makes your restaurant unique..."
-                            {...field}
-                            rows={4}
-                            maxLength={500}
-                            className="w-full py-3 px-4 text-base border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md transition-all duration-200 resize-none"
-                          />
-                        </FormControl>
-                        <p className="text-xs text-[color:var(--text-secondary)]">
-                          {field.value?.length || 0}/500 characters
-                        </p>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="websiteUrl"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-base font-semibold text-[color:var(--text-primary)]">
-                            Website{" "}
-                            <span className="text-sm font-normal text-[color:var(--text-secondary)]">
-                              (Optional)
-                            </span>
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="url"
-                              placeholder="https://yourrestaurant.com"
-                              {...field}
-                              className="py-4 px-4 text-base border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="instagramUrl"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-base font-semibold text-[color:var(--text-primary)]">
-                            Instagram{" "}
-                            <span className="text-sm font-normal text-[color:var(--text-secondary)]">
-                              (Optional)
-                            </span>
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="url"
-                              placeholder="https://instagram.com/yourrestaurant"
-                              {...field}
-                              className="py-4 px-4 text-base border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="facebookPageUrl"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-base font-semibold text-[color:var(--text-primary)]">
-                          Facebook Business Page{" "}
-                          <span className="text-sm font-normal text-[color:var(--text-secondary)]">
-                            (Optional)
-                          </span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="url"
-                            placeholder="https://facebook.com/yourrestaurant"
-                            {...field}
-                            className="py-4 px-4 text-base border border-[color:var(--border-subtle)] bg-[color:var(--field-bg)] focus:bg-[color:var(--field-bg)] focus:ring-2 focus:ring-[color:var(--action-primary)] rounded-xl shadow-sm focus:shadow-md transition-all duration-200"
-                          />
+                          <textarea placeholder="Tell customers what makes your restaurant unique..." rows={4} maxLength={500} className="w-full rounded-md border border-[color:var(--border-strong)] bg-[color:var(--field-bg)] px-3 py-2 text-sm text-[color:var(--text-primary)]" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
-                    )}
-                  />
-
-                  <div>
-                    <h4 className="text-base font-semibold text-[color:var(--text-primary)] mb-3">
-                      Amenities
-                    </h4>
-                    <p className="text-sm text-[color:var(--text-secondary)] mb-4">
-                      Select features available at your location
-                    </p>
-                    <div className="space-y-3">
-                      <FormField
-                        control={form.control}
-                        name="hasParking"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border border-[color:var(--border-subtle)] p-4 bg-[var(--bg-surface)]">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <div className="flex-1">
-                              <FormLabel className="text-base font-medium text-[color:var(--text-primary)] cursor-pointer">
-                                Parking Available
-                              </FormLabel>
-                            </div>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="hasWifi"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border border-[color:var(--border-subtle)] p-4 bg-[var(--bg-surface)]">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <div className="flex-1">
-                              <FormLabel className="text-base font-medium text-[color:var(--text-primary)] cursor-pointer">
-                                Free Wi-Fi
-                              </FormLabel>
-                            </div>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="hasOutdoorSeating"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border border-[color:var(--border-subtle)] p-4 bg-[var(--bg-surface)]">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <div className="flex-1">
-                              <FormLabel className="text-base font-medium text-[color:var(--text-primary)] cursor-pointer">
-                                Outdoor Seating
-                              </FormLabel>
-                            </div>
-                          </FormItem>
-                        )}
-                      />
+                    )} />
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <FormField control={form.control} name="websiteUrl" render={({ field }) => (<FormItem><FormLabel>Website</FormLabel><FormControl><Input type="url" placeholder="https://..." {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="instagramUrl" render={({ field }) => (<FormItem><FormLabel>Instagram</FormLabel><FormControl><Input type="url" placeholder="https://..." {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="facebookPageUrl" render={({ field }) => (<FormItem><FormLabel>Facebook</FormLabel><FormControl><Input type="url" placeholder="https://..." {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <FormField control={form.control} name="hasParking" render={({ field }) => (<FormItem className="flex items-center gap-2 rounded-md border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-3"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="m-0">Parking Available</FormLabel></FormItem>)} />
+                      <FormField control={form.control} name="hasWifi" render={({ field }) => (<FormItem className="flex items-center gap-2 rounded-md border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-3"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="m-0">Free Wi-Fi</FormLabel></FormItem>)} />
+                      <FormField control={form.control} name="hasOutdoorSeating" render={({ field }) => (<FormItem className="flex items-center gap-2 rounded-md border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-3"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="m-0">Outdoor Seating</FormLabel></FormItem>)} />
                     </div>
                   </div>
 
-                  <div className="bg-[var(--bg-surface-muted)] border border-[color:var(--border-subtle)] rounded-xl p-4">
-                    <p className="text-sm text-[color:var(--text-primary)]">
-                      <strong>Note for Food Trucks & Bars:</strong> You can set
-                      operating hours later in your dashboard. We know schedules
-                      can be flexible!
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-2xl p-8 shadow-clean">
-                  <h3
-                    className="font-bold text-[color:var(--text-primary)] text-xl mb-6"
-                    data-testid="text-pricing-title"
-                  >
-                    {COPY.pricing.formCard.title}
-                  </h3>
-
-                  {/* Single Plan */}
-                  <div className="bg-[var(--bg-surface)] rounded-xl p-8 border border-[color:var(--action-primary)] shadow-clean text-center mb-6 relative">
-                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)] text-sm font-bold px-4 py-1 rounded-full">
-                      {COPY.pricing.formCard.badge}
-                    </div>
-                    <div className="text-5xl font-bold text-[color:var(--action-primary)] mb-2">
-                      <span className="text-[color:var(--text-secondary)] line-through text-3xl mr-2 align-middle">
-                        {COPY.pricing.formCard.originalPrice}
-                      </span>
-                      {COPY.pricing.formCard.monthlyPrice}
-                    </div>
-                    <div className="text-lg text-[color:var(--text-secondary)] mb-4">
-                      {COPY.pricing.formCard.monthlySuffix}
-                    </div>
-                    <div className="text-xl font-semibold text-[color:var(--text-primary)] mb-4">
-                      {COPY.pricing.formCard.unlimitedTitle}
-                    </div>
-                    <div className="text-[color:var(--text-secondary)] text-base">
-                      {COPY.pricing.formCard.unlimitedBody}
-                    </div>
+                  <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] p-4">
+                    <p className="text-sm font-medium text-[color:var(--text-primary)]">{COPY.pricing.formCard.title}</p>
+                    <p className="mt-1 text-xs text-[color:var(--text-secondary)]">{COPY.pricing.formCard.badge} {COPY.pricing.formCard.monthlyPrice} {COPY.pricing.formCard.monthlySuffix}</p>
                   </div>
 
-                  {/* Features List */}
-                  <div className="bg-[var(--bg-surface-muted)] rounded-lg p-6 border border-[color:var(--border-subtle)]">
-                    <h4 className="font-semibold text-[color:var(--text-primary)] mb-4">
-                      {COPY.pricing.formCard.everythingIncludedTitle}
-                    </h4>
-                    <div className="grid md:grid-cols-2 gap-3 text-sm text-[color:var(--text-secondary)]">
-                      {COPY.pricing.formCard.features.map((item) => (
-                        <div key={item} className="flex items-center">
-                          <svg
-                            className="w-4 h-4 text-green-500 mr-2"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                          {item}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-
-                {/* NORTH STAR: Pricing Lock Notice */}
-                <div className="bg-[var(--bg-surface-muted)] border border-[color:var(--border-subtle)] rounded-xl p-6">
-                  <h4 className="font-bold text-[color:var(--text-primary)] mb-2 flex items-center">
-                    Price Lock Guarantee
-                  </h4>
-                  <p className="text-sm text-[color:var(--text-secondary)] leading-relaxed">
-                    I understand businesses joining before{" "}
-                    <strong>March 1, 2026</strong> are locked at{" "}
-                    <strong>$50 -&gt; $25/month forever</strong>. This price lock applies
-                    even if I pause or cancel my subscription.
-                  </p>
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="acceptTerms"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-4 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          className="mt-1.5"
-                          data-testid="checkbox-terms"
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel
-                          className="text-[color:var(--text-secondary)] leading-relaxed text-base"
-                          data-testid="label-terms"
-                        >
+                  <FormField control={form.control} name="acceptTerms" render={({ field }) => (
+                    <FormItem className="flex items-start gap-3 rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface)] p-4">
+                      <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} className="mt-1" data-testid="checkbox-terms" /></FormControl>
+                      <div className="space-y-1">
+                        <FormLabel className="text-sm text-[color:var(--text-secondary)]" data-testid="label-terms">
                           {COPY.terms.labelPrefix}{" "}
-                          <Link href="/terms-of-service">
-                            <span className="text-[color:var(--accent-text)] font-medium underline hover:text-[color:var(--accent-text-hover)] cursor-pointer">
-                              {COPY.terms.termsText}
-                            </span>
-                          </Link>{" "}
+                          <Link href="/terms-of-service"><span className="cursor-pointer text-[color:var(--accent-text)] underline">{COPY.terms.termsText}</span></Link>{" "}
                           {COPY.terms.andText}{" "}
-                          <Link href="/privacy-policy">
-                            <span className="text-[color:var(--accent-text)] font-medium underline hover:text-[color:var(--accent-text-hover)] cursor-pointer">
-                              {COPY.terms.privacyText}
-                            </span>
-                          </Link>
+                          <Link href="/privacy-policy"><span className="cursor-pointer text-[color:var(--accent-text)] underline">{COPY.terms.privacyText}</span></Link>
                         </FormLabel>
                         <FormMessage />
                       </div>
                     </FormItem>
-                  )}
-                />
+                  )} />
 
-                <Button
-                  type="submit"
-                  className="w-full py-4 font-bold text-xl rounded-2xl action-primary hover:bg-[color:var(--action-hover)] text-white border-0 shadow-xl hover:shadow-2xl transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-                  disabled={createRestaurantMutation.isPending}
-                  data-testid="button-start-trial"
-                >
-                  {createRestaurantMutation.isPending
-                    ? COPY.cta.restaurantSubmit.pending
-                    : COPY.cta.restaurantSubmit.idle}
-                </Button>
-              </form>
-            </Form>
-          </div>
+                  <Button type="submit" className="w-full action-primary hover:bg-[color:var(--action-hover)]" disabled={createRestaurantMutation.isPending} data-testid="button-start-trial">
+                    {createRestaurantMutation.isPending ? COPY.cta.restaurantSubmit.pending : COPY.cta.restaurantSubmit.idle}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
         )}
 
-        {/* Verification Step */}
         {currentStep === "verification" && createdRestaurant && (
-          <div className="space-y-6">
-            {/* Minimal verification header */}
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="inline-flex items-center px-2 py-1 rounded-full bg-[var(--bg-surface-muted)] text-[color:var(--action-primary)] text-[10px] font-semibold uppercase tracking-wide mb-1">
-                  Verify business
-                </div>
-                <h2 className="text-base font-semibold text-[color:var(--text-primary)]">
-                  {COPY.verification.title}
-                </h2>
-                <p className="text-xs text-[color:var(--text-secondary)] mt-1 max-w-md">
-                  {COPY.verification.intro}
-                </p>
-              </div>
-              <Upload className="w-6 h-6 text-[color:var(--action-primary)]" />
-            </div>
-
-            <Card className="border-dashed border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)]">
-              <CardContent className="pt-4 pb-4">
-                <ul className="list-disc list-inside space-y-1 text-xs text-[color:var(--text-secondary)] ml-1">
-                  {COPY.verification.bullets.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
+          <Card className="border-[color:var(--border-subtle)] bg-[var(--bg-card)] shadow-clean-lg">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold text-[color:var(--text-primary)]">{COPY.verification.title}</CardTitle>
+              <p className="text-xs text-[color:var(--text-secondary)]">{COPY.verification.intro}</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-xl border border-dashed border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] p-4">
+                <ul className="list-disc space-y-1 pl-4 text-xs text-[color:var(--text-secondary)]">
+                  {COPY.verification.bullets.map((item) => (<li key={item}>{item}</li>))}
                 </ul>
-                <p className="text-[11px] text-[color:var(--text-secondary)] bg-[var(--bg-surface)] border border-[color:var(--border-subtle)] rounded-md px-3 py-2 mt-3">
-                  {COPY.verification.whyVerify}
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Document Upload */}
-            <DocumentUpload
-              onDocumentsChange={setVerificationDocuments}
-              maxFiles={5}
-              maxFileSize={10 * 1024 * 1024} // 10MB
-              acceptedTypes={[
-                "image/jpeg",
-                "image/jpg",
-                "image/png",
-                "application/pdf",
-              ]}
-            />
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-between">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  dispatchOnboarding({ type: "BACK_TO_RESTAURANT" })
-                }
-                className="flex items-center space-x-2"
-                data-testid="button-back-to-restaurant"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>{COPY.verification.backButton}</span>
-              </Button>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                {claimSelection ? (
-                  <div className="text-xs text-[color:var(--text-secondary)] flex items-center">
-                    {COPY.verification.claimRequiredNote}
-                  </div>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleSkipVerification}
-                    className="text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
-                    data-testid="button-skip-verification"
-                  >
-                    {COPY.verification.skipButton}
-                  </Button>
-                )}
-                <Button
-                  onClick={handleVerificationSubmit}
-                  disabled={
-                    createVerificationRequestMutation.isPending ||
-                    verificationDocuments.length === 0
-                  }
-                  className="action-primary hover:bg-[color:var(--action-hover)] flex items-center space-x-2"
-                  data-testid="button-submit-verification"
-                >
-                  {createVerificationRequestMutation.isPending ? (
-                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                  ) : (
-                    <ArrowRight className="w-4 h-4" />
-                  )}
-                  <span>
-                    {createVerificationRequestMutation.isPending
-                      ? COPY.verification.submitPending
-                      : COPY.verification.submitIdle}
-                  </span>
-                </Button>
               </div>
-            </div>
-          </div>
+              <DocumentUpload
+                onDocumentsChange={setVerificationDocuments}
+                maxFiles={5}
+                maxFileSize={10 * 1024 * 1024}
+                acceptedTypes={["image/jpeg", "image/jpg", "image/png", "application/pdf"]}
+              />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <Button type="button" variant="outline" onClick={() => dispatchOnboarding({ type: "BACK_TO_RESTAURANT" })} data-testid="button-back-to-restaurant">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  {COPY.verification.backButton}
+                </Button>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  {!claimSelection && (
+                    <Button type="button" variant="outline" onClick={handleSkipVerification} data-testid="button-skip-verification">
+                      {COPY.verification.skipButton}
+                    </Button>
+                  )}
+                  <Button type="button" onClick={handleVerificationSubmit} disabled={createVerificationRequestMutation.isPending || verificationDocuments.length === 0} className="action-primary hover:bg-[color:var(--action-hover)]" data-testid="button-submit-verification">
+                    {createVerificationRequestMutation.isPending ? (
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      <ArrowRight className="mr-2 h-4 w-4" />
+                    )}
+                    {createVerificationRequestMutation.isPending ? COPY.verification.submitPending : COPY.verification.submitIdle}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
   );
 }
-
-
-
-
-
 

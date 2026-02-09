@@ -1050,6 +1050,14 @@ export default function MapPage() {
   const eventPins = visibleEventLocations.length;
   const parkingPins = visibleParkingLocations.length;
   const activityPins = liveTruckPins + hostPins + eventPins + parkingPins;
+  const isNightTheme =
+    typeof document !== "undefined" &&
+    document.documentElement.classList.contains("theme-night");
+  const userMapTileUrl = isNightTheme
+    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+  const userMapAttribution =
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
   const headerSubtitle = isLocating
     ? "Locating live trucks and host spots..."
     : hasLocation && activityPins > 0
@@ -1127,8 +1135,8 @@ export default function MapPage() {
             >
               <MapCenterer center={mapCenter} />
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                attribution={userMapAttribution}
+                url={userMapTileUrl}
               />
 
               {/* User Location Marker */}

@@ -144,13 +144,18 @@ export async function reverseGeocode(
 
 export async function forwardGeocode(
   address: string,
+  options?: { force?: boolean },
 ): Promise<ForwardGeocodeResult | null> {
   const key = normalizeAddressKey(address);
   if (!key) return null;
+  const force = options?.force === true;
   const entry = forwardCache.get(key);
-  if (entry) {
+  if (!force && entry) {
     if (entry.value) return entry.value;
     if (Date.now() - entry.ts < FORWARD_FAILURE_TTL_MS) return null;
+    forwardCache.delete(key);
+  }
+  if (force && entry) {
     forwardCache.delete(key);
   }
 

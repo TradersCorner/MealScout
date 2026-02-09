@@ -47,6 +47,21 @@ const buildLocationKey = (
     .trim()
     .toLowerCase()}|${(state || "").trim().toLowerCase()}`;
 
+const retryGeocodeAddress = async (rawAddress: string) => {
+  const base = (rawAddress || "").trim();
+  if (!base) return null;
+  const candidates = Array.from(new Set([base, `${base}, USA`]));
+  for (const candidate of candidates) {
+    const coords = await forwardGeocode(candidate, { force: true }).catch(
+      () => null,
+    );
+    if (coords) {
+      return { coords, attempted: candidate };
+    }
+  }
+  return null;
+};
+
 const truckImportUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -487,16 +502,16 @@ export function registerAdminManagementRoutes(app: Express) {
             .join(", ");
           if (!address) continue;
           attempted += 1;
-          const coords = await forwardGeocode(address).catch(() => null);
-          if (!coords) {
+          const geocode = await retryGeocodeAddress(address);
+          if (!geocode) {
             failures.push({ source: "host_profile", id: host.id, address });
             continue;
           }
           await db
             .update(hosts)
             .set({
-              latitude: coords.lat.toString(),
-              longitude: coords.lng.toString(),
+              latitude: geocode.coords.lat.toString(),
+              longitude: geocode.coords.lng.toString(),
               updatedAt: new Date(),
             })
             .where(eq(hosts.id, host.id));
@@ -522,16 +537,16 @@ export function registerAdminManagementRoutes(app: Express) {
             .join(", ");
           if (!address) continue;
           attempted += 1;
-          const coords = await forwardGeocode(address).catch(() => null);
-          if (!coords) {
+          const geocode = await retryGeocodeAddress(address);
+          if (!geocode) {
             failures.push({ source: "host_address", id: addressRow.id, address });
             continue;
           }
           await db
             .update(userAddresses)
             .set({
-              latitude: coords.lat.toString(),
-              longitude: coords.lng.toString(),
+              latitude: geocode.coords.lat.toString(),
+              longitude: geocode.coords.lng.toString(),
               updatedAt: new Date(),
             })
             .where(eq(userAddresses.id, addressRow.id));
@@ -580,19 +595,29 @@ export function registerAdminManagementRoutes(app: Express) {
           if (!address) {
             return res.status(400).json({ message: "Host address is empty" });
           }
-          const coords = await forwardGeocode(address).catch(() => null);
-          if (!coords) {
-            return res.status(422).json({ message: "Unable to geocode host address" });
+          const geocode = await retryGeocodeAddress(address);
+          if (!geocode) {
+            return res.status(422).json({
+              message: "Unable to geocode host address",
+              address,
+            });
           }
           await db
             .update(hosts)
             .set({
-              latitude: coords.lat.toString(),
-              longitude: coords.lng.toString(),
+              latitude: geocode.coords.lat.toString(),
+              longitude: geocode.coords.lng.toString(),
               updatedAt: new Date(),
             })
             .where(eq(hosts.id, id));
-          return res.json({ ok: true, source, id, address, coords });
+          return res.json({
+            ok: true,
+            source,
+            id,
+            address,
+            attempted: geocode.attempted,
+            coords: geocode.coords,
+          });
         }
 
         if (source === "host_address") {
@@ -612,19 +637,29 @@ export function registerAdminManagementRoutes(app: Express) {
           if (!address) {
             return res.status(400).json({ message: "Address is empty" });
           }
-          const coords = await forwardGeocode(address).catch(() => null);
-          if (!coords) {
-            return res.status(422).json({ message: "Unable to geocode host address" });
+          const geocode = await retryGeocodeAddress(address);
+          if (!geocode) {
+            return res.status(422).json({
+              message: "Unable to geocode host address",
+              address,
+            });
           }
           await db
             .update(userAddresses)
             .set({
-              latitude: coords.lat.toString(),
-              longitude: coords.lng.toString(),
+              latitude: geocode.coords.lat.toString(),
+              longitude: geocode.coords.lng.toString(),
               updatedAt: new Date(),
             })
             .where(eq(userAddresses.id, id));
-          return res.json({ ok: true, source, id, address, coords });
+          return res.json({
+            ok: true,
+            source,
+            id,
+            address,
+            attempted: geocode.attempted,
+            coords: geocode.coords,
+          });
         }
 
         if (source === "open_request") {
@@ -641,20 +676,27 @@ export function registerAdminManagementRoutes(app: Express) {
           if (!address) {
             return res.status(400).json({ message: "Open request address is empty" });
           }
-          const coords = await forwardGeocode(address).catch(() => null);
-          if (!coords) {
+          const geocode = await retryGeocodeAddress(address);
+          if (!geocode) {
             return res
               .status(422)
-              .json({ message: "Unable to geocode open request address" });
+              .json({ message: "Unable to geocode open request address", address });
           }
           await db
             .update(locationRequests)
             .set({
-              latitude: coords.lat.toString(),
-              longitude: coords.lng.toString(),
+              latitude: geocode.coords.lat.toString(),
+              longitude: geocode.coords.lng.toString(),
             })
             .where(eq(locationRequests.id, id));
-          return res.json({ ok: true, source, id, address, coords });
+          return res.json({
+            ok: true,
+            source,
+            id,
+            address,
+            attempted: geocode.attempted,
+            coords: geocode.coords,
+          });
         }
 
         return res.status(400).json({ message: "Unsupported source type" });

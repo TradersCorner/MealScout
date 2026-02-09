@@ -115,6 +115,17 @@ interface MapPinAudit {
   };
 }
 
+interface DashboardTotalsResponse {
+  generatedAt: string;
+  totals: DashboardStats;
+  consistency: {
+    roleTotal: number;
+    totalUsers: number;
+    unclassifiedUsers: number;
+    rolesWithinUserTotal: boolean;
+  };
+}
+
 const FOOT_TRAFFIC_OPTIONS = [
   { value: "50", label: "Low (1-50/day)", min: 1, max: 50 },
   { value: "200", label: "Medium (51-200/day)", min: 51, max: 200 },
@@ -1030,8 +1041,8 @@ export default function AdminDashboard() {
   const isSuperAdmin = adminUser?.userType === "super_admin";
 
   // Fetch dashboard stats
-  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
-    queryKey: ["/api/admin/stats"],
+  const { data: dashboardTotals, isLoading: statsLoading } = useQuery<DashboardTotalsResponse>({
+    queryKey: ["/api/admin/dashboard-totals"],
     enabled: !!adminUser,
   });
 
@@ -2235,7 +2246,7 @@ export default function AdminDashboard() {
     },
   };
 
-  const dashboardStats = stats || defaultStats;
+  const dashboardStats = dashboardTotals?.totals || defaultStats;
   const toDollars = (value: number | string | null | undefined) => {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) return 0;

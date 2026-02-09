@@ -246,6 +246,34 @@ export function registerAdminManagementRoutes(app: Express) {
   );
 
   app.get(
+    "/api/admin/dashboard-totals",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (_req: any, res) => {
+      try {
+        const stats = await storage.getAdminStats();
+        const roleTotal = Number(stats.memberCountsTotal || 0);
+        const totalUsers = Number(stats.totalUsers || 0);
+        const isConsistent = roleTotal <= totalUsers;
+
+        res.json({
+          generatedAt: new Date().toISOString(),
+          totals: stats,
+          consistency: {
+            roleTotal,
+            totalUsers,
+            unclassifiedUsers: Math.max(0, totalUsers - roleTotal),
+            rolesWithinUserTotal: isConsistent,
+          },
+        });
+      } catch (error) {
+        console.error("Error fetching dashboard totals:", error);
+        res.status(500).json({ message: "Failed to fetch dashboard totals" });
+      }
+    },
+  );
+
+  app.get(
     "/api/admin/map-pin-audit",
     isAuthenticated,
     isStaffOrAdmin,

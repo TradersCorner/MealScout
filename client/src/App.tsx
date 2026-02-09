@@ -113,6 +113,51 @@ const PageLoader = () => (
   </div>
 );
 
+const publicRoutePrefixes = [
+  "/",
+  "/login",
+  "/customer-signup",
+  "/restaurant-signup",
+  "/deal-creation",
+  "/deal/",
+  "/search",
+  "/map",
+  "/video",
+  "/category/",
+  "/deals",
+  "/restaurant/",
+  "/terms-of-service",
+  "/privacy-policy",
+  "/data-deletion",
+  "/about",
+  "/faq",
+  "/how-it-works",
+  "/contact",
+  "/host-signup",
+  "/for-restaurants",
+  "/for-bars",
+  "/for-hosts",
+  "/for-events",
+  "/find-food",
+  "/event-signup",
+  "/events",
+  "/food-trucks/",
+  "/truck-landing",
+  "/sitemap",
+  "/status",
+  "/golden-plate-winners",
+  "/forgot-password",
+  "/reset-password",
+  "/change-password",
+  "/account-setup",
+  "/admin",
+];
+
+const isPublicPath = (path: string) =>
+  publicRoutePrefixes.some((prefix) =>
+    prefix === "/" ? path === "/" : path.startsWith(prefix),
+  );
+
 // Wrapper component to handle route props
 function DashboardSwitcherPage() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -124,6 +169,9 @@ function Router() {
   const { authState, isAuthenticated } = useAuth();
   const [location] = useLocation();
   const [affiliateTag, setAffiliateTag] = useState<string>("");
+  const isLikelyPublicRoute = isPublicPath(location);
+  const shouldUseGuestRoutes =
+    !isAuthenticated || (authState === "loading" && isLikelyPublicRoute);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -157,14 +205,14 @@ function Router() {
   }, [affiliateTag, location]);
 
   // Canonical guard: never redirect until authState resolves
-  if (authState === "loading") {
+  if (authState === "loading" && !isLikelyPublicRoute) {
     return <PageLoader />;
   }
 
   return (
     <Suspense fallback={<PageLoader />}>
       <Switch>
-        {!isAuthenticated ? (
+        {shouldUseGuestRoutes ? (
           <>
             <Route path="/" component={Home} />
             <Route path="/login" component={Login} />

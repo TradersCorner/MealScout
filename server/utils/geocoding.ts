@@ -12,6 +12,11 @@ const cache = new Map<string, ReverseGeocodeResult>();
 type ForwardCacheEntry = { value: ForwardGeocodeResult | null; ts: number };
 const forwardCache = new Map<string, ForwardCacheEntry>();
 const FORWARD_FAILURE_TTL_MS = 10 * 60 * 1000;
+const FORWARD_QUEUE_INTERVAL_MS = 250;
+const GEOCODE_MAX_ATTEMPTS = 3;
+const GEOCODE_BASE_BACKOFF_MS = 250;
+let forwardQueue: Promise<void> = Promise.resolve();
+let lastForwardRunAt = 0;
 
 const roundCoord = (value: number, digits = 3) => {
   const factor = Math.pow(10, digits);
@@ -23,6 +28,60 @@ const getCacheKey = (lat: number, lng: number) =>
 
 const normalizeAddressKey = (address: string) =>
   address.trim().toLowerCase();
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+const shouldRetryStatus = (status: number) =>
+  status === 408 || status === 429 || status >= 500;
+
+async function fetchWithBackoff(
+  url: string,
+  init?: RequestInit,
+): Promise<Response | null> {
+  let delay = GEOCODE_BASE_BACKOFF_MS;
+  for (let attempt = 1; attempt <= GEOCODE_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const res = await fetch(url, init);
+      if (res.ok || !shouldRetryStatus(res.status) || attempt === GEOCODE_MAX_ATTEMPTS) {
+        return res;
+      }
+    } catch {
+      if (attempt === GEOCODE_MAX_ATTEMPTS) {
+        return null;
+      }
+    }
+    await sleep(delay);
+    delay *= 2;
+  }
+  return null;
+}
+
+async function enqueueForwardTask<T>(task: () => Promise<T>): Promise<T> {
+  const run = forwardQueue.then(async () => {
+    const waitMs = Math.max(
+      0,
+      lastForwardRunAt + FORWARD_QUEUE_INTERVAL_MS - Date.now(),
+    );
+    if (waitMs > 0) {
+      await sleep(waitMs);
+    }
+    try {
+      return await task();
+    } finally {
+      lastForwardRunAt = Date.now();
+    }
+  });
+
+  forwardQueue = run.then(
+    () => undefined,
+    () => undefined,
+  );
+
+  return run;
+}
 
 const extractCityState = (data: any): ReverseGeocodeResult => {
   const address = data?.address || {};
@@ -41,13 +100,13 @@ async function reverseWithNominatim(
   lng: number,
 ): Promise<ReverseGeocodeResult | null> {
   const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
-  const res = await fetch(url, {
+  const res = await fetchWithBackoff(url, {
     headers: {
       "User-Agent": "MealScout/1.0 (location lookup)",
       "Accept-Language": "en",
     },
   });
-  if (!res.ok) return null;
+  if (!res?.ok) return null;
   const data = await res.json();
   return extractCityState(data);
 }
@@ -59,8 +118,8 @@ async function reverseWithGoogle(
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) return null;
   const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`;
-  const res = await fetch(url);
-  if (!res.ok) return null;
+  const res = await fetchWithBackoff(url);
+  if (!res?.ok) return null;
   const data = await res.json();
   const result = data?.results?.[0];
   if (!result) return null;
@@ -81,13 +140,13 @@ async function forwardWithNominatim(
   const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=${encodeURIComponent(
     address,
   )}`;
-  const res = await fetch(url, {
+  const res = await fetchWithBackoff(url, {
     headers: {
       "User-Agent": "MealScout/1.0 (geocoding)",
       "Accept-Language": "en",
     },
   });
-  if (!res.ok) return null;
+  if (!res?.ok) return null;
   const data = await res.json();
   const first = Array.isArray(data) ? data[0] : null;
   if (!first?.lat || !first?.lon) return null;
@@ -105,8 +164,8 @@ async function forwardWithGoogle(
   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
     address,
   )}&key=${apiKey}`;
-  const res = await fetch(url);
-  if (!res.ok) return null;
+  const res = await fetchWithBackoff(url);
+  if (!res?.ok) return null;
   const data = await res.json();
   const result = data?.results?.[0];
   const location = result?.geometry?.location;
@@ -146,31 +205,33 @@ export async function forwardGeocode(
   address: string,
   options?: { force?: boolean },
 ): Promise<ForwardGeocodeResult | null> {
-  const key = normalizeAddressKey(address);
-  if (!key) return null;
-  const force = options?.force === true;
-  const entry = forwardCache.get(key);
-  if (!force && entry) {
-    if (entry.value) return entry.value;
-    if (Date.now() - entry.ts < FORWARD_FAILURE_TTL_MS) return null;
-    forwardCache.delete(key);
-  }
-  if (force && entry) {
-    forwardCache.delete(key);
-  }
+  return enqueueForwardTask(async () => {
+    const key = normalizeAddressKey(address);
+    if (!key) return null;
+    const force = options?.force === true;
+    const entry = forwardCache.get(key);
+    if (!force && entry) {
+      if (entry.value) return entry.value;
+      if (Date.now() - entry.ts < FORWARD_FAILURE_TTL_MS) return null;
+      forwardCache.delete(key);
+    }
+    if (force && entry) {
+      forwardCache.delete(key);
+    }
 
-  const googleResult = await forwardWithGoogle(address);
-  if (googleResult) {
-    forwardCache.set(key, { value: googleResult, ts: Date.now() });
-    return googleResult;
-  }
+    const googleResult = await forwardWithGoogle(address);
+    if (googleResult) {
+      forwardCache.set(key, { value: googleResult, ts: Date.now() });
+      return googleResult;
+    }
 
-  const nominatimResult = await forwardWithNominatim(address);
-  if (nominatimResult) {
-    forwardCache.set(key, { value: nominatimResult, ts: Date.now() });
-    return nominatimResult;
-  }
+    const nominatimResult = await forwardWithNominatim(address);
+    if (nominatimResult) {
+      forwardCache.set(key, { value: nominatimResult, ts: Date.now() });
+      return nominatimResult;
+    }
 
-  forwardCache.set(key, { value: null, ts: Date.now() });
-  return null;
+    forwardCache.set(key, { value: null, ts: Date.now() });
+    return null;
+  });
 }

@@ -111,26 +111,36 @@ export default function ResetPassword() {
   };
 
   const passwordStrength = getPasswordStrength(password);
+  const strengthTextClass =
+    passwordStrength.color === "red"
+      ? "text-red-300"
+      : passwordStrength.color === "orange"
+        ? "text-amber-300"
+        : passwordStrength.color === "blue"
+          ? "text-blue-300"
+          : passwordStrength.color === "green"
+            ? "text-emerald-300"
+            : "text-[color:var(--text-muted)]";
 
   // Show loading state while validating token
   if (!token) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
+      <div className="min-h-screen bg-[var(--bg-layered)]">
         <BackHeader
           title="Reset Password"
           fallbackHref="/forgot-password"
           icon={KeyRound}
-          className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+          className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
         />
 
         <div className="px-6 py-12 max-w-md mx-auto">
-          <Card className="bg-white/95 backdrop-blur-sm shadow-xl border-0">
+          <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean-lg">
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-red-600 rounded-full mx-auto mb-6 flex items-center justify-center">
                 <AlertTriangle className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Invalid Reset Link</h2>
-              <p className="text-gray-600 mb-6">
+              <h2 className="text-2xl font-bold text-[color:var(--text-primary)] mb-4">Invalid Reset Link</h2>
+              <p className="text-[color:var(--text-secondary)] mb-6">
                 This password reset link is invalid or missing. Please request a new one.
               </p>
               <Link href="/forgot-password">
@@ -147,10 +157,10 @@ export default function ResetPassword() {
 
   if (isValidatingToken) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--bg-layered)] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-gray-600">Validating reset link...</p>
+          <div className="animate-spin w-12 h-12 border-4 border-[color:var(--action-primary)] border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-[color:var(--text-secondary)]">Validating reset link...</p>
         </div>
       </div>
     );
@@ -159,22 +169,22 @@ export default function ResetPassword() {
   // Show error if token is invalid
   if (tokenError || (tokenValidation && !tokenValidation.valid)) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50">
+      <div className="min-h-screen bg-[var(--bg-layered)]">
         <BackHeader
           title="Reset Password"
           fallbackHref="/forgot-password"
           icon={KeyRound}
-          className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+          className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
         />
 
         <div className="px-6 py-12 max-w-md mx-auto">
-          <Card className="bg-white/95 backdrop-blur-sm shadow-xl border-0">
+          <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean-lg">
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-red-600 rounded-full mx-auto mb-6 flex items-center justify-center">
                 <AlertTriangle className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Link Expired</h2>
-              <p className="text-gray-600 mb-6">
+              <h2 className="text-2xl font-bold text-[color:var(--text-primary)] mb-4">Link Expired</h2>
+              <p className="text-[color:var(--text-secondary)] mb-6">
                 This password reset link has expired or has already been used. Please request a new one.
               </p>
               <Link href="/forgot-password">
@@ -190,7 +200,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-[var(--bg-layered)]">
       <SEOHead
         title="Reset Password - MealScout | Create New Password"
         description="Create a new password for your MealScout account. Choose a strong, secure password to protect your account and access exclusive food deals."
@@ -202,19 +212,19 @@ export default function ResetPassword() {
         title="Reset Password"
         fallbackHref="/forgot-password"
         icon={KeyRound}
-        className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm"
+        className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-sm"
       />
 
       <div className="px-6 py-12 max-w-md mx-auto">
-        <Card className="bg-white/95 backdrop-blur-sm shadow-xl border-0">
+        <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean-lg">
           <CardHeader className="text-center pb-2">
             <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full mx-auto mb-4 flex items-center justify-center">
               <KeyRound className="w-8 h-8 text-white" />
             </div>
-            <CardTitle className="text-2xl font-bold text-gray-900">Create New Password</CardTitle>
+            <CardTitle className="text-2xl font-bold text-[color:var(--text-primary)]">Create New Password</CardTitle>
           </CardHeader>
           <CardContent className="px-8 pb-8">
-            <p className="text-gray-600 text-center mb-6">
+            <p className="text-[color:var(--text-secondary)] text-center mb-6">
               Choose a strong password for your account.
             </p>
 
@@ -225,21 +235,21 @@ export default function ResetPassword() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-gray-700 font-medium">New Password</FormLabel>
+                      <FormLabel className="text-[color:var(--text-primary)] font-medium">New Password</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
                             {...field}
                             type={showPassword ? "text" : "password"}
                             placeholder="Enter new password"
-                            className="pr-10 py-3 border-gray-300 focus:border-green-500 focus:ring-green-500"
+                            className="pr-10 py-3 border-[color:var(--border-subtle)] bg-[var(--field-bg)] focus:border-[color:var(--action-primary)] focus:ring-[color:var(--action-primary)]"
                             disabled={resetPasswordMutation.isPending}
                             data-testid="input-password"
                           />
                           <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
                             data-testid="button-toggle-password"
                           >
                             {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -260,7 +270,7 @@ export default function ResetPassword() {
                                 }`}
                               />
                             </div>
-                            <span className={`text-xs font-medium text-${passwordStrength.color}-600`}>
+                            <span className={`text-xs font-medium ${strengthTextClass}`}>
                               {passwordStrength.text}
                             </span>
                           </div>
@@ -275,21 +285,21 @@ export default function ResetPassword() {
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-gray-700 font-medium">Confirm New Password</FormLabel>
+                      <FormLabel className="text-[color:var(--text-primary)] font-medium">Confirm New Password</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
                             {...field}
                             type={showConfirmPassword ? "text" : "password"}
                             placeholder="Confirm new password"
-                            className="pr-10 py-3 border-gray-300 focus:border-green-500 focus:ring-green-500"
+                            className="pr-10 py-3 border-[color:var(--border-subtle)] bg-[var(--field-bg)] focus:border-[color:var(--action-primary)] focus:ring-[color:var(--action-primary)]"
                             disabled={resetPasswordMutation.isPending}
                             data-testid="input-confirm-password"
                           />
                           <button
                             type="button"
                             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
                             data-testid="button-toggle-confirm-password"
                           >
                             {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -303,7 +313,7 @@ export default function ResetPassword() {
 
                 <Button
                   type="submit"
-                  className="w-full py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                  className="w-full py-3 action-primary hover:bg-[color:var(--action-hover)] text-[color:var(--action-primary-text)] font-semibold rounded-lg shadow-clean transition-all duration-200"
                   disabled={resetPasswordMutation.isPending}
                   data-testid="button-reset-password"
                 >
@@ -320,19 +330,19 @@ export default function ResetPassword() {
             </Form>
 
             {/* Security tips */}
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Password Tips:</h4>
-              <ul className="text-xs text-gray-500 space-y-1">
+            <div className="mt-6 pt-4 border-t border-[color:var(--border-subtle)]">
+              <h4 className="text-sm font-medium text-[color:var(--text-primary)] mb-2">Password Tips:</h4>
+              <ul className="text-xs text-[color:var(--text-secondary)] space-y-1">
                 <li className="flex items-center space-x-1">
-                  <span className="w-1 h-1 bg-gray-400 rounded-full" />
+                  <span className="w-1 h-1 bg-[color:var(--text-muted)] rounded-full" />
                   <span>Use at least 8 characters</span>
                 </li>
                 <li className="flex items-center space-x-1">
-                  <span className="w-1 h-1 bg-gray-400 rounded-full" />
+                  <span className="w-1 h-1 bg-[color:var(--text-muted)] rounded-full" />
                   <span>Include uppercase and lowercase letters</span>
                 </li>
                 <li className="flex items-center space-x-1">
-                  <span className="w-1 h-1 bg-gray-400 rounded-full" />
+                  <span className="w-1 h-1 bg-[color:var(--text-muted)] rounded-full" />
                   <span>Add numbers and special characters</span>
                 </li>
               </ul>

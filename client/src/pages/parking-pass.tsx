@@ -118,6 +118,22 @@ interface ParkingPassListing {
   }>;
 }
 
+type PublicMapLocation = {
+  id: string;
+  type: "host_location" | "event";
+  hostId?: string | null;
+  name?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  latitude?: string | null;
+  longitude?: string | null;
+};
+
+type MapLocationsResponse = {
+  hostLocations: PublicMapLocation[];
+};
+
 type ParkingPassLocationGroup = {
   key: string;
   host: Host;
@@ -570,6 +586,17 @@ export default function ParkingPassPage() {
   const [parkingCoords, setParkingCoords] = useState<
     Record<string, GeoPoint>
   >({});
+  const { data: mapLocationsData } = useQuery<MapLocationsResponse>({
+    queryKey: ["/api/map/locations"],
+    queryFn: async () => {
+      const res = await fetch("/api/map/locations");
+      if (!res.ok) {
+        throw new Error("Failed to load map locations");
+      }
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
   const [geocodeCache, setGeocodeCache] = useState<
     Record<string, GeoPoint>
   >({});
@@ -2508,39 +2535,100 @@ export default function ParkingPassPage() {
         ? "Open"
         : "Closed"
       : null;
-  const mapLocations = useMemo(
+  const hostLocationsByHostId = useMemo(() => {
+    const map = new Map<
+      string,
+      Array<PublicMapLocation & { coords: GeoPoint; addressLabel: string }>
+    >();
+    const locations = mapLocationsData?.hostLocations ?? [];
+    locations.forEach((loc) => {
+      if (loc.type !== "host_location" || !loc.hostId) return;
+      const lat = parseCoord(loc.latitude);
+      const lng = parseCoord(loc.longitude);
+      if (lat === null || lng === null) return;
+      const entry = {
+        ...loc,
+        coords: { lat, lng },
+        addressLabel: buildAddressLabel(loc.address ?? "", loc.city ?? "", loc.state ?? ""),
+      };
+      const existing = map.get(loc.hostId);
+      if (existing) {
+        existing.push(entry);
+      } else {
+        map.set(loc.hostId, [entry]);
+      }
+    });
+    return map;
+  }, [mapLocationsData]);
+
+  const mapPins = useMemo(
     () =>
       filteredLocations
-        .map((group) => {
+        .flatMap((group) => {
+          const hostLocations = hostLocationsByHostId.get(group.host.id);
+          if (hostLocations && hostLocations.length > 0) {
+            return hostLocations.map((loc) => ({
+              key: `${group.key}:${loc.id}`,
+              group,
+              coords: loc.coords,
+              addressLabel: loc.addressLabel,
+            }));
+          }
+
           // Prefer address-keyed coordinates so multi-address hosts don't collapse to one pin.
           const coords =
             parkingCoords[group.key] || getLocationCoords(group.host) || null;
-          return coords ? { group, coords } : null;
+          if (!coords) return [];
+          return [
+            {
+              key: group.key,
+              group,
+              coords,
+              addressLabel: buildAddressLabel(
+                group.host.address,
+                group.host.city,
+                group.host.state,
+              ),
+            },
+          ];
         })
         .filter(
           (
             item,
-          ): item is { group: ParkingPassLocationGroup; coords: GeoPoint } =>
+          ): item is {
+            key: string;
+            group: ParkingPassLocationGroup;
+            coords: GeoPoint;
+            addressLabel: string;
+          } =>
             item !== null,
         ),
-    [filteredLocations, parkingCoords],
+    [filteredLocations, hostLocationsByHostId, parkingCoords],
   );
   const mapCenter = useMemo(() => {
-    const activeCoords = activeLocation
-      ? parkingCoords[activeLocation.key] ||
-        getLocationCoords(activeLocation.host) ||
-        null
+    const activeHostLocations = activeLocation
+      ? hostLocationsByHostId.get(activeLocation.host.id)
       : null;
-    return activeCoords || mapLocations[0]?.coords || defaultMapCenter;
-  }, [activeLocation, mapLocations, parkingCoords]);
+    const activeCoords =
+      (activeLocation
+        ? parkingCoords[activeLocation.key] ||
+          getLocationCoords(activeLocation.host) ||
+          null
+        : null) ||
+      (activeHostLocations && activeHostLocations.length > 0
+        ? activeHostLocations[0].coords
+        : null);
+    return activeCoords || mapPins[0]?.coords || defaultMapCenter;
+  }, [activeLocation, hostLocationsByHostId, mapPins, parkingCoords]);
 
   useEffect(() => {
     if (geocodeInFlight.current) return;
     const queue = filteredLocations
-      .filter(
-        (group) =>
-          !parkingCoords[group.key] && Boolean(buildHostAddress(group.host)),
-      )
+      .filter((group) => {
+        const hasMappedCoords = hostLocationsByHostId.has(group.host.id);
+        if (hasMappedCoords) return false;
+        return !parkingCoords[group.key] && Boolean(buildHostAddress(group.host));
+      })
       .slice(0, 20);
 
     if (!queue.length) return;
@@ -2568,7 +2656,7 @@ export default function ParkingPassPage() {
         geocodeInFlight.current = false;
       }
     })();
-  }, [filteredLocations, parkingCoords, geocodeCache]);
+  }, [filteredLocations, hostLocationsByHostId, parkingCoords, geocodeCache]);
 
   useEffect(() => {
     if (!activeLocation) {
@@ -4529,7 +4617,7 @@ export default function ParkingPassPage() {
                           attribution={parkingMapAttribution}
                           url={parkingMapTileUrl}
                         />
-                        {mapLocations.map(({ group, coords }) => {
+                        {mapPins.map(({ key, group, coords, addressLabel }) => {
                           const effectiveDateKey =
                             group.key === activeLocationKey
                               ? selectedDate
@@ -4595,7 +4683,7 @@ export default function ParkingPassPage() {
 
                           return (
                             <Marker
-                              key={group.key}
+                              key={key}
                               position={[coords.lat, coords.lng]}
                               icon={
                                 bookings.length > 0
@@ -4612,7 +4700,7 @@ export default function ParkingPassPage() {
                                     {group.host.businessName}
                                   </p>
                                   <p className="text-gray-600">
-                                    {group.host.address}
+                                    {addressLabel}
                                   </p>
                                   {displayListing && (
                                     <p className="text-gray-600">
@@ -4733,7 +4821,7 @@ export default function ParkingPassPage() {
                           );
                         })}
                       </MapContainer>
-                      {mapLocations.length === 0 && (
+                      {mapPins.length === 0 && (
                         <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500 pointer-events-none">
                           No mappable locations yet.
                         </div>

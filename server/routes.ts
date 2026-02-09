@@ -1540,8 +1540,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Public map feed: hosts (open location requests) + upcoming events (hosted slots)
+  let mapLocationsCache:
+    | { expiresAt: number; payload: { hostLocations: any[]; eventLocations: any[] } }
+    | null = null;
   app.get("/api/map/locations", async (_req, res) => {
     try {
+      if (mapLocationsCache && mapLocationsCache.expiresAt > Date.now()) {
+        return res.json(mapLocationsCache.payload);
+      }
+      const parseCoord = (value?: string | number | null) => {
+        if (value === null || value === undefined) return null;
+        const parsed = typeof value === "string" ? Number(value) : value;
+        return Number.isFinite(parsed) ? parsed : null;
+      };
+      const buildFullAddress = (
+        address?: string | null,
+        city?: string | null,
+        state?: string | null,
+      ) => {
+        const base = (address ?? "").trim();
+        if (!base) return "";
+        const baseLower = base.toLowerCase();
+        const normalizedCity = (city ?? "").trim();
+        const normalizedState = (state ?? "").trim();
+
+        const parts: string[] = [base];
+        if (normalizedCity && !baseLower.includes(normalizedCity.toLowerCase())) {
+          parts.push(normalizedCity);
+        }
+        if (
+          normalizedState &&
+          !baseLower.includes(normalizedState.toLowerCase())
+        ) {
+          parts.push(normalizedState);
+        }
+        parts.push("USA");
+        return parts.join(", ");
+      };
+      const MAX_GEOCODE_PER_REQUEST = 6;
+      type PendingGeocode = {
+        address: string;
+        onResolved: Array<(coords: { lat: number; lng: number }) => void>;
+        persist: Array<(coords: { lat: number; lng: number }) => Promise<void>>;
+      };
+      const pendingByAddress = new Map<string, PendingGeocode>();
+      const normalizeAddressKey = (value: string) => value.trim().toLowerCase();
+      const queueGeocode = (
+        address: string,
+        onResolved: (coords: { lat: number; lng: number }) => void,
+        persist?: (coords: { lat: number; lng: number }) => Promise<void>,
+      ) => {
+        const key = normalizeAddressKey(address);
+        if (!key) return;
+        const existing = pendingByAddress.get(key);
+        if (existing) {
+          existing.onResolved.push(onResolved);
+          if (persist) existing.persist.push(persist);
+          return;
+        }
+        pendingByAddress.set(key, {
+          address,
+          onResolved: [onResolved],
+          persist: persist ? [persist] : [],
+        });
+      };
       const locationKey = (
         address?: string | null,
         city?: string | null,
@@ -1567,59 +1629,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ),
         );
 
-      const hostProfilesWithCoords = await Promise.all(
-        hostProfiles.map(async ({ host }) => {
-          const hasCoords =
-            host.latitude &&
-            host.longitude &&
-            !Number.isNaN(Number(host.latitude)) &&
-            !Number.isNaN(Number(host.longitude));
-
-          if (hasCoords || !host.isVerified) {
-            return { host };
-          }
-
-          const geocodeAddress = [host.address, host.city, host.state]
-            .map((part) => (part ?? "").trim())
-            .filter(Boolean)
-            .join(", ");
-
-          if (!geocodeAddress) {
-            return { host };
-          }
-
-          const coords = await forwardGeocode(geocodeAddress).catch(
-            () => null,
-          );
-          if (!coords) {
-            return { host };
-          }
-
-          const latitude = coords.lat.toString();
-          const longitude = coords.lng.toString();
-
-          try {
-            await db
-              .update(hosts)
-              .set({
-                latitude,
-                longitude,
-                updatedAt: new Date(),
-              })
-              .where(eq(hosts.id, host.id));
-          } catch (error) {
-            console.error("Failed to persist host geocode:", error);
-          }
-
-          return {
-            host: {
-              ...host,
-              latitude,
-              longitude,
-            },
-          };
-        }),
-      );
+      const hostProfilesWithCoords = hostProfiles.map(({ host }) => ({ host }));
 
       const publicEvents = upcomingEvents.filter(
         (event) => !event.requiresPayment,
@@ -1629,6 +1639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ({ host }: { host: typeof hosts.$inferSelect }) => ({
           id: host.id,
           type: "host_location" as const,
+          hostId: host.id,
           name: host.businessName,
           address: host.address,
           city: host.city,
@@ -1680,76 +1691,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         seenHostLocationKeys.add(locationKey(loc.address, null, null));
       });
 
-      const additionalHostLocations = await Promise.all(
-        additionalAddressRows.map(async ({ address }) => {
-          const parentHost = hostByUserId.get(address.userId);
-          if (!parentHost) return null;
+      const additionalHostLocations = additionalAddressRows.map(({ address }) => {
+        const parentHost = hostByUserId.get(address.userId);
+        if (!parentHost) return null;
 
-          const key = locationKey(address.address, address.city, address.state);
-          if (!key || seenHostLocationKeys.has(key)) return null;
-          seenHostLocationKeys.add(key);
+        const key = locationKey(address.address, address.city, address.state);
+        if (!key || seenHostLocationKeys.has(key)) return null;
+        seenHostLocationKeys.add(key);
 
-          const hasCoords =
-            address.latitude &&
-            address.longitude &&
-            !Number.isNaN(Number(address.latitude)) &&
-            !Number.isNaN(Number(address.longitude));
-
-          let latitude = address.latitude;
-          let longitude = address.longitude;
-
-          if (!hasCoords) {
-            const fullAddress = [address.address, address.city, address.state]
-              .map((part) => (part ?? "").trim())
-              .filter(Boolean)
-              .join(", ");
-
-            if (fullAddress) {
-              const coords = await forwardGeocode(fullAddress).catch(() => null);
-              if (coords) {
-                latitude = coords.lat.toString();
-                longitude = coords.lng.toString();
-                try {
-                  await db
-                    .update(userAddresses)
-                    .set({
-                      latitude,
-                      longitude,
-                      updatedAt: new Date(),
-                    })
-                    .where(eq(userAddresses.id, address.id));
-                } catch (error) {
-                  console.error(
-                    "Failed to persist additional host address geocode:",
-                    error,
-                  );
-                }
-              }
-            }
-          }
-
-          return {
-            id: `${parentHost.id}:addr:${address.id}`,
-            type: "host_location" as const,
-            name: parentHost.businessName,
-            address: address.address,
-            city: address.city,
-            state: address.state,
-            locationType: parentHost.locationType,
-            expectedFootTraffic: parentHost.expectedFootTraffic,
-            notes: parentHost.notes,
-            preferredDates: [],
-            status: parentHost.isVerified ? "verified" : "active",
-            latitude,
-            longitude,
-          };
-        }),
-      );
+        return {
+          id: `${parentHost.id}:addr:${address.id}`,
+          type: "host_location" as const,
+          hostId: parentHost.id,
+          name: parentHost.businessName,
+          address: address.address,
+          city: address.city,
+          state: address.state,
+          locationType: parentHost.locationType,
+          expectedFootTraffic: parentHost.expectedFootTraffic,
+          notes: parentHost.notes,
+          preferredDates: [],
+          status: parentHost.isVerified ? "verified" : "active",
+          latitude: address.latitude,
+          longitude: address.longitude,
+          userAddressId: address.id,
+        };
+      });
 
       const hostLocations = [
         ...openLocations.map((loc) => ({
           id: loc.id,
           type: "host_location" as const,
+          hostId: null,
           name: loc.businessName,
           address: loc.address,
           city: null,
@@ -1761,6 +1734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: loc.status,
           latitude: loc.latitude,
           longitude: loc.longitude,
+          locationRequestId: loc.id,
         })),
         ...primaryHostLocations,
         ...additionalHostLocations.filter(Boolean),
@@ -1788,7 +1762,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
         bookedRestaurantId: event.bookedRestaurantId,
       }));
 
-      res.json({ hostLocations, eventLocations });
+      const applyCoords = (
+        target: { latitude?: string | null; longitude?: string | null },
+        coords: { lat: number; lng: number },
+      ) => {
+        target.latitude = coords.lat.toString();
+        target.longitude = coords.lng.toString();
+      };
+
+      for (const host of hostLocations) {
+        const lat = parseCoord(host.latitude);
+        const lng = parseCoord(host.longitude);
+        if (lat !== null && lng !== null) continue;
+        const address = buildFullAddress(host.address, host.city, host.state);
+        if (!address) continue;
+        queueGeocode(
+          address,
+          (coords) => applyCoords(host, coords),
+          host.userAddressId
+            ? async (coords) => {
+                await db
+                  .update(userAddresses)
+                  .set({
+                    latitude: coords.lat.toString(),
+                    longitude: coords.lng.toString(),
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(userAddresses.id, host.userAddressId));
+              }
+            : host.hostId
+              ? async (coords) => {
+                  await storage.updateHostCoordinates(
+                    host.hostId,
+                    coords.lat,
+                    coords.lng,
+                  );
+                }
+              : host.locationRequestId
+                ? async (coords) => {
+                    await db
+                      .update(locationRequests)
+                      .set({
+                        latitude: coords.lat.toString(),
+                        longitude: coords.lng.toString(),
+                      })
+                      .where(eq(locationRequests.id, host.locationRequestId));
+                  }
+                : undefined,
+        );
+      }
+
+      for (const event of eventLocations) {
+        const lat = parseCoord(event.hostLatitude);
+        const lng = parseCoord(event.hostLongitude);
+        if (lat !== null && lng !== null) continue;
+        const address = buildFullAddress(
+          event.hostAddress,
+          event.hostCity,
+          event.hostState,
+        );
+        if (!address) continue;
+        queueGeocode(address, (coords) => {
+          event.hostLatitude = coords.lat.toString();
+          event.hostLongitude = coords.lng.toString();
+        });
+      }
+
+      const pendingTasks = Array.from(pendingByAddress.values()).slice(
+        0,
+        MAX_GEOCODE_PER_REQUEST,
+      );
+      for (const task of pendingTasks) {
+        const coords = await forwardGeocode(task.address).catch(() => null);
+        if (!coords) continue;
+        task.onResolved.forEach((handler) => handler(coords));
+        await Promise.all(
+          task.persist.map((handler) => handler(coords).catch(() => undefined)),
+        );
+      }
+
+      const payload = { hostLocations, eventLocations };
+      mapLocationsCache = {
+        payload,
+        expiresAt: Date.now() + 60_000,
+      };
+      res.json(payload);
     } catch (error) {
       console.error("Error building map locations feed:", error);
       res.status(500).json({ message: "Failed to load map data" });

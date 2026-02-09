@@ -156,6 +156,22 @@ async function forwardWithNominatim(
   return { lat, lng };
 }
 
+async function forwardWithCensus(
+  address: string,
+): Promise<ForwardGeocodeResult | null> {
+  const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(
+    address,
+  )}&benchmark=Public_AR_Current&format=json`;
+  const res = await fetchWithBackoff(url);
+  if (!res?.ok) return null;
+  const data = await res.json();
+  const match = data?.result?.addressMatches?.[0];
+  const x = Number(match?.coordinates?.x);
+  const y = Number(match?.coordinates?.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return { lat: y, lng: x };
+}
+
 async function forwardWithGoogle(
   address: string,
 ): Promise<ForwardGeocodeResult | null> {
@@ -229,6 +245,12 @@ export async function forwardGeocode(
     if (nominatimResult) {
       forwardCache.set(key, { value: nominatimResult, ts: Date.now() });
       return nominatimResult;
+    }
+
+    const censusResult = await forwardWithCensus(address);
+    if (censusResult) {
+      forwardCache.set(key, { value: censusResult, ts: Date.now() });
+      return censusResult;
     }
 
     forwardCache.set(key, { value: null, ts: Date.now() });

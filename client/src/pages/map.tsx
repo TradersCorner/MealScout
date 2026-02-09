@@ -425,6 +425,7 @@ export default function MapPage() {
   const [geocodeFailures, setGeocodeFailures] = useState<
     Record<string, GeocodeFailureEntry>
   >({});
+  const enableClientGeocode = false;
 
   useEffect(() => {
     try {
@@ -792,6 +793,9 @@ export default function MapPage() {
 
   // Build a geocoding work list for any host/event without coordinates yet
   useEffect(() => {
+    if (!enableClientGeocode) {
+      return;
+    }
     if (!mapBounds) {
       return;
     }

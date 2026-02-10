@@ -44,8 +44,8 @@ export function TimeOfDayBackground() {
           backgroundRepeat: "no-repeat",
           backgroundSize: "cover",
           backgroundPosition: "center",
-          filter: isDay ? "blur(12px)" : "none",
-          transform: isDay ? "scale(1.03)" : "none",
+          filter: isDay ? "blur(6px)" : "none",
+          transform: isDay ? "scale(1.01)" : "none",
         }}
       />
       <div

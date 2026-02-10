@@ -8,9 +8,12 @@ import { getAffiliateShareUrl } from "@/lib/share";
 import DealShareModal from "./deal-share-modal";
 import RestaurantDealsDrawer from "./restaurant-deals-drawer";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
 const SAVED_DEALS_KEY = "mealscout_saved_deals";
+let followSnapshotPromise: Promise<Set<string>> | null = null;
+let followSnapshotCache: Set<string> | null = null;
 
 function getSavedDeals(): string[] {
   try {
@@ -29,6 +32,30 @@ function persistSavedDeals(ids: string[]) {
   } catch {
     // Best effort; ignore storage failures
   }
+}
+
+async function getFollowedRestaurantIds(): Promise<Set<string>> {
+  if (followSnapshotCache) return followSnapshotCache;
+  if (!followSnapshotPromise) {
+    followSnapshotPromise = (async () => {
+      try {
+        const follows = await apiRequest("GET", "/api/following/restaurants");
+        const list = Array.isArray(follows) ? follows : [];
+        const ids = new Set<string>(
+          list
+            .map((follow: any) => follow.restaurantId || follow.restaurant?.id)
+            .filter(Boolean)
+        );
+        followSnapshotCache = ids;
+        return ids;
+      } catch (error) {
+        console.error("Failed to load follow snapshot:", error);
+        followSnapshotCache = new Set();
+        return followSnapshotCache;
+      }
+    })();
+  }
+  return followSnapshotPromise;
 }
 
 interface Deal {
@@ -168,6 +195,8 @@ export default function DealCard({ deal }: DealCardProps) {
   const [isRestaurantFollowed, setIsRestaurantFollowed] = useState(false);
   const [followError, setFollowError] = useState("");
   const [followLoading, setFollowLoading] = useState(false);
+  const [openedFromFollowCta, setOpenedFromFollowCta] = useState(false);
+  const { toast } = useToast();
   const [recommendSelection, setRecommendSelection] = useState(false);
   const [isRestaurantRecommended, setIsRestaurantRecommended] = useState(false);
   const [recommendError, setRecommendError] = useState("");
@@ -266,6 +295,28 @@ export default function DealCard({ deal }: DealCardProps) {
     fetchPreferenceSnapshot();
   }, [showRecommendModal, user, deal.restaurantId]);
 
+  useEffect(() => {
+    if (!user || !deal.restaurantId) return;
+    let isMounted = true;
+
+    getFollowedRestaurantIds()
+      .then((ids) => {
+        if (!isMounted) return;
+        const isFollowed = ids.has(deal.restaurantId);
+        setIsRestaurantFollowed(isFollowed);
+        if (isFollowed) {
+          setFollowSelection(true);
+        }
+      })
+      .catch(() => {
+        if (!isMounted) return;
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, deal.restaurantId]);
+
   const formatDiscount = () => {
     // Normalize discount display for percentage vs flat amounts
     if (deal.dealType === "percentage") {
@@ -348,6 +399,14 @@ export default function DealCard({ deal }: DealCardProps) {
 
   const handleCardClick = () => {
     setShowDealsDrawer(true);
+  };
+
+  const handleFollowCta = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setFollowSelection(true);
+    setOpenedFromFollowCta(true);
+    setShowRecommendModal(true);
   };
 
   const handleParkingClick = (e: React.MouseEvent) => {
@@ -446,6 +505,9 @@ export default function DealCard({ deal }: DealCardProps) {
         );
         setIsRestaurantFollowed(true);
         setFollowSelection(true);
+        if (followSnapshotCache) {
+          followSnapshotCache.add(deal.restaurantId);
+        }
       } else {
         await apiRequest(
           "DELETE",
@@ -454,6 +516,9 @@ export default function DealCard({ deal }: DealCardProps) {
         );
         setIsRestaurantFollowed(false);
         setFollowSelection(false);
+        if (followSnapshotCache) {
+          followSnapshotCache.delete(deal.restaurantId);
+        }
       }
 
       return true;
@@ -521,7 +586,14 @@ export default function DealCard({ deal }: DealCardProps) {
       }
 
       setShowRecommendModal(false);
+      setOpenedFromFollowCta(false);
       setRecommendationText("");
+      if (followSelection) {
+        toast({
+          title: isRestaurantFollowed ? "Following" : "Now following",
+          description: "You'll get notified when new specials go live.",
+        });
+      }
     } catch (error) {
       console.error("Recommendation submit failed:", error);
       setRecommendError(
@@ -646,7 +718,7 @@ export default function DealCard({ deal }: DealCardProps) {
             <div className="flex items-center gap-2 text-[11px] text-secondary mb-2">
               <div className="flex items-center gap-0.5 text-[color:var(--accent-text)]">
                 <Clock className="w-3 h-3" />
-                <span>Ends in 2h15m</span>
+                <span>Available now</span>
               </div>
               <div className="flex items-center gap-0.5">
                 <Flame className="w-3 h-3 text-[color:var(--accent-text)]" />
@@ -657,25 +729,39 @@ export default function DealCard({ deal }: DealCardProps) {
             </div>
 
             {/* Action row: save + share + parking */}
-            <div className="flex gap-1.5 mb-2">
+            <div className="grid grid-cols-3 gap-1.5 mb-2">
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 h-7 text-[11px] px-1 text-primary border-[color:var(--border-strong)] bg-[color:var(--bg-surface-muted)] hover:bg-[color:var(--bg-surface-muted)]"
+                className="h-7 text-[11px] px-1 text-primary border-[color:var(--border-strong)] bg-[color:var(--bg-surface-muted)] hover:bg-[color:var(--bg-surface-muted)]"
                 onClick={(e) => handleSave(e)}
               >
-                {isSaved ? "Bookmarked" : "Bookmark special"}
+                {isSaved ? "Saved" : "Save"}
               </Button>
 
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 h-7 text-[11px] px-1 text-primary border-[color:var(--border-strong)] bg-[color:var(--bg-surface-muted)] hover:bg-[color:var(--bg-surface-muted)]"
+                className="h-7 text-[11px] px-1 text-primary border-[color:var(--border-strong)] bg-[color:var(--bg-surface-muted)] hover:bg-[color:var(--bg-surface-muted)]"
                 onClick={handleShare}
               >
                 Share
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-[11px] px-1 text-primary border-[color:var(--border-strong)] bg-[color:var(--bg-surface-muted)] hover:bg-[color:var(--bg-surface-muted)]"
+                onClick={handleFollowCta}
+              >
+                {isRestaurantFollowed ? "Following" : "Follow"}
+              </Button>
             </div>
+            {isRestaurantFollowed && (
+              <div className="mb-2 flex items-center gap-1.5 rounded-full bg-[var(--bg-surface-muted)] px-2 py-1 text-[11px] text-[color:var(--text-secondary)]">
+                <UserPlus className="h-3 w-3" />
+                Following for new specials
+              </div>
+            )}
 
             {/* Button */}
             <Button
@@ -696,7 +782,10 @@ export default function DealCard({ deal }: DealCardProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div
             className="absolute inset-0 bg-black/50"
-            onClick={() => setShowRecommendModal(false)}
+            onClick={() => {
+              setShowRecommendModal(false);
+              setOpenedFromFollowCta(false);
+            }}
           />
           <div className="relative w-full max-w-md rounded-3xl shadow-clean-lg overflow-hidden border border-yellow-200/60">
             {/* Hero header */}
@@ -709,7 +798,9 @@ export default function DealCard({ deal }: DealCardProps) {
                   Recommend this restaurant
                 </h3>
                 <p className="text-xs text-yellow-800/80">
-                  Your recommendation directly affects local visibility
+                  {openedFromFollowCta
+                    ? "Follow to get notified when specials go live"
+                    : "Your recommendation directly affects local visibility"}
                 </p>
                 {isGoldenForkUser && (
                   <div className="mt-1 text-xs text-yellow-900 font-semibold flex items-center gap-1">
@@ -881,7 +972,10 @@ export default function DealCard({ deal }: DealCardProps) {
                 <Button
                   variant="outline"
                   className="h-9 text-sm border-subtle text-secondary"
-                  onClick={() => setShowRecommendModal(false)}
+                  onClick={() => {
+                    setShowRecommendModal(false);
+                    setOpenedFromFollowCta(false);
+                  }}
                 >
                   Cancel
                 </Button>

@@ -503,9 +503,16 @@ export default function SearchPage() {
           <h2 className="text-lg font-semibold text-foreground">
             {searchQuery ? `Deals for "${searchQuery}"` : "Popular Deals"}
           </h2>
-          <span className="text-sm text-muted-foreground">
-            {filteredDeals.length} deals found
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              {filteredDeals.length} deals found
+            </span>
+            {filteredDeals.length > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-[var(--bg-surface-muted)] text-[11px] text-[color:var(--text-secondary)]">
+                Open now
+              </span>
+            )}
+          </div>
         </div>
 
         {isLoading ? (

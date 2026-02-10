@@ -27,6 +27,7 @@
   --text-primary: #0a0a0a;
   --text-secondary: #1f2937;
   --text-muted: #334155;
+  --text-placeholder: #64748b;
   --text-inverse: #0b0a09;
   --border-subtle: rgba(15, 23, 42, 0.12);
   --border-strong: rgba(15, 23, 42, 0.18);
@@ -119,6 +120,7 @@
   --text-primary: #ffffff;
   --text-secondary: #e2e8f0;
   --text-muted: #e5e7eb;
+  --text-placeholder: rgba(255, 255, 255, 0.75);
   --text-inverse: #111111;
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
@@ -469,12 +471,12 @@
 
   .theme-night .parking-pass-page input::placeholder,
   .theme-night .parking-pass-page textarea::placeholder {
-    color: rgba(255, 255, 255, 0.55);
+    color: var(--text-placeholder);
   }
 
   .theme-day .parking-pass-page input::placeholder,
   .theme-day .parking-pass-page textarea::placeholder {
-    color: #64748b;
+    color: var(--text-placeholder);
   }
 
   h1,
@@ -676,11 +678,11 @@
   }
 
   .theme-day .hero-subtitle {
-    color: #6b7280;
+    color: var(--text-secondary);
   }
 
   .theme-night .hero-subtitle {
-    color: rgba(255, 255, 255, 0.86);
+    color: var(--text-secondary);
   }
 
   .theme-night .home-cinematic .hero-title,
@@ -724,7 +726,7 @@
 
   .theme-day .smart-search-shell {
     background: #ffffff;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border-subtle);
     backdrop-filter: none;
   }
 
@@ -743,11 +745,11 @@
   }
 
   .theme-day .smart-search-input::placeholder {
-    color: #9ca3af;
+    color: var(--text-placeholder);
   }
 
   .theme-night .smart-search-input::placeholder {
-    color: rgba(255, 255, 255, 0.72);
+    color: var(--text-placeholder);
   }
 
   .smart-search-button {
@@ -799,11 +801,11 @@
   }
 
   .theme-day .manual-location-input::placeholder {
-    color: #6b7280;
+    color: var(--text-placeholder);
   }
 
   .theme-night .manual-location-input::placeholder {
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--text-placeholder);
   }
 
   .manual-location-button {
@@ -899,7 +901,7 @@
 
   input::placeholder,
   textarea::placeholder {
-    color: var(--text-secondary);
+    color: var(--text-placeholder);
     opacity: 1;
   }
 
@@ -940,7 +942,7 @@
   .theme-day .filter-pill {
     background: #ffffff;
     color: #374151;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border-subtle);
   }
 
   .admin-dashboard,
@@ -991,7 +993,7 @@
 
   .theme-day .deal-card {
     background: #ffffff;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border-subtle);
     border-radius: 18px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   }
@@ -1032,7 +1034,7 @@
   }
 
   .theme-night .nav-link--inactive {
-    color: #e5e7eb;
+    color: var(--text-secondary);
   }
 
   .theme-day .nav-link--inactive:hover {
@@ -1227,7 +1229,7 @@
   .event-form .event-form-field {
     background-color: #ffffff;
     color: #0f172a;
-    border-color: #e2e8f0;
+    border-color: var(--border-subtle);
   }
 
   .event-form textarea.event-form-field {
@@ -1235,7 +1237,7 @@
   }
 
   .event-form .event-form-field::placeholder {
-    color: #94a3b8;
+    color: var(--text-placeholder);
   }
 
   .event-form .event-form-field:focus-visible {

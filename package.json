@@ -31,7 +31,8 @@
     "test:flows:with-server": "node scripts/testFlowsWithServer.mjs",
     "smoke:critical": "node scripts/smokeCriticalRoutes.mjs",
     "test:all": "npm run check && npm run test:flows && npm run stress-test",
-    "monitor": "tsx scripts/monitorPerformance.ts"
+    "monitor": "tsx scripts/monitorPerformance.ts",
+    "audit:theme": "node scripts/audit-theme-colors.mjs"
   },
   "dependencies": {
     "@getbrevo/brevo": "^3.0.1",

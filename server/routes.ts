@@ -38,6 +38,7 @@ import {
   isRestaurantOwner,
   isRestaurantOwnerOrAdmin,
   isAdmin,
+  isStaffOrAdmin,
   verifyResourceOwnership,
 } from "./unifiedAuth";
 import { emailService } from "./emailService";
@@ -1548,6 +1549,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     | null = null;
   app.get("/api/map/locations", async (_req, res) => {
     try {
+      res.setHeader("Cache-Control", "public, max-age=60");
       if (mapLocationsCache && mapLocationsCache.expiresAt > Date.now()) {
         return res.json(mapLocationsCache.payload);
       }
@@ -1865,6 +1867,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to load map data" });
     }
   });
+
+  app.post(
+    "/api/admin/map/locations-cache/clear",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (_req: any, res) => {
+      mapLocationsCache = null;
+      res.json({ success: true });
+    },
+  );
 
   // Host Profile & Events
   registerHostRoutes(app);

@@ -1793,6 +1793,42 @@ export default function AdminDashboard() {
       });
     },
   });
+  const clearMapCaches = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/admin/map/locations-cache/clear");
+      await apiRequest("POST", "/api/admin/parking-pass/cache/clear");
+      try {
+        localStorage.removeItem("mealscout:map:locations:v1");
+        localStorage.removeItem("mealscout:map:bookableHostIds:v1");
+        const keys: string[] = [];
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const key = localStorage.key(i);
+          if (key) keys.push(key);
+        }
+        keys.forEach((key) => {
+          if (key.startsWith("mealscout:map:parkingPassHostStatus:")) {
+            localStorage.removeItem(key);
+          }
+        });
+      } catch {
+        // ignore localStorage issues
+      }
+      return { success: true };
+    },
+    onSuccess: () => {
+      toast({
+        title: "Cleared map caches",
+        description: "Server + browser caches cleared. Map pins will rebuild.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Cache clear failed",
+        description: error?.message || "Unable to clear caches.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const userContextEnabled =
     !!adminUser &&
@@ -4729,6 +4765,22 @@ export default function AdminDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border p-3">
+                  <div>
+                    <div className="text-sm font-semibold">Debug tools</div>
+                    <div className="text-xs text-muted-foreground">
+                      If maps/pins look stale, force-refresh server + browser caches.
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={clearMapCaches.isPending}
+                    onClick={() => clearMapCaches.mutate()}
+                  >
+                    {clearMapCaches.isPending ? "Clearing..." : "Force refresh map caches"}
+                  </Button>
+                </div>
                 <div className="grid gap-2">
                   <label className="text-xs text-muted-foreground">Host User</label>
                   <select

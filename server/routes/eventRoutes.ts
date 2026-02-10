@@ -6,6 +6,7 @@ import { db } from "../db";
 import {
   isAuthenticated,
   isRestaurantOwner,
+  isStaffOrAdmin,
 } from "../unifiedAuth";
 import {
   eventBookings,
@@ -49,6 +50,7 @@ export function registerEventRoutes(app: Express) {
   // Parking Pass listings (truck-paid slots only)
   app.get("/api/parking-pass", async (req: any, res) => {
     try {
+      res.setHeader("Cache-Control", "public, max-age=60");
       const { occurrences } = await listParkingPassOccurrences({ horizonDays: 30 });
 
       const hostCanAcceptPayments = (event: any) =>
@@ -276,6 +278,7 @@ export function registerEventRoutes(app: Express) {
     | null = null;
   app.get("/api/parking-pass/host-ids", async (_req: any, res) => {
     try {
+      res.setHeader("Cache-Control", "public, max-age=60");
       if (parkingPassHostIdsCache && parkingPassHostIdsCache.expiresAt > Date.now()) {
         return res.json(parkingPassHostIdsCache.payload);
       }
@@ -313,6 +316,196 @@ export function registerEventRoutes(app: Express) {
       res.status(500).json({ message: "Failed to fetch parking pass host ids" });
     }
   });
+
+  let parkingPassHostStatusCacheByDate = new Map<
+    string,
+    {
+      expiresAt: number;
+      payload: {
+        generatedAt: string;
+        date: string;
+        hosts: Array<{
+          hostId: string;
+          availableCount: number;
+          spotCount: number;
+          reservedCount: number;
+          isFull: boolean;
+        }>;
+      };
+    }
+  >();
+
+  const normalizeDateKey = (value: unknown) => {
+    const raw = String(value || "").trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    return new Date().toISOString().split("T")[0];
+  };
+
+  const buildParkingPassHostStatusPayload = async (dateKey: string) => {
+    const { occurrences } = await listParkingPassOccurrences({ horizonDays: 30 });
+    const virtualEvents = occurrences.filter((event: any) => {
+      if (!isParkingPassPublicReady(event)) return false;
+      const eventDate = String(event?.date || "").slice(0, 10);
+      return eventDate === dateKey;
+    });
+
+    const legacyUpcoming = await storage.getAllUpcomingEvents();
+    const legacyEvents = legacyUpcoming.filter((event: any) => {
+      if (event?.eventType !== "parking_pass") return false;
+      if (!isParkingPassPublicReady(event)) return false;
+      const eventDate = String(event?.date || "").slice(0, 10);
+      return eventDate === dateKey;
+    });
+
+    const dedupedById = new Map<string, any>();
+    for (const item of [...virtualEvents, ...legacyEvents]) {
+      dedupedById.set(String(item.id), item);
+    }
+    const events = Array.from(dedupedById.values());
+    const eventIds = events.map((event) => String(event.id));
+
+    const bookingCounts =
+      eventIds.length > 0
+        ? await db
+            .select({
+              eventId: eventBookings.eventId,
+              status: eventBookings.status,
+              count: sql<number>`count(*)`,
+            })
+            .from(eventBookings)
+            .where(inArray(eventBookings.eventId, eventIds))
+            .where(inArray(eventBookings.status, ["confirmed", "pending"]))
+            .groupBy(eventBookings.eventId, eventBookings.status)
+        : [];
+
+    const countsByEvent = new Map<
+      string,
+      { confirmed: number; pending: number }
+    >();
+    for (const row of bookingCounts) {
+      const prev = countsByEvent.get(row.eventId) || { confirmed: 0, pending: 0 };
+      if (row.status === "confirmed") prev.confirmed = Number(row.count || 0);
+      if (row.status === "pending") prev.pending = Number(row.count || 0);
+      countsByEvent.set(row.eventId, prev);
+    }
+
+    const byHost = new Map<
+      string,
+      { availableCount: number; spotCount: number; reservedCount: number }
+    >();
+
+    for (const event of events) {
+      const hostId = String(event?.hostId ?? event?.host?.id ?? "").trim();
+      if (!hostId) continue;
+      const maxSpots = Number(event?.maxTrucks ?? 1) || 1;
+      const counts = countsByEvent.get(String(event.id)) || {
+        confirmed: 0,
+        pending: 0,
+      };
+      const reservedCount = Math.min(
+        maxSpots,
+        Number(counts.confirmed) + Number(counts.pending),
+      );
+      const availableCount = Math.max(0, maxSpots - reservedCount);
+
+      const prev = byHost.get(hostId) || {
+        availableCount: 0,
+        spotCount: 0,
+        reservedCount: 0,
+      };
+      byHost.set(hostId, {
+        availableCount: prev.availableCount + availableCount,
+        spotCount: prev.spotCount + maxSpots,
+        reservedCount: prev.reservedCount + reservedCount,
+      });
+    }
+
+    const hosts = Array.from(byHost.entries()).map(([hostId, totals]) => ({
+      hostId,
+      availableCount: totals.availableCount,
+      spotCount: totals.spotCount,
+      reservedCount: totals.reservedCount,
+      isFull: totals.availableCount <= 0,
+    }));
+
+    return {
+      generatedAt: new Date().toISOString(),
+      date: dateKey,
+      hosts,
+    };
+  };
+
+  app.get("/api/parking-pass/host-status", async (req: any, res) => {
+    try {
+      res.setHeader("Cache-Control", "public, max-age=60");
+      const dateKey = normalizeDateKey(req.query?.date);
+      const cached = parkingPassHostStatusCacheByDate.get(dateKey);
+      if (cached && cached.expiresAt > Date.now()) {
+        return res.json(cached.payload);
+      }
+
+      const payload = await buildParkingPassHostStatusPayload(dateKey);
+      parkingPassHostStatusCacheByDate.set(dateKey, {
+        payload,
+        expiresAt: Date.now() + 60_000,
+      });
+      res.json(payload);
+    } catch (error: any) {
+      console.error("Error fetching parking pass host status:", error);
+      res.status(500).json({ message: "Failed to fetch parking pass host status" });
+    }
+  });
+
+  app.get(
+    "/api/admin/parking-pass/host-status",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const dateKey = normalizeDateKey(req.query?.date);
+        const payload = await buildParkingPassHostStatusPayload(dateKey);
+
+        // Attach quality flags (staff/admin only) so map popups can show "needs fixes".
+        const flagsByHost = new Map<string, Set<string>>();
+        const { occurrences } = await listParkingPassOccurrences({
+          horizonDays: 30,
+          includeDraft: true,
+        });
+        occurrences.forEach((event: any) => {
+          const hostId = String(event?.hostId ?? event?.host?.id ?? "").trim();
+          const eventDate = String(event?.date || "").slice(0, 10);
+          if (!hostId || eventDate !== dateKey) return;
+          const flags = computeParkingPassQualityFlags(event);
+          const set = flagsByHost.get(hostId) || new Set<string>();
+          flags.forEach((flag) => set.add(flag));
+          flagsByHost.set(hostId, set);
+        });
+
+        const hosts = payload.hosts.map((host) => ({
+          ...host,
+          qualityFlags: Array.from(flagsByHost.get(host.hostId) || []),
+        }));
+
+        res.json({ ...payload, hosts });
+      } catch (error: any) {
+        console.error("Error fetching admin parking pass host status:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch admin parking pass host status" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/parking-pass/cache/clear",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (_req: any, res) => {
+      parkingPassHostIdsCache = null;
+      parkingPassHostStatusCacheByDate = new Map();
+      res.json({ success: true });
+    },
+  );
 
   app.post(
     "/api/events/:eventId/interests",

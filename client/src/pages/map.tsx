@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   MapContainer,
   TileLayer,
@@ -23,6 +23,7 @@ import DealCard from "@/components/deal-card";
 import { SEOHead } from "@/components/seo-head";
 import mealScoutIcon from "@assets/meal-scout-icon.png";
 import { sendGeoPing, trackGeoAdEvent, trackGeoAdImpression } from "@/utils/geoAds";
+import { useAuth } from "@/hooks/useAuth";
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -314,6 +315,32 @@ const hostPinActiveIcon = L.divIcon({
   popupAnchor: [0, -30],
 });
 
+const hostPinBookableIcon = L.divIcon({
+  className: "map-host-marker",
+  html: `
+    <div class="map-host-marker__logo">
+      <img src="${mealScoutIcon}" alt="MealScout host" />
+    </div>
+    <div class="map-host-marker__dot" aria-hidden="true" style="background:#16a34a;"></div>
+  `,
+  iconSize: [36, 36],
+  iconAnchor: [18, 36],
+  popupAnchor: [0, -30],
+});
+
+const hostPinFullIcon = L.divIcon({
+  className: "map-host-marker",
+  html: `
+    <div class="map-host-marker__logo">
+      <img src="${mealScoutIcon}" alt="MealScout host" />
+    </div>
+    <div class="map-host-marker__dot" aria-hidden="true" style="background:#ef4444;"></div>
+  `,
+  iconSize: [36, 36],
+  iconAnchor: [18, 36],
+  popupAnchor: [0, -30],
+});
+
 const foodPinIcon = new L.Icon({
   iconUrl: svgToDataUrl(`
     <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -383,6 +410,8 @@ async function geocodeAddress(address: string): Promise<GeoPoint | null> {
 }
 
 export default function MapPage() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [userLocation, setUserLocation] = useState<{
     lat: number;
     lng: number;
@@ -408,6 +437,22 @@ export default function MapPage() {
     Record<string, GeocodeFailureEntry>
   >({});
   const enableClientGeocode = false;
+
+  const isStaffOrAdmin =
+    user?.userType === "staff" ||
+    user?.userType === "admin" ||
+    user?.userType === "super_admin";
+
+  const getLocalDateKey = () => {
+    const now = new Date();
+    const localMidnightIso = new Date(
+      now.getTime() - now.getTimezoneOffset() * 60_000,
+    )
+      .toISOString()
+      .slice(0, 10);
+    return localMidnightIso;
+  };
+  const todayKey = getLocalDateKey();
 
   useEffect(() => {
     try {
@@ -665,7 +710,27 @@ export default function MapPage() {
   };
 
   // Fetch host + event locations for map
-  const { data: mapLocations } = useQuery<MapLocationsResponse>({
+  const MAP_LOCATIONS_CACHE_KEY = "mealscout:map:locations:v1";
+  const [cachedMapLocations, setCachedMapLocations] =
+    useState<MapLocationsResponse | null>(() => {
+      try {
+        const raw = localStorage.getItem(MAP_LOCATIONS_CACHE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (
+          parsed &&
+          typeof parsed === "object" &&
+          Array.isArray((parsed as any).hostLocations) &&
+          Array.isArray((parsed as any).eventLocations)
+        ) {
+          return parsed as MapLocationsResponse;
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    });
+  const { data: mapLocationsData } = useQuery<MapLocationsResponse>({
     queryKey: ["/api/map/locations"],
     queryFn: async () => {
       const res = await fetch("/api/map/locations");
@@ -678,6 +743,26 @@ export default function MapPage() {
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });
+
+  useEffect(() => {
+    if (!mapLocationsData) return;
+    setCachedMapLocations(mapLocationsData);
+    try {
+      localStorage.setItem(MAP_LOCATIONS_CACHE_KEY, JSON.stringify(mapLocationsData));
+    } catch {
+      // ignore localStorage issues
+    }
+  }, [mapLocationsData]);
+
+  const mapLocations: MapLocationsResponse = useMemo(() => {
+    return (
+      mapLocationsData ??
+      cachedMapLocations ?? {
+        hostLocations: [],
+        eventLocations: [],
+      }
+    );
+  }, [mapLocationsData, cachedMapLocations]);
 
   // Hosts with unpriced/unbookable Parking Pass listings must not appear on maps.
   // Use a lightweight host-id endpoint + localStorage cache so the map can render immediately.
@@ -695,6 +780,23 @@ export default function MapPage() {
       }
     },
   );
+  const [cachedBookableHostMeta, setCachedBookableHostMeta] = useState<
+    { updatedAt?: number; generatedAt?: string } | null
+  >(() => {
+    try {
+      const raw = localStorage.getItem(BOOKABLE_HOST_CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return {
+        updatedAt:
+          typeof parsed?.updatedAt === "number" ? parsed.updatedAt : undefined,
+        generatedAt:
+          typeof parsed?.generatedAt === "string" ? parsed.generatedAt : undefined,
+      };
+    } catch {
+      return null;
+    }
+  });
 
   const {
     data: bookableHostIdPayload,
@@ -718,11 +820,19 @@ export default function MapPage() {
     try {
       localStorage.setItem(
         BOOKABLE_HOST_CACHE_KEY,
-        JSON.stringify({ hostIds: Array.from(next), updatedAt: Date.now() }),
+        JSON.stringify({
+          hostIds: Array.from(next),
+          generatedAt: bookableHostIdPayload.generatedAt,
+          updatedAt: Date.now(),
+        }),
       );
     } catch {
       // ignore
     }
+    setCachedBookableHostMeta({
+      generatedAt: bookableHostIdPayload.generatedAt,
+      updatedAt: Date.now(),
+    });
   }, [bookableHostIdPayload]);
 
   const bookableHostIds = useMemo(() => {
@@ -734,6 +844,133 @@ export default function MapPage() {
     }
     return cachedBookableHostIds;
   }, [bookableHostIdPayload, cachedBookableHostIds]);
+
+  const HOST_STATUS_CACHE_KEY = `mealscout:map:parkingPassHostStatus:${todayKey}`;
+  const [cachedHostStatusById, setCachedHostStatusById] = useState<
+    Record<
+      string,
+      {
+        hostId: string;
+        availableCount: number;
+        spotCount: number;
+        reservedCount: number;
+        isFull: boolean;
+      }
+    >
+  >(() => {
+    try {
+      const raw = localStorage.getItem(HOST_STATUS_CACHE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      const hosts = Array.isArray(parsed?.hosts) ? parsed.hosts : [];
+      const map: Record<string, any> = {};
+      hosts.forEach((row: any) => {
+        const hostId = String(row?.hostId || "").trim();
+        if (!hostId) return;
+        map[hostId] = {
+          hostId,
+          availableCount: Number(row?.availableCount || 0),
+          spotCount: Number(row?.spotCount || 0),
+          reservedCount: Number(row?.reservedCount || 0),
+          isFull: Boolean(row?.isFull),
+        };
+      });
+      return map;
+    } catch {
+      return {};
+    }
+  });
+
+  const { data: hostStatusPayload } = useQuery<
+    | {
+        generatedAt: string;
+        date: string;
+        hosts: Array<{
+          hostId: string;
+          availableCount: number;
+          spotCount: number;
+          reservedCount: number;
+          isFull: boolean;
+        }>;
+      }
+    | undefined
+  >({
+    queryKey: ["/api/parking-pass/host-status", todayKey],
+    queryFn: async () => {
+      const res = await fetch(`/api/parking-pass/host-status?date=${todayKey}`);
+      if (!res.ok) throw new Error("Failed to load parking pass availability");
+      return res.json();
+    },
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    const rows = hostStatusPayload?.hosts;
+    if (!Array.isArray(rows) || rows.length === 0) return;
+    const map: Record<string, any> = {};
+    rows.forEach((row) => {
+      const hostId = String(row.hostId || "").trim();
+      if (!hostId) return;
+      map[hostId] = row;
+    });
+    setCachedHostStatusById(map);
+    try {
+      localStorage.setItem(
+        HOST_STATUS_CACHE_KEY,
+        JSON.stringify({
+          generatedAt: hostStatusPayload?.generatedAt,
+          date: hostStatusPayload?.date,
+          hosts: rows,
+          updatedAt: Date.now(),
+        }),
+      );
+    } catch {
+      // ignore
+    }
+  }, [hostStatusPayload, HOST_STATUS_CACHE_KEY]);
+
+  const { data: adminHostStatusPayload } = useQuery<
+    | {
+        generatedAt: string;
+        date: string;
+        hosts: Array<{
+          hostId: string;
+          availableCount: number;
+          spotCount: number;
+          reservedCount: number;
+          isFull: boolean;
+          qualityFlags?: string[];
+        }>;
+      }
+    | undefined
+  >({
+    queryKey: ["/api/admin/parking-pass/host-status", todayKey],
+    enabled: Boolean(isStaffOrAdmin),
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/admin/parking-pass/host-status?date=${todayKey}`,
+        { credentials: "include" },
+      );
+      if (!res.ok) throw new Error("Failed to load parking pass quality flags");
+      return res.json();
+    },
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
+  });
+
+  const qualityFlagsByHostId = useMemo(() => {
+    const map = new Map<string, string[]>();
+    const rows = adminHostStatusPayload?.hosts;
+    if (!Array.isArray(rows)) return map;
+    rows.forEach((row) => {
+      const hostId = String(row?.hostId || "").trim();
+      if (!hostId) return;
+      const flags = Array.isArray(row?.qualityFlags) ? row.qualityFlags : [];
+      map.set(hostId, flags);
+    });
+    return map;
+  }, [adminHostStatusPayload]);
 
   const visibleHostLocations = useMemo(() => {
     if (!mapBounds || !mapLocations?.hostLocations?.length) return [];
@@ -756,6 +993,16 @@ export default function MapPage() {
     isBookableHostIdsLoading,
     isBookableHostIdsError,
   ]);
+
+  const lastHostIdsUpdatedLabel = (() => {
+    const fromServer = bookableHostIdPayload?.generatedAt;
+    const fromCache = cachedBookableHostMeta?.generatedAt;
+    const raw = fromServer || fromCache;
+    if (!raw) return null;
+    const dt = new Date(raw);
+    if (!Number.isFinite(dt.getTime())) return null;
+    return dt.toLocaleString();
+  })();
 
   const visibleEventLocations = useMemo(() => {
     if (!mapBounds || !mapLocations?.eventLocations?.length) return [];
@@ -979,6 +1226,7 @@ export default function MapPage() {
   const hostPins = visibleHostLocations.length;
   const eventPins = visibleEventLocations.length;
   const activityPins = liveTruckPins + hostPins + eventPins;
+  const totalPaidParkingHosts = bookableHostIds.size;
   const isNightTheme =
     typeof document !== "undefined" &&
     document.documentElement.classList.contains("theme-night");
@@ -994,6 +1242,19 @@ export default function MapPage() {
     : hasLocation
     ? "No live trucks or hosts nearby right now"
     : "Set your location to see live trucks and hosts.";
+
+  const handleRefreshPaidParking = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["/api/parking-pass/host-ids"] });
+    await queryClient.invalidateQueries({
+      queryKey: ["/api/parking-pass/host-status", todayKey],
+    });
+    await queryClient.invalidateQueries({ queryKey: ["/api/map/locations"] });
+    if (isStaffOrAdmin) {
+      await queryClient.invalidateQueries({
+        queryKey: ["/api/admin/parking-pass/host-status", todayKey],
+      });
+    }
+  };
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
@@ -1056,6 +1317,25 @@ export default function MapPage() {
               } nearby`}
           </div>
         )}
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+          <div>
+            Paid parking locations:{" "}
+            <span className="font-semibold text-foreground">
+              {totalPaidParkingHosts}
+            </span>
+            {lastHostIdsUpdatedLabel ? (
+              <span> • Updated {lastHostIdsUpdatedLabel}</span>
+            ) : null}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefreshPaidParking}
+            data-testid="button-refresh-paid-parking"
+          >
+            Refresh
+          </Button>
+        </div>
       </header>
 
       {/* Map Container */}
@@ -1228,17 +1508,41 @@ export default function MapPage() {
                 const subtitle = hostedTruck
                   ? `At ${host.name}`
                   : "Hosts food trucks";
+                const hostId = host.hostId ? String(host.hostId) : "";
+                const hostStatus = hostId ? cachedHostStatusById[hostId] : undefined;
+                const isFullToday = Boolean(hostStatus?.isFull);
+                const availableLabel = hostStatus
+                  ? hostStatus.isFull
+                    ? "Fully booked today"
+                    : `${hostStatus.availableCount}/${hostStatus.spotCount} spots open today`
+                  : "Availability updating...";
+                const qualityFlags = hostId ? qualityFlagsByHostId.get(hostId) || [] : [];
                 const distanceLabel = formatDistance(coords);
                 return (
                   <Marker
                     key={`host-${host.id}`}
                     position={[coords.lat, coords.lng]}
-                    icon={hostedTruck ? hostPinActiveIcon : hostPinIcon}
+                    icon={
+                      hostedTruck
+                        ? hostPinActiveIcon
+                        : isFullToday
+                          ? hostPinFullIcon
+                          : hostPinBookableIcon
+                    }
                   >
                     <Popup>
                       <div className="min-w-56 space-y-1 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg">
                         <div className="font-semibold text-sm">{title}</div>
                         <div className="text-xs text-[color:var(--text-muted)]">{subtitle}</div>
+                        <div className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide border border-[color:var(--border-subtle)]">
+                          {availableLabel}
+                        </div>
+                        {isStaffOrAdmin && qualityFlags.length > 0 && (
+                          <div className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide border border-[color:var(--border-subtle)] text-[color:var(--status-warning)]">
+                            Data issues: {qualityFlags.slice(0, 4).join(", ")}
+                            {qualityFlags.length > 4 ? ", ..." : ""}
+                          </div>
+                        )}
                         <div className="text-xs text-[color:var(--text-muted)]">
                           {host.address}
                         </div>
@@ -1369,6 +1673,28 @@ export default function MapPage() {
                 onBoundsChange={setMapBounds}
               />
             </MapContainer>
+          )}
+
+          {/* Paid parking state overlay */}
+          {!isBookableHostIdsLoading && totalPaidParkingHosts === 0 && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center">
+              <div className="pointer-events-auto bg-[var(--bg-card)] rounded-xl px-4 py-3 text-center shadow-clean max-w-xs border border-[color:var(--border-subtle)]">
+                <p className="text-sm font-medium text-foreground mb-1">
+                  No paid parking locations available yet
+                </p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Hosts must add pricing before a spot can appear on the map.
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    window.location.href = "/parking-pass?tab=host";
+                  }}
+                >
+                  Add prices (Host)
+                </Button>
+              </div>
+            </div>
           )}
 
           {/* Empty map overlay messaging */}

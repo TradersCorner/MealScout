@@ -47,14 +47,6 @@ export function registerEventRoutes(app: Express) {
     try {
       const { occurrences } = await listParkingPassOccurrences({ horizonDays: 30 });
 
-      const hasPricing = (event: any) =>
-        (event.breakfastPriceCents ?? 0) > 0 ||
-        (event.lunchPriceCents ?? 0) > 0 ||
-        (event.dinnerPriceCents ?? 0) > 0 ||
-        (event.dailyPriceCents ?? 0) > 0 ||
-        (event.weeklyPriceCents ?? 0) > 0 ||
-        (event.monthlyPriceCents ?? 0) > 0;
-
       const hostCanAcceptPayments = (event: any) =>
         Boolean(
           event?.host?.stripeConnectAccountId && event?.host?.stripeChargesEnabled,
@@ -62,9 +54,7 @@ export function registerEventRoutes(app: Express) {
 
       // NOTE: In the Airbnb-style model, occurrences are generated virtually and only persisted when
       // booked/overridden. While we transition, we also include legacy materialized Parking Pass events.
-      const virtualEvents = occurrences
-        .filter((event) => hasPricing(event))
-        .map((event: any) => ({
+      const virtualEvents = occurrences.map((event: any) => ({
           ...event,
           paymentsEnabled: hostCanAcceptPayments(event),
         }));
@@ -73,7 +63,7 @@ export function registerEventRoutes(app: Express) {
       const legacyEvents = legacyUpcoming
         .filter(
           (event: any) =>
-            event?.eventType === "parking_pass" && event?.requiresPayment && hasPricing(event),
+            event?.eventType === "parking_pass",
         )
         .map((event: any) => ({
           ...event,

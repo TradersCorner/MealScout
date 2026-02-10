@@ -640,7 +640,6 @@ export default function ParkingPassPage() {
     if (!Array.isArray(data)) return [];
     return data.filter((listing: any) => {
       if (!listing?.host) return false;
-      if (!hasListingPricing(listing)) return false;
       // Show priced locations even when fully booked so pins don't disappear from the map.
       // Booking is still gated elsewhere via `listingHasAvailability(...)`.
       return true;
@@ -2088,10 +2087,6 @@ export default function ParkingPassPage() {
       return;
     }
 
-    if (!hasSlotPrice) {
-      setCreateError("At least one slot price is required.");
-      return;
-    }
     if (daysOfWeek.length === 0) {
       setCreateError("Select at least one day of the week.");
       return;

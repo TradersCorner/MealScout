@@ -670,14 +670,6 @@ export function registerHostRoutes(app: Express) {
       const breakfastPriceCents = Number(req.body.breakfastPriceCents || 0);
       const lunchPriceCents = Number(req.body.lunchPriceCents || 0);
       const dinnerPriceCents = Number(req.body.dinnerPriceCents || 0);
-      const hasAnySlotPrice =
-        breakfastPriceCents > 0 || lunchPriceCents > 0 || dinnerPriceCents > 0;
-
-      if (!hasAnySlotPrice) {
-        return res.status(400).json({
-          message: "At least one slot price is required.",
-        });
-      }
 
       const parseOverrideCents = (value: any) => {
         if (value === null || value === undefined || value === "") return null;
@@ -927,29 +919,18 @@ export function registerHostRoutes(app: Express) {
         hostIds: [host.id],
         horizonDays: 90,
       });
-      const hasPricing = (event: any) =>
-        (event.breakfastPriceCents ?? 0) > 0 ||
-        (event.lunchPriceCents ?? 0) > 0 ||
-        (event.dinnerPriceCents ?? 0) > 0 ||
-        (event.dailyPriceCents ?? 0) > 0 ||
-        (event.weeklyPriceCents ?? 0) > 0 ||
-        (event.monthlyPriceCents ?? 0) > 0;
-
       const legacyEvents =
         occurrences.length > 0
           ? []
           : (await storage.getEventsByHost(host.id)).filter(
               (event: any) =>
                 event?.eventType === "parking_pass" &&
-                event?.requiresPayment &&
-                hasPricing(event),
+                event?.requiresPayment,
             );
 
       const deduped = new Map<string, any>();
       for (const item of [...occurrences, ...legacyEvents]) {
-        if (hasPricing(item)) {
-          deduped.set(item.id, item);
-        }
+        deduped.set(item.id, item);
       }
 
       res.json(Array.from(deduped.values()));

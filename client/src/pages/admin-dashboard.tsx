@@ -679,6 +679,247 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
   );
 }
 
+function UnclaimedImportedTrucksTab({ enabled }: { enabled: boolean }) {
+  const { toast } = useToast();
+  const [items, setItems] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [editsById, setEditsById] = useState<Record<string, any>>({});
+
+  const limit = 50;
+
+  const loadPage = async (nextOffset: number, mode: "replace" | "append") => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(
+        `/api/admin/truck-import-listings/unclaimed?limit=${limit}&offset=${nextOffset}`,
+        { credentials: "include" },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to load unclaimed trucks.");
+      }
+      const rows = Array.isArray(data?.rows) ? data.rows : [];
+      setTotal(Number(data?.total ?? 0));
+      setOffset(nextOffset);
+      setItems((prev) => (mode === "append" ? [...prev, ...rows] : rows));
+      const nextEdits: Record<string, any> = {};
+      rows.forEach((row: any) => {
+        nextEdits[row.id] = {
+          email: row.email || "",
+          externalId: row.externalId || "",
+          name: row.name || "",
+          address: row.address || "",
+          city: row.city || "",
+          state: row.state || "",
+          phone: row.phone || "",
+        };
+      });
+      setEditsById((prev) => ({ ...prev, ...nextEdits }));
+    } catch (error: any) {
+      toast({
+        title: "Load failed",
+        description: error.message || "Unable to load unclaimed trucks.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!enabled) return;
+    void loadPage(0, "replace");
+  }, [enabled]);
+
+  const saveListing = useMutation({
+    mutationFn: async (payload: { id: string; updates: any }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/admin/truck-import-listings/${payload.id}`,
+        payload.updates,
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Saved" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Save failed",
+        description: error.message || "Unable to save changes.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendInvite = useMutation({
+    mutationFn: async (payload: { id: string; email: string }) => {
+      const res = await apiRequest(
+        "POST",
+        `/api/admin/truck-import-listings/${payload.id}/invite`,
+        { email: payload.email },
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Setup email sent" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Invite failed",
+        description: error.message || "Unable to send setup email.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const canLoadMore = items.length < total;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-sm font-semibold">Unclaimed Imported Trucks</div>
+          <div className="text-xs text-muted-foreground">
+            Scroll these. They disappear automatically once claimed + business verification is approved.
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isLoading}
+            onClick={() => loadPage(0, "replace")}
+          >
+            Refresh
+          </Button>
+          <div className="text-xs text-muted-foreground">
+            {items.length}/{total}
+          </div>
+        </div>
+      </div>
+
+      {items.length === 0 ? (
+        <Card>
+          <CardContent className="p-4 text-sm text-muted-foreground">
+            {isLoading ? "Loading..." : "No unclaimed imported trucks."}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {items.map((row) => {
+            const edits = editsById[row.id];
+            if (!edits) return null;
+            return (
+              <Card key={row.id}>
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-xs">
+                      <div className="font-semibold">{row.name}</div>
+                      <div className="text-muted-foreground">
+                        License: {row.externalId || "(none)"} •{" "}
+                        {row.city || ""} {row.state || ""}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={saveListing.isPending}
+                        onClick={() => saveListing.mutate({ id: row.id, updates: edits })}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={sendInvite.isPending || !String(edits.email || "").trim()}
+                        onClick={() =>
+                          sendInvite.mutate({ id: row.id, email: String(edits.email || "") })
+                        }
+                      >
+                        Send setup email
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      className="w-full px-2 py-1 border rounded-md text-xs"
+                      placeholder="Email"
+                      value={edits.email}
+                      onChange={(e) =>
+                        setEditsById({
+                          ...editsById,
+                          [row.id]: { ...edits, email: e.target.value },
+                        })
+                      }
+                    />
+                    <input
+                      className="w-full px-2 py-1 border rounded-md text-xs"
+                      placeholder="License ID"
+                      value={edits.externalId}
+                      onChange={(e) =>
+                        setEditsById({
+                          ...editsById,
+                          [row.id]: { ...edits, externalId: e.target.value },
+                        })
+                      }
+                    />
+                    <input
+                      className="w-full px-2 py-1 border rounded-md text-xs sm:col-span-2"
+                      placeholder="Address"
+                      value={edits.address}
+                      onChange={(e) =>
+                        setEditsById({
+                          ...editsById,
+                          [row.id]: { ...edits, address: e.target.value },
+                        })
+                      }
+                    />
+                    <input
+                      className="w-full px-2 py-1 border rounded-md text-xs"
+                      placeholder="City"
+                      value={edits.city}
+                      onChange={(e) =>
+                        setEditsById({
+                          ...editsById,
+                          [row.id]: { ...edits, city: e.target.value },
+                        })
+                      }
+                    />
+                    <input
+                      className="w-full px-2 py-1 border rounded-md text-xs"
+                      placeholder="State"
+                      value={edits.state}
+                      onChange={(e) =>
+                        setEditsById({
+                          ...editsById,
+                          [row.id]: { ...edits, state: e.target.value },
+                        })
+                      }
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+          {canLoadMore && (
+            <Button
+              variant="outline"
+              disabled={isLoading}
+              onClick={() => loadPage(offset + limit, "append")}
+            >
+              {isLoading ? "Loading..." : "Load more"}
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Manual User/Host Creation Component (Combined)
 function ManualUserCreation({ adminUser }: { adminUser?: any }) {
   const { toast } = useToast();
@@ -1509,6 +1750,12 @@ export default function AdminDashboard() {
         variant: "destructive",
       });
     },
+  });
+
+  const { data: emailStatus } = useQuery<any>({
+    queryKey: ["/api/admin/email/status"],
+    enabled: !!adminUser && selectedTab === "overview",
+    staleTime: 60 * 1000,
   });
 
   const userContextEnabled =
@@ -3665,6 +3912,13 @@ export default function AdminDashboard() {
               Manual Onboarding
             </TabsTrigger>
             <TabsTrigger
+              value="imports"
+              data-testid="tab-imports"
+              className="flex-shrink-0"
+            >
+              Admin Uploads
+            </TabsTrigger>
+            <TabsTrigger
               value="host-locations"
               data-testid="tab-host-locations"
               className="flex-shrink-0"
@@ -4318,6 +4572,11 @@ export default function AdminDashboard() {
 
               <TruckImportPanel enabled={selectedTab === "onboarding"} />
             </div>
+          </TabsContent>
+
+          {/* Admin Uploads Tab */}
+          <TabsContent value="imports" className="space-y-4">
+            <UnclaimedImportedTrucksTab enabled={selectedTab === "imports"} />
           </TabsContent>
 
           {/* Host Locations Tab */}

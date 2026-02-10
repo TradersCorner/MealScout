@@ -7,6 +7,7 @@ import { isAuthenticated, isStaffOrAdmin } from "../unifiedAuth";
 import { sanitizeUser, sanitizeUsers } from "../utils/sanitize";
 import { sendAccountSetupInvite } from "../utils/accountSetup";
 import { emailService } from "../emailService";
+import { isEmailConfigured } from "../emailService";
 import { db } from "../db";
 import multer from "multer";
 import { parseTruckImportFile } from "../utils/truckImport";
@@ -115,6 +116,57 @@ export function registerAdminManagementRoutes(app: Express) {
     }
     return true;
   };
+
+  app.get(
+    "/api/admin/email/status",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (!requireAdminUser(req, res)) return;
+      const configured = isEmailConfigured();
+      res.json({
+        configured,
+        mode: process.env.EMAIL_NOTIFICATIONS_MODE || "all",
+        fromEmail:
+          process.env.EMAIL_FROM ||
+          process.env.ADMIN_EMAIL ||
+          "info.mealscout@gmail.com",
+      });
+    },
+  );
+
+  app.post(
+    "/api/admin/email/test",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (!requireAdminUser(req, res)) return;
+      try {
+        const to = String(req.body?.to || "").trim() || req.user?.email;
+        if (!to) {
+          return res.status(400).json({ message: "Recipient email required" });
+        }
+        const configured = isEmailConfigured();
+        if (!configured) {
+          return res.status(400).json({
+            message:
+              "Email provider is not configured (missing/invalid BREVO_API_KEY).",
+          });
+        }
+
+        const ok = await emailService.sendBasicEmail(
+          to,
+          "MealScout test email",
+          "<p>This is a test email from MealScout admin.</p>",
+          "This is a test email from MealScout admin.",
+        );
+        res.json({ success: ok });
+      } catch (error: any) {
+        console.error("Error sending test email:", error);
+        res.status(500).json({ message: "Failed to send test email" });
+      }
+    },
+  );
 
   // Manual User/Host Creation
   app.post(
@@ -1023,6 +1075,58 @@ export function registerAdminManagementRoutes(app: Express) {
     },
   );
 
+  app.get(
+    "/api/admin/truck-import-listings/unclaimed",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (!requireAdminUser(req, res)) return;
+      try {
+        const limit = Math.min(100, Math.max(1, Number(req.query?.limit ?? 50)));
+        const offset = Math.max(0, Number(req.query?.offset ?? 0));
+
+        const [{ total }] = await db
+          .select({ total: sql<number>`count(*)` })
+          .from(truckImportListings)
+          .where(eq(truckImportListings.status, "unclaimed"));
+
+        const rows = await db
+          .select({
+            listing: truckImportListings,
+            restaurantId: restaurants.id,
+            restaurantOwnerId: restaurants.ownerId,
+            restaurantIsVerified: restaurants.isVerified,
+            restaurantIsActive: restaurants.isActive,
+          })
+          .from(truckImportListings)
+          .leftJoin(
+            restaurants,
+            eq(restaurants.claimedFromImportId, truckImportListings.id),
+          )
+          .where(eq(truckImportListings.status, "unclaimed"))
+          .orderBy(desc(truckImportListings.createdAt))
+          .limit(limit)
+          .offset(offset);
+
+        res.json({
+          total: Number(total ?? 0),
+          limit,
+          offset,
+          rows: rows.map((row: any) => ({
+            ...row.listing,
+            restaurantId: row.restaurantId ?? null,
+            restaurantOwnerId: row.restaurantOwnerId ?? null,
+            restaurantIsVerified: row.restaurantIsVerified ?? null,
+            restaurantIsActive: row.restaurantIsActive ?? null,
+          })),
+        });
+      } catch (error: any) {
+        console.error("Error listing unclaimed import listings:", error);
+        res.status(500).json({ message: "Failed to load unclaimed trucks" });
+      }
+    },
+  );
+
   app.patch(
     "/api/admin/truck-import-listings/:id",
     isAuthenticated,
@@ -1248,6 +1352,100 @@ export function registerAdminManagementRoutes(app: Express) {
           [];
         const seenKeys = new Set<string>();
 
+        const normalize = (value: any) => String(value || "").trim().toLowerCase();
+        const nameAddressKey = (name: string, address: string) =>
+          `${normalize(name)}|${normalize(address)}`;
+
+        const candidateExternalIds = new Set<string>();
+        const candidateEmails = new Set<string>();
+        const candidateNameAddressKeys = new Set<string>();
+
+        for (const row of rows) {
+          const name = row.name?.trim() || "";
+          const address = row.address?.trim() || "";
+          const externalId = row.externalId?.trim() || "";
+          const email = row.email?.trim()?.toLowerCase() || "";
+          if (externalId) candidateExternalIds.add(externalId.toLowerCase());
+          if (email) candidateEmails.add(email.toLowerCase());
+          if (name && address) candidateNameAddressKeys.add(nameAddressKey(name, address));
+        }
+
+        const extList = Array.from(candidateExternalIds);
+        const emailList = Array.from(candidateEmails);
+        const nameList = Array.from(
+          new Set(Array.from(candidateNameAddressKeys).map((key) => key.split("|")[0])),
+        );
+        const addressList = Array.from(
+          new Set(Array.from(candidateNameAddressKeys).map((key) => key.split("|")[1])),
+        );
+
+        const existingImportRows =
+          extList.length || emailList.length || (nameList.length && addressList.length)
+            ? await db
+                .select({
+                  externalId: truckImportListings.externalId,
+                  email: truckImportListings.email,
+                  name: truckImportListings.name,
+                  address: truckImportListings.address,
+                })
+                .from(truckImportListings)
+                .where(
+                  or(
+                    extList.length
+                      ? inArray(truckImportListings.externalId, extList)
+                      : sql`false`,
+                    emailList.length
+                      ? inArray(truckImportListings.email, emailList)
+                      : sql`false`,
+                    nameList.length && addressList.length
+                      ? and(
+                          inArray(sql`lower(${truckImportListings.name})` as any, nameList),
+                          inArray(sql`lower(${truckImportListings.address})` as any, addressList),
+                        )
+                      : sql`false`,
+                  ),
+                )
+            : [];
+
+        const existingRestaurantRows =
+          nameList.length && addressList.length
+            ? await db
+                .select({
+                  name: restaurants.name,
+                  address: restaurants.address,
+                })
+                .from(restaurants)
+                .where(
+                  and(
+                    or(eq(restaurants.businessType, "food_truck"), eq(restaurants.isFoodTruck, true)),
+                    inArray(sql`lower(${restaurants.name})` as any, nameList),
+                    inArray(sql`lower(${restaurants.address})` as any, addressList),
+                  ),
+                )
+            : [];
+
+        const existingExternalIdSet = new Set(
+          existingImportRows
+            .map((row: any) => normalize(row.externalId))
+            .filter((value: string) => value.length > 0),
+        );
+        const existingEmailSet = new Set(
+          existingImportRows
+            .map((row: any) => normalize(row.email))
+            .filter((value: string) => value.length > 0),
+        );
+        const existingNameAddressSet = new Set<string>();
+        existingImportRows.forEach((row: any) => {
+          const name = normalize(row.name);
+          const address = normalize(row.address);
+          if (name && address) existingNameAddressSet.add(`${name}|${address}`);
+        });
+        existingRestaurantRows.forEach((row: any) => {
+          const name = normalize(row.name);
+          const address = normalize(row.address);
+          if (name && address) existingNameAddressSet.add(`${name}|${address}`);
+        });
+
         for (const row of rows) {
           const name = row.name?.trim();
           const addressInput = row.address?.trim() || "";
@@ -1258,7 +1456,6 @@ export function registerAdminManagementRoutes(app: Express) {
 
           const email = row.email?.trim()?.toLowerCase() || null;
           const externalId = row.externalId?.trim() || null;
-          const stateKey = (row.state || "").trim().toLowerCase();
           const cityKey = (row.city || "").trim().toLowerCase();
           const nameKey = name.toLowerCase();
           const addressKey = addressInput.toLowerCase();
@@ -1267,40 +1464,25 @@ export function registerAdminManagementRoutes(app: Express) {
             : email
               ? `email:${email}`
             : addressInput
-              ? `addr:${nameKey}|${addressKey}|${stateKey}`
-              : `name:${nameKey}|${stateKey}|${cityKey}`;
+              ? `addr:${nameKey}|${addressKey}`
+              : `name:${nameKey}|${cityKey}`;
           if (seenKeys.has(dedupeKey)) {
             duplicateRows += 1;
             continue;
           }
           seenKeys.add(dedupeKey);
 
-          let duplicate = false;
-          if (externalId) {
-            const existing = await db
-              .select({ id: truckImportListings.id })
-              .from(truckImportListings)
-              .where(eq(truckImportListings.externalId, externalId))
-              .limit(1);
-            duplicate = existing.length > 0;
-          } else if (addressInput) {
-            const existing = await db
-              .select({ id: truckImportListings.id })
-              .from(truckImportListings)
-              .where(
-                and(
-                  eq(truckImportListings.name, name),
-                  eq(truckImportListings.address, addressInput),
-                  row.state
-                    ? eq(truckImportListings.state, row.state)
-                    : sql`${truckImportListings.state} is null`,
-                ),
-              )
-              .limit(1);
-            duplicate = existing.length > 0;
+          // Duplicate rejection rule:
+          // If 2 identifying fields match, treat as a duplicate. ExternalId/email count as "2"
+          // because they're unique identifiers in practice (gov license, owner email).
+          let matchScore = 0;
+          if (externalId && existingExternalIdSet.has(normalize(externalId))) matchScore += 2;
+          if (email && existingEmailSet.has(normalize(email))) matchScore += 2;
+          if (addressInput && existingNameAddressSet.has(`${normalize(name)}|${normalize(addressInput)}`)) {
+            matchScore += 2;
           }
 
-          if (duplicate) {
+          if (matchScore >= 2) {
             duplicateRows += 1;
             continue;
           }

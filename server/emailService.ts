@@ -1068,7 +1068,9 @@ export class EmailService {
     }
 
     if (!this.isConfigured) {
-      console.warn(`Email not sent to ${params.to}: Brevo not configured`);
+      console.warn(
+        `Email not sent to ${params.to}: provider not configured (missing BREVO_API_KEY).`,
+      );
       return false;
     }
 

@@ -173,7 +173,14 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
 
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "Failed to upload import file.");
+        try {
+          const json = JSON.parse(text);
+          throw new Error(
+            json?.message || json?.error || "Failed to upload import file.",
+          );
+        } catch {
+          throw new Error(text || "Failed to upload import file.");
+        }
       }
       return await res.json();
     },

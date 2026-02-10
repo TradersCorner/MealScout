@@ -967,7 +967,7 @@ export function registerAdminManagementRoutes(app: Express) {
           .insert(truckImportBatches)
           .values({
             source,
-            fileName: file.originalname,
+            fileName: file.originalname || "import.csv",
             uploadedBy: req.user?.id,
             totalRows: rows.length,
           })

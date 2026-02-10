@@ -146,7 +146,8 @@ export const parseTruckImportFile = async (
   if (lowerName.endsWith(".xlsx")) {
     let ExcelJS: any;
     try {
-      ExcelJS = await import("exceljs");
+      const imported = await import("exceljs");
+      ExcelJS = (imported as any)?.default ?? imported;
     } catch {
       throw new Error("XLSX parsing requires the exceljs package.");
     }
@@ -179,7 +180,31 @@ export const parseTruckImportFile = async (
   } else if (lowerName.endsWith(".xls")) {
     throw new Error("Legacy .xls files are no longer supported. Save as .xlsx or .csv.");
   } else {
-    const text = buffer.toString("utf8");
+    // Excel often exports CSV as UTF-16LE with a BOM. Try to decode that correctly.
+    const text = (() => {
+      if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
+        return buffer.toString("utf16le", 2);
+      }
+      if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
+        // Convert UTF-16BE to LE by swapping bytes.
+        const swapped = Buffer.from(buffer);
+        for (let i = 0; i + 1 < swapped.length; i += 2) {
+          const tmp = swapped[i];
+          swapped[i] = swapped[i + 1];
+          swapped[i + 1] = tmp;
+        }
+        return swapped.toString("utf16le", 2);
+      }
+      if (
+        buffer.length >= 3 &&
+        buffer[0] === 0xef &&
+        buffer[1] === 0xbb &&
+        buffer[2] === 0xbf
+      ) {
+        return buffer.toString("utf8", 3);
+      }
+      return buffer.toString("utf8");
+    })();
     rows = parseCsvToRows(text);
   }
 
@@ -187,7 +212,11 @@ export const parseTruckImportFile = async (
     return { rows: [], headers: [] };
   }
 
-  const headers = rows[0].map((header) => header.trim());
+  const headers = rows[0].map((header, index) => {
+    const trimmed = header.trim();
+    // Strip BOM that can appear on the first header cell.
+    return index === 0 ? trimmed.replace(/^\uFEFF/, "").trim() : trimmed;
+  });
   const dataRows = rows.slice(1);
   const parsedRows = dataRows
     .map((row) => buildRowData(headers, row))

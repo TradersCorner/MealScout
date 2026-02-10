@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { trackDealViewOnce } from "@/lib/dealViewTracking";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ export default function DealDetail() {
   const queryClient = useQueryClient();
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const viewTimerRef = useRef<number | null>(null);
 
   const { data: deal, isLoading: dealLoading } = useQuery({
     queryKey: ["/api/deals", dealId],
@@ -73,21 +75,20 @@ export default function DealDetail() {
 
   // Track deal view when deal is loaded
   useEffect(() => {
-    if (dealId && deal && !dealLoading) {
-      // Track the deal view
-      const trackView = async () => {
-        try {
-          await apiRequest("POST", `/api/deals/${dealId}/view`, {});
-        } catch (error) {
-          // Silently fail - view tracking shouldn't interrupt user experience
-          console.debug("View tracking failed:", error);
-        }
-      };
+    if (!dealId || !deal || dealLoading) return;
+    if (viewTimerRef.current !== null) return;
 
-      // Delay to ensure the user actually viewed the page (not just a quick navigation)
-      const timer = setTimeout(trackView, 1000);
-      return () => clearTimeout(timer);
-    }
+    viewTimerRef.current = window.setTimeout(() => {
+      trackDealViewOnce(dealId).catch(() => {});
+      viewTimerRef.current = null;
+    }, 1000);
+
+    return () => {
+      if (viewTimerRef.current !== null) {
+        window.clearTimeout(viewTimerRef.current);
+        viewTimerRef.current = null;
+      }
+    };
   }, [dealId, deal, dealLoading]);
 
   const claimDealMutation = useMutation({

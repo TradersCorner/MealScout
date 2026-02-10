@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Flame, Clock, Star, UserPlus } from "lucide-react";
 import { GoldenForkIcon } from "@/components/award-badges";
 import { apiRequest } from "@/lib/queryClient";
+import { trackDealViewOnce } from "@/lib/dealViewTracking";
 import { getAffiliateShareUrl } from "@/lib/share";
 import DealShareModal from "./deal-share-modal";
 import RestaurantDealsDrawer from "./restaurant-deals-drawer";
@@ -183,6 +184,7 @@ export default function DealCard({ deal }: DealCardProps) {
   const [isSaved, setIsSaved] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const [hasTrackedView, setHasTrackedView] = useState(false);
+  const viewTimerRef = useRef<number | null>(null);
   const [forkPressed, setForkPressed] = useState(false);
   const [showRecommendModal, setShowRecommendModal] = useState(false);
   const [recommendationText, setRecommendationText] = useState("");
@@ -220,19 +222,17 @@ export default function DealCard({ deal }: DealCardProps) {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
-            // Track view when card is more than 50% visible
-            const trackView = async () => {
-              try {
-                await apiRequest("POST", `/api/deals/${deal.id}/view`, {});
-                setHasTrackedView(true);
-              } catch (error) {
-                // Silently fail - view tracking shouldn't interrupt user experience
-                console.debug("Card view tracking failed:", error);
-              }
-            };
+            if (viewTimerRef.current !== null) return;
+
+            // Mark tracked immediately so we don't schedule multiple timers
+            // (especially important if the server responds with 429).
+            setHasTrackedView(true);
 
             // Small delay to ensure it's not just scrolling past
-            setTimeout(trackView, 500);
+            viewTimerRef.current = window.setTimeout(() => {
+              trackDealViewOnce(deal.id).catch(() => {});
+              viewTimerRef.current = null;
+            }, 500);
           }
         });
       },
@@ -244,6 +244,10 @@ export default function DealCard({ deal }: DealCardProps) {
     }
 
     return () => {
+      if (viewTimerRef.current !== null) {
+        window.clearTimeout(viewTimerRef.current);
+        viewTimerRef.current = null;
+      }
       if (cardRef.current) {
         observer.unobserve(cardRef.current);
       }

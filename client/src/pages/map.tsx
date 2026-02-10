@@ -679,41 +679,14 @@ export default function MapPage() {
     refetchOnReconnect: true,
   });
 
-  const { data: parkingPassListings } = useQuery<any[]>({
-    queryKey: ["/api/parking-pass"],
-    queryFn: async () => {
-      const res = await fetch("/api/parking-pass");
-      if (!res.ok) throw new Error("Failed to load parking pass listings");
-      return res.json();
-    },
-    staleTime: 2 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-  });
-
-  const bookableHostIds = useMemo(() => {
-    if (!Array.isArray(parkingPassListings)) return null;
-    const ids = new Set<string>();
-    parkingPassListings.forEach((listing: any) => {
-      const hostId = listing?.hostId ?? listing?.host?.id;
-      if (hostId) {
-        ids.add(String(hostId));
-      }
-    });
-    return ids;
-  }, [parkingPassListings]);
-
   const visibleHostLocations = useMemo(() => {
     if (!mapBounds || !mapLocations?.hostLocations?.length) return [];
     return mapLocations.hostLocations.filter((host) => {
-      if (bookableHostIds && bookableHostIds.size > 0) {
-        const hostId = host.hostId ? String(host.hostId) : "";
-        if (!hostId || !bookableHostIds.has(hostId)) return false;
-      }
       const coords = resolveHostCoords(host);
       if (!coords) return false;
       return mapBounds.contains([coords.lat, coords.lng]);
     });
-  }, [mapLocations, hostCoords, mapBounds, bookableHostIds]);
+  }, [mapLocations, hostCoords, mapBounds]);
 
   const visibleEventLocations = useMemo(() => {
     if (!mapBounds || !mapLocations?.eventLocations?.length) return [];

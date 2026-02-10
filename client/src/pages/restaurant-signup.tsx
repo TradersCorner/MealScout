@@ -291,6 +291,29 @@ export default function RestaurantSignup() {
       : COPY.main.hero.restaurant;
 
   useEffect(() => {
+    // Allow deep links like `/restaurant-signup?businessType=food_truck&claim=1`
+    // so a user can go straight into the claim flow after creating an account.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const businessType = params.get("businessType");
+      if (businessType === "food_truck" || businessType === "restaurant") {
+        form.setValue("businessType", businessType as any);
+      }
+
+      if (businessType === "food_truck" && params.get("claim") === "1") {
+        window.setTimeout(() => {
+          const input = document.querySelector<HTMLInputElement>(
+            '[data-testid="input-claim-search"]',
+          );
+          input?.focus();
+        }, 250);
+      }
+    } catch {
+      // ignore
+    }
+  }, [form]);
+
+  useEffect(() => {
     if (selectedBusinessType !== "food_truck" && claimSelection) {
       setClaimSelection(null);
       setClaimResults([]);

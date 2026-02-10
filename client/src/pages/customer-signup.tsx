@@ -66,6 +66,11 @@ export default function CustomerSignup() {
   const [accountType, setAccountType] = useState<"diner" | "host" | "business">(
     initialAccountType
   );
+  const initialBusinessSubType: "restaurant" | "food_truck" =
+    searchParams.get("businessType") === "food_truck" ? "food_truck" : "restaurant";
+  const [businessSubType, setBusinessSubType] = useState<
+    "restaurant" | "food_truck"
+  >(initialAccountType === "business" ? initialBusinessSubType : "restaurant");
   const SIGNUP_DRAFT_KEY = "mealscout:customer-signup-draft";
 
   const defaultValues = useMemo<SignupFormData>(() => {
@@ -111,6 +116,12 @@ export default function CustomerSignup() {
     });
     return () => subscription.unsubscribe();
   }, [form]);
+
+  useEffect(() => {
+    if (accountType !== "business") {
+      setBusinessSubType("restaurant");
+    }
+  }, [accountType]);
 
   const customerSignupMutation = useMutation({
     mutationFn: async (data: SignupFormData) => {
@@ -183,8 +194,12 @@ export default function CustomerSignup() {
           payload?.message ||
           "We sent a verification link to your email. Verify it, then log in to continue.",
       });
+      const businessRedirect =
+        businessSubType === "food_truck"
+          ? "/restaurant-signup?businessType=food_truck&claim=1"
+          : "/restaurant-signup";
       window.location.href = `/login?redirect=${encodeURIComponent(
-        "/restaurant-signup",
+        businessRedirect,
       )}&signup=1`;
     },
     onError: (error) => {
@@ -347,6 +362,46 @@ export default function CustomerSignup() {
                 </button>
               </div>
             </div>
+
+            {accountType === "business" && (
+              <div className="mb-4 rounded-2xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--text-secondary)]">
+                  Business Type
+                </div>
+                <div className="mt-2 inline-flex w-full overflow-hidden rounded-full border border-[color:var(--border-subtle)] bg-[var(--bg-surface)] text-[11px] font-semibold text-[color:var(--text-secondary)] shadow-clean">
+                  <button
+                    type="button"
+                    onClick={() => setBusinessSubType("restaurant")}
+                    className={`flex-1 px-3 py-2 transition-colors ${
+                      businessSubType === "restaurant"
+                        ? "bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)]"
+                        : "bg-transparent hover:bg-[var(--bg-surface-muted)]"
+                    }`}
+                    data-testid="button-business-type-restaurant"
+                  >
+                    Restaurant
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBusinessSubType("food_truck")}
+                    className={`flex-1 border-l border-[color:var(--border-subtle)] px-3 py-2 transition-colors ${
+                      businessSubType === "food_truck"
+                        ? "bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)]"
+                        : "bg-transparent hover:bg-[var(--bg-surface-muted)]"
+                    }`}
+                    data-testid="button-business-type-food-truck"
+                  >
+                    Food Truck (Claim)
+                  </button>
+                </div>
+                {businessSubType === "food_truck" && (
+                  <div className="mt-2 text-xs text-[color:var(--text-secondary)]">
+                    Create your account, then claim your truck from the registry list.
+                    We’ll keep it inactive and unverified until you submit verification.
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="text-center mb-4">
               <h3 className="text-lg font-bold text-[color:var(--text-primary)] mb-1">
@@ -570,7 +625,9 @@ export default function CustomerSignup() {
                   {isSubmitting ? (
                     <div className="animate-spin w-5 h-5 mr-3 border-2 border-white border-t-transparent rounded-full" />
                   ) : null}
-                  Create Account
+                  {accountType === "business" && businessSubType === "food_truck"
+                    ? "Create Account & Claim Food Truck"
+                    : "Create Account"}
                 </Button>
               </form>
             </Form>

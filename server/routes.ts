@@ -97,6 +97,7 @@ import { randomBytes, timingSafeEqual, createHash } from "crypto";
 import { sanitizeUser } from "./utils/sanitize";
 import { ensureAffiliateTag } from "./affiliateTagService";
 import { sendAccountSetupInvite } from "./utils/accountSetup";
+import { sendEmailVerificationIfNeeded } from "./utils/emailVerification";
 import {
   isPasswordStrong,
   PASSWORD_REQUIREMENTS,
@@ -3697,6 +3698,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .where(eq(truckImportListings.id, listing.id));
 
+      const verification = await sendEmailVerificationIfNeeded(req.user, req).catch(
+        (error) => {
+          console.error(
+            "[email] Failed to send verification after truck claim:",
+            error,
+          );
+          return {
+            sent: false,
+            skippedReason: "provider_not_configured" as const,
+          };
+        },
+      );
+
       const notificationEmail = "notifications@mealscout.us";
       await emailService.sendBasicEmail(
         notificationEmail,
@@ -3714,6 +3728,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         restaurant,
         claimRequestId: claimRequest?.id,
         usedSeededRestaurant: Boolean(seededRestaurantCandidate),
+        emailVerificationSent: verification.sent,
       });
     } catch (error: any) {
       console.error("Error creating truck claim:", error);

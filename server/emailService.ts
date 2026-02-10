@@ -2,10 +2,49 @@ import {
   TransactionalEmailsApi,
   TransactionalEmailsApiApiKeys,
 } from "@getbrevo/brevo";
+import crypto from "crypto";
 import type { User, Restaurant } from "@shared/schema";
 
 // Initialize Brevo with API key validation
 const transactionalEmailsApi = new TransactionalEmailsApi();
+
+type EmailAttemptStatus = "sent" | "failed" | "skipped";
+type EmailAttempt = {
+  id: string;
+  createdAt: string;
+  to: string;
+  subject: string;
+  category: "account" | "general";
+  status: EmailAttemptStatus;
+  skipReason?: "mode_filtered" | "provider_not_configured";
+  error?: string;
+  provider: "brevo";
+  fromEmail: string;
+  mode: string;
+};
+
+class EmailDeliveryAudit {
+  private attempts: EmailAttempt[] = [];
+  private maxItems = 200;
+
+  add(attempt: EmailAttempt) {
+    this.attempts.unshift(attempt);
+    if (this.attempts.length > this.maxItems) {
+      this.attempts.length = this.maxItems;
+    }
+  }
+
+  list(limit = 50): EmailAttempt[] {
+    const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
+    return this.attempts.slice(0, safeLimit);
+  }
+
+  latest(): EmailAttempt | null {
+    return this.attempts[0] || null;
+  }
+}
+
+export const emailDeliveryAudit = new EmailDeliveryAudit();
 
 // Check if Brevo is properly configured
 export const isEmailConfigured = (): boolean => {
@@ -1064,13 +1103,42 @@ export class EmailService {
       console.warn(
         `Email skipped for ${params.to}: ${params.subject} (category: ${params.category || "general"})`,
       );
+      emailDeliveryAudit.add({
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        to: params.to,
+        subject: params.subject,
+        category: params.category || "general",
+        status: "skipped",
+        skipReason: "mode_filtered",
+        provider: "brevo",
+        fromEmail: EMAIL_CONFIG.fromEmail,
+        mode: notificationMode,
+      });
       return false;
+    }
+
+    // If env vars were updated after boot, re-check config on demand.
+    if (!this.isConfigured) {
+      this.isConfigured = isEmailConfigured();
     }
 
     if (!this.isConfigured) {
       console.warn(
         `Email not sent to ${params.to}: provider not configured (missing BREVO_API_KEY).`,
       );
+      emailDeliveryAudit.add({
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        to: params.to,
+        subject: params.subject,
+        category: params.category || "general",
+        status: "skipped",
+        skipReason: "provider_not_configured",
+        provider: "brevo",
+        fromEmail: EMAIL_CONFIG.fromEmail,
+        mode: notificationMode,
+      });
       return false;
     }
 
@@ -1098,9 +1166,44 @@ export class EmailService {
       await transactionalEmailsApi.sendTransacEmail(emailData);
 
       console.log(`Email sent successfully to ${params.to}: ${params.subject}`);
+      emailDeliveryAudit.add({
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        to: params.to,
+        subject: params.subject,
+        category: params.category || "general",
+        status: "sent",
+        provider: "brevo",
+        fromEmail: EMAIL_CONFIG.fromEmail,
+        mode: notificationMode,
+      });
       return true;
     } catch (error) {
       console.error(`Failed to send email to ${params.to}:`, error);
+      const errorMessage = (() => {
+        try {
+          if (!error) return "Unknown error";
+          const anyError: any = error as any;
+          if (typeof anyError?.message === "string" && anyError.message.trim()) {
+            return anyError.message.trim();
+          }
+          return JSON.stringify(anyError);
+        } catch {
+          return String(error);
+        }
+      })();
+      emailDeliveryAudit.add({
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        to: params.to,
+        subject: params.subject,
+        category: params.category || "general",
+        status: "failed",
+        error: errorMessage,
+        provider: "brevo",
+        fromEmail: EMAIL_CONFIG.fromEmail,
+        mode: notificationMode,
+      });
       return false;
     }
   }
@@ -1110,8 +1213,9 @@ export class EmailService {
     subject: string,
     html: string,
     text?: string,
+    category?: "account" | "general",
   ): Promise<boolean> {
-    return this.sendEmail({ to, subject, html, text });
+    return this.sendEmail({ to, subject, html, text, category });
   }
 
   async sendBookingConfirmationEmail(
@@ -1548,6 +1652,9 @@ export class EmailService {
 
   // Utility method to check if email service is available
   isAvailable(): boolean {
+    if (!this.isConfigured) {
+      this.isConfigured = isEmailConfigured();
+    }
     return this.isConfigured;
   }
 

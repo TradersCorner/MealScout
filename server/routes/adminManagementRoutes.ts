@@ -7,7 +7,7 @@ import { isAuthenticated, isStaffOrAdmin } from "../unifiedAuth";
 import { sanitizeUser, sanitizeUsers } from "../utils/sanitize";
 import { sendAccountSetupInvite } from "../utils/accountSetup";
 import { emailService } from "../emailService";
-import { isEmailConfigured } from "../emailService";
+import { emailDeliveryAudit, isEmailConfigured } from "../emailService";
 import { db } from "../db";
 import multer from "multer";
 import { parseTruckImportFile } from "../utils/truckImport";
@@ -122,15 +122,21 @@ export function registerAdminManagementRoutes(app: Express) {
     isAuthenticated,
     isStaffOrAdmin,
     async (req: any, res) => {
-      if (!requireAdminUser(req, res)) return;
       const configured = isEmailConfigured();
       res.json({
         configured,
+        provider: "brevo",
         mode: process.env.EMAIL_NOTIFICATIONS_MODE || "all",
         fromEmail:
           process.env.EMAIL_FROM ||
           process.env.ADMIN_EMAIL ||
           "info.mealscout@gmail.com",
+        fromName: process.env.EMAIL_FROM_NAME || "MealScout",
+        adminEmail:
+          process.env.ADMIN_EMAIL ||
+          process.env.EMAIL_FROM ||
+          "info.mealscout@gmail.com",
+        publicBaseUrl: process.env.PUBLIC_BASE_URL || "http://localhost:5000",
       });
     },
   );
@@ -140,9 +146,11 @@ export function registerAdminManagementRoutes(app: Express) {
     isAuthenticated,
     isStaffOrAdmin,
     async (req: any, res) => {
-      if (!requireAdminUser(req, res)) return;
       try {
         const to = String(req.body?.to || "").trim() || req.user?.email;
+        const categoryRaw = String(req.body?.category || "general").trim();
+        const category =
+          categoryRaw === "account" ? "account" : ("general" as const);
         if (!to) {
           return res.status(400).json({ message: "Recipient email required" });
         }
@@ -159,12 +167,30 @@ export function registerAdminManagementRoutes(app: Express) {
           "MealScout test email",
           "<p>This is a test email from MealScout admin.</p>",
           "This is a test email from MealScout admin.",
+          category,
         );
-        res.json({ success: ok });
+        res.json({
+          success: ok,
+          configured,
+          mode: process.env.EMAIL_NOTIFICATIONS_MODE || "all",
+          category,
+          latestAttempt: emailDeliveryAudit.latest(),
+        });
       } catch (error: any) {
         console.error("Error sending test email:", error);
         res.status(500).json({ message: "Failed to send test email" });
       }
+    },
+  );
+
+  app.get(
+    "/api/admin/email/attempts",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      const rawLimit = typeof req.query?.limit === "string" ? req.query.limit : "";
+      const limit = Number(rawLimit || 25);
+      res.json({ rows: emailDeliveryAudit.list(limit) });
     },
   );
 

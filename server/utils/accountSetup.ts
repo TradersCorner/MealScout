@@ -3,6 +3,7 @@ import crypto from "crypto";
 import type { User } from "@shared/schema";
 import { storage } from "../storage";
 import { emailService } from "../emailService";
+import { sendEmailVerificationIfNeeded } from "./emailVerification";
 
 type InviteOptions = {
   user: User;
@@ -38,5 +39,17 @@ export async function sendAccountSetupInvite({
     ? `${createdBy.firstName} ${createdBy.lastName || ""}`.trim()
     : undefined;
 
-  return emailService.sendAccountSetupEmail(user, setupUrl, createdByName);
+  const ok = await emailService.sendAccountSetupEmail(
+    user,
+    setupUrl,
+    createdByName,
+  );
+
+  // Always try to deliver an email verification link for invited accounts too.
+  // This is best-effort and should never block onboarding.
+  sendEmailVerificationIfNeeded(user, req).catch((error) =>
+    console.error("[email] Failed to send verification for invite:", error),
+  );
+
+  return ok;
 }

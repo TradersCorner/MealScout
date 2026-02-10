@@ -1757,6 +1757,42 @@ export default function AdminDashboard() {
     enabled: !!adminUser && selectedTab === "overview",
     staleTime: 60 * 1000,
   });
+  const { data: emailAttempts } = useQuery<any>({
+    queryKey: ["/api/admin/email/attempts?limit=25"],
+    enabled: !!adminUser && selectedTab === "overview",
+    staleTime: 30 * 1000,
+  });
+  const [testEmailTo, setTestEmailTo] = useState("");
+  const [testEmailCategory, setTestEmailCategory] = useState<
+    "general" | "account"
+  >("general");
+  const sendTestEmail = useMutation({
+    mutationFn: async () => {
+      const payload: any = { category: testEmailCategory };
+      if (testEmailTo.trim()) payload.to = testEmailTo.trim();
+      const res = await apiRequest("POST", "/api/admin/email/test", payload);
+      return await res.json();
+    },
+    onSuccess: (result: any) => {
+      if (result?.success) {
+        toast({ title: "Test email sent" });
+      } else {
+        toast({
+          title: "Test email failed",
+          description:
+            "Email provider may be disabled or filtered by EMAIL_NOTIFICATIONS_MODE.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Test email failed",
+        description: error?.message || "Unable to send test email.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const userContextEnabled =
     !!adminUser &&
@@ -3969,6 +4005,107 @@ export default function AdminDashboard() {
                       })()}
                     </div>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Email Delivery</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-sm">
+                    <div className="font-medium">
+                      Provider: {emailStatus?.provider || "unknown"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      From: {emailStatus?.fromName || "MealScout"} &lt;
+                      {emailStatus?.fromEmail || "unknown"}&gt;
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Mode: {emailStatus?.mode || "unknown"}
+                    </div>
+                  </div>
+                  <Badge variant={emailStatus?.configured ? "default" : "destructive"}>
+                    {emailStatus?.configured ? "Configured" : "Not configured"}
+                  </Badge>
+                </div>
+
+                {!emailStatus?.configured ? (
+                  <div className="text-xs text-muted-foreground">
+                    Set `BREVO_API_KEY` in the server environment, then restart the server.
+                  </div>
+                ) : null}
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input
+                    className="w-full px-3 py-2 border rounded-md text-sm"
+                    placeholder="Send test email to (blank = your admin email)"
+                    value={testEmailTo}
+                    onChange={(e) => setTestEmailTo(e.target.value)}
+                  />
+                  <select
+                    className="w-full sm:w-40 px-3 py-2 border rounded-md text-sm"
+                    value={testEmailCategory}
+                    onChange={(e) =>
+                      setTestEmailCategory(
+                        e.target.value === "account" ? "account" : "general",
+                      )
+                    }
+                  >
+                    <option value="general">General</option>
+                    <option value="account">Account</option>
+                  </select>
+                  <Button
+                    disabled={sendTestEmail.isPending || !adminUser}
+                    onClick={() => sendTestEmail.mutate()}
+                  >
+                    Send test
+                  </Button>
+                </div>
+
+                <div className="pt-2 border-t">
+                  <div className="text-xs font-semibold">Recent attempts</div>
+                  {Array.isArray(emailAttempts?.rows) &&
+                  emailAttempts.rows.length > 0 ? (
+                    <div className="mt-2 space-y-1">
+                      {emailAttempts.rows.slice(0, 10).map((row: any) => (
+                        <div
+                          key={row.id}
+                          className="flex flex-col gap-1 rounded-md border px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="min-w-0">
+                            <div className="truncate">
+                              <span className="font-semibold">{row.status}</span>{" "}
+                              {row.category ? `(${row.category})` : ""} â€¢ {row.to}
+                            </div>
+                            <div className="truncate text-muted-foreground">
+                              {row.subject}
+                            </div>
+                            {row.error ? (
+                              <div className="truncate text-[color:var(--status-error)]">
+                                {row.error}
+                              </div>
+                            ) : row.skipReason ? (
+                              <div className="truncate text-muted-foreground">
+                                {row.skipReason}
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="text-muted-foreground">
+                            {row.createdAt
+                              ? new Date(row.createdAt).toLocaleString()
+                              : ""}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      No email attempts recorded yet.
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

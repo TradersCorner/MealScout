@@ -7,6 +7,7 @@ import DealCard from "@/components/deal-card";
 import SmartSearch from "@/components/smart-search";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { BackHeader } from "@/components/back-header";
 import {
   Select,
   SelectContent,
@@ -316,6 +317,7 @@ export default function SearchPage() {
         }, restaurant search, deal finder`}
         canonicalUrl="https://mealscout.us/search"
       />
+      <BackHeader title="Search Deals" fallbackHref="/" />
       {/* Header */}
       <header className="px-6 py-6 bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean">
         <div className="flex items-center justify-between mb-6">

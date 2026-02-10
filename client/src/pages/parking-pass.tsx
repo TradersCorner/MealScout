@@ -2498,6 +2498,16 @@ export default function ParkingPassPage() {
     filteredLocations[0] ||
     null;
 
+  const focusLocation = (key: string, scroll = false) => {
+    setActiveLocationKey(key);
+    if (!scroll) return;
+    requestAnimationFrame(() => {
+      document
+        .getElementById("parking-pass-details")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
   const activeListingDateKeys = useMemo(() => {
     if (!activeLocation) return [];
     const keys = activeLocation.listings.map((listing) =>
@@ -4897,7 +4907,7 @@ export default function ParkingPassPage() {
                           role="button"
                           tabIndex={0}
                           aria-pressed={isActive}
-                          onClick={() => setActiveLocationKey(group.key)}
+                          onClick={() => focusLocation(group.key, true)}
                           onKeyDown={(keyboardEvent) => {
                             if (
                               keyboardEvent.key === "Enter" ||
@@ -4930,7 +4940,10 @@ export default function ParkingPassPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => setActiveLocationKey(group.key)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                focusLocation(group.key, true);
+                              }}
                             >
                               View
                             </Button>
@@ -5127,14 +5140,14 @@ export default function ParkingPassPage() {
                         role="button"
                         tabIndex={0}
                         aria-pressed={isActive}
-                        onClick={() => setActiveLocationKey(group.key)}
+                        onClick={() => focusLocation(group.key, true)}
                         onKeyDown={(keyboardEvent) => {
                           if (
                             keyboardEvent.key === "Enter" ||
                             keyboardEvent.key === " "
                           ) {
                             keyboardEvent.preventDefault();
-                            setActiveLocationKey(group.key);
+                            focusLocation(group.key, true);
                           }
                         }}
                         className={`w-full text-left rounded-2xl border px-4 py-3 space-y-2 transition cursor-pointer shadow-clean ${
@@ -5341,7 +5354,10 @@ export default function ParkingPassPage() {
                 </div>
               )}
 
-              <Card className="rounded-2xl pp-glass shadow-clean">
+              <Card
+                id="parking-pass-details"
+                className="rounded-2xl pp-glass shadow-clean"
+              >
                 <CardContent className="p-5 space-y-3">
                   <div>
                     <p className="text-base font-semibold text-slate-900 font-display">

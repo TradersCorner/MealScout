@@ -216,14 +216,8 @@ const PlanSelector = ({
               <div className="font-semibold text-[color:var(--text-primary)] mb-1">
                 Monthly
               </div>
-              <div className="text-2xl font-bold text-[color:var(--status-success)] mb-2">
-                <span className="line-through text-[color:var(--text-muted)] mr-2">
-                  $50
-                </span>
-                $25
-              </div>
               <div className="text-sm text-[color:var(--text-secondary)]">
-                per month
+                Billed monthly
               </div>
             </div>
           </div>

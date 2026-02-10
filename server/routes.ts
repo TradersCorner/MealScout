@@ -3143,6 +3143,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userType: user.userType,
         });
 
+        if (!user.emailVerified) {
+          return res.status(403).json({
+            message: "Please verify your email before continuing.",
+            code: "email_not_verified",
+          });
+        }
+
         // If user is currently a customer, upgrade them to restaurant_owner
         if (user.userType === "customer") {
           console.log(
@@ -3192,12 +3199,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "restaurant_owner",
         );
 
-        // Log the new user in by setting up session
-        await new Promise<User>((resolve, reject) => {
-          req.login(user, (err: any) => {
-            if (err) reject(err);
-            else resolve(user);
-          });
+        // Require email verification before proceeding (no session or restaurant created yet).
+        const token = randomBytes(32).toString("hex");
+        const tokenHash = createHash("sha256").update(token).digest("hex");
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        await storage.createEmailVerificationToken({
+          userId: user.id,
+          tokenHash,
+          expiresAt,
+          requestIp: req.ip || req.connection?.remoteAddress || undefined,
+          userAgent: req.get("User-Agent") || undefined,
+        });
+
+        const apiBaseUrl = (
+          process.env.PUBLIC_BASE_URL ||
+          (req.get("host") ? `${req.protocol}://${req.get("host")}` : null) ||
+          "http://localhost:5000"
+        ).replace(/\/+$/, "");
+        const verifyUrl = `${apiBaseUrl}/api/auth/verify-email?token=${encodeURIComponent(
+          token,
+        )}`;
+        await emailService.sendEmailVerificationEmail(user, verifyUrl);
+
+        return res.status(201).json({
+          message:
+            "Account created. Please verify your email before completing signup.",
+          requiresEmailVerification: true,
         });
       }
 

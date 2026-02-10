@@ -333,17 +333,21 @@ export default function RestaurantSignup() {
       return await res.json();
     },
     onSuccess: async (payload: any) => {
-      if (payload?.user) {
-        queryClient.setQueryData(["/api/auth/user"], payload.user);
-      }
-      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
       toast({
-        title: COPY.notifications.signup.successTitle,
-        description: COPY.notifications.signup.successDescription,
+        title: "Verify your email",
+        description:
+          payload?.message ||
+          "We sent a verification link to your email. Verify it, then log in to continue.",
       });
-      // Reload to ensure auth state is consistent across the app
-      window.location.reload();
+      try {
+        window.sessionStorage.setItem(
+          "mealscout:lastSignupEmail",
+          signupForm.getValues("email") || "",
+        );
+      } catch {}
+      window.location.href = `/login?redirect=${encodeURIComponent(
+        "/restaurant-signup",
+      )}&signup=1`;
     },
     onError: (error) => {
       toast({
@@ -466,7 +470,26 @@ export default function RestaurantSignup() {
         return payload?.restaurant || payload;
       }
     },
-    onSuccess: (restaurant) => {
+    onSuccess: (restaurant: any) => {
+      if (restaurant?.requiresEmailVerification) {
+        toast({
+          title: "Verify your email",
+          description:
+            restaurant?.message ||
+            "We sent a verification link to your email. Verify it, then log in to continue.",
+        });
+        try {
+          window.sessionStorage.setItem(
+            "mealscout:lastSignupEmail",
+            signupForm.getValues("email") || "",
+          );
+        } catch {}
+        window.location.href = `/login?redirect=${encodeURIComponent(
+          "/restaurant-signup",
+        )}&signup=1`;
+        return;
+      }
+
       setCreatedRestaurant(restaurant);
       dispatchOnboarding({ type: "GO_TO_VERIFICATION" });
       toast({
@@ -979,7 +1002,7 @@ export default function RestaurantSignup() {
                             <SelectItem value="burgers">Burgers</SelectItem>
                             <SelectItem value="cajun">Cajun</SelectItem>
                             <SelectItem value="caribbean">Caribbean</SelectItem>
-                            <SelectItem value="coffee">Coffee & Café</SelectItem>
+                            <SelectItem value="coffee">Coffee & CafÃ©</SelectItem>
                             <SelectItem value="dessert">Dessert</SelectItem>
                             <SelectItem value="healthy">Healthy & Bowls</SelectItem>
                             <SelectItem value="keto">Keto & Low-Carb</SelectItem>

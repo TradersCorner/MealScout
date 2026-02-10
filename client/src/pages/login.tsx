@@ -9,6 +9,23 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { SEOHead } from "@/components/seo-head";
 
+const getSafeRedirectPath = (): string | null => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const redirect = (params.get("redirect") || "").trim();
+    if (!redirect) return null;
+
+    // Only allow same-origin absolute paths (no protocol, no scheme-relative).
+    if (!redirect.startsWith("/")) return null;
+    if (redirect.startsWith("//")) return null;
+    if (redirect.includes("://")) return null;
+
+    return redirect;
+  } catch {
+    return null;
+  }
+};
+
 export default function Login() {
   const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
@@ -18,6 +35,15 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const redirectPath = getSafeRedirectPath();
+
+  useEffect(() => {
+    if (email) return;
+    try {
+      const stored = window.sessionStorage.getItem("mealscout:lastSignupEmail");
+      if (stored) setEmail(stored);
+    } catch {}
+  }, [email]);
 
   const handleGoogleLogin = () => {
     window.location.href = "/api/auth/google/customer";
@@ -56,10 +82,10 @@ export default function Login() {
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
         await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
       } catch {}
-      // Small delay to ensure cookie/session propagation
-      await new Promise((r) => setTimeout(r, 200));
-      // Redirect to home page on success
-      window.location.href = "/";
+       // Small delay to ensure cookie/session propagation
+       await new Promise((r) => setTimeout(r, 200));
+      // Redirect after login (many flows pass `?redirect=` to /login)
+      window.location.href = redirectPath || "/";
     } catch (error: any) {
       toast({
         title: "Login Failed",
@@ -74,9 +100,19 @@ export default function Login() {
   // Redirect to home if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      window.location.href = "/";
+      window.location.href = redirectPath || "/";
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, redirectPath]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("verified") === "1") {
+      toast({
+        title: "Email Verified",
+        description: "Your email is verified. Log in to continue.",
+      });
+    }
+  }, [toast]);
 
   if (isLoading) {
     return (

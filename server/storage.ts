@@ -1455,6 +1455,7 @@ export class DatabaseStorage implements IStorage {
             .update(users)
             .set({
               email: tsData.email ?? current.email,
+              ...(tsData.email ? { emailVerified: true } : {}),
               firstName: tsData.firstName ?? current.firstName,
               lastName: tsData.lastName ?? current.lastName,
               appContext: newAppContext,
@@ -1493,6 +1494,7 @@ export class DatabaseStorage implements IStorage {
               .update(users)
               .set({
                 tradescoutId: tsData.tradescoutId,
+                emailVerified: true,
                 firstName: tsData.firstName ?? current.firstName,
                 lastName: tsData.lastName ?? current.lastName,
                 appContext: newAppContext,
@@ -1513,6 +1515,7 @@ export class DatabaseStorage implements IStorage {
             userType,
             tradescoutId: tsData.tradescoutId,
             email: tsData.email ?? undefined,
+            emailVerified: Boolean(tsData.email),
             firstName: tsData.firstName ?? undefined,
             lastName: tsData.lastName ?? undefined,
             appContext,
@@ -1553,6 +1556,7 @@ export class DatabaseStorage implements IStorage {
             .update(users)
             .set({
               email: googleData.email,
+              emailVerified: true,
               firstName: googleData.firstName,
               lastName: googleData.lastName,
               profileImageUrl: googleData.profileImageUrl,
@@ -1592,6 +1596,7 @@ export class DatabaseStorage implements IStorage {
               .update(users)
               .set({
                 googleId: googleData.googleId,
+                emailVerified: true,
                 firstName: googleData.firstName || existingUser[0].firstName,
                 lastName: googleData.lastName || existingUser[0].lastName,
                 profileImageUrl:
@@ -1616,6 +1621,7 @@ export class DatabaseStorage implements IStorage {
             userType,
             googleId: googleData.googleId,
             email: googleData.email,
+            emailVerified: true,
             firstName: googleData.firstName,
             lastName: googleData.lastName,
             profileImageUrl: googleData.profileImageUrl,
@@ -1658,6 +1664,7 @@ export class DatabaseStorage implements IStorage {
             .update(users)
             .set({
               email: facebookData.email,
+              emailVerified: true,
               firstName: facebookData.firstName,
               lastName: facebookData.lastName,
               profileImageUrl: facebookData.profileImageUrl,
@@ -1697,6 +1704,7 @@ export class DatabaseStorage implements IStorage {
               .update(users)
               .set({
                 facebookId: facebookData.facebookId,
+                emailVerified: true,
                 firstName: facebookData.firstName || existingUser[0].firstName,
                 lastName: facebookData.lastName || existingUser[0].lastName,
                 profileImageUrl:
@@ -1722,6 +1730,7 @@ export class DatabaseStorage implements IStorage {
             userType,
             facebookId: facebookData.facebookId,
             email: facebookData.email,
+            emailVerified: true,
             firstName: facebookData.firstName,
             lastName: facebookData.lastName,
             profileImageUrl: facebookData.profileImageUrl,
@@ -1812,6 +1821,7 @@ export class DatabaseStorage implements IStorage {
               .set({
                 tradescoutId: tsData.tradescoutId,
                 email: tsData.email ?? current.email,
+                ...(tsData.email ? { emailVerified: true } : {}),
                 firstName: tsData.firstName ?? current.firstName,
                 lastName: tsData.lastName ?? current.lastName,
                 updatedAt: new Date(),

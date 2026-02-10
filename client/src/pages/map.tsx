@@ -11,6 +11,7 @@ import {
 import L from "leaflet";
 import Navigation from "@/components/navigation";
 import { Button } from "@/components/ui/button";
+import { BackHeader } from "@/components/back-header";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   MapPin,
@@ -208,6 +209,7 @@ interface GeoAd {
 
 type HostLocation = {
   id: string;
+  hostId?: string | null;
   name: string;
   businessName?: string;
   address: string;
@@ -314,8 +316,8 @@ const hostPinActiveIcon = L.divIcon({
 const foodPinIcon = new L.Icon({
   iconUrl: svgToDataUrl(`
     <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#EF4444" stroke="#991B1B" stroke-width="1.5"/>
-      <circle cx="17" cy="13" r="7" fill="#FEF2F2"/>
+      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#F59E0B" stroke="#B45309" stroke-width="2"/>
+      <circle cx="17" cy="13" r="7" fill="#FFFBEB"/>
     </svg>
   `),
   iconSize: [34, 42],
@@ -326,9 +328,9 @@ const foodPinIcon = new L.Icon({
 const truckPinIcon = new L.Icon({
   iconUrl: svgToDataUrl(`
     <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#2563EB" stroke="#1D4ED8" stroke-width="1.5"/>
-      <circle cx="17" cy="13" r="7" fill="#DBEAFE"/>
-      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="700" fill="#1D4ED8">T</text>
+      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#F59E0B" stroke="#B45309" stroke-width="2"/>
+      <circle cx="17" cy="13" r="7" fill="#FFFBEB"/>
+      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="800" fill="#7C2D12">T</text>
     </svg>
   `),
   iconSize: [34, 42],
@@ -339,9 +341,9 @@ const truckPinIcon = new L.Icon({
 const eventPinIcon = new L.Icon({
   iconUrl: svgToDataUrl(`
     <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#8B5CF6" stroke="#312E81" stroke-width="1.5"/>
-      <circle cx="17" cy="13" r="7" fill="#F5F3FF"/>
-      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="700" fill="#312E81">E</text>
+      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#F59E0B" stroke="#B45309" stroke-width="2"/>
+      <circle cx="17" cy="13" r="7" fill="#FFFBEB"/>
+      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="800" fill="#7C2D12">E</text>
     </svg>
   `),
   iconSize: [34, 42],
@@ -352,9 +354,9 @@ const eventPinIcon = new L.Icon({
 const geoAdPinIcon = new L.Icon({
   iconUrl: svgToDataUrl(`
     <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#14B8A6" stroke="#0F766E" stroke-width="1.5"/>
-      <circle cx="17" cy="13" r="7" fill="#ECFEFF"/>
-      <text x="17" y="17" text-anchor="middle" font-size="8" font-weight="700" fill="#0F766E">AD</text>
+      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#F59E0B" stroke="#B45309" stroke-width="2"/>
+      <circle cx="17" cy="13" r="7" fill="#FFFBEB"/>
+      <text x="17" y="17" text-anchor="middle" font-size="8" font-weight="800" fill="#7C2D12">AD</text>
     </svg>
   `),
   iconSize: [34, 42],
@@ -712,14 +714,41 @@ export default function MapPage() {
     refetchOnReconnect: true,
   });
 
+  const { data: parkingPassListings } = useQuery<any[]>({
+    queryKey: ["/api/parking-pass"],
+    queryFn: async () => {
+      const res = await fetch("/api/parking-pass");
+      if (!res.ok) throw new Error("Failed to load parking pass listings");
+      return res.json();
+    },
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+
+  const bookableHostIds = useMemo(() => {
+    if (!Array.isArray(parkingPassListings)) return null;
+    const ids = new Set<string>();
+    parkingPassListings.forEach((listing: any) => {
+      const hostId = listing?.hostId ?? listing?.host?.id;
+      if (hostId) {
+        ids.add(String(hostId));
+      }
+    });
+    return ids;
+  }, [parkingPassListings]);
+
   const visibleHostLocations = useMemo(() => {
     if (!mapBounds || !mapLocations?.hostLocations?.length) return [];
     return mapLocations.hostLocations.filter((host) => {
+      if (bookableHostIds && bookableHostIds.size > 0) {
+        const hostId = host.hostId ? String(host.hostId) : "";
+        if (!hostId || !bookableHostIds.has(hostId)) return false;
+      }
       const coords = resolveHostCoords(host);
       if (!coords) return false;
       return mapBounds.contains([coords.lat, coords.lng]);
     });
-  }, [mapLocations, hostCoords, mapBounds]);
+  }, [mapLocations, hostCoords, mapBounds, bookableHostIds]);
 
   const visibleEventLocations = useMemo(() => {
     if (!mapBounds || !mapLocations?.eventLocations?.length) return [];
@@ -967,6 +996,7 @@ export default function MapPage() {
         keywords="map view, nearby deals, restaurant map, food deals location, nearby restaurants, local deals map"
         canonicalUrl="https://mealscout.us/map"
       />
+      <BackHeader title="Map" fallbackHref="/" />
       {/* Header */}
       <header
         className={`px-6 py-5 border-b border-[color:var(--border-subtle)] relative z-10 ${

@@ -5,6 +5,7 @@ import Navigation from "@/components/navigation";
 import { VideoFeed } from "@/components/video-feed";
 import { VideoUploadModal } from "@/components/video-upload-modal";
 import { SEOHead } from "@/components/seo-head";
+import { BackHeader } from "@/components/back-header";
 
 export default function VideoPage() {
   const { authState, isAuthenticated, isGuest } = useAuth();
@@ -27,6 +28,7 @@ export default function VideoPage() {
         canonicalUrl="https://mealscout.us/video"
       />
 
+      <BackHeader title="Video" fallbackHref="/" />
       {/* Header */}
       <header className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-[var(--border-subtle)] px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-foreground">Video</h1>

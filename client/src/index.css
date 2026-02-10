@@ -1113,7 +1113,7 @@
     inset: 0;
     border-radius: 999px;
     background: rgba(245, 158, 11, 0.22);
-    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55);
     animation: map-user-pulse 2.6s ease-out infinite;
   }
 
@@ -1125,8 +1125,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid #0f172a;
-    box-shadow: 0 10px 18px rgba(15, 23, 42, 0.35);
+    border: 2px solid #f59e0b;
+    box-shadow: 0 4px 8px rgba(15, 23, 42, 0.28);
   }
 
   .map-user-marker__logo img {
@@ -1156,8 +1156,8 @@
     height: 36px;
     border-radius: 999px;
     background: #ffffff;
-    border: 2px solid #0f172a;
-    box-shadow: 0 10px 18px rgba(15, 23, 42, 0.4);
+    border: 2px solid #f59e0b;
+    box-shadow: 0 4px 8px rgba(15, 23, 42, 0.32);
   }
 
   .map-host-marker__logo img {
@@ -1173,13 +1173,13 @@
     width: 10px;
     height: 10px;
     border-radius: 999px;
-    background: #22c55e;
-    border: 2px solid #0f172a;
-    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.35);
+    background: #f59e0b;
+    border: 2px solid #7c2d12;
+    box-shadow: 0 2px 4px rgba(15, 23, 42, 0.3);
   }
 
   .leaflet-marker-icon {
-    filter: drop-shadow(0 4px 8px rgba(15, 23, 42, 0.45));
+    filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.35));
   }
 
   .pp-pin {
@@ -1197,7 +1197,7 @@
     width: 36px;
     height: 36px;
     display: block;
-    filter: drop-shadow(0 6px 12px rgba(15, 23, 42, 0.35));
+    filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.32));
   }
 
   .pp-pin__dot {
@@ -1207,9 +1207,9 @@
     width: 10px;
     height: 10px;
     border-radius: 999px;
-    background: #22c55e;
-    border: 2px solid rgba(15, 23, 42, 0.9);
-    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.35);
+    background: #f59e0b;
+    border: 2px solid rgba(124, 45, 18, 0.9);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.3);
   }
 
   @keyframes map-user-pulse {

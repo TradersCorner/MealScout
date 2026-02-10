@@ -126,16 +126,27 @@ export default function CustomerSignup() {
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(SIGNUP_DRAFT_KEY);
       }
-      if (payload?.user) {
-        queryClient.setQueryData(["/api/auth/user"], payload.user);
-      }
-      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
+      const redirectAfterLogin =
+        accountType === "host"
+          ? "/host-signup"
+          : accountType === "business"
+            ? "/restaurant-signup"
+            : "/";
+      try {
+        window.sessionStorage.setItem(
+          "mealscout:lastSignupEmail",
+          form.getValues("email") || "",
+        );
+      } catch {}
       toast({
-        title: "Welcome to MealScout!",
-        description: "Account created successfully. You're now logged in!",
+        title: "Verify your email",
+        description:
+          payload?.message ||
+          "We sent a verification link to your email. Verify it, then log in to continue.",
       });
-      window.location.href = "/";
+      window.location.href = `/login?redirect=${encodeURIComponent(
+        redirectAfterLogin,
+      )}&signup=1`;
     },
     onError: (error) => {
       toast({
@@ -160,17 +171,21 @@ export default function CustomerSignup() {
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(SIGNUP_DRAFT_KEY);
       }
-      if (payload?.user) {
-        queryClient.setQueryData(["/api/auth/user"], payload.user);
-      }
-      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
+      try {
+        window.sessionStorage.setItem(
+          "mealscout:lastSignupEmail",
+          form.getValues("email") || "",
+        );
+      } catch {}
       toast({
-        title: "Welcome to MealScout for Business!",
+        title: "Verify your email",
         description:
-          "Account created successfully. Let's finish setting up your restaurant.",
+          payload?.message ||
+          "We sent a verification link to your email. Verify it, then log in to continue.",
       });
-      window.location.href = "/restaurant-signup";
+      window.location.href = `/login?redirect=${encodeURIComponent(
+        "/restaurant-signup",
+      )}&signup=1`;
     },
     onError: (error) => {
       toast({

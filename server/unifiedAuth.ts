@@ -936,23 +936,10 @@ export async function setupUnifiedAuth(app: Express) {
           console.error("Failed to send admin signup notification:", err),
         );
 
-      req.login(user, (err) => {
-        if (err) {
-          return res
-            .status(500)
-            .json({ error: "Failed to log in after registration" });
-        }
-        req.session.save((saveErr) => {
-          if (saveErr) {
-            return res
-              .status(500)
-              .json({ error: "Failed to persist session" });
-          }
-          res.json({
-            user: sanitizeUser(user),
-            message: "Registration successful",
-          });
-        });
+      // Require email verification before first login/session.
+      res.status(201).json({
+        message: "Account created. Please verify your email before logging in.",
+        requiresEmailVerification: true,
       });
     } catch (error) {
       console.error("Customer registration error:", error);
@@ -1034,23 +1021,11 @@ export async function setupUnifiedAuth(app: Express) {
           console.error("Failed to send admin signup notification:", err),
         );
 
-      req.login(user, (err) => {
-        if (err) {
-          return res
-            .status(500)
-            .json({ error: "Failed to log in after registration" });
-        }
-        req.session.save((saveErr) => {
-          if (saveErr) {
-            return res
-              .status(500)
-              .json({ error: "Failed to persist session" });
-          }
-          res.json({
-            user: sanitizeUser(user),
-            message: "Registration successful",
-          });
-        });
+      // Require email verification before first login/session.
+      res.status(201).json({
+        message:
+          "Business account created. Please verify your email before logging in.",
+        requiresEmailVerification: true,
       });
     } catch (error) {
       console.error("Restaurant registration error:", error);
@@ -1079,6 +1054,13 @@ export async function setupUnifiedAuth(app: Express) {
         !(await bcrypt.compare(password, user.passwordHash))
       ) {
         return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      if (!user.emailVerified) {
+        return res.status(403).json({
+          error: "Please verify your email before logging in.",
+          code: "email_not_verified",
+        });
       }
 
       req.login(user, (err) => {
@@ -1139,6 +1121,13 @@ export async function setupUnifiedAuth(app: Express) {
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
+      if (!user.emailVerified) {
+        return res.status(403).json({
+          error: "Please verify your email before logging in.",
+          code: "email_not_verified",
+        });
+      }
+
       // Use req.login to properly establish the session
       console.log("🔄 Attempting to establish session...");
       req.login(user, (err) => {
@@ -1159,6 +1148,35 @@ export async function setupUnifiedAuth(app: Express) {
     } catch (error) {
       console.error("❌ Login error:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Resend verification email (public, non-enumerating)
+  app.post("/api/auth/resend-verification", async (req, res) => {
+    try {
+      const emailRaw =
+        typeof req.body?.email === "string" ? req.body.email : "";
+      const email = emailRaw.trim().toLowerCase();
+      if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      if (user && user.email && !user.emailVerified) {
+        const verifyUrl = await createEmailVerificationUrl(user, req);
+        if (verifyUrl) {
+          await emailService.sendEmailVerificationEmail(user, verifyUrl);
+        }
+      }
+
+      // Always respond success to avoid account enumeration.
+      res.json({
+        message:
+          "If an account exists for that email, a verification link has been sent.",
+      });
+    } catch (error) {
+      console.error("Resend verification error:", error);
+      res.status(500).json({ error: "Unable to resend verification email" });
     }
   });
 
@@ -1612,7 +1630,31 @@ export async function setupUnifiedAuth(app: Express) {
         process.env.CLIENT_ORIGIN ||
         process.env.PUBLIC_BASE_URL ||
         "http://localhost:5000";
-      const redirectUrl = `${redirectBase}/login?verified=1`;
+
+      // After verification, send users to a role-appropriate place *after* they log in.
+      // The login page honors `?redirect=` (safe, same-origin paths only).
+      const defaultRedirectPath = (() => {
+        switch (user.userType) {
+          case "host":
+            return "/host/dashboard";
+          case "event_coordinator":
+            return "/event-coordinator/dashboard";
+          case "restaurant_owner":
+          case "food_truck":
+            return "/restaurant-owner-dashboard";
+          case "staff":
+            return "/staff";
+          case "admin":
+          case "super_admin":
+            return "/admin/dashboard";
+          default:
+            return "/";
+        }
+      })();
+
+      const redirectUrl = `${redirectBase}/login?verified=1&redirect=${encodeURIComponent(
+        defaultRedirectPath,
+      )}`;
       res.redirect(redirectUrl);
     } catch (error) {
       console.error("Email verification error:", error);

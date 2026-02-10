@@ -3471,27 +3471,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const restaurant = await storage.createRestaurant({
-        ownerId: req.user.id,
-        name: mergedRestaurant.name,
-        address: mergedRestaurant.address,
-        phone: mergedRestaurant.phone || null,
-        businessType: "food_truck",
-        cuisineType: mergedRestaurant.cuisineType || null,
-        city: mergedRestaurant.city || null,
-        state: mergedRestaurant.state || null,
-        websiteUrl: mergedRestaurant.websiteUrl || null,
-        instagramUrl: mergedRestaurant.instagramUrl || null,
-        facebookPageUrl: mergedRestaurant.facebookPageUrl || null,
-        latitude: mergedRestaurant.latitude || null,
-        longitude: mergedRestaurant.longitude || null,
-        description: mergedRestaurant.description || null,
-        amenities: mergedRestaurant.amenities || null,
-        isFoodTruck: true,
-        isActive: false,
-        isVerified: false,
-        claimedFromImportId: listing.id,
-      });
+      const importSystemEmail =
+        process.env.IMPORT_SYSTEM_EMAIL || "system-import@mealscout.us";
+      const importSystemUser = await storage.getUserByEmail(importSystemEmail);
+      const seededRestaurantCandidate =
+        importSystemUser
+          ? (
+              await db
+                .select()
+                .from(restaurants)
+                .where(
+                  and(
+                    eq(restaurants.claimedFromImportId, listing.id),
+                    eq(restaurants.ownerId, importSystemUser.id),
+                  ),
+                )
+                .limit(1)
+            )[0]
+          : null;
+
+      // If the admin import job pre-seeded a food truck record, transfer ownership to the claimant.
+      const restaurant = seededRestaurantCandidate
+        ? (
+            await db
+              .update(restaurants)
+              .set({
+                ownerId: req.user.id,
+                name: mergedRestaurant.name,
+                address: mergedRestaurant.address,
+                phone: mergedRestaurant.phone || null,
+                businessType: "food_truck",
+                cuisineType: mergedRestaurant.cuisineType || null,
+                city: mergedRestaurant.city || null,
+                state: mergedRestaurant.state || null,
+                websiteUrl: mergedRestaurant.websiteUrl || null,
+                instagramUrl: mergedRestaurant.instagramUrl || null,
+                facebookPageUrl: mergedRestaurant.facebookPageUrl || null,
+                latitude: mergedRestaurant.latitude || null,
+                longitude: mergedRestaurant.longitude || null,
+                description: mergedRestaurant.description || null,
+                amenities: mergedRestaurant.amenities || null,
+                isFoodTruck: true,
+                isActive: false,
+                isVerified: false,
+                updatedAt: new Date(),
+              })
+              .where(eq(restaurants.id, seededRestaurantCandidate.id))
+              .returning()
+          )[0]
+        : await storage.createRestaurant({
+            ownerId: req.user.id,
+            name: mergedRestaurant.name,
+            address: mergedRestaurant.address,
+            phone: mergedRestaurant.phone || null,
+            businessType: "food_truck",
+            cuisineType: mergedRestaurant.cuisineType || null,
+            city: mergedRestaurant.city || null,
+            state: mergedRestaurant.state || null,
+            websiteUrl: mergedRestaurant.websiteUrl || null,
+            instagramUrl: mergedRestaurant.instagramUrl || null,
+            facebookPageUrl: mergedRestaurant.facebookPageUrl || null,
+            latitude: mergedRestaurant.latitude || null,
+            longitude: mergedRestaurant.longitude || null,
+            description: mergedRestaurant.description || null,
+            amenities: mergedRestaurant.amenities || null,
+            isFoodTruck: true,
+            isActive: false,
+            isVerified: false,
+            claimedFromImportId: listing.id,
+          });
 
       const [claimRequest] = await db
         .insert(truckClaimRequests)
@@ -3526,6 +3574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         restaurant,
         claimRequestId: claimRequest?.id,
+        usedSeededRestaurant: Boolean(seededRestaurantCandidate),
       });
     } catch (error: any) {
       console.error("Error creating truck claim:", error);

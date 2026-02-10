@@ -69,6 +69,29 @@ const truckImportUpload = multer({
   },
 });
 
+const IMPORT_SYSTEM_EMAIL =
+  process.env.IMPORT_SYSTEM_EMAIL || "system-import@mealscout.us";
+let importSystemUserIdPromise: Promise<string> | null = null;
+
+const getOrCreateImportSystemUserId = async (): Promise<string> => {
+  if (!importSystemUserIdPromise) {
+    importSystemUserIdPromise = (async () => {
+      const existing = await storage.getUserByEmail(IMPORT_SYSTEM_EMAIL);
+      if (existing) return existing.id;
+
+      const created = await storage.createUserInvite({
+        email: IMPORT_SYSTEM_EMAIL,
+        firstName: "System",
+        lastName: "Import",
+        phone: null,
+        userType: "admin",
+      });
+      return created.id;
+    })();
+  }
+  return await importSystemUserIdPromise;
+};
+
 export function registerAdminManagementRoutes(app: Express) {
   const denyStaffEdits = (req: any, res: any) => {
     if (req.user?.userType === "staff") {
@@ -976,6 +999,7 @@ export function registerAdminManagementRoutes(app: Express) {
         let importedRows = 0;
         let missingRows = 0;
         let duplicateRows = 0;
+        let seededRestaurants = 0;
 
         const listingsToInsert: Array<typeof truckImportListings.$inferInsert> =
           [];
@@ -1041,11 +1065,73 @@ export function registerAdminManagementRoutes(app: Express) {
         }
 
         const chunkSize = 250;
+        const insertedListingRows: Array<{
+          id: string;
+          name: string;
+          address: string;
+          city: string | null;
+          state: string | null;
+          phone: string | null;
+          cuisineType: string | null;
+          websiteUrl: string | null;
+          instagramUrl: string | null;
+          facebookPageUrl: string | null;
+          latitude: string | null;
+          longitude: string | null;
+        }> = [];
         for (let i = 0; i < listingsToInsert.length; i += chunkSize) {
           const chunk = listingsToInsert.slice(i, i + chunkSize);
           if (chunk.length === 0) continue;
-          await db.insert(truckImportListings).values(chunk);
-          importedRows += chunk.length;
+          const inserted = await db
+            .insert(truckImportListings)
+            .values(chunk)
+            .returning({
+              id: truckImportListings.id,
+              name: truckImportListings.name,
+              address: truckImportListings.address,
+              city: truckImportListings.city,
+              state: truckImportListings.state,
+              phone: truckImportListings.phone,
+              cuisineType: truckImportListings.cuisineType,
+              websiteUrl: truckImportListings.websiteUrl,
+              instagramUrl: truckImportListings.instagramUrl,
+              facebookPageUrl: truckImportListings.facebookPageUrl,
+              latitude: truckImportListings.latitude,
+              longitude: truckImportListings.longitude,
+            });
+          insertedListingRows.push(...inserted);
+          importedRows += inserted.length;
+        }
+
+        if (insertedListingRows.length > 0) {
+          const systemOwnerId = await getOrCreateImportSystemUserId();
+          const restaurantsToInsert = insertedListingRows.map((listing) => ({
+            ownerId: systemOwnerId,
+            name: listing.name,
+            address: listing.address,
+            phone: listing.phone,
+            businessType: "food_truck",
+            cuisineType: listing.cuisineType,
+            city: listing.city,
+            state: listing.state,
+            websiteUrl: listing.websiteUrl,
+            instagramUrl: listing.instagramUrl,
+            facebookPageUrl: listing.facebookPageUrl,
+            latitude: listing.latitude,
+            longitude: listing.longitude,
+            isFoodTruck: true,
+            isActive: false,
+            isVerified: false,
+            claimedFromImportId: listing.id,
+          }));
+
+          const restaurantChunkSize = 200;
+          for (let i = 0; i < restaurantsToInsert.length; i += restaurantChunkSize) {
+            const chunk = restaurantsToInsert.slice(i, i + restaurantChunkSize);
+            if (chunk.length === 0) continue;
+            await db.insert(restaurants).values(chunk);
+            seededRestaurants += chunk.length;
+          }
         }
 
         const skippedRows = Math.max(
@@ -1069,6 +1155,7 @@ export function registerAdminManagementRoutes(app: Express) {
           skippedRows,
           missingRows,
           duplicateRows,
+          seededRestaurants,
         });
       } catch (error: any) {
         console.error("Error importing truck listings:", error);

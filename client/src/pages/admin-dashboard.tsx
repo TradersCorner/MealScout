@@ -1694,7 +1694,7 @@ export default function AdminDashboard() {
   // Fetch all users
   const { data: users = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/users"],
-    enabled: !!adminUser && selectedTab === "users",
+    enabled: !!adminUser && (selectedTab === "users" || selectedTab === "host-locations"),
   });
 
   const { data: mapPinAudit } = useQuery<MapPinAudit>({
@@ -1761,6 +1761,12 @@ export default function AdminDashboard() {
     queryKey: ["/api/admin/email/attempts?limit=25"],
     enabled: !!adminUser && selectedTab === "overview",
     staleTime: 30 * 1000,
+  });
+
+  const { data: parkingPassFixQueue } = useQuery<any>({
+    queryKey: ["/api/admin/parking-pass/fix-queue"],
+    enabled: !!adminUser && selectedTab === "host-locations",
+    staleTime: 60 * 1000,
   });
   const [testEmailTo, setTestEmailTo] = useState("");
   const [testEmailCategory, setTestEmailCategory] = useState<
@@ -4765,6 +4771,90 @@ export default function AdminDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Parking Pass Fix Queue</CardTitle>
+                    <CardDescription>
+                      Hosts are only visible on maps when pricing + address + payments are complete. Fix these items to go live.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {Array.isArray(parkingPassFixQueue?.rows) &&
+                    parkingPassFixQueue.rows.length > 0 ? (
+                      <div className="space-y-2">
+                        {parkingPassFixQueue.rows
+                          .filter(
+                            (row: any) =>
+                              !row.publicReady ||
+                              !row.paymentsEnabled ||
+                              (Array.isArray(row.qualityFlags) &&
+                                row.qualityFlags.length > 0),
+                          )
+                          .slice(0, 50)
+                          .map((row: any) => (
+                            <div
+                              key={row.seriesId}
+                              className="rounded-md border px-3 py-2 text-xs space-y-1"
+                            >
+                              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="min-w-0">
+                                  <div className="font-semibold truncate">
+                                    {row.businessName || "Host"}{" "}
+                                    <span className="text-muted-foreground">
+                                      • {row.seriesStatus || "unknown"}
+                                    </span>
+                                  </div>
+                                  <div className="text-muted-foreground truncate">
+                                    {row.address}
+                                    {row.city ? `, ${row.city}` : ""}
+                                    {row.state ? `, ${row.state}` : ""}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge
+                                    variant={row.paymentsEnabled ? "default" : "destructive"}
+                                  >
+                                    {row.paymentsEnabled ? "Payments ok" : "Payments off"}
+                                  </Badge>
+                                  <Badge
+                                    variant={row.publicReady ? "default" : "secondary"}
+                                  >
+                                    {row.publicReady ? "Live" : "Not live"}
+                                  </Badge>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      const next =
+                                        users.find(
+                                          (user: any) =>
+                                            String(user.id) === String(row.hostUserId),
+                                        ) || null;
+                                      if (next) setSelectedUser(next);
+                                    }}
+                                  >
+                                    Select user
+                                  </Button>
+                                </div>
+                              </div>
+                              {Array.isArray(row.qualityFlags) &&
+                              row.qualityFlags.length > 0 ? (
+                                <div className="text-muted-foreground">
+                                  Issues: {row.qualityFlags.slice(0, 6).join(", ")}
+                                  {row.qualityFlags.length > 6 ? ", ..." : ""}
+                                </div>
+                              ) : null}
+                            </div>
+                          ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground">
+                        No fix queue entries yet.
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border p-3">
                   <div>
                     <div className="text-sm font-semibold">Debug tools</div>

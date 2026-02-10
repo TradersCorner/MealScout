@@ -46,6 +46,7 @@ import {
   isParkingPassPublicReady,
 } from "../services/parkingPassQuality";
 import { imageUploads } from "@shared/schema";
+import { logAudit } from "../auditLogger";
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -972,6 +973,24 @@ export function registerHostRoutes(app: Express) {
         return res.status(500).json({ message: "Failed to create parking pass listing" });
       }
 
+      void logAudit(
+        req.user?.id || "",
+        "parking_pass_series_upserted",
+        "parking_pass_series",
+        String(seriesId),
+        String(req.ip || ""),
+        String(req.get("User-Agent") || ""),
+        {
+          hostId: host.id,
+          publicReady,
+          paymentsEnabled: Boolean(
+            host.stripeConnectAccountId && host.stripeChargesEnabled,
+          ),
+        },
+      ).catch((err) =>
+        console.error("Failed to write parking pass audit log:", err),
+      );
+
       const { occurrences } = await listParkingPassOccurrences({
         hostIds: [host.id],
         start: today,
@@ -1595,6 +1614,46 @@ export function registerHostRoutes(app: Express) {
         },
       });
 
+      const changedFields = Object.keys(updates).filter((k) => k !== "updatedAt");
+      const pricingFields = new Set([
+        "breakfastPriceCents",
+        "lunchPriceCents",
+        "dinnerPriceCents",
+        "dailyPriceCents",
+        "weeklyPriceCents",
+        "monthlyPriceCents",
+      ]);
+      const changedPricing = changedFields.some((field) => pricingFields.has(field));
+      void logAudit(
+        req.user?.id || "",
+        changedPricing ? "parking_pass_pricing_updated" : "parking_pass_updated",
+        "parking_pass",
+        String(eventId),
+        String(req.ip || ""),
+        String(req.get("User-Agent") || ""),
+        {
+          hostId: host.id,
+          seriesId: event.seriesId,
+          applyToFuture,
+          changedFields,
+          before: beforeState,
+          after: {
+            startTime: updatedEvent.startTime,
+            endTime: updatedEvent.endTime,
+            maxTrucks: updatedEvent.maxTrucks,
+            hardCapEnabled: updatedEvent.hardCapEnabled,
+            breakfastPriceCents: updatedEvent.breakfastPriceCents,
+            lunchPriceCents: updatedEvent.lunchPriceCents,
+            dinnerPriceCents: updatedEvent.dinnerPriceCents,
+            dailyPriceCents: updatedEvent.dailyPriceCents,
+            weeklyPriceCents: updatedEvent.weeklyPriceCents,
+            monthlyPriceCents: updatedEvent.monthlyPriceCents,
+          },
+        },
+      ).catch((err) =>
+        console.error("Failed to write parking pass audit log:", err),
+      );
+
       res.json({
         ...updatedEvent,
         qualityFlags: computeParkingPassQualityFlags({ ...updatedEvent, host }),
@@ -2036,11 +2095,21 @@ export function registerHostRoutes(app: Express) {
         return res.status(404).json({ message: "Host not found" });
       }
 
+      const hostPaymentsEnabled = Boolean(
+        host.stripeConnectAccountId && host.stripeChargesEnabled,
+      );
+      if (!hostPaymentsEnabled && !bypassStripe) {
+        return res.status(400).json({
+          message:
+            "This host has not enabled payments yet. This spot cannot be booked until payments are enabled.",
+          code: "host_payments_not_enabled",
+        });
+      }
+
       // Host payouts may still be configuring Stripe Connect.
-      // We still allow bookings and charge through the platform account;
-      // once Connect is enabled, we switch to direct charges on the host account.
+      // We only allow bookings once charges are enabled (unless bypassStripe).
       const hostStripeAccountId =
-        host.stripeConnectAccountId && host.stripeChargesEnabled
+        hostPaymentsEnabled
           ? host.stripeConnectAccountId
           : null;
 

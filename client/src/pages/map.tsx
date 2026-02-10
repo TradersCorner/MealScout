@@ -392,6 +392,243 @@ const geoAdPinIcon = new L.Icon({
   popupAnchor: [0, -34],
 });
 
+const clusterIcon = (count: number) =>
+  L.divIcon({
+    className: "map-host-cluster",
+    html: `
+      <div style="width:40px;height:40px;border-radius:9999px;background:rgba(15,23,42,0.92);border:2px solid rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 22px rgba(2,6,23,0.25);">
+        <div style="color:#fff;font-weight:800;font-size:12px;line-height:1;">${count}</div>
+      </div>
+    `,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+    popupAnchor: [0, -18],
+  });
+
+function HostMarkerLayer({
+  hosts,
+  zoomLevel,
+  resolveHostCoords,
+  findNearbyTruck,
+  formatDistance,
+  cachedHostStatusById,
+  isStaffOrAdmin,
+  qualityFlagsByHostId,
+}: {
+  hosts: HostLocation[];
+  zoomLevel: number;
+  resolveHostCoords: (host: HostLocation) => GeoPoint | null;
+  findNearbyTruck: (
+    coords: GeoPoint,
+    radiusKm?: number,
+  ) => { truck: LiveTruck; distance: number } | null;
+  formatDistance: (coords: GeoPoint) => string | null;
+  cachedHostStatusById: Record<
+    string,
+    {
+      hostId: string;
+      availableCount: number;
+      spotCount: number;
+      reservedCount: number;
+      isFull: boolean;
+    }
+  >;
+  isStaffOrAdmin: boolean;
+  qualityFlagsByHostId: Map<string, string[]>;
+}) {
+  const map = useMap();
+
+  const useClusters = hosts.length > 60 && zoomLevel < 14;
+  const cellSize = zoomLevel < 10 ? 0.2 : zoomLevel < 12 ? 0.1 : 0.04;
+
+  const clusters = useMemo(() => {
+    if (!useClusters) return null;
+    const groups = new Map<
+      string,
+      { latSum: number; lngSum: number; count: number; hosts: HostLocation[] }
+    >();
+    hosts.forEach((host) => {
+      const coords = resolveHostCoords(host);
+      if (!coords) return;
+      const key = `${Math.round(coords.lat / cellSize)}:${Math.round(
+        coords.lng / cellSize,
+      )}`;
+      const prev = groups.get(key) || {
+        latSum: 0,
+        lngSum: 0,
+        count: 0,
+        hosts: [],
+      };
+      prev.latSum += coords.lat;
+      prev.lngSum += coords.lng;
+      prev.count += 1;
+      prev.hosts.push(host);
+      groups.set(key, prev);
+    });
+    return Array.from(groups.entries()).map(([key, item]) => ({
+      id: `cluster:${key}`,
+      lat: item.latSum / Math.max(1, item.count),
+      lng: item.lngSum / Math.max(1, item.count),
+      count: item.count,
+      hosts: item.hosts,
+    }));
+  }, [hosts, resolveHostCoords, useClusters, cellSize]);
+
+  if (useClusters && clusters) {
+    return (
+      <>
+        {clusters.map((cluster) => (
+          <Marker
+            key={cluster.id}
+            position={[cluster.lat, cluster.lng]}
+            icon={clusterIcon(cluster.count)}
+            eventHandlers={{
+              click: () => {
+                map.setView(
+                  [cluster.lat, cluster.lng],
+                  Math.min(18, map.getZoom() + 2),
+                );
+              },
+            }}
+          >
+            <Popup>
+              <div className="min-w-52 space-y-1 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg">
+                <div className="font-semibold text-sm">
+                  {cluster.count} paid parking locations
+                </div>
+                <div className="text-xs text-[color:var(--text-muted)]">
+                  Zoom in to see individual spots.
+                </div>
+                <div className="pt-2">
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    onClick={() =>
+                      map.setView(
+                        [cluster.lat, cluster.lng],
+                        Math.min(18, map.getZoom() + 2),
+                      )
+                    }
+                  >
+                    Zoom in
+                  </Button>
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {hosts.map((host) => {
+        const coords = resolveHostCoords(host);
+        if (!coords) return null;
+        const hostedTruck = findNearbyTruck(coords);
+        const title = hostedTruck ? hostedTruck.truck.name : host.name;
+        const subtitle = hostedTruck ? `At ${host.name}` : "Hosts food trucks";
+        const hostId = host.hostId ? String(host.hostId) : "";
+        const hostStatus = hostId ? cachedHostStatusById[hostId] : undefined;
+        const isFullToday = Boolean(hostStatus?.isFull);
+        const availableLabel = hostStatus
+          ? hostStatus.isFull
+            ? "Fully booked today"
+            : `${hostStatus.availableCount}/${hostStatus.spotCount} spots open today`
+          : "Availability updating...";
+        const qualityFlags = hostId ? qualityFlagsByHostId.get(hostId) || [] : [];
+        const distanceLabel = formatDistance(coords);
+
+        return (
+          <Marker
+            key={`host-${host.id}`}
+            position={[coords.lat, coords.lng]}
+            icon={
+              hostedTruck
+                ? hostPinActiveIcon
+                : isFullToday
+                  ? hostPinFullIcon
+                  : hostPinBookableIcon
+            }
+          >
+            <Popup>
+              <div className="min-w-56 space-y-1 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg">
+                <div className="font-semibold text-sm">{title}</div>
+                <div className="text-xs text-[color:var(--text-muted)]">{subtitle}</div>
+                <div className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide border border-[color:var(--border-subtle)]">
+                  {availableLabel}
+                </div>
+                {isStaffOrAdmin && qualityFlags.length > 0 && (
+                  <div className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide border border-[color:var(--border-subtle)] text-[color:var(--status-warning)]">
+                    Data issues: {qualityFlags.slice(0, 4).join(", ")}
+                    {qualityFlags.length > 4 ? ", ..." : ""}
+                  </div>
+                )}
+                <div className="text-xs text-[color:var(--text-muted)]">{host.address}</div>
+                {host.spotImageUrl && (
+                  <img
+                    src={host.spotImageUrl}
+                    alt={`${host.name} parking spot`}
+                    className="mt-2 h-28 w-full rounded-lg border border-border/50 object-cover"
+                    loading="lazy"
+                  />
+                )}
+                {distanceLabel && (
+                  <div className="text-xs text-[color:var(--text-muted)]">
+                    {distanceLabel} away
+                  </div>
+                )}
+                {hostedTruck ? (
+                  <div className="grid grid-cols-2 gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        window.location.href = `/restaurant/${hostedTruck.truck.id}`;
+                      }}
+                    >
+                      View menu
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        window.open(
+                          `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
+                          "_blank",
+                        );
+                      }}
+                    >
+                      Directions
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="pt-2">
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        window.open(
+                          `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
+                          "_blank",
+                        );
+                      }}
+                    >
+                      Directions
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
+    </>
+  );
+}
+
 
 async function geocodeAddress(address: string): Promise<GeoPoint | null> {
   if (!address) return null;
@@ -1499,112 +1736,16 @@ export default function MapPage() {
                 );
               })}
 
-              {/* Host Location Markers (open requests) */}
-              {visibleHostLocations.map((host) => {
-                const coords = resolveHostCoords(host);
-                if (!coords) return null;
-                const hostedTruck = findNearbyTruck(coords);
-                const title = hostedTruck ? hostedTruck.truck.name : host.name;
-                const subtitle = hostedTruck
-                  ? `At ${host.name}`
-                  : "Hosts food trucks";
-                const hostId = host.hostId ? String(host.hostId) : "";
-                const hostStatus = hostId ? cachedHostStatusById[hostId] : undefined;
-                const isFullToday = Boolean(hostStatus?.isFull);
-                const availableLabel = hostStatus
-                  ? hostStatus.isFull
-                    ? "Fully booked today"
-                    : `${hostStatus.availableCount}/${hostStatus.spotCount} spots open today`
-                  : "Availability updating...";
-                const qualityFlags = hostId ? qualityFlagsByHostId.get(hostId) || [] : [];
-                const distanceLabel = formatDistance(coords);
-                return (
-                  <Marker
-                    key={`host-${host.id}`}
-                    position={[coords.lat, coords.lng]}
-                    icon={
-                      hostedTruck
-                        ? hostPinActiveIcon
-                        : isFullToday
-                          ? hostPinFullIcon
-                          : hostPinBookableIcon
-                    }
-                  >
-                    <Popup>
-                      <div className="min-w-56 space-y-1 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg">
-                        <div className="font-semibold text-sm">{title}</div>
-                        <div className="text-xs text-[color:var(--text-muted)]">{subtitle}</div>
-                        <div className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide border border-[color:var(--border-subtle)]">
-                          {availableLabel}
-                        </div>
-                        {isStaffOrAdmin && qualityFlags.length > 0 && (
-                          <div className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide border border-[color:var(--border-subtle)] text-[color:var(--status-warning)]">
-                            Data issues: {qualityFlags.slice(0, 4).join(", ")}
-                            {qualityFlags.length > 4 ? ", ..." : ""}
-                          </div>
-                        )}
-                        <div className="text-xs text-[color:var(--text-muted)]">
-                          {host.address}
-                        </div>
-                        {host.spotImageUrl && (
-                          <img
-                            src={host.spotImageUrl}
-                            alt={`${host.name} parking spot`}
-                            className="mt-2 h-28 w-full rounded-lg border border-border/50 object-cover"
-                            loading="lazy"
-                          />
-                        )}
-                        {distanceLabel && (
-                          <div className="text-xs text-[color:var(--text-muted)]">
-                            {distanceLabel} away
-                          </div>
-                        )}
-                        {hostedTruck ? (
-                          <div className="grid grid-cols-2 gap-2 pt-2">
-                            <Button
-                              size="sm"
-                              className="w-full"
-                              onClick={() => {
-                                window.location.href = `/restaurant/${hostedTruck.truck.id}`;
-                              }}
-                            >
-                              View menu
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => {
-                                window.open(
-                                  `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
-                                  "_blank",
-                                );
-                              }}
-                            >
-                              Directions
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="pt-2">
-                            <Button
-                              size="sm"
-                              className="w-full"
-                              onClick={() => {
-                                window.open(
-                                  `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
-                                  "_blank",
-                                );
-                              }}
-                            >
-                              Directions
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </Popup>
-                  </Marker>
-                );
-              })}
+              <HostMarkerLayer
+                hosts={visibleHostLocations}
+                zoomLevel={zoomLevel}
+                resolveHostCoords={resolveHostCoords}
+                findNearbyTruck={findNearbyTruck}
+                formatDistance={formatDistance}
+                cachedHostStatusById={cachedHostStatusById}
+                isStaffOrAdmin={isStaffOrAdmin}
+                qualityFlagsByHostId={qualityFlagsByHostId}
+              />
 
               {/* Event Markers */}
               {visibleEventLocations.map((event) => {

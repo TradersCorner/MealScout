@@ -2893,6 +2893,97 @@ export default function ParkingPassPage() {
               ) : null}
             </div>
 
+            {host ? (() => {
+              const uniqueFlags = new Set<string>();
+              hostPassListings.forEach((item: any) => {
+                const flags = Array.isArray(item?.qualityFlags) ? item.qualityFlags : [];
+                flags.forEach((flag: any) => uniqueFlags.add(String(flag)));
+              });
+              const flags = Array.from(uniqueFlags.values());
+              const blocking = new Set<string>([
+                "missing_price",
+                "missing_address",
+                "missing_city",
+                "missing_state",
+                "invalid_state",
+                "bad_address_format",
+                "invalid_time_window",
+                "missing_spots",
+                "invalid_spots",
+              ]);
+              const paymentsEnabled = Boolean(host.stripeConnectAccountId && host.stripeChargesEnabled);
+              const hasSpotPhoto = Boolean(host.spotImageUrl);
+              const hasAddress =
+                Boolean(host.address && String(host.address).trim().length > 0) &&
+                Boolean(host.city && String(host.city).trim().length > 0) &&
+                Boolean(host.state && String(host.state).trim().length > 0);
+              const hasBlockingIssues = flags.some((flag) => blocking.has(flag));
+              const publicReady = paymentsEnabled && hasAddress && !hasBlockingIssues;
+
+              const checklist = [
+                { ok: paymentsEnabled, label: "Payments enabled (Stripe)" },
+                { ok: hasAddress, label: "Address complete (street/city/state)" },
+                { ok: !flags.includes("missing_price"), label: "Pricing added (at least one slot)" },
+                { ok: !flags.includes("missing_spots") && !flags.includes("invalid_spots"), label: "Spot count set" },
+                { ok: !flags.includes("invalid_time_window"), label: "Hours set (start/end time)" },
+                { ok: hasSpotPhoto, label: "Spot photo uploaded" },
+              ];
+              const total = checklist.length;
+              const done = checklist.filter((item) => item.ok).length;
+              const pct = Math.round((done / Math.max(1, total)) * 100);
+
+              return (
+                <div className="rounded-xl border border-slate-200 bg-white/70 p-4 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-sm font-semibold text-slate-900">
+                      Setup checklist
+                    </div>
+                    <span
+                      className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${
+                        publicReady
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                          : "border-amber-200 bg-amber-50 text-amber-800"
+                      }`}
+                    >
+                      {publicReady ? "Visible on map" : "Not visible on map"}
+                    </span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={`h-full ${
+                        publicReady ? "bg-emerald-500" : "bg-amber-500"
+                      }`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-slate-600">
+                    {done}/{total} complete
+                    {flags.length > 0 && !publicReady ? (
+                      <span> • Fix the missing items below to go live.</span>
+                    ) : null}
+                  </div>
+                  <div className="grid gap-1 sm:grid-cols-2">
+                    {checklist.map((item) => (
+                      <div key={item.label} className="flex items-center gap-2 text-xs">
+                        <span
+                          className={`inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] font-bold ${
+                            item.ok
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                              : "border-amber-200 bg-amber-50 text-amber-800"
+                          }`}
+                        >
+                          {item.ok ? "✓" : "!"}
+                        </span>
+                        <span className={item.ok ? "text-slate-700" : "text-amber-900"}>
+                          {item.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })() : null}
+
             <Tabs
               value={hostToolsTab}
               onValueChange={(value) => setHostToolsTab(value as any)}

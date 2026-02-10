@@ -794,6 +794,15 @@ export class DatabaseStorage implements IStorage {
     } catch (e) {
       console.warn("ensureCityExists failed for host", e);
     }
+
+    // Invariant: if a host has an address, they must have a draft Parking Pass series ready to complete.
+    try {
+      if (newHost.address) {
+        await this.ensureDraftParkingPassForHost(newHost.id);
+      }
+    } catch (e) {
+      console.warn("ensureDraftParkingPassForHost failed for host", e);
+    }
     return newHost;
   }
 
@@ -938,6 +947,13 @@ export class DatabaseStorage implements IStorage {
       if (!hasValidManualCoords && (!matched.latitude || !matched.longitude)) {
         kickOffGeocode(matched.id);
       }
+      try {
+        if (updated?.address) {
+          await this.ensureDraftParkingPassForHost(updated.id);
+        }
+      } catch (e) {
+        console.warn("ensureDraftParkingPassForHost failed for updated host", e);
+      }
       return updated ?? matched;
     }
 
@@ -963,6 +979,13 @@ export class DatabaseStorage implements IStorage {
       .returning();
     if (created && !hasValidManualCoords && (!created.latitude || !created.longitude)) {
       kickOffGeocode(created.id);
+    }
+    try {
+      if (created?.address) {
+        await this.ensureDraftParkingPassForHost(created.id);
+      }
+    } catch (e) {
+      console.warn("ensureDraftParkingPassForHost failed for created host", e);
     }
     return created ?? null;
   }

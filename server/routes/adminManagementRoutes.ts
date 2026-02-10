@@ -9,6 +9,7 @@ import { sendAccountSetupInvite } from "../utils/accountSetup";
 import { emailService } from "../emailService";
 import { emailDeliveryAudit, isEmailConfigured } from "../emailService";
 import { db } from "../db";
+import { logAudit } from "../auditLogger";
 import multer from "multer";
 import { parseTruckImportFile } from "../utils/truckImport";
 import { forwardGeocode } from "../utils/geocoding";
@@ -2790,6 +2791,23 @@ export function registerAdminManagementRoutes(app: Express) {
             .returning();
           updated = singleUpdated;
         }
+
+        void logAudit(
+          req.user?.id || "",
+          "admin_parking_pass_updated",
+          "parking_pass",
+          String(eventId),
+          String(req.ip || ""),
+          String(req.get("User-Agent") || ""),
+          {
+            seriesId: event.seriesId,
+            hostId: event.hostId,
+            fields: Object.keys(updates),
+            pricingFields: Object.keys(pricingUpdates),
+          },
+        ).catch((err) =>
+          console.error("Failed to write admin parking pass audit log:", err),
+        );
 
         res.json(updated ?? event);
       } catch (error: any) {

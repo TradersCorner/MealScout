@@ -10,6 +10,8 @@ import {
 } from "../unifiedAuth";
 import {
   eventBookings,
+  eventSeries,
+  hosts,
   insertEventInterestSchema,
   restaurants,
   CLAIM_STATUS,
@@ -62,7 +64,10 @@ export function registerEventRoutes(app: Express) {
       // and a clean, geocodable address. Draft/incomplete listings can exist
       // but must not be returned here.
       const virtualEvents = occurrences
-        .filter((event: any) => isParkingPassPublicReady(event))
+        .filter(
+          (event: any) =>
+            isParkingPassPublicReady(event) && hostCanAcceptPayments(event),
+        )
         .map((event: any) => ({
           ...event,
           paymentsEnabled: hostCanAcceptPayments(event),
@@ -73,7 +78,9 @@ export function registerEventRoutes(app: Express) {
       const legacyEvents = legacyUpcoming
         .filter(
           (event: any) =>
-            event?.eventType === "parking_pass" && isParkingPassPublicReady(event),
+            event?.eventType === "parking_pass" &&
+            isParkingPassPublicReady(event) &&
+            hostCanAcceptPayments(event),
         )
         .map((event: any) => ({
           ...event,
@@ -284,14 +291,22 @@ export function registerEventRoutes(app: Express) {
       }
 
       const { occurrences } = await listParkingPassOccurrences({ horizonDays: 30 });
-      const virtualEvents = occurrences.filter((event: any) =>
-        isParkingPassPublicReady(event),
+      const virtualEvents = occurrences.filter(
+        (event: any) =>
+          isParkingPassPublicReady(event) &&
+          Boolean(
+            event?.host?.stripeConnectAccountId && event?.host?.stripeChargesEnabled,
+          ),
       );
 
       const legacyUpcoming = await storage.getAllUpcomingEvents();
       const legacyEvents = legacyUpcoming.filter(
         (event: any) =>
-          event?.eventType === "parking_pass" && isParkingPassPublicReady(event),
+          event?.eventType === "parking_pass" &&
+          isParkingPassPublicReady(event) &&
+          Boolean(
+            event?.host?.stripeConnectAccountId && event?.host?.stripeChargesEnabled,
+          ),
       );
 
       const hostIds = new Set<string>();
@@ -345,6 +360,14 @@ export function registerEventRoutes(app: Express) {
     const { occurrences } = await listParkingPassOccurrences({ horizonDays: 30 });
     const virtualEvents = occurrences.filter((event: any) => {
       if (!isParkingPassPublicReady(event)) return false;
+      if (
+        !(
+          event?.host?.stripeConnectAccountId &&
+          event?.host?.stripeChargesEnabled
+        )
+      ) {
+        return false;
+      }
       const eventDate = String(event?.date || "").slice(0, 10);
       return eventDate === dateKey;
     });
@@ -353,6 +376,14 @@ export function registerEventRoutes(app: Express) {
     const legacyEvents = legacyUpcoming.filter((event: any) => {
       if (event?.eventType !== "parking_pass") return false;
       if (!isParkingPassPublicReady(event)) return false;
+      if (
+        !(
+          event?.host?.stripeConnectAccountId &&
+          event?.host?.stripeChargesEnabled
+        )
+      ) {
+        return false;
+      }
       const eventDate = String(event?.date || "").slice(0, 10);
       return eventDate === dateKey;
     });
@@ -504,6 +535,70 @@ export function registerEventRoutes(app: Express) {
       parkingPassHostIdsCache = null;
       parkingPassHostStatusCacheByDate = new Map();
       res.json({ success: true });
+    },
+  );
+
+  app.get(
+    "/api/admin/parking-pass/fix-queue",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (_req: any, res) => {
+      try {
+        const rows = await db
+          .select({
+            series: eventSeries,
+            host: hosts,
+          })
+          .from(eventSeries)
+          .innerJoin(hosts, eq(hosts.id, eventSeries.hostId))
+          .where(eq(eventSeries.seriesType, "parking_pass"));
+
+        const items = rows.map(({ series, host }: any) => {
+          const listing = {
+            host,
+            startTime: (series as any).defaultStartTime,
+            endTime: (series as any).defaultEndTime,
+            maxTrucks: (series as any).defaultMaxTrucks,
+            breakfastPriceCents: (series as any).defaultBreakfastPriceCents,
+            lunchPriceCents: (series as any).defaultLunchPriceCents,
+            dinnerPriceCents: (series as any).defaultDinnerPriceCents,
+            dailyPriceCents: (series as any).defaultDailyPriceCents,
+            weeklyPriceCents: (series as any).defaultWeeklyPriceCents,
+            monthlyPriceCents: (series as any).defaultMonthlyPriceCents,
+          };
+          const qualityFlags = computeParkingPassQualityFlags(listing);
+          const paymentsEnabled = Boolean(
+            host.stripeConnectAccountId && host.stripeChargesEnabled,
+          );
+          const publicReady = isParkingPassPublicReady(listing) && paymentsEnabled;
+
+          return {
+            seriesId: series.id,
+            seriesStatus: (series as any).status ?? null,
+            hostId: host.id,
+            hostUserId: host.userId,
+            businessName: host.businessName,
+            address: host.address,
+            city: host.city,
+            state: host.state,
+            paymentsEnabled,
+            publicReady,
+            qualityFlags,
+            hasSpotPhoto: Boolean((host as any).spotImageUrl),
+          };
+        });
+
+        items.sort((a: any, b: any) => {
+          const aScore = (a.publicReady ? 0 : 10) + (a.paymentsEnabled ? 0 : 5) + a.qualityFlags.length;
+          const bScore = (b.publicReady ? 0 : 10) + (b.paymentsEnabled ? 0 : 5) + b.qualityFlags.length;
+          return bScore - aScore;
+        });
+
+        res.json({ rows: items });
+      } catch (error: any) {
+        console.error("Error building parking pass fix queue:", error);
+        res.status(500).json({ message: "Failed to load fix queue" });
+      }
     },
   );
 

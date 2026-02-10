@@ -1,5 +1,6 @@
 type ParsedTruckRow = {
   externalId?: string | null;
+  email?: string | null;
   name?: string | null;
   address?: string | null;
   city?: string | null;
@@ -33,6 +34,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
     "business id",
     "id",
   ],
+  email: ["email", "e-mail", "contact email", "owner email", "business email"],
   // "Business name" varies wildly across exports (DBA, trade name, establishment, etc).
   name: [
     "name",
@@ -81,6 +83,8 @@ const FIELD_ALIASES: Record<string, string[]> = {
 
 const normalizeHeader = (value: string): string =>
   value
+    // Handle camelCase/PascalCase exports like "BusinessName".
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
@@ -88,6 +92,7 @@ const normalizeHeader = (value: string): string =>
 
 const mapHeaderToField = (header: string): string | null => {
   const normalized = normalizeHeader(header);
+  const compact = normalized.replace(/\s+/g, "");
   for (const [field, aliases] of Object.entries(FIELD_ALIASES)) {
     // Match full words/phrases within the header (more robust than exact-equals,
     // avoids false positives like "username" matching "name").
@@ -95,6 +100,15 @@ const mapHeaderToField = (header: string): string | null => {
     if (aliases.some((alias) => hay.includes(` ${normalizeHeader(alias)} `))) {
       return field;
     }
+    // Some exports drop separators entirely ("businessname"). Allow a compact match
+    // only for multi-word aliases to reduce false positives.
+    const hasCompactMatch = aliases.some((alias) => {
+      const aliasNormalized = normalizeHeader(alias);
+      if (!aliasNormalized.includes(" ")) return false;
+      const aliasCompact = aliasNormalized.replace(/\s+/g, "");
+      return aliasCompact.length >= 6 && compact.includes(aliasCompact);
+    });
+    if (hasCompactMatch) return field;
   }
   return null;
 };
@@ -150,6 +164,49 @@ const parseCsvToRows = (text: string): string[][] =>
 
 const parseTsvToRows = (text: string): string[][] =>
   parseDelimitedToRows(text, "\t");
+
+const detectDelimiter = (text: string): string => {
+  const candidates = [",", "\t", ";", "|"];
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0)
+    .slice(0, 5);
+  const sample = lines.join("\n");
+  if (!sample) return ",";
+  const counts = candidates.map((delimiter) => ({
+    delimiter,
+    count: Array.from(sample).reduce(
+      (sum, char) => sum + (char === delimiter ? 1 : 0),
+      0,
+    ),
+  }));
+  counts.sort((a, b) => b.count - a.count);
+  // Default to comma if we can't confidently detect.
+  return counts[0]?.count ? counts[0].delimiter : ",";
+};
+
+const findHeaderRowIndex = (rows: string[][]): number => {
+  const scanLimit = Math.min(rows.length, 10);
+  let bestIndex = 0;
+  let bestScore = 0;
+
+  for (let i = 0; i < scanLimit; i += 1) {
+    const row = rows[i] || [];
+    const nonEmpty = row.filter((cell) => String(cell || "").trim() !== "");
+    if (nonEmpty.length === 0) continue;
+    const mappedCount = nonEmpty.reduce((sum, cell) => {
+      return sum + (mapHeaderToField(String(cell)) ? 1 : 0);
+    }, 0);
+    if (mappedCount > bestScore) {
+      bestScore = mappedCount;
+      bestIndex = i;
+    }
+  }
+
+  // Require at least a couple of recognizable header cells; otherwise treat first row as headers.
+  return bestScore >= 2 ? bestIndex : 0;
+};
 
 const buildRowData = (
   headers: string[],
@@ -257,7 +314,8 @@ export const parseTruckImportFile = async (
     if (lowerName.endsWith(".tsv")) {
       rows = parseTsvToRows(text);
     } else {
-      rows = parseCsvToRows(text);
+      const delimiter = detectDelimiter(text);
+      rows = parseDelimitedToRows(text, delimiter);
     }
   }
 
@@ -265,17 +323,19 @@ export const parseTruckImportFile = async (
     return { rows: [], headers: [] };
   }
 
-  const headers = rows[0].map((header, index) => {
+  const headerIndex = findHeaderRowIndex(rows);
+  const headers = (rows[headerIndex] || []).map((header, index) => {
     const trimmed = header.trim();
     // Strip BOM that can appear on the first header cell.
     return index === 0 ? trimmed.replace(/^\uFEFF/, "").trim() : trimmed;
   });
-  const dataRows = rows.slice(1);
+  const dataRows = rows.slice(headerIndex + 1);
   const parsedRows = dataRows
     .map((row) => buildRowData(headers, row))
     .map((row) => ({
       ...row,
       externalId: row.externalId || null,
+      email: row.email || null,
       name: row.name || null,
       address: row.address || null,
       city: row.city || null,

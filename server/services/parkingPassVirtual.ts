@@ -60,6 +60,8 @@ const ensureValidWindow = (startTime: string, endTime: string) => {
 
 export type ParkingPassOccurrence = Event & {
   host: typeof hosts.$inferSelect;
+  seriesStatus?: string | null;
+  seriesPublishedAt?: Date | string | null;
 };
 
 type SeriesJoinRow = {
@@ -71,18 +73,24 @@ export async function listParkingPassOccurrences(options?: {
   start?: Date;
   horizonDays?: number;
   hostIds?: string[];
+  includeDraft?: boolean;
 }) {
   const start = dayStart(options?.start ?? new Date());
   const horizonDays = Math.max(1, options?.horizonDays ?? DEFAULT_HORIZON_DAYS);
   const end = addDays(start, horizonDays);
+  const includeDraft = options?.includeDraft ?? false;
+
+  const statusFilter = includeDraft
+    ? inArray(eventSeries.status, ["published", "draft"] as any)
+    : eq(eventSeries.status, "published");
 
   const whereSeries = options?.hostIds?.length
     ? and(
         eq(eventSeries.seriesType, "parking_pass"),
-        eq(eventSeries.status, "published"),
+        statusFilter as any,
         inArray(eventSeries.hostId, options.hostIds),
       )
-    : and(eq(eventSeries.seriesType, "parking_pass"), eq(eventSeries.status, "published"));
+    : and(eq(eventSeries.seriesType, "parking_pass"), statusFilter as any);
 
   const seriesRows: SeriesJoinRow[] = await db
     .select({
@@ -181,6 +189,8 @@ export async function listParkingPassOccurrences(options?: {
         id,
         hostId: host.id,
         seriesId: series.id,
+        seriesStatus: (series as any).status ?? null,
+        seriesPublishedAt: (series as any).publishedAt ?? null,
         name: override?.name ?? series.name,
         description: override?.description ?? series.description,
         eventType: "parking_pass",

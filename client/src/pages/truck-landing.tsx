@@ -8,6 +8,7 @@ type HostPin = {
   id: string;
   name: string;
   address: string;
+  spotImageUrl?: string | null;
   latitude: number | string | null;
   longitude: number | string | null;
 };
@@ -118,6 +119,14 @@ export default function TruckLanding() {
                   <div className="text-sm">
                     <div className="font-semibold">{host.name}</div>
                     <div className="text-xs text-[color:var(--text-muted)]">{host.address}</div>
+                    {host.spotImageUrl && (
+                      <img
+                        src={host.spotImageUrl}
+                        alt={`${host.name} parking spot`}
+                        className="mt-2 h-24 w-full rounded-lg border border-border/50 object-cover"
+                        loading="lazy"
+                      />
+                    )}
                   </div>
                 </Popup>
               </Marker>

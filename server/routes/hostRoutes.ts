@@ -15,6 +15,7 @@ import {
 import { and, asc, eq, gte, inArray, isNotNull, lt, sql } from "drizzle-orm";
 import { isAuthenticated } from "../unifiedAuth";
 import Stripe from "stripe";
+import { upload, uploadToCloudinary, isCloudinaryConfigured } from "../imageUpload";
 import {
   getHostByUserId,
   getEventAndHostForUser,
@@ -40,12 +41,22 @@ import {
   ensureParkingPassEventRow,
   listParkingPassOccurrences,
 } from "../services/parkingPassVirtual";
+import {
+  computeParkingPassQualityFlags,
+  isParkingPassPublicReady,
+} from "../services/parkingPassQuality";
+import { imageUploads } from "@shared/schema";
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
 
 export function registerHostRoutes(app: Express) {
+  const isStaffOrAdminUser = (user: any) =>
+    user?.userType === "staff" ||
+    user?.userType === "admin" ||
+    user?.userType === "super_admin";
+
   const normalizeLocationValue = (value?: string | null) =>
     (value ?? "").trim().toLowerCase();
 
@@ -429,6 +440,74 @@ export function registerHostRoutes(app: Express) {
       res.status(500).json({ message: "Failed to update host profile" });
     }
   });
+
+  app.post(
+    "/api/hosts/:hostId/spot-image",
+    isAuthenticated,
+    upload.single("image"),
+    async (req: any, res) => {
+      try {
+        const { hostId } = req.params;
+        const userId = req.user.id;
+
+        const host = await storage.getHost(hostId);
+        if (!host) {
+          return res.status(404).json({ message: "Host profile not found" });
+        }
+
+        const allowed =
+          isStaffOrAdminUser(req.user) || String(host.userId) === String(userId);
+        if (!allowed) {
+          return res.status(403).json({ message: "Not authorized" });
+        }
+
+        if (!isCloudinaryConfigured()) {
+          return res.status(400).json({
+            message: "Image uploads are not configured on this server.",
+          });
+        }
+
+        if (!req.file?.buffer) {
+          return res.status(400).json({ message: "No image uploaded." });
+        }
+
+        const result = await uploadToCloudinary(
+          req.file.buffer,
+          "host-spots",
+          `host-${host.id}-spot`,
+        );
+
+        const [updated] = await db
+          .update(hosts)
+          .set({ spotImageUrl: result.secureUrl, updatedAt: new Date() })
+          .where(eq(hosts.id, host.id))
+          .returning();
+
+        try {
+          await db.insert(imageUploads).values({
+            uploadedByUserId: userId,
+            imageType: "host_spot",
+            entityId: host.id,
+            entityType: "host",
+            cloudinaryPublicId: result.publicId,
+            cloudinaryUrl: result.secureUrl,
+            thumbnailUrl: result.thumbnailUrl,
+            width: result.width,
+            height: result.height,
+            fileSize: result.bytes,
+            mimeType: req.file.mimetype,
+          } as any);
+        } catch {
+          // Non-blocking: host record already points to the new image.
+        }
+
+        res.json(updated ?? { ...host, spotImageUrl: result.secureUrl });
+      } catch (error: any) {
+        console.error("Error uploading host spot image:", error);
+        res.status(500).json({ message: "Failed to upload image" });
+      }
+    },
+  );
 
   app.patch(
     "/api/hosts/:hostId/coordinates",
@@ -839,6 +918,19 @@ export function registerHostRoutes(app: Express) {
         }
       }
 
+      const publicReady = isParkingPassPublicReady({
+        host,
+        startTime: parsed.startTime,
+        endTime: parsed.endTime,
+        maxTrucks: spotCount,
+        breakfastPriceCents,
+        lunchPriceCents,
+        dinnerPriceCents,
+        dailyPriceCents,
+        weeklyPriceCents,
+        monthlyPriceCents,
+      });
+
       const seriesValues: typeof eventSeries.$inferInsert = {
         hostId: host.id,
         name: `Parking Pass - ${host.businessName}`,
@@ -860,8 +952,8 @@ export function registerHostRoutes(app: Express) {
         defaultWeeklyPriceCents: weeklyPriceCents,
         defaultMonthlyPriceCents: monthlyPriceCents,
         defaultHostPriceCents: slotSum,
-        status: "published",
-        publishedAt: new Date(),
+        status: publicReady ? "published" : "draft",
+        publishedAt: publicReady ? new Date() : null,
         updatedAt: new Date(),
       };
 
@@ -884,8 +976,16 @@ export function registerHostRoutes(app: Express) {
         hostIds: [host.id],
         start: today,
         horizonDays: 90,
+        includeDraft: true,
       });
-      res.status(201).json(occurrences.filter((item) => item.seriesId === seriesId));
+      res.status(201).json(
+        occurrences
+          .filter((item) => item.seriesId === seriesId)
+          .map((item: any) => ({
+            ...item,
+            qualityFlags: computeParkingPassQualityFlags(item),
+          })),
+      );
     } catch (error: any) {
       console.error("Error creating parking pass listing:", error);
       if (error instanceof z.ZodError) {
@@ -918,6 +1018,7 @@ export function registerHostRoutes(app: Express) {
       const { occurrences } = await listParkingPassOccurrences({
         hostIds: [host.id],
         horizonDays: 90,
+        includeDraft: true,
       });
       const legacyEvents =
         occurrences.length > 0
@@ -930,7 +1031,10 @@ export function registerHostRoutes(app: Express) {
 
       const deduped = new Map<string, any>();
       for (const item of [...occurrences, ...legacyEvents]) {
-        deduped.set(item.id, item);
+        deduped.set(item.id, {
+          ...item,
+          qualityFlags: computeParkingPassQualityFlags(item),
+        });
       }
 
       res.json(Array.from(deduped.values()));
@@ -1436,6 +1540,42 @@ export function registerHostRoutes(app: Express) {
           .where(eq(eventSeries.id, event.seriesId));
       }
 
+      // Enforce: Parking Pass only becomes publicly visible when it is complete + priced.
+      // Draft series are allowed to exist for incomplete data entry.
+      if (event.seriesId) {
+        const [seriesRow] = await db
+          .select({ status: eventSeries.status, publishedAt: eventSeries.publishedAt })
+          .from(eventSeries)
+          .where(eq(eventSeries.id, event.seriesId))
+          .limit(1);
+        if (seriesRow) {
+          const publicReady = isParkingPassPublicReady({
+            host,
+            startTime: updatedEvent.startTime,
+            endTime: updatedEvent.endTime,
+            maxTrucks: updatedEvent.maxTrucks,
+            breakfastPriceCents: updatedEvent.breakfastPriceCents,
+            lunchPriceCents: updatedEvent.lunchPriceCents,
+            dinnerPriceCents: updatedEvent.dinnerPriceCents,
+            dailyPriceCents: updatedEvent.dailyPriceCents,
+            weeklyPriceCents: updatedEvent.weeklyPriceCents,
+            monthlyPriceCents: updatedEvent.monthlyPriceCents,
+          });
+          const nextStatus = publicReady ? "published" : "draft";
+          const shouldUpdateStatus = String(seriesRow.status) !== nextStatus;
+          if (shouldUpdateStatus) {
+            await db
+              .update(eventSeries)
+              .set({
+                status: nextStatus as any,
+                publishedAt: publicReady ? (seriesRow.publishedAt ?? new Date()) : null,
+                updatedAt: new Date(),
+              })
+              .where(eq(eventSeries.id, event.seriesId));
+          }
+        }
+      }
+
       // Telemetry
       await storage.createTelemetryEvent({
         eventName: "occurrence_overridden",
@@ -1455,7 +1595,10 @@ export function registerHostRoutes(app: Express) {
         },
       });
 
-      res.json(updatedEvent);
+      res.json({
+        ...updatedEvent,
+        qualityFlags: computeParkingPassQualityFlags({ ...updatedEvent, host }),
+      });
     } catch (error: any) {
       console.error("Error updating parking pass listing:", error);
       res.status(500).json({ message: "Failed to update parking pass listing" });

@@ -148,6 +148,11 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
   const [source, setSource] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [lastResult, setLastResult] = useState<any | null>(null);
+  const [listingQuery, setListingQuery] = useState("");
+  const [listingResults, setListingResults] = useState<any[]>([]);
+  const [listingLoading, setListingLoading] = useState(false);
+  const [listingEdits, setListingEdits] = useState<Record<string, any>>({});
+  const [purgeForce, setPurgeForce] = useState(false);
 
   const { data: batches = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/truck-imports"],
@@ -188,15 +193,146 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
       setLastResult(data);
       setFile(null);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/truck-imports"] });
-      toast({
-        title: "Import queued",
-        description: `Imported ${data.importedRows} rows.`,
-      });
+      const imported = Number(data?.importedRows ?? 0);
+      if (imported > 0) {
+        toast({
+          title: "Import complete",
+          description: `Imported ${imported} rows.`,
+        });
+      } else {
+        toast({
+          title: "Import uploaded, 0 rows imported",
+          description:
+            "This usually means the file headers/delimiter didn’t match. Check the results panel for header preview.",
+          variant: "destructive",
+        });
+      }
     },
     onError: (error: any) => {
       toast({
         title: "Import failed",
         description: error.message || "Unable to import file.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const searchListings = async () => {
+    const q = listingQuery.trim();
+    if (!q) {
+      setListingResults([]);
+      return;
+    }
+    setListingLoading(true);
+    try {
+      const res = await fetch(
+        `/api/admin/truck-import-listings/search?q=${encodeURIComponent(q)}`,
+        { credentials: "include" },
+      );
+      const data = await res.json().catch(() => []);
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to search import listings.");
+      }
+      const rows = Array.isArray(data) ? data : [];
+      setListingResults(rows);
+      const nextEdits: Record<string, any> = {};
+      rows.forEach((row: any) => {
+        nextEdits[row.id] = {
+          externalId: row.externalId || "",
+          email: row.email || "",
+          name: row.name || "",
+          address: row.address || "",
+          city: row.city || "",
+          state: row.state || "",
+          phone: row.phone || "",
+          cuisineType: row.cuisineType || "",
+          websiteUrl: row.websiteUrl || "",
+          instagramUrl: row.instagramUrl || "",
+          facebookPageUrl: row.facebookPageUrl || "",
+          latitude: row.latitude || "",
+          longitude: row.longitude || "",
+        };
+      });
+      setListingEdits(nextEdits);
+    } catch (error: any) {
+      toast({
+        title: "Search failed",
+        description: error.message || "Unable to search import listings.",
+        variant: "destructive",
+      });
+    } finally {
+      setListingLoading(false);
+    }
+  };
+
+  const saveListing = useMutation({
+    mutationFn: async (payload: { id: string; updates: any }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/admin/truck-import-listings/${payload.id}`,
+        payload.updates,
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Import listing updated" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Save failed",
+        description: error.message || "Unable to update listing.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendInviteForListing = useMutation({
+    mutationFn: async (payload: { id: string; email: string }) => {
+      const res = await apiRequest(
+        "POST",
+        `/api/admin/truck-import-listings/${payload.id}/invite`,
+        { email: payload.email },
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Setup email sent",
+        description: "The truck received a setup link to finish their account.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Invite failed",
+        description: error.message || "Unable to send setup email.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const purgeBatch = useMutation({
+    mutationFn: async (payload: { batchId: string }) => {
+      const res = await apiRequest(
+        "POST",
+        `/api/admin/truck-imports/${payload.batchId}/purge`,
+        { force: purgeForce },
+      );
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/truck-imports"] });
+      const blockedCount = Array.isArray(data?.blocked) ? data.blocked.length : 0;
+      toast({
+        title: "Import purged",
+        description:
+          `Deleted ${data.deletedListings} listings and ${data.deletedRestaurants} trucks.` +
+          (blockedCount ? ` Blocked: ${blockedCount}.` : ""),
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Purge failed",
+        description: error.message || "Unable to purge this import.",
         variant: "destructive",
       });
     },
@@ -210,7 +346,7 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
           Food Truck Imports
         </CardTitle>
         <CardDescription>
-          Upload CSV, TSV, or XLSX lists to preload food trucks for claims.
+          Upload CSV/TSV/XLSX to seed food truck profiles for the claim flow (not user accounts). They’ll appear under Restaurants → Pending and in “Claim an Existing Food Truck” search.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -253,11 +389,246 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
               )}
               <div>Duplicates: {lastResult.duplicateRows}</div>
               <div>Missing Name: {lastResult.missingRows}</div>
+              {Array.isArray(lastResult.headers) && lastResult.headers.length > 0 && (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Headers: {lastResult.headers.slice(0, 12).join(" • ")}
+                  {lastResult.headers.length > 12 ? " • ..." : ""}
+                </div>
+              )}
             </div>
           )}
 
+        <div className="space-y-3 rounded-md border p-3">
+          <div className="text-sm font-semibold">Edit Imported Trucks</div>
+          <div className="text-xs text-muted-foreground">
+            Search by license ID, name, email, city, address. Add an email here to create an invited owner account and send a setup link.
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              type="text"
+              value={listingQuery}
+              onChange={(e) => setListingQuery(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md"
+              placeholder="Search imported trucks..."
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={searchListings}
+              disabled={listingLoading}
+            >
+              {listingLoading ? "Searching..." : "Search"}
+            </Button>
+          </div>
+
+          {listingResults.length > 0 && (
+            <div className="space-y-3">
+              {listingResults.map((row: any) => {
+                const edits = listingEdits[row.id];
+                if (!edits) return null;
+                return (
+                  <div
+                    key={row.id}
+                    className="rounded-md border bg-background/40 p-3 space-y-2"
+                  >
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="text-xs">
+                        <div className="font-semibold">{row.name}</div>
+                        <div className="text-muted-foreground">
+                          License: {row.externalId || "(none)"} • Status:{" "}
+                          {row.status}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            saveListing.mutate({ id: row.id, updates: edits })
+                          }
+                          disabled={saveListing.isPending}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            sendInviteForListing.mutate({
+                              id: row.id,
+                              email: String(edits.email || ""),
+                            })
+                          }
+                          disabled={
+                            sendInviteForListing.isPending || !String(edits.email || "").trim()
+                          }
+                        >
+                          Send setup email
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-xs"
+                        placeholder="Email"
+                        value={edits.email}
+                        onChange={(e) =>
+                          setListingEdits({
+                            ...listingEdits,
+                            [row.id]: { ...edits, email: e.target.value },
+                          })
+                        }
+                      />
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-xs"
+                        placeholder="License ID"
+                        value={edits.externalId}
+                        onChange={(e) =>
+                          setListingEdits({
+                            ...listingEdits,
+                            [row.id]: { ...edits, externalId: e.target.value },
+                          })
+                        }
+                      />
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-xs sm:col-span-2"
+                        placeholder="Name"
+                        value={edits.name}
+                        onChange={(e) =>
+                          setListingEdits({
+                            ...listingEdits,
+                            [row.id]: { ...edits, name: e.target.value },
+                          })
+                        }
+                      />
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-xs sm:col-span-2"
+                        placeholder="Address"
+                        value={edits.address}
+                        onChange={(e) =>
+                          setListingEdits({
+                            ...listingEdits,
+                            [row.id]: { ...edits, address: e.target.value },
+                          })
+                        }
+                      />
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-xs"
+                        placeholder="City"
+                        value={edits.city}
+                        onChange={(e) =>
+                          setListingEdits({
+                            ...listingEdits,
+                            [row.id]: { ...edits, city: e.target.value },
+                          })
+                        }
+                      />
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-xs"
+                        placeholder="State"
+                        value={edits.state}
+                        onChange={(e) =>
+                          setListingEdits({
+                            ...listingEdits,
+                            [row.id]: { ...edits, state: e.target.value },
+                          })
+                        }
+                      />
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-xs"
+                        placeholder="Phone"
+                        value={edits.phone}
+                        onChange={(e) =>
+                          setListingEdits({
+                            ...listingEdits,
+                            [row.id]: { ...edits, phone: e.target.value },
+                          })
+                        }
+                      />
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-xs"
+                        placeholder="Cuisine"
+                        value={edits.cuisineType}
+                        onChange={(e) =>
+                          setListingEdits({
+                            ...listingEdits,
+                            [row.id]: { ...edits, cuisineType: e.target.value },
+                          })
+                        }
+                      />
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-xs"
+                        placeholder="Website"
+                        value={edits.websiteUrl}
+                        onChange={(e) =>
+                          setListingEdits({
+                            ...listingEdits,
+                            [row.id]: { ...edits, websiteUrl: e.target.value },
+                          })
+                        }
+                      />
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-xs"
+                        placeholder="Instagram"
+                        value={edits.instagramUrl}
+                        onChange={(e) =>
+                          setListingEdits({
+                            ...listingEdits,
+                            [row.id]: { ...edits, instagramUrl: e.target.value },
+                          })
+                        }
+                      />
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-xs"
+                        placeholder="Facebook"
+                        value={edits.facebookPageUrl}
+                        onChange={(e) =>
+                          setListingEdits({
+                            ...listingEdits,
+                            [row.id]: { ...edits, facebookPageUrl: e.target.value },
+                          })
+                        }
+                      />
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-xs"
+                        placeholder="Latitude"
+                        value={edits.latitude}
+                        onChange={(e) =>
+                          setListingEdits({
+                            ...listingEdits,
+                            [row.id]: { ...edits, latitude: e.target.value },
+                          })
+                        }
+                      />
+                      <input
+                        className="w-full px-2 py-1 border rounded-md text-xs"
+                        placeholder="Longitude"
+                        value={edits.longitude}
+                        onChange={(e) =>
+                          setListingEdits({
+                            ...listingEdits,
+                            [row.id]: { ...edits, longitude: e.target.value },
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <div className="space-y-2">
           <div className="text-sm font-semibold">Recent Imports</div>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={purgeForce}
+              onChange={(e) => setPurgeForce(e.target.checked)}
+            />
+            Force purge (also deletes claim requests; still blocks anything with bookings)
+          </label>
           {batches.length === 0 ? (
             <div className="text-xs text-muted-foreground">
               No import batches yet.
@@ -274,12 +645,29 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
                     <div className="text-muted-foreground">
                       {batch.source || "Unspecified source"}
                     </div>
+                    <div className="text-muted-foreground">Batch: {batch.id}</div>
                   </div>
-                  <div className="text-right">
-                    <div>Imported: {batch.importedRows}</div>
-                    <div className="text-muted-foreground">
-                      Skipped: {batch.skippedRows}
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div>Imported: {batch.importedRows}</div>
+                      <div className="text-muted-foreground">
+                        Skipped: {batch.skippedRows}
+                      </div>
                     </div>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={purgeBatch.isPending}
+                      onClick={() => {
+                        const ok = window.confirm(
+                          `Permanently delete everything seeded by “${batch.fileName}”? This only deletes unclaimed rows.`,
+                        );
+                        if (!ok) return;
+                        purgeBatch.mutate({ batchId: batch.id });
+                      }}
+                    >
+                      Purge
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -1290,6 +1678,11 @@ export default function AdminDashboard() {
                 <div className="text-sm font-medium">
                   {host.businessName}
                 </div>
+                {pass && Array.isArray((pass as any).qualityFlags) && (pass as any).qualityFlags.length > 0 && (
+                  <div className="text-xs text-destructive">
+                    Data quality: {(pass as any).qualityFlags.join(", ")}
+                  </div>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <input
                     className="w-full px-2 py-1 border rounded-md text-sm"
@@ -1369,6 +1762,20 @@ export default function AdminDashboard() {
                         [host.id]: {
                           ...edits,
                           longitude: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                  <input
+                    className="w-full px-2 py-1 border rounded-md text-sm sm:col-span-2"
+                    placeholder="Spot image URL"
+                    value={edits.spotImageUrl}
+                    onChange={(e) =>
+                      setHostEdits({
+                        ...hostEdits,
+                        [host.id]: {
+                          ...edits,
+                          spotImageUrl: e.target.value,
                         },
                       })
                     }
@@ -1715,7 +2122,7 @@ export default function AdminDashboard() {
                             updates: passEdits,
                           })
                         }
-                        disabled={updateParkingPass.isPending || isStaff}
+                        disabled={updateParkingPass.isPending}
                       >
                         Save Parking Pass
                       </Button>
@@ -1749,6 +2156,9 @@ export default function AdminDashboard() {
                         hostId: host.id,
                         updates: {
                           ...edits,
+                          spotImageUrl: edits.spotImageUrl?.trim()
+                            ? edits.spotImageUrl.trim()
+                            : null,
                           expectedFootTraffic: edits.expectedFootTrafficTouched
                             ? (edits.expectedFootTraffic === ""
                                 ? null
@@ -1758,7 +2168,6 @@ export default function AdminDashboard() {
                         },
                       });
                     }}
-                    disabled={isStaff}
                   >
                     Save Host
                   </Button>
@@ -1768,7 +2177,6 @@ export default function AdminDashboard() {
                     onClick={() =>
                       deleteHostLocation.mutate({ hostId: host.id })
                     }
-                    disabled={isStaff}
                   >
                     Delete Location
                   </Button>
@@ -1906,7 +2314,7 @@ export default function AdminDashboard() {
                   data: newHostLocation,
                 });
               }}
-              disabled={createHostLocation.isPending || isStaff}
+              disabled={createHostLocation.isPending}
             >
               Add Location
             </Button>
@@ -1952,6 +2360,7 @@ export default function AdminDashboard() {
         dinnerPriceCents: pass.dinnerPriceCents ?? 0,
         dailyPriceCents: pass.dailyPriceCents ?? 0,
         weeklyPriceCents: pass.weeklyPriceCents ?? 0,
+        monthlyPriceCents: pass.monthlyPriceCents ?? 0,
       };
     });
     setParkingPassEdits(nextEdits);
@@ -1993,6 +2402,7 @@ export default function AdminDashboard() {
         state: host.state || "",
         latitude: host.latitude || "",
         longitude: host.longitude || "",
+        spotImageUrl: host.spotImageUrl || "",
         locationType: host.locationType || "other",
         expectedFootTraffic: resolveFootTrafficValue(originalFootTraffic),
         expectedFootTrafficOriginal: originalFootTraffic,
@@ -4663,7 +5073,12 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               )}
-              {renderHostLocationsEditor()}
+              {(selectedUser?.userType === "host" || userHosts.length > 0) && (
+                <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+                  Parking Pass + Host Location editing lives in the{" "}
+                  <span className="font-semibold">Host Locations</span> tab.
+                </div>
+              )}
 
               {/* Restaurants */}
               {userRestaurants.length > 0 && (
@@ -5442,7 +5857,7 @@ export default function AdminDashboard() {
                                   updates: edits,
                                 })
                               }
-                              disabled={updateParkingPass.isPending || isStaff}
+                              disabled={updateParkingPass.isPending}
                               data-testid={`button-save-parking-pass-${pass.id}`}
                             >
                               Save Parking Pass

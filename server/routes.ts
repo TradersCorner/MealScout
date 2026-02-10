@@ -96,6 +96,7 @@ import { validateDocuments, checkRateLimit } from "./documentValidation";
 import { randomBytes, timingSafeEqual, createHash } from "crypto";
 import { sanitizeUser } from "./utils/sanitize";
 import { ensureAffiliateTag } from "./affiliateTagService";
+import { sendAccountSetupInvite } from "./utils/accountSetup";
 import {
   isPasswordStrong,
   PASSWORD_REQUIREMENTS,
@@ -1578,7 +1579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         parts.push("USA");
         return parts.join(", ");
       };
-      const MAX_GEOCODE_PER_REQUEST = 6;
+      const MAX_GEOCODE_PER_REQUEST = 25;
       type PendingGeocode = {
         address: string;
         onResolved: Array<(coords: { lat: number; lng: number }) => void>;
@@ -1647,6 +1648,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           address: host.address,
           city: host.city,
           state: host.state,
+          spotImageUrl: host.spotImageUrl ?? null,
           locationType: host.locationType,
           expectedFootTraffic: host.expectedFootTraffic,
           notes: host.notes,
@@ -1715,6 +1717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           address: address.address,
           city: address.city,
           state: address.state,
+          spotImageUrl: address.spotImageUrl ?? parentHost.spotImageUrl ?? null,
           locationType: parentHost.locationType,
           expectedFootTraffic: parentHost.expectedFootTraffic,
           notes: parentHost.notes,
@@ -3375,6 +3378,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
 
+      const decorateTruckClaimRows = (rows: any[]) => {
+        const now = Date.now();
+        const COOLDOWN_MS = 6 * 60 * 60 * 1000;
+        return rows.map((row) => {
+          const hasInvite = Boolean(row.invitedUserId || row.email);
+          const isInviteOwner =
+            row.invitedUserId && String(row.invitedUserId) === String(req.user?.id);
+          const lastInviteSentAtMs = row.lastInviteSentAt
+            ? new Date(row.lastInviteSentAt).getTime()
+            : 0;
+          const cooldownRemainingMs =
+            lastInviteSentAtMs ? Math.max(0, lastInviteSentAtMs + COOLDOWN_MS - now) : 0;
+
+          return {
+            id: row.id,
+            name: row.name,
+            address: row.address,
+            city: row.city,
+            state: row.state,
+            phone: row.phone,
+            externalId: row.externalId,
+            confidenceScore: row.confidenceScore,
+            invited: hasInvite,
+            canClaim: !hasInvite,
+            canRequest: hasInvite && !isInviteOwner,
+            requestCooldownMinutes: cooldownRemainingMs
+              ? Math.ceil(cooldownRemainingMs / 60000)
+              : 0,
+          };
+        });
+      };
+
       const externalMatch = await db
         .select({
           id: truckImportListings.id,
@@ -3385,6 +3420,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           phone: truckImportListings.phone,
           externalId: truckImportListings.externalId,
           confidenceScore: truckImportListings.confidenceScore,
+          email: truckImportListings.email,
+          invitedUserId: truckImportListings.invitedUserId,
+          lastInviteSentAt: truckImportListings.lastInviteSentAt,
         })
         .from(truckImportListings)
         .where(
@@ -3396,7 +3434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .limit(10);
 
       if (externalMatch.length > 0) {
-        return res.json(externalMatch);
+        return res.json(decorateTruckClaimRows(externalMatch));
       }
 
       const searchValue = `%${query.toLowerCase()}%`;
@@ -3410,6 +3448,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           phone: truckImportListings.phone,
           externalId: truckImportListings.externalId,
           confidenceScore: truckImportListings.confidenceScore,
+          email: truckImportListings.email,
+          invitedUserId: truckImportListings.invitedUserId,
+          lastInviteSentAt: truckImportListings.lastInviteSentAt,
         })
         .from(truckImportListings)
         .where(
@@ -3428,10 +3469,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(desc(truckImportListings.confidenceScore))
         .limit(10);
 
-      res.json(matches);
+      res.json(decorateTruckClaimRows(matches));
     } catch (error) {
       console.error("Error searching truck listings:", error);
       res.status(500).json({ message: "Failed to search truck listings" });
+    }
+  });
+
+  app.post("/api/truck-claims/request", isAuthenticated, async (req: any, res) => {
+    try {
+      const payloadSchema = z.object({ listingId: z.string().min(1) });
+      const { listingId } = payloadSchema.parse(req.body);
+
+      const [listing] = await db
+        .select()
+        .from(truckImportListings)
+        .where(eq(truckImportListings.id, listingId))
+        .limit(1);
+
+      if (!listing || listing.status !== "unclaimed") {
+        return res
+          .status(404)
+          .json({ message: "Truck listing is not available." });
+      }
+
+      const inviteEmail = String(listing.email || "").trim().toLowerCase();
+      if (!listing.invitedUserId && !inviteEmail) {
+        return res.status(400).json({
+          message:
+            "This listing doesn't have an email on file. Ask an admin to add one, or claim it manually.",
+        });
+      }
+
+      const COOLDOWN_MS = 6 * 60 * 60 * 1000;
+      if (listing.lastInviteSentAt) {
+        const lastMs = new Date(listing.lastInviteSentAt).getTime();
+        if (Date.now() - lastMs < COOLDOWN_MS) {
+          const minutes = Math.ceil((COOLDOWN_MS - (Date.now() - lastMs)) / 60000);
+          return res.status(429).json({
+            message: `A reminder was already sent recently. Try again in about ${minutes} minutes.`,
+          });
+        }
+      }
+
+      let inviteUser: any | null = null;
+      if (listing.invitedUserId) {
+        inviteUser = await storage.getUser(listing.invitedUserId);
+      }
+      if (!inviteUser && inviteEmail) {
+        inviteUser = await storage.getUserByEmail(inviteEmail);
+        if (!inviteUser) {
+          inviteUser = await storage.createUserInvite({
+            email: inviteEmail,
+            firstName: null,
+            lastName: null,
+            phone: null,
+            userType: "food_truck",
+          });
+        }
+        await db
+          .update(truckImportListings)
+          .set({ invitedUserId: inviteUser.id, updatedAt: new Date() })
+          .where(eq(truckImportListings.id, listing.id));
+      }
+
+      if (!inviteUser) {
+        return res.status(500).json({ message: "Unable to send reminder." });
+      }
+
+      const emailSent = await sendAccountSetupInvite({
+        user: inviteUser,
+        createdBy: null,
+        req,
+      });
+
+      await db
+        .update(truckImportListings)
+        .set({ lastInviteSentAt: new Date(), updatedAt: new Date() })
+        .where(eq(truckImportListings.id, listing.id));
+
+      res.json({ success: true, emailSent });
+    } catch (error: any) {
+      console.error("Error requesting truck setup reminder:", error);
+      res.status(400).json({
+        message: error.message || "Failed to request reminder",
+      });
     }
   });
 
@@ -3455,6 +3577,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res
           .status(404)
           .json({ message: "Truck listing is not available to claim" });
+      }
+
+      if (listing.invitedUserId && String(listing.invitedUserId) !== String(req.user.id)) {
+        return res.status(409).json({
+          message:
+            "This truck already has an invited owner. Use “Request this truck” to notify them to finish setup.",
+        });
       }
 
       const mergedRestaurant = {
@@ -3522,9 +3651,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 amenities: mergedRestaurant.amenities || null,
                 isFoodTruck: true,
                 isActive: false,
-                // Imported government/business registry listings are treated as real businesses.
-                // Ownership is still tracked via the claim request, but business verification is automatic.
-                isVerified: true,
+                // Imported listings still require document verification.
+                isVerified: false,
                 updatedAt: new Date(),
               })
               .where(eq(restaurants.id, seededRestaurantCandidate.id))
@@ -3548,7 +3676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             amenities: mergedRestaurant.amenities || null,
             isFoodTruck: true,
             isActive: false,
-            isVerified: true,
+            isVerified: false,
             claimedFromImportId: listing.id,
           });
 
@@ -4115,6 +4243,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const restaurant = await storage.getRestaurant(restaurantId);
         if (!restaurant || restaurant.ownerId !== userId) {
           return res.status(403).json({ message: "Unauthorized" });
+        }
+
+        // Imported food trucks must submit a license number that matches the gov registry ID we seeded.
+        if (restaurant.claimedFromImportId) {
+          const [listing] = await db
+            .select({
+              externalId: truckImportListings.externalId,
+            })
+            .from(truckImportListings)
+            .where(eq(truckImportListings.id, restaurant.claimedFromImportId))
+            .limit(1);
+          const expected = String(listing?.externalId || "").trim();
+          if (expected) {
+            const provided = String(req.body?.licenseNumber || "").trim();
+            if (!provided) {
+              return res.status(400).json({
+                message: "License number is required for imported food trucks.",
+              });
+            }
+            if (provided.toLowerCase() !== expected.toLowerCase()) {
+              return res.status(400).json({
+                message:
+                  "License number does not match the registry record for this truck.",
+              });
+            }
+          }
         }
 
         // Check rate limiting

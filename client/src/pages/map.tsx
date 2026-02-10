@@ -215,6 +215,7 @@ type HostLocation = {
   address: string;
   city?: string | null;
   state?: string | null;
+  spotImageUrl?: string | null;
   locationType: string;
   expectedFootTraffic?: number;
   notes?: string | null;
@@ -381,27 +382,6 @@ async function geocodeAddress(address: string): Promise<GeoPoint | null> {
   return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
 }
 
-// Fallback: approximate location via IP for environments like in-app browsers
-async function ipGeolocationFallback(): Promise<{
-  lat: number;
-  lng: number;
-  city?: string;
-} | null> {
-  try {
-    const response = await fetch("https://ipapi.co/json/");
-    if (!response.ok) return null;
-    const data = await response.json();
-    if (!data.latitude || !data.longitude) return null;
-    return {
-      lat: parseFloat(data.latitude),
-      lng: parseFloat(data.longitude),
-      city: data.city || data.region,
-    };
-  } catch {
-    return null;
-  }
-}
-
 export default function MapPage() {
   const [userLocation, setUserLocation] = useState<{
     lat: number;
@@ -472,7 +452,8 @@ export default function MapPage() {
 
   // Get user location
   useEffect(() => {
-    // Start from last known location if the user has previously shared it
+    // Start from last viewed area if the user has previously shared location.
+    // Important: do NOT treat this as "you are here" because it can be stale.
     try {
       const stored = localStorage.getItem("mealscout_last_location");
       if (stored) {
@@ -482,7 +463,6 @@ export default function MapPage() {
         } | null;
         if (parsed?.lat && parsed?.lng) {
           const approx = { lat: parsed.lat, lng: parsed.lng };
-          setUserLocation(approx);
           setMapCenter(approx);
         }
       }
@@ -503,7 +483,7 @@ export default function MapPage() {
           try {
             localStorage.setItem(
               "mealscout_last_location",
-              JSON.stringify(location),
+              JSON.stringify({ ...location, timestamp: Date.now() }),
             );
           } catch {
             // ignore localStorage issues
@@ -513,24 +493,9 @@ export default function MapPage() {
         },
         async (error) => {
           console.log("Location error:", error);
-          // Try a softer message and approximate IP-based fallback
-          setLocationError(
-            "Couldn't get precise GPS, showing an approximate area instead."
-          );
-          const ipLocation = await ipGeolocationFallback();
-          if (ipLocation) {
-            const approx = { lat: ipLocation.lat, lng: ipLocation.lng };
-            setUserLocation(approx);
-            setMapCenter(approx);
-            try {
-              localStorage.setItem(
-                "mealscout_last_location",
-                JSON.stringify(approx),
-              );
-            } catch {
-              // ignore localStorage issues
-            }
-          }
+          // Do not guess location: it's worse than being unknown.
+          // Users can still explore by moving the map; "Center on location" stays disabled.
+          setLocationError("Location is off. Enable location to see what’s nearby.");
           setIsLocating(false);
         },
         { enableHighAccuracy: true, timeout: 10000 }
@@ -1235,6 +1200,14 @@ export default function MapPage() {
                         <div className="text-xs text-[color:var(--text-muted)]">
                           {host.address}
                         </div>
+                        {host.spotImageUrl && (
+                          <img
+                            src={host.spotImageUrl}
+                            alt={`${host.name} parking spot`}
+                            className="mt-2 h-28 w-full rounded-lg border border-border/50 object-cover"
+                            loading="lazy"
+                          />
+                        )}
                         {distanceLabel && (
                           <div className="text-xs text-[color:var(--text-muted)]">
                             {distanceLabel} away

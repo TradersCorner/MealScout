@@ -17,6 +17,10 @@ import {
 import { asc, eq, inArray, sql } from "drizzle-orm";
 import { forwardGeocode } from "../utils/geocoding";
 import { listParkingPassOccurrences } from "../services/parkingPassVirtual";
+import {
+  computeParkingPassQualityFlags,
+  isParkingPassPublicReady,
+} from "../services/parkingPassQuality";
 
 export function registerEventRoutes(app: Express) {
   // Get all upcoming events (public)
@@ -52,22 +56,27 @@ export function registerEventRoutes(app: Express) {
           event?.host?.stripeConnectAccountId && event?.host?.stripeChargesEnabled,
         );
 
-      // NOTE: In the Airbnb-style model, occurrences are generated virtually and only persisted when
-      // booked/overridden. While we transition, we also include legacy materialized Parking Pass events.
-      const virtualEvents = occurrences.map((event: any) => ({
+      // NOTE: Public feed must only show Parking Pass listings that have pricing
+      // and a clean, geocodable address. Draft/incomplete listings can exist
+      // but must not be returned here.
+      const virtualEvents = occurrences
+        .filter((event: any) => isParkingPassPublicReady(event))
+        .map((event: any) => ({
           ...event,
           paymentsEnabled: hostCanAcceptPayments(event),
+          qualityFlags: computeParkingPassQualityFlags(event),
         }));
 
       const legacyUpcoming = await storage.getAllUpcomingEvents();
       const legacyEvents = legacyUpcoming
         .filter(
           (event: any) =>
-            event?.eventType === "parking_pass",
+            event?.eventType === "parking_pass" && isParkingPassPublicReady(event),
         )
         .map((event: any) => ({
           ...event,
           paymentsEnabled: hostCanAcceptPayments(event),
+          qualityFlags: computeParkingPassQualityFlags(event),
         }));
 
       const dedupedById = new Map<string, any>();
@@ -78,7 +87,7 @@ export function registerEventRoutes(app: Express) {
 
       // Best-effort: ensure host coordinates exist so map pins can render.
       // We intentionally cap work per request to avoid hammering geocoding providers.
-      const MAX_GEOCODE_PER_REQUEST = 12;
+      const MAX_GEOCODE_PER_REQUEST = 30;
       const seenHostIds = new Set<string>();
       let geocodeCount = 0;
 
@@ -134,7 +143,25 @@ export function registerEventRoutes(app: Express) {
         host.latitude = coords.lat.toString();
         host.longitude = coords.lng.toString();
       }
-      const eventIds = parkingEvents.map((event) => event.id);
+
+      const toNumberOrNull = (value: any) => {
+        if (value === null || value === undefined) return null;
+        const parsed = typeof value === "string" ? Number(value) : value;
+        return Number.isFinite(parsed) ? parsed : null;
+      };
+      const parkingEventsWithPins = parkingEvents.filter((event: any) => {
+        const host = event?.host;
+        const lat = toNumberOrNull(host?.latitude);
+        const lng = toNumberOrNull(host?.longitude);
+        return (
+          lat !== null &&
+          lng !== null &&
+          Math.abs(lat) <= 90 &&
+          Math.abs(lng) <= 180
+        );
+      });
+
+      const eventIds = parkingEventsWithPins.map((event) => event.id);
 
       const bookingRows =
         eventIds.length > 0
@@ -182,7 +209,7 @@ export function registerEventRoutes(app: Express) {
         bookingsByEvent.set(row.eventId, list);
       }
 
-      const enhancedEvents = parkingEvents.map((event) => {
+      const enhancedEvents = parkingEventsWithPins.map((event) => {
         const rows = bookingsByEvent.get(event.id) ?? [];
         const pending = pendingByEvent.get(event.id) ?? 0;
         const maxSpots = event.maxTrucks ?? 1;

@@ -62,6 +62,7 @@ interface Host {
   locationType: string;
   city?: string | null;
   state?: string | null;
+  spotImageUrl?: string | null;
   latitude?: number | string | null;
   longitude?: number | string | null;
   expectedFootTraffic?: string | null;
@@ -82,6 +83,7 @@ interface HostPassListing {
   seriesId?: string | null;
   status: string;
   requiresPayment?: boolean;
+  qualityFlags?: string[];
   hostPriceCents?: number;
   breakfastPriceCents?: number | null;
   lunchPriceCents?: number | null;
@@ -127,6 +129,7 @@ type PublicMapLocation = {
   address?: string | null;
   city?: string | null;
   state?: string | null;
+  spotImageUrl?: string | null;
   latitude?: string | null;
   longitude?: string | null;
 };
@@ -478,6 +481,8 @@ export default function ParkingPassPage() {
   const [hosts, setHosts] = useState<Host[]>([]);
   const [selectedHostId, setSelectedHostId] = useState<string>("");
   const [host, setHost] = useState<Host | null>(null);
+  const [spotImageFile, setSpotImageFile] = useState<File | null>(null);
+  const [isUploadingSpotImage, setIsUploadingSpotImage] = useState(false);
   const [amenities, setAmenities] = useState<Record<string, boolean>>({
     water: false,
     electric: false,
@@ -640,6 +645,7 @@ export default function ParkingPassPage() {
     if (!Array.isArray(data)) return [];
     return data.filter((listing: any) => {
       if (!listing?.host) return false;
+      if (!hasListingPricing(listing)) return false;
       // Show priced locations even when fully booked so pins don't disappear from the map.
       // Booking is still gated elsewhere via `listingHasAvailability(...)`.
       return true;
@@ -1810,6 +1816,49 @@ export default function ParkingPassPage() {
       });
     } finally {
       setIsUpdatingLocation(false);
+    }
+  };
+
+  const handleUploadSpotImage = async () => {
+    if (!host) return;
+    if (!spotImageFile) {
+      toast({
+        title: "Choose an image",
+        description: "Select a photo of your parking spot first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingSpotImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", spotImageFile);
+
+      const res = await fetch(`/api/hosts/${host.id}/spot-image`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to upload photo");
+      }
+
+      const updated = await res.json();
+      setHosts((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setHost(updated);
+      setSpotImageFile(null);
+      toast({ title: "Photo uploaded" });
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload photo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingSpotImage(false);
     }
   };
 
@@ -3114,6 +3163,39 @@ export default function ParkingPassPage() {
                           }
                         />
                       </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="hostSpotPhoto">Spot photo</Label>
+                        {host.spotImageUrl && (
+                          <img
+                            src={host.spotImageUrl}
+                            alt={`${host.businessName} parking spot`}
+                            className="h-40 w-full rounded-xl border border-border/60 object-cover"
+                            loading="lazy"
+                          />
+                        )}
+                        <input
+                          id="hostSpotPhoto"
+                          type="file"
+                          accept="image/*"
+                          className="block w-full text-sm text-slate-700 file:mr-4 file:rounded-md file:border-0 file:bg-orange-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-orange-900 hover:file:bg-orange-200"
+                          onChange={(event) =>
+                            setSpotImageFile(event.target.files?.[0] ?? null)
+                          }
+                        />
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleUploadSpotImage}
+                            disabled={!spotImageFile || isUploadingSpotImage}
+                          >
+                            {isUploadingSpotImage ? "Uploading..." : "Upload photo"}
+                          </Button>
+                          <p className="text-[11px] text-orange-700">
+                            Shows when trucks click your spot on the map.
+                          </p>
+                        </div>
+                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="hostType">Location type</Label>
                         <select
@@ -3869,6 +3951,12 @@ export default function ParkingPassPage() {
                                 listing.status.slice(1)}
                             </span>
                           </div>
+                          {Array.isArray(listing.qualityFlags) &&
+                            listing.qualityFlags.length > 0 && (
+                              <div className="mt-2 text-xs text-amber-800">
+                                Needs fixes: {listing.qualityFlags.join(", ")}
+                              </div>
+                            )}
                         </div>
                       </div>
 
@@ -4708,6 +4796,14 @@ export default function ParkingPassPage() {
                                   <p className="text-[color:var(--text-muted)]">
                                     {addressLabel}
                                   </p>
+                                  {group.host.spotImageUrl && (
+                                    <img
+                                      src={group.host.spotImageUrl}
+                                      alt={`${group.host.businessName} parking spot`}
+                                      className="h-24 w-full rounded-lg border border-border/50 object-cover"
+                                      loading="lazy"
+                                    />
+                                  )}
                                   {displayListing && (
                                     <p className="text-[color:var(--text-muted)]">
                                       {format(

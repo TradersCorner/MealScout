@@ -32,6 +32,11 @@ import {
   creditLedger,
 } from "@shared/schema";
 import { isSlotWithinHours } from "@shared/parkingPassSlots";
+import { listParkingPassOccurrences } from "../services/parkingPassVirtual";
+import {
+  computeParkingPassQualityFlags,
+  isParkingPassPublicReady,
+} from "../services/parkingPassQuality";
 
 // Optional Stripe integration (mirrors server/routes.ts)
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -967,6 +972,244 @@ export function registerAdminManagementRoutes(app: Express) {
     },
   );
 
+  app.get(
+    "/api/admin/truck-import-listings/search",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (!requireAdminUser(req, res)) return;
+      try {
+        const query = String(req.query?.q || "").trim();
+        if (!query) return res.json([]);
+
+        const searchValue = `%${query.toLowerCase()}%`;
+
+        const rows = await db
+          .select({
+            listing: truckImportListings,
+            restaurantId: restaurants.id,
+            restaurantOwnerId: restaurants.ownerId,
+          })
+          .from(truckImportListings)
+          .leftJoin(
+            restaurants,
+            eq(restaurants.claimedFromImportId, truckImportListings.id),
+          )
+          .where(
+            or(
+              eq(truckImportListings.externalId, query),
+              sql`lower(${truckImportListings.name}) like ${searchValue}`,
+              sql`lower(coalesce(${truckImportListings.email}, '')) like ${searchValue}`,
+              sql`lower(coalesce(${truckImportListings.address}, '')) like ${searchValue}`,
+              sql`lower(coalesce(${truckImportListings.city}, '')) like ${searchValue}`,
+              sql`lower(coalesce(${truckImportListings.state}, '')) like ${searchValue}`,
+              sql`lower(coalesce(${truckImportListings.phone}, '')) like ${searchValue}`,
+            ),
+          )
+          .orderBy(desc(truckImportListings.confidenceScore))
+          .limit(25);
+
+        res.json(
+          rows.map((row: any) => ({
+            ...row.listing,
+            restaurantId: row.restaurantId ?? null,
+            restaurantOwnerId: row.restaurantOwnerId ?? null,
+          })),
+        );
+      } catch (error: any) {
+        console.error("Error searching truck import listings:", error);
+        res.status(500).json({ message: "Failed to search import listings" });
+      }
+    },
+  );
+
+  app.patch(
+    "/api/admin/truck-import-listings/:id",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (!requireAdminUser(req, res)) return;
+      try {
+        const listingId = req.params.id;
+        const updates: any = {};
+        const fields = [
+          "externalId",
+          "email",
+          "name",
+          "address",
+          "city",
+          "state",
+          "phone",
+          "cuisineType",
+          "websiteUrl",
+          "instagramUrl",
+          "facebookPageUrl",
+          "latitude",
+          "longitude",
+        ];
+        for (const field of fields) {
+          if (req.body?.[field] === undefined) continue;
+          updates[field] =
+            field === "email"
+              ? String(req.body[field] || "").trim().toLowerCase() || null
+              : req.body[field];
+        }
+
+        const [updated] = await db
+          .update(truckImportListings)
+          .set({ ...updates, updatedAt: new Date() })
+          .where(eq(truckImportListings.id, listingId))
+          .returning();
+
+        if (!updated) {
+          return res.status(404).json({ message: "Import listing not found" });
+        }
+
+        // Keep the seeded restaurant (if any) in sync with listing fields.
+        const [seededRestaurant] = await db
+          .select()
+          .from(restaurants)
+          .where(eq(restaurants.claimedFromImportId, listingId))
+          .limit(1);
+        if (seededRestaurant) {
+          const restaurantUpdates: any = {};
+          const map: Array<[string, string]> = [
+            ["name", "name"],
+            ["address", "address"],
+            ["city", "city"],
+            ["state", "state"],
+            ["phone", "phone"],
+            ["cuisineType", "cuisineType"],
+            ["websiteUrl", "websiteUrl"],
+            ["instagramUrl", "instagramUrl"],
+            ["facebookPageUrl", "facebookPageUrl"],
+            ["latitude", "latitude"],
+            ["longitude", "longitude"],
+          ];
+          for (const [listingField, restaurantField] of map) {
+            if (updates[listingField] !== undefined) {
+              restaurantUpdates[restaurantField] = updates[listingField];
+            }
+          }
+          if (Object.keys(restaurantUpdates).length > 0) {
+            await db
+              .update(restaurants)
+              .set({ ...restaurantUpdates, updatedAt: new Date() })
+              .where(eq(restaurants.id, seededRestaurant.id));
+          }
+        }
+
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error updating import listing:", error);
+        res.status(500).json({ message: "Failed to update import listing" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/truck-import-listings/:id/invite",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (!requireAdminUser(req, res)) return;
+      try {
+        const listingId = req.params.id;
+        const email = String(req.body?.email || "").trim().toLowerCase();
+        if (!email) {
+          return res.status(400).json({ message: "Email is required" });
+        }
+
+        const [listing] = await db
+          .select()
+          .from(truckImportListings)
+          .where(eq(truckImportListings.id, listingId))
+          .limit(1);
+        if (!listing) {
+          return res.status(404).json({ message: "Import listing not found" });
+        }
+
+        const importSystemUserId = await getOrCreateImportSystemUserId();
+
+        const existingUser = await storage.getUserByEmail(email);
+        const inviteUser =
+          existingUser ??
+          (await storage.createUserInvite({
+            email,
+            firstName: null,
+            lastName: null,
+            phone: null,
+            userType: "food_truck",
+          }));
+
+        // Ensure there is a seeded restaurant for this listing.
+        const [restaurant] = await db
+          .select()
+          .from(restaurants)
+          .where(eq(restaurants.claimedFromImportId, listingId))
+          .limit(1);
+
+        if (restaurant) {
+          if (
+            restaurant.ownerId !== importSystemUserId &&
+            restaurant.ownerId !== inviteUser.id
+          ) {
+            return res.status(409).json({
+              message:
+                "This truck is already owned by another account. Refusing to reassign ownership.",
+            });
+          }
+          await db
+            .update(restaurants)
+            .set({ ownerId: inviteUser.id, updatedAt: new Date() })
+            .where(eq(restaurants.id, restaurant.id));
+        } else {
+          await db.insert(restaurants).values({
+            ownerId: inviteUser.id,
+            name: listing.name,
+            address: listing.address,
+            phone: listing.phone,
+            businessType: "food_truck",
+            cuisineType: listing.cuisineType,
+            city: listing.city,
+            state: listing.state,
+            websiteUrl: listing.websiteUrl,
+            instagramUrl: listing.instagramUrl,
+            facebookPageUrl: listing.facebookPageUrl,
+            latitude: listing.latitude,
+            longitude: listing.longitude,
+            isFoodTruck: true,
+            isActive: false,
+            isVerified: false,
+            claimedFromImportId: listing.id,
+          } as any);
+        }
+
+        const [updated] = await db
+          .update(truckImportListings)
+          .set({
+            email,
+            invitedUserId: inviteUser.id,
+            lastInviteSentAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(truckImportListings.id, listingId))
+          .returning();
+
+        const emailSent = await sendAccountSetupInvite({
+          user: inviteUser,
+          createdBy: req.user,
+          req,
+        });
+
+        res.json({ success: true, emailSent, listing: updated });
+      } catch (error: any) {
+        console.error("Error sending import invite:", error);
+        res.status(500).json({ message: error.message || "Failed to send invite" });
+      }
+    },
+  );
+
   app.post(
     "/api/admin/truck-imports",
     isAuthenticated,
@@ -981,7 +1224,7 @@ export function registerAdminManagementRoutes(app: Express) {
         }
 
         const source = String(req.body?.source || "").trim() || null;
-        const { rows } = await parseTruckImportFile(
+        const { rows, headers } = await parseTruckImportFile(
           file.buffer,
           file.originalname || "import.csv",
         );
@@ -1013,6 +1256,7 @@ export function registerAdminManagementRoutes(app: Express) {
             continue;
           }
 
+          const email = row.email?.trim()?.toLowerCase() || null;
           const externalId = row.externalId?.trim() || null;
           const stateKey = (row.state || "").trim().toLowerCase();
           const cityKey = (row.city || "").trim().toLowerCase();
@@ -1020,6 +1264,8 @@ export function registerAdminManagementRoutes(app: Express) {
           const addressKey = addressInput.toLowerCase();
           const dedupeKey = externalId
             ? `ext:${externalId.toLowerCase()}`
+            : email
+              ? `email:${email}`
             : addressInput
               ? `addr:${nameKey}|${addressKey}|${stateKey}`
               : `name:${nameKey}|${stateKey}|${cityKey}`;
@@ -1063,6 +1309,7 @@ export function registerAdminManagementRoutes(app: Express) {
             batchId: batch?.id,
             source: source || null,
             externalId,
+            email,
             name,
             // Address is optional for admin-uploaded seeds; claim flow can fill it in later.
             address: addressInput,
@@ -1084,6 +1331,7 @@ export function registerAdminManagementRoutes(app: Express) {
         const chunkSize = 250;
         const insertedListingRows: Array<{
           id: string;
+          email: string | null;
           name: string;
           address: string;
           city: string | null;
@@ -1104,6 +1352,7 @@ export function registerAdminManagementRoutes(app: Express) {
             .values(chunk)
             .returning({
               id: truckImportListings.id,
+              email: truckImportListings.email,
               name: truckImportListings.name,
               address: truckImportListings.address,
               city: truckImportListings.city,
@@ -1122,25 +1371,54 @@ export function registerAdminManagementRoutes(app: Express) {
 
         if (insertedListingRows.length > 0) {
           const systemOwnerId = await getOrCreateImportSystemUserId();
-          const restaurantsToInsert = insertedListingRows.map((listing) => ({
-            ownerId: systemOwnerId,
-            name: listing.name,
-            address: listing.address,
-            phone: listing.phone,
-            businessType: "food_truck",
-            cuisineType: listing.cuisineType,
-            city: listing.city,
-            state: listing.state,
-            websiteUrl: listing.websiteUrl,
-            instagramUrl: listing.instagramUrl,
-            facebookPageUrl: listing.facebookPageUrl,
-            latitude: listing.latitude,
-            longitude: listing.longitude,
-            isFoodTruck: true,
-            isActive: false,
-            isVerified: false,
-            claimedFromImportId: listing.id,
-          }));
+
+          // Create invited owner accounts where we have an email, but do not email them here.
+          // The “Request this truck” flow sends reminders on-demand.
+          const invitedOwnerByEmail = new Map<string, string>();
+          const uniqueEmails = Array.from(
+            new Set(
+              insertedListingRows
+                .map((listing: any) => String(listing.email || "").trim().toLowerCase())
+                .filter((value) => value.length > 0),
+            ),
+          );
+          for (const email of uniqueEmails) {
+            const existing = await storage.getUserByEmail(email);
+            const user =
+              existing ??
+              (await storage.createUserInvite({
+                email,
+                firstName: null,
+                lastName: null,
+                phone: null,
+                userType: "food_truck",
+              }));
+            invitedOwnerByEmail.set(email, user.id);
+          }
+
+          const restaurantsToInsert = insertedListingRows.map((listing: any) => {
+            const email = String(listing.email || "").trim().toLowerCase();
+            const invitedOwnerId = email ? invitedOwnerByEmail.get(email) : undefined;
+            return {
+              ownerId: invitedOwnerId || systemOwnerId,
+              name: listing.name,
+              address: listing.address,
+              phone: listing.phone,
+              businessType: "food_truck",
+              cuisineType: listing.cuisineType,
+              city: listing.city,
+              state: listing.state,
+              websiteUrl: listing.websiteUrl,
+              instagramUrl: listing.instagramUrl,
+              facebookPageUrl: listing.facebookPageUrl,
+              latitude: listing.latitude,
+              longitude: listing.longitude,
+              isFoodTruck: true,
+              isActive: false,
+              isVerified: false,
+              claimedFromImportId: listing.id,
+            };
+          });
 
           const restaurantChunkSize = 200;
           for (let i = 0; i < restaurantsToInsert.length; i += restaurantChunkSize) {
@@ -1148,6 +1426,22 @@ export function registerAdminManagementRoutes(app: Express) {
             if (chunk.length === 0) continue;
             await db.insert(restaurants).values(chunk);
             seededRestaurants += chunk.length;
+          }
+
+          // Best-effort: persist invited owner linkage on the import listing rows.
+          // This allows us to block hostile claims and send setup reminders.
+          for (const listing of insertedListingRows as any[]) {
+            const email = String(listing.email || "").trim().toLowerCase();
+            const invitedOwnerId = email ? invitedOwnerByEmail.get(email) : null;
+            if (!invitedOwnerId) continue;
+            try {
+              await db
+                .update(truckImportListings)
+                .set({ invitedUserId: invitedOwnerId, updatedAt: new Date() })
+                .where(eq(truckImportListings.id, listing.id));
+            } catch {
+              // ignore
+            }
           }
         }
 
@@ -1173,12 +1467,205 @@ export function registerAdminManagementRoutes(app: Express) {
           missingRows,
           duplicateRows,
           seededRestaurants,
+          headers: (headers || []).slice(0, 50),
         });
       } catch (error: any) {
         console.error("Error importing truck listings:", error);
         res.status(500).json({
           message:
             error.message || "Failed to import truck listings",
+        });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/truck-imports/:batchId/purge",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (!requireAdminUser(req, res)) return;
+      try {
+        const batchId = String(req.params.batchId || "").trim();
+        const force = Boolean(req.body?.force);
+        if (!batchId) {
+          return res.status(400).json({ message: "Batch ID required" });
+        }
+
+        const [batch] = await db
+          .select()
+          .from(truckImportBatches)
+          .where(eq(truckImportBatches.id, batchId))
+          .limit(1);
+        if (!batch) {
+          return res.status(404).json({ message: "Import batch not found" });
+        }
+
+        const listings = await db
+          .select()
+          .from(truckImportListings)
+          .where(eq(truckImportListings.batchId, batchId));
+
+        const listingIds = listings.map((l: any) => l.id);
+        if (listingIds.length === 0) {
+          return res.json({
+            batchId,
+            fileName: batch.fileName,
+            totalListings: 0,
+            deletedListings: 0,
+            deletedRestaurants: 0,
+            deletedClaimRequests: 0,
+            blocked: [],
+          });
+        }
+
+        const importSystemUserId = await getOrCreateImportSystemUserId();
+
+        const claimRequests = await db
+          .select({
+            id: truckClaimRequests.id,
+            listingId: truckClaimRequests.listingId,
+            restaurantId: truckClaimRequests.restaurantId,
+          })
+          .from(truckClaimRequests)
+          .where(inArray(truckClaimRequests.listingId, listingIds));
+
+        const claimRequestListingIds = new Set(
+          claimRequests.map((row: any) => String(row.listingId || "")),
+        );
+
+        const seededRestaurants = await db
+          .select({
+            id: restaurants.id,
+            ownerId: restaurants.ownerId,
+            claimedFromImportId: restaurants.claimedFromImportId,
+          })
+          .from(restaurants)
+          .where(inArray(restaurants.claimedFromImportId, listingIds));
+
+        const restaurantIds = seededRestaurants.map((row: any) => row.id);
+        const bookingRows = restaurantIds.length
+          ? await db
+              .select({ id: eventBookings.id, truckId: eventBookings.truckId })
+              .from(eventBookings)
+              .where(inArray(eventBookings.truckId, restaurantIds))
+              .limit(1)
+          : [];
+        const restaurantIdsWithBookings = new Set(
+          bookingRows.map((row: any) => String(row.truckId)),
+        );
+
+        const blocked: Array<{
+          listingId: string;
+          reason: string;
+        }> = [];
+
+        // Only purge listings that are still unclaimed. Never touch claimed/claim_requested rows here.
+        const purgeableListingIds: string[] = [];
+        for (const listing of listings as any[]) {
+          if (String(listing.status || "") !== "unclaimed") {
+            blocked.push({
+              listingId: listing.id,
+              reason: `status:${listing.status}`,
+            });
+            continue;
+          }
+          if (claimRequestListingIds.has(String(listing.id)) && !force) {
+            blocked.push({
+              listingId: listing.id,
+              reason: "has_claim_request",
+            });
+            continue;
+          }
+          purgeableListingIds.push(String(listing.id));
+        }
+
+        let deletedClaimRequests = 0;
+        let deletedRestaurants = 0;
+        let deletedListings = 0;
+
+        await db.transaction(async (tx: any) => {
+          if (force && claimRequests.length > 0) {
+            const deleted = await tx
+              .delete(truckClaimRequests)
+              .where(
+                inArray(
+                  truckClaimRequests.id,
+                  claimRequests.map((r: any) => r.id),
+                ),
+              )
+              .returning({ id: truckClaimRequests.id });
+            deletedClaimRequests = deleted.length;
+          }
+
+          // Delete seeded restaurant profiles for purgeable listings.
+          const restaurantIdsToDelete: string[] = [];
+          for (const row of seededRestaurants as any[]) {
+            const listingId = String(row.claimedFromImportId || "");
+            if (!purgeableListingIds.includes(listingId)) continue;
+            if (restaurantIdsWithBookings.has(String(row.id))) {
+              blocked.push({
+                listingId,
+                reason: "has_booking",
+              });
+              continue;
+            }
+            // If a restaurant is already owned by a real user (not system, not invited), require force.
+            const isSystemOrInvited =
+              String(row.ownerId) === String(importSystemUserId) ||
+              listings.some(
+                (l: any) =>
+                  String(l.id) === listingId &&
+                  l.invitedUserId &&
+                  String(l.invitedUserId) === String(row.ownerId),
+              );
+            if (!isSystemOrInvited && !force) {
+              blocked.push({
+                listingId,
+                reason: "owned_by_user",
+              });
+              continue;
+            }
+            restaurantIdsToDelete.push(String(row.id));
+          }
+
+          if (restaurantIdsToDelete.length > 0) {
+            const deleted = await tx
+              .delete(restaurants)
+              .where(inArray(restaurants.id, restaurantIdsToDelete))
+              .returning({ id: restaurants.id });
+            deletedRestaurants = deleted.length;
+          }
+
+          const deletableListingIds = purgeableListingIds.filter((id) => {
+            // If we blocked restaurant deletion due to bookings/ownership and the listing is linked, keep it.
+            const hasBlocked = blocked.some((b) => b.listingId === id);
+            return !hasBlocked;
+          });
+
+          if (deletableListingIds.length > 0) {
+            const deleted = await tx
+              .delete(truckImportListings)
+              .where(inArray(truckImportListings.id, deletableListingIds))
+              .returning({ id: truckImportListings.id });
+            deletedListings = deleted.length;
+          }
+        });
+
+        res.json({
+          batchId,
+          fileName: batch.fileName,
+          totalListings: listings.length,
+          deletedListings,
+          deletedRestaurants,
+          deletedClaimRequests,
+          blocked,
+          force,
+        });
+      } catch (error: any) {
+        console.error("Error purging truck import batch:", error);
+        res.status(500).json({
+          message: error.message || "Failed to purge import batch",
         });
       }
     },
@@ -1843,47 +2330,45 @@ export function registerAdminManagementRoutes(app: Express) {
           return res.json([]);
         }
 
-        // Ensure every host has draft Parking Pass events so pricing can be edited.
+        // Ensure every host has a draft Parking Pass series so pricing can be edited.
         await Promise.all(
           hosts.map((host) => storage.ensureDraftParkingPassForHost(host.id)),
         );
 
-        const allEvents = await Promise.all(
-          hosts.map((host) => storage.getEventsByHost(host.id)),
-        );
-        // Include unpriced Parking Pass events so staff/admin can set pricing.
-        // Public endpoints still filter by pricing.
-        const parkingPassEvents = allEvents
-          .flat()
-          .filter((event) => event.eventType === "parking_pass" && event.requiresPayment);
-
-        const eventsByHost = new Map<string, typeof parkingPassEvents>();
-        for (const event of parkingPassEvents) {
-          const list = eventsByHost.get(event.hostId) ?? [];
-          list.push(event);
-          eventsByHost.set(event.hostId, list);
-        }
-
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        const hostIds = hosts.map((host) => host.id);
+        const { occurrences } = await listParkingPassOccurrences({
+          hostIds,
+          horizonDays: 30,
+          includeDraft: true,
+          start: today,
+        });
+
+        const occurrencesByHost = new Map<string, any[]>();
+        for (const row of occurrences) {
+          const list = occurrencesByHost.get(row.hostId) ?? [];
+          list.push(row);
+          occurrencesByHost.set(row.hostId, list);
+        }
 
         const listings = hosts.flatMap((host) => {
-          const hostEvents = eventsByHost.get(host.id) ?? [];
-          if (!hostEvents.length) return [];
-          const sorted = [...hostEvents].sort(
+          const hostOccurrences = occurrencesByHost.get(host.id) ?? [];
+          if (!hostOccurrences.length) return [];
+          const sorted = [...hostOccurrences].sort(
             (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
           );
-          const upcoming = sorted.find(
-            (event) => new Date(event.date) >= today,
-          );
-          const representative = upcoming ?? sorted[sorted.length - 1];
+          const upcoming = sorted.find((event) => new Date(event.date) >= today);
+          const representative = upcoming ?? sorted[0];
 
           return [
             {
               ...representative,
               host,
               nextDate: upcoming?.date ?? representative.date,
-              occurrenceCount: hostEvents.length,
+              occurrenceCount: sorted.length,
+              publicReady: isParkingPassPublicReady(representative),
+              qualityFlags: computeParkingPassQualityFlags(representative),
             },
           ];
         });
@@ -1901,13 +2386,13 @@ export function registerAdminManagementRoutes(app: Express) {
     isAuthenticated,
     isStaffOrAdmin,
     async (req: any, res) => {
-      if (denyStaffEdits(req, res)) return;
       try {
         const eventId = req.params.id;
         const event = await storage.getEvent(eventId);
         if (!event) {
           return res.status(404).json({ message: "Parking pass not found" });
         }
+        const host = event.hostId ? await storage.getHost(event.hostId) : null;
 
         const updates: any = {};
         const fields = [
@@ -2029,6 +2514,41 @@ export function registerAdminManagementRoutes(app: Express) {
           }
           if (updates.maxTrucks !== undefined) {
             seriesUpdates.defaultMaxTrucks = Number(updates.maxTrucks);
+          }
+          const pricingTouched = [
+            "breakfastPriceCents",
+            "lunchPriceCents",
+            "dinnerPriceCents",
+            "dailyPriceCents",
+            "weeklyPriceCents",
+            "monthlyPriceCents",
+          ].some((field) => req.body?.[field] !== undefined);
+          if (pricingTouched) {
+            seriesUpdates.defaultBreakfastPriceCents = breakfast;
+            seriesUpdates.defaultLunchPriceCents = lunch;
+            seriesUpdates.defaultDinnerPriceCents = dinner;
+            seriesUpdates.defaultDailyPriceCents = baseDaily;
+            seriesUpdates.defaultWeeklyPriceCents = pricingUpdates.weeklyPriceCents;
+            seriesUpdates.defaultMonthlyPriceCents = pricingUpdates.monthlyPriceCents;
+            seriesUpdates.defaultHostPriceCents = hostPriceCents;
+
+            const publicReady =
+              host &&
+              isParkingPassPublicReady({
+                host,
+                startTime: updates.startTime ?? event.startTime,
+                endTime: updates.endTime ?? event.endTime,
+                maxTrucks: updates.maxTrucks ?? event.maxTrucks,
+                breakfastPriceCents: breakfast,
+                lunchPriceCents: lunch,
+                dinnerPriceCents: dinner,
+                dailyPriceCents: baseDaily,
+                weeklyPriceCents: pricingUpdates.weeklyPriceCents,
+                monthlyPriceCents: pricingUpdates.monthlyPriceCents,
+              });
+
+            seriesUpdates.status = publicReady ? "published" : "draft";
+            seriesUpdates.publishedAt = publicReady ? new Date() : null;
           }
           if (Object.keys(seriesUpdates).length > 1) {
             await db
@@ -2309,7 +2829,6 @@ export function registerAdminManagementRoutes(app: Express) {
     isAuthenticated,
     isStaffOrAdmin,
     async (req: any, res) => {
-      if (denyStaffEdits(req, res)) return;
       try {
         const userId = req.params.userId;
         const address = req.body?.address?.trim();
@@ -2537,7 +3056,6 @@ export function registerAdminManagementRoutes(app: Express) {
     isAuthenticated,
     isStaffOrAdmin,
     async (req: any, res) => {
-      if (denyStaffEdits(req, res)) return;
       try {
         const updates: any = {
           businessName: req.body?.businessName,
@@ -2546,6 +3064,7 @@ export function registerAdminManagementRoutes(app: Express) {
           state: req.body?.state,
           latitude: req.body?.latitude,
           longitude: req.body?.longitude,
+          spotImageUrl: req.body?.spotImageUrl,
           locationType: req.body?.locationType,
           expectedFootTraffic: req.body?.expectedFootTraffic,
           amenities: req.body?.amenities,
@@ -2579,7 +3098,6 @@ export function registerAdminManagementRoutes(app: Express) {
     isAuthenticated,
     isStaffOrAdmin,
     async (req: any, res) => {
-      if (denyStaffEdits(req, res)) return;
       try {
         const hostId = req.params.hostId;
         const host = await storage.getHost(hostId);

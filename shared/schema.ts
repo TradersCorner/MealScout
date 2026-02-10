@@ -259,6 +259,7 @@ export const truckImportListings = pgTable(
     batchId: varchar("batch_id").references(() => truckImportBatches.id),
     source: varchar("source"),
     externalId: varchar("external_id"),
+    email: varchar("email"),
     name: varchar("name").notNull(),
     address: text("address").notNull(),
     city: varchar("city"),
@@ -272,6 +273,10 @@ export const truckImportListings = pgTable(
     longitude: decimal("longitude", { precision: 11, scale: 8 }),
     confidenceScore: integer("confidence_score").default(0),
     status: varchar("status").notNull().default("unclaimed"), // 'unclaimed' | 'claim_requested' | 'claimed' | 'rejected' | 'duplicate'
+    invitedUserId: varchar("invited_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    lastInviteSentAt: timestamp("last_invite_sent_at"),
     rawData: jsonb("raw_data"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
@@ -392,6 +397,7 @@ export const verificationRequests = pgTable("verification_requests", {
     .references(() => restaurants.id),
   status: varchar("status").notNull().default("pending"), // 'pending' | 'approved' | 'rejected'
   documents: text("documents").array(), // Array of base64 data URLs or file paths
+  licenseNumber: varchar("license_number"),
   submittedAt: timestamp("submitted_at").defaultNow(),
   reviewedAt: timestamp("reviewed_at"),
   reviewerId: varchar("reviewer_id").references(() => users.id),
@@ -636,6 +642,7 @@ export const userAddresses = pgTable(
     postalCode: varchar("postal_code"),
     latitude: decimal("latitude", { precision: 10, scale: 8 }),
     longitude: decimal("longitude", { precision: 11, scale: 8 }),
+    spotImageUrl: text("spot_image_url"),
     isDefault: boolean("is_default").default(false),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
@@ -2324,6 +2331,7 @@ export const hosts = pgTable(
     ),
     stripeChargesEnabled: boolean("stripe_charges_enabled").default(false),
     stripePayoutsEnabled: boolean("stripe_payouts_enabled").default(false),
+    spotImageUrl: text("spot_image_url"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },

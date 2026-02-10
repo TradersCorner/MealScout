@@ -214,6 +214,8 @@ export default function RestaurantSignup() {
   const [claimLoading, setClaimLoading] = useState(false);
   const [claimSelection, setClaimSelection] = useState<any | null>(null);
   const [claimError, setClaimError] = useState("");
+  const [claimRequestingId, setClaimRequestingId] = useState<string | null>(null);
+  const [licenseNumber, setLicenseNumber] = useState("");
   const [onboardingState, dispatchOnboarding] = useReducer(
     hostOnboardingTransition,
     {
@@ -553,6 +555,11 @@ export default function RestaurantSignup() {
         `/api/restaurants/${createdRestaurant.id}/verification/request`,
         {
           documents: verificationDocuments,
+          licenseNumber:
+            selectedBusinessType === "food_truck" &&
+            (createdRestaurant as any)?.claimedFromImportId
+              ? licenseNumber.trim()
+              : undefined,
         }
       );
     },
@@ -613,6 +620,19 @@ export default function RestaurantSignup() {
       });
       return;
     }
+    if (
+      selectedBusinessType === "food_truck" &&
+      (createdRestaurant as any)?.claimedFromImportId &&
+      !licenseNumber.trim()
+    ) {
+      toast({
+        title: "License number required",
+        description:
+          "Enter the license number from your document to verify this imported truck.",
+        variant: "destructive",
+      });
+      return;
+    }
     createVerificationRequestMutation.mutate();
   };
 
@@ -633,6 +653,29 @@ export default function RestaurantSignup() {
       (createdRestaurant as any)?.claimedFromImportId &&
       selectedBusinessType === "food_truck",
   );
+
+  const handleRequestTruck = async (listingId: string) => {
+    setClaimRequestingId(listingId);
+    setClaimError("");
+    try {
+      const res = await apiRequest("POST", "/api/truck-claims/request", {
+        listingId,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to send reminder");
+      }
+      toast({
+        title: "Reminder sent",
+        description:
+          "We emailed the truck a link to finish setting up their account.",
+      });
+    } catch (error: any) {
+      setClaimError(error.message || COPY.forms.restaurant.claimNoResults);
+    } finally {
+      setClaimRequestingId(null);
+    }
+  };
 
   const handleClaimSearch = async () => {
     const query = claimQuery.trim();
@@ -662,6 +705,12 @@ export default function RestaurantSignup() {
   };
 
   const applyClaimSelection = (listing: any) => {
+    if (listing?.canClaim === false) {
+      setClaimError(
+        "This truck already has an invited owner. Use “Request this truck” to notify them to finish setup.",
+      );
+      return;
+    }
     setClaimSelection(listing);
     setClaimResults([]);
     setClaimQuery(listing.externalId || listing.name || "");
@@ -988,8 +1037,35 @@ export default function RestaurantSignup() {
                         <div className="space-y-2">
                           {claimResults.map((listing) => (
                             <div key={listing.id} className="flex items-center justify-between rounded-lg border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-3 text-xs">
-                              <p className="font-medium text-[color:var(--text-primary)]">{listing.name}</p>
-                              <Button type="button" size="sm" onClick={() => applyClaimSelection(listing)} data-testid={`button-claim-select-${listing.id}`}>{COPY.forms.restaurant.claimSelectButton}</Button>
+                              <div>
+                                <p className="font-medium text-[color:var(--text-primary)]">{listing.name}</p>
+                                {listing.invited && (
+                                  <p className="text-[11px] text-[color:var(--text-secondary)]">
+                                    This truck has an invited owner.
+                                  </p>
+                                )}
+                              </div>
+                              {listing.canClaim !== false ? (
+                                <Button type="button" size="sm" onClick={() => applyClaimSelection(listing)} data-testid={`button-claim-select-${listing.id}`}>{COPY.forms.restaurant.claimSelectButton}</Button>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={
+                                    claimRequestingId === listing.id ||
+                                    Number(listing.requestCooldownMinutes || 0) > 0
+                                  }
+                                  onClick={() => handleRequestTruck(listing.id)}
+                                  data-testid={`button-claim-request-${listing.id}`}
+                                >
+                                  {Number(listing.requestCooldownMinutes || 0) > 0
+                                    ? `Try again in ${listing.requestCooldownMinutes}m`
+                                    : claimRequestingId === listing.id
+                                      ? "Sending..."
+                                      : "Request this truck"}
+                                </Button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1141,12 +1217,32 @@ export default function RestaurantSignup() {
                 </ul>
               </div>
               {!isAutoBusinessVerified && (
+                <>
+                  {selectedBusinessType === "food_truck" &&
+                    (createdRestaurant as any)?.claimedFromImportId && (
+                      <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] p-4">
+                        <div className="text-xs font-semibold text-[color:var(--text-primary)]">
+                          License number (required)
+                        </div>
+                        <div className="mt-1 text-xs text-[color:var(--text-secondary)]">
+                          Enter the license number exactly as it appears on your document.
+                        </div>
+                        <Input
+                          className="mt-3"
+                          value={licenseNumber}
+                          onChange={(e) => setLicenseNumber(e.target.value)}
+                          placeholder="License #"
+                          data-testid="input-license-number"
+                        />
+                      </div>
+                    )}
                 <DocumentUpload
                   onDocumentsChange={setVerificationDocuments}
                   maxFiles={5}
                   maxFileSize={10 * 1024 * 1024}
                   acceptedTypes={["image/jpeg", "image/jpg", "image/png", "application/pdf"]}
                 />
+                </>
               )}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <Button type="button" variant="outline" onClick={() => dispatchOnboarding({ type: "BACK_TO_RESTAURANT" })} data-testid="button-back-to-restaurant">

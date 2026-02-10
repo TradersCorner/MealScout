@@ -3382,6 +3382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           address: truckImportListings.address,
           city: truckImportListings.city,
           state: truckImportListings.state,
+          phone: truckImportListings.phone,
           externalId: truckImportListings.externalId,
           confidenceScore: truckImportListings.confidenceScore,
         })
@@ -3406,6 +3407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           address: truckImportListings.address,
           city: truckImportListings.city,
           state: truckImportListings.state,
+          phone: truckImportListings.phone,
           externalId: truckImportListings.externalId,
           confidenceScore: truckImportListings.confidenceScore,
         })
@@ -3413,7 +3415,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(truckImportListings.status, "unclaimed"),
-            sql`lower(${truckImportListings.name}) like ${searchValue}`,
+            or(
+              sql`lower(${truckImportListings.name}) like ${searchValue}`,
+              sql`lower(coalesce(${truckImportListings.address}, '')) like ${searchValue}`,
+              sql`lower(coalesce(${truckImportListings.city}, '')) like ${searchValue}`,
+              sql`lower(coalesce(${truckImportListings.state}, '')) like ${searchValue}`,
+              sql`lower(coalesce(${truckImportListings.externalId}, '')) like ${searchValue}`,
+              sql`lower(coalesce(${truckImportListings.phone}, '')) like ${searchValue}`,
+            ),
           ),
         )
         .orderBy(desc(truckImportListings.confidenceScore))

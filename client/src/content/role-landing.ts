@@ -57,7 +57,10 @@ export const roleLandingContent = {
     subhead:
       "MealScout puts your truck on the map hosts actually use. Your profile, schedule, and booking flow are built for how you really move.",
     primaryCta: { label: "List my food truck", href: "/restaurant-signup" },
-    secondaryCta: { label: "Sign in", href: "/login" },
+    secondaryCta: {
+      label: "Claim my business",
+      href: "/restaurant-signup?businessType=food_truck&claim=1",
+    },
     bullets: ["Free to join", "Full access on sale: $50 -> $25/mo until April 1", "Built for bookings"],
     map: {
       kicker: "Concept map",

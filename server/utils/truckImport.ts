@@ -99,7 +99,7 @@ const mapHeaderToField = (header: string): string | null => {
   return null;
 };
 
-const parseCsvToRows = (text: string): string[][] => {
+const parseDelimitedToRows = (text: string, delimiter: string): string[][] => {
   const rows: string[][] = [];
   let row: string[] = [];
   let value = "";
@@ -119,7 +119,7 @@ const parseCsvToRows = (text: string): string[][] => {
       continue;
     }
 
-    if (!inQuotes && (char === "," || char === "\n" || char === "\r")) {
+    if (!inQuotes && (char === delimiter || char === "\n" || char === "\r")) {
       if (char === "\r" && next === "\n") {
         i += 1;
       }
@@ -144,6 +144,12 @@ const parseCsvToRows = (text: string): string[][] => {
 
   return rows;
 };
+
+const parseCsvToRows = (text: string): string[][] =>
+  parseDelimitedToRows(text, ",");
+
+const parseTsvToRows = (text: string): string[][] =>
+  parseDelimitedToRows(text, "\t");
 
 const buildRowData = (
   headers: string[],
@@ -218,9 +224,11 @@ export const parseTruckImportFile = async (
       );
     });
   } else if (lowerName.endsWith(".xls")) {
-    throw new Error("Legacy .xls files are no longer supported. Save as .xlsx or .csv.");
+    throw new Error(
+      "Legacy .xls files are not supported. Save as .xlsx, .csv, or .tsv.",
+    );
   } else {
-    // Excel often exports CSV as UTF-16LE with a BOM. Try to decode that correctly.
+    // Excel often exports delimited files as UTF-16LE with a BOM. Try to decode that correctly.
     const text = (() => {
       if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
         return buffer.toString("utf16le", 2);
@@ -245,7 +253,12 @@ export const parseTruckImportFile = async (
       }
       return buffer.toString("utf8");
     })();
-    rows = parseCsvToRows(text);
+
+    if (lowerName.endsWith(".tsv")) {
+      rows = parseTsvToRows(text);
+    } else {
+      rows = parseCsvToRows(text);
+    }
   }
 
   if (rows.length === 0) {

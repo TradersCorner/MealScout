@@ -210,7 +210,7 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
           Food Truck Imports
         </CardTitle>
         <CardDescription>
-          Upload CSV or XLSX lists to preload food trucks for claims.
+          Upload CSV, TSV, or XLSX lists to preload food trucks for claims.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -229,7 +229,7 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
             <label className="text-sm font-medium">File</label>
             <input
               type="file"
-              accept=".csv,.xlsx"
+              accept=".csv,.tsv,.xlsx"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
               className="w-full px-3 py-2 border rounded-md"
             />

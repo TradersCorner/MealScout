@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -978,7 +978,7 @@ function StaffManagementTab() {
       {/* Quick Link */}
       <div className="pt-4 border-t">
         <Link href="/staff">
-          <Button variant="outline">Go to Staff Dashboard →</Button>
+          <Button variant="outline">Go to Staff Dashboard â†’</Button>
         </Link>
       </div>
     </div>
@@ -1123,14 +1123,19 @@ export default function AdminDashboard() {
     },
   });
 
+  const userContextEnabled =
+    !!adminUser &&
+    !!selectedUser?.id &&
+    (userDetailsOpen || selectedTab === "host-locations");
+
   const { data: parkingPasses = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/users", selectedUser?.id, "parking-pass"],
-    enabled: !!adminUser && !!selectedUser?.id && userDetailsOpen,
+    enabled: userContextEnabled,
   });
 
   const { data: userHosts = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/users", selectedUser?.id, "hosts"],
-    enabled: !!adminUser && !!selectedUser?.id && userDetailsOpen,
+    enabled: userContextEnabled,
   });
 
   const { data: userRestaurants = [] } = useQuery<any[]>({
@@ -1249,6 +1254,667 @@ export default function AdminDashboard() {
       );
     });
   }, [sortedUsers, userSearch, userTypeFilter]);
+
+  const renderHostLocationsEditor = () => {
+    if (!selectedUser) return null;
+    if (!(selectedUser?.userType === "host" || userHosts.length > 0)) return null;
+
+    return (
+      <div>
+        <h3 className="font-semibold mb-2 flex items-center text-sm text-muted-foreground">
+          <MapPin className="w-4 h-4 mr-2" />
+          HOST LOCATIONS (PARKING PASS) ({userHosts.length})
+        </h3>
+        <p className="text-xs text-muted-foreground mb-3">
+          These addresses power Parking Pass listings. Edit here to update them
+          everywhere.
+        </p>
+        <div className="space-y-4">
+          {userHosts.length === 0 && (
+            <div className="text-sm text-muted-foreground">
+              No host locations yet.
+            </div>
+          )}
+          {userHosts.map((host: any) => {
+            const edits = hostEdits[host.id];
+            if (!edits) return null;
+            const pass = parkingPasses.find(
+              (item) => (item.host?.id ?? item.hostId) === host.id,
+            );
+            const passEdits = pass ? parkingPassEdits[pass.id] : null;
+            return (
+              <div
+                key={host.id}
+                className="border rounded-lg p-3 bg-muted/30 space-y-3"
+              >
+                <div className="text-sm font-medium">
+                  {host.businessName}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <input
+                    className="w-full px-2 py-1 border rounded-md text-sm"
+                    value={edits.businessName}
+                    onChange={(e) =>
+                      setHostEdits({
+                        ...hostEdits,
+                        [host.id]: {
+                          ...edits,
+                          businessName: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                  <input
+                    className="w-full px-2 py-1 border rounded-md text-sm"
+                    value={edits.address}
+                    onChange={(e) =>
+                      setHostEdits({
+                        ...hostEdits,
+                        [host.id]: {
+                          ...edits,
+                          address: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                  <input
+                    className="w-full px-2 py-1 border rounded-md text-sm"
+                    placeholder="City"
+                    value={edits.city}
+                    onChange={(e) =>
+                      setHostEdits({
+                        ...hostEdits,
+                        [host.id]: {
+                          ...edits,
+                          city: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                  <input
+                    className="w-full px-2 py-1 border rounded-md text-sm"
+                    placeholder="State"
+                    value={edits.state}
+                    onChange={(e) =>
+                      setHostEdits({
+                        ...hostEdits,
+                        [host.id]: {
+                          ...edits,
+                          state: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                  <input
+                    className="w-full px-2 py-1 border rounded-md text-sm"
+                    placeholder="Latitude"
+                    value={edits.latitude}
+                    onChange={(e) =>
+                      setHostEdits({
+                        ...hostEdits,
+                        [host.id]: {
+                          ...edits,
+                          latitude: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                  <input
+                    className="w-full px-2 py-1 border rounded-md text-sm"
+                    placeholder="Longitude"
+                    value={edits.longitude}
+                    onChange={(e) =>
+                      setHostEdits({
+                        ...hostEdits,
+                        [host.id]: {
+                          ...edits,
+                          longitude: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                  <select
+                    className="w-full px-2 py-1 border rounded-md text-sm bg-background"
+                    value={edits.locationType}
+                    onChange={(e) =>
+                      setHostEdits({
+                        ...hostEdits,
+                        [host.id]: {
+                          ...edits,
+                          locationType: e.target.value,
+                        },
+                      })
+                    }
+                  >
+                    <option value="private_residence">
+                      Private Residence
+                    </option>
+                    <option value="business">Business</option>
+                    <option value="parking_lot">Parking Lot</option>
+                    <option value="event_space">Event Space</option>
+                    <option value="public_park">Public Park</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <select
+                    className="w-full px-2 py-1 border rounded-md text-sm bg-background"
+                    value={resolveFootTrafficValue(
+                      edits.expectedFootTraffic,
+                    )}
+                    onChange={(e) =>
+                      setHostEdits({
+                        ...hostEdits,
+                        [host.id]: {
+                          ...edits,
+                          expectedFootTraffic: e.target.value,
+                          expectedFootTrafficTouched: true,
+                        },
+                      })
+                    }
+                  >
+                    <option value="">Foot Traffic</option>
+                    {FOOT_TRAFFIC_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="w-full px-2 py-1 border rounded-md text-sm"
+                    placeholder="Contact Phone"
+                    value={edits.contactPhone}
+                    onChange={(e) =>
+                      setHostEdits({
+                        ...hostEdits,
+                        [host.id]: {
+                          ...edits,
+                          contactPhone: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                  <textarea
+                    className="w-full px-2 py-1 border rounded-md text-sm sm:col-span-2"
+                    placeholder="Amenities JSON"
+                    value={edits.amenitiesText}
+                    onChange={(e) =>
+                      setHostEdits({
+                        ...hostEdits,
+                        [host.id]: {
+                          ...edits,
+                          amenitiesText: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                  <textarea
+                    className="w-full px-2 py-1 border rounded-md text-sm sm:col-span-2"
+                    placeholder="Notes"
+                    value={edits.notes}
+                    onChange={(e) =>
+                      setHostEdits({
+                        ...hostEdits,
+                        [host.id]: {
+                          ...edits,
+                          notes: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={edits.isVerified}
+                      onChange={(e) =>
+                        setHostEdits({
+                          ...hostEdits,
+                          [host.id]: {
+                            ...edits,
+                            isVerified: e.target.checked,
+                          },
+                        })
+                      }
+                    />
+                    Verified
+                  </label>
+                </div>
+                <div className="rounded-lg border border-border/60 bg-background/70 p-3 space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground">
+                    Parking Pass pricing
+                  </p>
+                  {pass && passEdits ? (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            Start Time
+                          </p>
+                          <input
+                            type="time"
+                            className="w-full px-2 py-1 border rounded-md text-sm"
+                            value={passEdits.startTime}
+                            onChange={(e) =>
+                              setParkingPassEdits({
+                                ...parkingPassEdits,
+                                [pass.id]: {
+                                  ...passEdits,
+                                  startTime: e.target.value,
+                                },
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            End Time
+                          </p>
+                          <input
+                            type="time"
+                            className="w-full px-2 py-1 border rounded-md text-sm"
+                            value={passEdits.endTime}
+                            onChange={(e) =>
+                              setParkingPassEdits({
+                                ...parkingPassEdits,
+                                [pass.id]: {
+                                  ...passEdits,
+                                  endTime: e.target.value,
+                                },
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            Max Trucks
+                          </p>
+                          <input
+                            type="number"
+                            min={1}
+                            className="w-full px-2 py-1 border rounded-md text-sm"
+                            value={passEdits.maxTrucks}
+                            onChange={(e) =>
+                              setParkingPassEdits({
+                                ...parkingPassEdits,
+                                [pass.id]: {
+                                  ...passEdits,
+                                  maxTrucks: e.target.value,
+                                },
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            Status
+                          </p>
+                          <select
+                            className="w-full px-2 py-1 border rounded-md text-sm bg-background"
+                            value={passEdits.status}
+                            onChange={(e) =>
+                              setParkingPassEdits({
+                                ...parkingPassEdits,
+                                [pass.id]: {
+                                  ...passEdits,
+                                  status: e.target.value,
+                                },
+                              })
+                            }
+                          >
+                            <option value="open">Open</option>
+                            <option value="booked">Booked</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="completed">Completed</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            Breakfast ($)
+                          </p>
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            className="w-full px-2 py-1 border rounded-md text-sm"
+                            value={toDollars(
+                              passEdits.breakfastPriceCents,
+                            )}
+                            onChange={(e) =>
+                              setParkingPassEdits({
+                                ...parkingPassEdits,
+                                [pass.id]: {
+                                  ...passEdits,
+                                  breakfastPriceCents: toCents(
+                                    e.target.value,
+                                  ),
+                                },
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            Lunch ($)
+                          </p>
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            className="w-full px-2 py-1 border rounded-md text-sm"
+                            value={toDollars(
+                              passEdits.lunchPriceCents,
+                            )}
+                            onChange={(e) =>
+                              setParkingPassEdits({
+                                ...parkingPassEdits,
+                                [pass.id]: {
+                                  ...passEdits,
+                                  lunchPriceCents: toCents(
+                                    e.target.value,
+                                  ),
+                                },
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            Dinner ($)
+                          </p>
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            className="w-full px-2 py-1 border rounded-md text-sm"
+                            value={toDollars(
+                              passEdits.dinnerPriceCents,
+                            )}
+                            onChange={(e) =>
+                              setParkingPassEdits({
+                                ...parkingPassEdits,
+                                [pass.id]: {
+                                  ...passEdits,
+                                  dinnerPriceCents: toCents(
+                                    e.target.value,
+                                  ),
+                                },
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            Daily ($)
+                          </p>
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            className="w-full px-2 py-1 border rounded-md text-sm"
+                            value={toDollars(passEdits.dailyPriceCents)}
+                            onChange={(e) =>
+                              setParkingPassEdits({
+                                ...parkingPassEdits,
+                                [pass.id]: {
+                                  ...passEdits,
+                                  dailyPriceCents: toCents(e.target.value),
+                                  weeklyPriceCents:
+                                    toCents(e.target.value) * 7,
+                                  monthlyPriceCents:
+                                    toCents(e.target.value) * 30,
+                                },
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            Weekly ($)
+                          </p>
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            className="w-full px-2 py-1 border rounded-md text-sm"
+                            value={
+                              Number(passEdits.dailyPriceCents || 0)
+                                ? toDollars(
+                                    Number(passEdits.dailyPriceCents || 0) * 7,
+                                  )
+                                : toDollars(passEdits.weeklyPriceCents)
+                            }
+                            readOnly
+                            disabled
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            Monthly ($)
+                          </p>
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            className="w-full px-2 py-1 border rounded-md text-sm"
+                            value={
+                              Number(passEdits.dailyPriceCents || 0)
+                                ? toDollars(
+                                    Number(passEdits.dailyPriceCents || 0) * 30,
+                                  )
+                                : toDollars(passEdits.monthlyPriceCents)
+                            }
+                            readOnly
+                            disabled
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          updateParkingPass.mutate({
+                            eventId: pass.id,
+                            updates: passEdits,
+                          })
+                        }
+                        disabled={updateParkingPass.isPending || isStaff}
+                      >
+                        Save Parking Pass
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No parking pass listing yet.
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      let amenities: any = undefined;
+                      if (edits.amenitiesText) {
+                        try {
+                          amenities = JSON.parse(edits.amenitiesText);
+                        } catch {
+                          toast({
+                            title: "Invalid JSON",
+                            description:
+                              "Amenities must be valid JSON.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                      }
+                      updateHost.mutate({
+                        hostId: host.id,
+                        updates: {
+                          ...edits,
+                          expectedFootTraffic: edits.expectedFootTrafficTouched
+                            ? (edits.expectedFootTraffic === ""
+                                ? null
+                                : Number(edits.expectedFootTraffic))
+                            : edits.expectedFootTrafficOriginal,
+                          amenities,
+                        },
+                      });
+                    }}
+                    disabled={isStaff}
+                  >
+                    Save Host
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() =>
+                      deleteHostLocation.mutate({ hostId: host.id })
+                    }
+                    disabled={isStaff}
+                  >
+                    Delete Location
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+          <div className="border rounded-lg p-3 space-y-3">
+            <div className="text-sm font-medium">
+              Add Host Location
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                className="w-full px-2 py-1 border rounded-md text-sm"
+                placeholder="Location name"
+                value={newHostLocation.businessName}
+                onChange={(e) =>
+                  setNewHostLocation({
+                    ...newHostLocation,
+                    businessName: e.target.value,
+                  })
+                }
+              />
+              <input
+                className="w-full px-2 py-1 border rounded-md text-sm"
+                placeholder="Address"
+                value={newHostLocation.address}
+                onChange={(e) =>
+                  setNewHostLocation({
+                    ...newHostLocation,
+                    address: e.target.value,
+                  })
+                }
+              />
+              <input
+                className="w-full px-2 py-1 border rounded-md text-sm"
+                placeholder="City"
+                value={newHostLocation.city}
+                onChange={(e) =>
+                  setNewHostLocation({
+                    ...newHostLocation,
+                    city: e.target.value,
+                  })
+                }
+              />
+              <input
+                className="w-full px-2 py-1 border rounded-md text-sm"
+                placeholder="State"
+                value={newHostLocation.state}
+                onChange={(e) =>
+                  setNewHostLocation({
+                    ...newHostLocation,
+                    state: e.target.value,
+                  })
+                }
+              />
+              <select
+                className="w-full px-2 py-1 border rounded-md text-sm bg-background"
+                value={newHostLocation.locationType}
+                onChange={(e) =>
+                  setNewHostLocation({
+                    ...newHostLocation,
+                    locationType: e.target.value,
+                  })
+                }
+              >
+                <option value="private_residence">
+                  Private Residence
+                </option>
+                <option value="business">Business</option>
+                <option value="parking_lot">Parking Lot</option>
+                <option value="event_space">Event Space</option>
+                <option value="public_park">Public Park</option>
+                <option value="other">Other</option>
+              </select>
+              <select
+                className="w-full px-2 py-1 border rounded-md text-sm bg-background"
+                value={resolveFootTrafficValue(
+                  newHostLocation.expectedFootTraffic,
+                )}
+                onChange={(e) =>
+                  setNewHostLocation({
+                    ...newHostLocation,
+                    expectedFootTraffic: e.target.value,
+                  })
+                }
+              >
+                <option value="">Foot Traffic</option>
+                {FOOT_TRAFFIC_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                className="w-full px-2 py-1 border rounded-md text-sm"
+                placeholder="Contact Phone"
+                value={newHostLocation.contactPhone}
+                onChange={(e) =>
+                  setNewHostLocation({
+                    ...newHostLocation,
+                    contactPhone: e.target.value,
+                  })
+                }
+              />
+              <textarea
+                className="w-full px-2 py-1 border rounded-md text-sm sm:col-span-2"
+                placeholder="Notes"
+                value={newHostLocation.notes}
+                onChange={(e) =>
+                  setNewHostLocation({
+                    ...newHostLocation,
+                    notes: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <Button
+              size="sm"
+              onClick={() => {
+                if (
+                  !newHostLocation.businessName.trim() ||
+                  !newHostLocation.address.trim()
+                ) {
+                  toast({
+                    title: "Missing fields",
+                    description:
+                      "Location name and address are required.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                createHostLocation.mutate({
+                  userId: selectedUser.id,
+                  data: newHostLocation,
+                });
+              }}
+              disabled={createHostLocation.isPending || isStaff}
+            >
+              Add Location
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => {
     if (!selectedUser) {
@@ -2337,7 +3003,7 @@ export default function AdminDashboard() {
                 {dashboardStats.totalRestaurantOwners ??
                   dashboardStats.memberCounts?.restaurantOwner ??
                   0}{" "}
-                owner accounts • {pendingRestaurants.length} pending
+                owner accounts â€¢ {pendingRestaurants.length} pending
               </p>
             </CardContent>
           </Card>
@@ -2390,7 +3056,7 @@ export default function AdminDashboard() {
           <CardContent>
             <p className="text-xs text-muted-foreground mb-3">
               Role total {dashboardStats.memberCountsTotal ?? 0} of {dashboardStats.totalUsers} users
-              {dashboardStats.unclassifiedUsers ? ` • ${dashboardStats.unclassifiedUsers} unclassified` : ""}
+              {dashboardStats.unclassifiedUsers ? ` â€¢ ${dashboardStats.unclassifiedUsers} unclassified` : ""}
             </p>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
               <div>
@@ -2665,7 +3331,7 @@ export default function AdminDashboard() {
                         <div>
                           <div className="font-medium">{restaurant.name}</div>
                           <div className="text-sm text-muted-foreground">
-                            {restaurant.cuisineType} • {restaurant.email}
+                            {restaurant.cuisineType} â€¢ {restaurant.email}
                           </div>
                         </div>
                         <div className="flex space-x-2">
@@ -2959,8 +3625,8 @@ export default function AdminDashboard() {
                             {deal.title}
                           </div>
                           <div className="text-sm text-muted-foreground mt-1">
-                            {deal.restaurant?.name} • {deal.discountValue}% off
-                            • Ends {new Date(deal.endDate).toLocaleDateString()}
+                            {deal.restaurant?.name} â€¢ {deal.discountValue}% off
+                            â€¢ Ends {new Date(deal.endDate).toLocaleDateString()}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -3246,6 +3912,49 @@ export default function AdminDashboard() {
 
           {/* Host Locations Tab */}
           <TabsContent value="host-locations" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="w-5 h-5" />
+                  Parking Pass + Host Locations
+                </CardTitle>
+                <CardDescription>
+                  Select a host user to add locations and edit Parking Pass pricing.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-2">
+                  <label className="text-xs text-muted-foreground">Host User</label>
+                  <select
+                    className="w-full px-3 py-2 border rounded-md text-sm bg-background"
+                    value={selectedUser?.id ?? ""}
+                    onChange={(e) => {
+                      const next =
+                        users.find((user: any) => user.id === e.target.value) ||
+                        null;
+                      setSelectedUser(next);
+                    }}
+                  >
+                    <option value="">Select a user…</option>
+                    {sortedUsers.map((user: any) => (
+                      <option key={user.id} value={user.id}>
+                        {(user.firstName || user.lastName)
+                          ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
+                          : user.email}{" "}
+                        • {user.userType}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {selectedUser ? (
+                  renderHostLocationsEditor()
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Choose a user to manage their host locations and Parking Pass listings.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -3954,677 +4663,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               )}
-
-              {/* Host Profiles */}
-              {(selectedUser?.userType === "host" || userHosts.length > 0) && (
-                <div>
-                  <h3 className="font-semibold mb-2 flex items-center text-sm text-muted-foreground">
-                    <MapPin className="w-4 h-4 mr-2" />
-                    HOST LOCATIONS (PARKING PASS) ({userHosts.length})
-                  </h3>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    These addresses power Parking Pass listings. Edit here to
-                    update them everywhere.
-                  </p>
-                  <div className="space-y-4">
-                    {userHosts.length === 0 && (
-                      <div className="text-sm text-muted-foreground">
-                        No host locations yet.
-                      </div>
-                    )}
-                    {userHosts.map((host: any) => {
-                      const edits = hostEdits[host.id];
-                      if (!edits) return null;
-                      const pass = parkingPasses.find(
-                        (item) => (item.host?.id ?? item.hostId) === host.id,
-                      );
-                      const passEdits = pass ? parkingPassEdits[pass.id] : null;
-                      return (
-                        <div
-                          key={host.id}
-                          className="border rounded-lg p-3 bg-muted/30 space-y-3"
-                        >
-                          <div className="text-sm font-medium">
-                            {host.businessName}
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <input
-                              className="w-full px-2 py-1 border rounded-md text-sm"
-                              value={edits.businessName}
-                              onChange={(e) =>
-                                setHostEdits({
-                                  ...hostEdits,
-                                  [host.id]: {
-                                    ...edits,
-                                    businessName: e.target.value,
-                                  },
-                                })
-                              }
-                            />
-                            <input
-                              className="w-full px-2 py-1 border rounded-md text-sm"
-                              value={edits.address}
-                              onChange={(e) =>
-                                setHostEdits({
-                                  ...hostEdits,
-                                  [host.id]: {
-                                    ...edits,
-                                    address: e.target.value,
-                                  },
-                                })
-                              }
-                            />
-                            <input
-                              className="w-full px-2 py-1 border rounded-md text-sm"
-                              placeholder="City"
-                              value={edits.city}
-                              onChange={(e) =>
-                                setHostEdits({
-                                  ...hostEdits,
-                                  [host.id]: {
-                                    ...edits,
-                                    city: e.target.value,
-                                  },
-                                })
-                              }
-                            />
-                            <input
-                              className="w-full px-2 py-1 border rounded-md text-sm"
-                              placeholder="State"
-                              value={edits.state}
-                              onChange={(e) =>
-                                setHostEdits({
-                                  ...hostEdits,
-                                  [host.id]: {
-                                    ...edits,
-                                    state: e.target.value,
-                                  },
-                                })
-                              }
-                            />
-                            <input
-                              className="w-full px-2 py-1 border rounded-md text-sm"
-                              placeholder="Latitude"
-                              value={edits.latitude}
-                              onChange={(e) =>
-                                setHostEdits({
-                                  ...hostEdits,
-                                  [host.id]: {
-                                    ...edits,
-                                    latitude: e.target.value,
-                                  },
-                                })
-                              }
-                            />
-                            <input
-                              className="w-full px-2 py-1 border rounded-md text-sm"
-                              placeholder="Longitude"
-                              value={edits.longitude}
-                              onChange={(e) =>
-                                setHostEdits({
-                                  ...hostEdits,
-                                  [host.id]: {
-                                    ...edits,
-                                    longitude: e.target.value,
-                                  },
-                                })
-                              }
-                            />
-                            <select
-                              className="w-full px-2 py-1 border rounded-md text-sm bg-background"
-                              value={edits.locationType}
-                              onChange={(e) =>
-                                setHostEdits({
-                                  ...hostEdits,
-                                  [host.id]: {
-                                    ...edits,
-                                    locationType: e.target.value,
-                                  },
-                                })
-                              }
-                            >
-                              <option value="private_residence">
-                                Private Residence
-                              </option>
-                              <option value="business">Business</option>
-                              <option value="parking_lot">Parking Lot</option>
-                              <option value="event_space">Event Space</option>
-                              <option value="public_park">Public Park</option>
-                              <option value="other">Other</option>
-                            </select>
-                            <select
-                              className="w-full px-2 py-1 border rounded-md text-sm bg-background"
-                              value={resolveFootTrafficValue(
-                                edits.expectedFootTraffic,
-                              )}
-                              onChange={(e) =>
-                                setHostEdits({
-                                  ...hostEdits,
-                                  [host.id]: {
-                                    ...edits,
-                                    expectedFootTraffic: e.target.value,
-                                    expectedFootTrafficTouched: true,
-                                  },
-                                })
-                              }
-                            >
-                              <option value="">Foot Traffic</option>
-                              {FOOT_TRAFFIC_OPTIONS.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                            <input
-                              className="w-full px-2 py-1 border rounded-md text-sm"
-                              placeholder="Contact Phone"
-                              value={edits.contactPhone}
-                              onChange={(e) =>
-                                setHostEdits({
-                                  ...hostEdits,
-                                  [host.id]: {
-                                    ...edits,
-                                    contactPhone: e.target.value,
-                                  },
-                                })
-                              }
-                            />
-                            <textarea
-                              className="w-full px-2 py-1 border rounded-md text-sm sm:col-span-2"
-                              placeholder="Amenities JSON"
-                              value={edits.amenitiesText}
-                              onChange={(e) =>
-                                setHostEdits({
-                                  ...hostEdits,
-                                  [host.id]: {
-                                    ...edits,
-                                    amenitiesText: e.target.value,
-                                  },
-                                })
-                              }
-                            />
-                            <textarea
-                              className="w-full px-2 py-1 border rounded-md text-sm sm:col-span-2"
-                              placeholder="Notes"
-                              value={edits.notes}
-                              onChange={(e) =>
-                                setHostEdits({
-                                  ...hostEdits,
-                                  [host.id]: {
-                                    ...edits,
-                                    notes: e.target.value,
-                                  },
-                                })
-                              }
-                            />
-                            <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <input
-                                type="checkbox"
-                                checked={edits.isVerified}
-                                onChange={(e) =>
-                                  setHostEdits({
-                                    ...hostEdits,
-                                    [host.id]: {
-                                      ...edits,
-                                      isVerified: e.target.checked,
-                                    },
-                                  })
-                                }
-                              />
-                              Verified
-                            </label>
-                          </div>
-                          <div className="rounded-lg border border-border/60 bg-background/70 p-3 space-y-3">
-                            <p className="text-xs font-semibold text-muted-foreground">
-                              Parking Pass pricing
-                            </p>
-                            {pass && passEdits ? (
-                              <>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">
-                                      Start Time
-                                    </p>
-                                    <input
-                                      type="time"
-                                      className="w-full px-2 py-1 border rounded-md text-sm"
-                                      value={passEdits.startTime}
-                                      onChange={(e) =>
-                                        setParkingPassEdits({
-                                          ...parkingPassEdits,
-                                          [pass.id]: {
-                                            ...passEdits,
-                                            startTime: e.target.value,
-                                          },
-                                        })
-                                      }
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">
-                                      End Time
-                                    </p>
-                                    <input
-                                      type="time"
-                                      className="w-full px-2 py-1 border rounded-md text-sm"
-                                      value={passEdits.endTime}
-                                      onChange={(e) =>
-                                        setParkingPassEdits({
-                                          ...parkingPassEdits,
-                                          [pass.id]: {
-                                            ...passEdits,
-                                            endTime: e.target.value,
-                                          },
-                                        })
-                                      }
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">
-                                      Max Trucks
-                                    </p>
-                                    <input
-                                      type="number"
-                                      min={1}
-                                      className="w-full px-2 py-1 border rounded-md text-sm"
-                                      value={passEdits.maxTrucks}
-                                      onChange={(e) =>
-                                        setParkingPassEdits({
-                                          ...parkingPassEdits,
-                                          [pass.id]: {
-                                            ...passEdits,
-                                            maxTrucks: e.target.value,
-                                          },
-                                        })
-                                      }
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">
-                                      Status
-                                    </p>
-                                    <select
-                                      className="w-full px-2 py-1 border rounded-md text-sm bg-background"
-                                      value={passEdits.status}
-                                      onChange={(e) =>
-                                        setParkingPassEdits({
-                                          ...parkingPassEdits,
-                                          [pass.id]: {
-                                            ...passEdits,
-                                            status: e.target.value,
-                                          },
-                                        })
-                                      }
-                                    >
-                                      <option value="open">Open</option>
-                                      <option value="booked">Booked</option>
-                                      <option value="cancelled">Cancelled</option>
-                                      <option value="completed">Completed</option>
-                                    </select>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">
-                                      Breakfast ($)
-                                    </p>
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      step={1}
-                                      className="w-full px-2 py-1 border rounded-md text-sm"
-                                      value={toDollars(
-                                        passEdits.breakfastPriceCents,
-                                      )}
-                                      onChange={(e) =>
-                                        setParkingPassEdits({
-                                          ...parkingPassEdits,
-                                          [pass.id]: {
-                                            ...passEdits,
-                                            breakfastPriceCents: toCents(
-                                              e.target.value,
-                                            ),
-                                          },
-                                        })
-                                      }
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">
-                                      Lunch ($)
-                                    </p>
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      step={1}
-                                      className="w-full px-2 py-1 border rounded-md text-sm"
-                                      value={toDollars(
-                                        passEdits.lunchPriceCents,
-                                      )}
-                                      onChange={(e) =>
-                                        setParkingPassEdits({
-                                          ...parkingPassEdits,
-                                          [pass.id]: {
-                                            ...passEdits,
-                                            lunchPriceCents: toCents(
-                                              e.target.value,
-                                            ),
-                                          },
-                                        })
-                                      }
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">
-                                      Dinner ($)
-                                    </p>
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      step={1}
-                                      className="w-full px-2 py-1 border rounded-md text-sm"
-                                      value={toDollars(
-                                        passEdits.dinnerPriceCents,
-                                      )}
-                                      onChange={(e) =>
-                                        setParkingPassEdits({
-                                          ...parkingPassEdits,
-                                          [pass.id]: {
-                                            ...passEdits,
-                                            dinnerPriceCents: toCents(
-                                              e.target.value,
-                                            ),
-                                          },
-                                        })
-                                      }
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">
-                                      Daily ($)
-                                    </p>
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      step={1}
-                                      className="w-full px-2 py-1 border rounded-md text-sm"
-                                      value={toDollars(
-                                        passEdits.dailyPriceCents,
-                                      )}
-                                      onChange={(e) =>
-                                        setParkingPassEdits({
-                                          ...parkingPassEdits,
-                                          [pass.id]: {
-                                            ...passEdits,
-                                            dailyPriceCents: toCents(
-                                              e.target.value,
-                                            ),
-                                            weeklyPriceCents:
-                                              toCents(e.target.value) * 7,
-                                            monthlyPriceCents:
-                                              toCents(e.target.value) * 30,
-                                          },
-                                        })
-                                      }
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">
-                                      Weekly ($)
-                                    </p>
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      step={1}
-                                      className="w-full px-2 py-1 border rounded-md text-sm"
-                                      value={
-                                        Number(passEdits.dailyPriceCents || 0)
-                                          ? toDollars(
-                                              Number(
-                                                passEdits.dailyPriceCents || 0,
-                                              ) * 7,
-                                            )
-                                          : toDollars(
-                                              passEdits.weeklyPriceCents,
-                                            )
-                                      }
-                                      readOnly
-                                      disabled
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">
-                                      Monthly ($)
-                                    </p>
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      step={1}
-                                      className="w-full px-2 py-1 border rounded-md text-sm"
-                                      value={
-                                        Number(passEdits.dailyPriceCents || 0)
-                                          ? toDollars(
-                                              Number(
-                                                passEdits.dailyPriceCents || 0,
-                                              ) * 30,
-                                            )
-                                          : toDollars(
-                                              passEdits.monthlyPriceCents,
-                                            )
-                                      }
-                                      readOnly
-                                      disabled
-                                    />
-                                  </div>
-                                </div>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    updateParkingPass.mutate({
-                                      eventId: pass.id,
-                                      updates: passEdits,
-                                    })
-                                  }
-                                  disabled={
-                                    updateParkingPass.isPending || isStaff
-                                  }
-                                >
-                                  Save Parking Pass
-                                </Button>
-                              </>
-                            ) : (
-                              <p className="text-xs text-muted-foreground">
-                                No parking pass listing yet.
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                let amenities: any = undefined;
-                                if (edits.amenitiesText) {
-                                  try {
-                                    amenities = JSON.parse(edits.amenitiesText);
-                                  } catch {
-                                    toast({
-                                      title: "Invalid JSON",
-                                      description:
-                                        "Amenities must be valid JSON.",
-                                      variant: "destructive",
-                                    });
-                                    return;
-                                  }
-                                }
-                                updateHost.mutate({
-                                  hostId: host.id,
-                                  updates: {
-                                    ...edits,
-                                    expectedFootTraffic: edits.expectedFootTrafficTouched
-                                      ? (edits.expectedFootTraffic === ""
-                                          ? null
-                                          : Number(edits.expectedFootTraffic))
-                                      : edits.expectedFootTrafficOriginal,
-                                    amenities,
-                                  },
-                                });
-                              }}
-                              disabled={isStaff}
-                            >
-                              Save Host
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() =>
-                                deleteHostLocation.mutate({ hostId: host.id })
-                              }
-                              disabled={isStaff}
-                            >
-                              Delete Location
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    <div className="border rounded-lg p-3 space-y-3">
-                      <div className="text-sm font-medium">
-                        Add Host Location
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <input
-                          className="w-full px-2 py-1 border rounded-md text-sm"
-                          placeholder="Location name"
-                          value={newHostLocation.businessName}
-                          onChange={(e) =>
-                            setNewHostLocation({
-                              ...newHostLocation,
-                              businessName: e.target.value,
-                            })
-                          }
-                        />
-                        <input
-                          className="w-full px-2 py-1 border rounded-md text-sm"
-                          placeholder="Address"
-                          value={newHostLocation.address}
-                          onChange={(e) =>
-                            setNewHostLocation({
-                              ...newHostLocation,
-                              address: e.target.value,
-                            })
-                          }
-                        />
-                        <input
-                          className="w-full px-2 py-1 border rounded-md text-sm"
-                          placeholder="City"
-                          value={newHostLocation.city}
-                          onChange={(e) =>
-                            setNewHostLocation({
-                              ...newHostLocation,
-                              city: e.target.value,
-                            })
-                          }
-                        />
-                        <input
-                          className="w-full px-2 py-1 border rounded-md text-sm"
-                          placeholder="State"
-                          value={newHostLocation.state}
-                          onChange={(e) =>
-                            setNewHostLocation({
-                              ...newHostLocation,
-                              state: e.target.value,
-                            })
-                          }
-                        />
-                        <select
-                          className="w-full px-2 py-1 border rounded-md text-sm bg-background"
-                          value={newHostLocation.locationType}
-                          onChange={(e) =>
-                            setNewHostLocation({
-                              ...newHostLocation,
-                              locationType: e.target.value,
-                            })
-                          }
-                        >
-                          <option value="private_residence">
-                            Private Residence
-                          </option>
-                          <option value="business">Business</option>
-                          <option value="parking_lot">Parking Lot</option>
-                          <option value="event_space">Event Space</option>
-                          <option value="public_park">Public Park</option>
-                          <option value="other">Other</option>
-                        </select>
-                        <select
-                          className="w-full px-2 py-1 border rounded-md text-sm bg-background"
-                          value={resolveFootTrafficValue(
-                            newHostLocation.expectedFootTraffic,
-                          )}
-                          onChange={(e) =>
-                            setNewHostLocation({
-                              ...newHostLocation,
-                              expectedFootTraffic: e.target.value,
-                            })
-                          }
-                        >
-                          <option value="">Foot Traffic</option>
-                          {FOOT_TRAFFIC_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          className="w-full px-2 py-1 border rounded-md text-sm"
-                          placeholder="Contact Phone"
-                          value={newHostLocation.contactPhone}
-                          onChange={(e) =>
-                            setNewHostLocation({
-                              ...newHostLocation,
-                              contactPhone: e.target.value,
-                            })
-                          }
-                        />
-                        <textarea
-                          className="w-full px-2 py-1 border rounded-md text-sm sm:col-span-2"
-                          placeholder="Notes"
-                          value={newHostLocation.notes}
-                          onChange={(e) =>
-                            setNewHostLocation({
-                              ...newHostLocation,
-                              notes: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          if (
-                            !newHostLocation.businessName.trim() ||
-                            !newHostLocation.address.trim()
-                          ) {
-                            toast({
-                              title: "Missing fields",
-                              description:
-                                "Location name and address are required.",
-                              variant: "destructive",
-                            });
-                            return;
-                          }
-                          createHostLocation.mutate({
-                            userId: selectedUser.id,
-                            data: newHostLocation,
-                          });
-                        }}
-                        disabled={createHostLocation.isPending || isStaff}
-                      >
-                        Add Location
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {renderHostLocationsEditor()}
 
               {/* Restaurants */}
               {userRestaurants.length > 0 && (
@@ -5175,7 +5214,7 @@ export default function AdminDashboard() {
                           <div className="text-xs text-muted-foreground">
                             Applies to all upcoming dates
                             {nextDate
-                              ? ` · Next date ${new Date(
+                              ? ` Â· Next date ${new Date(
                                   nextDate,
                                 ).toLocaleDateString()}`
                               : ""}
@@ -5713,6 +5752,7 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
 
 
 

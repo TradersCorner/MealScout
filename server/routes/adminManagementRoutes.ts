@@ -1962,8 +1962,26 @@ export function registerAdminManagementRoutes(app: Express) {
         const dinner = Number(
           updates.dinnerPriceCents ?? event.dinnerPriceCents ?? 0,
         );
+        const dailyExisting = Number(event.dailyPriceCents ?? 0);
+        const weeklyExisting = Number(event.weeklyPriceCents ?? 0);
+        const monthlyExisting = Number(event.monthlyPriceCents ?? 0);
+        const dailyCandidate =
+          updates.dailyPriceCents !== undefined
+            ? Number(updates.dailyPriceCents)
+            : dailyExisting;
+        const weeklyCandidate =
+          updates.weeklyPriceCents !== undefined
+            ? Number(updates.weeklyPriceCents)
+            : weeklyExisting;
+        const monthlyCandidate =
+          updates.monthlyPriceCents !== undefined
+            ? Number(updates.monthlyPriceCents)
+            : monthlyExisting;
         const slotSum = breakfast + lunch + dinner;
-        if (slotSum <= 0) {
+        const hasAnyPrice = [slotSum, dailyCandidate, weeklyCandidate, monthlyCandidate].some(
+          (value) => Number(value) > 0,
+        );
+        if (!hasAnyPrice) {
           return res.status(400).json({
             message: "At least one slot price is required.",
           });
@@ -1980,12 +1998,19 @@ export function registerAdminManagementRoutes(app: Express) {
           updates.monthlyPriceCents !== undefined
             ? Number(updates.monthlyPriceCents)
             : null;
-        const baseDaily =
+        let baseDaily =
           dailyOverride ?? (slotSum > 0 ? slotSum : event.dailyPriceCents ?? 0);
+        if (baseDaily <= 0) {
+          if (weeklyOverride && weeklyOverride > 0) {
+            baseDaily = Math.round(weeklyOverride / 7);
+          } else if (monthlyOverride && monthlyOverride > 0) {
+            baseDaily = Math.round(monthlyOverride / 30);
+          }
+        }
+        const hostPriceCents = slotSum > 0 ? slotSum : baseDaily;
         const pricingUpdates = {
-          hostPriceCents: slotSum || event.hostPriceCents || 0,
-          dailyPriceCents:
-            baseDaily,
+          hostPriceCents: hostPriceCents || event.hostPriceCents || 0,
+          dailyPriceCents: baseDaily,
           weeklyPriceCents:
             weeklyOverride ?? (baseDaily > 0 ? baseDaily * 7 : event.weeklyPriceCents ?? 0),
           monthlyPriceCents:

@@ -165,6 +165,66 @@ const parseCsvToRows = (text: string): string[][] =>
 const parseTsvToRows = (text: string): string[][] =>
   parseDelimitedToRows(text, "\t");
 
+const decodeHtmlEntities = (value: string): string => {
+  const input = String(value || "");
+  const named: Record<string, string> = {
+    amp: "&",
+    lt: "<",
+    gt: ">",
+    quot: '"',
+    apos: "'",
+    nbsp: " ",
+  };
+  return input
+    .replace(/&(#\d+|#x[0-9a-fA-F]+|[a-zA-Z]+);/g, (match, entity) => {
+      const text = String(entity || "");
+      if (text.startsWith("#x") || text.startsWith("#X")) {
+        const code = Number.parseInt(text.slice(2), 16);
+        return Number.isFinite(code) ? String.fromCodePoint(code) : match;
+      }
+      if (text.startsWith("#")) {
+        const code = Number.parseInt(text.slice(1), 10);
+        return Number.isFinite(code) ? String.fromCodePoint(code) : match;
+      }
+      const key = text.toLowerCase();
+      return key in named ? named[key] : match;
+    })
+    .replace(/\u00A0/g, " ");
+};
+
+const stripHtml = (value: string): string => {
+  return decodeHtmlEntities(
+    String(value || "")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|tr)>/gi, "\n")
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " "),
+  )
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+const parseHtmlTableToRows = (html: string): string[][] => {
+  const normalized = String(html || "");
+  const tableMatch = normalized.match(/<table[\s\S]*?<\/table>/i);
+  const scoped = tableMatch ? tableMatch[0] : normalized;
+
+  const rowMatches = scoped.match(/<tr[\s\S]*?<\/tr>/gi) || [];
+  const rows: string[][] = [];
+  for (const rowHtml of rowMatches) {
+    const cellMatches = rowHtml.match(/<(td|th)[^>]*>[\s\S]*?<\/(td|th)>/gi) || [];
+    const cells = cellMatches.map((cellHtml) => {
+      const inner = cellHtml.replace(/^<(td|th)[^>]*>/i, "").replace(/<\/(td|th)>$/i, "");
+      return stripHtml(inner);
+    });
+    if (cells.some((cell) => cell.trim() !== "")) {
+      rows.push(cells);
+    }
+  }
+  return rows;
+};
+
 const detectDelimiter = (text: string): string => {
   const candidates = [",", "\t", ";", "|"];
   const lines = text
@@ -311,7 +371,9 @@ export const parseTruckImportFile = async (
       return buffer.toString("utf8");
     })();
 
-    if (lowerName.endsWith(".tsv")) {
+    if (lowerName.endsWith(".html") || lowerName.endsWith(".htm")) {
+      rows = parseHtmlTableToRows(text);
+    } else if (lowerName.endsWith(".tsv")) {
       rows = parseTsvToRows(text);
     } else {
       const delimiter = detectDelimiter(text);

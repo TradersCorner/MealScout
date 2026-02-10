@@ -365,7 +365,7 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
             <label className="text-sm font-medium">File</label>
             <input
               type="file"
-              accept=".csv,.tsv,.xlsx"
+              accept=".csv,.tsv,.xlsx,.html,.htm"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
               className="w-full px-3 py-2 border rounded-md"
             />

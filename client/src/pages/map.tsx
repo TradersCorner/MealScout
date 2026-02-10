@@ -679,14 +679,83 @@ export default function MapPage() {
     refetchOnReconnect: true,
   });
 
+  // Hosts with unpriced/unbookable Parking Pass listings must not appear on maps.
+  // Use a lightweight host-id endpoint + localStorage cache so the map can render immediately.
+  const BOOKABLE_HOST_CACHE_KEY = "mealscout:map:bookableHostIds:v1";
+  const [cachedBookableHostIds, setCachedBookableHostIds] = useState<Set<string>>(
+    () => {
+      try {
+        const raw = localStorage.getItem(BOOKABLE_HOST_CACHE_KEY);
+        if (!raw) return new Set<string>();
+        const parsed = JSON.parse(raw);
+        const hostIds = Array.isArray(parsed?.hostIds) ? parsed.hostIds : [];
+        return new Set(hostIds.map((id: any) => String(id)));
+      } catch {
+        return new Set<string>();
+      }
+    },
+  );
+
+  const {
+    data: bookableHostIdPayload,
+    isLoading: isBookableHostIdsLoading,
+    isError: isBookableHostIdsError,
+  } = useQuery<{ generatedAt: string; hostIds: string[] }>({
+    queryKey: ["/api/parking-pass/host-ids"],
+    queryFn: async () => {
+      const res = await fetch("/api/parking-pass/host-ids");
+      if (!res.ok) throw new Error("Failed to load bookable hosts");
+      return res.json();
+    },
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (!bookableHostIdPayload?.hostIds?.length) return;
+    const next = new Set(bookableHostIdPayload.hostIds.map((id) => String(id)));
+    setCachedBookableHostIds(next);
+    try {
+      localStorage.setItem(
+        BOOKABLE_HOST_CACHE_KEY,
+        JSON.stringify({ hostIds: Array.from(next), updatedAt: Date.now() }),
+      );
+    } catch {
+      // ignore
+    }
+  }, [bookableHostIdPayload]);
+
+  const bookableHostIds = useMemo(() => {
+    const serverIds = Array.isArray(bookableHostIdPayload?.hostIds)
+      ? bookableHostIdPayload.hostIds
+      : [];
+    if (serverIds.length > 0) {
+      return new Set(serverIds.map((id) => String(id)));
+    }
+    return cachedBookableHostIds;
+  }, [bookableHostIdPayload, cachedBookableHostIds]);
+
   const visibleHostLocations = useMemo(() => {
     if (!mapBounds || !mapLocations?.hostLocations?.length) return [];
+    // Strict: only show priced Parking Pass host pins, but never block rendering on the network.
+    // If the endpoint errors, fall back to cached host ids.
+    if (isBookableHostIdsLoading && bookableHostIds.size === 0) return [];
+    if (isBookableHostIdsError && bookableHostIds.size === 0) return [];
     return mapLocations.hostLocations.filter((host) => {
+      const hostId = host.hostId ? String(host.hostId) : "";
+      if (!hostId || !bookableHostIds.has(hostId)) return false;
       const coords = resolveHostCoords(host);
       if (!coords) return false;
       return mapBounds.contains([coords.lat, coords.lng]);
     });
-  }, [mapLocations, hostCoords, mapBounds]);
+  }, [
+    mapLocations,
+    hostCoords,
+    mapBounds,
+    bookableHostIds,
+    isBookableHostIdsLoading,
+    isBookableHostIdsError,
+  ]);
 
   const visibleEventLocations = useMemo(() => {
     if (!mapBounds || !mapLocations?.eventLocations?.length) return [];

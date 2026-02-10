@@ -269,6 +269,51 @@ export function registerEventRoutes(app: Express) {
     }
   });
 
+  // Lightweight helper for map gating: which hosts have public-ready (priced) parking pass listings?
+  // This endpoint intentionally avoids booking lookups/geocoding so maps can load quickly.
+  let parkingPassHostIdsCache:
+    | { expiresAt: number; payload: { generatedAt: string; hostIds: string[] } }
+    | null = null;
+  app.get("/api/parking-pass/host-ids", async (_req: any, res) => {
+    try {
+      if (parkingPassHostIdsCache && parkingPassHostIdsCache.expiresAt > Date.now()) {
+        return res.json(parkingPassHostIdsCache.payload);
+      }
+
+      const { occurrences } = await listParkingPassOccurrences({ horizonDays: 30 });
+      const virtualEvents = occurrences.filter((event: any) =>
+        isParkingPassPublicReady(event),
+      );
+
+      const legacyUpcoming = await storage.getAllUpcomingEvents();
+      const legacyEvents = legacyUpcoming.filter(
+        (event: any) =>
+          event?.eventType === "parking_pass" && isParkingPassPublicReady(event),
+      );
+
+      const hostIds = new Set<string>();
+      for (const item of [...virtualEvents, ...legacyEvents]) {
+        const hostId = String(
+          (item as any)?.hostId ?? (item as any)?.host?.id ?? "",
+        ).trim();
+        if (hostId) hostIds.add(hostId);
+      }
+
+      const payload = {
+        generatedAt: new Date().toISOString(),
+        hostIds: Array.from(hostIds),
+      };
+      parkingPassHostIdsCache = {
+        payload,
+        expiresAt: Date.now() + 60_000,
+      };
+      res.json(payload);
+    } catch (error: any) {
+      console.error("Error fetching parking pass host ids:", error);
+      res.status(500).json({ message: "Failed to fetch parking pass host ids" });
+    }
+  });
+
   app.post(
     "/api/events/:eventId/interests",
     isRestaurantOwner,

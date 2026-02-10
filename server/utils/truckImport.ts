@@ -20,6 +20,10 @@ const FIELD_ALIASES: Record<string, string[]> = {
     "license",
     "license id",
     "license number",
+    "license #",
+    "licence",
+    "licence id",
+    "licence number",
     "permit",
     "permit id",
     "permit number",
@@ -29,15 +33,48 @@ const FIELD_ALIASES: Record<string, string[]> = {
     "business id",
     "id",
   ],
-  name: ["name", "business name", "truck name", "vendor name"],
-  address: ["address", "street", "street address", "address1"],
-  city: ["city", "town"],
-  state: ["state", "st", "province"],
-  phone: ["phone", "phone number", "telephone", "tel"],
+  // "Business name" varies wildly across exports (DBA, trade name, establishment, etc).
+  name: [
+    "name",
+    "business name",
+    "business",
+    "company",
+    "company name",
+    "vendor name",
+    "vendor",
+    "truck name",
+    "establishment",
+    "establishment name",
+    "restaurant",
+    "restaurant name",
+    "legal name",
+    "trade name",
+    "dba",
+    "doing business as",
+  ],
+  address: [
+    "address",
+    "street",
+    "street address",
+    "address1",
+    "address 1",
+    "location address",
+    "mailing address",
+  ],
+  city: ["city", "town", "municipality"],
+  state: ["state", "st", "st.", "province", "region"],
+  phone: [
+    "phone",
+    "phone number",
+    "telephone",
+    "tel",
+    "contact phone",
+    "business phone",
+  ],
   cuisineType: ["cuisine", "category", "type"],
-  websiteUrl: ["website", "website url", "url", "site"],
-  instagramUrl: ["instagram", "instagram url", "ig", "ig url"],
-  facebookPageUrl: ["facebook", "facebook url", "fb", "fb url"],
+  websiteUrl: ["website", "website url", "url", "site", "web", "homepage"],
+  instagramUrl: ["instagram", "instagram url", "ig", "ig url", "insta"],
+  facebookPageUrl: ["facebook", "facebook url", "fb", "fb url", "facebook page"],
   latitude: ["lat", "latitude"],
   longitude: ["lng", "longitude", "lon"],
 };
@@ -52,7 +89,10 @@ const normalizeHeader = (value: string): string =>
 const mapHeaderToField = (header: string): string | null => {
   const normalized = normalizeHeader(header);
   for (const [field, aliases] of Object.entries(FIELD_ALIASES)) {
-    if (aliases.some((alias) => normalized === normalizeHeader(alias))) {
+    // Match full words/phrases within the header (more robust than exact-equals,
+    // avoids false positives like "username" matching "name").
+    const hay = ` ${normalized} `;
+    if (aliases.some((alias) => hay.includes(` ${normalizeHeader(alias)} `))) {
       return field;
     }
   }

@@ -5,7 +5,7 @@ import {
   useElements,
 } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -68,6 +68,10 @@ interface SubscriptionState {
 
 interface ApiSubscriptionStatus {
   status: string;
+  hasAccess?: boolean;
+  trialAccess?: boolean;
+  trialEndsAt?: string | Date | null;
+  message?: string;
   currentPeriodEnd?: number;
   cancelAtPeriodEnd?: boolean;
 }
@@ -75,10 +79,12 @@ interface ApiSubscriptionStatus {
 const PaymentForm = ({
   clientSecret,
   intentType = "payment",
+  returnUrl,
   onSuccess,
 }: {
   clientSecret: string;
   intentType?: string;
+  returnUrl: string;
   onSuccess: (paymentIntentId: string) => void;
 }) => {
   const stripe = useStripe();
@@ -102,7 +108,7 @@ const PaymentForm = ({
         result = await stripe.confirmSetup({
           elements,
           confirmParams: {
-            return_url: window.location.origin + "/deal-creation",
+            return_url: returnUrl,
           },
           redirect: "if_required",
         });
@@ -110,7 +116,7 @@ const PaymentForm = ({
         result = await stripe.confirmPayment({
           elements,
           confirmParams: {
-            return_url: window.location.origin + "/deal-creation",
+            return_url: returnUrl,
           },
           redirect: "if_required",
         });
@@ -128,7 +134,7 @@ const PaymentForm = ({
             intentType === "setup"
               ? "Setup Successful!"
               : "Payment Successful!",
-          description: "Welcome to MealScout! You can now create deals.",
+          description: "Premium is now active on your account.",
         });
         const paymentIntentId =
           intentType === "setup"
@@ -506,7 +512,45 @@ const SubscriptionManagement = () => {
 export default function Subscribe() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+
+  const getSafeNextPath = (): string | null => {
+    try {
+      const params = new URLSearchParams(location.split("?")[1] || "");
+      const raw = (params.get("next") || params.get("redirect") || "").trim();
+      if (!raw) return null;
+      if (!raw.startsWith("/")) return null;
+      if (raw.startsWith("//")) return null;
+      if (raw.includes("://")) return null;
+      return raw;
+    } catch {
+      return null;
+    }
+  };
+
+  const defaultNextPath =
+    user?.userType === "food_truck"
+      ? "/parking-pass"
+      : "/restaurant-owner-dashboard";
+  const nextPath = getSafeNextPath() || defaultNextPath;
+  const stripeReturnUrl = `${window.location.origin}/subscribe?next=${encodeURIComponent(
+    nextPath,
+  )}`;
+
+  useEffect(() => {
+    // Stripe redirect (3DS/etc) lands back here with `redirect_status`.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const redirectStatus = (params.get("redirect_status") || "").toLowerCase();
+      if (redirectStatus === "succeeded") {
+        toast({
+          title: "Payment Successful!",
+          description: "Premium is now active on your account.",
+        });
+        setLocation(nextPath);
+      }
+    } catch {}
+  }, [nextPath, setLocation, toast]);
 
   // Plan selection state
   const [billingInterval, setBillingInterval] =
@@ -572,8 +616,8 @@ export default function Subscribe() {
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
         // Wait for refetch to complete
         await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
-        // Redirect to deal creation
-        setTimeout(() => setLocation("/deal-creation"), 1000);
+        // Premium is active (promo code) - route forward to caller intent.
+        setTimeout(() => setLocation(nextPath), 800);
       } else if (data && data.status === "requires_payment") {
         console.log("Payment required, showing payment form");
         setSubscriptionState({
@@ -655,7 +699,7 @@ export default function Subscribe() {
   };
 
   const handlePaymentSuccess = async (paymentIntentId: string) => {
-    setLocation("/deal-creation");
+    setLocation(nextPath);
   };
 
   const handleRetry = () => {
@@ -705,7 +749,7 @@ export default function Subscribe() {
       <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen">
         <BackHeader
           title="Pricing & Subscriptions"
-          fallbackHref="/restaurant-owner-dashboard"
+          fallbackHref={nextPath}
           icon={CreditCard}
           className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
         />
@@ -719,11 +763,9 @@ export default function Subscribe() {
               <p className="text-muted-foreground mb-4">
                 Stripe payment processing is not yet configured.
               </p>
-              <Link href="/deal-creation">
-                <Button className="w-full mb-2">
-                  Create Deals (Demo Mode)
-                </Button>
-              </Link>
+              <Button className="w-full mb-2" onClick={() => setLocation(nextPath)}>
+                Continue (No Premium)
+              </Button>
               <Link href="/">
                 <Button variant="outline" className="w-full">
                   Back to Home
@@ -745,12 +787,70 @@ export default function Subscribe() {
     <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen">
       <BackHeader
         title="Pricing & Subscriptions"
-        fallbackHref="/restaurant-owner-dashboard"
+        fallbackHref={nextPath}
         icon={CreditCard}
         className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
 
       <div className="px-4 py-6">
+        <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-[color:var(--text-primary)]">
+                  Premium is optional
+                </div>
+                <div className="text-xs text-[color:var(--text-secondary)]">
+                  Premium unlocks deal creation + analytics (trial/subscription). Parking Pass is separate and always available for food trucks.
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                className="shrink-0"
+                onClick={() => setLocation(nextPath)}
+                data-testid="button-continue-without-premium"
+              >
+                Continue
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              <Link href="/parking-pass">
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  data-testid="button-go-parking-pass"
+                >
+                  Parking Pass
+                </Button>
+              </Link>
+              <Link href="/deal-creation">
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  data-testid="button-go-deal-creation"
+                >
+                  Premium Features
+                </Button>
+              </Link>
+            </div>
+            {(currentSubscription as any)?.trialAccess &&
+              (currentSubscription as any)?.trialEndsAt && (
+                <div className="text-xs text-[color:var(--status-success)]">
+                  Trial active until{" "}
+                  {new Date((currentSubscription as any).trialEndsAt).toLocaleDateString(
+                    "en-US",
+                    {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    },
+                  )}
+                  .
+                </div>
+              )}
+          </CardContent>
+        </Card>
+
         {/* If user has active subscription and not in payment flow, show management */}
         {showManagement && (
           <div className="space-y-6">
@@ -856,18 +956,6 @@ export default function Subscribe() {
           </div>
         )}
 
-        {/* Show subscription not found for users without subscriptions */}
-        {currentSubscription?.status === "none" &&
-          subscriptionState.status === "selecting" && (
-            <PlanSelector
-              billingInterval={billingInterval}
-              promoCode={promoCode}
-              onBillingIntervalChange={setBillingInterval}
-              onPromoCodeChange={setPromoCode}
-              onContinue={initializeSubscription}
-            />
-          )}
-
         {subscriptionState.status === "initializing" && (
           <div className="flex items-center justify-center min-h-[50vh]">
             <div className="text-center">
@@ -909,6 +997,7 @@ export default function Subscribe() {
                 <PaymentForm
                   clientSecret={subscriptionState.clientSecret}
                   intentType={subscriptionState.intentType}
+                  returnUrl={stripeReturnUrl}
                   onSuccess={(paymentIntentId: string) =>
                     handlePaymentSuccess(paymentIntentId)
                   }

@@ -561,7 +561,11 @@ export default function RestaurantSignup() {
         title: COPY.notifications.verification.successTitle,
         description: COPY.notifications.verification.successDescription,
       });
-      setLocation("/subscribe");
+      setLocation(
+        selectedBusinessType === "food_truck"
+          ? "/subscribe?next=/parking-pass&src=onboarding"
+          : "/subscribe?next=/restaurant-owner-dashboard&src=onboarding",
+      );
     },
     onError: (error) => {
       toast({
@@ -617,8 +621,18 @@ export default function RestaurantSignup() {
       title: COPY.notifications.verification.skippedTitle,
       description: COPY.notifications.verification.skippedDescription,
     });
-    setLocation("/subscribe");
+    setLocation(
+      selectedBusinessType === "food_truck"
+        ? "/subscribe?next=/parking-pass&src=onboarding"
+        : "/subscribe?next=/restaurant-owner-dashboard&src=onboarding",
+    );
   };
+
+  const isAutoBusinessVerified = Boolean(
+    createdRestaurant?.isVerified &&
+      (createdRestaurant as any)?.claimedFromImportId &&
+      selectedBusinessType === "food_truck",
+  );
 
   const handleClaimSearch = async () => {
     const query = claimQuery.trim();
@@ -1110,36 +1124,56 @@ export default function RestaurantSignup() {
               <p className="text-xs text-[color:var(--text-secondary)]">{COPY.verification.intro}</p>
             </CardHeader>
             <CardContent className="space-y-4">
+              {isAutoBusinessVerified && (
+                <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] p-4 text-sm text-[color:var(--text-secondary)]">
+                  <div className="font-semibold text-[color:var(--text-primary)]">
+                    Business Verified
+                  </div>
+                  <div className="mt-1 text-xs">
+                    This business was matched from a registry list, so business verification is automatic.
+                    You still need email verification to log in.
+                  </div>
+                </div>
+              )}
               <div className="rounded-xl border border-dashed border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] p-4">
                 <ul className="list-disc space-y-1 pl-4 text-xs text-[color:var(--text-secondary)]">
                   {COPY.verification.bullets.map((item) => (<li key={item}>{item}</li>))}
                 </ul>
               </div>
-              <DocumentUpload
-                onDocumentsChange={setVerificationDocuments}
-                maxFiles={5}
-                maxFileSize={10 * 1024 * 1024}
-                acceptedTypes={["image/jpeg", "image/jpg", "image/png", "application/pdf"]}
-              />
+              {!isAutoBusinessVerified && (
+                <DocumentUpload
+                  onDocumentsChange={setVerificationDocuments}
+                  maxFiles={5}
+                  maxFileSize={10 * 1024 * 1024}
+                  acceptedTypes={["image/jpeg", "image/jpg", "image/png", "application/pdf"]}
+                />
+              )}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <Button type="button" variant="outline" onClick={() => dispatchOnboarding({ type: "BACK_TO_RESTAURANT" })} data-testid="button-back-to-restaurant">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   {COPY.verification.backButton}
                 </Button>
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  {!claimSelection && (
+                  {(!claimSelection || isAutoBusinessVerified) && (
                     <Button type="button" variant="outline" onClick={handleSkipVerification} data-testid="button-skip-verification">
-                      {COPY.verification.skipButton}
+                      {isAutoBusinessVerified ? "Continue" : COPY.verification.skipButton}
                     </Button>
                   )}
-                  <Button type="button" onClick={handleVerificationSubmit} disabled={createVerificationRequestMutation.isPending || verificationDocuments.length === 0} className="action-primary hover:bg-[color:var(--action-hover)]" data-testid="button-submit-verification">
-                    {createVerificationRequestMutation.isPending ? (
-                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    ) : (
+                  {!isAutoBusinessVerified ? (
+                    <Button type="button" onClick={handleVerificationSubmit} disabled={createVerificationRequestMutation.isPending || verificationDocuments.length === 0} className="action-primary hover:bg-[color:var(--action-hover)]" data-testid="button-submit-verification">
+                      {createVerificationRequestMutation.isPending ? (
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      ) : (
+                        <ArrowRight className="mr-2 h-4 w-4" />
+                      )}
+                      {createVerificationRequestMutation.isPending ? COPY.verification.submitPending : COPY.verification.submitIdle}
+                    </Button>
+                  ) : (
+                    <Button type="button" onClick={handleSkipVerification} className="action-primary hover:bg-[color:var(--action-hover)]" data-testid="button-continue-verified">
                       <ArrowRight className="mr-2 h-4 w-4" />
-                    )}
-                    {createVerificationRequestMutation.isPending ? COPY.verification.submitPending : COPY.verification.submitIdle}
-                  </Button>
+                      Continue to setup
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>

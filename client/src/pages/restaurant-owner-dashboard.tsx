@@ -1101,7 +1101,7 @@ export default function RestaurantOwnerDashboard() {
                 </Button>
               </Link>
             ) : (
-              <Link href="/subscribe">
+              <Link href="/subscribe?next=/deal-creation&reason=create_deals">
                 <Button variant="default" data-testid="button-subscribe">
                   <CreditCard className="h-4 w-4 mr-2" />
                   Subscribe to Create Specials

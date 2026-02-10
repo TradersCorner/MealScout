@@ -1003,16 +1003,32 @@ export function registerAdminManagementRoutes(app: Express) {
 
         const listingsToInsert: Array<typeof truckImportListings.$inferInsert> =
           [];
+        const seenKeys = new Set<string>();
 
         for (const row of rows) {
           const name = row.name?.trim();
-          const address = row.address?.trim();
-          if (!name || !address) {
+          const addressInput = row.address?.trim() || "";
+          if (!name) {
             missingRows += 1;
             continue;
           }
 
           const externalId = row.externalId?.trim() || null;
+          const stateKey = (row.state || "").trim().toLowerCase();
+          const cityKey = (row.city || "").trim().toLowerCase();
+          const nameKey = name.toLowerCase();
+          const addressKey = addressInput.toLowerCase();
+          const dedupeKey = externalId
+            ? `ext:${externalId.toLowerCase()}`
+            : addressInput
+              ? `addr:${nameKey}|${addressKey}|${stateKey}`
+              : `name:${nameKey}|${stateKey}|${cityKey}`;
+          if (seenKeys.has(dedupeKey)) {
+            duplicateRows += 1;
+            continue;
+          }
+          seenKeys.add(dedupeKey);
+
           let duplicate = false;
           if (externalId) {
             const existing = await db
@@ -1021,14 +1037,14 @@ export function registerAdminManagementRoutes(app: Express) {
               .where(eq(truckImportListings.externalId, externalId))
               .limit(1);
             duplicate = existing.length > 0;
-          } else {
+          } else if (addressInput) {
             const existing = await db
               .select({ id: truckImportListings.id })
               .from(truckImportListings)
               .where(
                 and(
                   eq(truckImportListings.name, name),
-                  eq(truckImportListings.address, address),
+                  eq(truckImportListings.address, addressInput),
                   row.state
                     ? eq(truckImportListings.state, row.state)
                     : sql`${truckImportListings.state} is null`,
@@ -1048,7 +1064,8 @@ export function registerAdminManagementRoutes(app: Express) {
             source: source || null,
             externalId,
             name,
-            address,
+            // Address is optional for admin-uploaded seeds; claim flow can fill it in later.
+            address: addressInput,
             city: row.city || null,
             state: row.state || null,
             phone: row.phone || null,

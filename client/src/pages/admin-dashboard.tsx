@@ -248,13 +248,13 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
            <div className="p-3 rounded-md bg-muted/40 text-sm">
              <div>Batch: {lastResult.batchId}</div>
              <div>Imported: {lastResult.importedRows}</div>
-             {"seededRestaurants" in lastResult && (
-               <div>Seeded Accounts: {lastResult.seededRestaurants}</div>
-             )}
-             <div>Duplicates: {lastResult.duplicateRows}</div>
-             <div>Missing Required: {lastResult.missingRows}</div>
-           </div>
-         )}
+              {"seededRestaurants" in lastResult && (
+                <div>Seeded Accounts: {lastResult.seededRestaurants}</div>
+              )}
+              <div>Duplicates: {lastResult.duplicateRows}</div>
+              <div>Missing Name: {lastResult.missingRows}</div>
+            </div>
+          )}
 
         <div className="space-y-2">
           <div className="text-sm font-semibold">Recent Imports</div>

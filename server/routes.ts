@@ -3513,7 +3513,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 amenities: mergedRestaurant.amenities || null,
                 isFoodTruck: true,
                 isActive: false,
-                isVerified: false,
+                // Imported government/business registry listings are treated as real businesses.
+                // Ownership is still tracked via the claim request, but business verification is automatic.
+                isVerified: true,
                 updatedAt: new Date(),
               })
               .where(eq(restaurants.id, seededRestaurantCandidate.id))
@@ -3537,7 +3539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             amenities: mergedRestaurant.amenities || null,
             isFoodTruck: true,
             isActive: false,
-            isVerified: false,
+            isVerified: true,
             claimedFromImportId: listing.id,
           });
 

@@ -415,7 +415,7 @@ export default function DealCreation() {
           variant: "destructive",
         });
         setTimeout(() => {
-          setLocation("/subscribe");
+          setLocation("/subscribe?next=/deal-creation&reason=create_deals");
         }, 1500);
         return;
       }

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import Stripe from "stripe";
 import crypto from "crypto";
-import { eq, and, inArray, or, sql, desc, isNull, gte } from "drizzle-orm";
+import { eq, and, inArray, or, sql, desc, isNull, gte, lt } from "drizzle-orm";
 import { storage } from "../storage";
 import { isAuthenticated, isStaffOrAdmin } from "../unifiedAuth";
 import { sanitizeUser, sanitizeUsers } from "../utils/sanitize";
@@ -19,6 +19,8 @@ import {
   eventBookings,
   eventSeries,
   events,
+  foodTruckLocations,
+  foodTruckSessions,
   hosts,
   insertHostSchema,
   restaurants,
@@ -352,7 +354,116 @@ export function registerAdminManagementRoutes(app: Express) {
     isStaffOrAdmin,
     async (_req: any, res) => {
       try {
-        const stats = await storage.getAdminStats();
+        const statsPromise = storage.getAdminStats();
+        const now = new Date();
+        const today = new Date(now);
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const upcoming7d = new Date(today);
+        upcoming7d.setDate(upcoming7d.getDate() + 7);
+        const liveSince = new Date(Date.now() - 15 * 60 * 1000);
+
+        const operationsPromise = (async () => {
+          try {
+            const [
+              seriesTotals,
+              seriesPublishedTotals,
+              bookingsTodayTotals,
+              bookings7dTotals,
+              liveTruckTotals,
+              activeSessionTotals,
+            ] = await Promise.all([
+              db
+                .select({
+                  total: sql<number>`count(*)`.mapWith(Number),
+                })
+                .from(eventSeries)
+                .where(eq(eventSeries.seriesType, "parking_pass" as any)),
+              db
+                .select({
+                  published: sql<number>`count(*)`.mapWith(Number),
+                  publishedHosts: sql<number>`count(distinct ${eventSeries.hostId})`.mapWith(Number),
+                  spotCapacity: sql<number>`coalesce(sum(${eventSeries.defaultMaxTrucks}), 0)`.mapWith(Number),
+                })
+                .from(eventSeries)
+                .where(
+                  and(
+                    eq(eventSeries.seriesType, "parking_pass" as any),
+                    eq(eventSeries.status, "published" as any),
+                  ),
+                ),
+              db
+                .select({
+                  count: sql<number>`count(*)`.mapWith(Number),
+                })
+                .from(eventBookings)
+                .innerJoin(events, eq(events.id, eventBookings.eventId))
+                .where(
+                  and(
+                    eq(events.eventType, "parking_pass" as any),
+                    gte(events.date, today),
+                    lt(events.date, tomorrow),
+                    eq(eventBookings.status, "confirmed" as any),
+                  ),
+                ),
+              db
+                .select({
+                  count: sql<number>`count(*)`.mapWith(Number),
+                })
+                .from(eventBookings)
+                .innerJoin(events, eq(events.id, eventBookings.eventId))
+                .where(
+                  and(
+                    eq(events.eventType, "parking_pass" as any),
+                    gte(events.date, today),
+                    lt(events.date, upcoming7d),
+                    eq(eventBookings.status, "confirmed" as any),
+                  ),
+                ),
+              db
+                .select({
+                  live: sql<number>`count(distinct ${foodTruckLocations.restaurantId})`.mapWith(Number),
+                })
+                .from(foodTruckLocations)
+                .where(gte(foodTruckLocations.recordedAt, liveSince)),
+              db
+                .select({
+                  active: sql<number>`count(distinct ${foodTruckSessions.restaurantId})`.mapWith(Number),
+                })
+                .from(foodTruckSessions)
+                .where(
+                  and(
+                    eq(foodTruckSessions.isActive, true),
+                    isNull(foodTruckSessions.endedAt),
+                  ),
+                ),
+            ]);
+
+            return {
+              parkingPass: {
+                seriesTotal: Number(seriesTotals?.[0]?.total ?? 0),
+                seriesPublished: Number(seriesPublishedTotals?.[0]?.published ?? 0),
+                hostsPublished: Number(seriesPublishedTotals?.[0]?.publishedHosts ?? 0),
+                spotCapacityPublished: Number(seriesPublishedTotals?.[0]?.spotCapacity ?? 0),
+              },
+              bookings: {
+                parkingPassConfirmedToday: Number(bookingsTodayTotals?.[0]?.count ?? 0),
+                parkingPassConfirmedNext7Days: Number(bookings7dTotals?.[0]?.count ?? 0),
+              },
+              trucks: {
+                liveTrucks15m: Number(liveTruckTotals?.[0]?.live ?? 0),
+                activeSessions: Number(activeSessionTotals?.[0]?.active ?? 0),
+              },
+            };
+          } catch (error) {
+            console.error("[admin] Failed to compute operations totals:", error);
+            return null;
+          }
+        })();
+
+        const stats = await statsPromise;
+        const operations = await operationsPromise;
         const roleTotal = Number(stats.memberCountsTotal || 0);
         const totalUsers = Number(stats.totalUsers || 0);
         const isConsistent = roleTotal <= totalUsers;
@@ -360,6 +471,7 @@ export function registerAdminManagementRoutes(app: Express) {
         res.json({
           generatedAt: new Date().toISOString(),
           totals: stats,
+          operations,
           consistency: {
             roleTotal,
             totalUsers,

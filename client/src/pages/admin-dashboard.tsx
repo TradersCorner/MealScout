@@ -118,6 +118,22 @@ interface MapPinAudit {
 interface DashboardTotalsResponse {
   generatedAt: string;
   totals: DashboardStats;
+  operations?: null | {
+    parkingPass: {
+      seriesTotal: number;
+      seriesPublished: number;
+      hostsPublished: number;
+      spotCapacityPublished: number;
+    };
+    bookings: {
+      parkingPassConfirmedToday: number;
+      parkingPassConfirmedNext7Days: number;
+    };
+    trucks: {
+      liveTrucks15m: number;
+      activeSessions: number;
+    };
+  };
   consistency: {
     roleTotal: number;
     totalUsers: number;
@@ -3940,6 +3956,7 @@ export default function AdminDashboard() {
   };
 
   const dashboardStats = dashboardTotals?.totals || defaultStats;
+  const operations = dashboardTotals?.operations || null;
   const toDollars = (value: number | string | null | undefined) => {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) return 0;
@@ -4128,6 +4145,57 @@ export default function AdminDashboard() {
                 <p className="text-muted-foreground">Other</p>
                 <p className="font-semibold">
                   {dashboardStats.memberCounts?.other ?? 0}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Operations
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+              <div>
+                <p className="text-muted-foreground">Parking Passes (Live)</p>
+                <p className="font-semibold">
+                  {operations?.parkingPass?.seriesPublished ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Parking Pass Hosts (Live)</p>
+                <p className="font-semibold">
+                  {operations?.parkingPass?.hostsPublished ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Parking Pass Spots (Capacity)</p>
+                <p className="font-semibold">
+                  {operations?.parkingPass?.spotCapacityPublished ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Bookings (Today)</p>
+                <p className="font-semibold">
+                  {operations?.bookings?.parkingPassConfirmedToday ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Bookings (Next 7d)</p>
+                <p className="font-semibold">
+                  {operations?.bookings?.parkingPassConfirmedNext7Days ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Live Trucks (15m)</p>
+                <p className="font-semibold">
+                  {operations?.trucks?.liveTrucks15m ?? 0}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {operations?.trucks?.activeSessions ?? 0} active sessions
                 </p>
               </div>
             </div>

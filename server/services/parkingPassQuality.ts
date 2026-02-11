@@ -15,6 +15,75 @@ type ParkingPassQualityFlag =
 const normalize = (value?: string | number | null) =>
   String(value ?? "").trim();
 
+const normalizeState = (value: string): string => {
+  const raw = value.trim();
+  if (!raw) return "";
+  const upper = raw.toUpperCase();
+  if (/^[A-Z]{2}$/.test(upper)) return upper;
+
+  const key = raw.trim().toLowerCase();
+  const byName: Record<string, string> = {
+    alabama: "AL",
+    alaska: "AK",
+    arizona: "AZ",
+    arkansas: "AR",
+    california: "CA",
+    colorado: "CO",
+    connecticut: "CT",
+    delaware: "DE",
+    florida: "FL",
+    georgia: "GA",
+    hawaii: "HI",
+    idaho: "ID",
+    illinois: "IL",
+    indiana: "IN",
+    iowa: "IA",
+    kansas: "KS",
+    kentucky: "KY",
+    louisiana: "LA",
+    maine: "ME",
+    maryland: "MD",
+    massachusetts: "MA",
+    michigan: "MI",
+    minnesota: "MN",
+    mississippi: "MS",
+    missouri: "MO",
+    montana: "MT",
+    nebraska: "NE",
+    nevada: "NV",
+    "new hampshire": "NH",
+    "new jersey": "NJ",
+    "new mexico": "NM",
+    "new york": "NY",
+    northcarolina: "NC",
+    "north carolina": "NC",
+    northdakota: "ND",
+    "north dakota": "ND",
+    ohio: "OH",
+    oklahoma: "OK",
+    oregon: "OR",
+    pennsylvania: "PA",
+    "rhode island": "RI",
+    southcarolina: "SC",
+    "south carolina": "SC",
+    southdakota: "SD",
+    "south dakota": "SD",
+    tennessee: "TN",
+    texas: "TX",
+    utah: "UT",
+    vermont: "VT",
+    virginia: "VA",
+    washington: "WA",
+    "west virginia": "WV",
+    wisconsin: "WI",
+    wyoming: "WY",
+    "district of columbia": "DC",
+    dc: "DC",
+  };
+
+  return byName[key] || byName[key.replace(/\./g, "")] || raw;
+};
+
 const toNumberOrNull = (value: any): number | null => {
   if (value === null || value === undefined) return null;
   const parsed = typeof value === "string" ? Number(value) : value;
@@ -51,14 +120,15 @@ export function computeParkingPassQualityFlags(listing: {
   const host = listing.host ?? null;
   const address = normalize(listing.address ?? host?.address);
   const city = normalize(listing.city ?? host?.city);
-  const state = normalize(listing.state ?? host?.state);
+  const stateRaw = normalize(listing.state ?? host?.state);
+  const state = stateRaw ? normalizeState(stateRaw) : "";
   // Platform payments: we must be able to charge trucks for Parking Pass bookings.
   // Host payouts (Stripe Connect) are optional; if not enabled we hold host earnings as credit.
   const platformPaymentsEnabled = Boolean(process.env.STRIPE_SECRET_KEY);
 
   if (!address) flags.push("missing_address");
   if (!city) flags.push("missing_city");
-  if (!state) flags.push("missing_state");
+  if (!stateRaw) flags.push("missing_state");
   if (state && !/^[A-Za-z]{2}$/.test(state)) flags.push("invalid_state");
   if (address && !/\d/.test(address)) flags.push("bad_address_format");
 

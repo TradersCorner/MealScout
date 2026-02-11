@@ -5077,9 +5077,9 @@ export default function AdminDashboard() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Parking Pass Fix Queue</CardTitle>
-                    <CardDescription>
-                      Hosts are only visible on maps when pricing + address + payments are complete. Fix these items to go live.
-                    </CardDescription>
+                      <CardDescription>
+                        Hosts are only visible on maps when pricing + address + platform payments are complete. Fix these items to go live.
+                      </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {Array.isArray(parkingPassFixQueue?.rows) &&
@@ -5117,7 +5117,7 @@ export default function AdminDashboard() {
                                   <Badge
                                     variant={row.paymentsEnabled ? "default" : "destructive"}
                                   >
-                                    {row.paymentsEnabled ? "Payments ok" : "Payments off"}
+                                    {row.paymentsEnabled ? "Platform payments ok" : "Platform payments off"}
                                   </Badge>
                                   <Badge
                                     variant={row.publicReady ? "default" : "secondary"}

@@ -683,6 +683,7 @@ export function registerEventRoutes(app: Express) {
         const items = rows.map(({ series }: any) => {
           const hostId = String(series.hostId || "").trim();
           const host = hostById.get(hostId) ?? null;
+          const platformPaymentsEnabled = Boolean(process.env.STRIPE_SECRET_KEY);
           const listing = {
             host,
             startTime: (series as any).defaultStartTime,
@@ -707,6 +708,7 @@ export function registerEventRoutes(app: Express) {
             address: host?.address ?? null,
             city: host?.city ?? null,
             state: host?.state ?? null,
+            paymentsEnabled: platformPaymentsEnabled,
             publicReady,
             qualityFlags,
             hasSpotPhoto: Boolean((host as any)?.spotImageUrl),

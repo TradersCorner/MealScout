@@ -26,6 +26,12 @@
     "**/dist": true,
     "**/.vercel": true
   },
+  // Workaround: if `.git/` ever gets opened as a workspace folder (or scanned as a repo),
+  // VS Code will run Git commands in that folder and show a yellow warning.
+  "git.autoRepositoryDetection": "openEditors",
+  "git.ignoredRepositories": [
+    ".git"
+  ],
   "search.exclude": {
     "**/node_modules": true,
     "**/dist": true,

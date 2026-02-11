@@ -3213,6 +3213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const referralId =
         req.body?.referralId ||
         req.query?.referralId ||
+        req.cookies?.referralRecordId ||
         req.cookies?.referralId;
       if (referralId) {
         try {
@@ -7707,38 +7708,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register redemption routes (Phase R1)
   const redemptionRoutes = (await import("./redemptionRoutes")).default;
   app.use("/api/restaurants", redemptionRoutes);
-
-  // Capture affiliate ref tags on any request and store for signup attribution
-  app.use(async (req: any, res: any, next: any) => {
-    const ref = typeof req.query?.ref === "string" ? req.query.ref.trim() : "";
-    if (!ref) {
-      return next();
-    }
-
-    try {
-      const { resolveAffiliateUserId } = await import("./affiliateTagService");
-      const { recordReferralClick } = await import("./referralService");
-      const affiliateUserId = await resolveAffiliateUserId(ref);
-
-      if (affiliateUserId) {
-        await recordReferralClick(
-          affiliateUserId,
-          req.originalUrl || "/",
-          req.get("user-agent") || undefined,
-          req.ip,
-        );
-      }
-    } catch (error) {
-      console.error("[affiliate] Failed to record referral click:", error);
-    }
-
-    res.cookie("referralId", ref, {
-      maxAge: 1000 * 60 * 60 * 24 * 365,
-      httpOnly: false,
-      sameSite: "lax",
-    });
-    return next();
-  });
 
   // Add share middleware (Phase 7) - adds shareUrl helpers to all handlers
   const { shareUrlMiddleware } = await import("./shareMiddleware");

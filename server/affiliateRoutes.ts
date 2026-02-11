@@ -142,6 +142,36 @@ router.get('/click/:code', async (req, res) => {
       return res.status(404).json({ error: 'Link not found' });
     }
 
+    // Bridge to the newer referral/commission pipeline:
+    // - set cookie so signup/login can attribute `affiliateCloserUserId`
+    // - also record a referral click row for analytics
+    let referralRecordId: string | null = null;
+    try {
+      const { recordReferralClick } = await import("./referralService");
+      const result = await recordReferralClick(
+        String(link.affiliateUserId),
+        req.originalUrl || "/",
+        req.get("user-agent") || undefined,
+        req.ip || undefined,
+      );
+      referralRecordId = result?.referralId || null;
+    } catch (error) {
+      console.error("[affiliate] Failed to record referral click:", error);
+    }
+
+    res.cookie("referralId", code, {
+      maxAge: 1000 * 60 * 60 * 24 * 365,
+      httpOnly: false,
+      sameSite: "lax",
+    });
+    if (referralRecordId) {
+      res.cookie("referralRecordId", referralRecordId, {
+        maxAge: 1000 * 60 * 60 * 24 * 365,
+        httpOnly: true,
+        sameSite: "lax",
+      });
+    }
+
     // Redirect to original URL
     res.redirect(link.sourceUrl);
   } catch (error) {

@@ -974,6 +974,58 @@ app.use((req, res, next) => {
     actionRoutes
   );
 
+  // Capture affiliate `?ref=` on *all* requests before the SPA/static handlers run.
+  // This is required so referral attribution works even when the first page hit is the frontend.
+  app.use(async (req: any, res: any, next: any) => {
+    const ref = typeof req.query?.ref === "string" ? req.query.ref.trim() : "";
+    if (!ref) return next();
+
+    // Avoid recording for obvious static asset hits.
+    const pathValue = String(req.path || "");
+    if (
+      pathValue.startsWith("/assets") ||
+      pathValue.startsWith("/favicon") ||
+      pathValue.startsWith("/static") ||
+      pathValue.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|map)$/i)
+    ) {
+      return next();
+    }
+
+    let referralRecordId: string | null = null;
+    try {
+      const { resolveAffiliateUserId } = await import("./affiliateTagService");
+      const { recordReferralClick } = await import("./referralService");
+      const affiliateUserId = await resolveAffiliateUserId(ref);
+
+      if (affiliateUserId) {
+        const result = await recordReferralClick(
+          affiliateUserId,
+          req.originalUrl || "/",
+          req.get("user-agent") || undefined,
+          req.ip || undefined,
+        );
+        referralRecordId = result?.referralId || null;
+      }
+    } catch (error) {
+      console.error("[affiliate] Failed to record referral click:", error);
+    }
+
+    res.cookie("referralId", ref, {
+      maxAge: 1000 * 60 * 60 * 24 * 365,
+      httpOnly: false,
+      sameSite: "lax",
+    });
+    if (referralRecordId) {
+      res.cookie("referralRecordId", referralRecordId, {
+        maxAge: 1000 * 60 * 60 * 24 * 365,
+        httpOnly: true,
+        sameSite: "lax",
+      });
+    }
+
+    return next();
+  });
+
   const server = await registerRoutes(app);
 
   // Setup WebSocket server for food truck GPS tracking

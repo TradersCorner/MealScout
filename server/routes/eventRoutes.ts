@@ -26,6 +26,10 @@ import {
 } from "../services/parkingPassQuality";
 
 export function registerEventRoutes(app: Express) {
+  let parkingPassPublicFeedCache:
+    | { expiresAt: number; payload: any[] }
+    | null = null;
+  let parkingPassPublicFeedLastGood: { payload: any[] } | null = null;
   // Get all upcoming events (public)
   app.get("/api/events/upcoming", async (req: any, res) => {
     try {
@@ -53,6 +57,12 @@ export function registerEventRoutes(app: Express) {
   app.get("/api/parking-pass", async (req: any, res) => {
     try {
       res.setHeader("Cache-Control", "public, max-age=60");
+      if (
+        parkingPassPublicFeedCache &&
+        parkingPassPublicFeedCache.expiresAt > Date.now()
+      ) {
+        return res.json(parkingPassPublicFeedCache.payload);
+      }
       const { occurrences } = await listParkingPassOccurrences({ horizonDays: 30 });
 
       const hostCanAcceptPayments = (event: any) =>
@@ -271,10 +281,19 @@ export function registerEventRoutes(app: Express) {
         };
       });
 
+      parkingPassPublicFeedCache = {
+        payload: enhancedEvents,
+        expiresAt: Date.now() + 60_000,
+      };
+      parkingPassPublicFeedLastGood = { payload: enhancedEvents };
       res.json(enhancedEvents);
     } catch (error: any) {
       console.error("Error fetching parking pass listings:", error);
-      res.status(500).json({ message: "Failed to fetch parking pass listings" });
+      if (parkingPassPublicFeedLastGood?.payload) {
+        res.setHeader("X-MealScout-Stale", "1");
+        return res.json(parkingPassPublicFeedLastGood.payload);
+      }
+      res.status(200).json([]);
     }
   });
 
@@ -282,6 +301,9 @@ export function registerEventRoutes(app: Express) {
   // This endpoint intentionally avoids booking lookups/geocoding so maps can load quickly.
   let parkingPassHostIdsCache:
     | { expiresAt: number; payload: { generatedAt: string; hostIds: string[] } }
+    | null = null;
+  let parkingPassHostIdsLastGood:
+    | { payload: { generatedAt: string; hostIds: string[] } }
     | null = null;
   app.get("/api/parking-pass/host-ids", async (_req: any, res) => {
     try {
@@ -325,10 +347,15 @@ export function registerEventRoutes(app: Express) {
         payload,
         expiresAt: Date.now() + 60_000,
       };
+      parkingPassHostIdsLastGood = { payload };
       res.json(payload);
     } catch (error: any) {
       console.error("Error fetching parking pass host ids:", error);
-      res.status(500).json({ message: "Failed to fetch parking pass host ids" });
+      if (parkingPassHostIdsLastGood?.payload) {
+        res.setHeader("X-MealScout-Stale", "1");
+        return res.json(parkingPassHostIdsLastGood.payload);
+      }
+      res.status(200).json({ generatedAt: new Date().toISOString(), hostIds: [] });
     }
   });
 
@@ -483,7 +510,17 @@ export function registerEventRoutes(app: Express) {
       res.json(payload);
     } catch (error: any) {
       console.error("Error fetching parking pass host status:", error);
-      res.status(500).json({ message: "Failed to fetch parking pass host status" });
+      const dateKey = normalizeDateKey(req.query?.date);
+      const stale = parkingPassHostStatusCacheByDate.get(dateKey);
+      if (stale?.payload) {
+        res.setHeader("X-MealScout-Stale", "1");
+        return res.json(stale.payload);
+      }
+      res.status(200).json({
+        generatedAt: new Date().toISOString(),
+        date: dateKey,
+        hosts: [],
+      });
     }
   });
 
@@ -533,7 +570,10 @@ export function registerEventRoutes(app: Express) {
     isStaffOrAdmin,
     async (_req: any, res) => {
       parkingPassHostIdsCache = null;
+      parkingPassHostIdsLastGood = null;
       parkingPassHostStatusCacheByDate = new Map();
+      parkingPassPublicFeedCache = null;
+      parkingPassPublicFeedLastGood = null;
       res.json({ success: true });
     },
   );

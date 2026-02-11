@@ -603,6 +603,48 @@ export default function ParkingPassPage() {
     },
     staleTime: 60_000,
   });
+  const MAP_LOCATIONS_CACHE_KEY = "mealscout:map:locations:v1";
+  const [cachedMapLocations, setCachedMapLocations] =
+    useState<MapLocationsResponse | null>(() => {
+      try {
+        const raw = localStorage.getItem(MAP_LOCATIONS_CACHE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as any;
+        if (
+          parsed &&
+          Array.isArray(parsed.hostLocations) &&
+          Array.isArray(parsed.eventLocations)
+        ) {
+          return parsed as MapLocationsResponse;
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    });
+
+  useEffect(() => {
+    if (!mapLocationsData) return;
+    setCachedMapLocations(mapLocationsData);
+    try {
+      localStorage.setItem(
+        MAP_LOCATIONS_CACHE_KEY,
+        JSON.stringify(mapLocationsData),
+      );
+    } catch {
+      // ignore
+    }
+  }, [mapLocationsData]);
+
+  const baseMapLocations: MapLocationsResponse = useMemo(() => {
+    return (
+      mapLocationsData ??
+      cachedMapLocations ?? {
+        hostLocations: [],
+        eventLocations: [],
+      }
+    );
+  }, [mapLocationsData, cachedMapLocations]);
 
   // Keep Parking Pass maps in sync with the main map: only show paid/priced host locations.
   const BOOKABLE_HOST_CACHE_KEY = "mealscout:parking-pass:bookableHostIds:v1";
@@ -658,13 +700,12 @@ export default function ParkingPassPage() {
   }, [bookableHostIdPayload, cachedBookableHostIds]);
 
   const paidMapLocations = useMemo(() => {
-    const base = mapLocationsData ?? { hostLocations: [], eventLocations: [] };
-    const hostLocations = (base.hostLocations || []).filter((loc: any) => {
+    const hostLocations = (baseMapLocations.hostLocations || []).filter((loc: any) => {
       const hostId = String(loc?.hostId || "").trim();
       return hostId && bookableHostIds.has(hostId);
     });
-    return { ...base, hostLocations };
-  }, [mapLocationsData, bookableHostIds]);
+    return { ...baseMapLocations, hostLocations };
+  }, [baseMapLocations, bookableHostIds]);
   const [geocodeCache, setGeocodeCache] = useState<
     Record<string, GeoPoint>
   >({});

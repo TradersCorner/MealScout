@@ -1547,6 +1547,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   let mapLocationsCache:
     | { expiresAt: number; payload: { hostLocations: any[]; eventLocations: any[] } }
     | null = null;
+  let mapLocationsLastGood:
+    | { payload: { hostLocations: any[]; eventLocations: any[] } }
+    | null = null;
   app.get("/api/map/locations", async (_req, res) => {
     try {
       res.setHeader("Cache-Control", "public, max-age=60");
@@ -1776,10 +1779,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payload,
         expiresAt: Date.now() + 60_000,
       };
+      mapLocationsLastGood = { payload };
       res.json(payload);
     } catch (error) {
       console.error("Error building map locations feed:", error);
-      res.status(500).json({ message: "Failed to load map data" });
+      if (mapLocationsLastGood?.payload) {
+        res.setHeader("X-MealScout-Stale", "1");
+        return res.json(mapLocationsLastGood.payload);
+      }
+      res.status(200).json({ hostLocations: [], eventLocations: [] });
     }
   });
 
@@ -1789,6 +1797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     isStaffOrAdmin,
     async (_req: any, res) => {
       mapLocationsCache = null;
+      mapLocationsLastGood = null;
       res.json({ success: true });
     },
   );

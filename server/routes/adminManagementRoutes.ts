@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import Stripe from "stripe";
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 import { eq, and, inArray, or, sql, desc, isNull, gte, lt } from "drizzle-orm";
 import { storage } from "../storage";
 import { isAuthenticated, isStaffOrAdmin } from "../unifiedAuth";
@@ -83,6 +85,61 @@ const truckImportUpload = multer({
 const IMPORT_SYSTEM_EMAIL =
   process.env.IMPORT_SYSTEM_EMAIL || "system-import@mealscout.us";
 let importSystemUserIdPromise: Promise<string> | null = null;
+
+const splitSqlMigrationStatements = (migrationSQL: string) => {
+  return migrationSQL
+    .split(/;(?=\s*(?:--|$|\r?\n\s*(?:ALTER|CREATE|INSERT|UPDATE|DELETE|DO)))/i)
+    .map((chunk) => {
+      const withoutLeadingComments = chunk
+        .split(/\r?\n/)
+        .filter((line) => !line.trim().startsWith("--"))
+        .join("\n");
+      return withoutLeadingComments.trim();
+    })
+    .filter((statement) => statement.length > 0);
+};
+
+const runSqlMigrationFile = async (fileName: string) => {
+  const migrationPath = path.join(process.cwd(), "migrations", fileName);
+  if (!fs.existsSync(migrationPath)) return;
+
+  const migrationSQL = fs.readFileSync(migrationPath, "utf-8");
+  const statements = splitSqlMigrationStatements(migrationSQL);
+
+  for (const statement of statements) {
+    try {
+      await db.execute(sql.raw(statement));
+    } catch (error: any) {
+      // Idempotent migrations: ignore "already exists"/duplicate errors.
+      if (
+        error?.code === "42701" || // duplicate_column
+        error?.code === "42P07" || // duplicate_table
+        error?.message?.includes("already exists")
+      ) {
+        continue;
+      }
+      throw error;
+    }
+  }
+};
+
+let ensureTruckImportTablesPromise: Promise<void> | null = null;
+const ensureTruckImportTables = async () => {
+  if (!ensureTruckImportTablesPromise) {
+    ensureTruckImportTablesPromise = (async () => {
+      const result = await db.execute(
+        sql`select 1 as ok from information_schema.tables where table_name = 'truck_import_batches' limit 1`,
+      );
+      const rows = (result as any)?.rows ?? [];
+      if (rows.length > 0) return;
+
+      await runSqlMigrationFile("042_create_truck_import_tables.sql");
+      await runSqlMigrationFile("012_truck_import_invites.sql");
+      await runSqlMigrationFile("041_truck_import_batches_purged.sql");
+    })();
+  }
+  return await ensureTruckImportTablesPromise;
+};
 
 const getOrCreateImportSystemUserId = async (): Promise<string> => {
   if (!importSystemUserIdPromise) {
@@ -1143,8 +1200,8 @@ export function registerAdminManagementRoutes(app: Express) {
     isStaffOrAdmin,
     async (req: any, res) => {
       if (!requireAdminUser(req, res)) return;
+      const includePurged = String(req.query?.includePurged || "") === "1";
       try {
-        const includePurged = String(req.query?.includePurged || "") === "1";
         const batches = await db
           .select()
           .from(truckImportBatches)
@@ -1154,11 +1211,25 @@ export function registerAdminManagementRoutes(app: Express) {
         res.json(batches);
       } catch (error) {
         if (isMissingRelationError(error, "truck_import_batches")) {
-          return res.status(503).json({
-            message:
-              'Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql` (and then `npm run migrate:sql -- 041_truck_import_batches_purged.sql`).',
-            code: "migration_required",
-          });
+          try {
+            await ensureTruckImportTables();
+            const batches = await db
+              .select()
+              .from(truckImportBatches)
+              .where(
+                includePurged ? sql`true` : isNull(truckImportBatches.purgedAt),
+              )
+              .orderBy(desc(truckImportBatches.createdAt))
+              .limit(50);
+            return res.json(batches);
+          } catch (ensureError) {
+            console.error("Error ensuring truck import tables:", ensureError);
+            return res.status(503).json({
+              message:
+                'Truck import tables are missing in the database and could not be auto-created. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql` (and then `npm run migrate:sql -- 041_truck_import_batches_purged.sql`).',
+              code: "migration_required",
+            });
+          }
         }
         console.error("Error fetching truck import batches:", error);
         res.status(500).json({ message: "Failed to fetch import batches" });
@@ -1173,6 +1244,8 @@ export function registerAdminManagementRoutes(app: Express) {
     async (req: any, res) => {
       if (!requireAdminUser(req, res)) return;
       try {
+        await ensureTruckImportTables();
+
         const query = String(req.query?.q || "").trim();
         if (!query) return res.json([]);
 
@@ -1231,6 +1304,8 @@ export function registerAdminManagementRoutes(app: Express) {
     async (req: any, res) => {
       if (!requireAdminUser(req, res)) return;
       try {
+        await ensureTruckImportTables();
+
         const limit = Math.min(100, Math.max(1, Number(req.query?.limit ?? 50)));
         const offset = Math.max(0, Number(req.query?.offset ?? 0));
 
@@ -1283,6 +1358,8 @@ export function registerAdminManagementRoutes(app: Express) {
     async (req: any, res) => {
       if (!requireAdminUser(req, res)) return;
       try {
+        await ensureTruckImportTables();
+
         const listingId = req.params.id;
         const updates: any = {};
         const fields = [
@@ -1367,6 +1444,8 @@ export function registerAdminManagementRoutes(app: Express) {
     async (req: any, res) => {
       if (!requireAdminUser(req, res)) return;
       try {
+        await ensureTruckImportTables();
+
         const listingId = req.params.id;
         const email = String(req.body?.email || "").trim().toLowerCase();
         if (!email) {
@@ -1471,6 +1550,8 @@ export function registerAdminManagementRoutes(app: Express) {
     async (req: any, res) => {
       if (!requireAdminUser(req, res)) return;
       try {
+        await ensureTruckImportTables();
+
         const file = req.file;
         if (!file) {
           return res.status(400).json({ message: "File is required" });
@@ -1824,6 +1905,8 @@ export function registerAdminManagementRoutes(app: Express) {
     async (req: any, res) => {
       if (!requireAdminUser(req, res)) return;
       try {
+        await ensureTruckImportTables();
+
         const batchId = String(req.params.batchId || "").trim();
         const force = Boolean(req.body?.force);
         if (!batchId) {
@@ -2046,6 +2129,8 @@ export function registerAdminManagementRoutes(app: Express) {
     async (req: any, res) => {
       if (!requireAdminUser(req, res)) return;
       try {
+        await ensureTruckImportTables();
+
         const batchId = String(req.params.batchId || "").trim();
         const limit = Math.min(200, Math.max(1, Number(req.query?.limit ?? 50)));
         const offset = Math.max(0, Number(req.query?.offset ?? 0));

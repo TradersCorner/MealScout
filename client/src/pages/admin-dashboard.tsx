@@ -999,6 +999,17 @@ function UnclaimedImportedTrucksTab({ enabled }: { enabled: boolean }) {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
+                      className="w-full px-2 py-1 border rounded-md text-xs sm:col-span-2"
+                      placeholder="Name"
+                      value={edits.name}
+                      onChange={(e) =>
+                        setEditsById({
+                          ...editsById,
+                          [row.id]: { ...edits, name: e.target.value },
+                        })
+                      }
+                    />
+                    <input
                       className="w-full px-2 py-1 border rounded-md text-xs"
                       placeholder="Email"
                       value={edits.email}
@@ -1006,6 +1017,17 @@ function UnclaimedImportedTrucksTab({ enabled }: { enabled: boolean }) {
                         setEditsById({
                           ...editsById,
                           [row.id]: { ...edits, email: e.target.value },
+                        })
+                      }
+                    />
+                    <input
+                      className="w-full px-2 py-1 border rounded-md text-xs"
+                      placeholder="Phone"
+                      value={edits.phone}
+                      onChange={(e) =>
+                        setEditsById({
+                          ...editsById,
+                          [row.id]: { ...edits, phone: e.target.value },
                         })
                       }
                     />

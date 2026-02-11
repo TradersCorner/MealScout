@@ -25,7 +25,7 @@ import {
 import { db } from "./db";
 import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
-import { resolveAffiliateUserId } from "./affiliateTagService";
+import { ensureAffiliateTag, resolveAffiliateUserId } from "./affiliateTagService";
 
 // Extend session to include app context for multi-app OAuth
 declare module "express-session" {
@@ -302,6 +302,7 @@ export async function setupUnifiedAuth(app: Express) {
               userData,
               "customer",
             );
+            kickAffiliateTag(user);
             await applyAffiliateReferral(req, user);
             req.session.oauthUserType = undefined;
             console.log(
@@ -406,6 +407,7 @@ export async function setupUnifiedAuth(app: Express) {
               userData,
               userType === "customer" ? "restaurant_owner" : userType,
             );
+            kickAffiliateTag(user);
             await applyAffiliateReferral(req, user);
             req.session.oauthUserType = undefined;
             console.log(
@@ -643,6 +645,7 @@ export async function setupUnifiedAuth(app: Express) {
               userType,
               appContext,
             );
+            kickAffiliateTag(user);
             await applyAffiliateReferral(req, user);
             req.session.oauthUserType = undefined;
             console.log("✅ Facebook user created/updated successfully:", {
@@ -923,6 +926,7 @@ export async function setupUnifiedAuth(app: Express) {
         userData,
         "customer",
       );
+      kickAffiliateTag(user);
       await applyAffiliateReferral(req, user);
 
       // Send welcome email with verification link (don't block auth flow)
@@ -1008,6 +1012,7 @@ export async function setupUnifiedAuth(app: Express) {
         userData,
         "restaurant_owner",
       );
+      kickAffiliateTag(user);
       await applyAffiliateReferral(req, user);
 
       // Send welcome email with verification link (don't block auth flow)
@@ -1262,6 +1267,7 @@ export async function setupUnifiedAuth(app: Express) {
           ? "admin"
           : (userType as "customer" | "restaurant_owner" | "admin"),
       );
+      kickAffiliateTag(user);
       await applyAffiliateReferral(req, user);
 
       // Establish a standard Passport session using req.login
@@ -1683,6 +1689,14 @@ async function applyAffiliateReferral(req: any, user: User) {
   } catch (error) {
     console.error("[affiliate] Failed to apply referral:", error);
   }
+}
+
+function kickAffiliateTag(user: User) {
+  if (user.userType === "admin" || user.userType === "super_admin") return;
+  if (user.affiliateTag) return;
+  ensureAffiliateTag(user.id).catch((error) =>
+    console.error("[affiliate] Failed to assign tag:", error),
+  );
 }
 
 // Middleware to check if user is authenticated

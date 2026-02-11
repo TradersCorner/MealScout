@@ -2860,6 +2860,12 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
 
+    if (this.shouldAssignAffiliateTag(user.userType)) {
+      ensureAffiliateTag(user.id).catch((error) =>
+        console.error("[affiliate] Failed to assign tag:", error),
+      );
+    }
+
     void syncUserToBrevo(user).catch(() => {});
     return user;
   }

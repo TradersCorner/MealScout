@@ -29,6 +29,28 @@ const app = express();
 const sentryDsn = process.env.SENTRY_DSN;
 const sentryEnabled = Boolean(sentryDsn);
 
+// Minimal cookie parser (avoids adding a dependency). Several auth + affiliate flows rely on `req.cookies`.
+app.use((req: any, _res, next) => {
+  const header = String(req.headers?.cookie || "");
+  const cookies: Record<string, string> = {};
+  if (header) {
+    header.split(";").forEach((part: string) => {
+      const idx = part.indexOf("=");
+      if (idx <= 0) return;
+      const key = part.slice(0, idx).trim();
+      const rawVal = part.slice(idx + 1).trim();
+      if (!key) return;
+      try {
+        cookies[key] = decodeURIComponent(rawVal);
+      } catch {
+        cookies[key] = rawVal;
+      }
+    });
+  }
+  req.cookies = cookies;
+  next();
+});
+
 // ---- CORS (required for www.mealscout.us -> mealscout.onrender.com) ----
 const defaultOrigins = [
   "https://www.mealscout.us",

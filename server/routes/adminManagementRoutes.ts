@@ -13,6 +13,7 @@ import { logAudit } from "../auditLogger";
 import multer from "multer";
 import { parseTruckImportFile } from "../utils/truckImport";
 import { forwardGeocode } from "../utils/geocoding";
+import { ensurePremiumTrialForUserId } from "../services/premiumTrial";
 import {
   deals,
   eventBookings,
@@ -4075,6 +4076,17 @@ export function registerAdminManagementRoutes(app: Express) {
           .innerJoin(users, eq(restaurants.ownerId, users.id))
           .where(eq(verificationRequests.id, id))
           .limit(1);
+
+        if (claimContext?.ownerId) {
+          try {
+            await ensurePremiumTrialForUserId(String(claimContext.ownerId));
+          } catch (e) {
+            console.warn(
+              "ensurePremiumTrialForUserId failed after verification approval:",
+              e,
+            );
+          }
+        }
 
         if (claimContext?.claimedFromImportId) {
           await db

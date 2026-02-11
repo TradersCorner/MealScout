@@ -3,6 +3,7 @@ import { storage } from "./storage";
 import { isAuthenticated, isAdmin, isStaffOrAdmin } from "./unifiedAuth";
 import { logAudit } from "./auditLogger";
 import { sendAccountSetupInvite } from "./utils/accountSetup";
+import { ensurePremiumTrialForUserId } from "./services/premiumTrial";
 import bcrypt from "bcryptjs";
 
 /**
@@ -405,6 +406,11 @@ export function registerStaffRoutes(app: Express) {
             isActive: false, // Inactive until owner completes setup
           });
           restaurantId = restaurant.id;
+          try {
+            await ensurePremiumTrialForUserId(user.id);
+          } catch (e) {
+            console.warn("ensurePremiumTrialForUserId failed after staff create:", e);
+          }
         }
 
         // Audit log

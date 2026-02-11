@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { storage } from "../storage";
+import { ensurePremiumTrialForUserId } from "../services/premiumTrial";
 import { db } from "../db";
 import { deals, restaurants, creditLedger } from "@shared/schema";
 import { eq, and, like, ilike } from "drizzle-orm";
@@ -140,6 +141,12 @@ async function createRestaurant(params: {
       latitude: "0",
       longitude: "0",
     } as any);
+
+    try {
+      await ensurePremiumTrialForUserId(params.userId);
+    } catch (e) {
+      console.warn("ensurePremiumTrialForUserId failed after action createRestaurant:", e);
+    }
 
     return {
       success: true,

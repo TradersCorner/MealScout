@@ -181,6 +181,10 @@ import incidentManager, {
 import { vacEvaluateRestaurantSignup } from "./vacLite";
 import { broadcastLocationUpdate, broadcastStatusUpdate } from "./websocket";
 import { reverseGeocode } from "./utils/geocoding";
+import {
+  ensurePremiumTrialForUser,
+  isPremiumTrialActive,
+} from "./services/premiumTrial";
 import { db } from "./db";
 import {
   and,
@@ -258,46 +262,8 @@ const queueSocialPost = async (payload: {
   });
 };
 
-function isTrialActive(user: User | null): boolean {
-  if (!user?.trialEndsAt) return false;
-  return user.trialEndsAt.getTime() > Date.now();
-}
-
-async function ensureTrialForUser(user: User): Promise<User> {
-  if (isTrialActive(user) || user.trialUsed || user.stripeSubscriptionId) {
-    return user;
-  }
-
-  const eligibleTrialUserTypes = new Set(["restaurant_owner", "food_truck"]);
-  if (!eligibleTrialUserTypes.has(user.userType)) {
-    return user;
-  }
-
-  const restaurantsForUser = await storage.getRestaurantsByOwner(user.id);
-  const hasBusiness =
-    user.userType === "food_truck" ||
-    restaurantsForUser.some(
-      (restaurant) =>
-        restaurant.businessType === "restaurant" ||
-        restaurant.businessType === "bar" ||
-        restaurant.isFoodTruck,
-    );
-
-  if (!hasBusiness) {
-    return user;
-  }
-
-  const startedAt = new Date();
-  const endsAt = new Date(startedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
-  const updated = await storage.updateUser(user.id, {
-    trialStartedAt: startedAt,
-    trialEndsAt: endsAt,
-    trialUsed: true,
-    subscriptionBillingInterval: "trial",
-  });
-
-  return updated || user;
-}
+const isTrialActive = isPremiumTrialActive;
+const ensureTrialForUser = ensurePremiumTrialForUser;
 
 async function getLockedPriceForUser(userId: string): Promise<{
   locked: boolean;
@@ -3171,6 +3137,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...validatedRestaurantData,
         ownerId: user.id,
       });
+      try {
+        user = (await ensureTrialForUser(user)) || user;
+      } catch (e) {
+        console.warn("ensureTrialForUser failed after restaurant creation:", e);
+      }
 
       // VAC-lite auto-verify (with fallback to manual verification request)
       try {
@@ -3680,6 +3651,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             claimedFromImportId: listing.id,
           });
 
+      // Claiming a truck should immediately unlock premium features (trial) for the owner.
+      // If they were a plain customer before, upgrade them to a truck account.
+      if (req.user?.userType === "customer") {
+        await storage.updateUserType(req.user.id, "food_truck");
+      }
+      try {
+        await ensureTrialForUser({
+          ...(req.user as any),
+          userType: req.user?.userType === "customer" ? "food_truck" : req.user?.userType,
+        } as any);
+      } catch (e) {
+        console.warn("ensureTrialForUser failed after truck claim:", e);
+      }
+
       const [claimRequest] = await db
         .insert(truckClaimRequests)
         .values({
@@ -3747,6 +3732,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const restaurant = await storage.createRestaurant(restaurantData);
+      try {
+        await ensureTrialForUser(req.user);
+      } catch (e) {
+        console.warn("ensureTrialForUser failed after /api/restaurants:", e);
+      }
 
       // VAC-lite auto-verify (with fallback to manual verification request)
       try {
@@ -4729,6 +4719,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Promo Code:", promoCode);
       console.log("Billing Interval:", billingInterval);
 
+      const hydratedUser = await ensureTrialForUser(user);
+      if (isTrialActive(hydratedUser)) {
+        return res.send({
+          status: "active",
+          subscriptionId: null,
+          trialAccess: true,
+          message: "Your 30-day premium trial is active. We'll prompt you to pay before it ends.",
+        });
+      }
+
       if (["restaurant_owner", "food_truck"].includes(user?.userType)) {
         const restaurantsByOwner = await storage.getRestaurantsByOwner(user.id);
         const hasVerified = restaurantsByOwner.some(
@@ -4742,16 +4742,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
           });
         }
-      }
-
-      const hydratedUser = await ensureTrialForUser(user);
-      if (isTrialActive(hydratedUser)) {
-        return res.send({
-          status: "active",
-          subscriptionId: null,
-          trialAccess: true,
-          message: "Your 30-day premium trial is active. We'll prompt you to pay before it ends.",
-        });
       }
 
       if (!stripe) {
@@ -4815,6 +4805,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         billingInterval = "month",
         applyCreditsCents,
       } = req.body; // boolean for multiple deals addon, billing interval
+
+      const hydratedUser = await ensureTrialForUser(user);
+      if (isTrialActive(hydratedUser)) {
+        return res.status(400).json({
+          error: {
+            message:
+              "Your 30-day premium trial is already active. We'll prompt you to pay before it ends.",
+          },
+        });
+      }
 
       if (["restaurant_owner", "food_truck"].includes(user?.userType)) {
         const restaurantsByOwner = await storage.getRestaurantsByOwner(user.id);

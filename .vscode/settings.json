@@ -26,11 +26,11 @@
     "**/dist": true,
     "**/.vercel": true
   },
-  // Workaround: if `.git/` ever gets opened as a workspace folder (or scanned as a repo),
-  // VS Code will run Git commands in that folder and show a yellow warning.
-  "git.autoRepositoryDetection": "openEditors",
+  // Avoid VS Code trying to treat `.git/` internals (like COMMIT_EDITMSG) as a repo root.
+  // This is what causes "fatal: this operation must be run in a work tree" warnings.
+  "git.autoRepositoryDetection": true,
   "git.ignoredRepositories": [
-    ".git"
+    "${workspaceFolder}/.git"
   ],
   "search.exclude": {
     "**/node_modules": true,

@@ -1,8 +1,6 @@
 import type { Express } from "express";
 import Stripe from "stripe";
 import crypto from "crypto";
-import fs from "fs";
-import path from "path";
 import { eq, and, inArray, or, sql, desc, isNull, gte, lt } from "drizzle-orm";
 import { storage } from "../storage";
 import { isAuthenticated, isStaffOrAdmin } from "../unifiedAuth";
@@ -86,56 +84,113 @@ const IMPORT_SYSTEM_EMAIL =
   process.env.IMPORT_SYSTEM_EMAIL || "system-import@mealscout.us";
 let importSystemUserIdPromise: Promise<string> | null = null;
 
-const splitSqlMigrationStatements = (migrationSQL: string) => {
-  return migrationSQL
-    .split(/;(?=\s*(?:--|$|\r?\n\s*(?:ALTER|CREATE|INSERT|UPDATE|DELETE|DO)))/i)
-    .map((chunk) => {
-      const withoutLeadingComments = chunk
-        .split(/\r?\n/)
-        .filter((line) => !line.trim().startsWith("--"))
-        .join("\n");
-      return withoutLeadingComments.trim();
-    })
-    .filter((statement) => statement.length > 0);
-};
-
-const runSqlMigrationFile = async (fileName: string) => {
-  const migrationPath = path.join(process.cwd(), "migrations", fileName);
-  if (!fs.existsSync(migrationPath)) return;
-
-  const migrationSQL = fs.readFileSync(migrationPath, "utf-8");
-  const statements = splitSqlMigrationStatements(migrationSQL);
-
-  for (const statement of statements) {
-    try {
-      await db.execute(sql.raw(statement));
-    } catch (error: any) {
-      // Idempotent migrations: ignore "already exists"/duplicate errors.
-      if (
-        error?.code === "42701" || // duplicate_column
-        error?.code === "42P07" || // duplicate_table
-        error?.message?.includes("already exists")
-      ) {
-        continue;
-      }
-      throw error;
-    }
-  }
-};
-
 let ensureTruckImportTablesPromise: Promise<void> | null = null;
 const ensureTruckImportTables = async () => {
   if (!ensureTruckImportTablesPromise) {
     ensureTruckImportTablesPromise = (async () => {
-      const result = await db.execute(
-        sql`select 1 as ok from information_schema.tables where table_name = 'truck_import_batches' limit 1`,
+      const result = await db.execute(sql`
+        select table_name
+        from information_schema.tables
+        where table_name in ('truck_import_batches', 'truck_import_listings')
+      `);
+      const rows = ((result as any)?.rows ?? []) as Array<{ table_name?: string }>;
+      const tableNames = new Set(
+        rows.map((row) => String(row?.table_name || "").trim().toLowerCase()),
       );
-      const rows = (result as any)?.rows ?? [];
-      if (rows.length > 0) return;
+      const hasBatches = tableNames.has("truck_import_batches");
+      const hasListings = tableNames.has("truck_import_listings");
+      if (hasBatches && hasListings) return;
 
-      await runSqlMigrationFile("042_create_truck_import_tables.sql");
-      await runSqlMigrationFile("012_truck_import_invites.sql");
-      await runSqlMigrationFile("041_truck_import_batches_purged.sql");
+      const statements: string[] = [
+        `CREATE TABLE IF NOT EXISTS "truck_import_batches" (
+          "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+          "source" varchar,
+          "file_name" varchar,
+          "uploaded_by" varchar REFERENCES "users"("id"),
+          "total_rows" integer DEFAULT 0,
+          "imported_rows" integer DEFAULT 0,
+          "skipped_rows" integer DEFAULT 0,
+          "purged_at" timestamp,
+          "purged_by" varchar REFERENCES "users"("id"),
+          "created_at" timestamp DEFAULT now(),
+          "updated_at" timestamp DEFAULT now()
+        )`,
+        `CREATE INDEX IF NOT EXISTS "idx_truck_import_batches_created"
+          ON "truck_import_batches" ("created_at")`,
+        `CREATE TABLE IF NOT EXISTS "truck_import_listings" (
+          "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+          "batch_id" varchar REFERENCES "truck_import_batches"("id"),
+          "source" varchar,
+          "external_id" varchar,
+          "email" varchar,
+          "name" varchar NOT NULL,
+          "address" text NOT NULL,
+          "city" varchar,
+          "state" varchar,
+          "phone" varchar,
+          "cuisine_type" varchar,
+          "website_url" varchar,
+          "instagram_url" varchar,
+          "facebook_page_url" varchar,
+          "latitude" decimal(10, 8),
+          "longitude" decimal(11, 8),
+          "confidence_score" integer DEFAULT 0,
+          "status" varchar NOT NULL DEFAULT 'unclaimed',
+          "invited_user_id" varchar REFERENCES "users"("id") ON DELETE SET NULL,
+          "last_invite_sent_at" timestamp,
+          "raw_data" jsonb,
+          "created_at" timestamp DEFAULT now(),
+          "updated_at" timestamp DEFAULT now()
+        )`,
+        `ALTER TABLE IF EXISTS "truck_import_listings"
+          ADD COLUMN IF NOT EXISTS "batch_id" varchar`,
+        `ALTER TABLE IF EXISTS "truck_import_listings"
+          ADD COLUMN IF NOT EXISTS "email" varchar`,
+        `ALTER TABLE IF EXISTS "truck_import_listings"
+          ADD COLUMN IF NOT EXISTS "invited_user_id" varchar REFERENCES "users"("id") ON DELETE SET NULL`,
+        `ALTER TABLE IF EXISTS "truck_import_listings"
+          ADD COLUMN IF NOT EXISTS "last_invite_sent_at" timestamp`,
+        `ALTER TABLE IF EXISTS "truck_import_batches"
+          ADD COLUMN IF NOT EXISTS "purged_at" timestamp`,
+        `ALTER TABLE IF EXISTS "truck_import_batches"
+          ADD COLUMN IF NOT EXISTS "purged_by" varchar REFERENCES "users"("id")`,
+        `CREATE INDEX IF NOT EXISTS "idx_truck_import_external"
+          ON "truck_import_listings" ("external_id")`,
+        `CREATE INDEX IF NOT EXISTS "idx_truck_import_status"
+          ON "truck_import_listings" ("status")`,
+        `CREATE INDEX IF NOT EXISTS "idx_truck_import_state"
+          ON "truck_import_listings" ("state")`,
+        `CREATE INDEX IF NOT EXISTS "idx_truck_import_batch"
+          ON "truck_import_listings" ("batch_id")`,
+      ];
+
+      for (const statement of statements) {
+        try {
+          await db.execute(sql.raw(statement));
+        } catch (error: any) {
+          if (
+            error?.code === "42701" || // duplicate_column
+            error?.code === "42P07" || // duplicate_table
+            error?.message?.includes("already exists")
+          ) {
+            continue;
+          }
+          throw error;
+        }
+      }
+
+      const after = await db.execute(sql`
+        select table_name
+        from information_schema.tables
+        where table_name in ('truck_import_batches', 'truck_import_listings')
+      `);
+      const afterRows = ((after as any)?.rows ?? []) as Array<{ table_name?: string }>;
+      const afterNames = new Set(
+        afterRows.map((row) => String(row?.table_name || "").trim().toLowerCase()),
+      );
+      if (!afterNames.has("truck_import_batches") || !afterNames.has("truck_import_listings")) {
+        throw new Error("Truck import tables are still missing after ensure step.");
+      }
     })();
   }
   return await ensureTruckImportTablesPromise;

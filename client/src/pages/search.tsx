@@ -147,31 +147,28 @@ export default function SearchPage() {
           return response.json();
         }
       : undefined,
-    enabled: !!userLocation || !isLocating,
+    enabled: !searchQuery && (!!userLocation || !isLocating),
   });
 
   const { data: featuredDeals, isLoading: featuredLoading } = useQuery({
     queryKey: ["/api/deals/featured"],
-    enabled: !userLocation && !isLocating,
+    enabled: !searchQuery && !userLocation && !isLocating,
   });
 
-  // Search for restaurants when there's a search query
-  const { data: searchedRestaurants, isLoading: restaurantsLoading } = useQuery(
-    {
-      queryKey: ["/api/restaurants/search", searchQuery],
-      queryFn: async () => {
-        if (!searchQuery || searchQuery.length < 2) return [];
-        const params = new URLSearchParams({ q: searchQuery });
-        // Don't filter by location when searching by text - show all matching restaurants
-        const response = await fetch(`/api/restaurants/search?${params}`);
-        if (!response.ok) throw new Error("Failed to search restaurants");
-        return response.json();
-      },
-      enabled: searchQuery.length >= 2,
-    }
-  );
+  const { data: unifiedResults, isLoading: unifiedLoading } = useQuery({
+    queryKey: ["/api/search", searchQuery],
+    queryFn: async () => {
+      const params = new URLSearchParams({ q: searchQuery });
+      const res = await fetch(`/api/search?${params}`);
+      if (!res.ok) throw new Error("Failed to search");
+      return res.json();
+    },
+    enabled: searchQuery.length >= 2,
+    staleTime: 30_000,
+  });
 
-  const isLoading = nearbyLoading || featuredLoading || restaurantsLoading;
+  const isLoading =
+    nearbyLoading || featuredLoading || unifiedLoading || isLocating;
 
   // Function to map cuisine types and titles to category IDs
   const mapDealToCategory = (deal: any): string[] => {
@@ -245,13 +242,32 @@ export default function SearchPage() {
     : Array.isArray(featuredDeals)
     ? featuredDeals
     : [];
+  const searchedDeals = Array.isArray((unifiedResults as any)?.deals)
+    ? (unifiedResults as any).deals
+    : [];
+  const searchedRestaurants = Array.isArray((unifiedResults as any)?.restaurants)
+    ? (unifiedResults as any).restaurants
+    : [];
+  const searchedParkingPassHosts = Array.isArray(
+    (unifiedResults as any)?.parkingPassHosts,
+  )
+    ? (unifiedResults as any).parkingPassHosts
+    : [];
+  const searchedVideos = Array.isArray((unifiedResults as any)?.videos)
+    ? (unifiedResults as any).videos
+    : [];
+  const searchedEvents = Array.isArray((unifiedResults as any)?.events)
+    ? (unifiedResults as any).events
+    : [];
+
+  const dealsForPage = searchQuery ? searchedDeals : allDeals;
   const categories =
-    userLocation && nearbyDeals && nearbyDeals.length > 0
+    !searchQuery && userLocation && nearbyDeals && nearbyDeals.length > 0
       ? generateDynamicCategories(nearbyDeals)
       : staticCategories;
 
   // allDeals is already defined above
-  const filteredDeals = allDeals
+  const filteredDeals = dealsForPage
     .filter((deal: any) => {
       const matchesSearch =
         !searchQuery ||
@@ -302,10 +318,10 @@ export default function SearchPage() {
 
   const searchTitle = searchQuery
     ? `${searchQuery} - Search Results`
-    : "Search Deals";
+    : "Search";
   const searchDescription = searchQuery
     ? `Find nearby deals for "${searchQuery}". Browse local restaurants and discover limited-time discounts close to you.`
-    : "Search for food deals near you. Filter by category, price range, and more. Discover nearby discounts from local restaurants.";
+    : "Search for deals, restaurants, parking pass spots, videos, and events.";
 
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
@@ -317,19 +333,21 @@ export default function SearchPage() {
         }, restaurant search, deal finder`}
         canonicalUrl="https://mealscout.us/search"
       />
-      <BackHeader title="Search Deals" fallbackHref="/" />
+      <BackHeader title="Search" fallbackHref="/" />
       {/* Header */}
       <header className="px-6 py-6 bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Search Deals</h1>
+            <h1 className="text-2xl font-bold text-foreground">Search</h1>
             <p className="text-sm text-muted-foreground">
-              {isLocating
+              {isLocating && !searchQuery
                 ? "Finding your location..."
-                : userLocation
+                : userLocation && !searchQuery
                 ? "Popular deals near you"
                 : filteredDeals.length > 0
-                ? "Showing deals that match your search"
+                ? "Showing results that match your search"
+                : searchQuery
+                ? "No matches yet"
                 : "Set your location to see what's nearby"}
             </p>
           </div>
@@ -447,13 +465,11 @@ export default function SearchPage() {
       {/* Results */}
       <div className="px-6 py-6">
         {/* Restaurants Section (when searching) */}
-        {searchQuery &&
-          searchedRestaurants &&
-          searchedRestaurants.length > 0 && (
+        {searchQuery && searchedRestaurants.length > 0 && (
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-foreground">
-                  Restaurants
+                  Restaurants & Food Trucks
                 </h2>
                 <span className="text-sm text-muted-foreground">
                   {searchedRestaurants.length} found
@@ -477,7 +493,7 @@ export default function SearchPage() {
                               {restaurant.name}
                             </h3>
                             <p className="text-sm text-muted-foreground mb-2">
-                              {restaurant.cuisineType}
+                              {restaurant.isFoodTruck ? "Food truck" : restaurant.cuisineType}
                             </p>
                             {restaurant.address && (
                               <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -499,6 +515,124 @@ export default function SearchPage() {
               </div>
             </div>
           )}
+
+        {searchQuery && searchedParkingPassHosts.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">
+                Parking Pass Spots
+              </h2>
+              <span className="text-sm text-muted-foreground">
+                {searchedParkingPassHosts.length} found
+              </span>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+              {searchedParkingPassHosts.map((host: any) => {
+                const q = `${host.address || ""}${host.city ? `, ${host.city}` : ""}${host.state ? `, ${host.state}` : ""}`.trim();
+                return (
+                  <Link
+                    key={host.hostId}
+                    href={`/parking-pass${q ? `?q=${encodeURIComponent(q)}` : ""}`}
+                    data-testid={`card-parking-pass-${host.hostId}`}
+                  >
+                    <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean hover:shadow-clean-lg transition-shadow cursor-pointer">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-foreground truncate">
+                              {host.businessName || "Parking Pass spot"}
+                            </h3>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              <span className="truncate">{q}</span>
+                            </p>
+                          </div>
+                          <div className="text-xs rounded-full bg-primary/10 text-primary px-2 py-1">
+                            Bookable
+                          </div>
+                        </div>
+                        {host.spotImageUrl ? (
+                          <img
+                            src={host.spotImageUrl}
+                            alt="Parking spot"
+                            className="w-full h-28 object-cover rounded-md border"
+                            loading="lazy"
+                          />
+                        ) : null}
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {searchQuery && searchedVideos.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Videos</h2>
+              <span className="text-sm text-muted-foreground">
+                {searchedVideos.length} found
+              </span>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+              {searchedVideos.map((story: any) => (
+                <Link
+                  key={story.id}
+                  href={`/video/${story.id}`}
+                  data-testid={`card-video-${story.id}`}
+                >
+                  <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean hover:shadow-clean-lg transition-shadow cursor-pointer">
+                    <CardContent className="p-4 space-y-1">
+                      <div className="font-semibold text-foreground truncate">
+                        {story.title || "Video"}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {story.restaurantName ? `From ${story.restaurantName}` : "Video story"}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {searchQuery && searchedEvents.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Events</h2>
+              <span className="text-sm text-muted-foreground">
+                {searchedEvents.length} found
+              </span>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+              {searchedEvents.map((event: any) => (
+                <Link
+                  key={event.id}
+                  href="/events/public"
+                  data-testid={`card-event-${event.id}`}
+                >
+                  <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean hover:shadow-clean-lg transition-shadow cursor-pointer">
+                    <CardContent className="p-4 space-y-1">
+                      <div className="font-semibold text-foreground truncate">
+                        {event.name || event.hostBusinessName || "Event"}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {event.hostBusinessName}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {event.hostCity}
+                        {event.hostState ? `, ${event.hostState}` : ""}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Deals Section */}
         <div className="flex items-center justify-between mb-6">

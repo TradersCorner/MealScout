@@ -101,6 +101,13 @@ const getOrCreateImportSystemUserId = async (): Promise<string> => {
 };
 
 export function registerAdminManagementRoutes(app: Express) {
+  const isMissingRelationError = (error: unknown, relationName?: string) => {
+    const err = error as { code?: string; message?: string } | null;
+    if (!err || err.code !== "42P01") return false;
+    if (!relationName) return true;
+    return err.message?.includes(`"${relationName}"`) ?? false;
+  };
+
   const denyStaffEdits = (req: any, res: any) => {
     if (req.user?.userType === "staff") {
       res.status(403).json({ message: "Staff cannot modify existing data" });
@@ -1033,6 +1040,13 @@ export function registerAdminManagementRoutes(app: Express) {
           .limit(50);
         res.json(batches);
       } catch (error) {
+        if (isMissingRelationError(error, "truck_import_batches")) {
+          return res.status(503).json({
+            message:
+              'Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql` (and then `npm run migrate:sql -- 041_truck_import_batches_purged.sql`).',
+            code: "migration_required",
+          });
+        }
         console.error("Error fetching truck import batches:", error);
         res.status(500).json({ message: "Failed to fetch import batches" });
       }
@@ -1084,6 +1098,13 @@ export function registerAdminManagementRoutes(app: Express) {
           })),
         );
       } catch (error: any) {
+        if (isMissingRelationError(error, "truck_import_listings")) {
+          return res.status(503).json({
+            message:
+              'Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.',
+            code: "migration_required",
+          });
+        }
         console.error("Error searching truck import listings:", error);
         res.status(500).json({ message: "Failed to search import listings" });
       }
@@ -1667,6 +1688,13 @@ export function registerAdminManagementRoutes(app: Express) {
           headers: (headers || []).slice(0, 50),
         });
       } catch (error: any) {
+        if (isMissingRelationError(error, "truck_import_batches")) {
+          return res.status(503).json({
+            message:
+              'Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql` (and then retry the upload).',
+            code: "migration_required",
+          });
+        }
         console.error("Error importing truck listings:", error);
         res.status(500).json({
           message:
@@ -1880,6 +1908,16 @@ export function registerAdminManagementRoutes(app: Express) {
           console.error("Failed to mark import batch as purged:", markError);
         }
       } catch (error: any) {
+        if (
+          isMissingRelationError(error, "truck_import_batches") ||
+          isMissingRelationError(error, "truck_import_listings")
+        ) {
+          return res.status(503).json({
+            message:
+              'Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.',
+            code: "migration_required",
+          });
+        }
         console.error("Error purging truck import batch:", error);
         res.status(500).json({
           message: error.message || "Failed to purge import batch",
@@ -1973,6 +2011,16 @@ export function registerAdminManagementRoutes(app: Express) {
           offset,
         });
       } catch (error: any) {
+        if (
+          isMissingRelationError(error, "truck_import_batches") ||
+          isMissingRelationError(error, "truck_import_listings")
+        ) {
+          return res.status(503).json({
+            message:
+              'Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.',
+            code: "migration_required",
+          });
+        }
         console.error("Error fetching import batch details:", error);
         res.status(500).json({ message: "Failed to fetch batch details" });
       }

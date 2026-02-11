@@ -577,7 +577,14 @@ export default function ParkingPassPage() {
   const [selectedSlotsByListing, setSelectedSlotsByListing] = useState<
     Record<string, string[]>
   >({});
-  const [cityQuery, setCityQuery] = useState("");
+  const [cityQuery, setCityQuery] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return String(params.get("q") || "");
+    } catch {
+      return "";
+    }
+  });
   const [cartItems, setCartItems] = useState<
     Array<{ listing: ParkingPassListing; slotTypes: string[] }>
   >([]);

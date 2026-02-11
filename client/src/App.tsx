@@ -105,6 +105,7 @@ const VideoPage = lazy(() => import("@/pages/video"));
 const VideoDetailPage = lazy(() => import("@/pages/video-detail"));
 const ChangePassword = lazy(() => import("@/pages/change-password"));
 const TruckLanding = lazy(() => import("@/pages/truck-landing"));
+const ClaimTruckPage = lazy(() => import("@/pages/claim-truck"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -118,6 +119,7 @@ const publicRoutePrefixes = [
   "/login",
   "/customer-signup",
   "/restaurant-signup",
+  "/claim-truck",
   "/deal-creation",
   "/deal/",
   "/search",
@@ -218,6 +220,7 @@ function Router() {
             <Route path="/login" component={Login} />
             <Route path="/customer-signup" component={CustomerSignup} />
             <Route path="/restaurant-signup" component={RestaurantSignup} />
+            <Route path="/claim-truck" component={ClaimTruckPage} />
             <Route path="/deal-creation" component={DealCreation} />
             <Route path="/deal/:id" component={DealDetail} />
             <Route path="/search" component={Search} />
@@ -267,6 +270,7 @@ function Router() {
             <Route path="/login" component={Login} />
             <Route path="/customer-signup" component={CustomerSignup} />
             <Route path="/restaurant-signup" component={RestaurantSignup} />
+            <Route path="/claim-truck" component={ClaimTruckPage} />
             <Route path="/deal-creation" component={DealCreation} />
             <Route path="/deal-edit/:dealId" component={DealEdit} />
             <Route path="/deal/:id" component={DealDetail} />

@@ -9,7 +9,14 @@ import { cn } from "@/lib/utils";
 interface SearchSuggestion {
   id: string;
   text: string;
-  type: "restaurant" | "cuisine" | "deal" | "location";
+  type:
+    | "restaurant"
+    | "cuisine"
+    | "deal"
+    | "location"
+    | "parking_pass"
+    | "video"
+    | "event";
   subtitle?: string;
   icon?: string;
 }
@@ -30,7 +37,7 @@ export default function SmartSearch({
   value,
   onChange,
   onSearch,
-  placeholder = "Search deals, restaurants...",
+  placeholder = "Search deals, trucks, parking pass, videos...",
   className,
   showSuggestions = true,
 }: SmartSearchProps) {
@@ -145,6 +152,25 @@ export default function SmartSearch({
     }
   };
 
+  const getSuggestionIconLabel = (type: SearchSuggestion["type"]) => {
+    switch (type) {
+      case "restaurant":
+        return "REST";
+      case "cuisine":
+        return "CAT";
+      case "deal":
+        return "DEAL";
+      case "parking_pass":
+        return "PASS";
+      case "video":
+        return "VID";
+      case "event":
+        return "EVT";
+      default:
+        return "SRCH";
+    }
+  };
+
   return (
     <div ref={containerRef} className={cn("relative", className)}>
       <div className="smart-search-shell relative flex items-center gap-2 rounded-full px-3 py-2 shadow-clean-lg">
@@ -192,7 +218,7 @@ export default function SmartSearch({
                     data-testid={`suggestion-${suggestion.type}-${suggestion.id}`}
                   >
                     <span className="text-lg">
-                      {getSuggestionIcon(suggestion.type)}
+                      {getSuggestionIconLabel(suggestion.type)}
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-foreground truncate">

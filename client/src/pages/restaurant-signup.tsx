@@ -215,6 +215,7 @@ export default function RestaurantSignup() {
   const [claimSelection, setClaimSelection] = useState<any | null>(null);
   const [claimError, setClaimError] = useState("");
   const [claimRequestingId, setClaimRequestingId] = useState<string | null>(null);
+  const [claimAutoSearch, setClaimAutoSearch] = useState(false);
   const [licenseNumber, setLicenseNumber] = useState("");
   const [onboardingState, dispatchOnboarding] = useReducer(
     hostOnboardingTransition,
@@ -303,6 +304,11 @@ export default function RestaurantSignup() {
       }
 
       if (businessType === "food_truck" && params.get("claim") === "1") {
+        const q = String(params.get("q") || "").trim();
+        if (q) {
+          setClaimQuery(q);
+          setClaimAutoSearch(true);
+        }
         window.setTimeout(() => {
           const input = document.querySelector<HTMLInputElement>(
             '[data-testid="input-claim-search"]',
@@ -665,10 +671,20 @@ export default function RestaurantSignup() {
       if (!res.ok) {
         throw new Error(data.message || "Failed to send reminder");
       }
+      if (data?.hadEmail === false) {
+        toast({
+          title: "No email on file",
+          description: "Ask an admin to add an email, or claim it manually.",
+          variant: "destructive",
+        });
+        return;
+      }
       toast({
-        title: "Reminder sent",
-        description:
-          "We emailed the truck a link to finish setting up their account.",
+        title: data?.emailSent ? "Email sent to owner" : "Email could not be sent",
+        description: data?.emailSent
+          ? "We sent them a link to finish setting up their account."
+          : "An admin should check Email Delivery in the dashboard.",
+        variant: data?.emailSent ? "default" : "destructive",
       });
     } catch (error: any) {
       setClaimError(error.message || COPY.forms.restaurant.claimNoResults);
@@ -704,10 +720,19 @@ export default function RestaurantSignup() {
     }
   };
 
+  useEffect(() => {
+    if (!claimAutoSearch) return;
+    if (!isAuthenticated) return;
+    if (selectedBusinessType !== "food_truck") return;
+    if (!claimQuery.trim()) return;
+    setClaimAutoSearch(false);
+    void handleClaimSearch();
+  }, [claimAutoSearch, isAuthenticated, selectedBusinessType, claimQuery]);
+
   const applyClaimSelection = (listing: any) => {
     if (listing?.canClaim === false) {
       setClaimError(
-        "This truck already has an invited owner. Use “Request this truck” to notify them to finish setup.",
+        'This truck already has an invited owner. Use "Request this truck" to notify them to finish setup.',
       );
       return;
     }

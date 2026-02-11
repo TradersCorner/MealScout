@@ -513,6 +513,7 @@ app.use((req, res, next) => {
   // 🔍 GENEROUS - Search and discovery
   app.use("/api/restaurants/search", searchLimiter);
   app.use("/api/restaurants/nearby", searchLimiter);
+  app.use("/api/search", searchLimiter);
 
   // 👀 VERY GENEROUS - Deal views (engagement tracking)
   app.use("/api/deals/:dealId/view", viewLimiter);

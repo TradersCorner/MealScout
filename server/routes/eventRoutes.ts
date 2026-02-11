@@ -65,7 +65,7 @@ export function registerEventRoutes(app: Express) {
       }
       const { occurrences } = await listParkingPassOccurrences({ horizonDays: 30 });
 
-      const hostCanAcceptPayments = (event: any) =>
+      const payoutsEnabled = (event: any) =>
         Boolean(
           event?.host?.stripeConnectAccountId && event?.host?.stripeChargesEnabled,
         );
@@ -74,19 +74,22 @@ export function registerEventRoutes(app: Express) {
       // and a clean, geocodable address. Draft/incomplete listings can exist
       // but must not be returned here.
       const virtualEvents = occurrences
-        .filter((event: any) => isParkingPassPublicReady(event) && hostCanAcceptPayments(event))
+        .filter((event: any) => isParkingPassPublicReady(event))
         .map((event: any) => ({
           ...event,
-          paymentsEnabled: hostCanAcceptPayments(event),
+          paymentsEnabled: payoutsEnabled(event),
           qualityFlags: computeParkingPassQualityFlags(event),
         }));
 
       const legacyUpcoming = await storage.getAllUpcomingEvents();
       const legacyEvents = legacyUpcoming
-        .filter((event: any) => event?.eventType === "parking_pass" && isParkingPassPublicReady(event) && hostCanAcceptPayments(event))
+        .filter(
+          (event: any) =>
+            event?.eventType === "parking_pass" && isParkingPassPublicReady(event),
+        )
         .map((event: any) => ({
           ...event,
-          paymentsEnabled: hostCanAcceptPayments(event),
+          paymentsEnabled: payoutsEnabled(event),
           qualityFlags: computeParkingPassQualityFlags(event),
         }));
 
@@ -304,30 +307,127 @@ export function registerEventRoutes(app: Express) {
         return res.json(parkingPassHostIdsCache.payload);
       }
 
-      const { occurrences } = await listParkingPassOccurrences({ horizonDays: 30 });
-      const virtualEvents = occurrences.filter(
-        (event: any) =>
-          isParkingPassPublicReady(event) &&
-          Boolean(
-            event?.host?.stripeConnectAccountId && event?.host?.stripeChargesEnabled,
-          ),
-      );
+      const parseCoord = (value?: string | number | null) => {
+        if (value === null || value === undefined) return null;
+        const parsed = typeof value === "string" ? Number(value) : value;
+        return Number.isFinite(parsed) ? parsed : null;
+      };
+      const buildFullAddress = (
+        address?: string | null,
+        city?: string | null,
+        state?: string | null,
+      ) => {
+        const base = (address ?? "").trim();
+        if (!base) return "";
+        const baseLower = base.toLowerCase();
+        const normalizedCity = (city ?? "").trim();
+        const normalizedState = (state ?? "").trim();
 
-      const legacyUpcoming = await storage.getAllUpcomingEvents();
-      const legacyEvents = legacyUpcoming.filter(
-        (event: any) =>
-          event?.eventType === "parking_pass" &&
-          isParkingPassPublicReady(event) &&
-          Boolean(
-            event?.host?.stripeConnectAccountId && event?.host?.stripeChargesEnabled,
-          ),
-      );
+        const parts: string[] = [base];
+        if (normalizedCity && !baseLower.includes(normalizedCity.toLowerCase())) {
+          parts.push(normalizedCity);
+        }
+        if (normalizedState && !baseLower.includes(normalizedState.toLowerCase())) {
+          parts.push(normalizedState);
+        }
+        parts.push("USA");
+        return parts.join(", ");
+      };
+
+      // Prefer series-level gating (not occurrences) so hosts remain visible even if they have no
+      // occurrences in the next N days. Only published + zero-flag series are eligible.
+      const seriesRows = await db
+        .select({
+          seriesId: eventSeries.id,
+          hostId: hosts.id,
+          businessName: hosts.businessName,
+          address: hosts.address,
+          city: hosts.city,
+          state: hosts.state,
+          latitude: hosts.latitude,
+          longitude: hosts.longitude,
+          stripeConnectAccountId: hosts.stripeConnectAccountId,
+          stripeChargesEnabled: hosts.stripeChargesEnabled,
+          defaultStartTime: eventSeries.defaultStartTime,
+          defaultEndTime: eventSeries.defaultEndTime,
+          defaultMaxTrucks: eventSeries.defaultMaxTrucks,
+          breakfastPriceCents: eventSeries.defaultBreakfastPriceCents,
+          lunchPriceCents: eventSeries.defaultLunchPriceCents,
+          dinnerPriceCents: eventSeries.defaultDinnerPriceCents,
+          dailyPriceCents: eventSeries.defaultDailyPriceCents,
+          weeklyPriceCents: eventSeries.defaultWeeklyPriceCents,
+          monthlyPriceCents: eventSeries.defaultMonthlyPriceCents,
+          updatedAt: eventSeries.updatedAt,
+        })
+        .from(eventSeries)
+        .innerJoin(hosts, eq(eventSeries.hostId, hosts.id))
+        .where(
+          sql`${eventSeries.seriesType} = 'parking_pass' and ${eventSeries.status} = 'published'`,
+        )
+        .orderBy(asc(eventSeries.updatedAt));
+
+      // De-dupe: keep the most-recent published series per host.
+      const bestByHostId = new Map<string, (typeof seriesRows)[number]>();
+      for (const row of seriesRows) {
+        bestByHostId.set(String(row.hostId), row);
+      }
+
+      // Opportunistic geocode: map pins can only render with coords, so try to backfill a few per request.
+      const MAX_GEOCODE_PER_REQUEST = 20;
+      let geocoded = 0;
 
       const hostIds = new Set<string>();
-      for (const item of [...virtualEvents, ...legacyEvents]) {
-        const hostId = String(
-          (item as any)?.hostId ?? (item as any)?.host?.id ?? "",
-        ).trim();
+      for (const row of bestByHostId.values()) {
+        let lat = parseCoord(row.latitude);
+        let lng = parseCoord(row.longitude);
+        if ((lat === null || lng === null) && geocoded < MAX_GEOCODE_PER_REQUEST) {
+          const addr = buildFullAddress(row.address, row.city, row.state);
+          if (addr) {
+            const coords = await forwardGeocode(addr).catch(() => null);
+            if (coords) {
+              geocoded += 1;
+              lat = coords.lat;
+              lng = coords.lng;
+              try {
+                await storage.updateHostCoordinates(String(row.hostId), coords.lat, coords.lng);
+              } catch {
+                // ignore persist failures; still allow map rendering when coords are returned.
+              }
+            }
+          }
+        }
+
+        const flags = computeParkingPassQualityFlags({
+          host: {
+            address: row.address,
+            city: row.city,
+            state: row.state,
+            latitude: lat,
+            longitude: lng,
+            stripeConnectAccountId: row.stripeConnectAccountId,
+            stripeChargesEnabled: row.stripeChargesEnabled,
+          },
+          startTime: row.defaultStartTime,
+          endTime: row.defaultEndTime,
+          maxTrucks: row.defaultMaxTrucks,
+          breakfastPriceCents: row.breakfastPriceCents,
+          lunchPriceCents: row.lunchPriceCents,
+          dinnerPriceCents: row.dinnerPriceCents,
+          dailyPriceCents: row.dailyPriceCents,
+          weeklyPriceCents: row.weeklyPriceCents,
+          monthlyPriceCents: row.monthlyPriceCents,
+        });
+        if (flags.length > 0) continue;
+
+        hostIds.add(String(row.hostId));
+      }
+
+      // Legacy fallback: some old parking pass events can exist without a series.
+      const legacyUpcoming = await storage.getAllUpcomingEvents();
+      for (const event of legacyUpcoming) {
+        if (event?.eventType !== "parking_pass") continue;
+        if (!isParkingPassPublicReady(event)) continue;
+        const hostId = String((event as any)?.hostId ?? (event as any)?.host?.id ?? "").trim();
         if (hostId) hostIds.add(hostId);
       }
 
@@ -379,14 +479,6 @@ export function registerEventRoutes(app: Express) {
     const { occurrences } = await listParkingPassOccurrences({ horizonDays: 30 });
     const virtualEvents = occurrences.filter((event: any) => {
       if (!isParkingPassPublicReady(event)) return false;
-      if (
-        !(
-          event?.host?.stripeConnectAccountId &&
-          event?.host?.stripeChargesEnabled
-        )
-      ) {
-        return false;
-      }
       const eventDate = String(event?.date || "").slice(0, 10);
       return eventDate === dateKey;
     });
@@ -395,14 +487,6 @@ export function registerEventRoutes(app: Express) {
     const legacyEvents = legacyUpcoming.filter((event: any) => {
       if (event?.eventType !== "parking_pass") return false;
       if (!isParkingPassPublicReady(event)) return false;
-      if (
-        !(
-          event?.host?.stripeConnectAccountId &&
-          event?.host?.stripeChargesEnabled
-        )
-      ) {
-        return false;
-      }
       const eventDate = String(event?.date || "").slice(0, 10);
       return eventDate === dateKey;
     });

@@ -19,6 +19,29 @@ if (!process.env.DATABASE_URL) {
 export const pool = process.env.DATABASE_URL
   ? new Pool({ connectionString: process.env.DATABASE_URL })
   : undefined as unknown as Pool;
+
+// Some managed Postgres setups (or older DBs) can end up with a `search_path`
+// that excludes `public`, which breaks unqualified table lookups (SQLSTATE 42P01)
+// for tables that were created in `public`.
+if (process.env.DATABASE_URL && pool) {
+  pool.on("connect", (client) => {
+    void client
+      .query("show search_path")
+      .then((result) => {
+        const current = String(result?.rows?.[0]?.search_path || "").trim();
+        if (!current) return;
+        const tokens = current
+          .split(",")
+          .map((part) => part.trim().replace(/^"+|"+$/g, "").toLowerCase());
+        if (tokens.includes("public")) return;
+        const next = `${current}, public`;
+        return client.query("select set_config('search_path', $1, false)", [next]);
+      })
+      .catch((error) => {
+        console.warn("[DB] Failed to normalize search_path:", error?.message || error);
+      });
+  });
+}
 // Cast to any to keep query builder usable even when DATABASE_URL is absent in local dev.
 // Runtime will still require a real connection string in production.
 export const db = (process.env.DATABASE_URL

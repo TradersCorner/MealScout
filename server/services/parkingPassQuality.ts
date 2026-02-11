@@ -52,10 +52,9 @@ export function computeParkingPassQualityFlags(listing: {
   const address = normalize(listing.address ?? host?.address);
   const city = normalize(listing.city ?? host?.city);
   const state = normalize(listing.state ?? host?.state);
-  const paymentsEnabled =
-    host == null
-      ? null
-      : Boolean(host.stripeConnectAccountId && host.stripeChargesEnabled);
+  // Platform payments: we must be able to charge trucks for Parking Pass bookings.
+  // Host payouts (Stripe Connect) are optional; if not enabled we hold host earnings as credit.
+  const platformPaymentsEnabled = Boolean(process.env.STRIPE_SECRET_KEY);
 
   if (!address) flags.push("missing_address");
   if (!city) flags.push("missing_city");
@@ -107,13 +106,13 @@ export function computeParkingPassQualityFlags(listing: {
   );
   if (!hasPricing) flags.push("missing_price");
 
-  if (paymentsEnabled === false) flags.push("payments_disabled");
+  if (!platformPaymentsEnabled) flags.push("payments_disabled");
 
   return Array.from(new Set(flags));
 }
 
 export function isParkingPassPublicReady(listing: Parameters<typeof computeParkingPassQualityFlags>[0]) {
   const flags = computeParkingPassQualityFlags(listing);
-  // Strict: public listings must have zero data-quality flags (including payments enabled).
+  // Strict: public listings must have zero data-quality flags (including platform payments enabled).
   return flags.length === 0;
 }

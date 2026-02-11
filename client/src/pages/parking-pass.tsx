@@ -2864,8 +2864,8 @@ export default function ParkingPassPage() {
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
   const todayDateKey = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
 
-  // Payments are processed by MealScout; a host may still be completing Stripe Connect.
-  // We keep the spot live and bookable, but surface a warning when host payouts aren't configured.
+  // Trucks pay MealScout; hosts can optionally enable Stripe Connect payouts.
+  // If host payouts aren't configured, host earnings are held as credit.
   const platformPaymentsReady = Boolean(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
   const listingPayoutsReady = (listing: ParkingPassListing | null | undefined) =>
     Boolean(
@@ -3010,21 +3010,22 @@ export default function ParkingPassPage() {
                 flags.forEach((flag: any) => uniqueFlags.add(String(flag)));
               });
               const flags = Array.from(uniqueFlags.values());
-              const paymentsEnabled = Boolean(host.stripeConnectAccountId && host.stripeChargesEnabled);
+              const payoutsEnabled = Boolean(host.stripeConnectAccountId && host.stripeChargesEnabled);
               const hasSpotPhoto = Boolean(host.spotImageUrl);
               const hasAddress =
                 Boolean(host.address && String(host.address).trim().length > 0) &&
                 Boolean(host.city && String(host.city).trim().length > 0) &&
                 Boolean(host.state && String(host.state).trim().length > 0);
-              const publicReady = paymentsEnabled && hasAddress && flags.length === 0;
+              const publicReady = hasAddress && flags.length === 0;
 
               const checklist = [
-                { ok: paymentsEnabled, label: "Payments enabled (Stripe)" },
+                { ok: platformPaymentsReady, label: "Platform payments enabled" },
                 { ok: hasAddress, label: "Address complete (street/city/state)" },
                 { ok: !flags.includes("missing_price"), label: "Pricing added (at least one slot)" },
                 { ok: !flags.includes("missing_spots") && !flags.includes("invalid_spots"), label: "Spot count set" },
                 { ok: !flags.includes("invalid_time_window"), label: "Hours set (start/end time)" },
                 { ok: hasSpotPhoto, label: "Spot photo uploaded" },
+                { ok: payoutsEnabled, label: "Host payouts enabled (optional)" },
               ];
               const total = checklist.length;
               const done = checklist.filter((item) => item.ok).length;
@@ -4939,9 +4940,7 @@ export default function ParkingPassPage() {
                             group.listings[0] ||
                             null;
                           const bookingListing = listingForDate || displayListing;
-                          const paymentsReady =
-                            platformPaymentsReady &&
-                            Boolean(bookingListing?.paymentsEnabled);
+                          const paymentsReady = Boolean(platformPaymentsReady);
                           const bookings = Array.isArray(bookingListing?.bookings)
                             ? bookingListing?.bookings ?? []
                             : [];
@@ -5105,13 +5104,6 @@ export default function ParkingPassPage() {
                                       Payments are temporarily unavailable.
                                     </p>
                                   )}
-                                  {platformPaymentsReady &&
-                                    bookingListing &&
-                                    bookingListing?.paymentsEnabled === false && (
-                                      <p className="pt-1 text-[11px] text-[color:var(--status-error)]">
-                                        This host has not enabled payments yet.
-                                      </p>
-                                    )}
                                   {bookings.length > 0 ? (
                                     <div className="pt-1 text-[11px] text-[color:var(--text-muted)] space-y-1">
                                       {bookings
@@ -5176,8 +5168,7 @@ export default function ParkingPassPage() {
                         group.listings[0] ||
                         null;
                       const bookingListing = listingForDate || displayListing;
-                      const paymentsReady =
-                        platformPaymentsReady && Boolean(bookingListing?.paymentsEnabled);
+                    const paymentsReady = Boolean(platformPaymentsReady);
                       const slotOptions = listingForDate
                         ? buildSlotOptions(listingForDate)
                         : [];
@@ -5409,8 +5400,7 @@ export default function ParkingPassPage() {
                       group.listings[0] ||
                       null;
                     const bookingListing = listingForDate || displayListing;
-                    const paymentsReady =
-                      platformPaymentsReady && Boolean(bookingListing?.paymentsEnabled);
+                    const paymentsReady = Boolean(platformPaymentsReady);
                     const slotOptions = listingForDate
                       ? buildSlotOptions(listingForDate)
                       : [];

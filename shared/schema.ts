@@ -244,6 +244,8 @@ export const truckImportBatches = pgTable(
     totalRows: integer("total_rows").default(0),
     importedRows: integer("imported_rows").default(0),
     skippedRows: integer("skipped_rows").default(0),
+    purgedAt: timestamp("purged_at"),
+    purgedBy: varchar("purged_by").references(() => users.id),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },

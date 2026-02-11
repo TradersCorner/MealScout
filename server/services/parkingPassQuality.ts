@@ -9,7 +9,8 @@ type ParkingPassQualityFlag =
   | "invalid_coords"
   | "invalid_time_window"
   | "missing_spots"
-  | "invalid_spots";
+  | "invalid_spots"
+  | "payments_disabled";
 
 const normalize = (value?: string | number | null) =>
   String(value ?? "").trim();
@@ -27,6 +28,8 @@ export function computeParkingPassQualityFlags(listing: {
     state?: string | null;
     latitude?: string | number | null;
     longitude?: string | number | null;
+    stripeConnectAccountId?: string | null;
+    stripeChargesEnabled?: boolean | null;
   } | null;
   address?: string | null;
   city?: string | null;
@@ -49,6 +52,10 @@ export function computeParkingPassQualityFlags(listing: {
   const address = normalize(listing.address ?? host?.address);
   const city = normalize(listing.city ?? host?.city);
   const state = normalize(listing.state ?? host?.state);
+  const paymentsEnabled =
+    host == null
+      ? null
+      : Boolean(host.stripeConnectAccountId && host.stripeChargesEnabled);
 
   if (!address) flags.push("missing_address");
   if (!city) flags.push("missing_city");
@@ -100,23 +107,13 @@ export function computeParkingPassQualityFlags(listing: {
   );
   if (!hasPricing) flags.push("missing_price");
 
+  if (paymentsEnabled === false) flags.push("payments_disabled");
+
   return Array.from(new Set(flags));
 }
 
 export function isParkingPassPublicReady(listing: Parameters<typeof computeParkingPassQualityFlags>[0]) {
   const flags = computeParkingPassQualityFlags(listing);
-  // Strict: public listings must have pricing + a geocodable address.
-  const blocking = new Set<ParkingPassQualityFlag>([
-    "missing_price",
-    "missing_address",
-    "missing_city",
-    "missing_state",
-    "invalid_state",
-    "bad_address_format",
-    "invalid_time_window",
-    "missing_spots",
-    "invalid_spots",
-  ]);
-  return flags.every((flag) => !blocking.has(flag));
+  // Strict: public listings must have zero data-quality flags (including payments enabled).
+  return flags.length === 0;
 }
-

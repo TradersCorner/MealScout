@@ -3003,25 +3003,13 @@ export default function ParkingPassPage() {
                 flags.forEach((flag: any) => uniqueFlags.add(String(flag)));
               });
               const flags = Array.from(uniqueFlags.values());
-              const blocking = new Set<string>([
-                "missing_price",
-                "missing_address",
-                "missing_city",
-                "missing_state",
-                "invalid_state",
-                "bad_address_format",
-                "invalid_time_window",
-                "missing_spots",
-                "invalid_spots",
-              ]);
               const paymentsEnabled = Boolean(host.stripeConnectAccountId && host.stripeChargesEnabled);
               const hasSpotPhoto = Boolean(host.spotImageUrl);
               const hasAddress =
                 Boolean(host.address && String(host.address).trim().length > 0) &&
                 Boolean(host.city && String(host.city).trim().length > 0) &&
                 Boolean(host.state && String(host.state).trim().length > 0);
-              const hasBlockingIssues = flags.some((flag) => blocking.has(flag));
-              const publicReady = paymentsEnabled && hasAddress && !hasBlockingIssues;
+              const publicReady = paymentsEnabled && hasAddress && flags.length === 0;
 
               const checklist = [
                 { ok: paymentsEnabled, label: "Payments enabled (Stripe)" },
@@ -3062,9 +3050,26 @@ export default function ParkingPassPage() {
                   <div className="text-xs text-slate-600">
                     {done}/{total} complete
                     {flags.length > 0 && !publicReady ? (
-                      <span> • Fix the missing items below to go live.</span>
+                      <span> - Fix the missing items below to go live.</span>
                     ) : null}
                   </div>
+                  {flags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {flags.slice(0, 10).map((flag) => (
+                        <span
+                          key={flag}
+                          className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900"
+                        >
+                          {flag}
+                        </span>
+                      ))}
+                      {flags.length > 10 ? (
+                        <span className="text-[11px] text-amber-900">
+                          +{flags.length - 10} more
+                        </span>
+                      ) : null}
+                    </div>
+                  )}
                   <div className="grid gap-1 sm:grid-cols-2">
                     {checklist.map((item) => (
                       <div key={item.label} className="flex items-center gap-2 text-xs">
@@ -3075,7 +3080,7 @@ export default function ParkingPassPage() {
                               : "border-amber-200 bg-amber-50 text-amber-800"
                           }`}
                         >
-                          {item.ok ? "✓" : "!"}
+                          {item.ok ? "OK" : "!"}
                         </span>
                         <span className={item.ok ? "text-slate-700" : "text-amber-900"}>
                           {item.label}

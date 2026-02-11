@@ -7,7 +7,7 @@ import { isAuthenticated, isStaffOrAdmin } from "../unifiedAuth";
 import { sanitizeUser, sanitizeUsers } from "../utils/sanitize";
 import { sendAccountSetupInvite } from "../utils/accountSetup";
 import { emailService } from "../emailService";
-import { emailDeliveryAudit, isEmailConfigured } from "../emailService";
+import { emailDeliveryAudit, getEmailConfigSummary } from "../emailService";
 import { db } from "../db";
 import { logAudit } from "../auditLogger";
 import multer from "multer";
@@ -39,6 +39,7 @@ import {
   isParkingPassPublicReady,
 } from "../services/parkingPassQuality";
 import { listParkingPassOccurrences } from "../services/parkingPassVirtual";
+import { runParkingPassIntegrity } from "../services/parkingPassIntegrity";
 
 // Optional Stripe integration (mirrors server/routes.ts)
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -123,22 +124,7 @@ export function registerAdminManagementRoutes(app: Express) {
     isAuthenticated,
     isStaffOrAdmin,
     async (req: any, res) => {
-      const configured = isEmailConfigured();
-      res.json({
-        configured,
-        provider: "brevo",
-        mode: process.env.EMAIL_NOTIFICATIONS_MODE || "all",
-        fromEmail:
-          process.env.EMAIL_FROM ||
-          process.env.ADMIN_EMAIL ||
-          "info.mealscout@gmail.com",
-        fromName: process.env.EMAIL_FROM_NAME || "MealScout",
-        adminEmail:
-          process.env.ADMIN_EMAIL ||
-          process.env.EMAIL_FROM ||
-          "info.mealscout@gmail.com",
-        publicBaseUrl: process.env.PUBLIC_BASE_URL || "http://localhost:5000",
-      });
+      res.json(getEmailConfigSummary());
     },
   );
 
@@ -155,8 +141,8 @@ export function registerAdminManagementRoutes(app: Express) {
         if (!to) {
           return res.status(400).json({ message: "Recipient email required" });
         }
-        const configured = isEmailConfigured();
-        if (!configured) {
+        const summary = getEmailConfigSummary();
+        if (!summary.configured) {
           return res.status(400).json({
             message:
               "Email provider is not configured (missing/invalid BREVO_API_KEY).",
@@ -172,8 +158,8 @@ export function registerAdminManagementRoutes(app: Express) {
         );
         res.json({
           success: ok,
-          configured,
-          mode: process.env.EMAIL_NOTIFICATIONS_MODE || "all",
+          configured: summary.configured,
+          mode: summary.mode,
           category,
           latestAttempt: emailDeliveryAudit.latest(),
         });
@@ -1038,9 +1024,11 @@ export function registerAdminManagementRoutes(app: Express) {
     async (req: any, res) => {
       if (!requireAdminUser(req, res)) return;
       try {
+        const includePurged = String(req.query?.includePurged || "") === "1";
         const batches = await db
           .select()
           .from(truckImportBatches)
+          .where(includePurged ? sql`true` : isNull(truckImportBatches.purgedAt))
           .orderBy(desc(truckImportBatches.createdAt))
           .limit(50);
         res.json(batches);
@@ -1877,11 +1865,116 @@ export function registerAdminManagementRoutes(app: Express) {
           blocked,
           force,
         });
+
+        // Hide this batch from the default Recent Imports list so staff don't keep re-purging the same file.
+        try {
+          await db
+            .update(truckImportBatches)
+            .set({
+              purgedAt: new Date(),
+              purgedBy: req.user?.id ?? null,
+              updatedAt: new Date(),
+            })
+            .where(eq(truckImportBatches.id, batchId));
+        } catch (markError) {
+          console.error("Failed to mark import batch as purged:", markError);
+        }
       } catch (error: any) {
         console.error("Error purging truck import batch:", error);
         res.status(500).json({
           message: error.message || "Failed to purge import batch",
         });
+      }
+    },
+  );
+
+  app.get(
+    "/api/admin/truck-imports/:batchId",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      if (!requireAdminUser(req, res)) return;
+      try {
+        const batchId = String(req.params.batchId || "").trim();
+        const limit = Math.min(200, Math.max(1, Number(req.query?.limit ?? 50)));
+        const offset = Math.max(0, Number(req.query?.offset ?? 0));
+        if (!batchId) return res.status(400).json({ message: "Batch ID required" });
+
+        const [batch] = await db
+          .select()
+          .from(truckImportBatches)
+          .where(eq(truckImportBatches.id, batchId))
+          .limit(1);
+        if (!batch) return res.status(404).json({ message: "Batch not found" });
+
+        const [{ total }] = await db
+          .select({ total: sql<number>`count(*)` })
+          .from(truckImportListings)
+          .where(eq(truckImportListings.batchId, batchId));
+
+        const statusCounts = await db
+          .select({
+            status: truckImportListings.status,
+            count: sql<number>`count(*)`,
+          })
+          .from(truckImportListings)
+          .where(eq(truckImportListings.batchId, batchId))
+          .groupBy(truckImportListings.status);
+
+        const seededRestaurantCounts = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(restaurants)
+          .innerJoin(
+            truckImportListings,
+            eq(restaurants.claimedFromImportId, truckImportListings.id),
+          )
+          .where(eq(truckImportListings.batchId, batchId));
+
+        const claimRequestCounts = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(truckClaimRequests)
+          .innerJoin(
+            truckImportListings,
+            eq(truckClaimRequests.listingId, truckImportListings.id),
+          )
+          .where(eq(truckImportListings.batchId, batchId));
+
+        const listingRows = await db
+          .select({
+            listing: truckImportListings,
+            restaurantId: restaurants.id,
+            restaurantOwnerId: restaurants.ownerId,
+          })
+          .from(truckImportListings)
+          .leftJoin(
+            restaurants,
+            eq(restaurants.claimedFromImportId, truckImportListings.id),
+          )
+          .where(eq(truckImportListings.batchId, batchId))
+          .orderBy(desc(truckImportListings.confidenceScore))
+          .limit(limit)
+          .offset(offset);
+
+        res.json({
+          batch,
+          total: Number(total ?? 0),
+          statusCounts: statusCounts.map((row: any) => ({
+            status: row.status,
+            count: Number(row.count ?? 0),
+          })),
+          seededRestaurants: Number(seededRestaurantCounts?.[0]?.count ?? 0),
+          claimRequests: Number(claimRequestCounts?.[0]?.count ?? 0),
+          rows: listingRows.map((row: any) => ({
+            ...row.listing,
+            restaurantId: row.restaurantId ?? null,
+            restaurantOwnerId: row.restaurantOwnerId ?? null,
+          })),
+          limit,
+          offset,
+        });
+      } catch (error: any) {
+        console.error("Error fetching import batch details:", error);
+        res.status(500).json({ message: "Failed to fetch batch details" });
       }
     },
   );
@@ -2869,10 +2962,7 @@ export function registerAdminManagementRoutes(app: Express) {
             weeklyPriceCents: series.defaultWeeklyPriceCents,
             monthlyPriceCents: series.defaultMonthlyPriceCents,
           };
-          const paymentsEnabled = Boolean(
-            host.stripeConnectAccountId && host.stripeChargesEnabled,
-          );
-          const publicReady = isParkingPassPublicReady(listing) && paymentsEnabled;
+          const publicReady = isParkingPassPublicReady(listing);
           const nextStatus = publicReady ? "published" : "draft";
 
           if (String(series.status) !== nextStatus) {
@@ -2892,6 +2982,22 @@ export function registerAdminManagementRoutes(app: Express) {
       } catch (error: any) {
         console.error("Error normalizing parking pass series:", error);
         res.status(500).json({ message: "Failed to normalize parking pass series" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/parking-pass/integrity/run",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const dryRun = Boolean(req.body?.dryRun);
+        const result = await runParkingPassIntegrity({ dryRun });
+        res.json({ success: true, ...result });
+      } catch (error: any) {
+        console.error("Error running parking pass integrity:", error);
+        res.status(500).json({ message: "Failed to run integrity job" });
       }
     },
   );

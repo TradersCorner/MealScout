@@ -74,10 +74,7 @@ export function registerEventRoutes(app: Express) {
       // and a clean, geocodable address. Draft/incomplete listings can exist
       // but must not be returned here.
       const virtualEvents = occurrences
-        .filter(
-          (event: any) =>
-            isParkingPassPublicReady(event) && hostCanAcceptPayments(event),
-        )
+        .filter((event: any) => isParkingPassPublicReady(event) && hostCanAcceptPayments(event))
         .map((event: any) => ({
           ...event,
           paymentsEnabled: hostCanAcceptPayments(event),
@@ -86,12 +83,7 @@ export function registerEventRoutes(app: Express) {
 
       const legacyUpcoming = await storage.getAllUpcomingEvents();
       const legacyEvents = legacyUpcoming
-        .filter(
-          (event: any) =>
-            event?.eventType === "parking_pass" &&
-            isParkingPassPublicReady(event) &&
-            hostCanAcceptPayments(event),
-        )
+        .filter((event: any) => event?.eventType === "parking_pass" && isParkingPassPublicReady(event) && hostCanAcceptPayments(event))
         .map((event: any) => ({
           ...event,
           paymentsEnabled: hostCanAcceptPayments(event),
@@ -610,7 +602,7 @@ export function registerEventRoutes(app: Express) {
           const paymentsEnabled = Boolean(
             host.stripeConnectAccountId && host.stripeChargesEnabled,
           );
-          const publicReady = isParkingPassPublicReady(listing) && paymentsEnabled;
+          const publicReady = isParkingPassPublicReady(listing);
 
           return {
             seriesId: series.id,

@@ -8,6 +8,7 @@ import { isAuthenticated } from "../unifiedAuth";
 import { getHostByUserId } from "../services/hostOwnership";
 import { assertMaxSpan180Days, generateOccurrences, filterFutureOccurrences } from "../services/openCallSeries";
 import { eq } from "drizzle-orm";
+import { isParkingPassPublicReady } from "../services/parkingPassQuality";
 
 export function registerOpenCallSeriesRoutes(app: Express) {
   // EVENT SERIES (OPEN CALLS) ENDPOINTS
@@ -90,6 +91,28 @@ export function registerOpenCallSeriesRoutes(app: Express) {
 
       const startDate = new Date(series.startDate);
       const endDate = new Date(series.endDate);
+
+      if (series.seriesType === "parking_pass") {
+        const publicReady = isParkingPassPublicReady({
+          host,
+          startTime: series.defaultStartTime,
+          endTime: series.defaultEndTime,
+          maxTrucks: series.defaultMaxTrucks,
+          breakfastPriceCents: (series as any).defaultBreakfastPriceCents ?? null,
+          lunchPriceCents: (series as any).defaultLunchPriceCents ?? null,
+          dinnerPriceCents: (series as any).defaultDinnerPriceCents ?? null,
+          dailyPriceCents: (series as any).defaultDailyPriceCents ?? null,
+          weeklyPriceCents: (series as any).defaultWeeklyPriceCents ?? null,
+          monthlyPriceCents: (series as any).defaultMonthlyPriceCents ?? null,
+        });
+
+        if (!publicReady) {
+          return res.status(409).json({
+            message:
+              "Parking Pass can’t go live yet. Fix pricing, address, hours, spots, and payments first.",
+          });
+        }
+      }
 
       // Generate occurrence events based on recurrence rule
       // For MVP: Support simple weekly recurrence

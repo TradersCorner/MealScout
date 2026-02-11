@@ -153,10 +153,46 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
   const [listingLoading, setListingLoading] = useState(false);
   const [listingEdits, setListingEdits] = useState<Record<string, any>>({});
   const [purgeForce, setPurgeForce] = useState(false);
+  const [includePurgedBatches, setIncludePurgedBatches] = useState(false);
+  const [detailBatchId, setDetailBatchId] = useState<string | null>(null);
+  const [detailOffset, setDetailOffset] = useState(0);
+  const detailLimit = 50;
 
   const { data: batches = [] } = useQuery<any[]>({
-    queryKey: ["/api/admin/truck-imports"],
+    queryKey: ["/api/admin/truck-imports", includePurgedBatches ? "includePurged" : "activeOnly"],
     enabled,
+    queryFn: async () => {
+      const qs = includePurgedBatches ? "?includePurged=1" : "";
+      const res = await fetch(`/api/admin/truck-imports${qs}`, { credentials: "include" });
+      const data = await res.json().catch(() => []);
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to load import batches.");
+      }
+      return Array.isArray(data) ? data : [];
+    },
+  });
+
+  const { data: batchDetails, isLoading: batchDetailsLoading } = useQuery<any>({
+    queryKey: [
+      "/api/admin/truck-imports",
+      detailBatchId,
+      "details",
+      detailOffset,
+      detailLimit,
+    ],
+    enabled: enabled && !!detailBatchId,
+    queryFn: async () => {
+      if (!detailBatchId) return null;
+      const res = await fetch(
+        `/api/admin/truck-imports/${detailBatchId}?limit=${detailLimit}&offset=${detailOffset}`,
+        { credentials: "include" },
+      );
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to load batch details.");
+      }
+      return data;
+    },
   });
 
   const uploadImport = useMutation({
@@ -629,6 +665,14 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
             />
             Force purge (also deletes claim requests; still blocks anything with bookings)
           </label>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={includePurgedBatches}
+              onChange={(e) => setIncludePurgedBatches(e.target.checked)}
+            />
+            Show purged batches (history)
+          </label>
           {batches.length === 0 ? (
             <div className="text-xs text-muted-foreground">
               No import batches yet.
@@ -636,39 +680,132 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
           ) : (
             <div className="space-y-2">
               {batches.slice(0, 5).map((batch: any) => (
-                <div
-                  key={batch.id}
-                  className="flex items-center justify-between rounded-md border px-3 py-2 text-xs"
-                >
-                  <div>
-                    <div className="font-semibold">{batch.fileName}</div>
-                    <div className="text-muted-foreground">
-                      {batch.source || "Unspecified source"}
-                    </div>
-                    <div className="text-muted-foreground">Batch: {batch.id}</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <div>Imported: {batch.importedRows}</div>
-                      <div className="text-muted-foreground">
-                        Skipped: {batch.skippedRows}
+                <div key={batch.id} className="space-y-2">
+                  <div className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                    <div>
+                      <div className="font-semibold">
+                        {batch.fileName}
+                        {batch.purgedAt ? (
+                          <span className="ml-2 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                            Purged
+                          </span>
+                        ) : null}
                       </div>
+                      <div className="text-muted-foreground">
+                        {batch.source || "Unspecified source"}
+                      </div>
+                      <div className="text-muted-foreground">Batch: {batch.id}</div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      disabled={purgeBatch.isPending}
-                      onClick={() => {
-                        const ok = window.confirm(
-                          `Permanently delete everything seeded by “${batch.fileName}”? This only deletes unclaimed rows.`,
-                        );
-                        if (!ok) return;
-                        purgeBatch.mutate({ batchId: batch.id });
-                      }}
-                    >
-                      Purge
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <div>Imported: {batch.importedRows}</div>
+                        <div className="text-muted-foreground">
+                          Skipped: {batch.skippedRows}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setDetailOffset(0);
+                          setDetailBatchId((current) =>
+                            current === batch.id ? null : batch.id,
+                          );
+                        }}
+                      >
+                        {detailBatchId === batch.id ? "Hide" : "Details"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        disabled={purgeBatch.isPending || !!batch.purgedAt}
+                        onClick={() => {
+                          const ok = window.confirm(
+                            `Permanently delete everything seeded by “${batch.fileName}”? This deletes unclaimed rows (and claim requests if force-purge is enabled).`,
+                          );
+                          if (!ok) return;
+                          purgeBatch.mutate({ batchId: batch.id });
+                        }}
+                      >
+                        Purge
+                      </Button>
+                    </div>
                   </div>
+
+                  {detailBatchId === batch.id && (
+                    <div className="rounded-md border bg-muted/20 p-3 text-xs space-y-2">
+                      {batchDetailsLoading ? (
+                        <div className="text-muted-foreground">Loading details...</div>
+                      ) : batchDetails ? (
+                        <>
+                          <div className="flex flex-wrap gap-2">
+                            <span>Total listings: {batchDetails.total}</span>
+                            <span>Seeded profiles: {batchDetails.seededRestaurants}</span>
+                            <span>Claim requests: {batchDetails.claimRequests}</span>
+                          </div>
+                          <div className="text-muted-foreground">
+                            Status counts:{" "}
+                            {Array.isArray(batchDetails.statusCounts)
+                              ? batchDetails.statusCounts
+                                  .map((row: any) => `${row.status}:${row.count}`)
+                                  .join(" • ")
+                              : "(none)"}
+                          </div>
+                          {Array.isArray(batchDetails.rows) &&
+                          batchDetails.rows.length > 0 ? (
+                            <div className="space-y-1">
+                              {batchDetails.rows.slice(0, 20).map((row: any) => (
+                                <div
+                                  key={row.id}
+                                  className="flex items-center justify-between rounded border bg-background/40 px-2 py-1"
+                                >
+                                  <div className="min-w-0">
+                                    <div className="font-semibold truncate">{row.name}</div>
+                                    <div className="text-muted-foreground truncate">
+                                      {row.city || ""} {row.state || ""} • {row.status}
+                                    </div>
+                                  </div>
+                                  <div className="text-muted-foreground">
+                                    {row.restaurantId ? "claimed" : "unclaimed"}
+                                  </div>
+                                </div>
+                              ))}
+                              {batchDetails.total > detailLimit && (
+                                <div className="flex items-center gap-2 pt-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={detailOffset <= 0}
+                                    onClick={() =>
+                                      setDetailOffset((prev) =>
+                                        Math.max(0, prev - detailLimit),
+                                      )
+                                    }
+                                  >
+                                    Prev
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={detailOffset + detailLimit >= batchDetails.total}
+                                    onClick={() =>
+                                      setDetailOffset((prev) => prev + detailLimit)
+                                    }
+                                  >
+                                    Next
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-muted-foreground">No listings found.</div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-muted-foreground">No details.</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1874,6 +2011,28 @@ export default function AdminDashboard() {
       toast({
         title: "Normalization failed",
         description: error?.message || "Unable to normalize series statuses.",
+        variant: "destructive",
+      });
+    },
+  });
+  const runParkingPassIntegrity = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/parking-pass/integrity/run", {
+        dryRun: false,
+      });
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Integrity job complete",
+        description: `Series created: ${Number(data?.createdDraftSeries ?? 0)}. Defaults updated: ${Number(data?.updatedDefaults ?? 0)}. Status updated: ${Number(data?.updatedStatus ?? 0)}.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/parking-pass/fix-queue"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Integrity job failed",
+        description: error?.message || "Unable to run integrity job.",
         variant: "destructive",
       });
     },
@@ -4197,9 +4356,24 @@ export default function AdminDashboard() {
                   </Badge>
                 </div>
 
+                {emailStatus?.disabled ? (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                    Email sending is disabled by `EMAIL_NOTIFICATIONS_MODE={String(
+                      emailStatus?.mode || "",
+                    )}`.
+                  </div>
+                ) : null}
+
                 {!emailStatus?.configured ? (
-                  <div className="text-xs text-muted-foreground">
-                    Set `BREVO_API_KEY` in the server environment, then restart the server.
+                  <div className="rounded-md border border-[color:var(--status-error)]/30 bg-[color:var(--status-error)]/10 p-3 text-xs text-[color:var(--status-error)]">
+                    Email provider is not configured. Missing:{" "}
+                    {Array.isArray(emailStatus?.missing) && emailStatus.missing.length
+                      ? emailStatus.missing.join(", ")
+                      : "BREVO_API_KEY"}
+                  </div>
+                ) : Array.isArray(emailStatus?.missing) && emailStatus.missing.length > 0 ? (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                    Email config warnings: {emailStatus.missing.join(", ")}
                   </div>
                 ) : null}
 
@@ -4255,6 +4429,12 @@ export default function AdminDashboard() {
                             ) : row.skipReason ? (
                               <div className="truncate text-muted-foreground">
                                 {row.skipReason}
+                              </div>
+                            ) : null}
+                            {row.providerStatusCode ? (
+                              <div className="truncate text-muted-foreground">
+                                Provider status: {row.providerStatusCode}
+                                {row.providerErrorCode ? ` (${row.providerErrorCode})` : ""}
                               </div>
                             ) : null}
                           </div>
@@ -5009,6 +5189,14 @@ export default function AdminDashboard() {
                       onClick={() => clearMapCaches.mutate()}
                     >
                       {clearMapCaches.isPending ? "Clearing..." : "Force refresh map caches"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={runParkingPassIntegrity.isPending}
+                      onClick={() => runParkingPassIntegrity.mutate()}
+                    >
+                      {runParkingPassIntegrity.isPending ? "Running..." : "Run integrity job"}
                     </Button>
                   </div>
                 </div>

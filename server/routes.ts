@@ -3308,44 +3308,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const decorateTruckClaimRows = (rows: any[], opts?: { currentUserId?: string | null }) => {
+    const now = Date.now();
+    const COOLDOWN_MS = 6 * 60 * 60 * 1000;
+    return rows.map((row) => {
+      const hasEmail = Boolean(String(row.email || "").trim());
+      const hasInviteUser = Boolean(row.invitedUserId);
+      const isInviteOwner =
+        row.invitedUserId &&
+        opts?.currentUserId &&
+        String(row.invitedUserId) === String(opts.currentUserId);
+
+      const lastInviteSentAtMs = row.lastInviteSentAt
+        ? new Date(row.lastInviteSentAt).getTime()
+        : 0;
+      const cooldownRemainingMs =
+        lastInviteSentAtMs ? Math.max(0, lastInviteSentAtMs + COOLDOWN_MS - now) : 0;
+
+      const canClaim = hasInviteUser ? Boolean(isInviteOwner) : true;
+      const canRequest = hasEmail && !isInviteOwner;
+
+      return {
+        id: row.id,
+        name: row.name,
+        address: row.address,
+        city: row.city,
+        state: row.state,
+        phone: row.phone,
+        externalId: row.externalId,
+        confidenceScore: row.confidenceScore,
+        invited: Boolean(hasInviteUser || hasEmail),
+        hasEmail,
+        canClaim,
+        canRequest,
+        requestCooldownMinutes: cooldownRemainingMs
+          ? Math.ceil(cooldownRemainingMs / 60000)
+          : 0,
+      };
+    });
+  };
+
   app.get("/api/truck-claims/search", isAuthenticated, async (req: any, res) => {
     try {
       const query = String(req.query?.q || "").trim();
       if (!query) {
         return res.json([]);
       }
-
-      const decorateTruckClaimRows = (rows: any[]) => {
-        const now = Date.now();
-        const COOLDOWN_MS = 6 * 60 * 60 * 1000;
-        return rows.map((row) => {
-          const hasInvite = Boolean(row.invitedUserId || row.email);
-          const isInviteOwner =
-            row.invitedUserId && String(row.invitedUserId) === String(req.user?.id);
-          const lastInviteSentAtMs = row.lastInviteSentAt
-            ? new Date(row.lastInviteSentAt).getTime()
-            : 0;
-          const cooldownRemainingMs =
-            lastInviteSentAtMs ? Math.max(0, lastInviteSentAtMs + COOLDOWN_MS - now) : 0;
-
-          return {
-            id: row.id,
-            name: row.name,
-            address: row.address,
-            city: row.city,
-            state: row.state,
-            phone: row.phone,
-            externalId: row.externalId,
-            confidenceScore: row.confidenceScore,
-            invited: hasInvite,
-            canClaim: !hasInvite,
-            canRequest: hasInvite && !isInviteOwner,
-            requestCooldownMinutes: cooldownRemainingMs
-              ? Math.ceil(cooldownRemainingMs / 60000)
-              : 0,
-          };
-        });
-      };
 
       const externalMatch = await db
         .select({
@@ -3365,13 +3373,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(truckImportListings.externalId, query),
-            eq(truckImportListings.status, "unclaimed"),
+            inArray(truckImportListings.status, ["unclaimed", "claim_requested"] as any),
           ),
         )
         .limit(10);
 
       if (externalMatch.length > 0) {
-        return res.json(decorateTruckClaimRows(externalMatch));
+        return res.json(decorateTruckClaimRows(externalMatch, { currentUserId: req.user?.id }));
       }
 
       const searchValue = `%${query.toLowerCase()}%`;
@@ -3392,7 +3400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(truckImportListings)
         .where(
           and(
-            eq(truckImportListings.status, "unclaimed"),
+            inArray(truckImportListings.status, ["unclaimed", "claim_requested"] as any),
             or(
               sql`lower(${truckImportListings.name}) like ${searchValue}`,
               sql`lower(coalesce(${truckImportListings.address}, '')) like ${searchValue}`,
@@ -3406,14 +3414,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(desc(truckImportListings.confidenceScore))
         .limit(10);
 
-      res.json(decorateTruckClaimRows(matches));
+      res.json(decorateTruckClaimRows(matches, { currentUserId: req.user?.id }));
     } catch (error) {
       console.error("Error searching truck listings:", error);
       res.status(500).json({ message: "Failed to search truck listings" });
     }
   });
 
-  app.post("/api/truck-claims/request", isAuthenticated, async (req: any, res) => {
+  // Public search for claim flow (no email/invite info revealed).
+  app.get("/api/truck-claims/public-search", async (req: any, res) => {
+    try {
+      const query = String(req.query?.q || "").trim();
+      if (!query) return res.json([]);
+
+      const searchValue = `%${query.toLowerCase()}%`;
+      const rows = await db
+        .select({
+          id: truckImportListings.id,
+          name: truckImportListings.name,
+          address: truckImportListings.address,
+          city: truckImportListings.city,
+          state: truckImportListings.state,
+          phone: truckImportListings.phone,
+          externalId: truckImportListings.externalId,
+          confidenceScore: truckImportListings.confidenceScore,
+          lastInviteSentAt: truckImportListings.lastInviteSentAt,
+          invitedUserId: truckImportListings.invitedUserId,
+          email: truckImportListings.email,
+        })
+        .from(truckImportListings)
+        .where(
+          and(
+            inArray(truckImportListings.status, ["unclaimed", "claim_requested"] as any),
+            or(
+              sql`lower(${truckImportListings.name}) like ${searchValue}`,
+              sql`lower(coalesce(${truckImportListings.address}, '')) like ${searchValue}`,
+              sql`lower(coalesce(${truckImportListings.city}, '')) like ${searchValue}`,
+              sql`lower(coalesce(${truckImportListings.state}, '')) like ${searchValue}`,
+              sql`lower(coalesce(${truckImportListings.externalId}, '')) like ${searchValue}`,
+            ),
+          ),
+        )
+        .orderBy(desc(truckImportListings.confidenceScore))
+        .limit(15);
+
+      // No user context => `canClaim` means "claim is possible once logged in".
+      res.json(decorateTruckClaimRows(rows, { currentUserId: null }));
+    } catch (error) {
+      console.error("Error public-searching truck listings:", error);
+      res.status(500).json({ message: "Failed to search truck listings" });
+    }
+  });
+
+  // Public: allow anyone to request a reminder email for an unclaimed (or claim-requested) imported truck.
+  // Guarded by per-listing cooldown + server-side email config checks.
+  app.post("/api/truck-claims/request", async (req: any, res) => {
     try {
       const payloadSchema = z.object({ listingId: z.string().min(1) });
       const { listingId } = payloadSchema.parse(req.body);
@@ -3424,17 +3479,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(truckImportListings.id, listingId))
         .limit(1);
 
-      if (!listing || listing.status !== "unclaimed") {
+      if (
+        !listing ||
+        !["unclaimed", "claim_requested"].includes(String(listing.status))
+      ) {
         return res
           .status(404)
           .json({ message: "Truck listing is not available." });
       }
 
       const inviteEmail = String(listing.email || "").trim().toLowerCase();
+      const hadEmail = Boolean(inviteEmail);
       if (!listing.invitedUserId && !inviteEmail) {
         return res.status(400).json({
           message:
             "This listing doesn't have an email on file. Ask an admin to add one, or claim it manually.",
+          hadEmail: false,
         });
       }
 
@@ -3445,6 +3505,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const minutes = Math.ceil((COOLDOWN_MS - (Date.now() - lastMs)) / 60000);
           return res.status(429).json({
             message: `A reminder was already sent recently. Try again in about ${minutes} minutes.`,
+            cooldownMinutes: minutes,
+            hadEmail,
           });
         }
       }
@@ -3482,10 +3544,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await db
         .update(truckImportListings)
-        .set({ lastInviteSentAt: new Date(), updatedAt: new Date() })
+        .set({
+          lastInviteSentAt: new Date(),
+          status: "claim_requested",
+          updatedAt: new Date(),
+        })
         .where(eq(truckImportListings.id, listing.id));
 
-      res.json({ success: true, emailSent });
+      res.json({
+        success: true,
+        emailSent,
+        hadEmail,
+        cooldownMinutes: 0,
+        status: "claim_requested",
+      });
     } catch (error: any) {
       console.error("Error requesting truck setup reminder:", error);
       res.status(400).json({

@@ -16,8 +16,10 @@ type EmailAttempt = {
   subject: string;
   category: "account" | "general";
   status: EmailAttemptStatus;
-  skipReason?: "mode_filtered" | "provider_not_configured";
+  skipReason?: "mode_filtered" | "mode_disabled" | "provider_not_configured";
   error?: string;
+  providerStatusCode?: number;
+  providerErrorCode?: string;
   provider: "brevo";
   fromEmail: string;
   mode: string;
@@ -66,6 +68,30 @@ export const isEmailConfigured = (): boolean => {
     console.error("Failed to configure Brevo:", error);
     return false;
   }
+};
+
+export const getEmailConfigSummary = () => {
+  const mode = process.env.EMAIL_NOTIFICATIONS_MODE || "all";
+  const missing: string[] = [];
+  if (!process.env.BREVO_API_KEY) missing.push("BREVO_API_KEY");
+  if (!process.env.EMAIL_FROM && !process.env.ADMIN_EMAIL) {
+    missing.push("EMAIL_FROM (or ADMIN_EMAIL)");
+  }
+  if (!process.env.PUBLIC_BASE_URL) missing.push("PUBLIC_BASE_URL");
+
+  const configured = isEmailConfigured();
+  const disabled = ["off", "disabled", "none"].includes(String(mode).toLowerCase());
+  return {
+    configured,
+    provider: "brevo" as const,
+    mode,
+    disabled,
+    missing,
+    fromEmail: EMAIL_CONFIG.fromEmail,
+    fromName: EMAIL_CONFIG.fromName,
+    adminEmail: EMAIL_CONFIG.adminEmail,
+    publicBaseUrl: process.env.PUBLIC_BASE_URL || "http://localhost:5000",
+  };
 };
 
 // Email configuration
@@ -1099,6 +1125,24 @@ export class EmailService {
 
   private async sendEmail(params: BaseEmailParams): Promise<boolean> {
     const notificationMode = process.env.EMAIL_NOTIFICATIONS_MODE || "all";
+    const disabled = ["off", "disabled", "none"].includes(
+      String(notificationMode).toLowerCase(),
+    );
+    if (disabled) {
+      emailDeliveryAudit.add({
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        to: params.to,
+        subject: params.subject,
+        category: params.category || "general",
+        status: "skipped",
+        skipReason: "mode_disabled",
+        provider: "brevo",
+        fromEmail: EMAIL_CONFIG.fromEmail,
+        mode: notificationMode,
+      });
+      return false;
+    }
     if (notificationMode === "account_only" && params.category !== "account") {
       console.warn(
         `Email skipped for ${params.to}: ${params.subject} (category: ${params.category || "general"})`,
@@ -1180,10 +1224,24 @@ export class EmailService {
       return true;
     } catch (error) {
       console.error(`Failed to send email to ${params.to}:`, error);
+      const anyError: any = error as any;
+      const providerStatusCode =
+        typeof anyError?.status === "number"
+          ? anyError.status
+          : typeof anyError?.response?.status === "number"
+            ? anyError.response.status
+            : typeof anyError?.response?.res?.statusCode === "number"
+              ? anyError.response.res.statusCode
+              : undefined;
+      const providerErrorCode =
+        typeof anyError?.code === "string"
+          ? anyError.code
+          : typeof anyError?.response?.body?.code === "string"
+            ? anyError.response.body.code
+            : undefined;
       const errorMessage = (() => {
         try {
           if (!error) return "Unknown error";
-          const anyError: any = error as any;
           if (typeof anyError?.message === "string" && anyError.message.trim()) {
             return anyError.message.trim();
           }
@@ -1200,6 +1258,8 @@ export class EmailService {
         category: params.category || "general",
         status: "failed",
         error: errorMessage,
+        providerStatusCode,
+        providerErrorCode,
         provider: "brevo",
         fromEmail: EMAIL_CONFIG.fromEmail,
         mode: notificationMode,

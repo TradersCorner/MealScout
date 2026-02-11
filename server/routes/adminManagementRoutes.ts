@@ -2989,15 +2989,26 @@ export function registerAdminManagementRoutes(app: Express) {
     async (_req: any, res) => {
       try {
         const rows = await db
-          .select({ series: eventSeries, host: hosts })
+          .select({ series: eventSeries })
           .from(eventSeries)
-          .innerJoin(hosts, eq(hosts.id, eventSeries.hostId))
           .where(eq(eventSeries.seriesType, "parking_pass"));
+
+        const hostIds = Array.from(
+          new Set(
+            rows
+              .map((row: any) => String(row.series?.hostId || "").trim())
+              .filter(Boolean),
+          ),
+        );
+        const hostRows = await storage.getHostsByIds(hostIds);
+        const hostById = new Map<string, any>(
+          (hostRows || []).map((host: any) => [host.id, host]),
+        );
 
         let updated = 0;
         for (const row of rows as any[]) {
           const series = row.series;
-          const host = row.host;
+          const host = hostById.get(String(series.hostId || "").trim()) ?? null;
           const listing = {
             host,
             startTime: series.defaultStartTime,

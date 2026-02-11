@@ -1,12 +1,13 @@
 import { and, eq, gte, inArray, lt } from "drizzle-orm";
 import { db } from "../db";
+import { storage } from "../storage";
 import {
   eventSeries,
   events,
-  hosts,
   parkingPassBlackoutDates,
   type Event,
   type EventSeries,
+  hosts,
 } from "@shared/schema";
 import { PARKING_PASS_MEAL_WINDOWS, timeToMinutes } from "@shared/parkingPassSlots";
 
@@ -64,11 +65,6 @@ export type ParkingPassOccurrence = Event & {
   seriesPublishedAt?: Date | string | null;
 };
 
-type SeriesJoinRow = {
-  series: EventSeries;
-  host: typeof hosts.$inferSelect;
-};
-
 export async function listParkingPassOccurrences(options?: {
   start?: Date;
   horizonDays?: number;
@@ -92,18 +88,53 @@ export async function listParkingPassOccurrences(options?: {
       )
     : and(eq(eventSeries.seriesType, "parking_pass"), statusFilter as any);
 
-  const seriesRows: SeriesJoinRow[] = await db
+  const seriesRows: Array<{ series: EventSeries }> = await db
     .select({
       series: eventSeries,
-      host: hosts,
     })
     .from(eventSeries)
-    .innerJoin(hosts, eq(hosts.id, eventSeries.hostId))
     .where(whereSeries as any);
 
   if (seriesRows.length === 0) {
     return { occurrences: [] as ParkingPassOccurrence[], start, end };
   }
+
+  const seriesHostIds = Array.from(
+    new Set(
+      seriesRows
+        .map((row) => String(row.series.hostId || "").trim())
+        .filter(Boolean),
+    ),
+  );
+  const hostRows = await storage.getHostsByIds(seriesHostIds);
+  const hostById = new Map<string, any>((hostRows || []).map((host: any) => [host.id, host]));
+  const stubHost = (id: string) =>
+    ({
+      id,
+      userId: "",
+      businessName: "Host location",
+      address: null,
+      city: null,
+      state: null,
+      latitude: null,
+      longitude: null,
+      locationType: "other",
+      expectedFootTraffic: null,
+      amenities: null,
+      contactPhone: null,
+      notes: null,
+      isVerified: false,
+      adminCreated: false,
+      spotCount: 1,
+      stripeConnectAccountId: null,
+      stripeConnectStatus: null,
+      stripeOnboardingCompleted: false,
+      stripeChargesEnabled: false,
+      stripePayoutsEnabled: false,
+      spotImageUrl: null,
+      createdAt: null,
+      updatedAt: null,
+    }) as any;
 
   const seriesIds = seriesRows.map((row) => row.series.id);
   const overrides = await db
@@ -145,7 +176,8 @@ export async function listParkingPassOccurrences(options?: {
   const occurrences: ParkingPassOccurrence[] = [];
   for (const row of seriesRows) {
     const series = row.series;
-    const host = row.host;
+    const hostId = String(series.hostId || "").trim();
+    const host = hostById.get(hostId) ?? stubHost(hostId);
 
     const daysOfWeek = normalizeDaysOfWeek(series.parkingPassDaysOfWeek as unknown);
     const includeAllDays = daysOfWeek.length === 0;

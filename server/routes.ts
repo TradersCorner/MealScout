@@ -1628,22 +1628,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getAllUpcomingEvents(),
       ]);
 
-      const hostProfiles = await db
-        .select({ host: hosts })
-        .from(hosts)
-        .innerJoin(users, eq(hosts.userId, users.id))
-        .where(
-          and(
-            isNotNull(hosts.address),
-            or(eq(users.isDisabled, false), isNull(users.isDisabled)),
-          ),
-        );
-
-      // Hosts do not maintain separate `user_addresses` records for parking pass locations.
-      // All locations live on the host profiles themselves (multiple host rows per user allowed).
-      const hostProfilesWithCoords = hostProfiles.map(
-        ({ host }: { host: typeof hosts.$inferSelect }) => ({ host }),
-      );
+      const hostProfiles = await storage.getAllHosts();
+      const hostProfilesWithCoords = (hostProfiles || [])
+        .filter((host: any) => Boolean(host?.address))
+        .map((host: any) => ({ host }));
 
       const publicEvents = upcomingEvents.filter(
         (event) => !event.requiresPayment,
@@ -1654,6 +1642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: host.id,
           type: "host_location" as const,
           hostId: host.id,
+          locationRequestId: null,
           name: host.businessName,
           address: host.address,
           city: host.city,

@@ -339,15 +339,7 @@ export function registerEventRoutes(app: Express) {
       const seriesRows = await db
         .select({
           seriesId: eventSeries.id,
-          hostId: hosts.id,
-          businessName: hosts.businessName,
-          address: hosts.address,
-          city: hosts.city,
-          state: hosts.state,
-          latitude: hosts.latitude,
-          longitude: hosts.longitude,
-          stripeConnectAccountId: hosts.stripeConnectAccountId,
-          stripeChargesEnabled: hosts.stripeChargesEnabled,
+          hostId: eventSeries.hostId,
           defaultStartTime: eventSeries.defaultStartTime,
           defaultEndTime: eventSeries.defaultEndTime,
           defaultMaxTrucks: eventSeries.defaultMaxTrucks,
@@ -360,7 +352,6 @@ export function registerEventRoutes(app: Express) {
           updatedAt: eventSeries.updatedAt,
         })
         .from(eventSeries)
-        .innerJoin(hosts, eq(eventSeries.hostId, hosts.id))
         .where(
           sql`${eventSeries.seriesType} = 'parking_pass' and ${eventSeries.status} = 'published'`,
         )
@@ -372,16 +363,26 @@ export function registerEventRoutes(app: Express) {
         bestByHostId.set(String(row.hostId), row);
       }
 
+      const seriesHostIds = Array.from(bestByHostId.keys()).filter(Boolean);
+      const hostRows = await storage.getHostsByIds(seriesHostIds);
+      const hostById = new Map<string, any>(
+        (hostRows || []).map((host: any) => [String(host.id), host]),
+      );
+
       // Opportunistic geocode: map pins can only render with coords, so try to backfill a few per request.
       const MAX_GEOCODE_PER_REQUEST = 20;
       let geocoded = 0;
 
       const hostIds = new Set<string>();
       for (const row of bestByHostId.values()) {
-        let lat = parseCoord(row.latitude);
-        let lng = parseCoord(row.longitude);
+        const host = hostById.get(String(row.hostId)) ?? null;
+        const address = host?.address ?? null;
+        const city = host?.city ?? null;
+        const state = host?.state ?? null;
+        let lat = parseCoord(host?.latitude);
+        let lng = parseCoord(host?.longitude);
         if ((lat === null || lng === null) && geocoded < MAX_GEOCODE_PER_REQUEST) {
-          const addr = buildFullAddress(row.address, row.city, row.state);
+          const addr = buildFullAddress(address, city, state);
           if (addr) {
             const coords = await forwardGeocode(addr).catch(() => null);
             if (coords) {
@@ -399,13 +400,13 @@ export function registerEventRoutes(app: Express) {
 
         const flags = computeParkingPassQualityFlags({
           host: {
-            address: row.address,
-            city: row.city,
-            state: row.state,
+            address,
+            city,
+            state,
             latitude: lat,
             longitude: lng,
-            stripeConnectAccountId: row.stripeConnectAccountId,
-            stripeChargesEnabled: row.stripeChargesEnabled,
+            stripeConnectAccountId: null,
+            stripeChargesEnabled: null,
           },
           startTime: row.defaultStartTime,
           endTime: row.defaultEndTime,
@@ -663,13 +664,25 @@ export function registerEventRoutes(app: Express) {
         const rows = await db
           .select({
             series: eventSeries,
-            host: hosts,
           })
           .from(eventSeries)
-          .innerJoin(hosts, eq(hosts.id, eventSeries.hostId))
           .where(eq(eventSeries.seriesType, "parking_pass"));
 
-        const items = rows.map(({ series, host }: any) => {
+        const hostIds = Array.from(
+          new Set(
+            rows
+              .map((row: any) => String(row.series?.hostId || "").trim())
+              .filter(Boolean),
+          ),
+        );
+        const hostRows = await storage.getHostsByIds(hostIds);
+        const hostById = new Map<string, any>(
+          (hostRows || []).map((host: any) => [host.id, host]),
+        );
+
+        const items = rows.map(({ series }: any) => {
+          const hostId = String(series.hostId || "").trim();
+          const host = hostById.get(hostId) ?? null;
           const listing = {
             host,
             startTime: (series as any).defaultStartTime,
@@ -683,30 +696,26 @@ export function registerEventRoutes(app: Express) {
             monthlyPriceCents: (series as any).defaultMonthlyPriceCents,
           };
           const qualityFlags = computeParkingPassQualityFlags(listing);
-          const paymentsEnabled = Boolean(
-            host.stripeConnectAccountId && host.stripeChargesEnabled,
-          );
           const publicReady = isParkingPassPublicReady(listing);
 
           return {
             seriesId: series.id,
             seriesStatus: (series as any).status ?? null,
-            hostId: host.id,
-            hostUserId: host.userId,
-            businessName: host.businessName,
-            address: host.address,
-            city: host.city,
-            state: host.state,
-            paymentsEnabled,
+            hostId: host?.id ?? hostId,
+            hostUserId: host?.userId ?? null,
+            businessName: host?.businessName ?? null,
+            address: host?.address ?? null,
+            city: host?.city ?? null,
+            state: host?.state ?? null,
             publicReady,
             qualityFlags,
-            hasSpotPhoto: Boolean((host as any).spotImageUrl),
+            hasSpotPhoto: Boolean((host as any)?.spotImageUrl),
           };
         });
 
         items.sort((a: any, b: any) => {
-          const aScore = (a.publicReady ? 0 : 10) + (a.paymentsEnabled ? 0 : 5) + a.qualityFlags.length;
-          const bScore = (b.publicReady ? 0 : 10) + (b.paymentsEnabled ? 0 : 5) + b.qualityFlags.length;
+          const aScore = (a.publicReady ? 0 : 10) + a.qualityFlags.length;
+          const bScore = (b.publicReady ? 0 : 10) + b.qualityFlags.length;
           return bScore - aScore;
         });
 

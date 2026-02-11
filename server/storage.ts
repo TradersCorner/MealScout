@@ -105,7 +105,7 @@ import {
   type InsertClaim,
 } from "@shared/schema";
 import { PARKING_PASS_MEAL_WINDOWS } from "@shared/parkingPassSlots";
-import { db } from "./db";
+import { db, pool } from "./db";
 import {
   eq,
   and,
@@ -134,6 +134,7 @@ export interface IStorage {
   getHostByUserId(userId: string): Promise<Host | undefined>;
   ensureDraftParkingPassForHost(hostId: string): Promise<boolean>;
   getHostsByUserId(userId: string): Promise<Host[]>;
+  getHostsByIds(hostIds: string[]): Promise<Host[]>;
   syncHostFromUserAddress(
     userId: string,
     address: UserAddress,
@@ -711,6 +712,101 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private hostTableInfoPromise:
+    | Promise<{ schema: string; columns: Set<string> }>
+    | null = null;
+
+  private async getHostTableInfo(): Promise<{ schema: string; columns: Set<string> }> {
+    if (this.hostTableInfoPromise) return this.hostTableInfoPromise;
+    // Never allow this to reject: if information_schema isn't accessible (or any other
+    // transient DB issue), fall back to a minimal, safe projection instead of 500'ing.
+    this.hostTableInfoPromise = (async () => {
+      try {
+        if (!pool) {
+          return { schema: "public", columns: new Set<string>() };
+        }
+
+        const schemaRes = await pool.query(
+          `
+            select table_schema
+            from information_schema.tables
+            where table_name = 'hosts'
+            order by case when table_schema = 'public' then 0 else 1 end
+            limit 1
+          `,
+        );
+        const schema =
+          String(schemaRes.rows?.[0]?.table_schema || "").trim() || "public";
+
+        const colsRes = await pool.query(
+          `
+            select column_name
+            from information_schema.columns
+            where table_schema = $1 and table_name = 'hosts'
+          `,
+          [schema],
+        );
+        const columns = new Set<string>(
+          (colsRes.rows || [])
+            .map((row: any) => String(row.column_name || "").trim())
+            .filter(Boolean),
+        );
+        return { schema, columns };
+      } catch (error) {
+        console.warn("getHostTableInfo failed; using safe host projection:", error);
+        return { schema: "public", columns: new Set<string>() };
+      }
+    })();
+    return this.hostTableInfoPromise;
+  }
+
+  private async selectHostsSafe(whereSql: string, params: any[]): Promise<any[]> {
+    if (!pool) return [];
+    const { schema, columns } = await this.getHostTableInfo();
+
+    const has = (col: string) => columns.has(col);
+    const q = (ident: string) => `"${ident.replace(/"/g, '""')}"`;
+    const select = [
+      `${q("id")} as "id"`,
+      `${q("user_id")} as "userId"`,
+      `${q("business_name")} as "businessName"`,
+      `${q("address")} as "address"`,
+      `${has("city") ? `${q("city")} as "city"` : `null as "city"`}`,
+      `${has("state") ? `${q("state")} as "state"` : `null as "state"`}`,
+      `${has("latitude") ? `${q("latitude")} as "latitude"` : `null as "latitude"`}`,
+      `${has("longitude") ? `${q("longitude")} as "longitude"` : `null as "longitude"`}`,
+      `${
+        has("location_type")
+          ? `${q("location_type")} as "locationType"`
+          : `'other' as "locationType"`
+      }`,
+      `${
+        has("expected_foot_traffic")
+          ? `${q("expected_foot_traffic")} as "expectedFootTraffic"`
+          : `null as "expectedFootTraffic"`
+      }`,
+      `${has("amenities") ? `${q("amenities")} as "amenities"` : `null as "amenities"`}`,
+      `${has("contact_phone") ? `${q("contact_phone")} as "contactPhone"` : `null as "contactPhone"`}`,
+      `${has("notes") ? `${q("notes")} as "notes"` : `null as "notes"`}`,
+      `${has("is_verified") ? `${q("is_verified")} as "isVerified"` : `false as "isVerified"`}`,
+      `${has("admin_created") ? `${q("admin_created")} as "adminCreated"` : `false as "adminCreated"`}`,
+      `${has("spot_count") ? `${q("spot_count")} as "spotCount"` : `1 as "spotCount"`}`,
+      `${has("stripe_connect_account_id") ? `${q("stripe_connect_account_id")} as "stripeConnectAccountId"` : `null as "stripeConnectAccountId"`}`,
+      `${has("stripe_connect_status") ? `${q("stripe_connect_status")} as "stripeConnectStatus"` : `null as "stripeConnectStatus"`}`,
+      `${has("stripe_onboarding_completed") ? `${q("stripe_onboarding_completed")} as "stripeOnboardingCompleted"` : `false as "stripeOnboardingCompleted"`}`,
+      `${has("stripe_charges_enabled") ? `${q("stripe_charges_enabled")} as "stripeChargesEnabled"` : `false as "stripeChargesEnabled"`}`,
+      `${has("stripe_payouts_enabled") ? `${q("stripe_payouts_enabled")} as "stripePayoutsEnabled"` : `false as "stripePayoutsEnabled"`}`,
+      `${has("spot_image_url") ? `${q("spot_image_url")} as "spotImageUrl"` : `null as "spotImageUrl"`}`,
+      `${has("created_at") ? `${q("created_at")} as "createdAt"` : `null as "createdAt"`}`,
+      `${has("updated_at") ? `${q("updated_at")} as "updatedAt"` : `null as "updatedAt"`}`,
+    ];
+
+    const orderBy = has("created_at") ? ` order by ${q("created_at")} desc` : "";
+    const sqlText = `select ${select.join(", ")} from ${q(schema)}.${q("hosts")} ${whereSql}${orderBy}`;
+    const result = await pool.query(sqlText, params);
+    return result.rows || [];
+  }
+
   private shouldAssignAffiliateTag(userType?: string | null) {
     return userType !== "admin" && userType !== "super_admin";
   }
@@ -818,24 +914,54 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getHost(id: string): Promise<Host | undefined> {
-    const [host] = await db.select().from(hosts).where(eq(hosts.id, id));
-    return host;
+    try {
+      const rows = await this.selectHostsSafe(`where "id" = $1 limit 1`, [id]);
+      return (rows[0] as any) || undefined;
+    } catch {
+      const [host] = await db.select().from(hosts).where(eq(hosts.id, id));
+      return host;
+    }
   }
 
   async getHostByUserId(userId: string): Promise<Host | undefined> {
-    const [host] = await db
-      .select()
-      .from(hosts)
-      .where(eq(hosts.userId, userId));
-    return host;
+    try {
+      const rows = await this.selectHostsSafe(`where "user_id" = $1 limit 1`, [userId]);
+      return (rows[0] as any) || undefined;
+    } catch {
+      const [host] = await db
+        .select()
+        .from(hosts)
+        .where(eq(hosts.userId, userId));
+      return host;
+    }
   }
 
   async getHostsByUserId(userId: string): Promise<Host[]> {
-    return await db
-      .select()
-      .from(hosts)
-      .where(eq(hosts.userId, userId))
-      .orderBy(desc(hosts.createdAt));
+    try {
+      return (await this.selectHostsSafe(`where "user_id" = $1`, [userId])) as any;
+    } catch {
+      return await db
+        .select()
+        .from(hosts)
+        .where(eq(hosts.userId, userId))
+        .orderBy(desc(hosts.createdAt));
+    }
+  }
+
+  async getHostsByIds(hostIds: string[]): Promise<Host[]> {
+    const ids = Array.from(
+      new Set(
+        (hostIds || [])
+          .map((id) => String(id || "").trim())
+          .filter(Boolean),
+      ),
+    );
+    if (ids.length === 0) return [];
+    try {
+      return (await this.selectHostsSafe(`where "id" = any($1::text[])`, [ids])) as any;
+    } catch {
+      return await db.select().from(hosts).where(inArray(hosts.id, ids));
+    }
   }
 
   private normalizeHostValue(value?: string | null): string {
@@ -1012,7 +1138,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllHosts(): Promise<Host[]> {
-    return await db.select().from(hosts).orderBy(desc(hosts.createdAt));
+    try {
+      return (await this.selectHostsSafe("", [])) as any;
+    } catch {
+      return await db.select().from(hosts).orderBy(desc(hosts.createdAt));
+    }
   }
 
   async updateHostCoordinates(
@@ -1094,14 +1224,59 @@ export class DatabaseStorage implements IStorage {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    return await db.query.events.findMany({
-      where: and(gte(events.date, today), ne(events.status, "cancelled")),
-      orderBy: asc(events.date),
-      with: {
-        host: true,
-        series: true,
-      },
-    });
+    // Avoid `with: { host: true }` here because older deployments may not have all
+    // host columns that our shared schema expects, which would 500 map endpoints.
+    const rows = await db
+      .select({ event: events, series: eventSeries })
+      .from(events)
+      .leftJoin(eventSeries, eq(eventSeries.id, events.seriesId))
+      .where(and(gte(events.date, today), ne(events.status, "cancelled")))
+      .orderBy(asc(events.date));
+
+    const hostIds = Array.from(
+      new Set(
+        rows
+          .map((row) => String(row.event.hostId || "").trim())
+          .filter(Boolean),
+      ),
+    );
+    const hostRows = await this.getHostsByIds(hostIds);
+    const hostById = new Map<string, Host>(
+      (hostRows || []).map((host) => [host.id, host]),
+    );
+    const stubHost = (id: string): Host =>
+      ({
+        id,
+        userId: "",
+        businessName: "Host location",
+        address: null,
+        city: null,
+        state: null,
+        latitude: null,
+        longitude: null,
+        locationType: "other",
+        expectedFootTraffic: null,
+        amenities: null,
+        contactPhone: null,
+        notes: null,
+        isVerified: false,
+        adminCreated: false,
+        spotCount: 1,
+        stripeConnectAccountId: null,
+        stripeConnectStatus: null,
+        stripeOnboardingCompleted: false,
+        stripeChargesEnabled: false,
+        stripePayoutsEnabled: false,
+        spotImageUrl: null,
+        createdAt: null as any,
+        updatedAt: null as any,
+      }) as any;
+
+    return rows.map(({ event, series }) => ({
+      ...(event as any),
+      host: hostById.get(String(event.hostId || "")) ?? stubHost(String(event.hostId || "")),
+      series: (series as any) ?? null,
+    })) as any;
   }
 
   async createEventInterest(

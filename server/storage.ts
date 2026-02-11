@@ -1234,9 +1234,9 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(events.date));
 
     const hostIds = Array.from(
-      new Set(
+      new Set<string>(
         rows
-          .map((row) => String(row.event.hostId || "").trim())
+          .map((row: any) => String(row.event.hostId || "").trim())
           .filter(Boolean),
       ),
     );
@@ -1272,7 +1272,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: null as any,
       }) as any;
 
-    return rows.map(({ event, series }) => ({
+    return rows.map(({ event, series }: any) => ({
       ...(event as any),
       host: hostById.get(String(event.hostId || "")) ?? stubHost(String(event.hostId || "")),
       series: (series as any) ?? null,

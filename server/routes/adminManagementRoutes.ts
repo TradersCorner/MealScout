@@ -2994,7 +2994,7 @@ export function registerAdminManagementRoutes(app: Express) {
           .where(eq(eventSeries.seriesType, "parking_pass"));
 
         const hostIds = Array.from(
-          new Set(
+          new Set<string>(
             rows
               .map((row: any) => String(row.series?.hostId || "").trim())
               .filter(Boolean),

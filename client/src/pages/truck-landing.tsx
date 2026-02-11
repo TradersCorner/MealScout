@@ -35,10 +35,21 @@ export default function TruckLanding() {
     let cancelled = false;
     const fetchPins = async () => {
       try {
-        const res = await fetch("/api/map/locations");
-        if (!res.ok) throw new Error("Map locations unavailable");
-        const data = await res.json();
+        const [hostIdsRes, locationsRes] = await Promise.all([
+          fetch("/api/parking-pass/host-ids"),
+          fetch("/api/map/locations"),
+        ]);
+        if (!hostIdsRes.ok) throw new Error("Parking pass host ids unavailable");
+        if (!locationsRes.ok) throw new Error("Map locations unavailable");
+
+        const hostIdsPayload = await hostIdsRes.json();
+        const data = await locationsRes.json();
         if (cancelled) return;
+        const hostIdSet = new Set<string>(
+          Array.isArray(hostIdsPayload?.hostIds)
+            ? hostIdsPayload.hostIds.map((id: any) => String(id))
+            : [],
+        );
         const pins = (data?.hostLocations || [])
           .map((host: HostPin) => ({
             ...host,
@@ -52,7 +63,8 @@ export default function TruckLanding() {
           .filter(
             (host: HostPin) =>
               typeof host.latitude === "number" &&
-              typeof host.longitude === "number",
+              typeof host.longitude === "number" &&
+              hostIdSet.has(String((host as any).hostId ?? host.id)),
           );
         setHostPins(pins);
       } catch {

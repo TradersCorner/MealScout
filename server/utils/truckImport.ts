@@ -22,12 +22,16 @@ const FIELD_ALIASES: Record<string, string[]> = {
     "license id",
     "license number",
     "license #",
+    "license no",
+    "license no.",
     "licence",
     "licence id",
     "licence number",
     "permit",
     "permit id",
     "permit number",
+    "permit no",
+    "permit no.",
     "registration",
     "registration id",
     "registry id",
@@ -247,7 +251,7 @@ const detectDelimiter = (text: string): string => {
 };
 
 const findHeaderRowIndex = (rows: string[][]): number => {
-  const scanLimit = Math.min(rows.length, 10);
+  const scanLimit = Math.min(rows.length, 50);
   let bestIndex = 0;
   let bestScore = 0;
 

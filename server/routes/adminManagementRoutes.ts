@@ -34,11 +34,11 @@ import {
   creditLedger,
 } from "@shared/schema";
 import { isSlotWithinHours } from "@shared/parkingPassSlots";
-import { listParkingPassOccurrences } from "../services/parkingPassVirtual";
 import {
   computeParkingPassQualityFlags,
   isParkingPassPublicReady,
 } from "../services/parkingPassQuality";
+import { listParkingPassOccurrences } from "../services/parkingPassVirtual";
 
 // Optional Stripe integration (mirrors server/routes.ts)
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -1769,13 +1769,19 @@ export function registerAdminManagementRoutes(app: Express) {
           reason: string;
         }> = [];
 
-        // Only purge listings that are still unclaimed. Never touch claimed/claim_requested rows here.
+        // Purge policy:
+        // - Default: only purge listings that are still `unclaimed`.
+        // - Force: allow purging `claim_requested` too (also deletes the claim requests).
+        // - Never purge `claimed` rows (could belong to a real business owner).
         const purgeableListingIds: string[] = [];
         for (const listing of listings as any[]) {
-          if (String(listing.status || "") !== "unclaimed") {
+          const status = String(listing.status || "");
+          const canPurge =
+            status === "unclaimed" || (force && status === "claim_requested");
+          if (!canPurge) {
             blocked.push({
               listingId: listing.id,
-              reason: `status:${listing.status}`,
+              reason: `status:${status}`,
             });
             continue;
           }
@@ -2817,6 +2823,77 @@ export function registerAdminManagementRoutes(app: Express) {
         });
       }
     }
+  );
+
+  app.post(
+    "/api/admin/parking-pass/backfill",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (_req: any, res) => {
+      try {
+        // Ensures every host row has a draft parking pass series, so pricing can be edited immediately.
+        const created = await storage.ensureDraftParkingPassesForHosts();
+        res.json({ success: true, created });
+      } catch (error: any) {
+        console.error("Error backfilling parking pass series:", error);
+        res.status(500).json({ message: "Failed to backfill parking pass series" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/parking-pass/normalize-series",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (_req: any, res) => {
+      try {
+        const rows = await db
+          .select({ series: eventSeries, host: hosts })
+          .from(eventSeries)
+          .innerJoin(hosts, eq(hosts.id, eventSeries.hostId))
+          .where(eq(eventSeries.seriesType, "parking_pass"));
+
+        let updated = 0;
+        for (const row of rows as any[]) {
+          const series = row.series;
+          const host = row.host;
+          const listing = {
+            host,
+            startTime: series.defaultStartTime,
+            endTime: series.defaultEndTime,
+            maxTrucks: series.defaultMaxTrucks,
+            breakfastPriceCents: series.defaultBreakfastPriceCents,
+            lunchPriceCents: series.defaultLunchPriceCents,
+            dinnerPriceCents: series.defaultDinnerPriceCents,
+            dailyPriceCents: series.defaultDailyPriceCents,
+            weeklyPriceCents: series.defaultWeeklyPriceCents,
+            monthlyPriceCents: series.defaultMonthlyPriceCents,
+          };
+          const paymentsEnabled = Boolean(
+            host.stripeConnectAccountId && host.stripeChargesEnabled,
+          );
+          const publicReady = isParkingPassPublicReady(listing) && paymentsEnabled;
+          const nextStatus = publicReady ? "published" : "draft";
+
+          if (String(series.status) !== nextStatus) {
+            await db
+              .update(eventSeries)
+              .set({
+                status: nextStatus as any,
+                publishedAt: publicReady ? (series.publishedAt ?? new Date()) : null,
+                updatedAt: new Date(),
+              })
+              .where(eq(eventSeries.id, series.id));
+            updated += 1;
+          }
+        }
+
+        res.json({ success: true, updated });
+      } catch (error: any) {
+        console.error("Error normalizing parking pass series:", error);
+        res.status(500).json({ message: "Failed to normalize parking pass series" });
+      }
+    },
   );
 
   app.patch(

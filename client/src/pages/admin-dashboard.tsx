@@ -1607,7 +1607,7 @@ function StaffManagementTab() {
       {/* Quick Link */}
       <div className="pt-4 border-t">
         <Link href="/staff">
-          <Button variant="outline">Go to Staff Dashboard â†’</Button>
+          <Button variant="outline">Go to Staff Dashboard -&gt;</Button>
         </Link>
       </div>
     </div>
@@ -1635,6 +1635,9 @@ export default function AdminDashboard() {
   >({});
   const [addressEdits, setAddressEdits] = useState<Record<string, any>>({});
   const [hostEdits, setHostEdits] = useState<Record<string, any>>({});
+  const [spotImageFilesByHostId, setSpotImageFilesByHostId] = useState<
+    Record<string, File | null>
+  >({});
   const [restaurantEdits, setRestaurantEdits] = useState<Record<string, any>>(
     {},
   );
@@ -1831,6 +1834,93 @@ export default function AdminDashboard() {
       toast({
         title: "Cache clear failed",
         description: error?.message || "Unable to clear caches.",
+        variant: "destructive",
+      });
+    },
+  });
+  const backfillParkingPasses = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/parking-pass/backfill");
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Backfill complete",
+        description: `Created ${Number(data?.created ?? 0)} draft parking pass series.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/parking-pass/fix-queue"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Backfill failed",
+        description: error?.message || "Unable to backfill parking passes.",
+        variant: "destructive",
+      });
+    },
+  });
+  const normalizeParkingPassSeries = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/parking-pass/normalize-series");
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Normalization complete",
+        description: `Updated ${Number(data?.updated ?? 0)} series statuses.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/parking-pass/fix-queue"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Normalization failed",
+        description: error?.message || "Unable to normalize series statuses.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const uploadHostSpotImage = useMutation({
+    mutationFn: async (payload: { hostId: string; file: File }) => {
+      const formData = new FormData();
+      formData.append("image", payload.file);
+      const res = await fetch(`/api/hosts/${payload.hostId}/spot-image`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      const text = await res.text();
+      let data: any = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        data = null;
+      }
+      if (!res.ok) {
+        throw new Error(data?.message || text || "Failed to upload spot photo.");
+      }
+      return data;
+    },
+    onSuccess: (data: any, vars) => {
+      const nextUrl = String(data?.spotImageUrl || "").trim();
+      if (nextUrl) {
+        setHostEdits((prev) => ({
+          ...prev,
+          [vars.hostId]: {
+            ...prev[vars.hostId],
+            spotImageUrl: nextUrl,
+          },
+        }));
+      }
+      setSpotImageFilesByHostId((prev) => ({ ...prev, [vars.hostId]: null }));
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", selectedUser?.id, "hosts"],
+      });
+      toast({ title: "Uploaded", description: "Spot photo updated." });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Upload failed",
+        description: error?.message || "Unable to upload spot photo.",
         variant: "destructive",
       });
     },
@@ -2105,6 +2195,39 @@ export default function AdminDashboard() {
                       })
                     }
                   />
+                  <div className="sm:col-span-2 flex flex-col gap-2 rounded-md border border-dashed p-3">
+                    <div className="text-xs text-muted-foreground">
+                      Upload spot photo (preferred). This will show on all maps.
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) =>
+                          setSpotImageFilesByHostId((prev) => ({
+                            ...prev,
+                            [host.id]: e.target.files?.[0] ?? null,
+                          }))
+                        }
+                        className="w-full text-xs"
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={
+                          uploadHostSpotImage.isPending ||
+                          !spotImageFilesByHostId[host.id]
+                        }
+                        onClick={() => {
+                          const file = spotImageFilesByHostId[host.id];
+                          if (!file) return;
+                          uploadHostSpotImage.mutate({ hostId: host.id, file });
+                        }}
+                      >
+                        {uploadHostSpotImage.isPending ? "Uploading..." : "Upload"}
+                      </Button>
+                    </div>
+                  </div>
                   <select
                     className="w-full px-2 py-1 border rounded-md text-sm bg-background"
                     value={edits.locationType}
@@ -3738,7 +3861,7 @@ export default function AdminDashboard() {
                 {dashboardStats.totalRestaurantOwners ??
                   dashboardStats.memberCounts?.restaurantOwner ??
                   0}{" "}
-                owner accounts â€¢ {pendingRestaurants.length} pending
+                owner accounts - {pendingRestaurants.length} pending
               </p>
             </CardContent>
           </Card>
@@ -3791,7 +3914,7 @@ export default function AdminDashboard() {
           <CardContent>
             <p className="text-xs text-muted-foreground mb-3">
               Role total {dashboardStats.memberCountsTotal ?? 0} of {dashboardStats.totalUsers} users
-              {dashboardStats.unclassifiedUsers ? ` â€¢ ${dashboardStats.unclassifiedUsers} unclassified` : ""}
+              {dashboardStats.unclassifiedUsers ? ` - ${dashboardStats.unclassifiedUsers} unclassified` : ""}
             </p>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
               <div>
@@ -4120,7 +4243,7 @@ export default function AdminDashboard() {
                           <div className="min-w-0">
                             <div className="truncate">
                               <span className="font-semibold">{row.status}</span>{" "}
-                              {row.category ? `(${row.category})` : ""} â€¢ {row.to}
+                              {row.category ? `(${row.category})` : ""} - {row.to}
                             </div>
                             <div className="truncate text-muted-foreground">
                               {row.subject}
@@ -4174,7 +4297,7 @@ export default function AdminDashboard() {
                         <div>
                           <div className="font-medium">{restaurant.name}</div>
                           <div className="text-sm text-muted-foreground">
-                            {restaurant.cuisineType} â€¢ {restaurant.email}
+                            {restaurant.cuisineType} - {restaurant.email}
                           </div>
                         </div>
                         <div className="flex space-x-2">
@@ -4468,8 +4591,8 @@ export default function AdminDashboard() {
                             {deal.title}
                           </div>
                           <div className="text-sm text-muted-foreground mt-1">
-                            {deal.restaurant?.name} â€¢ {deal.discountValue}% off
-                            â€¢ Ends {new Date(deal.endDate).toLocaleDateString()}
+                            {deal.restaurant?.name} - {deal.discountValue}% off
+                            - Ends {new Date(deal.endDate).toLocaleDateString()}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -4862,14 +4985,32 @@ export default function AdminDashboard() {
                       If maps/pins look stale, force-refresh server + browser caches.
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={clearMapCaches.isPending}
-                    onClick={() => clearMapCaches.mutate()}
-                  >
-                    {clearMapCaches.isPending ? "Clearing..." : "Force refresh map caches"}
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={backfillParkingPasses.isPending}
+                      onClick={() => backfillParkingPasses.mutate()}
+                    >
+                      {backfillParkingPasses.isPending ? "Backfilling..." : "Backfill parking passes"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={normalizeParkingPassSeries.isPending}
+                      onClick={() => normalizeParkingPassSeries.mutate()}
+                    >
+                      {normalizeParkingPassSeries.isPending ? "Normalizing..." : "Normalize series status"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={clearMapCaches.isPending}
+                      onClick={() => clearMapCaches.mutate()}
+                    >
+                      {clearMapCaches.isPending ? "Clearing..." : "Force refresh map caches"}
+                    </Button>
+                  </div>
                 </div>
                 <div className="grid gap-2">
                   <label className="text-xs text-muted-foreground">Host User</label>

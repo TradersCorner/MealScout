@@ -675,6 +675,12 @@ export default function MapPage() {
   >({});
   const enableClientGeocode = false;
 
+  const locationStorageKey = useMemo(() => {
+    return user?.id
+      ? `mealscout_last_location:${user.id}`
+      : "mealscout_last_location:anon";
+  }, [user?.id]);
+
   const isStaffOrAdmin =
     user?.userType === "staff" ||
     user?.userType === "admin" ||
@@ -737,7 +743,10 @@ export default function MapPage() {
     // Start from last viewed area if the user has previously shared location.
     // Important: do NOT treat this as "you are here" because it can be stale.
     try {
-      const stored = localStorage.getItem("mealscout_last_location");
+      const legacyKey = "mealscout_last_location";
+      const stored =
+        localStorage.getItem(locationStorageKey) ||
+        localStorage.getItem(legacyKey);
       if (stored) {
         const parsed = JSON.parse(stored) as {
           lat?: number;
@@ -746,6 +755,10 @@ export default function MapPage() {
         if (parsed?.lat && parsed?.lng) {
           const approx = { lat: parsed.lat, lng: parsed.lng };
           setMapCenter(approx);
+          // One-time migrate legacy key into per-user storage to avoid cross-account confusion on shared devices.
+          if (!localStorage.getItem(locationStorageKey)) {
+            localStorage.setItem(locationStorageKey, stored);
+          }
         }
       }
     } catch {
@@ -764,7 +777,7 @@ export default function MapPage() {
           setMapCenter(location);
           try {
             localStorage.setItem(
-              "mealscout_last_location",
+              locationStorageKey,
               JSON.stringify({ ...location, timestamp: Date.now() }),
             );
           } catch {
@@ -783,7 +796,7 @@ export default function MapPage() {
         { enableHighAccuracy: true, timeout: 10000 }
       );
     }
-  }, []);
+  }, [locationStorageKey]);
 
   // Fetch nearby deals based on user location
   const { data: dealsData = [], isLoading } = useQuery({
@@ -1118,7 +1131,7 @@ export default function MapPage() {
     }
   });
 
-  const { data: hostStatusPayload } = useQuery<
+  const { data: hostStatusPayload, isError: isHostStatusError } = useQuery<
     | {
         generatedAt: string;
         date: string;
@@ -1240,6 +1253,15 @@ export default function MapPage() {
     if (!Number.isFinite(dt.getTime())) return null;
     return dt.toLocaleString();
   })();
+
+  const usingCachedBookableHosts =
+    isBookableHostIdsError &&
+    !bookableHostIdPayload?.hostIds?.length &&
+    cachedBookableHostIds.size > 0;
+  const usingCachedHostStatus =
+    isHostStatusError &&
+    !hostStatusPayload?.hosts?.length &&
+    Object.keys(cachedHostStatusById).length > 0;
 
   const visibleEventLocations = useMemo(() => {
     if (!mapBounds || !mapLocations?.eventLocations?.length) return [];
@@ -1542,6 +1564,11 @@ export default function MapPage() {
         {locationError && (
           <div className="text-xs text-[color:var(--status-error)] mb-4 bg-[color:var(--status-error)]/10 border border-[color:var(--status-error)]/30 rounded p-2">
             ⚠️ {locationError}
+          </div>
+        )}
+        {(usingCachedBookableHosts || usingCachedHostStatus) && (
+          <div className="text-xs mb-4 bg-amber-50 border border-amber-200 rounded p-2 text-amber-900">
+            Using cached Parking Pass map data. Refresh may fix this.
           </div>
         )}
         {userLocation && (

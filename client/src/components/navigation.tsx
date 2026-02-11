@@ -19,6 +19,7 @@ import {
   Calendar,
   LayoutDashboard,
   ParkingSquare,
+  Truck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -166,6 +167,11 @@ export default function Navigation() {
 
   const unauthenticatedExtras: NavItem[] = [
     { path: "/customer-signup", icon: UserPlus, label: "Create Account" },
+    {
+      path: "/restaurant-signup?businessType=food_truck&claim=1",
+      icon: Truck,
+      label: "Claim Truck",
+    },
   ];
 
   // Host-specific flows: dashboard + host marketing and discovery

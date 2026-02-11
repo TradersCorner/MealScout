@@ -603,6 +603,68 @@ export default function ParkingPassPage() {
     },
     staleTime: 60_000,
   });
+
+  // Keep Parking Pass maps in sync with the main map: only show paid/priced host locations.
+  const BOOKABLE_HOST_CACHE_KEY = "mealscout:parking-pass:bookableHostIds:v1";
+  const [cachedBookableHostIds, setCachedBookableHostIds] = useState<Set<string>>(
+    () => {
+      try {
+        const raw = localStorage.getItem(BOOKABLE_HOST_CACHE_KEY);
+        if (!raw) return new Set<string>();
+        const parsed = JSON.parse(raw);
+        const hostIds = Array.isArray(parsed?.hostIds) ? parsed.hostIds : [];
+        return new Set(hostIds.map((id: any) => String(id)));
+      } catch {
+        return new Set<string>();
+      }
+    },
+  );
+  const { data: bookableHostIdPayload } = useQuery<
+    { generatedAt: string; hostIds: string[] } | undefined
+  >({
+    queryKey: ["/api/parking-pass/host-ids"],
+    queryFn: async () => {
+      const res = await fetch("/api/parking-pass/host-ids");
+      if (!res.ok) throw new Error("Failed to load bookable hosts");
+      return res.json();
+    },
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
+  });
+  useEffect(() => {
+    if (!bookableHostIdPayload?.hostIds?.length) return;
+    const next = new Set(bookableHostIdPayload.hostIds.map((id) => String(id)));
+    setCachedBookableHostIds(next);
+    try {
+      localStorage.setItem(
+        BOOKABLE_HOST_CACHE_KEY,
+        JSON.stringify({
+          hostIds: Array.from(next),
+          generatedAt: bookableHostIdPayload.generatedAt,
+          updatedAt: Date.now(),
+        }),
+      );
+    } catch {
+      // ignore
+    }
+  }, [bookableHostIdPayload]);
+
+  const bookableHostIds = useMemo(() => {
+    const serverIds = Array.isArray(bookableHostIdPayload?.hostIds)
+      ? bookableHostIdPayload.hostIds
+      : [];
+    if (serverIds.length > 0) return new Set(serverIds.map((id) => String(id)));
+    return cachedBookableHostIds;
+  }, [bookableHostIdPayload, cachedBookableHostIds]);
+
+  const paidMapLocations = useMemo(() => {
+    const base = mapLocationsData ?? { hostLocations: [], eventLocations: [] };
+    const hostLocations = (base.hostLocations || []).filter((loc: any) => {
+      const hostId = String(loc?.hostId || "").trim();
+      return hostId && bookableHostIds.has(hostId);
+    });
+    return { ...base, hostLocations };
+  }, [mapLocationsData, bookableHostIds]);
   const [geocodeCache, setGeocodeCache] = useState<
     Record<string, GeoPoint>
   >({});
@@ -2595,7 +2657,7 @@ export default function ParkingPassPage() {
       string,
       Array<PublicMapLocation & { coords: GeoPoint; addressLabel: string }>
     >();
-    const locations = mapLocationsData?.hostLocations ?? [];
+    const locations = paidMapLocations?.hostLocations ?? [];
     locations.forEach((loc: PublicMapLocation) => {
       if (loc.type !== "host_location" || !loc.hostId) return;
       const lat = parseCoord(loc.latitude);
@@ -2614,7 +2676,7 @@ export default function ParkingPassPage() {
       }
     });
     return map;
-  }, [mapLocationsData]);
+  }, [paidMapLocations]);
 
   const mapPins = useMemo(
     () =>
@@ -2756,7 +2818,7 @@ export default function ParkingPassPage() {
 
   // Payments are processed by MealScout; a host may still be completing Stripe Connect.
   // We keep the spot live and bookable, but surface a warning when host payouts aren't configured.
-  const platformPaymentsReady = true;
+  const platformPaymentsReady = Boolean(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
   const listingPayoutsReady = (listing: ParkingPassListing | null | undefined) =>
     Boolean(
       listing?.paymentsEnabled ??
@@ -4824,7 +4886,9 @@ export default function ParkingPassPage() {
                             group.listings[0] ||
                             null;
                           const bookingListing = listingForDate || displayListing;
-                          const paymentsReady = platformPaymentsReady;
+                          const paymentsReady =
+                            platformPaymentsReady &&
+                            Boolean(bookingListing?.paymentsEnabled);
                           const bookings = Array.isArray(bookingListing?.bookings)
                             ? bookingListing?.bookings ?? []
                             : [];
@@ -4864,7 +4928,7 @@ export default function ParkingPassPage() {
                           const hasAvailability = Boolean(
                             listingForDate && listingHasAvailability(listingForDate),
                           );
-                          const canBook = Boolean(paymentsReady && hasAvailability);
+                                  const canBook = Boolean(paymentsReady && hasAvailability);
 
                           return (
                             <Marker
@@ -4983,6 +5047,18 @@ export default function ParkingPassPage() {
                                       Choose a day with availability.
                                     </p>
                                   )}
+                                  {!platformPaymentsReady && (
+                                    <p className="pt-1 text-[11px] text-[color:var(--status-error)]">
+                                      Payments are temporarily unavailable.
+                                    </p>
+                                  )}
+                                  {platformPaymentsReady &&
+                                    bookingListing &&
+                                    bookingListing?.paymentsEnabled === false && (
+                                      <p className="pt-1 text-[11px] text-[color:var(--status-error)]">
+                                        This host has not enabled payments yet.
+                                      </p>
+                                    )}
                                   {bookings.length > 0 ? (
                                     <div className="pt-1 text-[11px] text-[color:var(--text-muted)] space-y-1">
                                       {bookings
@@ -5047,7 +5123,8 @@ export default function ParkingPassPage() {
                         group.listings[0] ||
                         null;
                       const bookingListing = listingForDate || displayListing;
-                      const paymentsReady = platformPaymentsReady;
+                      const paymentsReady =
+                        platformPaymentsReady && Boolean(bookingListing?.paymentsEnabled);
                       const slotOptions = listingForDate
                         ? buildSlotOptions(listingForDate)
                         : [];
@@ -5279,7 +5356,8 @@ export default function ParkingPassPage() {
                       group.listings[0] ||
                       null;
                     const bookingListing = listingForDate || displayListing;
-                    const paymentsReady = platformPaymentsReady;
+                    const paymentsReady =
+                      platformPaymentsReady && Boolean(bookingListing?.paymentsEnabled);
                     const slotOptions = listingForDate
                       ? buildSlotOptions(listingForDate)
                       : [];

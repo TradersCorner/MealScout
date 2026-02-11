@@ -1634,6 +1634,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ),
         );
 
+      // Hosts do not maintain separate `user_addresses` records for parking pass locations.
+      // All locations live on the host profiles themselves (multiple host rows per user allowed).
       const hostProfilesWithCoords = hostProfiles.map(
         ({ host }: { host: typeof hosts.$inferSelect }) => ({ host }),
       );
@@ -1662,77 +1664,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }),
       );
 
-      const hostByUserId = new Map<string, typeof hosts.$inferSelect>();
-      hostProfilesWithCoords.forEach(
-        ({ host }: { host: typeof hosts.$inferSelect }) => {
-        const existing = hostByUserId.get(host.userId);
-        if (!existing) {
-          hostByUserId.set(host.userId, host);
-          return;
-        }
-        if (!existing.isVerified && host.isVerified) {
-          hostByUserId.set(host.userId, host);
-        }
-      },
-      );
-
-      const hostUserIds = Array.from(hostByUserId.keys());
-      const additionalAddressRows = hostUserIds.length
-        ? await db
-            .select({
-              address: userAddresses,
-            })
-            .from(userAddresses)
-            .innerJoin(users, eq(userAddresses.userId, users.id))
-            .where(
-              and(
-                inArray(userAddresses.userId, hostUserIds),
-                isNotNull(userAddresses.address),
-                or(eq(users.isDisabled, false), isNull(users.isDisabled)),
-              ),
-            )
-        : [];
-
-      const seenHostLocationKeys = new Set<string>();
-      primaryHostLocations.forEach(
-        (host: { address?: string | null; city?: string | null; state?: string | null }) => {
-        seenHostLocationKeys.add(locationKey(host.address, host.city, host.state));
-      },
-      );
-      openLocations.forEach((loc) => {
-        seenHostLocationKeys.add(locationKey(loc.address, null, null));
-      });
-
-      const additionalHostLocations = additionalAddressRows.map(
-        ({ address }: { address: typeof userAddresses.$inferSelect }) => {
-        const parentHost = hostByUserId.get(address.userId);
-        if (!parentHost) return null;
-
-        const key = locationKey(address.address, address.city, address.state);
-        if (!key || seenHostLocationKeys.has(key)) return null;
-        seenHostLocationKeys.add(key);
-
-        return {
-          id: `${parentHost.id}:addr:${address.id}`,
-          type: "host_location" as const,
-          hostId: parentHost.id,
-          name: parentHost.businessName,
-          address: address.address,
-          city: address.city,
-          state: address.state,
-          spotImageUrl: address.spotImageUrl ?? parentHost.spotImageUrl ?? null,
-          locationType: parentHost.locationType,
-          expectedFootTraffic: parentHost.expectedFootTraffic,
-          notes: parentHost.notes,
-          preferredDates: [],
-          status: parentHost.isVerified ? "verified" : "active",
-          latitude: address.latitude,
-          longitude: address.longitude,
-          userAddressId: address.id,
-        };
-      },
-      );
-
       const hostLocations = [
         ...openLocations.map((loc) => ({
           id: loc.id,
@@ -1752,7 +1683,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           locationRequestId: loc.id,
         })),
         ...primaryHostLocations,
-        ...additionalHostLocations.filter(Boolean),
       ];
 
       const eventLocations = publicEvents.map((event) => ({
@@ -1794,36 +1724,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         queueGeocode(
           address,
           (coords) => applyCoords(host, coords),
-          host.userAddressId
+          host.hostId
             ? async (coords) => {
-                await db
-                  .update(userAddresses)
-                  .set({
-                    latitude: coords.lat.toString(),
-                    longitude: coords.lng.toString(),
-                    updatedAt: new Date(),
-                  })
-                  .where(eq(userAddresses.id, host.userAddressId));
+                await storage.updateHostCoordinates(host.hostId, coords.lat, coords.lng);
               }
-            : host.hostId
+            : host.locationRequestId
               ? async (coords) => {
-                  await storage.updateHostCoordinates(
-                    host.hostId,
-                    coords.lat,
-                    coords.lng,
-                  );
+                  await db
+                    .update(locationRequests)
+                    .set({
+                      latitude: coords.lat.toString(),
+                      longitude: coords.lng.toString(),
+                    })
+                    .where(eq(locationRequests.id, host.locationRequestId));
                 }
-              : host.locationRequestId
-                ? async (coords) => {
-                    await db
-                      .update(locationRequests)
-                      .set({
-                        latitude: coords.lat.toString(),
-                        longitude: coords.lng.toString(),
-                      })
-                      .where(eq(locationRequests.id, host.locationRequestId));
-                  }
-                : undefined,
+              : undefined,
         );
       }
 

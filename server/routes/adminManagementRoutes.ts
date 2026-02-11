@@ -119,7 +119,7 @@ const ensureTruckImportTables = async () => {
           ON "truck_import_batches" ("created_at")`,
         `CREATE TABLE IF NOT EXISTS "truck_import_listings" (
           "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
-          "batch_id" varchar REFERENCES "truck_import_batches"("id"),
+          "batch_id" varchar REFERENCES "truck_import_batches"("id") ON DELETE SET NULL,
           "source" varchar,
           "external_id" varchar,
           "email" varchar,
@@ -144,6 +144,21 @@ const ensureTruckImportTables = async () => {
         )`,
         `ALTER TABLE IF EXISTS "truck_import_listings"
           ADD COLUMN IF NOT EXISTS "batch_id" varchar`,
+        `DO $$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'truck_import_batches') THEN
+            IF NOT EXISTS (
+              SELECT 1
+              FROM pg_constraint
+              WHERE conname = 'truck_import_listings_batch_id_fkey'
+            ) THEN
+              ALTER TABLE "truck_import_listings"
+                ADD CONSTRAINT "truck_import_listings_batch_id_fkey"
+                FOREIGN KEY ("batch_id") REFERENCES "truck_import_batches"("id")
+                ON DELETE SET NULL;
+            END IF;
+          END IF;
+        END $$`,
         `ALTER TABLE IF EXISTS "truck_import_listings"
           ADD COLUMN IF NOT EXISTS "email" varchar`,
         `ALTER TABLE IF EXISTS "truck_import_listings"
@@ -1495,6 +1510,13 @@ export function registerAdminManagementRoutes(app: Express) {
           })),
         });
       } catch (error: any) {
+        if (isMissingRelationError(error, "truck_import_listings")) {
+          return res.status(503).json({
+            message:
+              'Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.',
+            code: "migration_required",
+          });
+        }
         console.error("Error listing unclaimed import listings:", error);
         res.status(500).json({ message: "Failed to load unclaimed trucks" });
       }
@@ -1581,6 +1603,13 @@ export function registerAdminManagementRoutes(app: Express) {
 
         res.json(updated);
       } catch (error: any) {
+        if (isMissingRelationError(error, "truck_import_listings")) {
+          return res.status(503).json({
+            message:
+              'Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.',
+            code: "migration_required",
+          });
+        }
         console.error("Error updating import listing:", error);
         res.status(500).json({ message: "Failed to update import listing" });
       }
@@ -1686,6 +1715,16 @@ export function registerAdminManagementRoutes(app: Express) {
 
         res.json({ success: true, emailSent, listing: updated });
       } catch (error: any) {
+        if (
+          isMissingRelationError(error, "truck_import_listings") ||
+          isMissingRelationError(error, "truck_import_batches")
+        ) {
+          return res.status(503).json({
+            message:
+              'Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.',
+            code: "migration_required",
+          });
+        }
         console.error("Error sending import invite:", error);
         res.status(500).json({ message: error.message || "Failed to send invite" });
       }

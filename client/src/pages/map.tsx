@@ -295,50 +295,56 @@ const haversineKm = (a: GeoPoint, b: GeoPoint) => {
   return 2 * earthRadiusKm * Math.asin(Math.sqrt(h));
 };
 
-const hostPinIcon = new L.Icon({
-  iconUrl: mealScoutIcon,
-  iconSize: [36, 36],
-  iconAnchor: [18, 36],
-  popupAnchor: [0, -30],
+const hostPinActiveIcon = new L.Icon({
+  iconUrl: svgToDataUrl(`
+    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#ff4d2e" stroke="#7C2D12" stroke-width="2"/>
+      <circle cx="17" cy="13" r="7" fill="#FFFBEB"/>
+      <text x="17" y="16.5" text-anchor="middle" font-size="8" font-weight="900" fill="#7C2D12">LIVE</text>
+    </svg>
+  `),
+  iconSize: [34, 42],
+  iconAnchor: [17, 40],
+  popupAnchor: [0, -34],
 });
 
-const hostPinActiveIcon = L.divIcon({
-  className: "map-host-marker",
-  html: `
-    <div class="map-host-marker__logo">
-      <img src="${mealScoutIcon}" alt="MealScout host" />
-    </div>
-    <div class="map-host-marker__dot" aria-hidden="true"></div>
-  `,
-  iconSize: [36, 36],
-  iconAnchor: [18, 36],
-  popupAnchor: [0, -30],
+const hostPinBookableIcon = new L.Icon({
+  iconUrl: svgToDataUrl(`
+    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#16a34a" stroke="#14532d" stroke-width="2"/>
+      <circle cx="17" cy="13" r="7" fill="#F0FDF4"/>
+      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="900" fill="#14532d">P</text>
+    </svg>
+  `),
+  iconSize: [34, 42],
+  iconAnchor: [17, 40],
+  popupAnchor: [0, -34],
 });
 
-const hostPinBookableIcon = L.divIcon({
-  className: "map-host-marker",
-  html: `
-    <div class="map-host-marker__logo">
-      <img src="${mealScoutIcon}" alt="MealScout host" />
-    </div>
-    <div class="map-host-marker__dot" aria-hidden="true" style="background:#16a34a;"></div>
-  `,
-  iconSize: [36, 36],
-  iconAnchor: [18, 36],
-  popupAnchor: [0, -30],
+const hostPinFullIcon = new L.Icon({
+  iconUrl: svgToDataUrl(`
+    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#ef4444" stroke="#7f1d1d" stroke-width="2"/>
+      <circle cx="17" cy="13" r="7" fill="#FEF2F2"/>
+      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="900" fill="#7f1d1d">X</text>
+    </svg>
+  `),
+  iconSize: [34, 42],
+  iconAnchor: [17, 40],
+  popupAnchor: [0, -34],
 });
 
-const hostPinFullIcon = L.divIcon({
-  className: "map-host-marker",
-  html: `
-    <div class="map-host-marker__logo">
-      <img src="${mealScoutIcon}" alt="MealScout host" />
-    </div>
-    <div class="map-host-marker__dot" aria-hidden="true" style="background:#ef4444;"></div>
-  `,
-  iconSize: [36, 36],
-  iconAnchor: [18, 36],
-  popupAnchor: [0, -30],
+const hostPinUnpricedIcon = new L.Icon({
+  iconUrl: svgToDataUrl(`
+    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#64748b" stroke="#0f172a" stroke-width="2"/>
+      <circle cx="17" cy="13" r="7" fill="#F8FAFC"/>
+      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="900" fill="#0f172a">H</text>
+    </svg>
+  `),
+  iconSize: [34, 42],
+  iconAnchor: [17, 40],
+  popupAnchor: [0, -34],
 });
 
 const foodPinIcon = new L.Icon({
@@ -412,6 +418,7 @@ function HostMarkerLayer({
   findNearbyTruck,
   formatDistance,
   cachedHostStatusById,
+  bookableHostIds,
   isStaffOrAdmin,
   qualityFlagsByHostId,
 }: {
@@ -433,6 +440,7 @@ function HostMarkerLayer({
       isFull: boolean;
     }
   >;
+  bookableHostIds: Set<string>;
   isStaffOrAdmin: boolean;
   qualityFlagsByHostId: Map<string, string[]>;
 }) {
@@ -532,6 +540,7 @@ function HostMarkerLayer({
         const hostId = host.hostId ? String(host.hostId) : "";
         const hostStatus = hostId ? cachedHostStatusById[hostId] : undefined;
         const isFullToday = Boolean(hostStatus?.isFull);
+        const isBookable = hostId ? bookableHostIds.has(hostId) : false;
         const availableLabel = hostStatus
           ? hostStatus.isFull
             ? "Fully booked today"
@@ -549,7 +558,9 @@ function HostMarkerLayer({
                 ? hostPinActiveIcon
                 : isFullToday
                   ? hostPinFullIcon
-                  : hostPinBookableIcon
+                  : isBookable
+                    ? hostPinBookableIcon
+                    : hostPinUnpricedIcon
             }
           >
             <Popup>
@@ -1224,13 +1235,7 @@ export default function MapPage() {
 
   const visibleHostLocations = useMemo(() => {
     if (!mapBounds || !mapLocations?.hostLocations?.length) return [];
-    // Strict: only show priced Parking Pass host pins, but never block rendering on the network.
-    // If the endpoint errors, fall back to cached host ids.
-    if (isBookableHostIdsLoading && bookableHostIds.size === 0) return [];
-    if (isBookableHostIdsError && bookableHostIds.size === 0) return [];
     return mapLocations.hostLocations.filter((host) => {
-      const hostId = host.hostId ? String(host.hostId) : "";
-      if (!hostId || !bookableHostIds.has(hostId)) return false;
       const coords = resolveHostCoords(host);
       if (!coords) return false;
       return mapBounds.contains([coords.lat, coords.lng]);
@@ -1239,9 +1244,6 @@ export default function MapPage() {
     mapLocations,
     hostCoords,
     mapBounds,
-    bookableHostIds,
-    isBookableHostIdsLoading,
-    isBookableHostIdsError,
   ]);
 
   const lastHostIdsUpdatedLabel = (() => {
@@ -1770,6 +1772,7 @@ export default function MapPage() {
                 findNearbyTruck={findNearbyTruck}
                 formatDistance={formatDistance}
                 cachedHostStatusById={cachedHostStatusById}
+                bookableHostIds={bookableHostIds}
                 isStaffOrAdmin={isStaffOrAdmin}
                 qualityFlagsByHostId={qualityFlagsByHostId}
               />

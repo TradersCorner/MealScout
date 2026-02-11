@@ -1,0 +1,19 @@
+✅ Database connection established successfully
+✅ All required environment variables present
+Google OAuth not configured: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables are missing
+Facebook OAuth not configured: FACEBOOK_APP_ID and FACEBOOK_APP_SECRET environment variables are missing
+✅ Story cron jobs registered
+   POST /api/cron/cleanup-stories - Clean up expired stories
+   POST /api/cron/recalculate-levels - Recalculate reviewer levels
+   Include header: x-cron-secret: <CRON_SECRET>
+Socket.IO server setup complete at default path
+[express] WebSocket server initialized for food truck tracking
+[express] serving on port 5062
+✅ Admin account already exists
+🔄 Admin password differs from configured ADMIN_PASSWORD – updating hash
+✅ Admin password updated to match environment
+🌐 trust proxy enabled -> req.secure: false
+✅ Seed data already exists
+✅ Database initialization completed successfully
+✅ Schema validation: phone column exists
+GET /api/health 200 in 306ms :: {"status":"healthy","timestamp":"2026-02-11T22:…

@@ -1151,12 +1151,12 @@ app.use((req, res, next) => {
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
   if (app.get("env") === "development") {
-    const { setupVite } = await import("./vite");
+    const { setupVite } = await import("./vite.js");
     await setupVite(app, server);
   } else {
     const distPath = path.resolve(process.cwd(), "dist", "public");
     if (fs.existsSync(distPath)) {
-      const { serveStatic } = await import("./vite");
+      const { serveStatic } = await import("./vite.js");
       serveStatic(app);
     } else {
       console.warn(

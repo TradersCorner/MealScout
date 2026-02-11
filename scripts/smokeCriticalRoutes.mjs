@@ -1,6 +1,13 @@
-const baseUrl = (process.env.SMOKE_BASE_URL || "http://localhost:5000").replace(
-  /\/$/,
-  "",
+const normalizeBaseUrl = (input) =>
+  String(input || "")
+    .trim()
+    .replace(/\/$/, "")
+    // Node fetch on Windows can prefer IPv6 for localhost; our server binds IPv4.
+    .replace(/^http:\/\/localhost(?=[:/]|$)/, "http://127.0.0.1")
+    .replace(/^https:\/\/localhost(?=[:/]|$)/, "https://127.0.0.1");
+
+const baseUrl = normalizeBaseUrl(
+  process.env.SMOKE_BASE_URL || "http://127.0.0.1:5000",
 );
 
 const checks = [

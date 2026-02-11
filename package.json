@@ -9,7 +9,7 @@
     "dev:server:static": "cross-env NODE_ENV=production PORT=5000 tsx server/index.ts",
     "build": "npm run build:client",
     "build:client": "npm --prefix client run build",
-    "build:server": "npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist --external:./vite",
+    "build:server": "npx esbuild server/index.ts server/vite.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "build:lib": "vite build --config vite.lib.config.ts",
     "start": "node dist/index.js",
     "start:local": "cross-env NODE_ENV=production PORT=5000 node dist/index.js",

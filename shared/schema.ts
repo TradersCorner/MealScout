@@ -258,7 +258,9 @@ export const truckImportListings = pgTable(
     id: varchar("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    batchId: varchar("batch_id").references(() => truckImportBatches.id),
+    batchId: varchar("batch_id").references(() => truckImportBatches.id, {
+      onDelete: "set null",
+    }),
     source: varchar("source"),
     externalId: varchar("external_id"),
     email: varchar("email"),
@@ -287,6 +289,7 @@ export const truckImportListings = pgTable(
     index("idx_truck_import_external").on(table.externalId),
     index("idx_truck_import_status").on(table.status),
     index("idx_truck_import_state").on(table.state),
+    index("idx_truck_import_batch").on(table.batchId),
   ],
 );
 

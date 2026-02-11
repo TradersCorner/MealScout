@@ -3343,6 +3343,15 @@ export class DatabaseStorage implements IStorage {
             .where(eq(users.id, existingAdmin.id));
           console.log("✅ Admin password initialized from environment");
         }
+
+        // Ensure env-configured admin can log in even if email providers are
+        // not set up locally (login requires emailVerified).
+        if (!existingAdmin.emailVerified) {
+          await db
+            .update(users)
+            .set({ emailVerified: true })
+            .where(eq(users.id, existingAdmin.id));
+        }
         return;
       }
 
@@ -3350,7 +3359,7 @@ export class DatabaseStorage implements IStorage {
       const passwordHash = await bcrypt.hash(adminPassword, 12);
 
       // Create admin user
-      await this.upsertUserByAuth(
+      const created = await this.upsertUserByAuth(
         "email",
         {
           email: adminEmail,
@@ -3361,6 +3370,11 @@ export class DatabaseStorage implements IStorage {
         },
         "admin"
       );
+
+      await db
+        .update(users)
+        .set({ userType: "super_admin", emailVerified: true })
+        .where(eq(users.id, created.id));
 
       console.log("✅ Super Admin account created successfully");
     } catch (error) {

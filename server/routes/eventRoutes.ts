@@ -364,7 +364,22 @@ export function registerEventRoutes(app: Express) {
       }
 
       const seriesHostIds = Array.from(bestByHostId.keys()).filter(Boolean);
-      const hostRows = await storage.getHostsByIds(seriesHostIds);
+      // Avoid `storage.getHostsByIds()` here because schema mismatches on older DBs can
+      // cause this endpoint to return zero hosts (and blank the map).
+      const hostRows =
+        seriesHostIds.length > 0
+          ? await db
+              .select({
+                id: hosts.id,
+                address: hosts.address,
+                city: hosts.city,
+                state: hosts.state,
+                latitude: hosts.latitude,
+                longitude: hosts.longitude,
+              })
+              .from(hosts)
+              .where(inArray(hosts.id, seriesHostIds))
+          : [];
       const hostById = new Map<string, any>(
         (hostRows || []).map((host: any) => [String(host.id), host]),
       );

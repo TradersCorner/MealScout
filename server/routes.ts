@@ -1594,17 +1594,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getAllUpcomingEvents(),
       ]);
 
-      const hostProfiles = await storage.getAllHosts();
-      const hostProfilesWithCoords = (hostProfiles || [])
-        .filter((host: any) => Boolean(host?.address))
-        .map((host: any) => ({ host }));
+      // Don't call `storage.getAllHosts()` here because older production DBs can be missing
+      // newer `hosts` columns that our shared schema expects, which would blank the map feed.
+      const hostProfiles: Array<{
+        id: string;
+        businessName: string;
+        address: string;
+        city: string | null;
+        state: string | null;
+        latitude: string | null;
+        longitude: string | null;
+        locationType: string;
+        expectedFootTraffic: number | null;
+        notes: string | null;
+        isVerified: boolean | null;
+      }> = (await db
+        .select({
+          id: hosts.id,
+          businessName: hosts.businessName,
+          address: hosts.address,
+          city: hosts.city,
+          state: hosts.state,
+          latitude: hosts.latitude,
+          longitude: hosts.longitude,
+          locationType: hosts.locationType,
+          expectedFootTraffic: hosts.expectedFootTraffic,
+          notes: hosts.notes,
+          isVerified: hosts.isVerified,
+        })
+        .from(hosts)
+        .innerJoin(users, eq(hosts.userId, users.id))
+        .where(
+          and(
+            sql`${hosts.address} IS NOT NULL`,
+            or(eq(users.isDisabled, false), isNull(users.isDisabled)),
+          ),
+        )) as any;
 
       const publicEvents = upcomingEvents.filter(
         (event) => !event.requiresPayment,
       );
 
-      const primaryHostLocations = hostProfilesWithCoords.map(
-        ({ host }: { host: typeof hosts.$inferSelect }) => ({
+      const primaryHostLocations = hostProfiles.map((host) => ({
           id: host.id,
           type: "host_location" as const,
           hostId: host.id,
@@ -1613,7 +1644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           address: host.address,
           city: host.city,
           state: host.state,
-          spotImageUrl: host.spotImageUrl ?? null,
+          spotImageUrl: null,
           locationType: host.locationType,
           expectedFootTraffic: host.expectedFootTraffic,
           notes: host.notes,
@@ -1621,8 +1652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: host.isVerified ? "verified" : "active",
           latitude: host.latitude,
           longitude: host.longitude,
-        }),
-      );
+        }));
 
       const hostLocations = [
         ...openLocations.map((loc) => ({

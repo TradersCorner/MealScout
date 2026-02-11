@@ -3137,11 +3137,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...validatedRestaurantData,
         ownerId: user.id,
       });
-      try {
-        user = (await ensureTrialForUser(user)) || user;
-      } catch (e) {
-        console.warn("ensureTrialForUser failed after restaurant creation:", e);
-      }
 
       // VAC-lite auto-verify (with fallback to manual verification request)
       try {
@@ -3164,11 +3159,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             signals: vac.signals,
           });
 
-          if (vac.shouldAutoVerify) {
-            console.log("✅ Auto-verifying restaurant:", restaurant.id);
-            await storage.setRestaurantVerified(restaurant.id, true);
-            (restaurant as any).isVerified = true;
-          } else {
+           if (vac.shouldAutoVerify) {
+             console.log("✅ Auto-verifying restaurant:", restaurant.id);
+             await storage.setRestaurantVerified(restaurant.id, true);
+             (restaurant as any).isVerified = true;
+             try {
+               user = (await ensureTrialForUser(user)) || user;
+             } catch (e) {
+               console.warn("ensureTrialForUser failed after auto-verify:", e);
+             }
+           } else {
             console.log(
               "⚠️  Creating manual verification request for:",
               restaurant.id,
@@ -3657,14 +3657,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.user?.userType === "customer") {
         await storage.updateUserType(req.user.id, "food_truck");
       }
-      try {
-        await ensureTrialForUser({
-          ...(req.user as any),
-          userType: req.user?.userType === "customer" ? "food_truck" : req.user?.userType,
-        } as any);
-      } catch (e) {
-        console.warn("ensureTrialForUser failed after truck claim:", e);
-      }
 
       const [claimRequest] = await db
         .insert(truckClaimRequests)
@@ -3733,11 +3725,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const restaurant = await storage.createRestaurant(restaurantData);
-      try {
-        await ensureTrialForUser(req.user);
-      } catch (e) {
-        console.warn("ensureTrialForUser failed after /api/restaurants:", e);
-      }
 
       // VAC-lite auto-verify (with fallback to manual verification request)
       try {
@@ -3764,6 +3751,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log("✅ Auto-verifying restaurant:", restaurant.id);
             await storage.setRestaurantVerified(restaurant.id, true);
             (restaurant as any).isVerified = true;
+            try {
+              await ensureTrialForUser(req.user);
+            } catch (e) {
+              console.warn("ensureTrialForUser failed after /api/restaurants auto-verify:", e);
+            }
           } else {
             console.log(
               "⚠️  Creating manual verification request for:",
@@ -4720,16 +4712,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Promo Code:", promoCode);
       console.log("Billing Interval:", billingInterval);
 
-      const hydratedUser = await ensureTrialForUser(user);
-      if (isTrialActive(hydratedUser)) {
-        return res.send({
-          status: "active",
-          subscriptionId: null,
-          trialAccess: true,
-          message: "Your 30-day premium trial is active. We'll prompt you to pay before it ends.",
-        });
-      }
-
       if (["restaurant_owner", "food_truck"].includes(user?.userType)) {
         const restaurantsByOwner = await storage.getRestaurantsByOwner(user.id);
         const hasVerified = restaurantsByOwner.some(
@@ -4743,6 +4725,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
           });
         }
+      }
+
+      const hydratedUser = await ensureTrialForUser(user);
+      if (isTrialActive(hydratedUser)) {
+        return res.send({
+          status: "active",
+          subscriptionId: null,
+          trialAccess: true,
+          message: "Your 30-day premium trial is active. We'll prompt you to pay before it ends.",
+        });
       }
 
       if (!stripe) {

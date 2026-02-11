@@ -18,16 +18,22 @@ export async function ensurePremiumTrialForUser(user: User): Promise<User> {
   }
 
   const restaurantsForUser = await storage.getRestaurantsByOwner(user.id);
-  const hasBusiness =
-    user.userType === "food_truck" ||
-    restaurantsForUser.some(
-      (restaurant: any) =>
-        restaurant.businessType === "restaurant" ||
-        restaurant.businessType === "bar" ||
-        restaurant.isFoodTruck,
-    );
+  const eligibleUserTypes = new Set(["restaurant_owner", "food_truck"]);
+  if (!eligibleUserTypes.has(String(user.userType || ""))) {
+    return user;
+  }
 
-  if (!hasBusiness) {
+  // Trial starts only after the business is verified (user requirement).
+  const hasVerifiedBusiness = restaurantsForUser.some((restaurant: any) => {
+    if (!restaurant?.isVerified) return false;
+    return (
+      restaurant.businessType === "restaurant" ||
+      restaurant.businessType === "bar" ||
+      restaurant.isFoodTruck
+    );
+  });
+
+  if (!hasVerifiedBusiness) {
     return user;
   }
 
@@ -50,4 +56,3 @@ export async function ensurePremiumTrialForUserId(
   if (!user) return null;
   return await ensurePremiumTrialForUser(user);
 }
-

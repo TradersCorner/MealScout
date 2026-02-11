@@ -623,8 +623,28 @@ export function registerAdminManagementRoutes(app: Express) {
           Number.isFinite(Number(lng));
 
         const openLocations = await storage.getOpenLocationRequests();
-        const hostProfiles = await db
-          .select({ host: hosts })
+        // Don't select `hosts.*` because older deployments may be missing newer columns
+        // (e.g. `spot_image_url`), which would 500 admin tooling.
+        const hostProfiles: Array<{
+          id: string;
+          userId: string;
+          address: string;
+          city: string | null;
+          state: string | null;
+          latitude: string | null;
+          longitude: string | null;
+          isVerified: boolean | null;
+        }> = (await db
+          .select({
+            id: hosts.id,
+            userId: hosts.userId,
+            address: hosts.address,
+            city: hosts.city,
+            state: hosts.state,
+            latitude: hosts.latitude,
+            longitude: hosts.longitude,
+            isVerified: hosts.isVerified,
+          })
           .from(hosts)
           .innerJoin(users, eq(hosts.userId, users.id))
           .where(
@@ -632,34 +652,63 @@ export function registerAdminManagementRoutes(app: Express) {
               sql`${hosts.address} IS NOT NULL`,
               or(eq(users.isDisabled, false), isNull(users.isDisabled)),
             ),
-          );
+          )) as any;
 
-        const hostByUserId = new Map<string, (typeof hosts.$inferSelect)>();
-        hostProfiles.forEach(({ host }: { host: typeof hosts.$inferSelect }) => {
+        const hostByUserId = new Map<
+          string,
+          {
+            id: string;
+            userId: string;
+            address: string;
+            city: string | null;
+            state: string | null;
+            latitude: string | null;
+            longitude: string | null;
+            isVerified: boolean | null;
+          }
+        >();
+        hostProfiles.forEach((host) => {
           const existing = hostByUserId.get(host.userId);
           if (!existing) {
-            hostByUserId.set(host.userId, host);
+            hostByUserId.set(host.userId, host as any);
             return;
           }
           if (!existing.isVerified && host.isVerified) {
-            hostByUserId.set(host.userId, host);
+            hostByUserId.set(host.userId, host as any);
           }
         });
 
         const hostUserIds = Array.from(hostByUserId.keys());
-        const additionalAddressRows = hostUserIds.length
-          ? await db
-              .select({ address: userAddresses })
-              .from(userAddresses)
-              .innerJoin(users, eq(userAddresses.userId, users.id))
-              .where(
-                and(
-                  inArray(userAddresses.userId, hostUserIds),
-                  sql`${userAddresses.address} IS NOT NULL`,
-                  or(eq(users.isDisabled, false), isNull(users.isDisabled)),
-                ),
-              )
-          : [];
+        let additionalAddressRows: Array<{
+          id: string;
+          userId: string;
+          address: string;
+          city: string;
+          state: string | null;
+          latitude: string | null;
+          longitude: string | null;
+        }> = [];
+        if (hostUserIds.length) {
+          additionalAddressRows = (await db
+            .select({
+              id: userAddresses.id,
+              userId: userAddresses.userId,
+              address: userAddresses.address,
+              city: userAddresses.city,
+              state: userAddresses.state,
+              latitude: userAddresses.latitude,
+              longitude: userAddresses.longitude,
+            })
+            .from(userAddresses)
+            .innerJoin(users, eq(userAddresses.userId, users.id))
+            .where(
+              and(
+                inArray(userAddresses.userId, hostUserIds),
+                sql`${userAddresses.address} IS NOT NULL`,
+                or(eq(users.isDisabled, false), isNull(users.isDisabled)),
+              ),
+            )) as any;
+        }
 
         const primaryHostLocations: Array<{
           id: string;
@@ -667,15 +716,13 @@ export function registerAdminManagementRoutes(app: Express) {
           city?: string | null;
           state?: string | null;
           mappable: boolean;
-        }> = hostProfiles.map(
-          ({ host }: { host: typeof hosts.$inferSelect }) => ({
+        }> = hostProfiles.map((host) => ({
           id: host.id,
           address: host.address,
           city: host.city,
           state: host.state,
           mappable: hasCoords(host.latitude, host.longitude),
-        }),
-        );
+        }));
 
         const openHostLocations: Array<{
           id: string;
@@ -716,8 +763,7 @@ export function registerAdminManagementRoutes(app: Express) {
           mappable: boolean;
         }> = [];
 
-        additionalAddressRows.forEach(
-          ({ address }: { address: typeof userAddresses.$inferSelect }) => {
+        additionalAddressRows.forEach((address) => {
           const key = keyFor(address.address, address.city, address.state);
           if (!key || seenKeys.has(key)) {
             additionalSkippedDuplicates += 1;
@@ -732,8 +778,7 @@ export function registerAdminManagementRoutes(app: Express) {
             state: address.state,
             mappable: hasCoords(address.latitude, address.longitude),
           });
-        },
-        );
+        });
 
         const renderedCandidates = [
           ...openHostLocations.map((loc) => ({ ...loc, source: "open_request" })),
@@ -813,8 +858,26 @@ export function registerAdminManagementRoutes(app: Express) {
           ? Math.max(1, Math.min(100, Math.floor(requestedLimit)))
           : 30;
 
-        const hostProfiles = await db
-          .select({ host: hosts })
+        const hostProfiles: Array<{
+          id: string;
+          userId: string;
+          address: string;
+          city: string | null;
+          state: string | null;
+          latitude: string | null;
+          longitude: string | null;
+          isVerified: boolean | null;
+        }> = (await db
+          .select({
+            id: hosts.id,
+            userId: hosts.userId,
+            address: hosts.address,
+            city: hosts.city,
+            state: hosts.state,
+            latitude: hosts.latitude,
+            longitude: hosts.longitude,
+            isVerified: hosts.isVerified,
+          })
           .from(hosts)
           .innerJoin(users, eq(hosts.userId, users.id))
           .where(
@@ -823,10 +886,10 @@ export function registerAdminManagementRoutes(app: Express) {
               eq(hosts.isVerified, true),
               or(eq(users.isDisabled, false), isNull(users.isDisabled)),
             ),
-          );
+          )) as any;
 
-        const hostByUserId = new Map<string, (typeof hosts.$inferSelect)>();
-        hostProfiles.forEach(({ host }: { host: typeof hosts.$inferSelect }) => {
+        const hostByUserId = new Map<string, (typeof hostProfiles)[number]>();
+        hostProfiles.forEach((host) => {
           const existing = hostByUserId.get(host.userId);
           if (!existing) {
             hostByUserId.set(host.userId, host);
@@ -838,22 +901,39 @@ export function registerAdminManagementRoutes(app: Express) {
         });
 
         const hostUserIds = Array.from(hostByUserId.keys());
-        const additionalAddressRows = hostUserIds.length
-          ? await db
-              .select({ address: userAddresses })
-              .from(userAddresses)
-              .innerJoin(users, eq(userAddresses.userId, users.id))
-              .where(
-                and(
-                  inArray(userAddresses.userId, hostUserIds),
-                  sql`${userAddresses.address} IS NOT NULL`,
-                  or(eq(users.isDisabled, false), isNull(users.isDisabled)),
-                ),
-              )
-          : [];
+        let additionalAddressRows: Array<{
+          id: string;
+          userId: string;
+          address: string;
+          city: string;
+          state: string | null;
+          latitude: string | null;
+          longitude: string | null;
+        }> = [];
+        if (hostUserIds.length) {
+          additionalAddressRows = (await db
+            .select({
+              id: userAddresses.id,
+              userId: userAddresses.userId,
+              address: userAddresses.address,
+              city: userAddresses.city,
+              state: userAddresses.state,
+              latitude: userAddresses.latitude,
+              longitude: userAddresses.longitude,
+            })
+            .from(userAddresses)
+            .innerJoin(users, eq(userAddresses.userId, users.id))
+            .where(
+              and(
+                inArray(userAddresses.userId, hostUserIds),
+                sql`${userAddresses.address} IS NOT NULL`,
+                or(eq(users.isDisabled, false), isNull(users.isDisabled)),
+              ),
+            )) as any;
+        }
 
         const seenKeys = new Set<string>();
-        hostProfiles.forEach(({ host }: { host: typeof hosts.$inferSelect }) => {
+        hostProfiles.forEach((host) => {
           seenKeys.add(keyFor(host.address, host.city, host.state));
         });
 
@@ -863,9 +943,8 @@ export function registerAdminManagementRoutes(app: Express) {
         let attempted = 0;
 
         const primaryQueue = hostProfiles
-          .map(({ host }: { host: typeof hosts.$inferSelect }) => host)
           .filter(
-            (host: typeof hosts.$inferSelect) =>
+            (host: (typeof hostProfiles)[number]) =>
               !hasCoords(host.latitude, host.longitude) &&
               Boolean((host.address || "").trim()),
           );
@@ -895,8 +974,7 @@ export function registerAdminManagementRoutes(app: Express) {
         }
 
         const additionalQueue = additionalAddressRows
-          .map(({ address }: { address: typeof userAddresses.$inferSelect }) => address)
-          .filter((address: typeof userAddresses.$inferSelect) => {
+          .filter((address) => {
             if (hasCoords(address.latitude, address.longitude)) return false;
             const key = keyFor(address.address, address.city, address.state);
             if (!key) return false;
@@ -961,7 +1039,16 @@ export function registerAdminManagementRoutes(app: Express) {
         }
 
         if (source === "host_profile") {
-          const rows = await db.select().from(hosts).where(eq(hosts.id, id)).limit(1);
+          const rows = await db
+            .select({
+              id: hosts.id,
+              address: hosts.address,
+              city: hosts.city,
+              state: hosts.state,
+            })
+            .from(hosts)
+            .where(eq(hosts.id, id))
+            .limit(1);
           const host = rows[0];
           if (!host) return res.status(404).json({ message: "Host not found" });
           const address = [host.address, host.city, host.state]
@@ -998,7 +1085,12 @@ export function registerAdminManagementRoutes(app: Express) {
 
         if (source === "host_address") {
           const rows = await db
-            .select()
+            .select({
+              id: userAddresses.id,
+              address: userAddresses.address,
+              city: userAddresses.city,
+              state: userAddresses.state,
+            })
             .from(userAddresses)
             .where(eq(userAddresses.id, id))
             .limit(1);
@@ -1040,7 +1132,10 @@ export function registerAdminManagementRoutes(app: Express) {
 
         if (source === "open_request") {
           const rows = await db
-            .select()
+            .select({
+              id: locationRequests.id,
+              address: locationRequests.address,
+            })
             .from(locationRequests)
             .where(eq(locationRequests.id, id))
             .limit(1);

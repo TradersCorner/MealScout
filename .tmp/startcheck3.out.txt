@@ -1,9 +1,0 @@
-✅ Database connection established successfully
-Google OAuth not configured: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables are missing
-Facebook OAuth not configured: FACEBOOK_APP_ID and FACEBOOK_APP_SECRET environment variables are missing
-✅ Story cron jobs registered
-   POST /api/cron/cleanup-stories - Clean up expired stories
-   POST /api/cron/recalculate-levels - Recalculate reviewer levels
-   Include header: x-cron-secret: <CRON_SECRET>
-Socket.IO server setup complete at default path
-[express] WebSocket server initialized for food truck tracking

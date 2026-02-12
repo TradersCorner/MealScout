@@ -539,7 +539,7 @@ class StressTest {
     await Promise.all(promises);
   }
 
-  printSummary() {
+  printSummary(): boolean {
     console.log('\n' + '='.repeat(80));
     this.log('STRESS TEST SUMMARY', 'success');
     console.log('='.repeat(80) + '\n');
@@ -574,11 +574,13 @@ class StressTest {
 
     if (this.failedRequests === 0) {
       this.log('✓ All tests passed! System ready for deployment.', 'success');
+      return true;
     } else {
       this.log(
         `✗ ${this.failedRequests} requests failed. Review errors before deployment.`,
         'error'
       );
+      return false;
     }
   }
 
@@ -597,7 +599,10 @@ class StressTest {
       await this.testAwardsEndpoints();
       await this.testActionAPI();
 
-      this.printSummary();
+      const passed = this.printSummary();
+      if (!passed) {
+        process.exitCode = 1;
+      }
     } catch (error) {
       this.log(`Stress test failed: ${error}`, 'error');
       process.exit(1);

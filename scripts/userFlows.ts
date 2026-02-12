@@ -891,7 +891,7 @@ class UserFlowTester {
     }
   }
 
-  printSummary() {
+  printSummary(): boolean {
     console.log('\n' + '='.repeat(80));
     this.log('USER FLOW TEST SUMMARY', 'success');
     console.log('='.repeat(80));
@@ -919,6 +919,7 @@ class UserFlowTester {
     }
 
     console.log('='.repeat(80) + '\n');
+    return successRate >= 95;
   }
 
   async run() {
@@ -936,7 +937,10 @@ class UserFlowTester {
       await this.flowAnalyticsJourney();
       await this.flowHostTruckBooking();
 
-      this.printSummary();
+      const passed = this.printSummary();
+      if (!passed) {
+        process.exitCode = 1;
+      }
     } catch (error) {
       this.log(`Test failed: ${error}`, 'error');
       process.exit(1);

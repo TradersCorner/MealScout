@@ -250,6 +250,11 @@ export function registerStaffRoutes(app: Express) {
           userType: targetUserType,
         });
 
+        // Internal team accounts should be able to log in immediately.
+        if (targetUserType === "staff" || targetUserType === "admin") {
+          await storage.updateUser(user.id, { emailVerified: true });
+        }
+
         // Optionally create restaurant or host profiles
         if (
           (targetUserType === "restaurant_owner" ||

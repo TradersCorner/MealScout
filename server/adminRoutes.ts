@@ -26,8 +26,7 @@ import { eq, desc, and, or, gte, lte, like, isNull } from "drizzle-orm";
 import { isAdmin, isStaffOrAdmin } from "./unifiedAuth";
 import { logAudit } from "./auditLogger";
 import { storage } from "./storage";
-import bcrypt from "bcryptjs";
-import type { EmailUserData } from "@shared/schema";
+import { sendAccountSetupInvite } from "./utils/accountSetup";
 
 const router = Router();
 
@@ -626,11 +625,24 @@ router.post("/grant-lifetime-access", isAdmin, async (req, res) => {
   }
 });
 
-// Manual user onboarding - create any user type with temp password
+// Manual user onboarding - create any user type and send setup invite
 router.post("/users/create", isAdmin, async (req: any, res) => {
   try {
-    const { email, firstName, lastName, phone, userType, tempPassword } =
-      req.body;
+    const {
+      email,
+      firstName,
+      lastName,
+      phone,
+      userType,
+      businessName,
+      address,
+      cuisineType,
+      latitude,
+      longitude,
+      locationType,
+      footTraffic,
+      amenities,
+    } = req.body;
 
     if (!email || !userType) {
       return res.status(400).json({
@@ -652,40 +664,105 @@ router.post("/users/create", isAdmin, async (req: any, res) => {
       return res.status(400).json({ message: "Invalid user type" });
     }
 
+    if (userType === "super_admin" && req.user.userType !== "super_admin") {
+      return res
+        .status(403)
+        .json({ message: "Only super admins can create super admin accounts" });
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+
     // Check if user already exists
-    const existingUser = await storage.getUserByEmail(email);
+    const existingUser = await storage.getUserByEmail(normalizedEmail);
     if (existingUser) {
       return res
         .status(400)
         .json({ message: "User with this email already exists" });
     }
 
-    // Generate temp password if not provided
-    const password =
-      tempPassword || `Temp${Math.random().toString(36).slice(2, 10)}!`;
-    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await storage.createUserInvite({
+      email: normalizedEmail,
+      firstName: firstName?.trim() || null,
+      lastName: lastName?.trim() || null,
+      phone: phone?.trim() || null,
+      userType: userType as any,
+    });
 
-    const userData: EmailUserData = {
-      email,
-      firstName,
-      lastName,
-      phone: phone || "",
-      passwordHash,
-    };
+    // Internal staff/admin onboarding should not block on email verification.
+    if (["staff", "admin", "super_admin"].includes(userType)) {
+      await storage.updateUser(user.id, { emailVerified: true });
+    }
 
-    const user = await storage.upsertUserByAuth(
-      "email",
-      userData,
-      userType as any
+    // Optional profile creation for business users.
+    if (
+      (userType === "restaurant_owner" || userType === "food_truck") &&
+      businessName &&
+      address
+    ) {
+      await storage.createRestaurantForUser({
+        userId: user.id,
+        name: businessName,
+        address,
+        cuisineType: cuisineType || "Various",
+      });
+    }
+
+    if ((userType === "host" || userType === "event_coordinator") && businessName && address) {
+      const footTrafficMap: Record<string, number> = {
+        low: 50,
+        medium: 150,
+        high: 300,
+      };
+
+      const amenitiesObj: Record<string, boolean> = {};
+      if (Array.isArray(amenities)) {
+        amenities.forEach((amenity: string) => {
+          amenitiesObj[amenity] = true;
+        });
+      }
+
+      const resolvedLocationType =
+        userType === "event_coordinator" ? "event_coordinator" : locationType || "other";
+
+      const hostData: any = {
+        userId: user.id,
+        businessName,
+        address,
+        locationType: resolvedLocationType,
+        expectedFootTraffic: footTrafficMap[footTraffic] || 100,
+        amenities: Object.keys(amenitiesObj).length > 0 ? amenitiesObj : null,
+        isVerified: true,
+        adminCreated: true,
+      };
+
+      if (latitude && longitude) {
+        hostData.latitude = String(latitude);
+        hostData.longitude = String(longitude);
+      }
+
+      await storage.createHost(hostData);
+    }
+
+    const emailSent = await sendAccountSetupInvite({
+      user,
+      createdBy: req.user,
+      req,
+    });
+
+    await logAudit(
+      req.user.id,
+      "admin_user_created",
+      "user",
+      user.id,
+      req.ip,
+      req.headers["user-agent"],
+      { userType, setupEmailSent: emailSent }
     );
-
-    // Mark as needing password reset
-    await storage.updateUserPassword(user.id, passwordHash, true);
 
     res.status(201).json({
       message: "User created successfully",
-      user: { id: user.id, email: user.email, userType: user.userType },
-      tempPassword: password,
+      user: { id: user.id, email: user.email, userType: userType },
+      setupEmailSent: emailSent,
     });
   } catch (error: any) {
     console.error("Error creating user manually:", error);
@@ -747,6 +824,15 @@ router.post("/hosts/create", isAdmin, async (req: any, res) => {
     }
 
     const host = await storage.createHost(hostData);
+    await logAudit(
+      req.user.id,
+      "admin_host_created",
+      "host",
+      host.id,
+      req.ip,
+      req.headers["user-agent"],
+      { userId }
+    );
 
     res.status(201).json({
       message: "Host profile created successfully",
@@ -1011,149 +1097,6 @@ router.post("/review-report/:reportId", isAdmin, async (req, res) => {
   } catch (error) {
     console.error("Error reviewing report:", error);
     res.status(500).json({ message: "Failed to review report" });
-  }
-});
-
-// Manual user onboarding - admin/staff can create any user type
-router.post("/users/create", isAdmin, async (req: any, res) => {
-  try {
-    const { email, firstName, lastName, phone, userType, tempPassword } =
-      req.body;
-
-    if (!email || !userType) {
-      return res.status(400).json({
-        message: "Email and userType are required",
-      });
-    }
-
-    const validUserTypes = [
-      "customer",
-      "restaurant_owner",
-      "food_truck",
-      "host",
-      "event_coordinator",
-      "staff",
-      "admin",
-      "super_admin",
-    ];
-    if (!validUserTypes.includes(userType)) {
-      return res.status(400).json({ message: "Invalid user type" });
-    }
-
-    const existingUser = await storage.getUserByEmail(email);
-    if (existingUser) {
-      return res
-        .status(400)
-        .json({ message: "User with this email already exists" });
-    }
-
-    const password =
-      tempPassword || `Temp${Math.random().toString(36).slice(2, 10)}!`;
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    const userData: EmailUserData = {
-      email,
-      firstName,
-      lastName,
-      phone: phone || "",
-      passwordHash,
-    };
-
-    const user = await storage.upsertUserByAuth(
-      "email",
-      userData,
-      userType as any
-    );
-    await storage.updateUserPassword(user.id, passwordHash, true);
-
-    await logAudit(
-      req.user.id,
-      "admin_user_created",
-      "user",
-      user.id,
-      req.ip,
-      req.headers["user-agent"],
-      { userType }
-    );
-
-    res.status(201).json({
-      message: "User created successfully",
-      user: { id: user.id, email: user.email, userType: user.userType },
-      tempPassword: password,
-    });
-  } catch (error: any) {
-    console.error("Error creating user manually:", error);
-    res.status(500).json({ message: "Failed to create user" });
-  }
-});
-
-// Create host profile with geocoding
-router.post("/hosts/create", isAdmin, async (req: any, res) => {
-  try {
-    const {
-      userId,
-      businessName,
-      address,
-      locationType,
-      latitude,
-      longitude,
-      amenities,
-      contactPhone,
-      notes,
-    } = req.body;
-
-    if (!userId || !businessName || !address || !locationType) {
-      return res.status(400).json({
-        message: "userId, businessName, address, and locationType are required",
-      });
-    }
-
-    const user = await storage.getUser(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const existingHost = await storage.getHostByUserId(userId);
-    if (existingHost) {
-      return res
-        .status(400)
-        .json({ message: "Host profile already exists for this user" });
-    }
-
-    const hostData: any = {
-      userId,
-      businessName,
-      address,
-      locationType,
-      amenities: amenities || null,
-      contactPhone: contactPhone || null,
-      notes: notes || null,
-      isVerified: true,
-      adminCreated: true,
-    };
-
-    if (latitude !== undefined && longitude !== undefined) {
-      hostData.latitude = latitude.toString();
-      hostData.longitude = longitude.toString();
-    }
-
-    const host = await storage.createHost(hostData);
-    await logAudit(
-      req.user.id,
-      "admin_host_created",
-      "host",
-      host.id,
-      req.ip,
-      req.headers["user-agent"],
-      { userId }
-    );
-
-    res
-      .status(201)
-      .json({ message: "Host profile created successfully", host });
-  } catch (error: any) {
-    console.error("Error creating host manually:", error);
-    res.status(500).json({ message: "Failed to create host profile" });
   }
 });
 

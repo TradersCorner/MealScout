@@ -295,57 +295,17 @@ const haversineKm = (a: GeoPoint, b: GeoPoint) => {
   return 2 * earthRadiusKm * Math.asin(Math.sqrt(h));
 };
 
-const hostPinActiveIcon = new L.Icon({
-  iconUrl: svgToDataUrl(`
-    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#ff4d2e" stroke="#7C2D12" stroke-width="2"/>
-      <circle cx="17" cy="13" r="7" fill="#FFFBEB"/>
-      <text x="17" y="16.5" text-anchor="middle" font-size="8" font-weight="900" fill="#7C2D12">LIVE</text>
-    </svg>
-  `),
-  iconSize: [34, 42],
-  iconAnchor: [17, 40],
-  popupAnchor: [0, -34],
+const hostPinIcon = new L.Icon({
+  iconUrl: mealScoutIcon,
+  iconSize: [36, 36],
+  iconAnchor: [18, 36],
+  popupAnchor: [0, -30],
 });
 
-const hostPinBookableIcon = new L.Icon({
-  iconUrl: svgToDataUrl(`
-    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#16a34a" stroke="#14532d" stroke-width="2"/>
-      <circle cx="17" cy="13" r="7" fill="#F0FDF4"/>
-      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="900" fill="#14532d">P</text>
-    </svg>
-  `),
-  iconSize: [34, 42],
-  iconAnchor: [17, 40],
-  popupAnchor: [0, -34],
-});
-
-const hostPinFullIcon = new L.Icon({
-  iconUrl: svgToDataUrl(`
-    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#ef4444" stroke="#7f1d1d" stroke-width="2"/>
-      <circle cx="17" cy="13" r="7" fill="#FEF2F2"/>
-      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="900" fill="#7f1d1d">X</text>
-    </svg>
-  `),
-  iconSize: [34, 42],
-  iconAnchor: [17, 40],
-  popupAnchor: [0, -34],
-});
-
-const hostPinUnpricedIcon = new L.Icon({
-  iconUrl: svgToDataUrl(`
-    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M17 1C10.373 1 5 6.373 5 13c0 9.5 12 27 12 27s12-17.5 12-27C29 6.373 23.627 1 17 1z" fill="#64748b" stroke="#0f172a" stroke-width="2"/>
-      <circle cx="17" cy="13" r="7" fill="#F8FAFC"/>
-      <text x="17" y="17" text-anchor="middle" font-size="9" font-weight="900" fill="#0f172a">H</text>
-    </svg>
-  `),
-  iconSize: [34, 42],
-  iconAnchor: [17, 40],
-  popupAnchor: [0, -34],
-});
+const hostPinActiveIcon = hostPinIcon;
+const hostPinBookableIcon = hostPinIcon;
+const hostPinFullIcon = hostPinIcon;
+const hostPinUnpricedIcon = hostPinIcon;
 
 const foodPinIcon = new L.Icon({
   iconUrl: svgToDataUrl(`

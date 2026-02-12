@@ -2,7 +2,10 @@ import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
 import { type Server } from "http";
+import { fileURLToPath } from "url";
 import { nanoid } from "nanoid";
+
+const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -16,18 +19,18 @@ export function log(message: string, source = "express") {
 }
 
 export async function setupVite(app: Express, server: Server) {
-  const [{ createServer: createViteServer, createLogger }, { default: viteConfig }] =
-    await Promise.all([import("vite"), import("../vite.config")]);
+  const viteModule = (await (0, eval)('import("vite")')) as typeof import("vite");
+  const { createServer: createViteServer, createLogger } = viteModule;
   const viteLogger = createLogger();
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
     allowedHosts: true as const,
   };
+  const configFile = path.resolve(process.cwd(), "vite.config.ts");
 
   const vite = await createViteServer({
-    ...viteConfig,
-    configFile: false,
+    configFile,
     customLogger: {
       ...viteLogger,
         error: (msg: any, options: any) => {
@@ -45,7 +48,7 @@ export async function setupVite(app: Express, server: Server) {
 
     try {
       const clientTemplate = path.resolve(
-        import.meta.dirname,
+        moduleDir,
         "..",
         "client",
         "index.html",
@@ -68,8 +71,8 @@ export async function setupVite(app: Express, server: Server) {
 
 export function serveStatic(app: Express) {
   // In production, server code is in dist/ and public assets are in dist/public
-  // import.meta.dirname will be dist/ so we look for public/ relative to it
-  const distPath = path.resolve(import.meta.dirname, "public");
+  // server module resolves from dist/, so we look for public/ relative to it
+  const distPath = path.resolve(moduleDir, "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(

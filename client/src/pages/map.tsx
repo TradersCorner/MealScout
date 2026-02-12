@@ -1196,6 +1196,9 @@ export default function MapPage() {
   const visibleHostLocations = useMemo(() => {
     if (!mapBounds || !mapLocations?.hostLocations?.length) return [];
     return mapLocations.hostLocations.filter((host) => {
+      const hostId = host.hostId ? String(host.hostId) : "";
+      if (!hostId) return false;
+      if (!bookableHostIds.has(hostId)) return false;
       const coords = resolveHostCoords(host);
       if (!coords) return false;
       return mapBounds.contains([coords.lat, coords.lng]);
@@ -1204,6 +1207,7 @@ export default function MapPage() {
     mapLocations,
     hostCoords,
     mapBounds,
+    bookableHostIds,
   ]);
 
   const lastHostIdsUpdatedLabel = (() => {

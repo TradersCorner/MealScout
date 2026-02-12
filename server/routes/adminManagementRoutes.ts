@@ -3545,7 +3545,6 @@ export function registerAdminManagementRoutes(app: Express) {
     isAuthenticated,
     isStaffOrAdmin,
     async (req: any, res) => {
-      if (denyStaffEdits(req, res)) return;
       try {
         const hostId = req.params.hostId;
         const lat = Number(req.body?.latitude);

@@ -76,9 +76,30 @@ const retryGeocodeAddress = async (rawAddress: string) => {
 const truckImportUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 20 * 1024 * 1024,
+    // Large state/county exports can exceed 20MB; allow override via env.
+    fileSize:
+      (Number(process.env.TRUCK_IMPORT_MAX_FILE_SIZE_MB || 50) || 50) *
+      1024 *
+      1024,
   },
 });
+
+const truckImportUploadSingle = (req: any, res: any, next: any) => {
+  const maxMb = Number(process.env.TRUCK_IMPORT_MAX_FILE_SIZE_MB || 50) || 50;
+  return truckImportUpload.single("file")(req, res, (err: any) => {
+    if (!err) return next();
+    if (err instanceof (multer as any).MulterError) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({
+          message: `File is too large. Max upload size is ${maxMb}MB.`,
+          code: "file_too_large",
+          maxFileSizeMb: maxMb,
+        });
+      }
+    }
+    return next(err);
+  });
+};
 
 const IMPORT_SYSTEM_EMAIL =
   process.env.IMPORT_SYSTEM_EMAIL || "system-import@mealscout.us";
@@ -88,19 +109,6 @@ let ensureTruckImportTablesPromise: Promise<void> | null = null;
 const ensureTruckImportTables = async () => {
   if (!ensureTruckImportTablesPromise) {
     ensureTruckImportTablesPromise = (async () => {
-      const result = await db.execute(sql`
-        select table_name
-        from information_schema.tables
-        where table_name in ('truck_import_batches', 'truck_import_listings')
-      `);
-      const rows = ((result as any)?.rows ?? []) as Array<{ table_name?: string }>;
-      const tableNames = new Set(
-        rows.map((row) => String(row?.table_name || "").trim().toLowerCase()),
-      );
-      const hasBatches = tableNames.has("truck_import_batches");
-      const hasListings = tableNames.has("truck_import_listings");
-      if (hasBatches && hasListings) return;
-
       const statements: string[] = [
         `CREATE TABLE IF NOT EXISTS "truck_import_batches" (
           "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -177,6 +185,10 @@ const ensureTruckImportTables = async () => {
           ON "truck_import_listings" ("state")`,
         `CREATE INDEX IF NOT EXISTS "idx_truck_import_batch"
           ON "truck_import_listings" ("batch_id")`,
+        `ALTER TABLE IF EXISTS "restaurants"
+          ADD COLUMN IF NOT EXISTS "claimed_from_import_id" varchar`,
+        `CREATE INDEX IF NOT EXISTS "idx_restaurants_claimed_from_import"
+          ON "restaurants" ("claimed_from_import_id")`,
       ];
 
       for (const statement of statements) {
@@ -205,6 +217,21 @@ const ensureTruckImportTables = async () => {
       );
       if (!afterNames.has("truck_import_batches") || !afterNames.has("truck_import_listings")) {
         throw new Error("Truck import tables are still missing after ensure step.");
+      }
+
+      // The admin dashboard joins restaurants.claimed_from_import_id; ensure it exists.
+      const claimedFromImport = await db.execute(sql`
+        select 1
+        from information_schema.columns
+        where table_name = 'restaurants'
+          and column_name = 'claimed_from_import_id'
+        limit 1
+      `);
+      const claimedFromImportRows = ((claimedFromImport as any)?.rows ?? []) as Array<unknown>;
+      if (claimedFromImportRows.length === 0) {
+        throw new Error(
+          "restaurants.claimed_from_import_id is missing after ensure step.",
+        );
       }
     })();
   }
@@ -236,6 +263,13 @@ export function registerAdminManagementRoutes(app: Express) {
     if (!err || err.code !== "42P01") return false;
     if (!relationName) return true;
     return err.message?.includes(`"${relationName}"`) ?? false;
+  };
+
+  const isMissingColumnError = (error: unknown, columnName?: string) => {
+    const err = error as { code?: string; message?: string } | null;
+    if (!err || err.code !== "42703") return false; // undefined_column
+    if (!columnName) return true;
+    return err.message?.includes(columnName) ?? false;
   };
 
   const denyStaffEdits = (req: any, res: any) => {
@@ -1545,6 +1579,13 @@ export function registerAdminManagementRoutes(app: Express) {
             code: "migration_required",
           });
         }
+        if (isMissingColumnError(error, "claimed_from_import_id")) {
+          return res.status(503).json({
+            message:
+              'Truck import schema is missing columns. Run `npm run migrate:sql -- 044_add_restaurants_claimed_from_import_id.sql`.',
+            code: "migration_required",
+          });
+        }
         console.error("Error listing unclaimed import listings:", error);
         res.status(500).json({ message: "Failed to load unclaimed trucks" });
       }
@@ -1763,7 +1804,7 @@ export function registerAdminManagementRoutes(app: Express) {
     "/api/admin/truck-imports",
     isAuthenticated,
     isStaffOrAdmin,
-    truckImportUpload.single("file"),
+    truckImportUploadSingle,
     async (req: any, res) => {
       if (!requireAdminUser(req, res)) return;
       try {
@@ -2103,6 +2144,13 @@ export function registerAdminManagementRoutes(app: Express) {
           return res.status(503).json({
             message:
               'Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql` (and then retry the upload).',
+            code: "migration_required",
+          });
+        }
+        if (isMissingColumnError(error, "claimed_from_import_id")) {
+          return res.status(503).json({
+            message:
+              'Truck import schema is missing columns. Run `npm run migrate:sql -- 044_add_restaurants_claimed_from_import_id.sql` (and then retry the upload).',
             code: "migration_required",
           });
         }

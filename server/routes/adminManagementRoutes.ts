@@ -349,12 +349,28 @@ export function registerAdminManagementRoutes(app: Express) {
           }
         }
 
+        if (userType === "super_admin" && req.user?.userType !== "super_admin") {
+          return res.status(403).json({
+            message: "Only super admins can create super admin accounts",
+          });
+        }
+
         // Validate required fields
         const normalizedEmail = email?.trim().toLowerCase();
+        const validUserTypes = [
+          "customer",
+          "restaurant_owner",
+          "food_truck",
+          "host",
+          "event_coordinator",
+          "staff",
+          "admin",
+          "super_admin",
+        ];
 
-        if (!normalizedEmail || !userType) {
+        if (!normalizedEmail || !userType || !validUserTypes.includes(userType)) {
           return res.status(400).json({
-            message: "Email and userType are required",
+            message: "Valid email and userType are required",
           });
         }
 
@@ -366,6 +382,15 @@ export function registerAdminManagementRoutes(app: Express) {
           phone: phone?.trim() || null,
           userType,
         });
+
+        // Internal team accounts should not be blocked on email verification.
+        if (
+          userType === "staff" ||
+          userType === "admin" ||
+          userType === "super_admin"
+        ) {
+          await storage.updateUser(user.id, { emailVerified: true });
+        }
 
         // Handle restaurant owner and food truck creation
         if (
@@ -406,7 +431,10 @@ export function registerAdminManagementRoutes(app: Express) {
             userId: user.id,
             businessName,
             address,
-            locationType: locationType || "other",
+            locationType:
+              userType === "event_coordinator"
+                ? "event_coordinator"
+                : locationType || "other",
             expectedFootTraffic: footTrafficMap[footTraffic] || 100,
             amenities:
               Object.keys(amenitiesObj).length > 0 ? amenitiesObj : null,

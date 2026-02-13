@@ -127,9 +127,9 @@ export function computeParkingPassQualityFlags(listing: {
   const platformPaymentsEnabled = Boolean(process.env.STRIPE_SECRET_KEY);
 
   if (!address) flags.push("missing_address");
-  if (!city) flags.push("missing_city");
-  if (!stateRaw) flags.push("missing_state");
-  if (state && !/^[A-Za-z]{2}$/.test(state)) flags.push("invalid_state");
+  // City/state are optional because many legacy host rows store the full location in `address`.
+  // If state is provided, validate it to avoid obviously bad data.
+  if (stateRaw && state && !/^[A-Za-z]{2}$/.test(state)) flags.push("invalid_state");
   if (address && !/\d/.test(address)) flags.push("bad_address_format");
 
   const lat = toNumberOrNull(listing.latitude ?? host?.latitude);

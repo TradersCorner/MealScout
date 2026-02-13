@@ -338,6 +338,11 @@ export const suppliers = pgTable(
     contactPhone: varchar("contact_phone"),
     contactEmail: varchar("contact_email"),
     isActive: boolean("is_active").default(true),
+    offersDelivery: boolean("offers_delivery").notNull().default(false),
+    deliveryRadiusMiles: integer("delivery_radius_miles"),
+    deliveryFeeCents: integer("delivery_fee_cents").notNull().default(0),
+    deliveryMinOrderCents: integer("delivery_min_order_cents").notNull().default(0),
+    deliveryNotes: text("delivery_notes"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
@@ -392,6 +397,14 @@ export const supplierRequests = pgTable(
       .notNull()
       .default("offsite"), // 'offsite' | 'in_person'
     note: text("note"),
+    deliveryAddress: text("delivery_address"),
+    deliveryCity: varchar("delivery_city"),
+    deliveryState: varchar("delivery_state"),
+    deliveryPostalCode: varchar("delivery_postal_code"),
+    deliveryInstructions: text("delivery_instructions"),
+    deliveryFeeCents: integer("delivery_fee_cents").notNull().default(0),
+    deliveryStatus: varchar("delivery_status").notNull().default("pending"), // 'pending' | 'accepted' | 'out_for_delivery' | 'delivered' | 'cancelled'
+    deliveryScheduledFor: timestamp("delivery_scheduled_for"),
     acceptedAt: timestamp("accepted_at"),
     acceptedBy: varchar("accepted_by").references(() => users.id, {
       onDelete: "set null",
@@ -411,6 +424,8 @@ export const supplierRequests = pgTable(
     index("idx_supplier_requests_supplier").on(table.supplierId),
     index("idx_supplier_requests_buyer").on(table.buyerRestaurantId),
     index("idx_supplier_requests_status").on(table.status),
+    index("idx_supplier_requests_fulfillment").on(table.requestedFulfillment),
+    index("idx_supplier_requests_delivery_status").on(table.deliveryStatus),
   ],
 );
 

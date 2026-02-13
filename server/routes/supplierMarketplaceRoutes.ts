@@ -1047,6 +1047,11 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         contactPhone: z.string().max(50).optional().nullable(),
         contactEmail: z.string().max(200).optional().nullable(),
         isActive: z.boolean().optional(),
+        offersDelivery: z.boolean().optional(),
+        deliveryRadiusMiles: z.coerce.number().int().min(1).max(250).optional().nullable(),
+        deliveryFeeCents: z.coerce.number().int().min(0).max(500_000).optional(),
+        deliveryMinOrderCents: z.coerce.number().int().min(0).max(5_000_000).optional(),
+        deliveryNotes: z.string().max(2000).optional().nullable(),
       });
       const parsed = schema.parse(req.body || {});
 
@@ -1056,6 +1061,10 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       }
       if (parsed.longitude !== undefined) {
         updates.longitude = parsed.longitude === null ? null : parsed.longitude;
+      }
+      if (parsed.deliveryRadiusMiles !== undefined) {
+        updates.deliveryRadiusMiles =
+          parsed.deliveryRadiusMiles === null ? null : parsed.deliveryRadiusMiles;
       }
 
       const [updated] = await db
@@ -1171,8 +1180,14 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       const schema = z.object({
         supplierId: z.string().min(1),
         buyerRestaurantId: z.string().min(1),
+        requestedFulfillment: z.enum(["pickup", "delivery"]).default("pickup"),
         paymentPreference: z.enum(["offsite", "in_person"]).default("offsite"),
         note: z.string().max(2000).optional().nullable(),
+        deliveryInstructions: z.string().max(2000).optional().nullable(),
+        deliveryAddress: z.string().max(400).optional().nullable(),
+        deliveryCity: z.string().max(120).optional().nullable(),
+        deliveryState: z.string().max(60).optional().nullable(),
+        deliveryPostalCode: z.string().max(30).optional().nullable(),
         items: z
           .array(
             z.object({
@@ -1197,6 +1212,9 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         .where(and(eq(suppliers.id, parsed.supplierId), eq(suppliers.isActive, true)))
         .limit(1);
       if (!supplier) return res.status(404).json({ message: "Supplier not found" });
+      if (parsed.requestedFulfillment === "delivery" && !(supplier as any).offersDelivery) {
+        return res.status(400).json({ message: "Supplier does not offer delivery." });
+      }
 
       const productIds = parsed.items
         .map((i) => (i.productId ? String(i.productId) : ""))
@@ -1252,6 +1270,27 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       });
 
       const now = new Date();
+      const deliveryDefaults =
+        parsed.requestedFulfillment === "delivery"
+          ? {
+              deliveryAddress: parsed.deliveryAddress ?? (buyerRestaurant as any).address ?? null,
+              deliveryCity: parsed.deliveryCity ?? (buyerRestaurant as any).city ?? null,
+              deliveryState: parsed.deliveryState ?? (buyerRestaurant as any).state ?? null,
+              deliveryPostalCode: parsed.deliveryPostalCode ?? null,
+              deliveryInstructions: parsed.deliveryInstructions ?? null,
+              deliveryFeeCents: Number((supplier as any).deliveryFeeCents || 0) || 0,
+              deliveryStatus: "pending",
+            }
+          : {
+              deliveryAddress: null,
+              deliveryCity: null,
+              deliveryState: null,
+              deliveryPostalCode: null,
+              deliveryInstructions: null,
+              deliveryFeeCents: 0,
+              deliveryStatus: "pending",
+            };
+
       const request = await db.transaction(async (tx: any) => {
         const [created] = await tx
           .insert(supplierRequests)
@@ -1259,9 +1298,10 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
             supplierId: supplier.id,
             buyerRestaurantId: parsed.buyerRestaurantId,
             status: "submitted",
-            requestedFulfillment: "pickup",
+            requestedFulfillment: parsed.requestedFulfillment,
             paymentPreference: parsed.paymentPreference,
             note: parsed.note ?? null,
+            ...deliveryDefaults,
             createdAt: now,
             updatedAt: now,
           } as any)
@@ -1353,8 +1393,14 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         const schema = z.object({
           supplierId: z.string().min(1),
           buyerRestaurantId: z.string().min(1),
+          requestedFulfillment: z.enum(["pickup", "delivery"]).default("pickup"),
           paymentPreference: z.enum(["offsite", "in_person"]).default("offsite"),
           note: z.string().max(2000).optional().nullable(),
+          deliveryInstructions: z.string().max(2000).optional().nullable(),
+          deliveryAddress: z.string().max(400).optional().nullable(),
+          deliveryCity: z.string().max(120).optional().nullable(),
+          deliveryState: z.string().max(60).optional().nullable(),
+          deliveryPostalCode: z.string().max(30).optional().nullable(),
         });
         const parsedMeta = schema.parse(req.body || {});
 
@@ -1369,6 +1415,9 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           .where(and(eq(suppliers.id, parsedMeta.supplierId), eq(suppliers.isActive, true)))
           .limit(1);
         if (!supplier) return res.status(404).json({ message: "Supplier not found" });
+        if (parsedMeta.requestedFulfillment === "delivery" && !(supplier as any).offersDelivery) {
+          return res.status(400).json({ message: "Supplier does not offer delivery." });
+        }
 
         const { headers, rows } = await parseTabularFile(
           file.buffer,
@@ -1444,6 +1493,28 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         });
 
         const now = new Date();
+        const deliveryDefaults =
+          parsedMeta.requestedFulfillment === "delivery"
+            ? {
+                deliveryAddress:
+                  parsedMeta.deliveryAddress ?? (buyerRestaurant as any).address ?? null,
+                deliveryCity: parsedMeta.deliveryCity ?? (buyerRestaurant as any).city ?? null,
+                deliveryState: parsedMeta.deliveryState ?? (buyerRestaurant as any).state ?? null,
+                deliveryPostalCode: parsedMeta.deliveryPostalCode ?? null,
+                deliveryInstructions: parsedMeta.deliveryInstructions ?? null,
+                deliveryFeeCents: Number((supplier as any).deliveryFeeCents || 0) || 0,
+                deliveryStatus: "pending",
+              }
+            : {
+                deliveryAddress: null,
+                deliveryCity: null,
+                deliveryState: null,
+                deliveryPostalCode: null,
+                deliveryInstructions: null,
+                deliveryFeeCents: 0,
+                deliveryStatus: "pending",
+              };
+
         const request = await db.transaction(async (tx: any) => {
           const [created] = await tx
             .insert(supplierRequests)
@@ -1451,9 +1522,10 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
               supplierId: supplier.id,
               buyerRestaurantId: parsedMeta.buyerRestaurantId,
               status: "submitted",
-              requestedFulfillment: "pickup",
+              requestedFulfillment: parsedMeta.requestedFulfillment,
               paymentPreference: parsedMeta.paymentPreference,
               note: parsedMeta.note ?? null,
+              ...deliveryDefaults,
               createdAt: now,
               updatedAt: now,
             } as any)
@@ -1636,6 +1708,8 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
             acceptedAt: now,
             acceptedBy: req.user.id,
             orderId: createdOrder.id,
+            deliveryStatus:
+              String((request as any).requestedFulfillment) === "delivery" ? "accepted" : "pending",
             updatedAt: now,
           } as any)
           .where(eq(supplierRequests.id, requestId));
@@ -1676,6 +1750,72 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       res.status(500).json({ message: error.message || "Failed to accept request" });
     }
   });
+
+  // Delivery portal updates (supplier only)
+  app.patch(
+    "/api/supplier/requests/:requestId/delivery",
+    isAuthenticated,
+    isSupplierOrAdmin,
+    async (req: any, res) => {
+      try {
+        const supplier = await ensureSupplierProfile(req.user.id);
+        const requestId = String(req.params.requestId || "").trim();
+        if (!requestId) return res.status(400).json({ message: "Request ID required" });
+
+        const [request] = await db
+          .select()
+          .from(supplierRequests)
+          .where(
+            and(eq(supplierRequests.id, requestId), eq(supplierRequests.supplierId, supplier.id)),
+          )
+          .limit(1);
+        if (!request) return res.status(404).json({ message: "Request not found" });
+        if (String((request as any).requestedFulfillment) !== "delivery") {
+          return res.status(400).json({ message: "This request is not a delivery request." });
+        }
+
+        const schema = z.object({
+          deliveryStatus: z
+            .enum(["pending", "accepted", "out_for_delivery", "delivered", "cancelled"])
+            .optional(),
+          deliveryScheduledFor: z.string().optional().nullable(),
+          deliveryFeeCents: z.coerce.number().int().min(0).max(500_000).optional(),
+        });
+        const parsed = schema.parse(req.body || {});
+
+        const now = new Date();
+        const scheduled =
+          parsed.deliveryScheduledFor !== undefined && parsed.deliveryScheduledFor !== null
+            ? new Date(String(parsed.deliveryScheduledFor))
+            : null;
+        const safeScheduled =
+          scheduled && !Number.isNaN(scheduled.getTime()) ? scheduled : null;
+
+        const [updated] = await db
+          .update(supplierRequests)
+          .set({
+            ...(parsed.deliveryStatus ? { deliveryStatus: parsed.deliveryStatus } : {}),
+            ...(parsed.deliveryFeeCents !== undefined
+              ? { deliveryFeeCents: parsed.deliveryFeeCents }
+              : {}),
+            ...(parsed.deliveryScheduledFor !== undefined
+              ? { deliveryScheduledFor: safeScheduled }
+              : {}),
+            updatedAt: now,
+          } as any)
+          .where(eq(supplierRequests.id, requestId))
+          .returning();
+
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error updating delivery request:", error);
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: "Invalid delivery update", errors: error.errors });
+        }
+        res.status(500).json({ message: error.message || "Failed to update delivery request" });
+      }
+    },
+  );
 
   // Truck ordering
   app.post("/api/supplier-orders", isAuthenticated, async (req: any, res) => {

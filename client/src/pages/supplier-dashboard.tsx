@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Navigation from "@/components/navigation";
 import { BackHeader } from "@/components/back-header";
@@ -13,6 +13,11 @@ type Supplier = {
   contactEmail?: string | null;
   contactPhone?: string | null;
   isActive?: boolean | null;
+  offersDelivery?: boolean | null;
+  deliveryRadiusMiles?: number | null;
+  deliveryFeeCents?: number | null;
+  deliveryMinOrderCents?: number | null;
+  deliveryNotes?: string | null;
 };
 
 type SupplierProduct = {
@@ -35,8 +40,17 @@ type SupplierOrder = {
 type SupplierRequest = {
   id: string;
   status: string;
+  requestedFulfillment?: string | null;
   paymentPreference: string;
   note?: string | null;
+  deliveryAddress?: string | null;
+  deliveryCity?: string | null;
+  deliveryState?: string | null;
+  deliveryPostalCode?: string | null;
+  deliveryInstructions?: string | null;
+  deliveryFeeCents?: number | null;
+  deliveryStatus?: string | null;
+  deliveryScheduledFor?: string | null;
   createdAt?: string;
 };
 
@@ -51,6 +65,13 @@ export default function SupplierDashboardPage() {
     unitLabel: "",
   });
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [deliverySettings, setDeliverySettings] = useState({
+    offersDelivery: false,
+    deliveryRadiusMiles: "",
+    deliveryFeeDollars: "",
+    deliveryMinOrderDollars: "",
+    deliveryNotes: "",
+  });
 
   const { data: supplier, isError: isSupplierError } = useQuery<Supplier>({
     queryKey: ["/api/supplier/me"],
@@ -63,6 +84,30 @@ export default function SupplierDashboardPage() {
     staleTime: 30_000,
     gcTime: 10 * 60_000,
   });
+
+  const supplierDeliveryDefaults = useMemo(() => {
+    return {
+      offersDelivery: Boolean(supplier?.offersDelivery),
+      deliveryRadiusMiles:
+        supplier?.deliveryRadiusMiles !== null && supplier?.deliveryRadiusMiles !== undefined
+          ? String(supplier.deliveryRadiusMiles)
+          : "",
+      deliveryFeeDollars:
+        supplier?.deliveryFeeCents !== null && supplier?.deliveryFeeCents !== undefined
+          ? String((Number(supplier.deliveryFeeCents) / 100).toFixed(2))
+          : "",
+      deliveryMinOrderDollars:
+        supplier?.deliveryMinOrderCents !== null && supplier?.deliveryMinOrderCents !== undefined
+          ? String((Number(supplier.deliveryMinOrderCents) / 100).toFixed(2))
+          : "",
+      deliveryNotes: supplier?.deliveryNotes ?? "",
+    };
+  }, [supplier]);
+
+  useEffect(() => {
+    if (!supplier) return;
+    setDeliverySettings((prev) => ({ ...prev, ...supplierDeliveryDefaults }));
+  }, [supplier, supplierDeliveryDefaults]);
 
   const { data: products = [] } = useQuery<SupplierProduct[]>({
     queryKey: ["/api/supplier/products"],
@@ -199,6 +244,78 @@ export default function SupplierDashboardPage() {
     },
   });
 
+  const updateSupplier = useMutation({
+    mutationFn: async () => {
+      const fee = Number(deliverySettings.deliveryFeeDollars);
+      const minOrder = Number(deliverySettings.deliveryMinOrderDollars);
+      const radius = deliverySettings.deliveryRadiusMiles
+        ? Number(deliverySettings.deliveryRadiusMiles)
+        : null;
+
+      if (deliverySettings.offersDelivery) {
+        if (radius !== null && (!Number.isFinite(radius) || radius <= 0)) {
+          throw new Error("Enter a valid delivery radius in miles");
+        }
+        if (!Number.isFinite(fee) || fee < 0) throw new Error("Enter a valid delivery fee");
+        if (!Number.isFinite(minOrder) || minOrder < 0) {
+          throw new Error("Enter a valid delivery minimum order");
+        }
+      }
+
+      const res = await fetch("/api/supplier/me", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          offersDelivery: deliverySettings.offersDelivery,
+          deliveryRadiusMiles: deliverySettings.offersDelivery ? radius : null,
+          deliveryFeeCents: deliverySettings.offersDelivery ? Math.round(fee * 100) : 0,
+          deliveryMinOrderCents: deliverySettings.offersDelivery ? Math.round(minOrder * 100) : 0,
+          deliveryNotes: deliverySettings.deliveryNotes.trim() || null,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to update delivery settings");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/me"] });
+      toast({ title: "Delivery settings saved" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Save failed",
+        description: error?.message || "Unable to save settings",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateDelivery = useMutation({
+    mutationFn: async (params: { requestId: string; deliveryStatus: string }) => {
+      const res = await fetch(`/api/supplier/requests/${params.requestId}/delivery`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deliveryStatus: params.deliveryStatus }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to update delivery");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/requests"] });
+      toast({ title: "Delivery updated" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update failed",
+        description: error?.message || "Unable to update delivery",
+        variant: "destructive",
+      });
+    },
+  });
+
   const setOrderStatus = useMutation({
     mutationFn: async ({ orderId, status }: { orderId: string; status: string }) => {
       const res = await fetch(`/api/supplier/orders/${orderId}/status`, {
@@ -227,6 +344,11 @@ export default function SupplierDashboardPage() {
   const activeCount = useMemo(
     () => products.filter((p) => p.isActive !== false).length,
     [products],
+  );
+
+  const deliveryRequests = useMemo(
+    () => requests.filter((r) => String(r.requestedFulfillment || "") === "delivery"),
+    [requests],
   );
 
   return (
@@ -286,7 +408,83 @@ export default function SupplierDashboardPage() {
                   disabled={createProduct.isPending || !newProduct.name.trim()}
                   onClick={() => createProduct.mutate()}
                 >
-                  {createProduct.isPending ? "Saving…" : "Create"}
+                  {createProduct.isPending ? "Saving..." : "Create"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="text-sm font-semibold">Delivery settings</div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={deliverySettings.offersDelivery}
+                    onChange={(e) =>
+                      setDeliverySettings((p) => ({
+                        ...p,
+                        offersDelivery: e.target.checked,
+                      }))
+                    }
+                  />
+                  Offer delivery
+                </label>
+
+                <div className="grid grid-cols-1 gap-2">
+                  <Input
+                    placeholder="Delivery radius (miles)"
+                    value={deliverySettings.deliveryRadiusMiles}
+                    onChange={(e) =>
+                      setDeliverySettings((p) => ({
+                        ...p,
+                        deliveryRadiusMiles: e.target.value,
+                      }))
+                    }
+                    disabled={!deliverySettings.offersDelivery}
+                  />
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Delivery fee ($)"
+                      value={deliverySettings.deliveryFeeDollars}
+                      onChange={(e) =>
+                        setDeliverySettings((p) => ({
+                          ...p,
+                          deliveryFeeDollars: e.target.value,
+                        }))
+                      }
+                      disabled={!deliverySettings.offersDelivery}
+                    />
+                    <Input
+                      placeholder="Min order ($)"
+                      value={deliverySettings.deliveryMinOrderDollars}
+                      onChange={(e) =>
+                        setDeliverySettings((p) => ({
+                          ...p,
+                          deliveryMinOrderDollars: e.target.value,
+                        }))
+                      }
+                      disabled={!deliverySettings.offersDelivery}
+                    />
+                  </div>
+                  <Input
+                    placeholder="Delivery notes (optional)"
+                    value={deliverySettings.deliveryNotes}
+                    onChange={(e) =>
+                      setDeliverySettings((p) => ({
+                        ...p,
+                        deliveryNotes: e.target.value,
+                      }))
+                    }
+                    disabled={!deliverySettings.offersDelivery}
+                  />
+                </div>
+
+                <Button
+                  variant="outline"
+                  disabled={updateSupplier.isPending}
+                  onClick={() => updateSupplier.mutate()}
+                >
+                  {updateSupplier.isPending ? "Saving..." : "Save delivery settings"}
                 </Button>
               </CardContent>
             </Card>
@@ -309,8 +507,97 @@ export default function SupplierDashboardPage() {
                   disabled={importProducts.isPending || !importFile}
                   onClick={() => importProducts.mutate()}
                 >
-                  {importProducts.isPending ? "Importing…" : "Import"}
+                  {importProducts.isPending ? "Importing..." : "Import"}
                 </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="text-sm font-semibold">Delivery portal</div>
+                {deliveryRequests.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">
+                    No delivery requests yet.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {deliveryRequests.map((r) => {
+                      const address = [r.deliveryAddress, r.deliveryCity, r.deliveryState]
+                        .map((v) => (v || "").trim())
+                        .filter(Boolean)
+                        .join(", ");
+                      return (
+                        <div key={r.id} className="border rounded p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs text-muted-foreground">
+                              Delivery • {r.paymentPreference}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {r.deliveryStatus || "pending"} • {r.status}
+                            </div>
+                          </div>
+                          {address ? <div className="text-sm">{address}</div> : null}
+                          {r.deliveryInstructions ? (
+                            <div className="text-sm text-muted-foreground">
+                              {r.deliveryInstructions}
+                            </div>
+                          ) : null}
+                          <div className="text-xs text-muted-foreground">
+                            Fee: {formatMoney(Number(r.deliveryFeeCents || 0))}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              disabled={acceptRequest.isPending || r.status !== "submitted"}
+                              onClick={() => acceptRequest.mutate({ requestId: r.id })}
+                            >
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={updateDelivery.isPending}
+                              onClick={() =>
+                                updateDelivery.mutate({
+                                  requestId: r.id,
+                                  deliveryStatus: "out_for_delivery",
+                                })
+                              }
+                            >
+                              Out for delivery
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={updateDelivery.isPending}
+                              onClick={() =>
+                                updateDelivery.mutate({
+                                  requestId: r.id,
+                                  deliveryStatus: "delivered",
+                                })
+                              }
+                            >
+                              Delivered
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={updateDelivery.isPending}
+                              onClick={() =>
+                                updateDelivery.mutate({
+                                  requestId: r.id,
+                                  deliveryStatus: "cancelled",
+                                })
+                              }
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -323,7 +610,9 @@ export default function SupplierDashboardPage() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {requests.map((r) => (
+                    {requests
+                      .filter((r) => String(r.requestedFulfillment || "") !== "delivery")
+                      .map((r) => (
                       <div key={r.id} className="border rounded p-3 space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="text-xs text-muted-foreground">

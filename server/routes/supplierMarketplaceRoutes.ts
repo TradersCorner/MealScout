@@ -26,24 +26,53 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
 
-const computeFees = (subtotalCents: number) => {
-  const platformFeeBps = Number(process.env.SUPPLIER_ORDER_PLATFORM_FEE_BPS || 0) || 0;
-  const platformFeeFixed = Number(process.env.SUPPLIER_ORDER_PLATFORM_FEE_FIXED_CENTS || 0) || 0;
-  const stripeFeeBps = Number(process.env.SUPPLIER_ORDER_STRIPE_FEE_BPS || 290) || 290;
-  const stripeFeeFixed = Number(process.env.SUPPLIER_ORDER_STRIPE_FEE_FIXED_CENTS || 30) || 30;
-  const includeStripeFee = String(process.env.SUPPLIER_ORDER_COLLECT_STRIPE_FEE || "").toLowerCase() === "true";
+const computeOnPlatformPaymentFees = (supplierGrossCents: number) => {
+  const gross = Math.max(0, Math.round(Number(supplierGrossCents || 0)));
 
-  const platformFeeCents =
-    Math.max(0, Math.round((subtotalCents * platformFeeBps) / 10_000)) +
-    Math.max(0, Math.round(platformFeeFixed));
+  // Platform keeps a fixed $1 on supplier on-platform transactions by default.
+  const platformBaseFeeCents =
+    Math.max(0, Number(process.env.SUPPLIER_ORDER_PLATFORM_FIXED_CENTS || 100) || 100);
 
-  const stripeFeeEstimateCents = includeStripeFee
-    ? Math.max(0, Math.round((subtotalCents * stripeFeeBps) / 10_000)) +
-      Math.max(0, Math.round(stripeFeeFixed))
-    : 0;
+  // Stripe processing estimate (cards are 2.9% + $0.30 by default).
+  const stripeFeeBps = Math.max(0, Number(process.env.SUPPLIER_ORDER_STRIPE_FEE_BPS || 290) || 290);
+  const stripeFeeFixed = Math.max(0, Number(process.env.SUPPLIER_ORDER_STRIPE_FEE_FIXED_CENTS || 30) || 30);
+  const stripeFeeEstimateCents =
+    Math.max(0, Math.round((gross * stripeFeeBps) / 10_000)) + stripeFeeFixed;
 
-  const totalCents = subtotalCents + platformFeeCents + stripeFeeEstimateCents;
-  return { platformFeeCents, stripeFeeEstimateCents, totalCents };
+  // Optional MealScout processing overhead to include in split.
+  const msProcessingFeeBps = Math.max(
+    0,
+    Number(process.env.SUPPLIER_ORDER_MS_PROCESSING_FEE_BPS || 0) || 0,
+  );
+  const msProcessingFeeFixedCents = Math.max(
+    0,
+    Number(process.env.SUPPLIER_ORDER_MS_PROCESSING_FIXED_CENTS || 0) || 0,
+  );
+  const msProcessingFeeCents =
+    Math.max(0, Math.round((gross * msProcessingFeeBps) / 10_000)) + msProcessingFeeFixedCents;
+
+  const processingTotalCents = stripeFeeEstimateCents + msProcessingFeeCents;
+
+  // Split processing costs between buyer and seller.
+  const buyerProcessingFeeCents = Math.ceil(processingTotalCents / 2);
+  const sellerProcessingFeeCents = Math.max(0, processingTotalCents - buyerProcessingFeeCents);
+
+  // `platformFeeCents` is what seller contributes to the platform side.
+  const platformFeeCents = platformBaseFeeCents + sellerProcessingFeeCents;
+
+  // Buyer pays: supplier gross + buyer share + $1 platform fee.
+  const totalCents = gross + buyerProcessingFeeCents + platformBaseFeeCents;
+
+  return {
+    platformBaseFeeCents,
+    platformFeeCents,
+    stripeFeeEstimateCents,
+    msProcessingFeeCents,
+    processingTotalCents,
+    buyerProcessingFeeCents,
+    sellerProcessingFeeCents,
+    totalCents,
+  };
 };
 
 const normalizeSupplyKey = (raw: string) =>
@@ -2528,10 +2557,13 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         }
       }
 
-      const { platformFeeCents, stripeFeeEstimateCents, totalCents } = computeFees(subtotalCents);
       const now = new Date();
       const paymentPref = String((request as any).paymentPreference || "offsite");
       const isOnline = paymentPref === "online";
+      const supplierGrossCents = subtotalCents + deliveryFeeCents;
+      const feeModel = isOnline
+        ? computeOnPlatformPaymentFees(supplierGrossCents)
+        : null;
 
       const order = await db.transaction(async (tx: any) => {
         const [createdOrder] = await tx
@@ -2545,9 +2577,14 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
             requestedFulfillment: requestedFulfillment === "delivery" ? "delivery" : "pickup",
             subtotalCents,
             deliveryFeeCents,
-            platformFeeCents,
-            stripeFeeEstimateCents,
-            totalCents: totalCents + deliveryFeeCents,
+            platformFeeCents: feeModel ? feeModel.platformFeeCents : 0,
+            stripeFeeEstimateCents: feeModel ? feeModel.stripeFeeEstimateCents : 0,
+            totalCents: feeModel ? feeModel.totalCents : supplierGrossCents,
+            stripeChargeAmountCents: feeModel ? feeModel.totalCents : 0,
+            stripeApplicationFeeCents: feeModel ? feeModel.platformFeeCents + feeModel.buyerProcessingFeeCents : 0,
+            stripeTransferAmountCents: feeModel ? supplierGrossCents - feeModel.sellerProcessingFeeCents : 0,
+            buyerDiscountCents: 0,
+            buyerPaymentMethod: null,
             pickupNote: (request as any).note ?? null,
             createdAt: now,
             updatedAt: now,
@@ -2812,8 +2849,14 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         return res.status(400).json({ message: "Order total must be greater than $0." });
       }
 
-      const { platformFeeCents, stripeFeeEstimateCents, totalCents } =
-        computeFees(subtotalCents);
+      const supplierGrossCents = subtotalCents;
+      const feeModel =
+        parsed.paymentMethod === "stripe"
+          ? computeOnPlatformPaymentFees(supplierGrossCents)
+          : null;
+      const platformFeeCents = feeModel ? feeModel.platformFeeCents : 0;
+      const stripeFeeEstimateCents = feeModel ? feeModel.stripeFeeEstimateCents : 0;
+      const totalCents = feeModel ? feeModel.totalCents : supplierGrossCents;
 
       const bypassStripe =
         String(process.env.MEALSCOUT_BYPASS_STRIPE || "").toLowerCase() === "true" ||
@@ -2838,6 +2881,15 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
             platformFeeCents,
             stripeFeeEstimateCents,
             totalCents,
+            stripeChargeAmountCents: feeModel ? feeModel.totalCents : 0,
+            stripeApplicationFeeCents: feeModel
+              ? feeModel.platformFeeCents + feeModel.buyerProcessingFeeCents
+              : 0,
+            stripeTransferAmountCents: feeModel
+              ? supplierGrossCents - feeModel.sellerProcessingFeeCents
+              : 0,
+            buyerDiscountCents: 0,
+            buyerPaymentMethod: null,
             pickupNote: parsed.pickupNote ?? null,
             createdAt: now,
             updatedAt: now,
@@ -2871,7 +2923,16 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           .where(eq(supplierOrders.id, created.id));
         return res.status(201).json({
           order: { ...created, paymentStatus: "paid" },
-          payment: { bypassed: true, totalCents },
+          payment: {
+            bypassed: true,
+            totalCents,
+            breakdown: {
+              supplierGrossCents,
+              buyerProcessingFeeCents: feeModel ? feeModel.buyerProcessingFeeCents : 0,
+              sellerProcessingFeeCents: feeModel ? feeModel.sellerProcessingFeeCents : 0,
+              platformBaseFeeCents: feeModel ? feeModel.platformBaseFeeCents : 0,
+            },
+          },
         });
       }
 
@@ -2889,6 +2950,10 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           subtotalCents: subtotalCents.toString(),
           platformFeeCents: platformFeeCents.toString(),
           stripeFeeEstimateCents: stripeFeeEstimateCents.toString(),
+          supplierGrossCents: supplierGrossCents.toString(),
+          buyerProcessingFeeCents: String(feeModel?.buyerProcessingFeeCents ?? 0),
+          sellerProcessingFeeCents: String(feeModel?.sellerProcessingFeeCents ?? 0),
+          platformBaseFeeCents: String(feeModel?.platformBaseFeeCents ?? 0),
           totalCents: totalCents.toString(),
         },
       };
@@ -2905,7 +2970,14 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           clientSecret: intent.client_secret,
           paymentIntentId: intent.id,
           totalCents,
-          breakdown: { subtotalCents, platformFeeCents, stripeFeeEstimateCents },
+          breakdown: {
+            supplierGrossCents,
+            platformFeeCents,
+            stripeFeeEstimateCents,
+            buyerProcessingFeeCents: feeModel ? feeModel.buyerProcessingFeeCents : 0,
+            sellerProcessingFeeCents: feeModel ? feeModel.sellerProcessingFeeCents : 0,
+            platformBaseFeeCents: feeModel ? feeModel.platformBaseFeeCents : 0,
+          },
         },
       });
     } catch (error: any) {
@@ -3044,25 +3116,41 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         });
       }
 
-      const amountCents = Number((order as any).totalCents || 0) || 0;
-      if (!Number.isFinite(amountCents) || amountCents <= 0) {
+      const supplierGrossCents =
+        Math.max(0, Number((order as any).subtotalCents || 0) || 0) +
+        Math.max(0, Number((order as any).deliveryFeeCents || 0) || 0);
+      const amountCents = Math.max(
+        0,
+        Number((order as any).stripeChargeAmountCents || (order as any).totalCents || 0) || 0,
+      );
+      if (!Number.isFinite(amountCents) || amountCents <= 0 || supplierGrossCents <= 0) {
         return res.status(400).json({ message: "Invalid order total." });
       }
 
-      const transferAmountCents =
-        Math.max(0, Number((order as any).subtotalCents || 0) || 0) +
-        Math.max(0, Number((order as any).deliveryFeeCents || 0) || 0);
+      const feeModel = computeOnPlatformPaymentFees(supplierGrossCents);
+      const transferAmountBaseCents = Math.max(
+        0,
+        Number(
+          (order as any).stripeTransferAmountCents ||
+            supplierGrossCents - feeModel.sellerProcessingFeeCents ||
+            0,
+        ) || 0,
+      );
+      const applicationFeeBaseCents = Math.max(
+        0,
+        Number(
+          (order as any).stripeApplicationFeeCents ||
+            feeModel.platformFeeCents + feeModel.buyerProcessingFeeCents ||
+            0,
+        ) || 0,
+      );
 
       const minOnline = Math.max(0, Number((supplier as any).onlinePaymentsMinOrderCents || 0) || 0);
-      if (minOnline > 0 && transferAmountCents < minOnline) {
+      if (minOnline > 0 && supplierGrossCents < minOnline) {
         return res.status(400).json({
           message: `Online payments require a minimum order of $${(minOnline / 100).toFixed(2)}.`,
         });
       }
-
-      const applicationFeeBaseCents =
-        Math.max(0, Number((order as any).platformFeeCents || 0) || 0) +
-        Math.max(0, Number((order as any).stripeFeeEstimateCents || 0) || 0);
 
       const methodSchema = z.object({
         paymentMethod: z.enum(["ach", "card"]).optional(),
@@ -3103,6 +3191,12 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
             chargeAmountCents: Number((order as any).stripeChargeAmountCents || amountCents) || amountCents,
             buyerDiscountCents: Number((order as any).buyerDiscountCents || 0) || 0,
             paymentMethod: String((order as any).buyerPaymentMethod || "") || null,
+            breakdown: {
+              supplierGrossCents,
+              platformBaseFeeCents: feeModel.platformBaseFeeCents,
+              buyerProcessingFeeCents: feeModel.buyerProcessingFeeCents,
+              sellerProcessingFeeCents: feeModel.sellerProcessingFeeCents,
+            },
           });
         }
       }
@@ -3116,6 +3210,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
 
       const applicationFeeCents = Math.max(0, applicationFeeBaseCents - discountCents);
       const chargeAmountCents = Math.max(0, amountCents - discountCents);
+      const transferAmountCents = Math.max(0, transferAmountBaseCents);
 
       const intentParams: Stripe.PaymentIntentCreateParams = {
         amount: chargeAmountCents,
@@ -3158,6 +3253,14 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         chargeAmountCents,
         buyerDiscountCents: discountCents,
         paymentMethod,
+        breakdown: {
+          supplierGrossCents,
+          platformBaseFeeCents: feeModel.platformBaseFeeCents,
+          buyerProcessingFeeCents: feeModel.buyerProcessingFeeCents,
+          sellerProcessingFeeCents: feeModel.sellerProcessingFeeCents,
+          platformFeeCents: Math.max(0, Number((order as any).platformFeeCents || 0) || 0),
+          stripeFeeEstimateCents: Math.max(0, Number((order as any).stripeFeeEstimateCents || 0) || 0),
+        },
       });
     } catch (error: any) {
       console.error("Error creating supplier order PaymentIntent:", error);

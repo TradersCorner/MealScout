@@ -1949,7 +1949,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Supplier marketplace (suppliers + food truck pickup orders)
   registerSupplierMarketplaceRoutes(app);
-  registerSupplyScoutRoutes(app);
+  if (String(process.env.ENABLE_SUPPLY_SCOUT || "").toLowerCase() === "true") {
+    registerSupplyScoutRoutes(app);
+  }
 
   app.patch(
     "/api/hosts/interests/:interestId/status",

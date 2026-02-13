@@ -853,6 +853,24 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     }
   });
 
+  app.get("/api/suppliers/:supplierId", isAuthenticated, async (req: any, res) => {
+    try {
+      const supplierId = String(req.params.supplierId || "").trim();
+      if (!supplierId) return res.status(400).json({ message: "Supplier ID required" });
+
+      const [row] = await db
+        .select()
+        .from(suppliers)
+        .where(and(eq(suppliers.id, supplierId), eq(suppliers.isActive, true)))
+        .limit(1);
+      if (!row) return res.status(404).json({ message: "Supplier not found" });
+      res.json(row);
+    } catch (error) {
+      console.error("Error loading supplier:", error);
+      res.status(500).json({ message: "Failed to load supplier" });
+    }
+  });
+
   app.get("/api/suppliers/:supplierId/products", isAuthenticated, async (req: any, res) => {
     try {
       const supplierId = String(req.params.supplierId || "").trim();
@@ -1215,6 +1233,44 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       if (parsed.requestedFulfillment === "delivery" && !(supplier as any).offersDelivery) {
         return res.status(400).json({ message: "Supplier does not offer delivery." });
       }
+      if (parsed.requestedFulfillment === "delivery") {
+        const addr =
+          parsed.deliveryAddress ?? (buyerRestaurant as any).address ?? null;
+        const city = parsed.deliveryCity ?? (buyerRestaurant as any).city ?? null;
+        const state = parsed.deliveryState ?? (buyerRestaurant as any).state ?? null;
+        if (!String(addr || "").trim() || !String(city || "").trim() || !String(state || "").trim()) {
+          return res.status(400).json({
+            message: "Delivery requires deliveryAddress, deliveryCity, and deliveryState.",
+          });
+        }
+
+        const radiusMiles = (supplier as any).deliveryRadiusMiles
+          ? Number((supplier as any).deliveryRadiusMiles)
+          : null;
+        const supplierLat = Number((supplier as any).latitude);
+        const supplierLon = Number((supplier as any).longitude);
+        const buyerLat = Number((buyerRestaurant as any).latitude);
+        const buyerLon = Number((buyerRestaurant as any).longitude);
+        if (
+          radiusMiles &&
+          Number.isFinite(radiusMiles) &&
+          radiusMiles > 0 &&
+          Number.isFinite(supplierLat) &&
+          Number.isFinite(supplierLon) &&
+          Number.isFinite(buyerLat) &&
+          Number.isFinite(buyerLon)
+        ) {
+          const distance = haversineMiles(
+            { lat: supplierLat, lon: supplierLon },
+            { lat: buyerLat, lon: buyerLon },
+          );
+          if (distance > radiusMiles) {
+            return res.status(400).json({
+              message: `Delivery address is outside the supplier's delivery radius (${radiusMiles} miles).`,
+            });
+          }
+        }
+      }
 
       const productIds = parsed.items
         .map((i) => (i.productId ? String(i.productId) : ""))
@@ -1409,15 +1465,53 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           return res.status(403).json({ message: "Not authorized" });
         }
 
-        const [supplier] = await db
-          .select()
-          .from(suppliers)
-          .where(and(eq(suppliers.id, parsedMeta.supplierId), eq(suppliers.isActive, true)))
-          .limit(1);
-        if (!supplier) return res.status(404).json({ message: "Supplier not found" });
-        if (parsedMeta.requestedFulfillment === "delivery" && !(supplier as any).offersDelivery) {
-          return res.status(400).json({ message: "Supplier does not offer delivery." });
+      const [supplier] = await db
+        .select()
+        .from(suppliers)
+        .where(and(eq(suppliers.id, parsedMeta.supplierId), eq(suppliers.isActive, true)))
+        .limit(1);
+      if (!supplier) return res.status(404).json({ message: "Supplier not found" });
+      if (parsedMeta.requestedFulfillment === "delivery" && !(supplier as any).offersDelivery) {
+        return res.status(400).json({ message: "Supplier does not offer delivery." });
+      }
+      if (parsedMeta.requestedFulfillment === "delivery") {
+        const addr =
+          parsedMeta.deliveryAddress ?? (buyerRestaurant as any).address ?? null;
+        const city = parsedMeta.deliveryCity ?? (buyerRestaurant as any).city ?? null;
+        const state = parsedMeta.deliveryState ?? (buyerRestaurant as any).state ?? null;
+        if (!String(addr || "").trim() || !String(city || "").trim() || !String(state || "").trim()) {
+          return res.status(400).json({
+            message: "Delivery requires deliveryAddress, deliveryCity, and deliveryState.",
+          });
         }
+
+        const radiusMiles = (supplier as any).deliveryRadiusMiles
+          ? Number((supplier as any).deliveryRadiusMiles)
+          : null;
+        const supplierLat = Number((supplier as any).latitude);
+        const supplierLon = Number((supplier as any).longitude);
+        const buyerLat = Number((buyerRestaurant as any).latitude);
+        const buyerLon = Number((buyerRestaurant as any).longitude);
+        if (
+          radiusMiles &&
+          Number.isFinite(radiusMiles) &&
+          radiusMiles > 0 &&
+          Number.isFinite(supplierLat) &&
+          Number.isFinite(supplierLon) &&
+          Number.isFinite(buyerLat) &&
+          Number.isFinite(buyerLon)
+        ) {
+          const distance = haversineMiles(
+            { lat: supplierLat, lon: supplierLon },
+            { lat: buyerLat, lon: buyerLon },
+          );
+          if (distance > radiusMiles) {
+            return res.status(400).json({
+              message: `Delivery address is outside the supplier's delivery radius (${radiusMiles} miles).`,
+            });
+          }
+        }
+      }
 
         const { headers, rows } = await parseTabularFile(
           file.buffer,
@@ -1667,6 +1761,51 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         return { productId: String(item.productId), quantity: Number(item.quantity), unitPriceCents, lineTotalCents };
       });
 
+      const requestedFulfillment = String((request as any).requestedFulfillment || "pickup");
+      const deliveryFeeCents =
+        requestedFulfillment === "delivery"
+          ? Number((request as any).deliveryFeeCents ?? (supplier as any).deliveryFeeCents ?? 0) || 0
+          : 0;
+
+      if (requestedFulfillment === "delivery") {
+        const minOrderCents = Number((supplier as any).deliveryMinOrderCents || 0) || 0;
+        if (minOrderCents > 0 && subtotalCents < minOrderCents) {
+          return res.status(400).json({
+            message: `Delivery requires a minimum order of $${(minOrderCents / 100).toFixed(2)}.`,
+          });
+        }
+
+        const radiusMiles = (supplier as any).deliveryRadiusMiles
+          ? Number((supplier as any).deliveryRadiusMiles)
+          : null;
+        const supplierLat = Number((supplier as any).latitude);
+        const supplierLon = Number((supplier as any).longitude);
+        const buyer = await storage.getRestaurant(String((request as any).buyerRestaurantId)).catch(
+          () => null,
+        );
+        const buyerLat = Number((buyer as any)?.latitude);
+        const buyerLon = Number((buyer as any)?.longitude);
+        if (
+          radiusMiles &&
+          Number.isFinite(radiusMiles) &&
+          radiusMiles > 0 &&
+          Number.isFinite(supplierLat) &&
+          Number.isFinite(supplierLon) &&
+          Number.isFinite(buyerLat) &&
+          Number.isFinite(buyerLon)
+        ) {
+          const distance = haversineMiles(
+            { lat: supplierLat, lon: supplierLon },
+            { lat: buyerLat, lon: buyerLon },
+          );
+          if (distance > radiusMiles) {
+            return res.status(400).json({
+              message: `Delivery address is outside the supplier's delivery radius (${radiusMiles} miles).`,
+            });
+          }
+        }
+      }
+
       const { platformFeeCents, stripeFeeEstimateCents, totalCents } = computeFees(subtotalCents);
       const now = new Date();
 
@@ -1679,10 +1818,12 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
             status: "submitted",
             paymentMethod: "offsite",
             paymentStatus: "offsite",
+            requestedFulfillment: requestedFulfillment === "delivery" ? "delivery" : "pickup",
             subtotalCents,
+            deliveryFeeCents,
             platformFeeCents,
             stripeFeeEstimateCents,
-            totalCents,
+            totalCents: totalCents + deliveryFeeCents,
             pickupNote: (request as any).note ?? null,
             createdAt: now,
             updatedAt: now,

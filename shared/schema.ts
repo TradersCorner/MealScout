@@ -464,7 +464,9 @@ export const supplierOrders = pgTable(
     status: varchar("status").notNull().default("submitted"), // 'submitted' | 'ready' | 'completed' | 'cancelled'
     paymentMethod: varchar("payment_method").notNull().default("offsite"), // 'stripe' | 'offsite'
     paymentStatus: varchar("payment_status").notNull().default("unpaid"), // 'unpaid' | 'paid' | 'offsite'
+    requestedFulfillment: varchar("requested_fulfillment").notNull().default("pickup"), // 'pickup' | 'delivery'
     subtotalCents: integer("subtotal_cents").notNull().default(0),
+    deliveryFeeCents: integer("delivery_fee_cents").notNull().default(0),
     platformFeeCents: integer("platform_fee_cents").notNull().default(0),
     stripeFeeEstimateCents: integer("stripe_fee_estimate_cents")
       .notNull()
@@ -479,6 +481,7 @@ export const supplierOrders = pgTable(
     index("idx_supplier_orders_supplier").on(table.supplierId),
     index("idx_supplier_orders_truck").on(table.truckRestaurantId),
     index("idx_supplier_orders_status").on(table.status),
+    index("idx_supplier_orders_fulfillment").on(table.requestedFulfillment),
   ],
 );
 

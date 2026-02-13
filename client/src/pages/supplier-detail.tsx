@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import Navigation from "@/components/navigation";
@@ -7,6 +7,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+
+type Supplier = {
+  id: string;
+  businessName: string;
+  offersDelivery?: boolean | null;
+  deliveryRadiusMiles?: number | null;
+  deliveryFeeCents?: number | null;
+  deliveryMinOrderCents?: number | null;
+  deliveryNotes?: string | null;
+};
 
 type SupplierProduct = {
   id: string;
@@ -19,6 +29,9 @@ type SupplierProduct = {
 type Restaurant = {
   id: string;
   name: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
 };
 
 const formatMoney = (cents: number) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
@@ -29,11 +42,34 @@ export default function SupplierDetailPage() {
   const [pickupNote, setPickupNote] = useState("");
   const [selectedBuyerRestaurantId, setSelectedBuyerRestaurantId] =
     useState<string>("");
+  const [requestedFulfillment, setRequestedFulfillment] = useState<
+    "pickup" | "delivery"
+  >("pickup");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryCity, setDeliveryCity] = useState("");
+  const [deliveryState, setDeliveryState] = useState("");
+  const [deliveryPostalCode, setDeliveryPostalCode] = useState("");
+  const [deliveryInstructions, setDeliveryInstructions] = useState("");
   const [paymentPreference, setPaymentPreference] = useState<
     "offsite" | "in_person"
   >("offsite");
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [importFile, setImportFile] = useState<File | null>(null);
+
+  const { data: supplier } = useQuery<Supplier>({
+    queryKey: ["/api/suppliers", supplierId],
+    queryFn: async () => {
+      const res = await fetch(`/api/suppliers/${supplierId}`, {
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to load supplier");
+      return data;
+    },
+    enabled: Boolean(supplierId),
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
+  });
 
   const { data: products = [], isLoading: isProductsLoading } = useQuery<
     SupplierProduct[]
@@ -69,6 +105,18 @@ export default function SupplierDetailPage() {
     [myRestaurants],
   );
 
+  const selectedBiz = useMemo(() => {
+    return myRestaurants.find((r) => r.id === selectedBuyerRestaurantId) || null;
+  }, [myRestaurants, selectedBuyerRestaurantId]);
+
+  useEffect(() => {
+    if (requestedFulfillment !== "delivery") return;
+    if (!selectedBiz) return;
+    setDeliveryAddress((prev) => prev || String(selectedBiz.address || ""));
+    setDeliveryCity((prev) => prev || String(selectedBiz.city || ""));
+    setDeliveryState((prev) => prev || String(selectedBiz.state || ""));
+  }, [requestedFulfillment, selectedBiz]);
+
   const cartItems = useMemo(() => {
     const byId = new Map(products.map((p) => [p.id, p]));
     const items = Object.entries(quantities)
@@ -92,6 +140,13 @@ export default function SupplierDetailPage() {
     );
   }, [cartItems]);
 
+  const deliveryFeeCents = useMemo(() => {
+    if (requestedFulfillment !== "delivery") return 0;
+    return Number(supplier?.deliveryFeeCents || 0) || 0;
+  }, [requestedFulfillment, supplier]);
+
+  const estimatedTotalCents = subtotalCents + deliveryFeeCents;
+
   const submitRequest = useMutation({
     mutationFn: async () => {
       const res = await fetch("/api/supplier-requests", {
@@ -101,8 +156,25 @@ export default function SupplierDetailPage() {
         body: JSON.stringify({
           supplierId,
           buyerRestaurantId: selectedBuyerRestaurantId,
+          requestedFulfillment,
           paymentPreference,
           note: pickupNote.trim() || null,
+          deliveryInstructions:
+            requestedFulfillment === "delivery"
+              ? deliveryInstructions.trim() || null
+              : null,
+          deliveryAddress:
+            requestedFulfillment === "delivery"
+              ? deliveryAddress.trim() || null
+              : null,
+          deliveryCity:
+            requestedFulfillment === "delivery" ? deliveryCity.trim() || null : null,
+          deliveryState:
+            requestedFulfillment === "delivery" ? deliveryState.trim() || null : null,
+          deliveryPostalCode:
+            requestedFulfillment === "delivery"
+              ? deliveryPostalCode.trim() || null
+              : null,
           items: cartItems.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
@@ -116,6 +188,7 @@ export default function SupplierDetailPage() {
     onSuccess: () => {
       setQuantities({});
       setPickupNote("");
+      setDeliveryInstructions("");
       toast({
         title: "Request sent",
         description: "Your request was sent to the supplier.",
@@ -137,8 +210,16 @@ export default function SupplierDetailPage() {
       form.set("file", importFile);
       form.set("supplierId", String(supplierId || ""));
       form.set("buyerRestaurantId", selectedBuyerRestaurantId);
+      form.set("requestedFulfillment", requestedFulfillment);
       form.set("paymentPreference", paymentPreference);
       form.set("note", pickupNote.trim());
+      if (requestedFulfillment === "delivery") {
+        form.set("deliveryInstructions", deliveryInstructions.trim());
+        form.set("deliveryAddress", deliveryAddress.trim());
+        form.set("deliveryCity", deliveryCity.trim());
+        form.set("deliveryState", deliveryState.trim());
+        form.set("deliveryPostalCode", deliveryPostalCode.trim());
+      }
 
       const res = await fetch("/api/supplier-requests/import", {
         method: "POST",
@@ -168,7 +249,10 @@ export default function SupplierDetailPage() {
 
   return (
     <div className="min-h-screen pb-24">
-      <BackHeader title="Supplier" fallbackHref="/suppliers" />
+      <BackHeader
+        title={supplier?.businessName || "Supplier"}
+        fallbackHref="/suppliers"
+      />
 
       <div className="px-4 space-y-4">
         <Card>
@@ -176,7 +260,7 @@ export default function SupplierDetailPage() {
             <div className="text-sm font-semibold">Your business</div>
             {myTrucks.length === 0 ? (
               <div className="text-sm text-muted-foreground">
-                You don’t have a business profile yet.
+                You don't have a business profile yet.
               </div>
             ) : (
               <select
@@ -184,7 +268,7 @@ export default function SupplierDetailPage() {
                 value={selectedBuyerRestaurantId}
                 onChange={(e) => setSelectedBuyerRestaurantId(e.target.value)}
               >
-                <option value="">Select a business…</option>
+                <option value="">Select a business...</option>
                 {myTrucks.map((biz) => (
                   <option key={biz.id} value={biz.id}>
                     {biz.name}
@@ -192,6 +276,76 @@ export default function SupplierDetailPage() {
                 ))}
               </select>
             )}
+
+            <div className="text-sm font-semibold">Fulfillment</div>
+            <select
+              className="w-full border rounded px-2 py-2 text-sm bg-background"
+              value={requestedFulfillment}
+              onChange={(e) =>
+                setRequestedFulfillment(e.target.value as "pickup" | "delivery")
+              }
+              disabled={!supplier?.offersDelivery}
+            >
+              <option value="pickup">Pickup</option>
+              <option value="delivery" disabled={!supplier?.offersDelivery}>
+                Delivery
+              </option>
+            </select>
+            {supplier?.offersDelivery ? (
+              <div className="text-xs text-muted-foreground">
+                Delivery fee: {formatMoney(Number(supplier.deliveryFeeCents || 0))}
+                {supplier.deliveryMinOrderCents ? (
+                  <>
+                    {" "}
+                    • Min order:{" "}
+                    {formatMoney(Number(supplier.deliveryMinOrderCents || 0))}
+                  </>
+                ) : null}
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground">
+                This supplier currently offers pickup only.
+              </div>
+            )}
+
+            {requestedFulfillment === "delivery" ? (
+              <div className="space-y-2">
+                <div className="text-sm font-semibold">Delivery address</div>
+                <Input
+                  value={deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  placeholder="Street address"
+                />
+                <div className="flex gap-2">
+                  <Input
+                    value={deliveryCity}
+                    onChange={(e) => setDeliveryCity(e.target.value)}
+                    placeholder="City"
+                  />
+                  <Input
+                    value={deliveryState}
+                    onChange={(e) => setDeliveryState(e.target.value)}
+                    placeholder="State"
+                  />
+                </div>
+                <Input
+                  value={deliveryPostalCode}
+                  onChange={(e) => setDeliveryPostalCode(e.target.value)}
+                  placeholder="Postal code (optional)"
+                />
+                <div className="text-sm font-semibold">Delivery instructions</div>
+                <Input
+                  value={deliveryInstructions}
+                  onChange={(e) => setDeliveryInstructions(e.target.value)}
+                  placeholder="Gate code, contact name, etc. (optional)"
+                />
+                {supplier?.deliveryNotes ? (
+                  <div className="text-xs text-muted-foreground">
+                    Supplier notes: {supplier.deliveryNotes}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="text-sm font-semibold">Payment preference</div>
             <select
@@ -210,6 +364,9 @@ export default function SupplierDetailPage() {
               onChange={(e) => setPickupNote(e.target.value)}
               placeholder="Optional note for the supplier"
             />
+            <div className="text-xs text-muted-foreground">
+              Estimated total: {formatMoney(estimatedTotalCents)}
+            </div>
           </CardContent>
         </Card>
 
@@ -234,7 +391,7 @@ export default function SupplierDetailPage() {
               }
               onClick={() => importRequest.mutate()}
             >
-              {importRequest.isPending ? "Importing…" : "Import request"}
+              {importRequest.isPending ? "Importing..." : "Import request"}
             </Button>
           </CardContent>
         </Card>
@@ -243,7 +400,7 @@ export default function SupplierDetailPage() {
           <CardContent className="p-4 space-y-3">
             <div className="text-sm font-semibold">Products</div>
             {isProductsLoading ? (
-              <div className="text-sm text-muted-foreground">Loading…</div>
+              <div className="text-sm text-muted-foreground">Loading...</div>
             ) : products.length === 0 ? (
               <div className="text-sm text-muted-foreground">
                 No products available.

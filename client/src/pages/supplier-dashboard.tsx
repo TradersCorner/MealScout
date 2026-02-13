@@ -26,6 +26,7 @@ type SupplierProduct = {
   priceCents: number;
   unitLabel?: string | null;
   isActive?: boolean | null;
+  deliveryEligible?: boolean | null;
 };
 
 type SupplierOrder = {
@@ -200,6 +201,30 @@ export default function SupplierDashboardPage() {
       toast({
         title: "Create failed",
         description: error?.message || "Unable to create product",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleDeliveryEligible = useMutation({
+    mutationFn: async (params: { productId: string; deliveryEligible: boolean }) => {
+      const res = await fetch(`/api/supplier/products/${params.productId}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deliveryEligible: params.deliveryEligible }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to update product");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/products"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update failed",
+        description: error?.message || "Unable to update product",
         variant: "destructive",
       });
     },
@@ -756,6 +781,20 @@ export default function SupplierDashboardPage() {
                             {formatMoney(p.priceCents)}
                             {p.unitLabel ? ` / ${p.unitLabel}` : ""}
                           </div>
+                          <label className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                            <input
+                              type="checkbox"
+                              checked={p.deliveryEligible !== false}
+                              onChange={(e) =>
+                                toggleDeliveryEligible.mutate({
+                                  productId: p.id,
+                                  deliveryEligible: e.target.checked,
+                                })
+                              }
+                              disabled={toggleDeliveryEligible.isPending}
+                            />
+                            Delivery eligible
+                          </label>
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {p.isActive === false ? "Inactive" : "Active"}

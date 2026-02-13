@@ -925,6 +925,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         const unitIdx = idx(["unit", "unit_label", "uom"]);
         const priceIdx = idx(["price_cents", "price", "unit_price", "unit_price_cents"]);
         const activeIdx = idx(["is_active", "active", "enabled"]);
+        const deliveryIdx = idx(["delivery_eligible", "delivery", "deliverable"]);
 
         if (nameIdx < 0) {
           return res.status(400).json({
@@ -968,6 +969,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           const unitLabel = toCell(row, unitIdx) || null;
           const priceCents = parsePriceCents(toCell(row, priceIdx));
           const isActive = parseBool(toCell(row, activeIdx));
+          const deliveryEligible = parseBool(toCell(row, deliveryIdx));
 
           const existing = sku
             ? await db
@@ -1001,6 +1003,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
                 unitLabel,
                 priceCents,
                 isActive,
+                deliveryEligible,
                 updatedAt: new Date(),
               } as any)
               .where(eq(supplierProducts.id, existing[0].id))
@@ -1019,6 +1022,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
               unitLabel,
               priceCents,
               isActive,
+              deliveryEligible,
               createdAt: new Date(),
               updatedAt: new Date(),
             } as any)
@@ -1126,6 +1130,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         priceCents: z.number().int().min(0),
         unitLabel: z.string().max(40).optional().nullable(),
         imageUrl: z.string().max(500).optional().nullable(),
+        deliveryEligible: z.boolean().optional(),
         isActive: z.boolean().optional(),
       });
       const parsed = schema.parse(req.body || {});
@@ -1139,6 +1144,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           priceCents: parsed.priceCents,
           unitLabel: parsed.unitLabel ?? null,
           imageUrl: parsed.imageUrl ?? null,
+          deliveryEligible: parsed.deliveryEligible ?? true,
           isActive: parsed.isActive ?? true,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -1166,6 +1172,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         priceCents: z.number().int().min(0).optional(),
         unitLabel: z.string().max(40).optional().nullable(),
         imageUrl: z.string().max(500).optional().nullable(),
+        deliveryEligible: z.boolean().optional(),
         isActive: z.boolean().optional(),
       });
       const parsed = schema.parse(req.body || {});
@@ -1324,6 +1331,27 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           quantity: item.quantity,
         };
       });
+
+      if (parsed.requestedFulfillment === "delivery") {
+        const notDeliverable = parsed.items
+          .map((item) => {
+            const byId = item.productId ? productById.get(String(item.productId)) : null;
+            const bySku = item.sku ? productBySku.get(String(item.sku).trim()) : null;
+            const product = byId ?? bySku ?? null;
+            if (!product) return null;
+            if ((product as any).deliveryEligible === false) {
+              return { id: String(product.id), name: String(product.name) };
+            }
+            return null;
+          })
+          .filter(Boolean);
+        if (notDeliverable.length > 0) {
+          return res.status(400).json({
+            message: "Some items are not eligible for delivery from this supplier.",
+            notDeliverable,
+          });
+        }
+      }
 
       const now = new Date();
       const deliveryDefaults =
@@ -1585,6 +1613,25 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
             quantity: item.quantity,
           };
         });
+
+        if (parsedMeta.requestedFulfillment === "delivery") {
+          const notDeliverable = parsedItems
+            .map((item) => {
+              const product = item.sku ? productBySku.get(String(item.sku).trim()) : null;
+              if (!product) return null;
+              if ((product as any).deliveryEligible === false) {
+                return { id: String(product.id), name: String(product.name) };
+              }
+              return null;
+            })
+            .filter(Boolean);
+          if (notDeliverable.length > 0) {
+            return res.status(400).json({
+              message: "Some items are not eligible for delivery from this supplier.",
+              notDeliverable,
+            });
+          }
+        }
 
         const now = new Date();
         const deliveryDefaults =

@@ -24,6 +24,7 @@ type SupplierProduct = {
   description?: string | null;
   priceCents: number;
   unitLabel?: string | null;
+  deliveryEligible?: boolean | null;
 };
 
 type Restaurant = {
@@ -133,6 +134,11 @@ export default function SupplierDetailPage() {
     return items;
   }, [quantities, products]);
 
+  const undeliverableCartItems = useMemo(() => {
+    if (requestedFulfillment !== "delivery") return [];
+    return cartItems.filter((i) => i.product.deliveryEligible === false);
+  }, [cartItems, requestedFulfillment]);
+
   const subtotalCents = useMemo(() => {
     return cartItems.reduce(
       (sum, item) => sum + item.quantity * Number(item.product.priceCents || 0),
@@ -154,6 +160,12 @@ export default function SupplierDetailPage() {
     Boolean(deliveryState.trim());
   const canRequestDelivery =
     Boolean(supplier?.offersDelivery) && deliveryMinMet && deliveryAddressOk;
+
+  const deliveryEligibilityMet =
+    requestedFulfillment !== "delivery" || undeliverableCartItems.length === 0;
+
+  const canRequestDeliveryFull =
+    canRequestDelivery && deliveryEligibilityMet;
 
   const submitRequest = useMutation({
     mutationFn: async () => {
@@ -295,7 +307,12 @@ export default function SupplierDetailPage() {
               disabled={!supplier?.offersDelivery}
             >
               <option value="pickup">Pickup</option>
-              <option value="delivery" disabled={!supplier?.offersDelivery || !deliveryMinMet}>
+              <option
+                value="delivery"
+                disabled={
+                  !supplier?.offersDelivery || !deliveryMinMet || undeliverableCartItems.length > 0
+                }
+              >
                 Delivery
               </option>
             </select>
@@ -357,6 +374,16 @@ export default function SupplierDetailPage() {
                     Supplier notes: {supplier.deliveryNotes}
                   </div>
                 ) : null}
+                {undeliverableCartItems.length > 0 ? (
+                  <div className="text-xs text-muted-foreground">
+                    Some items in your cart are pickup-only from this supplier:{" "}
+                    {undeliverableCartItems
+                      .slice(0, 5)
+                      .map((i) => i.product.name)
+                      .join(", ")}
+                    {undeliverableCartItems.length > 5 ? "…" : ""}.
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -401,7 +428,7 @@ export default function SupplierDetailPage() {
                 importRequest.isPending ||
                 !importFile ||
                 !selectedBuyerRestaurantId ||
-                (requestedFulfillment === "delivery" && !canRequestDelivery)
+                (requestedFulfillment === "delivery" && !canRequestDeliveryFull)
               }
               onClick={() => importRequest.mutate()}
             >
@@ -473,7 +500,7 @@ export default function SupplierDetailPage() {
                 !selectedBuyerRestaurantId ||
                 cartItems.length === 0 ||
                 subtotalCents <= 0 ||
-                (requestedFulfillment === "delivery" && !canRequestDelivery)
+                (requestedFulfillment === "delivery" && !canRequestDeliveryFull)
               }
               onClick={() => submitRequest.mutate()}
             >

@@ -368,12 +368,14 @@ export const supplierProducts = pgTable(
     unitLabel: varchar("unit_label"),
     imageUrl: text("image_url"),
     isActive: boolean("is_active").default(true),
+    deliveryEligible: boolean("delivery_eligible").notNull().default(true),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
   (table) => [
     index("idx_supplier_products_supplier").on(table.supplierId),
     index("idx_supplier_products_active").on(table.isActive),
+    index("idx_supplier_products_delivery_eligible").on(table.deliveryEligible),
   ],
 );
 

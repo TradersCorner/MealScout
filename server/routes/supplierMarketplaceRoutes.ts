@@ -1924,6 +1924,30 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         });
         const parsed = schema.parse(req.body || {});
 
+        const currentStatus = String((request as any).deliveryStatus || "pending");
+        const requestStatus = String((request as any).status || "");
+        const nextStatus = parsed.deliveryStatus ? String(parsed.deliveryStatus) : null;
+
+        if (nextStatus) {
+          // Only allow delivery status transitions after the request is accepted.
+          if (["out_for_delivery", "delivered"].includes(nextStatus) && requestStatus !== "accepted") {
+            return res.status(409).json({ message: "Request must be accepted before starting delivery." });
+          }
+          // Don't allow going backwards (simple guardrail).
+          const order = ["pending", "accepted", "out_for_delivery", "delivered", "cancelled"];
+          if (order.indexOf(nextStatus) < 0) {
+            return res.status(400).json({ message: "Invalid delivery status." });
+          }
+          if (
+            currentStatus !== "cancelled" &&
+            currentStatus !== "delivered" &&
+            nextStatus !== "cancelled" &&
+            order.indexOf(nextStatus) < order.indexOf(currentStatus)
+          ) {
+            return res.status(409).json({ message: "Cannot move delivery status backwards." });
+          }
+        }
+
         const now = new Date();
         const scheduled =
           parsed.deliveryScheduledFor !== undefined && parsed.deliveryScheduledFor !== null
@@ -1946,6 +1970,43 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           } as any)
           .where(eq(supplierRequests.id, requestId))
           .returning();
+
+        // Notify buyer on status changes (best-effort).
+        if (nextStatus && nextStatus !== currentStatus) {
+          try {
+            const buyerRestaurant = await storage.getRestaurant(
+              String((request as any).buyerRestaurantId),
+            );
+            const buyerUser = buyerRestaurant?.ownerId
+              ? await storage.getUser(String(buyerRestaurant.ownerId))
+              : null;
+            const to = String((buyerUser as any)?.email || "").trim();
+            if (to) {
+              const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:5000";
+              const suppliersUrl = `${baseUrl.replace(/\/+$/, "")}/suppliers`;
+              const subject = `Delivery update: ${nextStatus.replace(/_/g, " ")}`;
+              const address = [
+                (updated as any).deliveryAddress,
+                (updated as any).deliveryCity,
+                (updated as any).deliveryState,
+              ]
+                .map((v: any) => String(v || "").trim())
+                .filter(Boolean)
+                .join(", ");
+              const html = `
+                <h2>Delivery status update</h2>
+                <p><strong>Status:</strong> ${nextStatus.replace(/_/g, " ")}</p>
+                ${address ? `<p><strong>Delivery to:</strong> ${address}</p>` : ""}
+                <p style="margin: 18px 0;">
+                  <a href="${suppliersUrl}" class="cta-button">View suppliers</a>
+                </p>
+              `;
+              await emailService.sendBasicEmail(to, subject, html, undefined, "general");
+            }
+          } catch (notifyError) {
+            console.warn("Buyer delivery status notify failed:", notifyError);
+          }
+        }
 
         res.json(updated);
       } catch (error: any) {

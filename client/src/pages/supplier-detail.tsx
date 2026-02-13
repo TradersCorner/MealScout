@@ -146,6 +146,14 @@ export default function SupplierDetailPage() {
   }, [requestedFulfillment, supplier]);
 
   const estimatedTotalCents = subtotalCents + deliveryFeeCents;
+  const deliveryMinOrderCents = Number(supplier?.deliveryMinOrderCents || 0) || 0;
+  const deliveryMinMet = deliveryMinOrderCents <= 0 || subtotalCents >= deliveryMinOrderCents;
+  const deliveryAddressOk =
+    Boolean(deliveryAddress.trim()) &&
+    Boolean(deliveryCity.trim()) &&
+    Boolean(deliveryState.trim());
+  const canRequestDelivery =
+    Boolean(supplier?.offersDelivery) && deliveryMinMet && deliveryAddressOk;
 
   const submitRequest = useMutation({
     mutationFn: async () => {
@@ -287,7 +295,7 @@ export default function SupplierDetailPage() {
               disabled={!supplier?.offersDelivery}
             >
               <option value="pickup">Pickup</option>
-              <option value="delivery" disabled={!supplier?.offersDelivery}>
+              <option value="delivery" disabled={!supplier?.offersDelivery || !deliveryMinMet}>
                 Delivery
               </option>
             </select>
@@ -297,7 +305,7 @@ export default function SupplierDetailPage() {
                 {supplier.deliveryMinOrderCents ? (
                   <>
                     {" "}
-                    • Min order:{" "}
+                    - Min order:{" "}
                     {formatMoney(Number(supplier.deliveryMinOrderCents || 0))}
                   </>
                 ) : null}
@@ -307,6 +315,11 @@ export default function SupplierDetailPage() {
                 This supplier currently offers pickup only.
               </div>
             )}
+            {supplier?.offersDelivery && !deliveryMinMet ? (
+              <div className="text-xs text-muted-foreground">
+                Add {formatMoney(deliveryMinOrderCents - subtotalCents)} more to meet the delivery minimum.
+              </div>
+            ) : null}
 
             {requestedFulfillment === "delivery" ? (
               <div className="space-y-2">
@@ -387,7 +400,8 @@ export default function SupplierDetailPage() {
               disabled={
                 importRequest.isPending ||
                 !importFile ||
-                !selectedBuyerRestaurantId
+                !selectedBuyerRestaurantId ||
+                (requestedFulfillment === "delivery" && !canRequestDelivery)
               }
               onClick={() => importRequest.mutate()}
             >
@@ -458,11 +472,12 @@ export default function SupplierDetailPage() {
                 submitRequest.isPending ||
                 !selectedBuyerRestaurantId ||
                 cartItems.length === 0 ||
-                subtotalCents <= 0
+                subtotalCents <= 0 ||
+                (requestedFulfillment === "delivery" && !canRequestDelivery)
               }
               onClick={() => submitRequest.mutate()}
             >
-              {submitRequest.isPending ? "Sending…" : "Send request"}
+              {submitRequest.isPending ? "Sending..." : "Send request"}
             </Button>
           </CardContent>
         </Card>

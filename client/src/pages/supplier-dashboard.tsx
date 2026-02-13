@@ -56,6 +56,19 @@ type SupplierRequest = {
 
 const formatMoney = (cents: number) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
 
+const toDateTimeLocalValue = (raw: string | null | undefined) => {
+  if (!raw) return "";
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const mm = pad(d.getMonth() + 1);
+  const dd = pad(d.getDate());
+  const hh = pad(d.getHours());
+  const min = pad(d.getMinutes());
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+};
+
 export default function SupplierDashboardPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -72,6 +85,9 @@ export default function SupplierDashboardPage() {
     deliveryMinOrderDollars: "",
     deliveryNotes: "",
   });
+  const [deliveryEdits, setDeliveryEdits] = useState<
+    Record<string, { deliveryScheduledFor: string; deliveryFeeDollars: string }>
+  >({});
 
   const { data: supplier, isError: isSupplierError } = useQuery<Supplier>({
     queryKey: ["/api/supplier/me"],
@@ -292,12 +308,25 @@ export default function SupplierDashboardPage() {
   });
 
   const updateDelivery = useMutation({
-    mutationFn: async (params: { requestId: string; deliveryStatus: string }) => {
+    mutationFn: async (params: {
+      requestId: string;
+      deliveryStatus?: string;
+      deliveryScheduledFor?: string | null;
+      deliveryFeeCents?: number;
+    }) => {
       const res = await fetch(`/api/supplier/requests/${params.requestId}/delivery`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deliveryStatus: params.deliveryStatus }),
+        body: JSON.stringify({
+          ...(params.deliveryStatus ? { deliveryStatus: params.deliveryStatus } : {}),
+          ...(params.deliveryScheduledFor !== undefined
+            ? { deliveryScheduledFor: params.deliveryScheduledFor }
+            : {}),
+          ...(params.deliveryFeeCents !== undefined
+            ? { deliveryFeeCents: params.deliveryFeeCents }
+            : {}),
+        }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.message || "Failed to update delivery");
@@ -350,6 +379,21 @@ export default function SupplierDashboardPage() {
     () => requests.filter((r) => String(r.requestedFulfillment || "") === "delivery"),
     [requests],
   );
+
+  useEffect(() => {
+    if (deliveryRequests.length === 0) return;
+    setDeliveryEdits((prev) => {
+      const next = { ...prev };
+      for (const r of deliveryRequests) {
+        if (next[r.id]) continue;
+        next[r.id] = {
+          deliveryScheduledFor: toDateTimeLocalValue(r.deliveryScheduledFor),
+          deliveryFeeDollars: String(((Number(r.deliveryFeeCents || 0) || 0) / 100).toFixed(2)),
+        };
+      }
+      return next;
+    });
+  }, [deliveryRequests]);
 
   return (
     <div className="min-h-screen pb-24">
@@ -530,10 +574,10 @@ export default function SupplierDashboardPage() {
                         <div key={r.id} className="border rounded p-3 space-y-2">
                           <div className="flex items-center justify-between">
                             <div className="text-xs text-muted-foreground">
-                              Delivery • {r.paymentPreference}
+                              Delivery - {r.paymentPreference}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {r.deliveryStatus || "pending"} • {r.status}
+                              {r.deliveryStatus || "pending"} - {r.status}
                             </div>
                           </div>
                           {address ? <div className="text-sm">{address}</div> : null}
@@ -544,6 +588,58 @@ export default function SupplierDashboardPage() {
                           ) : null}
                           <div className="text-xs text-muted-foreground">
                             Fee: {formatMoney(Number(r.deliveryFeeCents || 0))}
+                          </div>
+                          <div className="grid grid-cols-1 gap-2">
+                            <Input
+                              type="datetime-local"
+                              value={deliveryEdits[r.id]?.deliveryScheduledFor ?? ""}
+                              onChange={(e) =>
+                                setDeliveryEdits((p) => ({
+                                  ...p,
+                                  [r.id]: {
+                                    ...(p[r.id] || {
+                                      deliveryScheduledFor: "",
+                                      deliveryFeeDollars: "",
+                                    }),
+                                    deliveryScheduledFor: e.target.value,
+                                  },
+                                }))
+                              }
+                            />
+                            <Input
+                              value={deliveryEdits[r.id]?.deliveryFeeDollars ?? ""}
+                              onChange={(e) =>
+                                setDeliveryEdits((p) => ({
+                                  ...p,
+                                  [r.id]: {
+                                    ...(p[r.id] || {
+                                      deliveryScheduledFor: "",
+                                      deliveryFeeDollars: "",
+                                    }),
+                                    deliveryFeeDollars: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="Delivery fee ($)"
+                            />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={updateDelivery.isPending}
+                              onClick={() => {
+                                const fee = Number(deliveryEdits[r.id]?.deliveryFeeDollars);
+                                const feeCents = Number.isFinite(fee) ? Math.round(fee * 100) : 0;
+                                updateDelivery.mutate({
+                                  requestId: r.id,
+                                  deliveryScheduledFor: deliveryEdits[r.id]?.deliveryScheduledFor
+                                    ? deliveryEdits[r.id]?.deliveryScheduledFor
+                                    : null,
+                                  deliveryFeeCents: Math.max(0, feeCents),
+                                });
+                              }}
+                            >
+                              Save schedule/fee
+                            </Button>
                           </div>
                           <div className="flex flex-wrap gap-2">
                             <Button

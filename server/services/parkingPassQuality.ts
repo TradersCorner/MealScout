@@ -15,7 +15,7 @@ type ParkingPassQualityFlag =
 const normalize = (value?: string | number | null) =>
   String(value ?? "").trim();
 
-const normalizeState = (value: string): string => {
+export const normalizeUsStateAbbr = (value: string): string => {
   const raw = value.trim();
   if (!raw) return "";
   const upper = raw.toUpperCase();
@@ -121,7 +121,7 @@ export function computeParkingPassQualityFlags(listing: {
   const address = normalize(listing.address ?? host?.address);
   const city = normalize(listing.city ?? host?.city);
   const stateRaw = normalize(listing.state ?? host?.state);
-  const state = stateRaw ? normalizeState(stateRaw) : "";
+  const state = stateRaw ? normalizeUsStateAbbr(stateRaw) : "";
   // Platform payments: we must be able to charge trucks for Parking Pass bookings.
   // Host payouts (Stripe Connect) are optional; if not enabled we hold host earnings as credit.
   const platformPaymentsEnabled = Boolean(process.env.STRIPE_SECRET_KEY);

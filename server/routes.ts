@@ -25,6 +25,7 @@ import {
 } from "./services/interestDecision";
 import { registerHostRoutes } from "./routes/hostRoutes";
 import { forwardGeocode } from "./utils/geocoding";
+import { normalizeUsStateAbbr } from "./services/parkingPassQuality";
 import { registerOpenCallSeriesRoutes } from "./routes/openCallSeriesRoutes";
 import { registerEventRoutes } from "./routes/eventRoutes";
 import { registerEventCoordinatorRoutes } from "./routes/eventCoordinatorRoutes";
@@ -1524,6 +1525,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (mapLocationsCache && mapLocationsCache.expiresAt > Date.now()) {
         return res.json(mapLocationsCache.payload);
       }
+
+      const VALID_US_STATE_ABBRS = new Set([
+        "AL",
+        "AK",
+        "AZ",
+        "AR",
+        "CA",
+        "CO",
+        "CT",
+        "DE",
+        "FL",
+        "GA",
+        "HI",
+        "ID",
+        "IL",
+        "IN",
+        "IA",
+        "KS",
+        "KY",
+        "LA",
+        "ME",
+        "MD",
+        "MA",
+        "MI",
+        "MN",
+        "MS",
+        "MO",
+        "MT",
+        "NE",
+        "NV",
+        "NH",
+        "NJ",
+        "NM",
+        "NY",
+        "NC",
+        "ND",
+        "OH",
+        "OK",
+        "OR",
+        "PA",
+        "RI",
+        "SC",
+        "SD",
+        "TN",
+        "TX",
+        "UT",
+        "VT",
+        "VA",
+        "WA",
+        "WV",
+        "WI",
+        "WY",
+        "DC",
+      ]);
+
+      const extractStateAbbr = (value?: string | null) => {
+        const raw = String(value || "").toUpperCase();
+        if (!raw) return "";
+        const matches = raw.match(/\b[A-Z]{2}\b/g) || [];
+        for (let i = matches.length - 1; i >= 0; i -= 1) {
+          const candidate = matches[i];
+          if (VALID_US_STATE_ABBRS.has(candidate)) return candidate;
+        }
+        return "";
+      };
+
+      const expectedStateAbbrFor = (hostLike: {
+        address?: string | null;
+        city?: string | null;
+        state?: string | null;
+      }) => {
+        const state = normalizeUsStateAbbr(String(hostLike.state || "").trim());
+        if (state && VALID_US_STATE_ABBRS.has(state)) return state;
+        const fromAddress = extractStateAbbr(hostLike.address);
+        if (fromAddress) return fromAddress;
+        const fromCity = extractStateAbbr(hostLike.city);
+        if (fromCity) return fromCity;
+        return "";
+      };
       const parseCoord = (value?: string | number | null) => {
         if (value === null || value === undefined) return null;
         const parsed = typeof value === "string" ? Number(value) : value;
@@ -1705,10 +1785,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
         target.longitude = coords.lng.toString();
       };
 
+      // Fix-up guard: avoid persisting/returning obviously wrong coordinates when a state is known.
+      const MAX_COORD_MISMATCH_FIXES = 10;
+      let mismatchFixes = 0;
+
       for (const host of hostLocations) {
         const lat = parseCoord(host.latitude);
         const lng = parseCoord(host.longitude);
-        if (lat !== null && lng !== null) continue;
+        const expectedState = expectedStateAbbrFor(host);
+        if (
+          lat !== null &&
+          lng !== null &&
+          expectedState &&
+          mismatchFixes < MAX_COORD_MISMATCH_FIXES
+        ) {
+          const reversed = await reverseGeocode(lat, lng).catch(() => null);
+          const reversedState = normalizeUsStateAbbr(
+            String(reversed?.state || "").trim(),
+          );
+          if (reversedState && reversedState !== expectedState) {
+            mismatchFixes += 1;
+
+            // Try to re-geocode with a more explicit query and only accept it if the reverse state matches.
+            host.latitude = null;
+            host.longitude = null;
+            const address = buildFullAddress(host.address, host.city, host.state);
+            if (address) {
+              const coords = await forwardGeocode(address, { force: true }).catch(
+                () => null,
+              );
+              if (coords) {
+                const verify = await reverseGeocode(coords.lat, coords.lng).catch(
+                  () => null,
+                );
+                const verifyState = normalizeUsStateAbbr(
+                  String(verify?.state || "").trim(),
+                );
+                if (!verifyState || verifyState === expectedState) {
+                  applyCoords(host, coords);
+                  if (host.hostId) {
+                    await storage
+                      .updateHostCoordinates(host.hostId, coords.lat, coords.lng)
+                      .catch(() => undefined);
+                  } else if (host.locationRequestId) {
+                    await db
+                      .update(locationRequests)
+                      .set({
+                        latitude: coords.lat.toString(),
+                        longitude: coords.lng.toString(),
+                      })
+                      .where(eq(locationRequests.id, host.locationRequestId))
+                      .catch(() => undefined);
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        if (parseCoord(host.latitude) !== null && parseCoord(host.longitude) !== null) {
+          continue;
+        }
         const address = buildFullAddress(host.address, host.city, host.state);
         if (!address) continue;
         queueGeocode(

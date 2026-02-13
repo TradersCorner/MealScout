@@ -18,11 +18,12 @@ import {
   CLAIM_TYPES,
 } from "@shared/schema";
 import { asc, eq, inArray, sql } from "drizzle-orm";
-import { forwardGeocode } from "../utils/geocoding";
+import { forwardGeocode, reverseGeocode } from "../utils/geocoding";
 import { listParkingPassOccurrences } from "../services/parkingPassVirtual";
 import {
   computeParkingPassQualityFlags,
   isParkingPassPublicReady,
+  normalizeUsStateAbbr,
 } from "../services/parkingPassQuality";
 
 export function registerEventRoutes(app: Express) {
@@ -307,6 +308,71 @@ export function registerEventRoutes(app: Express) {
         return res.json(parkingPassHostIdsCache.payload);
       }
 
+      const VALID_US_STATE_ABBRS = new Set([
+        "AL",
+        "AK",
+        "AZ",
+        "AR",
+        "CA",
+        "CO",
+        "CT",
+        "DE",
+        "FL",
+        "GA",
+        "HI",
+        "ID",
+        "IL",
+        "IN",
+        "IA",
+        "KS",
+        "KY",
+        "LA",
+        "ME",
+        "MD",
+        "MA",
+        "MI",
+        "MN",
+        "MS",
+        "MO",
+        "MT",
+        "NE",
+        "NV",
+        "NH",
+        "NJ",
+        "NM",
+        "NY",
+        "NC",
+        "ND",
+        "OH",
+        "OK",
+        "OR",
+        "PA",
+        "RI",
+        "SC",
+        "SD",
+        "TN",
+        "TX",
+        "UT",
+        "VT",
+        "VA",
+        "WA",
+        "WV",
+        "WI",
+        "WY",
+        "DC",
+      ]);
+
+      const extractStateAbbr = (value?: string | null) => {
+        const raw = String(value || "").toUpperCase();
+        if (!raw) return "";
+        const matches = raw.match(/\b[A-Z]{2}\b/g) || [];
+        for (let i = matches.length - 1; i >= 0; i -= 1) {
+          const candidate = matches[i];
+          if (VALID_US_STATE_ABBRS.has(candidate)) return candidate;
+        }
+        return "";
+      };
+
       const parseCoord = (value?: string | number | null) => {
         if (value === null || value === undefined) return null;
         const parsed = typeof value === "string" ? Number(value) : value;
@@ -389,6 +455,8 @@ export function registerEventRoutes(app: Express) {
       // Opportunistic geocode: map pins can only render with coords, so try to backfill a few per request.
       const MAX_GEOCODE_PER_REQUEST = 20;
       let geocoded = 0;
+      const MAX_REVERSE_CHECKS = 20;
+      let reverseChecks = 0;
       const MAX_PUBLISH_PER_REQUEST = 50;
       let published = 0;
 
@@ -398,13 +466,49 @@ export function registerEventRoutes(app: Express) {
         const address = host?.address ?? null;
         const city = host?.city ?? null;
         const state = host?.state ?? null;
+        const expectedStateRaw = normalizeUsStateAbbr(String(state || "").trim());
+        const expectedState =
+          expectedStateRaw && VALID_US_STATE_ABBRS.has(expectedStateRaw)
+            ? expectedStateRaw
+            : extractStateAbbr(address) || extractStateAbbr(city);
         let lat = parseCoord(host?.latitude);
         let lng = parseCoord(host?.longitude);
+
+        if (
+          expectedState &&
+          lat !== null &&
+          lng !== null &&
+          reverseChecks < MAX_REVERSE_CHECKS
+        ) {
+          reverseChecks += 1;
+          const reversed = await reverseGeocode(lat, lng).catch(() => null);
+          const reversedState = normalizeUsStateAbbr(
+            String(reversed?.state || "").trim(),
+          );
+          if (reversedState && reversedState !== expectedState) {
+            // Coordinates appear to be for the wrong state; force re-geocode.
+            lat = null;
+            lng = null;
+          }
+        }
+
         if ((lat === null || lng === null) && geocoded < MAX_GEOCODE_PER_REQUEST) {
           const addr = buildFullAddress(address, city, state);
           if (addr) {
             const coords = await forwardGeocode(addr).catch(() => null);
             if (coords) {
+              if (expectedState && reverseChecks < MAX_REVERSE_CHECKS) {
+                reverseChecks += 1;
+                const verify = await reverseGeocode(coords.lat, coords.lng).catch(
+                  () => null,
+                );
+                const verifyState = normalizeUsStateAbbr(
+                  String(verify?.state || "").trim(),
+                );
+                if (verifyState && verifyState !== expectedState) {
+                  continue;
+                }
+              }
               geocoded += 1;
               lat = coords.lat;
               lng = coords.lng;

@@ -109,6 +109,7 @@ const ClaimTruckPage = lazy(() => import("@/pages/claim-truck"));
 const SuppliersPage = lazy(() => import("@/pages/suppliers"));
 const SupplierDetailPage = lazy(() => import("@/pages/supplier-detail"));
 const SupplierDashboardPage = lazy(() => import("@/pages/supplier-dashboard"));
+const SupplyScoutPage = lazy(() => import("@/pages/supply-scout"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -305,6 +306,7 @@ function Router() {
             <Route path="/map" component={MapPage} />
             <Route path="/suppliers" component={SuppliersPage} />
             <Route path="/suppliers/:supplierId" component={SupplierDetailPage} />
+            <Route path="/supplies/scout" component={SupplyScoutPage} />
             <Route path="/video" component={VideoPage} />
             <Route path="/favorites" component={Favorites} />
             <Route path="/orders" component={Orders} />

@@ -33,6 +33,7 @@ import { registerAdminManagementRoutes } from "./routes/adminManagementRoutes";
 import { registerGeoAdRoutes } from "./routes/geoAdRoutes";
 import { registerBookingRoutes } from "./routes/bookingRoutes";
 import { registerSupplierMarketplaceRoutes } from "./routes/supplierMarketplaceRoutes";
+import { registerSupplyScoutRoutes } from "./routes/supplyScoutRoutes";
 import { registerStaffRoutes } from "./staffRoutes";
 import {
   setupUnifiedAuth,
@@ -1948,6 +1949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Supplier marketplace (suppliers + food truck pickup orders)
   registerSupplierMarketplaceRoutes(app);
+  registerSupplyScoutRoutes(app);
 
   app.patch(
     "/api/hosts/interests/:interestId/status",

@@ -228,6 +228,13 @@ export default function SuppliersPage() {
               Upload CSV/TSV/XLSX with columns like: <code>sku</code> or <code>name</code>, and{" "}
               <code>quantity</code>. We'll find which suppliers have the best deals.
             </div>
+            <div className="flex gap-2">
+              <Link href="/supplies/scout">
+                <Button size="sm" variant="outline">
+                  Open Price Scout
+                </Button>
+              </Link>
+            </div>
             <input
               type="file"
               accept=".csv,.tsv,.xlsx"

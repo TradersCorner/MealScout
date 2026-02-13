@@ -594,6 +594,202 @@ export const supplyReceiptItems = pgTable(
   ],
 );
 
+export const supplyStores = pgTable(
+  "supply_stores",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    type: varchar("type").notNull().default("retailer"), // 'retailer' | 'wholesaler' | 'distributor' | 'supplier'
+    name: varchar("name").notNull(),
+    websiteUrl: text("website_url"),
+    phone: varchar("phone"),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    unique("uq_supply_stores_name").on(table.name),
+    index("idx_supply_stores_active").on(table.isActive),
+  ],
+);
+
+export const supplyStoreLocations = pgTable(
+  "supply_store_locations",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    storeId: varchar("store_id")
+      .notNull()
+      .references(() => supplyStores.id, { onDelete: "cascade" }),
+    address: text("address"),
+    city: varchar("city"),
+    state: varchar("state"),
+    postalCode: varchar("postal_code"),
+    latitude: decimal("latitude", { precision: 10, scale: 8 }),
+    longitude: decimal("longitude", { precision: 11, scale: 8 }),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_supply_store_locations_store").on(table.storeId),
+    index("idx_supply_store_locations_state").on(table.state),
+  ],
+);
+
+export const supplyItems = pgTable(
+  "supply_items",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    itemKey: varchar("item_key").notNull(),
+    canonicalName: varchar("canonical_name").notNull(),
+    category: varchar("category"),
+    defaultUnit: varchar("default_unit"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    unique("uq_supply_items_key").on(table.itemKey),
+    index("idx_supply_items_canonical").on(table.canonicalName),
+  ],
+);
+
+export const supplyItemAliases = pgTable(
+  "supply_item_aliases",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    itemId: varchar("item_id")
+      .notNull()
+      .references(() => supplyItems.id, { onDelete: "cascade" }),
+    aliasKey: varchar("alias_key").notNull(),
+    alias: varchar("alias").notNull(),
+    source: varchar("source").notNull().default("manual"), // 'manual' | 'supplier' | 'barcode'
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_supply_item_aliases_item").on(table.itemId),
+    index("idx_supply_item_aliases_alias_key").on(table.aliasKey),
+  ],
+);
+
+export const supplyPrices = pgTable(
+  "supply_prices",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    storeId: varchar("store_id")
+      .notNull()
+      .references(() => supplyStores.id, { onDelete: "cascade" }),
+    storeLocationId: varchar("store_location_id").references(() => supplyStoreLocations.id, {
+      onDelete: "set null",
+    }),
+    itemId: varchar("item_id")
+      .notNull()
+      .references(() => supplyItems.id, { onDelete: "cascade" }),
+    sku: varchar("sku"),
+    unitLabel: varchar("unit_label"),
+    unitPriceCents: integer("unit_price_cents").notNull(),
+    currency: varchar("currency").notNull().default("usd"),
+    observedAt: timestamp("observed_at").notNull().defaultNow(),
+    source: varchar("source").notNull().default("manual"), // 'manual' | 'import' | 'supplier'
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_supply_prices_store").on(table.storeId),
+    index("idx_supply_prices_item").on(table.itemId),
+    index("idx_supply_prices_observed").on(table.observedAt),
+  ],
+);
+
+export const supplyShoppingLists = pgTable(
+  "supply_shopping_lists",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    ownerUserId: varchar("owner_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    buyerRestaurantId: varchar("buyer_restaurant_id").references(() => restaurants.id, {
+      onDelete: "set null",
+    }),
+    name: varchar("name").notNull(),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_supply_shopping_lists_owner").on(table.ownerUserId),
+    index("idx_supply_shopping_lists_buyer").on(table.buyerRestaurantId),
+  ],
+);
+
+export const supplyShoppingListItems = pgTable(
+  "supply_shopping_list_items",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    listId: varchar("list_id")
+      .notNull()
+      .references(() => supplyShoppingLists.id, { onDelete: "cascade" }),
+    itemId: varchar("item_id").references(() => supplyItems.id, { onDelete: "set null" }),
+    rawName: varchar("raw_name").notNull(),
+    quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull().default("1"),
+    unit: varchar("unit"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_supply_shopping_list_items_list").on(table.listId),
+    index("idx_supply_shopping_list_items_item").on(table.itemId),
+  ],
+);
+
+export const supplyScoutPreferences = pgTable(
+  "supply_scout_preferences",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    hubLabel: varchar("hub_label"),
+    hubLatitude: decimal("hub_latitude", { precision: 10, scale: 8 }),
+    hubLongitude: decimal("hub_longitude", { precision: 11, scale: 8 }),
+    maxRadiusMiles: integer("max_radius_miles").notNull().default(25),
+    costPerStopCents: integer("cost_per_stop_cents").notNull().default(800),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [unique("uq_supply_scout_preferences_user").on(table.userId)],
+);
+
+export const supplyBarcodeMappings = pgTable(
+  "supply_barcode_mappings",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    barcode: varchar("barcode").notNull(),
+    itemId: varchar("item_id").references(() => supplyItems.id, { onDelete: "set null" }),
+    alias: varchar("alias"),
+    createdByUserId: varchar("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [unique("uq_supply_barcode_mappings_barcode").on(table.barcode)],
+);
+
 export const deals = pgTable("deals", {
   id: varchar("id")
     .primaryKey()

@@ -25,6 +25,11 @@ type Supplier = {
   deliveryFeeCents?: number | null;
   deliveryMinOrderCents?: number | null;
   deliveryNotes?: string | null;
+  onlinePaymentsEnabled?: boolean | null;
+  onlinePaymentsAllowAch?: boolean | null;
+  onlinePaymentsAllowCard?: boolean | null;
+  onlinePaymentsMinOrderCents?: number | null;
+  onlinePaymentsNotes?: string | null;
 };
 
 type SupplierProduct = {
@@ -504,8 +509,15 @@ export default function SupplierDetailPage() {
             >
               <option value="offsite">Pay offsite</option>
               <option value="in_person">Pay in person</option>
-              <option value="online">Pay through MealScout (ACH/Card)</option>
+              <option value="online" disabled={!supplier?.onlinePaymentsEnabled}>
+                Pay through MealScout (ACH/Card)
+              </option>
             </select>
+            {paymentPreference === "online" && !supplier?.onlinePaymentsEnabled ? (
+              <div className="text-xs text-muted-foreground">
+                This supplier isn't accepting online payments yet.
+              </div>
+            ) : null}
             <div className="text-sm font-semibold">Pickup note</div>
             <Input
               value={pickupNote}

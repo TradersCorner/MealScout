@@ -526,6 +526,10 @@ export default function SuppliersPage() {
               buyerRestaurantId={selectedBuyerRestaurantId}
               triggerLabel="My lists"
             />
+
+            <Link href="/supply/orders">
+              <Button variant="outline">Orders</Button>
+            </Link>
           </div>
         </div>
 

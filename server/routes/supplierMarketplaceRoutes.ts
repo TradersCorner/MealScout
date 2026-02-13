@@ -1738,6 +1738,11 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         deliveryFeeCents: z.coerce.number().int().min(0).max(500_000).optional(),
         deliveryMinOrderCents: z.coerce.number().int().min(0).max(5_000_000).optional(),
         deliveryNotes: z.string().max(2000).optional().nullable(),
+        onlinePaymentsEnabled: z.boolean().optional(),
+        onlinePaymentsAllowAch: z.boolean().optional(),
+        onlinePaymentsAllowCard: z.boolean().optional(),
+        onlinePaymentsMinOrderCents: z.coerce.number().int().min(0).max(10_000_000).optional(),
+        onlinePaymentsNotes: z.string().max(2000).optional().nullable(),
       });
       const parsed = schema.parse(req.body || {});
 
@@ -1903,6 +1908,9 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       if (!supplier) return res.status(404).json({ message: "Supplier not found" });
       if (parsed.requestedFulfillment === "delivery" && !(supplier as any).offersDelivery) {
         return res.status(400).json({ message: "Supplier does not offer delivery." });
+      }
+      if (parsed.paymentPreference === "online" && !(supplier as any).onlinePaymentsEnabled) {
+        return res.status(400).json({ message: "Supplier does not accept online payments." });
       }
       if (parsed.requestedFulfillment === "delivery") {
         const addr =
@@ -2165,6 +2173,9 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       if (!supplier) return res.status(404).json({ message: "Supplier not found" });
       if (parsedMeta.requestedFulfillment === "delivery" && !(supplier as any).offersDelivery) {
         return res.status(400).json({ message: "Supplier does not offer delivery." });
+      }
+      if (parsedMeta.paymentPreference === "online" && !(supplier as any).onlinePaymentsEnabled) {
+        return res.status(400).json({ message: "Supplier does not accept online payments." });
       }
       if (parsedMeta.requestedFulfillment === "delivery") {
         const addr =
@@ -2906,29 +2917,6 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     }
   });
 
-  app.get("/api/supplier-orders/mine", isAuthenticated, async (req: any, res) => {
-    try {
-      const truckId = String(req.query?.truckRestaurantId || "").trim();
-      if (!truckId) return res.status(400).json({ message: "truckRestaurantId required" });
-
-      const truck = await storage.getRestaurant(truckId);
-      if (!truck || String(truck.ownerId) !== String(req.user.id)) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
-      const orders = await db
-        .select()
-        .from(supplierOrders)
-        .where(eq(supplierOrders.truckRestaurantId, truckId))
-        .orderBy(desc(supplierOrders.createdAt))
-        .limit(200);
-      res.json(orders);
-    } catch (error) {
-      console.error("Error listing truck supplier orders:", error);
-      res.status(500).json({ message: "Failed to load orders" });
-    }
-  });
-
   app.get("/api/supplier/orders", isAuthenticated, isSupplierOrAdmin, async (req: any, res) => {
     try {
       const supplier = await ensureSupplierProfile(req.user.id);
@@ -2952,14 +2940,26 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       if (!buyerRestaurantId) return res.status(400).json({ message: "buyerRestaurantId required" });
       const buyerRestaurant = await resolveBuyerRestaurantOrThrow(req, buyerRestaurantId);
 
-      const orders = await db
-        .select()
+      const rows = await db
+        .select({ order: supplierOrders, supplier: suppliers })
         .from(supplierOrders)
+        .innerJoin(suppliers, eq(supplierOrders.supplierId, suppliers.id))
         .where(eq(supplierOrders.truckRestaurantId, String((buyerRestaurant as any).id)))
         .orderBy(desc(supplierOrders.createdAt))
         .limit(200);
 
-      res.json(orders);
+      res.json(
+        (rows as any[]).map((r: any) => ({
+          ...r.order,
+          supplier: {
+            id: String(r.supplier.id),
+            businessName: String(r.supplier.businessName),
+            onlinePaymentsEnabled: Boolean(r.supplier.onlinePaymentsEnabled),
+            onlinePaymentsAllowAch: Boolean(r.supplier.onlinePaymentsAllowAch ?? true),
+            onlinePaymentsAllowCard: Boolean(r.supplier.onlinePaymentsAllowCard ?? true),
+          },
+        })),
+      );
     } catch (error: any) {
       console.error("Error listing buyer supplier orders:", error);
       if (String(error?.message || "") === "Not authorized") {
@@ -3032,6 +3032,9 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         .where(eq(suppliers.id, supplierId))
         .limit(1);
       if (!supplier) return res.status(404).json({ message: "Supplier not found" });
+      if (!(supplier as any).onlinePaymentsEnabled) {
+        return res.status(400).json({ message: "Supplier does not accept online payments." });
+      }
 
       const destination = String((supplier as any).stripeConnectAccountId || "").trim();
       if (!destination) {
@@ -3046,9 +3049,48 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         return res.status(400).json({ message: "Invalid order total." });
       }
 
-      const applicationFeeCents =
+      const transferAmountCents =
+        Math.max(0, Number((order as any).subtotalCents || 0) || 0) +
+        Math.max(0, Number((order as any).deliveryFeeCents || 0) || 0);
+
+      const minOnline = Math.max(0, Number((supplier as any).onlinePaymentsMinOrderCents || 0) || 0);
+      if (minOnline > 0 && transferAmountCents < minOnline) {
+        return res.status(400).json({
+          message: `Online payments require a minimum order of $${(minOnline / 100).toFixed(2)}.`,
+        });
+      }
+
+      const applicationFeeBaseCents =
         Math.max(0, Number((order as any).platformFeeCents || 0) || 0) +
         Math.max(0, Number((order as any).stripeFeeEstimateCents || 0) || 0);
+
+      const methodSchema = z.object({
+        paymentMethod: z.enum(["ach", "card"]).optional(),
+      });
+      const parsed = methodSchema.parse(req.body || {});
+
+      const thresholdDefaultCents =
+        Math.max(0, Number(process.env.SUPPLIER_ORDER_ACH_DEFAULT_THRESHOLD_CENTS || 50_000) || 50_000);
+      const discountThresholdCents =
+        Math.max(0, Number(process.env.SUPPLIER_ORDER_ACH_DISCOUNT_THRESHOLD_CENTS || thresholdDefaultCents) || thresholdDefaultCents);
+      const configuredDiscountCents =
+        Math.max(0, Number(process.env.SUPPLIER_ORDER_ACH_DISCOUNT_CENTS || 0) || 0);
+
+      const allowAch = Boolean((supplier as any).onlinePaymentsAllowAch ?? true);
+      const allowCard = Boolean((supplier as any).onlinePaymentsAllowCard ?? true);
+
+      const defaultMethod =
+        amountCents >= thresholdDefaultCents && allowAch ? "ach" : allowCard ? "card" : allowAch ? "ach" : null;
+      const paymentMethod = parsed.paymentMethod ?? defaultMethod;
+      if (!paymentMethod) {
+        return res.status(400).json({ message: "No payment methods are enabled for this supplier." });
+      }
+      if (paymentMethod === "ach" && !allowAch) {
+        return res.status(400).json({ message: "Supplier does not allow ACH payments." });
+      }
+      if (paymentMethod === "card" && !allowCard) {
+        return res.status(400).json({ message: "Supplier does not allow card payments." });
+      }
 
       const existingIntentId = String((order as any).stripePaymentIntentId || "").trim();
       if (existingIntentId) {
@@ -3058,23 +3100,39 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
             paymentIntentId: intent.id,
             clientSecret: (intent as any).client_secret,
             totalCents: amountCents,
+            chargeAmountCents: Number((order as any).stripeChargeAmountCents || amountCents) || amountCents,
+            buyerDiscountCents: Number((order as any).buyerDiscountCents || 0) || 0,
+            paymentMethod: String((order as any).buyerPaymentMethod || "") || null,
           });
         }
       }
 
+      const discountCents =
+        paymentMethod === "ach" &&
+        configuredDiscountCents > 0 &&
+        amountCents >= discountThresholdCents
+          ? Math.min(configuredDiscountCents, applicationFeeBaseCents)
+          : 0;
+
+      const applicationFeeCents = Math.max(0, applicationFeeBaseCents - discountCents);
+      const chargeAmountCents = Math.max(0, amountCents - discountCents);
+
       const intentParams: Stripe.PaymentIntentCreateParams = {
-        amount: amountCents,
+        amount: chargeAmountCents,
         currency: "usd",
-        payment_method_types: ["us_bank_account", "card"],
+        payment_method_types: paymentMethod === "ach" ? ["us_bank_account"] : ["card"],
         metadata: {
           supplierOrderId: String((order as any).id),
           supplierId: supplierId,
           buyerRestaurantId: String((order as any).truckRestaurantId),
           paymentType: "supplier_order",
+          paymentMethod: paymentMethod,
+          buyerDiscountCents: String(discountCents),
         },
         application_fee_amount: applicationFeeCents > 0 ? applicationFeeCents : undefined,
         transfer_data: {
           destination,
+          amount: transferAmountCents,
         },
       };
 
@@ -3082,16 +3140,30 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
 
       await db
         .update(supplierOrders)
-        .set({ stripePaymentIntentId: intent.id, updatedAt: new Date() } as any)
+        .set({
+          stripePaymentIntentId: intent.id,
+          stripeChargeAmountCents: chargeAmountCents,
+          stripeApplicationFeeCents: applicationFeeCents,
+          stripeTransferAmountCents: transferAmountCents,
+          buyerDiscountCents: discountCents,
+          buyerPaymentMethod: paymentMethod,
+          updatedAt: new Date(),
+        } as any)
         .where(eq(supplierOrders.id, String((order as any).id)));
 
       res.json({
         paymentIntentId: intent.id,
         clientSecret: intent.client_secret,
         totalCents: amountCents,
+        chargeAmountCents,
+        buyerDiscountCents: discountCents,
+        paymentMethod,
       });
     } catch (error: any) {
       console.error("Error creating supplier order PaymentIntent:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid payment request", errors: error.errors });
+      }
       res.status(500).json({ message: error.message || "Failed to create payment intent" });
     }
   });

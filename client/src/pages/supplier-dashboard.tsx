@@ -99,6 +99,13 @@ export default function SupplierDashboardPage() {
     deliveryMinOrderDollars: "",
     deliveryNotes: "",
   });
+  const [onlineSettings, setOnlineSettings] = useState({
+    onlinePaymentsEnabled: false,
+    onlinePaymentsAllowAch: true,
+    onlinePaymentsAllowCard: true,
+    onlinePaymentsMinOrderDollars: "",
+    onlinePaymentsNotes: "",
+  });
   const [deliveryEdits, setDeliveryEdits] = useState<
     Record<string, { deliveryScheduledFor: string; deliveryFeeDollars: string }>
   >({});
@@ -147,10 +154,29 @@ export default function SupplierDashboardPage() {
     };
   }, [supplier]);
 
+  const supplierOnlineDefaults = useMemo(() => {
+    return {
+      onlinePaymentsEnabled: Boolean((supplier as any)?.onlinePaymentsEnabled),
+      onlinePaymentsAllowAch: Boolean((supplier as any)?.onlinePaymentsAllowAch ?? true),
+      onlinePaymentsAllowCard: Boolean((supplier as any)?.onlinePaymentsAllowCard ?? true),
+      onlinePaymentsMinOrderDollars:
+        (supplier as any)?.onlinePaymentsMinOrderCents !== null &&
+        (supplier as any)?.onlinePaymentsMinOrderCents !== undefined
+          ? String((Number((supplier as any).onlinePaymentsMinOrderCents) / 100).toFixed(2))
+          : "",
+      onlinePaymentsNotes: String((supplier as any)?.onlinePaymentsNotes ?? ""),
+    };
+  }, [supplier]);
+
   useEffect(() => {
     if (!supplier) return;
     setDeliverySettings((prev) => ({ ...prev, ...supplierDeliveryDefaults }));
   }, [supplier, supplierDeliveryDefaults]);
+
+  useEffect(() => {
+    if (!supplier) return;
+    setOnlineSettings((prev) => ({ ...prev, ...supplierOnlineDefaults }));
+  }, [supplier, supplierOnlineDefaults]);
 
   const { data: products = [] } = useQuery<SupplierProduct[]>({
     queryKey: ["/api/supplier/products"],
@@ -359,6 +385,19 @@ export default function SupplierDashboardPage() {
         }
       }
 
+      const onlineMin = Number(onlineSettings.onlinePaymentsMinOrderDollars);
+      if (onlineSettings.onlinePaymentsEnabled) {
+        if (
+          !onlineSettings.onlinePaymentsAllowAch &&
+          !onlineSettings.onlinePaymentsAllowCard
+        ) {
+          throw new Error("Enable ACH or card (or both) for online payments");
+        }
+        if (!Number.isFinite(onlineMin) || onlineMin < 0) {
+          throw new Error("Enter a valid online minimum order");
+        }
+      }
+
       const res = await fetch("/api/supplier/me", {
         method: "PATCH",
         credentials: "include",
@@ -369,15 +408,28 @@ export default function SupplierDashboardPage() {
           deliveryFeeCents: deliverySettings.offersDelivery ? Math.round(fee * 100) : 0,
           deliveryMinOrderCents: deliverySettings.offersDelivery ? Math.round(minOrder * 100) : 0,
           deliveryNotes: deliverySettings.deliveryNotes.trim() || null,
+
+          onlinePaymentsEnabled: onlineSettings.onlinePaymentsEnabled,
+          onlinePaymentsAllowAch: onlineSettings.onlinePaymentsEnabled
+            ? onlineSettings.onlinePaymentsAllowAch
+            : true,
+          onlinePaymentsAllowCard: onlineSettings.onlinePaymentsEnabled
+            ? onlineSettings.onlinePaymentsAllowCard
+            : true,
+          onlinePaymentsMinOrderCents: onlineSettings.onlinePaymentsEnabled
+            ? Math.round((Number.isFinite(onlineMin) ? onlineMin : 0) * 100)
+            : 0,
+          onlinePaymentsNotes: onlineSettings.onlinePaymentsNotes.trim() || null,
         }),
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.message || "Failed to update delivery settings");
+      if (!res.ok) throw new Error(data?.message || "Failed to update settings");
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/supplier/me"] });
-      toast({ title: "Delivery settings saved" });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/stripe/status"] });
+      toast({ title: "Settings saved" });
     },
     onError: (error: any) => {
       toast({
@@ -627,7 +679,95 @@ export default function SupplierDashboardPage() {
                   disabled={updateSupplier.isPending}
                   onClick={() => updateSupplier.mutate()}
                 >
-                  {updateSupplier.isPending ? "Saving..." : "Save delivery settings"}
+                  {updateSupplier.isPending ? "Saving..." : "Save settings"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="text-sm font-semibold">Online payments (MealScout)</div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={onlineSettings.onlinePaymentsEnabled}
+                    onChange={(e) =>
+                      setOnlineSettings((p) => ({
+                        ...p,
+                        onlinePaymentsEnabled: e.target.checked,
+                      }))
+                    }
+                  />
+                  Allow buyers to pay online (ACH/Card)
+                </label>
+
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="flex items-center justify-between gap-2 rounded border px-3 py-2 text-sm">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={onlineSettings.onlinePaymentsAllowAch}
+                        onChange={(e) =>
+                          setOnlineSettings((p) => ({
+                            ...p,
+                            onlinePaymentsAllowAch: e.target.checked,
+                          }))
+                        }
+                        disabled={!onlineSettings.onlinePaymentsEnabled}
+                      />
+                      ACH (bank transfer)
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={onlineSettings.onlinePaymentsAllowCard}
+                        onChange={(e) =>
+                          setOnlineSettings((p) => ({
+                            ...p,
+                            onlinePaymentsAllowCard: e.target.checked,
+                          }))
+                        }
+                        disabled={!onlineSettings.onlinePaymentsEnabled}
+                      />
+                      Card
+                    </label>
+                  </div>
+
+                  <Input
+                    placeholder="Online min order ($)"
+                    value={onlineSettings.onlinePaymentsMinOrderDollars}
+                    onChange={(e) =>
+                      setOnlineSettings((p) => ({
+                        ...p,
+                        onlinePaymentsMinOrderDollars: e.target.value,
+                      }))
+                    }
+                    disabled={!onlineSettings.onlinePaymentsEnabled}
+                  />
+
+                  <Input
+                    placeholder="Online payment notes (optional)"
+                    value={onlineSettings.onlinePaymentsNotes}
+                    onChange={(e) =>
+                      setOnlineSettings((p) => ({
+                        ...p,
+                        onlinePaymentsNotes: e.target.value,
+                      }))
+                    }
+                    disabled={!onlineSettings.onlinePaymentsEnabled}
+                  />
+
+                  <div className="text-xs text-muted-foreground">
+                    Buyers will be offered ACH first for large orders to reduce fees.
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  disabled={updateSupplier.isPending}
+                  onClick={() => updateSupplier.mutate()}
+                >
+                  {updateSupplier.isPending ? "Saving..." : "Save settings"}
                 </Button>
               </CardContent>
             </Card>

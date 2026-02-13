@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY || "";
 const stripePromise = stripePublicKey ? loadStripe(stripePublicKey) : null;
@@ -131,11 +132,16 @@ export function SupplierOrderPaymentModal(props: {
   const [isLoading, setIsLoading] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [totalCents, setTotalCents] = useState<number>(0);
+  const [chargeAmountCents, setChargeAmountCents] = useState<number>(0);
+  const [buyerDiscountCents, setBuyerDiscountCents] = useState<number>(0);
+  const [paymentMethod, setPaymentMethod] = useState<"ach" | "card">("ach");
 
   useEffect(() => {
     if (!props.open) {
       setClientSecret(null);
       setTotalCents(0);
+      setChargeAmountCents(0);
+      setBuyerDiscountCents(0);
       return;
     }
 
@@ -149,31 +155,44 @@ export function SupplierOrderPaymentModal(props: {
       return;
     }
 
-    (async () => {
-      setIsLoading(true);
-      try {
-        const res = await fetch(`/api/supplier-orders/${encodeURIComponent(props.orderId)}/pay-intent`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        });
-        const data = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(data?.message || "Failed to start payment");
-        setClientSecret(String(data?.clientSecret || ""));
-        setTotalCents(Number(data?.totalCents || 0) || 0);
-      } catch (err: any) {
-        toast({
-          title: "Unable to start payment",
-          description: err?.message || "Please try again.",
-          variant: "destructive",
-        });
-        props.onOpenChange(false);
-      } finally {
-        setIsLoading(false);
-      }
-    })();
+    // Wait for user to choose method before creating PI (needed for ACH discount + method-specific PI).
   }, [props.open, props.orderId, props, toast]);
+
+  const startPayment = async (method: "ach" | "card") => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/supplier-orders/${encodeURIComponent(props.orderId)}/pay-intent`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentMethod: method }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to start payment");
+      setPaymentMethod(method);
+      setClientSecret(String(data?.clientSecret || ""));
+      const total = Number(data?.totalCents || 0) || 0;
+      const charge = Number(data?.chargeAmountCents ?? total) || total;
+      setTotalCents(total);
+      setChargeAmountCents(charge);
+      setBuyerDiscountCents(Number(data?.buyerDiscountCents || 0) || 0);
+    } catch (err: any) {
+      toast({
+        title: "Unable to start payment",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+      props.onOpenChange(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const headerTotal = useMemo(() => {
+    const base = totalCents || 0;
+    const charge = chargeAmountCents || 0;
+    return { base, charge };
+  }, [totalCents, chargeAmountCents]);
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -185,17 +204,61 @@ export function SupplierOrderPaymentModal(props: {
           </DialogDescription>
         </DialogHeader>
 
-        {isLoading || !clientSecret ? (
-          <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Loading payment…
+        {!clientSecret ? (
+          <div className="space-y-4">
+            <div className="rounded-lg border p-4 space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Order total</span>
+                <span className="font-semibold">{formatMoney(headerTotal.base)}</span>
+              </div>
+              {buyerDiscountCents > 0 ? (
+                <div className="flex items-center justify-between text-[color:var(--status-success)]">
+                  <span>ACH discount</span>
+                  <span className="font-medium">-{formatMoney(buyerDiscountCents)}</span>
+                </div>
+              ) : null}
+              {headerTotal.charge > 0 && headerTotal.charge !== headerTotal.base ? (
+                <div className="flex items-center justify-between font-semibold">
+                  <span>Pay now</span>
+                  <span>{formatMoney(headerTotal.charge)}</span>
+                </div>
+              ) : null}
+              <div className="text-xs text-muted-foreground">
+                Select your payment method. For large payments, bank transfer is usually cheapest.
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Button
+                className="justify-between"
+                disabled={isLoading}
+                onClick={() => startPayment("ach")}
+              >
+                <span>Pay by bank transfer (ACH)</span>
+                <Badge variant="secondary">Recommended</Badge>
+              </Button>
+              <Button
+                variant="outline"
+                disabled={isLoading}
+                onClick={() => startPayment("card")}
+              >
+                Pay by card
+              </Button>
+            </div>
+
+            {isLoading ? (
+              <div className="flex items-center text-sm text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Starting payment…
+              </div>
+            ) : null}
           </div>
         ) : (
           <Elements stripe={stripePromise} options={{ clientSecret }}>
             <PaymentForm
               orderId={props.orderId}
               clientSecret={clientSecret}
-              totalCents={totalCents}
+              totalCents={chargeAmountCents || totalCents}
               onPaid={() => {
                 props.onPaid?.();
                 props.onOpenChange(false);
@@ -208,4 +271,3 @@ export function SupplierOrderPaymentModal(props: {
     </Dialog>
   );
 }
-

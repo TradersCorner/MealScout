@@ -335,11 +335,13 @@ export function registerEventRoutes(app: Express) {
       };
 
       // Prefer series-level gating (not occurrences) so hosts remain visible even if they have no
-      // occurrences in the next N days. Only published + zero-flag series are eligible.
+      // occurrences in the next N days.
       const seriesRows = await db
         .select({
           seriesId: eventSeries.id,
           hostId: eventSeries.hostId,
+          status: eventSeries.status,
+          publishedAt: eventSeries.publishedAt,
           defaultStartTime: eventSeries.defaultStartTime,
           defaultEndTime: eventSeries.defaultEndTime,
           defaultMaxTrucks: eventSeries.defaultMaxTrucks,
@@ -353,7 +355,7 @@ export function registerEventRoutes(app: Express) {
         })
         .from(eventSeries)
         .where(
-          sql`${eventSeries.seriesType} = 'parking_pass' and ${eventSeries.status} = 'published'`,
+          sql`${eventSeries.seriesType} = 'parking_pass' and ${eventSeries.status} in ('published', 'draft')`,
         )
         .orderBy(asc(eventSeries.updatedAt));
 
@@ -387,6 +389,8 @@ export function registerEventRoutes(app: Express) {
       // Opportunistic geocode: map pins can only render with coords, so try to backfill a few per request.
       const MAX_GEOCODE_PER_REQUEST = 20;
       let geocoded = 0;
+      const MAX_PUBLISH_PER_REQUEST = 50;
+      let published = 0;
 
       const hostIds = new Set<string>();
       for (const row of bestByHostId.values()) {
@@ -436,6 +440,23 @@ export function registerEventRoutes(app: Express) {
         if (flags.length > 0) continue;
 
         hostIds.add(String(row.hostId));
+
+        // If a draft series is now public-ready (often after coords are geocoded),
+        // promote it to published so subsequent requests don't depend on this endpoint.
+        if (
+          String(row.status || "").toLowerCase() !== "published" &&
+          published < MAX_PUBLISH_PER_REQUEST
+        ) {
+          published += 1;
+          await db
+            .update(eventSeries)
+            .set({
+              status: "published" as any,
+              publishedAt: row.publishedAt ?? new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(eventSeries.id, row.seriesId));
+        }
       }
 
       // Legacy fallback: some old parking pass events can exist without a series.

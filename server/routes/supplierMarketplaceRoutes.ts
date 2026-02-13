@@ -9,6 +9,7 @@ import {
   supplierProducts,
   supplierRequests,
   supplierRequestItems,
+  supplyOrderPreferences,
   supplyDemandNotifications,
   supplyDemands,
   suppliers,
@@ -307,7 +308,69 @@ async function ensureSupplierProfile(userId: string) {
   return created;
 }
 
+async function ensureSupplyOrderPreferences(userId: string) {
+  const [existing] = await db
+    .select()
+    .from(supplyOrderPreferences)
+    .where(eq(supplyOrderPreferences.userId, userId))
+    .limit(1);
+  if (existing) return existing;
+
+  const now = new Date();
+  const [created] = await db
+    .insert(supplyOrderPreferences)
+    .values({
+      userId,
+      maxStops: 2,
+      maxRadiusMiles: 20,
+      costPerStopCents: 0,
+      pingSuppliers: true,
+      allowSubstitutions: true,
+      createdAt: now,
+      updatedAt: now,
+    } as any)
+    .returning();
+  return created;
+}
+
 export function registerSupplierMarketplaceRoutes(app: Express) {
+  app.get("/api/supply/preferences", isAuthenticated, async (req: any, res) => {
+    try {
+      const prefs = await ensureSupplyOrderPreferences(String(req.user.id));
+      res.json(prefs);
+    } catch (error: any) {
+      console.error("Error loading supply preferences:", error);
+      res.status(500).json({ message: error.message || "Failed to load preferences" });
+    }
+  });
+
+  app.post("/api/supply/preferences", isAuthenticated, async (req: any, res) => {
+    try {
+      const schema = z.object({
+        maxStops: z.coerce.number().int().min(1).max(5).optional(),
+        maxRadiusMiles: z.coerce.number().int().min(1).max(250).optional(),
+        costPerStopCents: z.coerce.number().int().min(0).max(50_000).optional(),
+        pingSuppliers: z.coerce.boolean().optional(),
+        allowSubstitutions: z.coerce.boolean().optional(),
+      });
+      const parsed = schema.parse(req.body || {});
+      const existing = await ensureSupplyOrderPreferences(String(req.user.id));
+      const now = new Date();
+      const [updated] = await db
+        .update(supplyOrderPreferences)
+        .set({ ...parsed, updatedAt: now } as any)
+        .where(eq(supplyOrderPreferences.id, existing.id))
+        .returning();
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating supply preferences:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid preferences", errors: error.errors });
+      }
+      res.status(500).json({ message: error.message || "Failed to update preferences" });
+    }
+  });
+
   app.get("/api/supply/search", isAuthenticated, async (req: any, res) => {
     try {
       const q = String(req.query?.q || "").trim();
@@ -427,10 +490,35 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
 
         const schema = z.object({
           buyerRestaurantId: z.string().min(1),
+          maxStops: z.coerce.number().int().min(1).max(5).optional(),
+          maxRadiusMiles: z.coerce.number().int().min(1).max(250).optional(),
+          costPerStopCents: z.coerce.number().int().min(0).max(50_000).optional(),
+          pingSuppliers: z.coerce.boolean().optional(),
+          allowSubstitutions: z.coerce.boolean().optional(),
         });
         const parsedMeta = schema.parse(req.body || {});
 
         const buyerRestaurant = await resolveBuyerRestaurantOrThrow(req, parsedMeta.buyerRestaurantId);
+
+        const prefs = await ensureSupplyOrderPreferences(String(req.user.id));
+        const maxStops =
+          parsedMeta.maxStops !== undefined ? parsedMeta.maxStops : Number((prefs as any).maxStops || 2) || 2;
+        const maxRadiusMiles =
+          parsedMeta.maxRadiusMiles !== undefined
+            ? parsedMeta.maxRadiusMiles
+            : Number((prefs as any).maxRadiusMiles || 20) || 20;
+        const costPerStopCents =
+          parsedMeta.costPerStopCents !== undefined
+            ? parsedMeta.costPerStopCents
+            : Number((prefs as any).costPerStopCents || 0) || 0;
+        const pingSuppliers =
+          parsedMeta.pingSuppliers !== undefined
+            ? Boolean(parsedMeta.pingSuppliers)
+            : Boolean((prefs as any).pingSuppliers ?? true);
+        const allowSubstitutions =
+          parsedMeta.allowSubstitutions !== undefined
+            ? Boolean(parsedMeta.allowSubstitutions)
+            : Boolean((prefs as any).allowSubstitutions ?? true);
 
         const { headers, rows } = await parseTabularFile(
           file.buffer,
@@ -499,7 +587,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         const buyerLat = Number((buyerRestaurant as any).latitude);
         const buyerLon = Number((buyerRestaurant as any).longitude);
         const hasBuyerCoords = Number.isFinite(buyerLat) && Number.isFinite(buyerLon);
-        const radiusMiles = Number(process.env.SUPPLY_LOCAL_RADIUS_MILES || 75) || 75;
+        const radiusMiles = maxRadiusMiles;
 
         const offers = (matches as any[]).map((r: any) => {
           const lat = Number(r.supplier?.latitude);
@@ -517,12 +605,17 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
 
         const itemsOut = items.map((it) => {
           const q = String(it.query).trim();
+          const ql = q.toLowerCase();
           const candidates = (filteredOffers as any[])
             .filter((r: any) => {
               const name = String(r.product?.name || "").toLowerCase();
               const sku = String(r.product?.sku || "").toLowerCase();
-              const ql = q.toLowerCase();
-              return name.includes(ql) || (sku && sku.includes(ql));
+              if (name.includes(ql) || (sku && sku.includes(ql))) return true;
+              if (!allowSubstitutions) return false;
+              // Basic substitution: token overlap (keeps it cheap and avoids heavy NLP).
+              const tokens = normalizeSupplyKey(q).split(" ").filter(Boolean);
+              if (tokens.length <= 1) return false;
+              return tokens.every((t) => name.includes(t) || (sku && sku.includes(t)));
             })
             .map((r: any) => ({
               supplierId: String(r.supplier.id),
@@ -546,6 +639,25 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
             offers: candidates,
           };
         });
+
+        // Ping local suppliers for items we couldn't match at all (best-effort).
+        if (pingSuppliers) {
+          try {
+            for (const item of itemsOut as any[]) {
+              if ((item.offers || []).length > 0) continue;
+              const name = String(item.itemName || item.query || "").trim();
+              if (!name) continue;
+              await recordDemandAndNotifyIfUnlisted({
+                buyerRestaurant,
+                itemNameRaw: name,
+                quantity: Math.max(1, Math.floor(Number(item.quantity || 1) || 1)),
+                source: "import",
+              });
+            }
+          } catch (notifyError) {
+            console.warn("Order-list demand notify failed:", notifyError);
+          }
+        }
 
         // Aggregate by supplier: how many items can they fulfill and estimated subtotal.
         const supplierAgg = new Map<
@@ -592,12 +704,100 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           })
           .slice(0, 25);
 
+        // Optimized plan: best 1-stop vs best 2-stop (maxStops governs).
+        const requiredCount = (itemsOut as any[]).filter((i) => (i.offers || []).length > 0).length;
+        const oneStop =
+          suppliersOut
+            .filter((s: any) => s.coverageCount === requiredCount)
+            .map((s: any) => ({
+              type: "one_stop",
+              supplierIds: [s.supplierId],
+              suppliers: [s.supplier],
+              subtotalCents: s.subtotalCents,
+              stopCostCents: costPerStopCents,
+              totalCents: s.subtotalCents + costPerStopCents,
+            }))
+            .sort((a: any, b: any) => a.totalCents - b.totalCents)[0] || null;
+
+        let twoStop: any = null;
+        if (maxStops >= 2 && suppliersOut.length >= 2 && requiredCount > 0) {
+          const topN = Math.min(25, suppliersOut.length);
+          for (let i = 0; i < topN; i++) {
+            for (let j = i + 1; j < topN; j++) {
+              const a = suppliersOut[i];
+              const b = suppliersOut[j];
+
+              let subtotalCents = 0;
+              let covered = 0;
+              const lines: any[] = [];
+
+              for (const item of itemsOut as any[]) {
+                const qty = Math.max(1, Math.floor(Number(item.quantity || 1) || 1));
+                const offers = item.offers || [];
+                if (offers.length === 0) continue;
+                const bestA = offers.find((o: any) => o.supplierId === a.supplierId) || null;
+                const bestB = offers.find((o: any) => o.supplierId === b.supplierId) || null;
+                const pick =
+                  bestA && bestB
+                    ? bestA.priceCents <= bestB.priceCents
+                      ? { o: bestA, supplierId: a.supplierId }
+                      : { o: bestB, supplierId: b.supplierId }
+                    : bestA
+                      ? { o: bestA, supplierId: a.supplierId }
+                      : bestB
+                        ? { o: bestB, supplierId: b.supplierId }
+                        : null;
+                if (!pick) continue;
+                covered += 1;
+                const lineTotalCents = Number(pick.o.priceCents) * qty;
+                subtotalCents += lineTotalCents;
+                lines.push({
+                  query: item.query,
+                  quantity: qty,
+                  supplierId: pick.supplierId,
+                  productId: pick.o.productId,
+                  unitPriceCents: pick.o.priceCents,
+                  lineTotalCents,
+                });
+              }
+
+              if (covered !== requiredCount) continue;
+              const stopCostCents = costPerStopCents * 2;
+              const totalCents = subtotalCents + stopCostCents;
+              if (!twoStop || totalCents < twoStop.totalCents) {
+                twoStop = {
+                  type: "two_stop",
+                  supplierIds: [a.supplierId, b.supplierId],
+                  suppliers: [a.supplier, b.supplier],
+                  subtotalCents,
+                  stopCostCents,
+                  totalCents,
+                  lines,
+                };
+              }
+            }
+          }
+        }
+
+        const plan = (() => {
+          if (oneStop && twoStop) return twoStop.totalCents < oneStop.totalCents ? twoStop : oneStop;
+          return oneStop || twoStop || null;
+        })();
+
         res.json({
           success: true,
           headers,
           itemCount: itemsOut.length,
           items: itemsOut,
           suppliers: suppliersOut,
+          plan,
+          preferencesUsed: {
+            maxStops,
+            maxRadiusMiles,
+            costPerStopCents,
+            pingSuppliers,
+            allowSubstitutions,
+          },
           truncated: parsedItems.length > maxItems,
         });
       } catch (error: any) {

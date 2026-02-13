@@ -790,6 +790,26 @@ export const supplyBarcodeMappings = pgTable(
   (table) => [unique("uq_supply_barcode_mappings_barcode").on(table.barcode)],
 );
 
+export const supplyOrderPreferences = pgTable(
+  "supply_order_preferences",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    maxStops: integer("max_stops").notNull().default(2),
+    maxRadiusMiles: integer("max_radius_miles").notNull().default(20),
+    costPerStopCents: integer("cost_per_stop_cents").notNull().default(0),
+    pingSuppliers: boolean("ping_suppliers").notNull().default(true),
+    allowSubstitutions: boolean("allow_substitutions").notNull().default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [unique("uq_supply_order_preferences_user").on(table.userId)],
+);
+
 export const deals = pgTable("deals", {
   id: varchar("id")
     .primaryKey()

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import Navigation from "@/components/navigation";
 import { BackHeader } from "@/components/back-header";
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Minus, Plus, Truck } from "lucide-react";
+import { SupplierOrderPaymentModal } from "@/components/supply/supplier-order-payment-modal";
 
 type Supplier = {
   id: string;
@@ -48,10 +49,12 @@ const formatMoney = (cents: number) => `$${(Number(cents || 0) / 100).toFixed(2)
 export default function SupplierDetailPage() {
   const { supplierId } = useParams();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [pickupNote, setPickupNote] = useState("");
   const [productQ, setProductQ] = useState("");
   const [selectedBuyerRestaurantId, setSelectedBuyerRestaurantId] =
     useState<string>("");
+  const [payOrderId, setPayOrderId] = useState<string | null>(null);
   const [requestedFulfillment, setRequestedFulfillment] = useState<
     "pickup" | "delivery"
   >("pickup");
@@ -61,7 +64,7 @@ export default function SupplierDetailPage() {
   const [deliveryPostalCode, setDeliveryPostalCode] = useState("");
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
   const [paymentPreference, setPaymentPreference] = useState<
-    "offsite" | "in_person"
+    "offsite" | "in_person" | "online"
   >("offsite");
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -128,6 +131,28 @@ export default function SupplierDetailPage() {
   const selectedBiz = useMemo(() => {
     return myRestaurants.find((r) => r.id === selectedBuyerRestaurantId) || null;
   }, [myRestaurants, selectedBuyerRestaurantId]);
+
+  const { data: myRequests = [] } = useQuery<any[]>({
+    queryKey: ["/api/supplier-requests/mine", selectedBuyerRestaurantId],
+    queryFn: async () => {
+      const params = new URLSearchParams({ buyerRestaurantId: selectedBuyerRestaurantId });
+      const res = await fetch(`/api/supplier-requests/mine?${params.toString()}`, {
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to load requests");
+      return data;
+    },
+    enabled: Boolean(selectedBuyerRestaurantId),
+    staleTime: 10_000,
+  });
+
+  const myRequestsForSupplier = useMemo(() => {
+    const rows = Array.isArray(myRequests) ? myRequests : [];
+    return rows
+      .filter((r) => String(r?.supplierId || "") === String(supplierId || ""))
+      .slice(0, 8);
+  }, [myRequests, supplierId]);
 
   useEffect(() => {
     if (requestedFulfillment !== "delivery") return;
@@ -294,6 +319,42 @@ export default function SupplierDetailPage() {
       />
 
       <div className="px-4 space-y-4">
+        {selectedBuyerRestaurantId ? (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Your requests</CardTitle>
+              <CardDescription>
+                Track accepted requests and pay online when available.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 space-y-2">
+              {myRequestsForSupplier.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No requests yet.</div>
+              ) : (
+                myRequestsForSupplier.map((r) => (
+                  <div key={r.id} className="rounded-lg border p-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">
+                        {String(r.status || "submitted")}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {String(r.requestedFulfillment || "pickup")} • {String(r.paymentPreference || "offsite")}
+                      </div>
+                    </div>
+                    {String(r.status) === "accepted" && r.orderId && String(r.paymentPreference) === "online" ? (
+                      <Button size="sm" onClick={() => setPayOrderId(String(r.orderId))}>
+                        Pay
+                      </Button>
+                    ) : (
+                      <Badge variant="secondary">{String(r.status || "submitted")}</Badge>
+                    )}
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Request settings</CardTitle>
@@ -436,11 +497,14 @@ export default function SupplierDetailPage() {
               className="w-full border rounded px-2 py-2 text-sm bg-background"
               value={paymentPreference}
               onChange={(e) =>
-                setPaymentPreference(e.target.value as "offsite" | "in_person")
+                setPaymentPreference(
+                  e.target.value as "offsite" | "in_person" | "online",
+                )
               }
             >
               <option value="offsite">Pay offsite</option>
               <option value="in_person">Pay in person</option>
+              <option value="online">Pay through MealScout (ACH/Card)</option>
             </select>
             <div className="text-sm font-semibold">Pickup note</div>
             <Input
@@ -617,6 +681,21 @@ export default function SupplierDetailPage() {
       </div>
 
       <Navigation />
+
+      {payOrderId ? (
+        <SupplierOrderPaymentModal
+          open={Boolean(payOrderId)}
+          orderId={payOrderId}
+          onOpenChange={(open) => {
+            if (!open) setPayOrderId(null);
+          }}
+          onPaid={() => {
+            toast({ title: "Payment received" });
+            queryClient.invalidateQueries({ queryKey: ["/api/supplier-requests/mine"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/supplier-requests/mine", selectedBuyerRestaurantId] });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

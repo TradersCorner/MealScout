@@ -18,6 +18,19 @@ type Supplier = {
   deliveryFeeCents?: number | null;
   deliveryMinOrderCents?: number | null;
   deliveryNotes?: string | null;
+  stripeConnectAccountId?: string | null;
+  stripeChargesEnabled?: boolean | null;
+  stripePayoutsEnabled?: boolean | null;
+  stripeOnboardingCompleted?: boolean | null;
+  stripeConnectStatus?: string | null;
+};
+
+type StripeStatus = {
+  connected: boolean;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  onboardingCompleted: boolean;
+  accountId?: string;
 };
 
 type SupplierProduct = {
@@ -100,6 +113,19 @@ export default function SupplierDashboardPage() {
     },
     staleTime: 30_000,
     gcTime: 10 * 60_000,
+  });
+
+  const { data: stripeStatus } = useQuery<StripeStatus>({
+    queryKey: ["/api/supplier/stripe/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/supplier/stripe/status", { credentials: "include" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to load Stripe status");
+      return data;
+    },
+    staleTime: 30_000,
+    gcTime: 10 * 60_000,
+    enabled: !isSupplierError,
   });
 
   const supplierDeliveryDefaults = useMemo(() => {
@@ -225,6 +251,36 @@ export default function SupplierDashboardPage() {
       toast({
         title: "Update failed",
         description: error?.message || "Unable to update product",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const startStripeOnboarding = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/supplier/stripe/onboard", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to start onboarding");
+      return data as { onboardingUrl: string };
+    },
+    onSuccess: (data) => {
+      if (data?.onboardingUrl) {
+        window.location.href = data.onboardingUrl;
+      } else {
+        toast({
+          title: "Onboarding unavailable",
+          description: "No onboarding URL returned.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Stripe setup failed",
+        description: error?.message || "Unable to start Stripe onboarding",
         variant: "destructive",
       });
     },
@@ -440,6 +496,24 @@ export default function SupplierDashboardPage() {
                 </div>
                 <div className="text-xs text-muted-foreground">
                   Active products: {activeCount}
+                </div>
+                <div className="pt-2 flex items-center justify-between gap-3">
+                  <div className="text-xs text-muted-foreground">
+                    Payouts setup:{" "}
+                    {stripeStatus?.connected
+                      ? stripeStatus.payoutsEnabled
+                        ? "Active"
+                        : "Pending"
+                      : "Not connected"}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={startStripeOnboarding.isPending}
+                    onClick={() => startStripeOnboarding.mutate()}
+                  >
+                    {stripeStatus?.connected ? "Manage Stripe" : "Enable payouts"}
+                  </Button>
                 </div>
               </CardContent>
             </Card>

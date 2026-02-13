@@ -351,6 +351,92 @@ async function ensureSupplyOrderPreferences(userId: string) {
 }
 
 export function registerSupplierMarketplaceRoutes(app: Express) {
+  // Stripe Connect onboarding for suppliers (payout setup).
+  app.post("/api/supplier/stripe/onboard", isAuthenticated, isSupplierOrAdmin, async (req: any, res) => {
+    try {
+      if (!stripe) return res.status(500).json({ message: "Stripe not configured" });
+
+      const supplier = await ensureSupplierProfile(req.user.id);
+      let accountId = String((supplier as any).stripeConnectAccountId || "").trim() || null;
+
+      if (!accountId) {
+        const account = await stripe.accounts.create({
+          type: "express",
+          country: "US",
+          email: req.user.email,
+          capabilities: {
+            transfers: { requested: true },
+          },
+          metadata: {
+            supplierId: String((supplier as any).id),
+            businessName: String((supplier as any).businessName || ""),
+          },
+        });
+        accountId = account.id;
+
+        await db
+          .update(suppliers)
+          .set({ stripeConnectAccountId: accountId, updatedAt: new Date() } as any)
+          .where(eq(suppliers.id, String((supplier as any).id)));
+      }
+
+      const baseUrl = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
+      const normalizedBaseUrl = String(baseUrl || "").replace(/\/+$/, "");
+      const accountLink = await stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: `${normalizedBaseUrl}/supplier/dashboard?setup=refresh`,
+        return_url: `${normalizedBaseUrl}/supplier/dashboard?setup=complete`,
+        type: "account_onboarding",
+      });
+
+      res.json({ onboardingUrl: accountLink.url });
+    } catch (error: any) {
+      console.error("Error creating supplier Stripe Connect onboarding:", error);
+      res.status(500).json({ message: "Failed to initiate Stripe onboarding" });
+    }
+  });
+
+  app.get("/api/supplier/stripe/status", isAuthenticated, isSupplierOrAdmin, async (req: any, res) => {
+    try {
+      if (!stripe) return res.status(500).json({ message: "Stripe not configured" });
+
+      const supplier = await ensureSupplierProfile(req.user.id);
+      const accountId = String((supplier as any).stripeConnectAccountId || "").trim();
+      if (!accountId) {
+        return res.json({
+          connected: false,
+          chargesEnabled: false,
+          payoutsEnabled: false,
+          onboardingCompleted: false,
+        });
+      }
+
+      const account = await stripe.accounts.retrieve(accountId);
+
+      await db
+        .update(suppliers)
+        .set({
+          stripeChargesEnabled: Boolean((account as any).charges_enabled),
+          stripePayoutsEnabled: Boolean((account as any).payouts_enabled),
+          stripeOnboardingCompleted: Boolean((account as any).details_submitted),
+          stripeConnectStatus: (account as any).charges_enabled ? "active" : "pending",
+          updatedAt: new Date(),
+        } as any)
+        .where(eq(suppliers.id, String((supplier as any).id)));
+
+      res.json({
+        connected: true,
+        chargesEnabled: Boolean((account as any).charges_enabled),
+        payoutsEnabled: Boolean((account as any).payouts_enabled),
+        onboardingCompleted: Boolean((account as any).details_submitted),
+        accountId,
+      });
+    } catch (error: any) {
+      console.error("Error checking supplier Stripe status:", error);
+      res.status(500).json({ message: "Failed to check Stripe status" });
+    }
+  });
+
   app.get("/api/supply/preferences", isAuthenticated, async (req: any, res) => {
     try {
       const prefs = await ensureSupplyOrderPreferences(String(req.user.id));
@@ -1784,7 +1870,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         supplierId: z.string().min(1),
         buyerRestaurantId: z.string().min(1),
         requestedFulfillment: z.enum(["pickup", "delivery"]).default("pickup"),
-        paymentPreference: z.enum(["offsite", "in_person"]).default("offsite"),
+        paymentPreference: z.enum(["offsite", "in_person", "online"]).default("offsite"),
         note: z.string().max(2000).optional().nullable(),
         deliveryInstructions: z.string().max(2000).optional().nullable(),
         deliveryAddress: z.string().max(400).optional().nullable(),
@@ -2056,7 +2142,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           supplierId: z.string().min(1),
           buyerRestaurantId: z.string().min(1),
           requestedFulfillment: z.enum(["pickup", "delivery"]).default("pickup"),
-          paymentPreference: z.enum(["offsite", "in_person"]).default("offsite"),
+          paymentPreference: z.enum(["offsite", "in_person", "online"]).default("offsite"),
           note: z.string().max(2000).optional().nullable(),
           deliveryInstructions: z.string().max(2000).optional().nullable(),
           deliveryAddress: z.string().max(400).optional().nullable(),
@@ -2433,6 +2519,8 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
 
       const { platformFeeCents, stripeFeeEstimateCents, totalCents } = computeFees(subtotalCents);
       const now = new Date();
+      const paymentPref = String((request as any).paymentPreference || "offsite");
+      const isOnline = paymentPref === "online";
 
       const order = await db.transaction(async (tx: any) => {
         const [createdOrder] = await tx
@@ -2441,8 +2529,8 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
             supplierId: supplier.id,
             truckRestaurantId: (request as any).buyerRestaurantId,
             status: "submitted",
-            paymentMethod: "offsite",
-            paymentStatus: "offsite",
+            paymentMethod: isOnline ? "stripe" : "offsite",
+            paymentStatus: isOnline ? "unpaid" : "offsite",
             requestedFulfillment: requestedFulfillment === "delivery" ? "delivery" : "pickup",
             subtotalCents,
             deliveryFeeCents,
@@ -2854,6 +2942,157 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     } catch (error) {
       console.error("Error listing supplier orders:", error);
       res.status(500).json({ message: "Failed to load orders" });
+    }
+  });
+
+  // Buyer: list my supplier orders (for a specific business).
+  app.get("/api/supplier-orders/mine", isAuthenticated, async (req: any, res) => {
+    try {
+      const buyerRestaurantId = String(req.query?.buyerRestaurantId || "").trim();
+      if (!buyerRestaurantId) return res.status(400).json({ message: "buyerRestaurantId required" });
+      const buyerRestaurant = await resolveBuyerRestaurantOrThrow(req, buyerRestaurantId);
+
+      const orders = await db
+        .select()
+        .from(supplierOrders)
+        .where(eq(supplierOrders.truckRestaurantId, String((buyerRestaurant as any).id)))
+        .orderBy(desc(supplierOrders.createdAt))
+        .limit(200);
+
+      res.json(orders);
+    } catch (error: any) {
+      console.error("Error listing buyer supplier orders:", error);
+      if (String(error?.message || "") === "Not authorized") {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      res.status(500).json({ message: error.message || "Failed to load orders" });
+    }
+  });
+
+  // Buyer: get a supplier order (ownership enforced).
+  app.get("/api/supplier-orders/:orderId", isAuthenticated, async (req: any, res) => {
+    try {
+      const orderId = String(req.params.orderId || "").trim();
+      if (!orderId) return res.status(400).json({ message: "orderId required" });
+
+      const [order] = await db
+        .select()
+        .from(supplierOrders)
+        .where(eq(supplierOrders.id, orderId))
+        .limit(1);
+      if (!order) return res.status(404).json({ message: "Order not found" });
+
+      const buyerRestaurant = await storage.getRestaurant(String((order as any).truckRestaurantId)).catch(
+        () => null,
+      );
+      if (!buyerRestaurant || String((buyerRestaurant as any).ownerId) !== String(req.user.id)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      res.json(order);
+    } catch (error: any) {
+      console.error("Error loading buyer supplier order:", error);
+      res.status(500).json({ message: error.message || "Failed to load order" });
+    }
+  });
+
+  // Buyer: create/reuse a Stripe PaymentIntent for an order (ACH first, card second).
+  app.post("/api/supplier-orders/:orderId/pay-intent", isAuthenticated, async (req: any, res) => {
+    try {
+      if (!stripe) return res.status(500).json({ message: "Stripe not configured" });
+
+      const orderId = String(req.params.orderId || "").trim();
+      if (!orderId) return res.status(400).json({ message: "orderId required" });
+
+      const [order] = await db
+        .select()
+        .from(supplierOrders)
+        .where(eq(supplierOrders.id, orderId))
+        .limit(1);
+      if (!order) return res.status(404).json({ message: "Order not found" });
+
+      const buyerRestaurant = await storage.getRestaurant(String((order as any).truckRestaurantId)).catch(
+        () => null,
+      );
+      if (!buyerRestaurant || String((buyerRestaurant as any).ownerId) !== String(req.user.id)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      if (String((order as any).paymentMethod || "") !== "stripe") {
+        return res.status(400).json({ message: "This order is not set up for online payment." });
+      }
+      if (String((order as any).paymentStatus || "") === "paid") {
+        return res.status(409).json({ message: "Order is already paid." });
+      }
+
+      const supplierId = String((order as any).supplierId || "").trim();
+      const [supplier] = await db
+        .select()
+        .from(suppliers)
+        .where(eq(suppliers.id, supplierId))
+        .limit(1);
+      if (!supplier) return res.status(404).json({ message: "Supplier not found" });
+
+      const destination = String((supplier as any).stripeConnectAccountId || "").trim();
+      if (!destination) {
+        return res.status(400).json({
+          message: "Supplier is not set up to receive online payments yet.",
+          code: "supplier_stripe_not_connected",
+        });
+      }
+
+      const amountCents = Number((order as any).totalCents || 0) || 0;
+      if (!Number.isFinite(amountCents) || amountCents <= 0) {
+        return res.status(400).json({ message: "Invalid order total." });
+      }
+
+      const applicationFeeCents =
+        Math.max(0, Number((order as any).platformFeeCents || 0) || 0) +
+        Math.max(0, Number((order as any).stripeFeeEstimateCents || 0) || 0);
+
+      const existingIntentId = String((order as any).stripePaymentIntentId || "").trim();
+      if (existingIntentId) {
+        const intent = await stripe.paymentIntents.retrieve(existingIntentId);
+        if (intent && intent.status !== "canceled" && intent.status !== "succeeded") {
+          return res.json({
+            paymentIntentId: intent.id,
+            clientSecret: (intent as any).client_secret,
+            totalCents: amountCents,
+          });
+        }
+      }
+
+      const intentParams: Stripe.PaymentIntentCreateParams = {
+        amount: amountCents,
+        currency: "usd",
+        payment_method_types: ["us_bank_account", "card"],
+        metadata: {
+          supplierOrderId: String((order as any).id),
+          supplierId: supplierId,
+          buyerRestaurantId: String((order as any).truckRestaurantId),
+          paymentType: "supplier_order",
+        },
+        application_fee_amount: applicationFeeCents > 0 ? applicationFeeCents : undefined,
+        transfer_data: {
+          destination,
+        },
+      };
+
+      const intent = await stripe.paymentIntents.create(intentParams);
+
+      await db
+        .update(supplierOrders)
+        .set({ stripePaymentIntentId: intent.id, updatedAt: new Date() } as any)
+        .where(eq(supplierOrders.id, String((order as any).id)));
+
+      res.json({
+        paymentIntentId: intent.id,
+        clientSecret: intent.client_secret,
+        totalCents: amountCents,
+      });
+    } catch (error: any) {
+      console.error("Error creating supplier order PaymentIntent:", error);
+      res.status(500).json({ message: error.message || "Failed to create payment intent" });
     }
   });
 

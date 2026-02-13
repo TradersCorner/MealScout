@@ -6103,6 +6103,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           try {
             const { eventBookings } = await import("@shared/schema");
+            const metadata = (failedIntent as any).metadata || {};
+
+            // Supplier marketplace order payment failure
+            const supplierOrderId = metadata.supplierOrderId;
+            if (supplierOrderId) {
+              try {
+                const { supplierOrders } = await import("@shared/schema");
+                await db
+                  .update(supplierOrders)
+                  .set({
+                    paymentStatus: "unpaid",
+                    updatedAt: new Date(),
+                  } as any)
+                  .where(eq(supplierOrders.id, String(supplierOrderId)));
+              } catch (supplierError) {
+                console.error("[WEBHOOK] Supplier order failure update failed:", supplierError);
+              }
+              break;
+            }
+
             await db
               .update(eventBookings)
               .set({

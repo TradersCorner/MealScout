@@ -338,6 +338,11 @@ export const suppliers = pgTable(
     contactPhone: varchar("contact_phone"),
     contactEmail: varchar("contact_email"),
     isActive: boolean("is_active").default(true),
+    stripeConnectAccountId: varchar("stripe_connect_account_id"),
+    stripeConnectStatus: varchar("stripe_connect_status").default("pending"),
+    stripeOnboardingCompleted: boolean("stripe_onboarding_completed").default(false),
+    stripeChargesEnabled: boolean("stripe_charges_enabled").default(false),
+    stripePayoutsEnabled: boolean("stripe_payouts_enabled").default(false),
     offersDelivery: boolean("offers_delivery").notNull().default(false),
     deliveryRadiusMiles: integer("delivery_radius_miles"),
     deliveryFeeCents: integer("delivery_fee_cents").notNull().default(0),
@@ -349,6 +354,7 @@ export const suppliers = pgTable(
   (table) => [
     unique("uq_suppliers_user").on(table.userId),
     index("idx_suppliers_active").on(table.isActive),
+    index("idx_suppliers_stripe_account").on(table.stripeConnectAccountId),
   ],
 );
 

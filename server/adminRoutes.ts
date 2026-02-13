@@ -654,6 +654,7 @@ router.post("/users/create", isAdmin, async (req: any, res) => {
       "customer",
       "restaurant_owner",
       "food_truck",
+      "supplier",
       "host",
       "event_coordinator",
       "staff",

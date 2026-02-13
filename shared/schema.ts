@@ -49,7 +49,7 @@ export const users: any = pgTable("users", {
   id: varchar("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
-  userType: varchar("user_type").notNull().default("customer"), // 'customer' | 'restaurant_owner' | 'food_truck' | 'host' | 'event_coordinator' | 'staff' | 'admin' | 'super_admin'
+  userType: varchar("user_type").notNull().default("customer"), // 'customer' | 'restaurant_owner' | 'food_truck' | 'supplier' | 'host' | 'event_coordinator' | 'staff' | 'admin' | 'super_admin'
   // TradeScout SSO linkage (for unified accounts between TradeScout and MealScout)
   tradescoutId: varchar("tradescout_id").unique(),
   // Facebook authentication (for regular users)
@@ -318,6 +318,111 @@ export const truckClaimRequests = pgTable(
     index("idx_truck_claim_listing").on(table.listingId),
     index("idx_truck_claim_status").on(table.status),
   ],
+);
+
+export const suppliers = pgTable(
+  "suppliers",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    businessName: varchar("business_name").notNull(),
+    address: text("address"),
+    city: varchar("city"),
+    state: varchar("state"),
+    latitude: decimal("latitude", { precision: 10, scale: 8 }),
+    longitude: decimal("longitude", { precision: 11, scale: 8 }),
+    contactPhone: varchar("contact_phone"),
+    contactEmail: varchar("contact_email"),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    unique("uq_suppliers_user").on(table.userId),
+    index("idx_suppliers_active").on(table.isActive),
+  ],
+);
+
+export const supplierProducts = pgTable(
+  "supplier_products",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    supplierId: varchar("supplier_id")
+      .notNull()
+      .references(() => suppliers.id, { onDelete: "cascade" }),
+    name: varchar("name").notNull(),
+    description: text("description"),
+    priceCents: integer("price_cents").notNull().default(0),
+    unitLabel: varchar("unit_label"),
+    imageUrl: text("image_url"),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_supplier_products_supplier").on(table.supplierId),
+    index("idx_supplier_products_active").on(table.isActive),
+  ],
+);
+
+export const supplierOrders = pgTable(
+  "supplier_orders",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    supplierId: varchar("supplier_id")
+      .notNull()
+      .references(() => suppliers.id, { onDelete: "cascade" }),
+    truckRestaurantId: varchar("truck_restaurant_id")
+      .notNull()
+      .references(() => restaurants.id, { onDelete: "restrict" }),
+    status: varchar("status").notNull().default("submitted"), // 'submitted' | 'ready' | 'completed' | 'cancelled'
+    paymentMethod: varchar("payment_method").notNull().default("offsite"), // 'stripe' | 'offsite'
+    paymentStatus: varchar("payment_status").notNull().default("unpaid"), // 'unpaid' | 'paid' | 'offsite'
+    subtotalCents: integer("subtotal_cents").notNull().default(0),
+    platformFeeCents: integer("platform_fee_cents").notNull().default(0),
+    stripeFeeEstimateCents: integer("stripe_fee_estimate_cents")
+      .notNull()
+      .default(0),
+    totalCents: integer("total_cents").notNull().default(0),
+    stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+    pickupNote: text("pickup_note"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_supplier_orders_supplier").on(table.supplierId),
+    index("idx_supplier_orders_truck").on(table.truckRestaurantId),
+    index("idx_supplier_orders_status").on(table.status),
+  ],
+);
+
+export const supplierOrderItems = pgTable(
+  "supplier_order_items",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    orderId: varchar("order_id")
+      .notNull()
+      .references(() => supplierOrders.id, { onDelete: "cascade" }),
+    productId: varchar("product_id")
+      .notNull()
+      .references(() => supplierProducts.id, { onDelete: "restrict" }),
+    quantity: integer("quantity").notNull().default(1),
+    unitPriceCents: integer("unit_price_cents").notNull().default(0),
+    lineTotalCents: integer("line_total_cents").notNull().default(0),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [index("idx_supplier_order_items_order").on(table.orderId)],
 );
 
 export const deals = pgTable("deals", {

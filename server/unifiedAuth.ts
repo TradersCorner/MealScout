@@ -1726,6 +1726,7 @@ export const isRestaurantOwner = (req: any, res: any, next: any) => {
 type UserRole =
   | "customer"
   | "restaurant_owner"
+  | "supplier"
   | "staff"
   | "admin"
   | "super_admin";
@@ -1781,6 +1782,8 @@ export const isRestaurantOwnerOrAdmin = requireRole([
   "admin",
   "super_admin",
 ]);
+
+export const isSupplierOrAdmin = requireRole(["supplier", "admin", "super_admin"]);
 
 // API Key authentication middleware
 export const apiKeyAuth = async (req: any, res: any, next: any) => {

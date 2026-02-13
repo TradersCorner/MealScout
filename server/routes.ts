@@ -32,6 +32,7 @@ import { registerEventCoordinatorRoutes } from "./routes/eventCoordinatorRoutes"
 import { registerAdminManagementRoutes } from "./routes/adminManagementRoutes";
 import { registerGeoAdRoutes } from "./routes/geoAdRoutes";
 import { registerBookingRoutes } from "./routes/bookingRoutes";
+import { registerSupplierMarketplaceRoutes } from "./routes/supplierMarketplaceRoutes";
 import { registerStaffRoutes } from "./staffRoutes";
 import {
   setupUnifiedAuth,
@@ -1944,6 +1945,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Booking Management
   registerBookingRoutes(app);
+
+  // Supplier marketplace (suppliers + food truck pickup orders)
+  registerSupplierMarketplaceRoutes(app);
 
   app.patch(
     "/api/hosts/interests/:interestId/status",
@@ -5467,6 +5471,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
               "@shared/schema"
             );
             const metadata = paymentIntent.metadata || {};
+
+            // Supplier marketplace order payment
+            const supplierOrderId = metadata.supplierOrderId;
+            if (supplierOrderId) {
+              try {
+                const { supplierOrders } = await import("@shared/schema");
+                const [order] = await db
+                  .select()
+                  .from(supplierOrders)
+                  .where(eq(supplierOrders.id, String(supplierOrderId)))
+                  .limit(1);
+                if (order) {
+                  // Idempotent: only mark paid if not already.
+                  if (String((order as any).paymentStatus || "") !== "paid") {
+                    await db
+                      .update(supplierOrders)
+                      .set({
+                        paymentStatus: "paid",
+                        updatedAt: new Date(),
+                      } as any)
+                      .where(eq(supplierOrders.id, String(supplierOrderId)));
+                  }
+                }
+              } catch (supplierError) {
+                console.error("[WEBHOOK] Supplier order update failed:", supplierError);
+              }
+              break;
+            }
+
             const passId = metadata.passId;
             const truckId = metadata.truckId;
 

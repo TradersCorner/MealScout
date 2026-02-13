@@ -100,6 +100,7 @@ export default function Navigation() {
   // Check user role
   const isRestaurantOwner = user && user.userType === "restaurant_owner";
   const isFoodTruck = user && user.userType === "food_truck";
+  const isSupplier = user && user.userType === "supplier";
   const isAdmin =
     user && (user.userType === "admin" || user.userType === "super_admin");
   const isStaff = user && user.userType === "staff";
@@ -277,11 +278,17 @@ export default function Navigation() {
     customerExtras,
     [
       { path: "/events", icon: Calendar, label: "Events" },
+      { path: "/suppliers", icon: Store, label: "Supplies" },
       ...(canSeeParkingPassNav
         ? [{ path: "/parking-pass", icon: ParkingSquare, label: "Parking Pass" }]
         : []),
     ],
   );
+
+  const supplierExtras: NavItem[] = [
+    { path: "/supplier/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  ];
+  const supplierNavItems: NavItem[] = mergeNavItems(sharedNavItems, supplierExtras);
 
   const navItems = !user
     ? [...unauthenticatedNavItems, bugNavItem]
@@ -291,6 +298,8 @@ export default function Navigation() {
         ? [...staffNavItems, bugNavItem]
         : isEventCoordinator
           ? [...eventCoordinatorNavItems, bugNavItem]
+          : isSupplier
+            ? [...supplierNavItems, bugNavItem]
           : isFoodTruck
             ? [...foodTruckNavItems, bugNavItem]
             : isRestaurantOwner

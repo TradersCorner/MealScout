@@ -28,6 +28,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, Calculator, SlidersHorizontal, Upload, Zap } from "lucide-react";
+import { ShoppingListsDialog } from "@/components/supply/shopping-lists-dialog";
 
 type Supplier = {
   id: string;
@@ -520,6 +521,11 @@ export default function SuppliersPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            <ShoppingListsDialog
+              buyerRestaurantId={selectedBuyerRestaurantId}
+              triggerLabel="My lists"
+            />
           </div>
         </div>
 

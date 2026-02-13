@@ -12,6 +12,8 @@ import {
   supplyOrderPreferences,
   supplyDemandNotifications,
   supplyDemands,
+  supplyShoppingListItems,
+  supplyShoppingLists,
   suppliers,
 } from "@shared/schema";
 import { and, desc, eq, ilike, inArray, or } from "drizzle-orm";
@@ -71,6 +73,19 @@ async function resolveBuyerRestaurantOrThrow(req: any, buyerRestaurantId: string
     throw new Error("Not authorized");
   }
   return buyerRestaurant;
+}
+
+async function resolveSupplyShoppingListOrThrow(req: any, listId: string) {
+  const [list] = await db
+    .select()
+    .from(supplyShoppingLists)
+    .where(eq(supplyShoppingLists.id, String(listId)))
+    .limit(1);
+  if (!list) throw new Error("List not found");
+  if (String((list as any).ownerUserId) !== String(req.user.id)) {
+    throw new Error("Not authorized");
+  }
+  return list as any;
 }
 
 async function findLocalSuppliersForBuyer(buyerRestaurant: any) {
@@ -374,6 +389,569 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         return res.status(400).json({ message: "Invalid preferences", errors: error.errors });
       }
       res.status(500).json({ message: error.message || "Failed to update preferences" });
+    }
+  });
+
+  // Shopping lists (Walmart-style: build lists, then optimize purchase plan).
+  app.get("/api/supply/lists", isAuthenticated, async (req: any, res) => {
+    try {
+      const buyerRestaurantId = String(req.query?.buyerRestaurantId || "").trim();
+      const conditions: any[] = [eq(supplyShoppingLists.ownerUserId, String(req.user.id))];
+      if (buyerRestaurantId) conditions.push(eq(supplyShoppingLists.buyerRestaurantId, buyerRestaurantId));
+
+      const lists = await db
+        .select()
+        .from(supplyShoppingLists)
+        .where(and(...conditions))
+        .orderBy(desc(supplyShoppingLists.updatedAt))
+        .limit(200);
+
+      res.json(lists);
+    } catch (error: any) {
+      console.error("Error loading shopping lists:", error);
+      res.status(500).json({ message: error.message || "Failed to load lists" });
+    }
+  });
+
+  app.post("/api/supply/lists", isAuthenticated, async (req: any, res) => {
+    try {
+      const schema = z.object({
+        buyerRestaurantId: z.string().optional().nullable(),
+        name: z.string().min(1).max(120),
+        notes: z.string().max(4000).optional().nullable(),
+      });
+      const parsed = schema.parse(req.body || {});
+
+      if (parsed.buyerRestaurantId) {
+        await resolveBuyerRestaurantOrThrow(req, String(parsed.buyerRestaurantId));
+      }
+
+      const now = new Date();
+      const [created] = await db
+        .insert(supplyShoppingLists)
+        .values({
+          ownerUserId: String(req.user.id),
+          buyerRestaurantId: parsed.buyerRestaurantId ? String(parsed.buyerRestaurantId) : null,
+          name: parsed.name.trim(),
+          notes: parsed.notes ?? null,
+          createdAt: now,
+          updatedAt: now,
+        } as any)
+        .returning();
+
+      res.status(201).json(created);
+    } catch (error: any) {
+      console.error("Error creating shopping list:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid list", errors: error.errors });
+      }
+      if (String(error?.message || "") === "Not authorized") {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      res.status(500).json({ message: error.message || "Failed to create list" });
+    }
+  });
+
+  app.patch("/api/supply/lists/:listId", isAuthenticated, async (req: any, res) => {
+    try {
+      const list = await resolveSupplyShoppingListOrThrow(req, String(req.params.listId));
+      const schema = z.object({
+        buyerRestaurantId: z.string().optional().nullable(),
+        name: z.string().min(1).max(120).optional(),
+        notes: z.string().max(4000).optional().nullable(),
+      });
+      const parsed = schema.parse(req.body || {});
+
+      if (parsed.buyerRestaurantId) {
+        await resolveBuyerRestaurantOrThrow(req, String(parsed.buyerRestaurantId));
+      }
+
+      const now = new Date();
+      const [updated] = await db
+        .update(supplyShoppingLists)
+        .set({
+          buyerRestaurantId:
+            parsed.buyerRestaurantId !== undefined
+              ? parsed.buyerRestaurantId
+                ? String(parsed.buyerRestaurantId)
+                : null
+              : (list as any).buyerRestaurantId ?? null,
+          name: parsed.name !== undefined ? parsed.name.trim() : (list as any).name,
+          notes: parsed.notes !== undefined ? (parsed.notes ?? null) : (list as any).notes ?? null,
+          updatedAt: now,
+        } as any)
+        .where(eq(supplyShoppingLists.id, String((list as any).id)))
+        .returning();
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating shopping list:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid list", errors: error.errors });
+      }
+      if (String(error?.message || "") === "List not found") {
+        return res.status(404).json({ message: "List not found" });
+      }
+      if (String(error?.message || "") === "Not authorized") {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      res.status(500).json({ message: error.message || "Failed to update list" });
+    }
+  });
+
+  app.delete("/api/supply/lists/:listId", isAuthenticated, async (req: any, res) => {
+    try {
+      const list = await resolveSupplyShoppingListOrThrow(req, String(req.params.listId));
+      await db.delete(supplyShoppingLists).where(eq(supplyShoppingLists.id, String((list as any).id)));
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting shopping list:", error);
+      if (String(error?.message || "") === "List not found") {
+        return res.status(404).json({ message: "List not found" });
+      }
+      if (String(error?.message || "") === "Not authorized") {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      res.status(500).json({ message: error.message || "Failed to delete list" });
+    }
+  });
+
+  app.get("/api/supply/lists/:listId/items", isAuthenticated, async (req: any, res) => {
+    try {
+      const list = await resolveSupplyShoppingListOrThrow(req, String(req.params.listId));
+      const items = await db
+        .select()
+        .from(supplyShoppingListItems)
+        .where(eq(supplyShoppingListItems.listId, String((list as any).id)))
+        .orderBy(desc(supplyShoppingListItems.updatedAt))
+        .limit(2000);
+      res.json(items);
+    } catch (error: any) {
+      console.error("Error loading shopping list items:", error);
+      if (String(error?.message || "") === "List not found") {
+        return res.status(404).json({ message: "List not found" });
+      }
+      if (String(error?.message || "") === "Not authorized") {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      res.status(500).json({ message: error.message || "Failed to load items" });
+    }
+  });
+
+  app.post("/api/supply/lists/:listId/items", isAuthenticated, async (req: any, res) => {
+    try {
+      const list = await resolveSupplyShoppingListOrThrow(req, String(req.params.listId));
+      const schema = z.object({
+        rawName: z.string().min(1).max(240),
+        quantity: z.coerce.number().min(0.01).max(1_000_000).default(1),
+        unit: z.string().max(40).optional().nullable(),
+      });
+      const parsed = schema.parse(req.body || {});
+
+      const now = new Date();
+      const [created] = await db
+        .insert(supplyShoppingListItems)
+        .values({
+          listId: String((list as any).id),
+          itemId: null,
+          rawName: parsed.rawName.trim(),
+          quantity: String(parsed.quantity),
+          unit: parsed.unit ?? null,
+          createdAt: now,
+          updatedAt: now,
+        } as any)
+        .returning();
+
+      res.status(201).json(created);
+    } catch (error: any) {
+      console.error("Error adding shopping list item:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid item", errors: error.errors });
+      }
+      if (String(error?.message || "") === "List not found") {
+        return res.status(404).json({ message: "List not found" });
+      }
+      if (String(error?.message || "") === "Not authorized") {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      res.status(500).json({ message: error.message || "Failed to add item" });
+    }
+  });
+
+  app.patch("/api/supply/lists/:listId/items/:itemId", isAuthenticated, async (req: any, res) => {
+    try {
+      const list = await resolveSupplyShoppingListOrThrow(req, String(req.params.listId));
+      const [existing] = await db
+        .select()
+        .from(supplyShoppingListItems)
+        .where(
+          and(
+            eq(supplyShoppingListItems.id, String(req.params.itemId)),
+            eq(supplyShoppingListItems.listId, String((list as any).id)),
+          ),
+        )
+        .limit(1);
+      if (!existing) return res.status(404).json({ message: "Item not found" });
+
+      const schema = z.object({
+        rawName: z.string().min(1).max(240).optional(),
+        quantity: z.coerce.number().min(0.01).max(1_000_000).optional(),
+        unit: z.string().max(40).optional().nullable(),
+      });
+      const parsed = schema.parse(req.body || {});
+
+      const now = new Date();
+      const [updated] = await db
+        .update(supplyShoppingListItems)
+        .set({
+          rawName: parsed.rawName !== undefined ? parsed.rawName.trim() : (existing as any).rawName,
+          quantity:
+            parsed.quantity !== undefined ? String(parsed.quantity) : String((existing as any).quantity),
+          unit: parsed.unit !== undefined ? (parsed.unit ?? null) : (existing as any).unit ?? null,
+          updatedAt: now,
+        } as any)
+        .where(eq(supplyShoppingListItems.id, String((existing as any).id)))
+        .returning();
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating shopping list item:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid item", errors: error.errors });
+      }
+      if (String(error?.message || "") === "List not found") {
+        return res.status(404).json({ message: "List not found" });
+      }
+      if (String(error?.message || "") === "Not authorized") {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      res.status(500).json({ message: error.message || "Failed to update item" });
+    }
+  });
+
+  app.delete("/api/supply/lists/:listId/items/:itemId", isAuthenticated, async (req: any, res) => {
+    try {
+      const list = await resolveSupplyShoppingListOrThrow(req, String(req.params.listId));
+      const [existing] = await db
+        .select({ id: supplyShoppingListItems.id })
+        .from(supplyShoppingListItems)
+        .where(
+          and(
+            eq(supplyShoppingListItems.id, String(req.params.itemId)),
+            eq(supplyShoppingListItems.listId, String((list as any).id)),
+          ),
+        )
+        .limit(1);
+      if (!existing) return res.status(404).json({ message: "Item not found" });
+      await db.delete(supplyShoppingListItems).where(eq(supplyShoppingListItems.id, String(existing.id)));
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting shopping list item:", error);
+      if (String(error?.message || "") === "List not found") {
+        return res.status(404).json({ message: "List not found" });
+      }
+      if (String(error?.message || "") === "Not authorized") {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      res.status(500).json({ message: error.message || "Failed to delete item" });
+    }
+  });
+
+  app.post("/api/supply/lists/:listId/optimize", isAuthenticated, async (req: any, res) => {
+    try {
+      const list = await resolveSupplyShoppingListOrThrow(req, String(req.params.listId));
+      const schema = z.object({
+        buyerRestaurantId: z.string().optional(),
+        maxStops: z.coerce.number().int().min(1).max(5).optional(),
+        maxRadiusMiles: z.coerce.number().int().min(1).max(250).optional(),
+        // Legacy
+        costPerStopCents: z.coerce.number().int().min(0).max(50_000).optional(),
+        // Preferred
+        stopMinutes: z.coerce.number().int().min(0).max(240).optional(),
+        costPerMinuteCents: z.coerce.number().int().min(0).max(5_000).optional(),
+        pingSuppliers: z.coerce.boolean().optional(),
+        allowSubstitutions: z.coerce.boolean().optional(),
+      });
+      const parsedMeta = schema.parse(req.body || {});
+
+      const effectiveBuyerRestaurantId =
+        String((list as any).buyerRestaurantId || "").trim() ||
+        String(parsedMeta.buyerRestaurantId || "").trim();
+      if (!effectiveBuyerRestaurantId) {
+        return res.status(400).json({ message: "buyerRestaurantId is required for optimization." });
+      }
+      const buyerRestaurant = await resolveBuyerRestaurantOrThrow(req, effectiveBuyerRestaurantId);
+
+      const prefs = await ensureSupplyOrderPreferences(String(req.user.id));
+      const maxStops =
+        parsedMeta.maxStops !== undefined ? parsedMeta.maxStops : Number((prefs as any).maxStops || 2) || 2;
+      const maxRadiusMiles =
+        parsedMeta.maxRadiusMiles !== undefined
+          ? parsedMeta.maxRadiusMiles
+          : Number((prefs as any).maxRadiusMiles || 20) || 20;
+
+      const stopMinutes =
+        parsedMeta.stopMinutes !== undefined
+          ? parsedMeta.stopMinutes
+          : Number((prefs as any).stopMinutes ?? 10) || 10;
+      const costPerMinuteCents =
+        parsedMeta.costPerMinuteCents !== undefined
+          ? parsedMeta.costPerMinuteCents
+          : Number((prefs as any).costPerMinuteCents ?? 0) || 0;
+      const costPerStopCentsEffective =
+        costPerMinuteCents > 0
+          ? Math.max(0, Math.round(stopMinutes * costPerMinuteCents))
+          : parsedMeta.costPerStopCents !== undefined
+            ? parsedMeta.costPerStopCents
+            : Number((prefs as any).costPerStopCents || 0) || 0;
+
+      const pingSuppliers =
+        parsedMeta.pingSuppliers !== undefined
+          ? Boolean(parsedMeta.pingSuppliers)
+          : Boolean((prefs as any).pingSuppliers ?? true);
+      const allowSubstitutions =
+        parsedMeta.allowSubstitutions !== undefined
+          ? Boolean(parsedMeta.allowSubstitutions)
+          : Boolean((prefs as any).allowSubstitutions ?? true);
+
+      const listItems = await db
+        .select()
+        .from(supplyShoppingListItems)
+        .where(eq(supplyShoppingListItems.listId, String((list as any).id)))
+        .orderBy(desc(supplyShoppingListItems.updatedAt))
+        .limit(2000);
+
+      const items = (listItems as any[])
+        .map((row) => {
+          const query = String(row.rawName || "").trim();
+          const quantity = Number(row.quantity);
+          if (!query) return null;
+          if (!Number.isFinite(quantity) || quantity <= 0) return null;
+          return { query, itemName: query, sku: null as any, quantity };
+        })
+        .filter(Boolean) as Array<{ query: string; itemName: string; sku: null; quantity: number }>;
+
+      if (items.length === 0) {
+        return res.status(400).json({ message: "This list has no valid items to optimize." });
+      }
+
+      const terms = Array.from(new Set(items.map((i) => i.query))).slice(0, 100);
+      const matches = await searchSupplierProductsForTerms({
+        terms,
+        buyerRestaurant,
+        limit: 1200,
+      });
+
+      const buyerLat = Number((buyerRestaurant as any).latitude);
+      const buyerLon = Number((buyerRestaurant as any).longitude);
+      const hasBuyerCoords = Number.isFinite(buyerLat) && Number.isFinite(buyerLon);
+      const radiusMiles = maxRadiusMiles;
+
+      const offers = (matches as any[]).map((r: any) => {
+        const lat = Number(r.supplier?.latitude);
+        const lon = Number(r.supplier?.longitude);
+        const distanceMiles =
+          hasBuyerCoords && Number.isFinite(lat) && Number.isFinite(lon)
+            ? haversineMiles({ lat: buyerLat, lon: buyerLon }, { lat, lon })
+            : null;
+        return { ...r, distanceMiles };
+      });
+
+      const filteredOffers = hasBuyerCoords
+        ? offers.filter((r: any) => r.distanceMiles === null || r.distanceMiles <= radiusMiles)
+        : offers;
+
+      const itemsOut = items.map((it) => {
+        const q = String(it.query).trim();
+        const ql = q.toLowerCase();
+        const candidates = (filteredOffers as any[])
+          .filter((r: any) => {
+            const name = String(r.product?.name || "").toLowerCase();
+            const sku = String(r.product?.sku || "").toLowerCase();
+            if (name.includes(ql) || (sku && sku.includes(ql))) return true;
+            if (!allowSubstitutions) return false;
+            const tokens = normalizeSupplyKey(q).split(" ").filter(Boolean);
+            if (tokens.length <= 1) return false;
+            return tokens.every((t) => name.includes(t) || (sku && sku.includes(t)));
+          })
+          .map((r: any) => ({
+            supplierId: String(r.supplier.id),
+            supplierName: String(r.supplier.businessName),
+            supplier: r.supplier,
+            productId: String(r.product.id),
+            productName: String(r.product.name),
+            sku: r.product.sku ?? null,
+            unitLabel: r.product.unitLabel ?? null,
+            priceCents: Number(r.product.priceCents || 0) || 0,
+            distanceMiles: r.distanceMiles ?? null,
+          }))
+          .sort((a: any, b: any) => a.priceCents - b.priceCents)
+          .slice(0, 10);
+
+        return {
+          query: q,
+          itemName: it.itemName,
+          sku: it.sku,
+          quantity: it.quantity,
+          offers: candidates,
+        };
+      });
+
+      if (pingSuppliers) {
+        try {
+          for (const item of itemsOut as any[]) {
+            if ((item.offers || []).length > 0) continue;
+            const name = String(item.itemName || item.query || "").trim();
+            if (!name) continue;
+            await recordDemandAndNotifyIfUnlisted({
+              buyerRestaurant,
+              itemNameRaw: name,
+              quantity: Math.max(1, Math.floor(Number(item.quantity || 1) || 1)),
+              source: "import",
+            });
+          }
+        } catch (notifyError) {
+          console.warn("List optimize demand notify failed:", notifyError);
+        }
+      }
+
+      const supplierAgg = new Map<
+        string,
+        { supplier: any; coverageCount: number; subtotalCents: number; items: any[] }
+      >();
+
+      for (const item of itemsOut as any[]) {
+        const bestBySupplier = new Map<string, any>();
+        for (const offer of item.offers || []) {
+          const prev = bestBySupplier.get(offer.supplierId);
+          if (!prev || offer.priceCents < prev.priceCents) bestBySupplier.set(offer.supplierId, offer);
+        }
+        for (const offer of bestBySupplier.values()) {
+          const existing = supplierAgg.get(offer.supplierId);
+          const qty = Number(item.quantity || 0) || 0;
+          const lineTotalCents = Math.max(0, Math.round(offer.priceCents * qty));
+          if (!existing) {
+            supplierAgg.set(offer.supplierId, {
+              supplier: offer.supplier,
+              coverageCount: 1,
+              subtotalCents: lineTotalCents,
+              items: [{ query: item.query, productId: offer.productId, priceCents: offer.priceCents, quantity: item.quantity }],
+            });
+          } else {
+            existing.coverageCount += 1;
+            existing.subtotalCents += lineTotalCents;
+            existing.items.push({ query: item.query, productId: offer.productId, priceCents: offer.priceCents, quantity: item.quantity });
+          }
+        }
+      }
+
+      const suppliersOut = Array.from(supplierAgg.entries())
+        .map(([supplierId, v]) => ({
+          supplierId,
+          supplier: v.supplier,
+          coverageCount: v.coverageCount,
+          missingCount: itemsOut.length - v.coverageCount,
+          subtotalCents: v.subtotalCents,
+          items: v.items,
+        }))
+        .sort((a: any, b: any) => {
+          if (b.coverageCount !== a.coverageCount) return b.coverageCount - a.coverageCount;
+          return a.subtotalCents - b.subtotalCents;
+        })
+        .slice(0, 25);
+
+      const requiredCount = (itemsOut as any[]).filter((i) => (i.offers || []).length > 0).length;
+      const oneStop =
+        suppliersOut
+          .filter((s: any) => s.coverageCount === requiredCount)
+          .map((s: any) => ({
+            type: "one_stop",
+            supplierIds: [s.supplierId],
+            suppliers: [s.supplier],
+            subtotalCents: s.subtotalCents,
+            stopCostCents: costPerStopCentsEffective,
+            totalCents: s.subtotalCents + costPerStopCentsEffective,
+          }))
+          .sort((a: any, b: any) => a.totalCents - b.totalCents)[0] || null;
+
+      let twoStop: any = null;
+      if (maxStops >= 2 && suppliersOut.length >= 2 && requiredCount > 0) {
+        const topN = Math.min(25, suppliersOut.length);
+        for (let i = 0; i < topN; i++) {
+          for (let j = i + 1; j < topN; j++) {
+            const a = suppliersOut[i];
+            const b = suppliersOut[j];
+
+            let subtotalCents = 0;
+            let covered = 0;
+
+            for (const item of itemsOut as any[]) {
+              const qty = Number(item.quantity || 0) || 0;
+              if (!qty) continue;
+
+              const bestA = (item.offers || [])
+                .filter((o: any) => o.supplierId === a.supplierId)
+                .sort((x: any, y: any) => x.priceCents - y.priceCents)[0];
+              const bestB = (item.offers || [])
+                .filter((o: any) => o.supplierId === b.supplierId)
+                .sort((x: any, y: any) => x.priceCents - y.priceCents)[0];
+
+              const pick = bestA && bestB ? (bestA.priceCents <= bestB.priceCents ? bestA : bestB) : bestA || bestB;
+              if (!pick) continue;
+              covered += 1;
+              subtotalCents += Math.max(0, Math.round(pick.priceCents * qty));
+            }
+
+            if (covered !== requiredCount) continue;
+            const stopCostCents = costPerStopCentsEffective * 2;
+            const totalCents = subtotalCents + stopCostCents;
+            if (!twoStop || totalCents < twoStop.totalCents) {
+              twoStop = {
+                type: "two_stop",
+                supplierIds: [a.supplierId, b.supplierId],
+                suppliers: [a.supplier, b.supplier],
+                subtotalCents,
+                stopCostCents,
+                totalCents,
+              };
+            }
+          }
+        }
+      }
+
+      const plan = (() => {
+        if (oneStop && twoStop) return twoStop.totalCents < oneStop.totalCents ? twoStop : oneStop;
+        return oneStop || twoStop || null;
+      })();
+
+      res.json({
+        success: true,
+        itemCount: itemsOut.length,
+        items: itemsOut,
+        suppliers: suppliersOut,
+        plan,
+        preferencesUsed: {
+          maxStops,
+          maxRadiusMiles,
+          stopMinutes,
+          costPerMinuteCents,
+          costPerStopCents: costPerStopCentsEffective,
+          pingSuppliers,
+          allowSubstitutions,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error optimizing shopping list:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid optimize request", errors: error.errors });
+      }
+      if (String(error?.message || "") === "List not found") {
+        return res.status(404).json({ message: "List not found" });
+      }
+      if (String(error?.message || "") === "Not authorized") {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      res.status(500).json({ message: error.message || "Failed to optimize list" });
     }
   });
 

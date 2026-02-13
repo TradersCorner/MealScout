@@ -801,7 +801,11 @@ export const supplyOrderPreferences = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     maxStops: integer("max_stops").notNull().default(2),
     maxRadiusMiles: integer("max_radius_miles").notNull().default(20),
+    // Legacy fixed cost-per-stop (kept for backwards compatibility).
     costPerStopCents: integer("cost_per_stop_cents").notNull().default(0),
+    // Preferred: minutes + cost-per-minute (for adaptive "local averages" modeling).
+    stopMinutes: integer("stop_minutes").notNull().default(10),
+    costPerMinuteCents: integer("cost_per_minute_cents").notNull().default(0),
     pingSuppliers: boolean("ping_suppliers").notNull().default(true),
     allowSubstitutions: boolean("allow_substitutions").notNull().default(true),
     createdAt: timestamp("created_at").defaultNow(),

@@ -324,6 +324,8 @@ async function ensureSupplyOrderPreferences(userId: string) {
       maxStops: 2,
       maxRadiusMiles: 20,
       costPerStopCents: 0,
+      stopMinutes: 10,
+      costPerMinuteCents: 0,
       pingSuppliers: true,
       allowSubstitutions: true,
       createdAt: now,
@@ -349,7 +351,11 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       const schema = z.object({
         maxStops: z.coerce.number().int().min(1).max(5).optional(),
         maxRadiusMiles: z.coerce.number().int().min(1).max(250).optional(),
+        // Legacy
         costPerStopCents: z.coerce.number().int().min(0).max(50_000).optional(),
+        // Preferred
+        stopMinutes: z.coerce.number().int().min(0).max(240).optional(),
+        costPerMinuteCents: z.coerce.number().int().min(0).max(5_000).optional(),
         pingSuppliers: z.coerce.boolean().optional(),
         allowSubstitutions: z.coerce.boolean().optional(),
       });
@@ -492,7 +498,11 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           buyerRestaurantId: z.string().min(1),
           maxStops: z.coerce.number().int().min(1).max(5).optional(),
           maxRadiusMiles: z.coerce.number().int().min(1).max(250).optional(),
+          // Legacy
           costPerStopCents: z.coerce.number().int().min(0).max(50_000).optional(),
+          // Preferred
+          stopMinutes: z.coerce.number().int().min(0).max(240).optional(),
+          costPerMinuteCents: z.coerce.number().int().min(0).max(5_000).optional(),
           pingSuppliers: z.coerce.boolean().optional(),
           allowSubstitutions: z.coerce.boolean().optional(),
         });
@@ -507,10 +517,22 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           parsedMeta.maxRadiusMiles !== undefined
             ? parsedMeta.maxRadiusMiles
             : Number((prefs as any).maxRadiusMiles || 20) || 20;
-        const costPerStopCents =
-          parsedMeta.costPerStopCents !== undefined
-            ? parsedMeta.costPerStopCents
-            : Number((prefs as any).costPerStopCents || 0) || 0;
+
+        const stopMinutes =
+          parsedMeta.stopMinutes !== undefined
+            ? parsedMeta.stopMinutes
+            : Number((prefs as any).stopMinutes ?? 10) || 10;
+        const costPerMinuteCents =
+          parsedMeta.costPerMinuteCents !== undefined
+            ? parsedMeta.costPerMinuteCents
+            : Number((prefs as any).costPerMinuteCents ?? 0) || 0;
+        const costPerStopCentsEffective =
+          costPerMinuteCents > 0
+            ? Math.max(0, Math.round(stopMinutes * costPerMinuteCents))
+            : parsedMeta.costPerStopCents !== undefined
+              ? parsedMeta.costPerStopCents
+              : Number((prefs as any).costPerStopCents || 0) || 0;
+
         const pingSuppliers =
           parsedMeta.pingSuppliers !== undefined
             ? Boolean(parsedMeta.pingSuppliers)
@@ -714,8 +736,8 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
               supplierIds: [s.supplierId],
               suppliers: [s.supplier],
               subtotalCents: s.subtotalCents,
-              stopCostCents: costPerStopCents,
-              totalCents: s.subtotalCents + costPerStopCents,
+              stopCostCents: costPerStopCentsEffective,
+              totalCents: s.subtotalCents + costPerStopCentsEffective,
             }))
             .sort((a: any, b: any) => a.totalCents - b.totalCents)[0] || null;
 
@@ -762,7 +784,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
               }
 
               if (covered !== requiredCount) continue;
-              const stopCostCents = costPerStopCents * 2;
+              const stopCostCents = costPerStopCentsEffective * 2;
               const totalCents = subtotalCents + stopCostCents;
               if (!twoStop || totalCents < twoStop.totalCents) {
                 twoStop = {
@@ -794,7 +816,9 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           preferencesUsed: {
             maxStops,
             maxRadiusMiles,
-            costPerStopCents,
+            stopMinutes,
+            costPerMinuteCents,
+            costPerStopCents: costPerStopCentsEffective,
             pingSuppliers,
             allowSubstitutions,
           },

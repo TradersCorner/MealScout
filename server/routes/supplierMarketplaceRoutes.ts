@@ -75,6 +75,50 @@ const computeOnPlatformPaymentFees = (supplierGrossCents: number) => {
   };
 };
 
+const estimateCardProcessingFeeCents = (amountCents: number) => {
+  const amount = Math.max(0, Math.round(Number(amountCents || 0)));
+  const cardBps = Math.max(0, Number(process.env.SUPPLIER_ORDER_STRIPE_FEE_BPS || 290) || 290);
+  const cardFixed = Math.max(
+    0,
+    Number(process.env.SUPPLIER_ORDER_STRIPE_FEE_FIXED_CENTS || 30) || 30,
+  );
+  return Math.max(0, Math.round((amount * cardBps) / 10_000)) + cardFixed;
+};
+
+const estimateAchProcessingFeeCents = (amountCents: number) => {
+  const amount = Math.max(0, Math.round(Number(amountCents || 0)));
+  const achBps = Math.max(0, Number(process.env.SUPPLIER_ORDER_ACH_FEE_BPS || 80) || 80);
+  const achFixed = Math.max(0, Number(process.env.SUPPLIER_ORDER_ACH_FEE_FIXED_CENTS || 0) || 0);
+  const achCapRaw = String(process.env.SUPPLIER_ORDER_ACH_FEE_CAP_CENTS || "").trim();
+  const achCapCents =
+    achCapRaw === "" ? 500 : Math.max(0, Number(process.env.SUPPLIER_ORDER_ACH_FEE_CAP_CENTS || 0) || 0);
+
+  const percentPart = Math.max(0, Math.round((amount * achBps) / 10_000));
+  const uncapped = percentPart + achFixed;
+  if (achCapCents > 0) return Math.min(uncapped, achCapCents);
+  return uncapped;
+};
+
+const computeAchCheaperThresholdCents = () => {
+  const minAmount = Math.max(
+    1,
+    Number(process.env.SUPPLIER_ORDER_ACH_CHEAPER_MIN_SCAN_CENTS || 100) || 100,
+  );
+  const maxAmount = Math.max(
+    minAmount,
+    Number(process.env.SUPPLIER_ORDER_ACH_CHEAPER_MAX_SCAN_CENTS || 500_000) || 500_000,
+  );
+  const step = Math.max(1, Number(process.env.SUPPLIER_ORDER_ACH_CHEAPER_SCAN_STEP_CENTS || 1) || 1);
+
+  for (let amount = minAmount; amount <= maxAmount; amount += step) {
+    if (estimateAchProcessingFeeCents(amount) <= estimateCardProcessingFeeCents(amount)) {
+      return amount;
+    }
+  }
+
+  return maxAmount;
+};
+
 const normalizeSupplyKey = (raw: string) =>
   String(raw || "")
     .trim()
@@ -3157,8 +3201,13 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       });
       const parsed = methodSchema.parse(req.body || {});
 
+      const configuredDefaultThresholdRaw = String(
+        process.env.SUPPLIER_ORDER_ACH_DEFAULT_THRESHOLD_CENTS || "",
+      ).trim();
       const thresholdDefaultCents =
-        Math.max(0, Number(process.env.SUPPLIER_ORDER_ACH_DEFAULT_THRESHOLD_CENTS || 50_000) || 50_000);
+        configuredDefaultThresholdRaw === ""
+          ? computeAchCheaperThresholdCents()
+          : Math.max(0, Number(configuredDefaultThresholdRaw) || 0);
       const discountThresholdCents =
         Math.max(0, Number(process.env.SUPPLIER_ORDER_ACH_DISCOUNT_THRESHOLD_CENTS || thresholdDefaultCents) || thresholdDefaultCents);
       const configuredDiscountCents =

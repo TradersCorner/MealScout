@@ -1035,7 +1035,7 @@ export default function MapPage() {
   });
 
   useEffect(() => {
-    if (!bookableHostIdPayload?.hostIds?.length) return;
+    if (!bookableHostIdPayload) return;
     const next = new Set(bookableHostIdPayload.hostIds.map((id) => String(id)));
     setCachedBookableHostIds(next);
     try {
@@ -1057,11 +1057,8 @@ export default function MapPage() {
   }, [bookableHostIdPayload]);
 
   const bookableHostIds = useMemo(() => {
-    const serverIds = Array.isArray(bookableHostIdPayload?.hostIds)
-      ? bookableHostIdPayload.hostIds
-      : [];
-    if (serverIds.length > 0) {
-      return new Set(serverIds.map((id) => String(id)));
+    if (bookableHostIdPayload && Array.isArray(bookableHostIdPayload.hostIds)) {
+      return new Set(bookableHostIdPayload.hostIds.map((id) => String(id)));
     }
     return cachedBookableHostIds;
   }, [bookableHostIdPayload, cachedBookableHostIds]);
@@ -1128,7 +1125,7 @@ export default function MapPage() {
 
   useEffect(() => {
     const rows = hostStatusPayload?.hosts;
-    if (!Array.isArray(rows) || rows.length === 0) return;
+    if (!Array.isArray(rows)) return;
     const map: Record<string, any> = {};
     rows.forEach((row) => {
       const hostId = String(row.hostId || "").trim();
@@ -1222,11 +1219,11 @@ export default function MapPage() {
 
   const usingCachedBookableHosts =
     isBookableHostIdsError &&
-    !bookableHostIdPayload?.hostIds?.length &&
+    !bookableHostIdPayload &&
     cachedBookableHostIds.size > 0;
   const usingCachedHostStatus =
     isHostStatusError &&
-    !hostStatusPayload?.hosts?.length &&
+    !hostStatusPayload &&
     Object.keys(cachedHostStatusById).length > 0;
 
   const visibleEventLocations = useMemo(() => {

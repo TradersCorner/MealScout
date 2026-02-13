@@ -9,13 +9,18 @@ import {
   supplierProducts,
   supplierRequests,
   supplierRequestItems,
+  supplyReceiptItems,
+  supplyReceipts,
+  supplyDemandNotifications,
+  supplyDemands,
   suppliers,
 } from "@shared/schema";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import { isAuthenticated, isStaffOrAdmin, isSupplierOrAdmin } from "../unifiedAuth";
 import multer from "multer";
 import { parseTabularFile } from "../utils/tabularImport";
 import { emailService } from "../emailService";
+import { isCloudinaryConfigured, uploadToCloudinary } from "../imageUpload";
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -41,9 +46,215 @@ const computeFees = (subtotalCents: number) => {
   return { platformFeeCents, stripeFeeEstimateCents, totalCents };
 };
 
+const normalizeSupplyKey = (raw: string) =>
+  String(raw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const haversineMiles = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) => {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const R = 3958.7613; // earth radius (miles)
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lon - a.lon);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+};
+
+async function resolveBuyerRestaurantOrThrow(req: any, buyerRestaurantId: string) {
+  const buyerRestaurant = await storage.getRestaurant(buyerRestaurantId);
+  if (!buyerRestaurant || String(buyerRestaurant.ownerId) !== String(req.user.id)) {
+    throw new Error("Not authorized");
+  }
+  return buyerRestaurant;
+}
+
+async function findLocalSuppliersForBuyer(buyerRestaurant: any) {
+  const radiusMiles = Number(process.env.SUPPLY_LOCAL_RADIUS_MILES || 75) || 75;
+  const limit = Math.min(Number(process.env.SUPPLY_LOCAL_SUPPLIER_LIMIT || 60) || 60, 200);
+
+  const conditions: any[] = [eq(suppliers.isActive, true)];
+  const buyerState = String((buyerRestaurant as any).state || "").trim();
+  if (buyerState) conditions.push(eq(suppliers.state, buyerState));
+
+  const candidates = await db
+    .select()
+    .from(suppliers)
+    .where(and(...conditions))
+    .orderBy(desc(suppliers.updatedAt))
+    .limit(500);
+
+  const buyerLat = Number((buyerRestaurant as any).latitude);
+  const buyerLon = Number((buyerRestaurant as any).longitude);
+  const hasBuyerCoords = Number.isFinite(buyerLat) && Number.isFinite(buyerLon);
+
+  if (!hasBuyerCoords) {
+    return candidates.slice(0, limit);
+  }
+
+  const withDistance = (candidates as any[])
+    .map((s: any) => {
+      const lat = Number(s.latitude);
+      const lon = Number(s.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      const distanceMiles = haversineMiles({ lat: buyerLat, lon: buyerLon }, { lat, lon });
+      return { supplier: s, distanceMiles };
+    })
+    .filter(Boolean) as Array<{ supplier: any; distanceMiles: number }>;
+
+  return withDistance
+    .filter((r) => r.distanceMiles <= radiusMiles)
+    .sort((a, b) => a.distanceMiles - b.distanceMiles)
+    .slice(0, limit)
+    .map((r) => r.supplier);
+}
+
+async function recordDemandAndNotifyIfUnlisted(params: {
+  buyerRestaurant: any;
+  itemNameRaw: string;
+  quantity?: number | null;
+  source: "manual" | "request" | "import";
+}) {
+  const itemName = String(params.itemNameRaw || "").trim();
+  const itemKey = normalizeSupplyKey(itemName);
+  if (!itemKey) return { created: false, notified: 0, reason: "empty_key" };
+
+  const [existing] = await db
+    .select({ id: supplierProducts.id })
+    .from(supplierProducts)
+    .where(
+      and(
+        eq(supplierProducts.isActive, true),
+        or(
+          ilike(supplierProducts.name, `%${itemName}%`),
+          ilike(supplierProducts.sku, `%${itemName}%`),
+        ),
+      ),
+    )
+    .limit(1);
+  if (existing) return { created: false, notified: 0, reason: "already_listed" };
+
+  const now = new Date();
+  const [demand] = await db
+    .insert(supplyDemands)
+    .values({
+      buyerRestaurantId: String((params.buyerRestaurant as any).id),
+      itemKey,
+      itemName,
+      quantity: params.quantity ?? null,
+      buyerCity: (params.buyerRestaurant as any).city ?? null,
+      buyerState: (params.buyerRestaurant as any).state ?? null,
+      buyerLatitude: (params.buyerRestaurant as any).latitude ?? null,
+      buyerLongitude: (params.buyerRestaurant as any).longitude ?? null,
+      source: params.source,
+      createdAt: now,
+      updatedAt: now,
+    } as any)
+    .returning();
+
+  const notifyEnabled =
+    String(process.env.SUPPLY_DEMAND_NOTIFY || "").toLowerCase() !== "false";
+  if (!notifyEnabled) return { created: true, notified: 0, demandId: demand?.id };
+
+  const localSuppliers = await findLocalSuppliersForBuyer(params.buyerRestaurant);
+  if (localSuppliers.length === 0) return { created: true, notified: 0, demandId: demand?.id };
+
+  const supplierIds = localSuppliers.map((s: any) => String(s.id));
+  const existingNotifs = await db
+    .select()
+    .from(supplyDemandNotifications)
+    .where(
+      and(
+        eq(supplyDemandNotifications.itemKey, itemKey),
+        inArray(supplyDemandNotifications.supplierId, supplierIds),
+      ),
+    );
+
+  const notifBySupplierId = new Map<string, any>(
+    (existingNotifs as any[]).map((n: any) => [String(n.supplierId), n]),
+  );
+
+  const ttlHours = Number(process.env.SUPPLY_DEMAND_NOTIFY_TTL_HOURS || 24) || 24;
+  const ttlMs = ttlHours * 60 * 60 * 1000;
+  const nowMs = now.getTime();
+
+  const toNotify = (localSuppliers as any[]).filter((s: any) => {
+    const n = notifBySupplierId.get(String(s.id));
+    if (!n) return true;
+    const last = n.lastNotifiedAt ? new Date(n.lastNotifiedAt).getTime() : 0;
+    return nowMs - last > ttlMs;
+  });
+
+  let notified = 0;
+  for (const supplier of toNotify) {
+    try {
+      const supplierUser = await storage.getUser(String((supplier as any).userId)).catch(
+        () => null,
+      );
+      const to =
+        String((supplier as any).contactEmail || "").trim() ||
+        String((supplierUser as any)?.email || "").trim();
+      if (!to) continue;
+
+      const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:5000";
+      const manageUrl = `${baseUrl.replace(/\/+$/, "")}/supplier/dashboard`;
+      const location = [params.buyerRestaurant.city, params.buyerRestaurant.state]
+        .map((s: any) => String(s || "").trim())
+        .filter(Boolean)
+        .join(", ");
+      const subject = location
+        ? `In-demand item near ${location}: ${itemName}`
+        : `In-demand item: ${itemName}`;
+      const html = `
+        <h2>Item in demand</h2>
+        <p><strong>Item:</strong> ${itemName}</p>
+        ${location ? `<p><strong>Area:</strong> ${location}</p>` : ""}
+        <p>A local vendor searched for this item but it isn't listed yet.</p>
+        <p style="margin: 18px 0;">
+          <a href="${manageUrl}" class="cta-button">Add it to your catalog</a>
+        </p>
+      `;
+      await emailService.sendBasicEmail(to, subject, html, undefined, "general");
+
+      await db
+        .insert(supplyDemandNotifications)
+        .values({
+          supplierId: String((supplier as any).id),
+          itemKey,
+          lastNotifiedAt: now,
+        } as any)
+        .onConflictDoUpdate({
+          target: [supplyDemandNotifications.supplierId, supplyDemandNotifications.itemKey] as any,
+          set: { lastNotifiedAt: now } as any,
+        });
+
+      notified += 1;
+    } catch (e) {
+      console.warn("Demand notify failed:", e);
+    }
+  }
+
+  return { created: true, notified, demandId: demand?.id };
+}
+
 const importUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
+});
+
+const receiptUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype?.startsWith("image/")) cb(null, true);
+    else cb(new Error("Only image receipts are supported right now (JPG/PNG/WebP)."));
+  },
 });
 
 async function ensureSupplierProfile(userId: string) {
@@ -69,6 +280,379 @@ async function ensureSupplierProfile(userId: string) {
 }
 
 export function registerSupplierMarketplaceRoutes(app: Express) {
+  app.get("/api/supply/search", isAuthenticated, async (req: any, res) => {
+    try {
+      const q = String(req.query?.q || "").trim();
+      if (!q) return res.status(400).json({ message: "q is required" });
+      const buyerRestaurantId = String(req.query?.buyerRestaurantId || "").trim();
+      const limit = Math.min(Number(req.query?.limit || 50) || 50, 200);
+
+      const buyerRestaurant = buyerRestaurantId
+        ? await resolveBuyerRestaurantOrThrow(req, buyerRestaurantId)
+        : null;
+
+      const conditions: any[] = [
+        eq(supplierProducts.isActive, true),
+        eq(suppliers.isActive, true),
+        or(
+          ilike(supplierProducts.name, `%${q}%`),
+          ilike(supplierProducts.sku, `%${q}%`),
+        ),
+      ];
+      const buyerState = buyerRestaurant ? String((buyerRestaurant as any).state || "").trim() : "";
+      if (buyerState) conditions.push(eq(suppliers.state, buyerState));
+
+      const rows = await db
+        .select({
+          product: supplierProducts,
+          supplier: suppliers,
+        })
+        .from(supplierProducts)
+        .innerJoin(suppliers, eq(supplierProducts.supplierId, suppliers.id))
+        .where(and(...conditions))
+        .orderBy(desc(supplierProducts.updatedAt))
+        .limit(Math.max(limit, 50));
+
+      const buyerLat = buyerRestaurant ? Number((buyerRestaurant as any).latitude) : NaN;
+      const buyerLon = buyerRestaurant ? Number((buyerRestaurant as any).longitude) : NaN;
+      const hasBuyerCoords = Number.isFinite(buyerLat) && Number.isFinite(buyerLon);
+      const radiusMiles = Number(process.env.SUPPLY_LOCAL_RADIUS_MILES || 75) || 75;
+
+      const decorated = (rows as any[]).map((r: any) => {
+        const lat = Number(r.supplier?.latitude);
+        const lon = Number(r.supplier?.longitude);
+        const distanceMiles =
+          hasBuyerCoords && Number.isFinite(lat) && Number.isFinite(lon)
+            ? haversineMiles({ lat: buyerLat, lon: buyerLon }, { lat, lon })
+            : null;
+        return { ...r, distanceMiles };
+      });
+
+      const filtered = hasBuyerCoords
+        ? decorated.filter((r: any) => r.distanceMiles === null || r.distanceMiles <= radiusMiles)
+        : decorated;
+
+      filtered.sort((a: any, b: any) => {
+        if (a.distanceMiles !== null && b.distanceMiles !== null) {
+          return a.distanceMiles - b.distanceMiles;
+        }
+        if (a.distanceMiles !== null) return -1;
+        if (b.distanceMiles !== null) return 1;
+        return new Date(b.product.updatedAt).getTime() - new Date(a.product.updatedAt).getTime();
+      });
+
+      res.json(
+        filtered.slice(0, limit).map((r: any) => ({
+          product: r.product,
+          supplier: r.supplier,
+          distanceMiles: r.distanceMiles,
+        })),
+      );
+    } catch (error: any) {
+      console.error("Error searching supply:", error);
+      if (String(error?.message || "") === "Not authorized") {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      res.status(500).json({ message: error.message || "Failed to search supply" });
+    }
+  });
+
+  app.post("/api/supply/demand", isAuthenticated, async (req: any, res) => {
+    try {
+      const schema = z.object({
+        buyerRestaurantId: z.string().min(1),
+        itemName: z.string().min(1).max(120),
+        quantity: z.number().int().min(1).max(100_000).optional().nullable(),
+      });
+      const parsed = schema.parse(req.body || {});
+      const buyerRestaurant = await resolveBuyerRestaurantOrThrow(req, parsed.buyerRestaurantId);
+
+      const result = await recordDemandAndNotifyIfUnlisted({
+        buyerRestaurant,
+        itemNameRaw: parsed.itemName,
+        quantity: parsed.quantity ?? null,
+        source: "manual",
+      });
+
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      console.error("Error creating supply demand:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid demand data", errors: error.errors });
+      }
+      if (String(error?.message || "") === "Not authorized") {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      res.status(500).json({ message: error.message || "Failed to create demand" });
+    }
+  });
+
+  app.get("/api/supply/receipts/mine", isAuthenticated, async (req: any, res) => {
+    try {
+      const rows = await db
+        .select()
+        .from(supplyReceipts)
+        .where(eq(supplyReceipts.uploadedByUserId, String(req.user.id)))
+        .orderBy(desc(supplyReceipts.createdAt))
+        .limit(200);
+      res.json(rows);
+    } catch (error: any) {
+      console.error("Error listing receipts:", error);
+      res.status(500).json({ message: error.message || "Failed to load receipts" });
+    }
+  });
+
+  app.post(
+    "/api/supply/receipts",
+    isAuthenticated,
+    receiptUpload.single("file"),
+    async (req: any, res) => {
+      try {
+        if (!isCloudinaryConfigured()) {
+          return res.status(500).json({ message: "Receipt uploads require Cloudinary configuration." });
+        }
+
+        const file = req.file;
+        if (!file) return res.status(400).json({ message: "File is required" });
+
+        const schema = z.object({
+          buyerRestaurantId: z.string().optional().nullable(),
+          supplierId: z.string().optional().nullable(),
+          merchantName: z.string().max(200).optional().nullable(),
+          merchantAddress: z.string().max(400).optional().nullable(),
+          merchantCity: z.string().max(120).optional().nullable(),
+          merchantState: z.string().max(60).optional().nullable(),
+          purchasedAt: z.string().optional().nullable(),
+          totalCents: z.coerce.number().int().min(0).optional().nullable(),
+          currency: z.string().max(10).optional().nullable(),
+        });
+        const parsed = schema.parse(req.body || {});
+
+        let buyerRestaurant: any = null;
+        if (parsed.buyerRestaurantId) {
+          buyerRestaurant = await resolveBuyerRestaurantOrThrow(req, String(parsed.buyerRestaurantId));
+        }
+
+        if (parsed.supplierId) {
+          const [supplier] = await db
+            .select()
+            .from(suppliers)
+            .where(eq(suppliers.id, String(parsed.supplierId)))
+            .limit(1);
+          if (!supplier) return res.status(404).json({ message: "Supplier not found" });
+        }
+
+        const uploaded = await uploadToCloudinary(file.buffer, "receipts");
+        const now = new Date();
+
+        const purchasedAt = parsed.purchasedAt ? new Date(String(parsed.purchasedAt)) : null;
+        const safePurchasedAt = purchasedAt && !Number.isNaN(purchasedAt.getTime()) ? purchasedAt : null;
+
+        const [created] = await db
+          .insert(supplyReceipts)
+          .values({
+            uploadedByUserId: String(req.user.id),
+            buyerRestaurantId: buyerRestaurant ? String(buyerRestaurant.id) : parsed.buyerRestaurantId ?? null,
+            supplierId: parsed.supplierId ?? null,
+            merchantName: parsed.merchantName ?? null,
+            merchantAddress: parsed.merchantAddress ?? null,
+            merchantCity: parsed.merchantCity ?? null,
+            merchantState: parsed.merchantState ?? null,
+            purchasedAt: safePurchasedAt,
+            totalCents: parsed.totalCents ?? null,
+            currency: (parsed.currency || "usd").toLowerCase(),
+            cloudinaryPublicId: uploaded.publicId,
+            receiptImageUrl: uploaded.secureUrl || uploaded.url,
+            status: "needs_review",
+            rawText: null,
+            createdAt: now,
+            updatedAt: now,
+          } as any)
+          .returning();
+
+        res.status(201).json(created);
+      } catch (error: any) {
+        console.error("Error uploading receipt:", error);
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: "Invalid receipt data", errors: error.errors });
+        }
+        if (String(error?.message || "") === "Not authorized") {
+          return res.status(403).json({ message: "Not authorized" });
+        }
+        res.status(500).json({ message: error.message || "Failed to upload receipt" });
+      }
+    },
+  );
+
+  app.post("/api/supply/receipts/:receiptId/items", isAuthenticated, async (req: any, res) => {
+    try {
+      const receiptId = String(req.params.receiptId || "").trim();
+      if (!receiptId) return res.status(400).json({ message: "Receipt ID required" });
+
+      const [receipt] = await db
+        .select()
+        .from(supplyReceipts)
+        .where(eq(supplyReceipts.id, receiptId))
+        .limit(1);
+      if (!receipt) return res.status(404).json({ message: "Receipt not found" });
+      if (String((receipt as any).uploadedByUserId) !== String(req.user.id)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const schema = z.object({
+        items: z
+          .array(
+            z.object({
+              itemName: z.string().min(1).max(200),
+              quantity: z.number().int().min(1).max(100_000).default(1),
+              unitPriceCents: z.number().int().min(0).optional().nullable(),
+              lineTotalCents: z.number().int().min(0).optional().nullable(),
+            }),
+          )
+          .min(1),
+      });
+      const parsed = schema.parse(req.body || {});
+
+      const now = new Date();
+      const values = parsed.items.map((i) => {
+        const itemName = String(i.itemName).trim();
+        const quantity = Math.max(1, Math.floor(Number(i.quantity || 1)));
+        const unitPriceCents =
+          i.unitPriceCents !== null && i.unitPriceCents !== undefined
+            ? Number(i.unitPriceCents)
+            : null;
+        const lineTotalCents =
+          i.lineTotalCents !== null && i.lineTotalCents !== undefined
+            ? Number(i.lineTotalCents)
+            : unitPriceCents !== null
+              ? unitPriceCents * quantity
+              : null;
+        return {
+          receiptId,
+          itemKey: normalizeSupplyKey(itemName),
+          itemName,
+          quantity,
+          unitPriceCents,
+          lineTotalCents,
+          createdAt: now,
+          updatedAt: now,
+        };
+      });
+
+      await db.insert(supplyReceiptItems).values(values as any);
+      await db
+        .update(supplyReceipts)
+        .set({ status: "processed", updatedAt: now } as any)
+        .where(eq(supplyReceipts.id, receiptId));
+
+      res.json({ success: true, added: values.length });
+    } catch (error: any) {
+      console.error("Error adding receipt items:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid receipt items", errors: error.errors });
+      }
+      res.status(500).json({ message: error.message || "Failed to add receipt items" });
+    }
+  });
+
+  app.get("/api/supply/best-prices", isAuthenticated, async (req: any, res) => {
+    try {
+      const q = String(req.query?.q || "").trim();
+      if (!q) return res.status(400).json({ message: "q is required" });
+      const limit = Math.min(Number(req.query?.limit || 20) || 20, 100);
+      const buyerRestaurantId = String(req.query?.buyerRestaurantId || "").trim();
+      const buyerRestaurant = buyerRestaurantId
+        ? await resolveBuyerRestaurantOrThrow(req, buyerRestaurantId)
+        : null;
+
+      const buyerState = buyerRestaurant ? String((buyerRestaurant as any).state || "").trim() : "";
+
+      // Supplier catalog prices (already-listed items)
+      const supplierRows = await db
+        .select({
+          product: supplierProducts,
+          supplier: suppliers,
+        })
+        .from(supplierProducts)
+        .innerJoin(suppliers, eq(supplierProducts.supplierId, suppliers.id))
+        .where(
+          and(
+            eq(supplierProducts.isActive, true),
+            eq(suppliers.isActive, true),
+            or(ilike(supplierProducts.name, `%${q}%`), ilike(supplierProducts.sku, `%${q}%`)),
+            ...(buyerState ? [eq(suppliers.state, buyerState)] : []),
+          ),
+        )
+        .orderBy(desc(supplierProducts.updatedAt))
+        .limit(200);
+
+      const key = normalizeSupplyKey(q);
+
+      // Receipt-observed prices (offsite merchants + suppliers)
+      const receiptConditions: any[] = [
+        or(ilike(supplyReceiptItems.itemName, `%${q}%`), eq(supplyReceiptItems.itemKey, key)),
+      ];
+      if (buyerState) receiptConditions.push(eq(supplyReceipts.merchantState, buyerState));
+
+      const receiptRows = await db
+        .select({
+          item: supplyReceiptItems,
+          receipt: supplyReceipts,
+        })
+        .from(supplyReceiptItems)
+        .innerJoin(supplyReceipts, eq(supplyReceiptItems.receiptId, supplyReceipts.id))
+        .where(and(...receiptConditions))
+        .orderBy(desc(supplyReceipts.purchasedAt))
+        .limit(300);
+
+      const results: any[] = [];
+
+      for (const r of supplierRows as any[]) {
+        results.push({
+          source: "supplier",
+          itemName: r.product.name,
+          unitPriceCents: Number(r.product.priceCents || 0) || 0,
+          unitLabel: r.product.unitLabel ?? null,
+          supplier: r.supplier,
+          product: r.product,
+          observedAt: r.product.updatedAt ?? null,
+        });
+      }
+
+      for (const r of receiptRows as any[]) {
+        const qty = Math.max(1, Number(r.item.quantity || 1) || 1);
+        const unitPriceCents =
+          r.item.unitPriceCents !== null && r.item.unitPriceCents !== undefined
+            ? Number(r.item.unitPriceCents)
+            : r.item.lineTotalCents !== null && r.item.lineTotalCents !== undefined
+              ? Math.round(Number(r.item.lineTotalCents) / qty)
+              : null;
+        if (unitPriceCents === null) continue;
+        results.push({
+          source: "receipt",
+          itemName: r.item.itemName,
+          unitPriceCents,
+          quantity: qty,
+          merchantName: r.receipt.merchantName ?? null,
+          merchantCity: r.receipt.merchantCity ?? null,
+          merchantState: r.receipt.merchantState ?? null,
+          purchasedAt: r.receipt.purchasedAt ?? null,
+          receiptId: r.receipt.id,
+        });
+      }
+
+      results.sort((a, b) => Number(a.unitPriceCents) - Number(b.unitPriceCents));
+
+      res.json(results.slice(0, limit));
+    } catch (error: any) {
+      console.error("Error loading best prices:", error);
+      if (String(error?.message || "") === "Not authorized") {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      res.status(500).json({ message: error.message || "Failed to load best prices" });
+    }
+  });
+
   // Public-ish listing (requires auth for now).
   app.get("/api/suppliers", isAuthenticated, async (_req: any, res) => {
     try {
@@ -511,6 +1095,33 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         return created;
       });
 
+      // If any items are unmapped and not listed anywhere, record demand + ping local suppliers (best-effort).
+      try {
+        const demandByKey = new Map<string, { name: string; quantity: number | null }>();
+        for (const row of normalized) {
+          if (row.productId) continue;
+          const name = String(row.itemName || "").trim();
+          if (!name) continue;
+          const key = normalizeSupplyKey(name);
+          if (!key) continue;
+          const prev = demandByKey.get(key);
+          const nextQty = Math.max(1, Math.floor(Number(row.quantity || 0) || 1));
+          if (!prev) demandByKey.set(key, { name, quantity: nextQty });
+          else demandByKey.set(key, { name: prev.name, quantity: (prev.quantity ?? 0) + nextQty });
+        }
+
+        for (const d of demandByKey.values()) {
+          await recordDemandAndNotifyIfUnlisted({
+            buyerRestaurant,
+            itemNameRaw: d.name,
+            quantity: d.quantity,
+            source: "request",
+          });
+        }
+      } catch (demandError) {
+        console.warn("Demand capture failed:", demandError);
+      }
+
       // Notify supplier immediately (best-effort).
       try {
         const supplierUser = await storage.getUser(String((supplier as any).userId));
@@ -674,6 +1285,37 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           await tx.insert(supplierRequestItems).values(values as any);
           return created;
         });
+
+        // If any items are unmapped and not listed anywhere, record demand + ping local suppliers (best-effort).
+        try {
+          const demandByKey = new Map<string, { name: string; quantity: number | null }>();
+          for (const row of normalized) {
+            if (row.productId) continue;
+            const name = String(row.itemName || "").trim();
+            if (!name) continue;
+            const key = normalizeSupplyKey(name);
+            if (!key) continue;
+            const prev = demandByKey.get(key);
+            const nextQty = Math.max(1, Math.floor(Number(row.quantity || 0) || 1));
+            if (!prev) demandByKey.set(key, { name, quantity: nextQty });
+            else
+              demandByKey.set(key, {
+                name: prev.name,
+                quantity: (prev.quantity ?? 0) + nextQty,
+              });
+          }
+
+          for (const d of demandByKey.values()) {
+            await recordDemandAndNotifyIfUnlisted({
+              buyerRestaurant,
+              itemNameRaw: d.name,
+              quantity: d.quantity,
+              source: "import",
+            });
+          }
+        } catch (demandError) {
+          console.warn("Demand capture failed:", demandError);
+        }
 
         res.status(201).json({ request, items: normalized.length });
       } catch (error: any) {

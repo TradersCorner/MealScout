@@ -488,6 +488,112 @@ export const supplierOrderItems = pgTable(
   (table) => [index("idx_supplier_order_items_order").on(table.orderId)],
 );
 
+export const supplyDemands = pgTable(
+  "supply_demands",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    buyerRestaurantId: varchar("buyer_restaurant_id").references(() => restaurants.id, {
+      onDelete: "set null",
+    }),
+    itemKey: varchar("item_key").notNull(),
+    itemName: varchar("item_name").notNull(),
+    quantity: integer("quantity"),
+    buyerCity: varchar("buyer_city"),
+    buyerState: varchar("buyer_state"),
+    buyerLatitude: decimal("buyer_latitude", { precision: 10, scale: 8 }),
+    buyerLongitude: decimal("buyer_longitude", { precision: 11, scale: 8 }),
+    source: varchar("source").notNull().default("manual"), // 'manual' | 'request' | 'import'
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_supply_demands_item_key").on(table.itemKey),
+    index("idx_supply_demands_buyer").on(table.buyerRestaurantId),
+    index("idx_supply_demands_created_at").on(table.createdAt),
+  ],
+);
+
+export const supplyDemandNotifications = pgTable(
+  "supply_demand_notifications",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    supplierId: varchar("supplier_id")
+      .notNull()
+      .references(() => suppliers.id, { onDelete: "cascade" }),
+    itemKey: varchar("item_key").notNull(),
+    lastNotifiedAt: timestamp("last_notified_at").notNull().defaultNow(),
+  },
+  (table) => [
+    unique("uq_supply_demand_notifications_supplier_item").on(table.supplierId, table.itemKey),
+    index("idx_supply_demand_notifications_last_notified").on(table.lastNotifiedAt),
+  ],
+);
+
+export const supplyReceipts = pgTable(
+  "supply_receipts",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    uploadedByUserId: varchar("uploaded_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    buyerRestaurantId: varchar("buyer_restaurant_id").references(() => restaurants.id, {
+      onDelete: "set null",
+    }),
+    supplierId: varchar("supplier_id").references(() => suppliers.id, {
+      onDelete: "set null",
+    }),
+    merchantName: varchar("merchant_name"),
+    merchantAddress: text("merchant_address"),
+    merchantCity: varchar("merchant_city"),
+    merchantState: varchar("merchant_state"),
+    purchasedAt: timestamp("purchased_at"),
+    totalCents: integer("total_cents"),
+    currency: varchar("currency").notNull().default("usd"),
+    cloudinaryPublicId: varchar("cloudinary_public_id"),
+    receiptImageUrl: text("receipt_image_url").notNull(),
+    status: varchar("status").notNull().default("uploaded"), // 'uploaded' | 'needs_review' | 'processed'
+    rawText: text("raw_text"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_supply_receipts_uploaded_by").on(table.uploadedByUserId),
+    index("idx_supply_receipts_buyer").on(table.buyerRestaurantId),
+    index("idx_supply_receipts_supplier").on(table.supplierId),
+    index("idx_supply_receipts_purchased_at").on(table.purchasedAt),
+  ],
+);
+
+export const supplyReceiptItems = pgTable(
+  "supply_receipt_items",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    receiptId: varchar("receipt_id")
+      .notNull()
+      .references(() => supplyReceipts.id, { onDelete: "cascade" }),
+    itemKey: varchar("item_key").notNull(),
+    itemName: varchar("item_name").notNull(),
+    quantity: integer("quantity").notNull().default(1),
+    unitPriceCents: integer("unit_price_cents"),
+    lineTotalCents: integer("line_total_cents"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_supply_receipt_items_receipt").on(table.receiptId),
+    index("idx_supply_receipt_items_item_key").on(table.itemKey),
+    index("idx_supply_receipt_items_unit_price").on(table.unitPriceCents),
+  ],
+);
+
 export const deals = pgTable("deals", {
   id: varchar("id")
     .primaryKey()

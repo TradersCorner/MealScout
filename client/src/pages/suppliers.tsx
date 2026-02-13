@@ -2,12 +2,32 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import Navigation from "@/components/navigation";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { BackHeader } from "@/components/back-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription as DialogDescriptionUI,
+  DialogFooter,
+  DialogHeader as DialogHeaderUI,
+  DialogTitle as DialogTitleUI,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { Building2 } from "lucide-react";
+import { Building2, Calculator, SlidersHorizontal, Upload, Zap } from "lucide-react";
 
 type Supplier = {
   id: string;
@@ -16,6 +36,9 @@ type Supplier = {
   city?: string | null;
   state?: string | null;
   isActive?: boolean | null;
+  offersDelivery?: boolean | null;
+  deliveryFeeCents?: number | null;
+  deliveryMinOrderCents?: number | null;
 };
 
 type Restaurant = {
@@ -37,14 +60,112 @@ type SupplySearchRow = {
   distanceMiles?: number | null;
 };
 
+type SupplyPreferences = {
+  id: string;
+  maxStops: number;
+  maxRadiusMiles: number;
+  costPerStopCents: number;
+  stopMinutes: number;
+  costPerMinuteCents: number;
+  pingSuppliers: boolean;
+  allowSubstitutions: boolean;
+};
+
+type OrderListOffer = {
+  supplierId: string;
+  supplierName: string;
+  supplier: Supplier;
+  productId: string;
+  productName: string;
+  sku?: string | null;
+  unitLabel?: string | null;
+  priceCents: number;
+  distanceMiles?: number | null;
+};
+
+type OrderListItem = {
+  query: string;
+  itemName?: string | null;
+  sku?: string | null;
+  quantity: number;
+  offers: OrderListOffer[];
+};
+
+type OrderListSupplierAgg = {
+  supplierId: string;
+  supplier: Supplier;
+  coverageCount: number;
+  missingCount: number;
+  subtotalCents: number;
+};
+
+type OrderListPlan = {
+  type: "one_stop" | "two_stop";
+  supplierIds: string[];
+  suppliers: Supplier[];
+  subtotalCents: number;
+  stopCostCents: number;
+  totalCents: number;
+};
+
+type OrderListImportResult = {
+  success: true;
+  itemCount: number;
+  items: OrderListItem[];
+  suppliers: OrderListSupplierAgg[];
+  plan: OrderListPlan | null;
+  preferencesUsed: {
+    maxStops: number;
+    maxRadiusMiles: number;
+    stopMinutes: number;
+    costPerMinuteCents: number;
+    costPerStopCents: number;
+    pingSuppliers: boolean;
+    allowSubstitutions: boolean;
+  };
+  truncated: boolean;
+};
+
 const formatMoney = (cents: number) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
+const formatMiles = (miles: number) =>
+  `${Number(miles).toFixed(miles < 10 ? 1 : 0)} mi`;
 
 export default function SuppliersPage() {
   const { toast } = useToast();
+  const [tab, setTab] = useState<"catalog" | "import">("catalog");
   const [q, setQ] = useState("");
   const [orderListFile, setOrderListFile] = useState<File | null>(null);
   const [selectedBuyerRestaurantId, setSelectedBuyerRestaurantId] =
     useState<string>("");
+  const [importResult, setImportResult] = useState<OrderListImportResult | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [prefsDialogOpen, setPrefsDialogOpen] = useState(false);
+
+  const { data: prefs } = useQuery<SupplyPreferences>({
+    queryKey: ["/api/supply/preferences"],
+    queryFn: async () => {
+      const res = await fetch("/api/supply/preferences", { credentials: "include" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to load preferences");
+      return data;
+    },
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
+  });
+
+  const [prefsDraft, setPrefsDraft] = useState<Partial<SupplyPreferences>>({});
+  useEffect(() => {
+    if (!prefs) return;
+    setPrefsDraft({
+      maxStops: prefs.maxStops,
+      maxRadiusMiles: prefs.maxRadiusMiles,
+      costPerStopCents: prefs.costPerStopCents,
+      stopMinutes: prefs.stopMinutes,
+      costPerMinuteCents: prefs.costPerMinuteCents,
+      pingSuppliers: prefs.pingSuppliers,
+      allowSubstitutions: prefs.allowSubstitutions,
+    });
+  }, [prefs]);
 
   const { data: suppliers = [], isLoading, isError } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
@@ -109,6 +230,41 @@ export default function SuppliersPage() {
     return Array.from(bySupplier.values());
   }, [supplyMatches]);
 
+  const savePreferences = useMutation({
+    mutationFn: async () => {
+      const body: any = {};
+      const pickNum = (v: any) => (v === "" || v === null || v === undefined ? undefined : v);
+      if (prefsDraft.maxStops !== undefined) body.maxStops = pickNum(prefsDraft.maxStops);
+      if (prefsDraft.maxRadiusMiles !== undefined) body.maxRadiusMiles = pickNum(prefsDraft.maxRadiusMiles);
+      if (prefsDraft.costPerStopCents !== undefined) body.costPerStopCents = pickNum(prefsDraft.costPerStopCents);
+      if (prefsDraft.stopMinutes !== undefined) body.stopMinutes = pickNum(prefsDraft.stopMinutes);
+      if (prefsDraft.costPerMinuteCents !== undefined) body.costPerMinuteCents = pickNum(prefsDraft.costPerMinuteCents);
+      if (prefsDraft.pingSuppliers !== undefined) body.pingSuppliers = Boolean(prefsDraft.pingSuppliers);
+      if (prefsDraft.allowSubstitutions !== undefined) body.allowSubstitutions = Boolean(prefsDraft.allowSubstitutions);
+
+      const res = await fetch("/api/supply/preferences", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to save preferences");
+      return data as SupplyPreferences;
+    },
+    onSuccess: () => {
+      toast({ title: "Preferences saved" });
+      setPrefsDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Save failed",
+        description: error?.message || "Unable to save preferences",
+        variant: "destructive",
+      });
+    },
+  });
+
   const requestDemand = useMutation({
     mutationFn: async () => {
       if (!selectedBuyerRestaurantId) throw new Error("Select a business first.");
@@ -164,18 +320,20 @@ export default function SuppliersPage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.message || "Failed to import order list");
-      return data;
+      return data as OrderListImportResult;
     },
-    onSuccess: (data: any) => {
-      const suppliers = Array.isArray(data?.suppliers) ? data.suppliers : [];
-      if (suppliers.length === 0) {
+    onSuccess: (data) => {
+      setImportResult(data);
+      setImportDialogOpen(true);
+      const suppliersOut = Array.isArray(data?.suppliers) ? data.suppliers : [];
+      if (suppliersOut.length === 0) {
         toast({
           title: "Imported",
           description: "No matching supplier deals found for that list yet.",
         });
         return;
       }
-      const top = suppliers[0];
+      const top = suppliersOut[0];
       toast({
         title: "Best match found",
         description: `${top?.supplier?.businessName || "Supplier"} can fulfill ${top.coverageCount} item(s).`,
@@ -192,110 +350,409 @@ export default function SuppliersPage() {
 
   return (
     <div className="min-h-screen pb-24">
-      <BackHeader title="Suppliers" fallbackHref="/map" />
+      <BackHeader title="Supply Marketplace" fallbackHref="/map" />
 
-      <div className="px-4 space-y-3">
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <div className="text-sm font-semibold">Search supplies</div>
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Try: lemons, cups, ice, tortillas..."
-            />
-
-            <div className="text-sm font-semibold">Your business (for local matches)</div>
-            {myRestaurants.length === 0 ? (
+      <div className="px-4 space-y-4">
+        <div className="rounded-xl border bg-gradient-to-br from-background to-muted/30 p-4 shadow-clean">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <div className="text-base font-semibold">Order supplies like a catalog</div>
               <div className="text-sm text-muted-foreground">
-                You don't have a business profile yet.
+                Search supplier products, request pickup or delivery, and upload order sheets to compare deals.
               </div>
-            ) : (
-              <select
-                className="w-full border rounded px-2 py-2 text-sm bg-background"
-                value={selectedBuyerRestaurantId}
-                onChange={(e) => setSelectedBuyerRestaurantId(e.target.value)}
-              >
-                {myRestaurants.map((biz) => (
-                  <option key={biz.id} value={biz.id}>
-                    {biz.name}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            <div className="text-sm font-semibold">Upload order list</div>
-            <div className="text-xs text-muted-foreground">
-              Upload CSV/TSV/XLSX with columns like: <code>sku</code> or <code>name</code>, and{" "}
-              <code>quantity</code>. We'll find which suppliers have the best deals.
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Badge variant="secondary" className="gap-1">
+                  <Zap className="h-3.5 w-3.5" />
+                  Fast requests
+                </Badge>
+                <Badge variant="secondary" className="gap-1">
+                  <Calculator className="h-3.5 w-3.5" />
+                  Best-deal planning
+                </Badge>
+                <Badge variant="secondary" className="gap-1">
+                  <Upload className="h-3.5 w-3.5" />
+                  Upload lists
+                </Badge>
+              </div>
             </div>
-            <input
-              type="file"
-              accept=".csv,.tsv,.xlsx"
-              onChange={(e) => setOrderListFile(e.target.files?.[0] || null)}
-            />
-            <Button
-              variant="outline"
-              disabled={!orderListFile || !selectedBuyerRestaurantId || importOrderList.isPending}
-              onClick={() => importOrderList.mutate()}
-            >
-              {importOrderList.isPending ? "Importing..." : "Find best deals"}
-            </Button>
-          </CardContent>
-        </Card>
 
-        {showSearch ? (
-          isSearchLoading ? (
-            <p className="text-sm text-muted-foreground">Searching...</p>
-          ) : supplyMatches.length === 0 ? (
-            <Card>
-              <CardContent className="p-4 space-y-2">
-                <div className="font-semibold">No matches</div>
-                <div className="text-sm text-muted-foreground">
-                  If we don't have it listed yet, you can request it and we'll notify local suppliers.
-                </div>
-                <Button
-                  disabled={!trimmedQ || requestDemand.isPending}
-                  onClick={() => requestDemand.mutate()}
-                >
-                  Request "{trimmedQ}"
+            <Dialog open={prefsDialogOpen} onOpenChange={setPrefsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="shrink-0 gap-2">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Preferences
                 </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {groupedMatches.map(({ supplier, rows }) => (
-                <Card key={supplier.id}>
-                  <CardContent className="p-4 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="font-semibold">{supplier.businessName}</div>
-                      <Link href={`/suppliers/${supplier.id}`}>
-                        <Button size="sm" variant="outline">
-                          View
-                        </Button>
-                      </Link>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <DialogHeaderUI>
+                  <DialogTitleUI>Preferences</DialogTitleUI>
+                  <DialogDescriptionUI>
+                    Make recommendations match your radius, stops, and stop cost.
+                  </DialogDescriptionUI>
+                </DialogHeaderUI>
+
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label>Max stops</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={5}
+                        value={String(prefsDraft.maxStops ?? "")}
+                        onChange={(e) =>
+                          setPrefsDraft((p) => ({
+                            ...p,
+                            maxStops: Number(e.target.value || 0) || 1,
+                          }))
+                        }
+                      />
                     </div>
                     <div className="space-y-1">
-                      {rows.slice(0, 6).map((r) => (
-                        <div key={r.product.id} className="text-sm flex justify-between gap-3">
-                          <div className="truncate">{r.product.name}</div>
-                          <div className="text-muted-foreground whitespace-nowrap">
-                            {formatMoney(r.product.priceCents)}
-                            {r.product.unitLabel ? ` / ${r.product.unitLabel}` : ""}
-                          </div>
-                        </div>
-                      ))}
-                      {rows.length > 6 ? (
-                        <div className="text-xs text-muted-foreground">
-                          +{rows.length - 6} more
-                        </div>
-                      ) : null}
+                      <Label>Max radius (miles)</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={250}
+                        value={String(prefsDraft.maxRadiusMiles ?? "")}
+                        onChange={(e) =>
+                          setPrefsDraft((p) => ({
+                            ...p,
+                            maxRadiusMiles: Number(e.target.value || 0) || 20,
+                          }))
+                        }
+                      />
                     </div>
+                  </div>
+
+                  <div className="rounded-lg border p-3 space-y-2">
+                    <div className="text-sm font-medium">Minutes-based stop cost</div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label>Stop minutes</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={240}
+                          value={String(prefsDraft.stopMinutes ?? "")}
+                          onChange={(e) =>
+                            setPrefsDraft((p) => ({
+                              ...p,
+                              stopMinutes: Number(e.target.value || 0) || 0,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Cost/min (cents)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={5000}
+                          value={String(prefsDraft.costPerMinuteCents ?? "")}
+                          onChange={(e) =>
+                            setPrefsDraft((p) => ({
+                              ...p,
+                              costPerMinuteCents: Number(e.target.value || 0) || 0,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Effective stop cost:{" "}
+                      <span className="font-medium">
+                        {formatMoney(
+                          Math.max(
+                            0,
+                            Math.round(
+                              Number(prefsDraft.stopMinutes || 0) *
+                                Number(prefsDraft.costPerMinuteCents || 0),
+                            ),
+                          ),
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <div className="text-sm font-medium">Ping suppliers for missing items</div>
+                      <div className="text-xs text-muted-foreground">
+                        If we can’t match an item, notify local suppliers it’s in demand.
+                      </div>
+                    </div>
+                    <Switch
+                      checked={Boolean(prefsDraft.pingSuppliers ?? true)}
+                      onCheckedChange={(v) =>
+                        setPrefsDraft((p) => ({ ...p, pingSuppliers: Boolean(v) }))
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <div className="text-sm font-medium">Allow substitutions</div>
+                      <div className="text-xs text-muted-foreground">
+                        Match close items when exact names aren’t listed.
+                      </div>
+                    </div>
+                    <Switch
+                      checked={Boolean(prefsDraft.allowSubstitutions ?? true)}
+                      onCheckedChange={(v) =>
+                        setPrefsDraft((p) => ({ ...p, allowSubstitutions: Boolean(v) }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setPrefsDialogOpen(false)}
+                    disabled={savePreferences.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={() => savePreferences.mutate()} disabled={savePreferences.isPending}>
+                    {savePreferences.isPending ? "Saving..." : "Save"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+
+        <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+          <TabsList className="w-full">
+            <TabsTrigger value="catalog" className="flex-1">
+              Catalog
+            </TabsTrigger>
+            <TabsTrigger value="import" className="flex-1">
+              Best-deal import
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="catalog">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Search</CardTitle>
+                <CardDescription>Find items across supplier catalogs.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Try: lemons, cups, ice, tortillas..."
+                />
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label>Your business</Label>
+                    <div className="text-xs text-muted-foreground">Used for local ranking</div>
+                  </div>
+                  {myRestaurants.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">
+                      You don't have a business profile yet.
+                    </div>
+                  ) : (
+                    <select
+                      className="w-full border rounded px-2 py-2 text-sm bg-background"
+                      value={selectedBuyerRestaurantId}
+                      onChange={(e) => setSelectedBuyerRestaurantId(e.target.value)}
+                    >
+                      {myRestaurants.map((biz) => (
+                        <option key={biz.id} value={biz.id}>
+                          {biz.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="import">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Upload an order list</CardTitle>
+                <CardDescription>
+                  CSV/TSV/XLSX with <code>sku</code> or <code>name</code> and{" "}
+                  <code>quantity</code>.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label>Your business</Label>
+                    <div className="text-xs text-muted-foreground">Used for local ranking</div>
+                  </div>
+                  {myRestaurants.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">
+                      You don't have a business profile yet.
+                    </div>
+                  ) : (
+                    <select
+                      className="w-full border rounded px-2 py-2 text-sm bg-background"
+                      value={selectedBuyerRestaurantId}
+                      onChange={(e) => setSelectedBuyerRestaurantId(e.target.value)}
+                    >
+                      {myRestaurants.map((biz) => (
+                        <option key={biz.id} value={biz.id}>
+                          {biz.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>File</Label>
+                  <input
+                    type="file"
+                    accept=".csv,.tsv,.xlsx"
+                    onChange={(e) => setOrderListFile(e.target.files?.[0] || null)}
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    disabled={!orderListFile || !selectedBuyerRestaurantId || importOrderList.isPending}
+                    onClick={() => importOrderList.mutate()}
+                    className="gap-2"
+                  >
+                    <Upload className="h-4 w-4" />
+                    {importOrderList.isPending ? "Importing..." : "Find best deals"}
+                  </Button>
+                  {importResult ? (
+                    <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                      View results
+                    </Button>
+                  ) : null}
+                </div>
+
+                {importResult?.plan ? (
+                  <div className="rounded-lg border p-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium">
+                        Recommended:{" "}
+                        {importResult.plan.type === "one_stop" ? "1 stop" : "2 stops"}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {importResult.plan.suppliers.map((s) => s.businessName).join(" + ")}
+                      </div>
+                    </div>
+                    <div className="text-sm font-semibold whitespace-nowrap">
+                      {formatMoney(importResult.plan.totalCents)}
+                    </div>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {tab === "catalog" ? (
+          <>
+            {showSearch ? (
+              isSearchLoading ? (
+                <div className="text-sm text-muted-foreground">Searching…</div>
+              ) : supplyMatches.length === 0 ? (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">No matches yet</CardTitle>
+                    <CardDescription>
+                      Request it and we'll notify local suppliers to list it.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex items-center justify-between gap-3">
+                    <div className="text-sm text-muted-foreground truncate">
+                      Item: <span className="font-medium text-foreground">{trimmedQ}</span>
+                    </div>
+                    <Button
+                      disabled={!trimmedQ || requestDemand.isPending}
+                      onClick={() => requestDemand.mutate()}
+                    >
+                      {requestDemand.isPending ? "Requesting…" : "Request item"}
+                    </Button>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
-          )
-        ) : null}
+              ) : (
+                <div className="space-y-3">
+                  {groupedMatches.map(({ supplier, rows }) => {
+                    const location = [supplier.address, supplier.city, supplier.state]
+                      .map((v) => (v || "").trim())
+                      .filter(Boolean)
+                      .join(", ");
+                    const bestDistance =
+                      rows
+                        .map((r) => r.distanceMiles)
+                        .filter((d): d is number => typeof d === "number" && Number.isFinite(d))
+                        .sort((a, b) => a - b)[0] ?? null;
+                    return (
+                      <Card key={supplier.id}>
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <CardTitle className="text-lg truncate">
+                                  {supplier.businessName}
+                                </CardTitle>
+                                <Badge variant="secondary">
+                                  {supplier.offersDelivery ? "Delivery" : "Pickup"}
+                                </Badge>
+                                {bestDistance !== null ? (
+                                  <Badge variant="outline">{formatMiles(bestDistance)}</Badge>
+                                ) : null}
+                              </div>
+                              {location ? (
+                                <CardDescription className="truncate">{location}</CardDescription>
+                              ) : null}
+                            </div>
+                            <Link href={`/suppliers/${supplier.id}`}>
+                              <Button size="sm" className="shrink-0">
+                                Shop
+                              </Button>
+                            </Link>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {rows.slice(0, 6).map((r) => (
+                              <div
+                                key={r.product.id}
+                                className="flex items-center justify-between gap-3 rounded-md border p-3"
+                              >
+                                <div className="min-w-0">
+                                  <div className="text-sm font-medium truncate">
+                                    {r.product.name}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground truncate">
+                                    {r.product.sku ? `SKU ${r.product.sku}` : "—"}
+                                  </div>
+                                </div>
+                                <div className="text-sm font-semibold whitespace-nowrap">
+                                  {formatMoney(r.product.priceCents)}
+                                  <span className="text-xs text-muted-foreground">
+                                    {r.product.unitLabel ? ` / ${r.product.unitLabel}` : ""}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          {rows.length > 6 ? (
+                            <div className="text-xs text-muted-foreground">
+                              +{rows.length - 6} more matches
+                            </div>
+                          ) : null}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )
+            ) : null}
 
         {!showSearch ? (
           isLoading ? (
@@ -309,33 +766,145 @@ export default function SuppliersPage() {
               No suppliers yet. Check back soon.
             </p>
           ) : (
-            suppliers.map((supplier) => {
-              const location = [supplier.address, supplier.city, supplier.state]
-                .map((v) => (v || "").trim())
-                .filter(Boolean)
-                .join(", ");
-              return (
-                <Link key={supplier.id} href={`/suppliers/${supplier.id}`}>
-                  <Card className="cursor-pointer hover:opacity-90 transition">
-                    <CardContent className="p-4 flex items-start gap-3">
-                      <div className="mt-1">
-                        <Building2 className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-semibold">{supplier.businessName}</div>
-                        {location ? (
-                          <div className="text-xs text-muted-foreground">
-                            {location}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {suppliers.map((supplier) => {
+                const location = [supplier.address, supplier.city, supplier.state]
+                  .map((v) => (v || "").trim())
+                  .filter(Boolean)
+                  .join(", ");
+                return (
+                  <Link key={supplier.id} href={`/suppliers/${supplier.id}`}>
+                    <Card className="cursor-pointer hover:opacity-90 transition">
+                      <CardContent className="p-4 flex items-start gap-3">
+                        <div className="mt-1">
+                          <Building2 className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="font-semibold truncate">{supplier.businessName}</div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {location || "—"}
                           </div>
-                        ) : null}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })
+                          <div className="pt-1">
+                            <Badge variant="secondary">
+                              {supplier.offersDelivery ? "Delivery" : "Pickup"}
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
+            </div>
           )
         ) : null}
+          </>
+        ) : null}
+
+        <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeaderUI>
+              <DialogTitleUI>Best-deal results</DialogTitleUI>
+              <DialogDescriptionUI>
+                Ranked by coverage first, then subtotal. Stop cost is included in the recommendation.
+              </DialogDescriptionUI>
+            </DialogHeaderUI>
+
+            {!importResult ? (
+              <div className="text-sm text-muted-foreground">No results yet.</div>
+            ) : (
+              <div className="grid gap-4 lg:grid-cols-2">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Recommended plan</CardTitle>
+                    <CardDescription>
+                      {importResult.plan
+                        ? importResult.plan.type === "one_stop"
+                          ? "All items covered by one supplier."
+                          : "Splitting stops can be cheaper after stop cost."
+                        : "No full-coverage plan yet."}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {importResult.plan ? (
+                      <>
+                        <div className="flex flex-wrap gap-2">
+                          {importResult.plan.suppliers.map((s) => (
+                            <Link key={s.id} href={`/suppliers/${s.id}`}>
+                              <Badge className="cursor-pointer">{s.businessName}</Badge>
+                            </Link>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="rounded-md border p-3">
+                            <div className="text-xs text-muted-foreground">Subtotal</div>
+                            <div className="font-semibold">
+                              {formatMoney(importResult.plan.subtotalCents)}
+                            </div>
+                          </div>
+                          <div className="rounded-md border p-3">
+                            <div className="text-xs text-muted-foreground">Stop cost</div>
+                            <div className="font-semibold">
+                              {formatMoney(importResult.plan.stopCostCents)}
+                            </div>
+                          </div>
+                          <div className="rounded-md border p-3">
+                            <div className="text-xs text-muted-foreground">Total</div>
+                            <div className="font-semibold">
+                              {formatMoney(importResult.plan.totalCents)}
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        Try enabling substitutions or increasing your radius.
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Top suppliers</CardTitle>
+                    <CardDescription>Open a supplier to place a request.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-[320px] pr-3">
+                      <div className="space-y-2">
+                        {importResult.suppliers.slice(0, 15).map((s) => (
+                          <Link key={s.supplierId} href={`/suppliers/${s.supplierId}`}>
+                            <div className="rounded-md border p-3 cursor-pointer hover:opacity-90 transition">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="text-sm font-medium truncate">
+                                    {s.supplier.businessName}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    Covers {s.coverageCount} • Missing {s.missingCount}
+                                  </div>
+                                </div>
+                                <div className="text-sm font-semibold whitespace-nowrap">
+                                  {formatMoney(s.subtotalCents)}
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setImportDialogOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Navigation />

@@ -3,10 +3,18 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import Navigation from "@/components/navigation";
 import { BackHeader } from "@/components/back-header";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Minus, Plus, Truck } from "lucide-react";
 
 type Supplier = {
   id: string;
@@ -41,6 +49,7 @@ export default function SupplierDetailPage() {
   const { supplierId } = useParams();
   const { toast } = useToast();
   const [pickupNote, setPickupNote] = useState("");
+  const [productQ, setProductQ] = useState("");
   const [selectedBuyerRestaurantId, setSelectedBuyerRestaurantId] =
     useState<string>("");
   const [requestedFulfillment, setRequestedFulfillment] = useState<
@@ -87,6 +96,16 @@ export default function SupplierDetailPage() {
     staleTime: 60_000,
     gcTime: 10 * 60_000,
   });
+
+  const filteredProducts = useMemo(() => {
+    const q = productQ.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => {
+      const name = String(p.name || "").toLowerCase();
+      const desc = String(p.description || "").toLowerCase();
+      return name.includes(q) || (desc && desc.includes(q));
+    });
+  }, [products, productQ]);
 
   const { data: myRestaurants = [] } = useQuery<Restaurant[]>({
     queryKey: ["/api/restaurants/my-restaurants"],
@@ -276,7 +295,32 @@ export default function SupplierDetailPage() {
 
       <div className="px-4 space-y-4">
         <Card>
-          <CardContent className="p-4 space-y-3">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Request settings</CardTitle>
+            <CardDescription>
+              Choose your business, fulfillment, and payment preference.
+            </CardDescription>
+            <div className="flex flex-wrap gap-2 pt-2">
+              <Badge variant="secondary">Pickup</Badge>
+              {supplier?.offersDelivery ? (
+                <Badge variant="secondary" className="gap-1">
+                  <Truck className="h-3.5 w-3.5" />
+                  Delivery available
+                </Badge>
+              ) : null}
+              {supplier?.offersDelivery && (supplier.deliveryFeeCents || 0) > 0 ? (
+                <Badge variant="outline">
+                  Delivery fee {formatMoney(Number(supplier.deliveryFeeCents || 0))}
+                </Badge>
+              ) : null}
+              {supplier?.offersDelivery && (supplier.deliveryMinOrderCents || 0) > 0 ? (
+                <Badge variant="outline">
+                  Min {formatMoney(Number(supplier.deliveryMinOrderCents || 0))}
+                </Badge>
+              ) : null}
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-0 space-y-3">
             <div className="text-sm font-semibold">Your business</div>
             {myTrucks.length === 0 ? (
               <div className="text-sm text-muted-foreground">
@@ -411,12 +455,14 @@ export default function SupplierDetailPage() {
         </Card>
 
         <Card>
-          <CardContent className="p-4 space-y-3">
-            <div className="text-sm font-semibold">Upload order sheet</div>
-            <div className="text-xs text-muted-foreground">
-              Upload a CSV/TSV/XLSX with columns like: `sku` or `name`, and
-              `quantity`.
-            </div>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Upload an order sheet</CardTitle>
+            <CardDescription>
+              CSV/TSV/XLSX with columns like <code>sku</code> or <code>name</code> and{" "}
+              <code>quantity</code>.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 pt-0 space-y-3">
             <input
               type="file"
               accept=".csv,.tsv,.xlsx"
@@ -432,54 +478,114 @@ export default function SupplierDetailPage() {
               }
               onClick={() => importRequest.mutate()}
             >
-              {importRequest.isPending ? "Importing..." : "Import request"}
+              {importRequest.isPending ? "Importing..." : "Import to cart"}
             </Button>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4 space-y-3">
-            <div className="text-sm font-semibold">Products</div>
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <CardTitle className="text-lg">Products</CardTitle>
+                <CardDescription>
+                  Search and add quantities to build your request.
+                </CardDescription>
+              </div>
+              <Badge variant="secondary" className="shrink-0">
+                {filteredProducts.length}/{products.length}
+              </Badge>
+            </div>
+            <div className="pt-2">
+              <Input
+                value={productQ}
+                onChange={(e) => setProductQ(e.target.value)}
+                placeholder="Search this catalog…"
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
             {isProductsLoading ? (
-              <div className="text-sm text-muted-foreground">Loading...</div>
+              <div className="text-sm text-muted-foreground">Loading…</div>
             ) : products.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No products available.</div>
+            ) : filteredProducts.length === 0 ? (
               <div className="text-sm text-muted-foreground">
-                No products available.
+                No matches for <span className="font-medium">{productQ.trim()}</span>.
               </div>
             ) : (
-              <div className="space-y-3">
-                {products.map((product) => {
+              <div className="grid gap-3 sm:grid-cols-2">
+                {filteredProducts.map((product) => {
                   const qty = quantities[product.id] || 0;
+                  const pickupOnly = product.deliveryEligible === false;
                   return (
-                    <div
-                      key={product.id}
-                      className="flex items-start justify-between gap-3"
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium">{product.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatMoney(product.priceCents)}
-                          {product.unitLabel ? ` / ${product.unitLabel}` : ""}
-                        </div>
-                        {product.description ? (
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {product.description}
+                    <div key={product.id} className="rounded-lg border p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{product.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatMoney(product.priceCents)}
+                            {product.unitLabel ? ` / ${product.unitLabel}` : ""}
                           </div>
+                        </div>
+                        {pickupOnly ? (
+                          <Badge variant="outline" className="shrink-0">
+                            Pickup only
+                          </Badge>
                         ) : null}
                       </div>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={qty}
-                        onChange={(e) => {
-                          const next = Number(e.target.value || 0);
-                          setQuantities((prev) => ({
-                            ...prev,
-                            [product.id]: Number.isFinite(next) ? next : 0,
-                          }));
-                        }}
-                        className="w-20"
-                      />
+
+                      {product.description ? (
+                        <div className="text-xs text-muted-foreground">
+                          {product.description}
+                        </div>
+                      ) : null}
+
+                      <div className="flex items-center justify-between gap-3 pt-1">
+                        <div className="text-xs text-muted-foreground">Quantity</div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() =>
+                              setQuantities((prev) => ({
+                                ...prev,
+                                [product.id]: Math.max(0, (prev[product.id] || 0) - 1),
+                              }))
+                            }
+                            disabled={qty <= 0}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={qty}
+                            onChange={(e) => {
+                              const next = Math.max(0, Math.floor(Number(e.target.value || 0)));
+                              setQuantities((prev) => ({
+                                ...prev,
+                                [product.id]: Number.isFinite(next) ? next : 0,
+                              }));
+                            }}
+                            className="w-20 text-center"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() =>
+                              setQuantities((prev) => ({
+                                ...prev,
+                                [product.id]: (prev[product.id] || 0) + 1,
+                              }))
+                            }
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   );
                 })}

@@ -358,6 +358,7 @@ export const supplierProducts = pgTable(
       .references(() => suppliers.id, { onDelete: "cascade" }),
     name: varchar("name").notNull(),
     description: text("description"),
+    sku: varchar("sku"),
     priceCents: integer("price_cents").notNull().default(0),
     unitLabel: varchar("unit_label"),
     imageUrl: text("image_url"),
@@ -369,6 +370,68 @@ export const supplierProducts = pgTable(
     index("idx_supplier_products_supplier").on(table.supplierId),
     index("idx_supplier_products_active").on(table.isActive),
   ],
+);
+
+export const supplierRequests = pgTable(
+  "supplier_requests",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    supplierId: varchar("supplier_id")
+      .notNull()
+      .references(() => suppliers.id, { onDelete: "cascade" }),
+    buyerRestaurantId: varchar("buyer_restaurant_id")
+      .notNull()
+      .references(() => restaurants.id, { onDelete: "restrict" }),
+    status: varchar("status").notNull().default("submitted"), // 'submitted' | 'accepted' | 'declined' | 'cancelled'
+    requestedFulfillment: varchar("requested_fulfillment")
+      .notNull()
+      .default("pickup"), // 'pickup'
+    paymentPreference: varchar("payment_preference")
+      .notNull()
+      .default("offsite"), // 'offsite' | 'in_person'
+    note: text("note"),
+    acceptedAt: timestamp("accepted_at"),
+    acceptedBy: varchar("accepted_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    declinedAt: timestamp("declined_at"),
+    declinedBy: varchar("declined_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    declineReason: text("decline_reason"),
+    orderId: varchar("order_id").references(() => supplierOrders.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_supplier_requests_supplier").on(table.supplierId),
+    index("idx_supplier_requests_buyer").on(table.buyerRestaurantId),
+    index("idx_supplier_requests_status").on(table.status),
+  ],
+);
+
+export const supplierRequestItems = pgTable(
+  "supplier_request_items",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    requestId: varchar("request_id")
+      .notNull()
+      .references(() => supplierRequests.id, { onDelete: "cascade" }),
+    productId: varchar("product_id").references(() => supplierProducts.id, {
+      onDelete: "set null",
+    }),
+    itemName: varchar("item_name"),
+    quantity: integer("quantity").notNull().default(1),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [index("idx_supplier_request_items_request").on(table.requestId)],
 );
 
 export const supplierOrders = pgTable(

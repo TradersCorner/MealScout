@@ -19,7 +19,6 @@ type SupplierProduct = {
 type Restaurant = {
   id: string;
   name: string;
-  isFoodTruck?: boolean | null;
 };
 
 const formatMoney = (cents: number) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
@@ -28,8 +27,13 @@ export default function SupplierDetailPage() {
   const { supplierId } = useParams();
   const { toast } = useToast();
   const [pickupNote, setPickupNote] = useState("");
-  const [selectedTruckId, setSelectedTruckId] = useState<string>("");
+  const [selectedBuyerRestaurantId, setSelectedBuyerRestaurantId] =
+    useState<string>("");
+  const [paymentPreference, setPaymentPreference] = useState<
+    "offsite" | "in_person"
+  >("offsite");
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [importFile, setImportFile] = useState<File | null>(null);
 
   const { data: products = [], isLoading: isProductsLoading } = useQuery<
     SupplierProduct[]
@@ -61,7 +65,7 @@ export default function SupplierDetailPage() {
   });
 
   const myTrucks = useMemo(
-    () => myRestaurants.filter((r) => Boolean((r as any).isFoodTruck)),
+    () => myRestaurants,
     [myRestaurants],
   );
 
@@ -88,17 +92,17 @@ export default function SupplierDetailPage() {
     );
   }, [cartItems]);
 
-  const placeOrder = useMutation({
+  const submitRequest = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/supplier-orders", {
+      const res = await fetch("/api/supplier-requests", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           supplierId,
-          truckRestaurantId: selectedTruckId,
-          paymentMethod: "offsite",
-          pickupNote: pickupNote.trim() || null,
+          buyerRestaurantId: selectedBuyerRestaurantId,
+          paymentPreference,
+          note: pickupNote.trim() || null,
           items: cartItems.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
@@ -106,21 +110,57 @@ export default function SupplierDetailPage() {
         }),
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.message || "Failed to place order");
+      if (!res.ok) throw new Error(data?.message || "Failed to submit request");
       return data;
     },
     onSuccess: () => {
       setQuantities({});
       setPickupNote("");
       toast({
-        title: "Order placed",
-        description: "Your pickup order was sent to the supplier.",
+        title: "Request sent",
+        description: "Your request was sent to the supplier.",
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Order failed",
-        description: error?.message || "Unable to place order",
+        title: "Request failed",
+        description: error?.message || "Unable to send request",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const importRequest = useMutation({
+    mutationFn: async () => {
+      if (!importFile) throw new Error("Select a file");
+      const form = new FormData();
+      form.set("file", importFile);
+      form.set("supplierId", String(supplierId || ""));
+      form.set("buyerRestaurantId", selectedBuyerRestaurantId);
+      form.set("paymentPreference", paymentPreference);
+      form.set("note", pickupNote.trim());
+
+      const res = await fetch("/api/supplier-requests/import", {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to import request");
+      return data;
+    },
+    onSuccess: (data: any) => {
+      setImportFile(null);
+      setQuantities({});
+      toast({
+        title: "Request imported",
+        description: `Created request with ${Number(data?.items ?? 0)} items.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Import failed",
+        description: error?.message || "Unable to import request",
         variant: "destructive",
       });
     },
@@ -133,31 +173,69 @@ export default function SupplierDetailPage() {
       <div className="px-4 space-y-4">
         <Card>
           <CardContent className="p-4 space-y-3">
-            <div className="text-sm font-semibold">Your truck</div>
+            <div className="text-sm font-semibold">Your business</div>
             {myTrucks.length === 0 ? (
               <div className="text-sm text-muted-foreground">
-                You don’t have a food truck profile yet.
+                You don’t have a business profile yet.
               </div>
             ) : (
               <select
                 className="w-full border rounded px-2 py-2 text-sm bg-background"
-                value={selectedTruckId}
-                onChange={(e) => setSelectedTruckId(e.target.value)}
+                value={selectedBuyerRestaurantId}
+                onChange={(e) => setSelectedBuyerRestaurantId(e.target.value)}
               >
-                <option value="">Select a truck…</option>
-                {myTrucks.map((truck) => (
-                  <option key={truck.id} value={truck.id}>
-                    {truck.name}
+                <option value="">Select a business…</option>
+                {myTrucks.map((biz) => (
+                  <option key={biz.id} value={biz.id}>
+                    {biz.name}
                   </option>
                 ))}
               </select>
             )}
+
+            <div className="text-sm font-semibold">Payment preference</div>
+            <select
+              className="w-full border rounded px-2 py-2 text-sm bg-background"
+              value={paymentPreference}
+              onChange={(e) =>
+                setPaymentPreference(e.target.value as "offsite" | "in_person")
+              }
+            >
+              <option value="offsite">Pay offsite</option>
+              <option value="in_person">Pay in person</option>
+            </select>
             <div className="text-sm font-semibold">Pickup note</div>
             <Input
               value={pickupNote}
               onChange={(e) => setPickupNote(e.target.value)}
               placeholder="Optional note for the supplier"
             />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="text-sm font-semibold">Upload order sheet</div>
+            <div className="text-xs text-muted-foreground">
+              Upload a CSV/TSV/XLSX with columns like: `sku` or `name`, and
+              `quantity`.
+            </div>
+            <input
+              type="file"
+              accept=".csv,.tsv,.xlsx"
+              onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+            />
+            <Button
+              variant="outline"
+              disabled={
+                importRequest.isPending ||
+                !importFile ||
+                !selectedBuyerRestaurantId
+              }
+              onClick={() => importRequest.mutate()}
+            >
+              {importRequest.isPending ? "Importing…" : "Import request"}
+            </Button>
           </CardContent>
         </Card>
 
@@ -220,14 +298,14 @@ export default function SupplierDetailPage() {
             </div>
             <Button
               disabled={
-                placeOrder.isPending ||
-                !selectedTruckId ||
+                submitRequest.isPending ||
+                !selectedBuyerRestaurantId ||
                 cartItems.length === 0 ||
                 subtotalCents <= 0
               }
-              onClick={() => placeOrder.mutate()}
+              onClick={() => submitRequest.mutate()}
             >
-              {placeOrder.isPending ? "Placing…" : "Place order"}
+              {submitRequest.isPending ? "Sending…" : "Send request"}
             </Button>
           </CardContent>
         </Card>

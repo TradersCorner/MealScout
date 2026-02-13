@@ -32,6 +32,14 @@ type SupplierOrder = {
   createdAt?: string;
 };
 
+type SupplierRequest = {
+  id: string;
+  status: string;
+  paymentPreference: string;
+  note?: string | null;
+  createdAt?: string;
+};
+
 const formatMoney = (cents: number) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
 
 export default function SupplierDashboardPage() {
@@ -42,6 +50,7 @@ export default function SupplierDashboardPage() {
     priceDollars: "",
     unitLabel: "",
   });
+  const [importFile, setImportFile] = useState<File | null>(null);
 
   const { data: supplier, isError: isSupplierError } = useQuery<Supplier>({
     queryKey: ["/api/supplier/me"],
@@ -85,6 +94,21 @@ export default function SupplierDashboardPage() {
     enabled: !isSupplierError,
   });
 
+  const { data: requests = [] } = useQuery<SupplierRequest[]>({
+    queryKey: ["/api/supplier/requests"],
+    queryFn: async () => {
+      const res = await fetch("/api/supplier/requests", {
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to load requests");
+      return data;
+    },
+    staleTime: 10_000,
+    gcTime: 10 * 60_000,
+    enabled: !isSupplierError,
+  });
+
   const createProduct = useMutation({
     mutationFn: async () => {
       const price = Number(newProduct.priceDollars);
@@ -115,6 +139,61 @@ export default function SupplierDashboardPage() {
       toast({
         title: "Create failed",
         description: error?.message || "Unable to create product",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const importProducts = useMutation({
+    mutationFn: async () => {
+      if (!importFile) throw new Error("Select a file");
+      const form = new FormData();
+      form.set("file", importFile);
+      const res = await fetch("/api/supplier/products/import", {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to import products");
+      return data;
+    },
+    onSuccess: (data: any) => {
+      setImportFile(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/products"] });
+      toast({
+        title: "Import complete",
+        description: `Imported ${Number(data?.imported ?? 0)} items.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Import failed",
+        description: error?.message || "Unable to import products",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const acceptRequest = useMutation({
+    mutationFn: async ({ requestId }: { requestId: string }) => {
+      const res = await fetch(`/api/supplier/requests/${requestId}/accept`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to accept request");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/orders"] });
+      toast({ title: "Request accepted" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Accept failed",
+        description: error?.message || "Unable to accept request",
         variant: "destructive",
       });
     },
@@ -209,6 +288,69 @@ export default function SupplierDashboardPage() {
                 >
                   {createProduct.isPending ? "Saving…" : "Create"}
                 </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="text-sm font-semibold">Import products</div>
+                <div className="text-xs text-muted-foreground">
+                  Upload CSV/TSV/XLSX. Required column: `name`. Optional: `sku`,
+                  `price` (dollars) or `price_cents`, `unit_label`, `description`,
+                  `active`.
+                </div>
+                <input
+                  type="file"
+                  accept=".csv,.tsv,.xlsx"
+                  onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                />
+                <Button
+                  variant="outline"
+                  disabled={importProducts.isPending || !importFile}
+                  onClick={() => importProducts.mutate()}
+                >
+                  {importProducts.isPending ? "Importing…" : "Import"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="text-sm font-semibold">Requests</div>
+                {requests.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">
+                    No requests yet.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {requests.map((r) => (
+                      <div key={r.id} className="border rounded p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="text-xs text-muted-foreground">
+                            {r.paymentPreference}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {r.status}
+                          </div>
+                        </div>
+                        {r.note ? (
+                          <div className="text-sm">{r.note}</div>
+                        ) : null}
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            disabled={
+                              acceptRequest.isPending || r.status !== "submitted"
+                            }
+                            onClick={() => acceptRequest.mutate({ requestId: r.id })}
+                          >
+                            Accept
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 

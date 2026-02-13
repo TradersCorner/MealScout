@@ -202,6 +202,7 @@ export default function Navigation() {
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/deal-creation", icon: Plus, label: "Create Special" },
     { path: "/subscription", icon: BarChart3, label: "Subscription" },
+    { path: "/suppliers", icon: Store, label: "Supplies" },
   ];
 
   const bugNavItem: NavItem = {

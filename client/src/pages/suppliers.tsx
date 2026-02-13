@@ -42,6 +42,7 @@ const formatMoney = (cents: number) => `$${(Number(cents || 0) / 100).toFixed(2)
 export default function SuppliersPage() {
   const { toast } = useToast();
   const [q, setQ] = useState("");
+  const [orderListFile, setOrderListFile] = useState<File | null>(null);
   const [selectedBuyerRestaurantId, setSelectedBuyerRestaurantId] =
     useState<string>("");
 
@@ -149,6 +150,46 @@ export default function SuppliersPage() {
     },
   });
 
+  const importOrderList = useMutation({
+    mutationFn: async () => {
+      if (!orderListFile) throw new Error("Choose an order list file first.");
+      if (!selectedBuyerRestaurantId) throw new Error("Select a business first.");
+      const form = new FormData();
+      form.append("file", orderListFile);
+      form.append("buyerRestaurantId", selectedBuyerRestaurantId);
+      const res = await fetch("/api/supply/order-list/import", {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to import order list");
+      return data;
+    },
+    onSuccess: (data: any) => {
+      const suppliers = Array.isArray(data?.suppliers) ? data.suppliers : [];
+      if (suppliers.length === 0) {
+        toast({
+          title: "Imported",
+          description: "No matching supplier deals found for that list yet.",
+        });
+        return;
+      }
+      const top = suppliers[0];
+      toast({
+        title: "Best match found",
+        description: `${top?.supplier?.businessName || "Supplier"} can fulfill ${top.coverageCount} item(s).`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Import failed",
+        description: error?.message || "Unable to import order list",
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <div className="min-h-screen pb-24">
       <BackHeader title="Suppliers" fallbackHref="/map" />
@@ -162,14 +203,6 @@ export default function SuppliersPage() {
               onChange={(e) => setQ(e.target.value)}
               placeholder="Try: lemons, cups, ice, tortillas..."
             />
-
-            <div className="flex gap-2">
-              <Link href="/supplies/receipts">
-                <Button size="sm" variant="outline">
-                  Upload receipts
-                </Button>
-              </Link>
-            </div>
 
             <div className="text-sm font-semibold">Your business (for local matches)</div>
             {myRestaurants.length === 0 ? (
@@ -189,6 +222,24 @@ export default function SuppliersPage() {
                 ))}
               </select>
             )}
+
+            <div className="text-sm font-semibold">Upload order list</div>
+            <div className="text-xs text-muted-foreground">
+              Upload CSV/TSV/XLSX with columns like: <code>sku</code> or <code>name</code>, and{" "}
+              <code>quantity</code>. We'll find which suppliers have the best deals.
+            </div>
+            <input
+              type="file"
+              accept=".csv,.tsv,.xlsx"
+              onChange={(e) => setOrderListFile(e.target.files?.[0] || null)}
+            />
+            <Button
+              variant="outline"
+              disabled={!orderListFile || !selectedBuyerRestaurantId || importOrderList.isPending}
+              onClick={() => importOrderList.mutate()}
+            >
+              {importOrderList.isPending ? "Importing..." : "Find best deals"}
+            </Button>
           </CardContent>
         </Card>
 

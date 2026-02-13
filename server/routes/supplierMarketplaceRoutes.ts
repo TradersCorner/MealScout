@@ -9,8 +9,6 @@ import {
   supplierProducts,
   supplierRequests,
   supplierRequestItems,
-  supplyReceiptItems,
-  supplyReceipts,
   supplyDemandNotifications,
   supplyDemands,
   suppliers,
@@ -20,7 +18,6 @@ import { isAuthenticated, isStaffOrAdmin, isSupplierOrAdmin } from "../unifiedAu
 import multer from "multer";
 import { parseTabularFile } from "../utils/tabularImport";
 import { emailService } from "../emailService";
-import { isCloudinaryConfigured, uploadToCloudinary } from "../imageUpload";
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -113,6 +110,46 @@ async function findLocalSuppliersForBuyer(buyerRestaurant: any) {
     .sort((a, b) => a.distanceMiles - b.distanceMiles)
     .slice(0, limit)
     .map((r) => r.supplier);
+}
+
+async function searchSupplierProductsForTerms(params: {
+  terms: string[];
+  buyerRestaurant: any | null;
+  limit: number;
+}) {
+  const terms = params.terms
+    .map((t) => String(t || "").trim())
+    .filter(Boolean)
+    .slice(0, 100);
+  if (terms.length === 0) return [];
+
+  const conditions: any[] = [
+    eq(supplierProducts.isActive, true),
+    eq(suppliers.isActive, true),
+  ];
+
+  const buyerState = params.buyerRestaurant
+    ? String((params.buyerRestaurant as any).state || "").trim()
+    : "";
+  if (buyerState) conditions.push(eq(suppliers.state, buyerState));
+
+  const orConditions: any[] = [];
+  for (const t of terms) {
+    orConditions.push(ilike(supplierProducts.name, `%${t}%`));
+    orConditions.push(ilike(supplierProducts.sku, `%${t}%`));
+  }
+  conditions.push(or(...orConditions));
+
+  return db
+    .select({
+      product: supplierProducts,
+      supplier: suppliers,
+    })
+    .from(supplierProducts)
+    .innerJoin(suppliers, eq(supplierProducts.supplierId, suppliers.id))
+    .where(and(...conditions))
+    .orderBy(desc(supplierProducts.updatedAt))
+    .limit(Math.min(Math.max(params.limit, 50), 1500));
 }
 
 async function recordDemandAndNotifyIfUnlisted(params: {
@@ -248,15 +285,6 @@ const importUpload = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-const receiptUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (file.mimetype?.startsWith("image/")) cb(null, true);
-    else cb(new Error("Only image receipts are supported right now (JPG/PNG/WebP)."));
-  },
-});
-
 async function ensureSupplierProfile(userId: string) {
   const [existing] = await db
     .select()
@@ -387,271 +415,203 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     }
   });
 
-  app.get("/api/supply/receipts/mine", isAuthenticated, async (req: any, res) => {
-    try {
-      const rows = await db
-        .select()
-        .from(supplyReceipts)
-        .where(eq(supplyReceipts.uploadedByUserId, String(req.user.id)))
-        .orderBy(desc(supplyReceipts.createdAt))
-        .limit(200);
-      res.json(rows);
-    } catch (error: any) {
-      console.error("Error listing receipts:", error);
-      res.status(500).json({ message: error.message || "Failed to load receipts" });
-    }
-  });
-
+  // Upload an order list (CSV/TSV/XLSX) and return best matching supplier deals.
   app.post(
-    "/api/supply/receipts",
+    "/api/supply/order-list/import",
     isAuthenticated,
-    receiptUpload.single("file"),
+    importUpload.single("file"),
     async (req: any, res) => {
       try {
-        if (!isCloudinaryConfigured()) {
-          return res.status(500).json({ message: "Receipt uploads require Cloudinary configuration." });
-        }
-
         const file = req.file;
         if (!file) return res.status(400).json({ message: "File is required" });
 
         const schema = z.object({
-          buyerRestaurantId: z.string().optional().nullable(),
-          supplierId: z.string().optional().nullable(),
-          merchantName: z.string().max(200).optional().nullable(),
-          merchantAddress: z.string().max(400).optional().nullable(),
-          merchantCity: z.string().max(120).optional().nullable(),
-          merchantState: z.string().max(60).optional().nullable(),
-          purchasedAt: z.string().optional().nullable(),
-          totalCents: z.coerce.number().int().min(0).optional().nullable(),
-          currency: z.string().max(10).optional().nullable(),
+          buyerRestaurantId: z.string().min(1),
         });
-        const parsed = schema.parse(req.body || {});
+        const parsedMeta = schema.parse(req.body || {});
 
-        let buyerRestaurant: any = null;
-        if (parsed.buyerRestaurantId) {
-          buyerRestaurant = await resolveBuyerRestaurantOrThrow(req, String(parsed.buyerRestaurantId));
+        const buyerRestaurant = await resolveBuyerRestaurantOrThrow(req, parsedMeta.buyerRestaurantId);
+
+        const { headers, rows } = await parseTabularFile(
+          file.buffer,
+          file.originalname || "order-list.csv",
+        );
+        const normalizeHeader = (h: string) =>
+          String(h || "")
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, "_");
+        const headerMap = headers.map(normalizeHeader);
+        const idx = (names: string[]) => {
+          for (const name of names) {
+            const i = headerMap.indexOf(name);
+            if (i >= 0) return i;
+          }
+          return -1;
+        };
+
+        const skuIdx = idx(["sku", "product_sku", "item_sku"]);
+        const nameIdx = idx(["name", "product", "product_name", "item", "description"]);
+        const qtyIdx = idx(["quantity", "qty", "count"]);
+
+        if (qtyIdx < 0) {
+          return res.status(400).json({ message: "Missing required column: quantity", headers });
+        }
+        if (skuIdx < 0 && nameIdx < 0) {
+          return res.status(400).json({ message: "Missing required column: sku or name", headers });
         }
 
-        if (parsed.supplierId) {
-          const [supplier] = await db
-            .select()
-            .from(suppliers)
-            .where(eq(suppliers.id, String(parsed.supplierId)))
-            .limit(1);
-          if (!supplier) return res.status(404).json({ message: "Supplier not found" });
+        const toCell = (row: string[], i: number) =>
+          i >= 0 ? String(row[i] ?? "").trim() : "";
+
+        const parsedItems = rows
+          .map((row) => {
+            const sku = toCell(row, skuIdx);
+            const itemName = toCell(row, nameIdx);
+            const qtyRaw = toCell(row, qtyIdx);
+            const quantity = Math.max(0, Math.floor(Number(qtyRaw)));
+            if (!quantity) return null;
+            if (!sku && !itemName) return null;
+            const query = sku || itemName;
+            return { sku: sku || null, itemName: itemName || null, query, quantity };
+          })
+          .filter(Boolean) as Array<{
+          sku: string | null;
+          itemName: string | null;
+          query: string;
+          quantity: number;
+        }>;
+
+        if (parsedItems.length === 0) {
+          return res.status(400).json({ message: "No valid items found in file." });
         }
 
-        const uploaded = await uploadToCloudinary(file.buffer, "receipts");
-        const now = new Date();
+        const maxItems = 100;
+        const items = parsedItems.slice(0, maxItems);
 
-        const purchasedAt = parsed.purchasedAt ? new Date(String(parsed.purchasedAt)) : null;
-        const safePurchasedAt = purchasedAt && !Number.isNaN(purchasedAt.getTime()) ? purchasedAt : null;
+        const terms = Array.from(new Set(items.map((i) => i.query))).slice(0, 100);
+        const matches = await searchSupplierProductsForTerms({
+          terms,
+          buyerRestaurant,
+          limit: 1200,
+        });
 
-        const [created] = await db
-          .insert(supplyReceipts)
-          .values({
-            uploadedByUserId: String(req.user.id),
-            buyerRestaurantId: buyerRestaurant ? String(buyerRestaurant.id) : parsed.buyerRestaurantId ?? null,
-            supplierId: parsed.supplierId ?? null,
-            merchantName: parsed.merchantName ?? null,
-            merchantAddress: parsed.merchantAddress ?? null,
-            merchantCity: parsed.merchantCity ?? null,
-            merchantState: parsed.merchantState ?? null,
-            purchasedAt: safePurchasedAt,
-            totalCents: parsed.totalCents ?? null,
-            currency: (parsed.currency || "usd").toLowerCase(),
-            cloudinaryPublicId: uploaded.publicId,
-            receiptImageUrl: uploaded.secureUrl || uploaded.url,
-            status: "needs_review",
-            rawText: null,
-            createdAt: now,
-            updatedAt: now,
-          } as any)
-          .returning();
+        const buyerLat = Number((buyerRestaurant as any).latitude);
+        const buyerLon = Number((buyerRestaurant as any).longitude);
+        const hasBuyerCoords = Number.isFinite(buyerLat) && Number.isFinite(buyerLon);
+        const radiusMiles = Number(process.env.SUPPLY_LOCAL_RADIUS_MILES || 75) || 75;
 
-        res.status(201).json(created);
+        const offers = (matches as any[]).map((r: any) => {
+          const lat = Number(r.supplier?.latitude);
+          const lon = Number(r.supplier?.longitude);
+          const distanceMiles =
+            hasBuyerCoords && Number.isFinite(lat) && Number.isFinite(lon)
+              ? haversineMiles({ lat: buyerLat, lon: buyerLon }, { lat, lon })
+              : null;
+          return { ...r, distanceMiles };
+        });
+
+        const filteredOffers = hasBuyerCoords
+          ? offers.filter((r: any) => r.distanceMiles === null || r.distanceMiles <= radiusMiles)
+          : offers;
+
+        const itemsOut = items.map((it) => {
+          const q = String(it.query).trim();
+          const candidates = (filteredOffers as any[])
+            .filter((r: any) => {
+              const name = String(r.product?.name || "").toLowerCase();
+              const sku = String(r.product?.sku || "").toLowerCase();
+              const ql = q.toLowerCase();
+              return name.includes(ql) || (sku && sku.includes(ql));
+            })
+            .map((r: any) => ({
+              supplierId: String(r.supplier.id),
+              supplierName: String(r.supplier.businessName),
+              supplier: r.supplier,
+              productId: String(r.product.id),
+              productName: String(r.product.name),
+              sku: r.product.sku ?? null,
+              unitLabel: r.product.unitLabel ?? null,
+              priceCents: Number(r.product.priceCents || 0) || 0,
+              distanceMiles: r.distanceMiles ?? null,
+            }))
+            .sort((a: any, b: any) => a.priceCents - b.priceCents)
+            .slice(0, 10);
+
+          return {
+            query: q,
+            itemName: it.itemName,
+            sku: it.sku,
+            quantity: it.quantity,
+            offers: candidates,
+          };
+        });
+
+        // Aggregate by supplier: how many items can they fulfill and estimated subtotal.
+        const supplierAgg = new Map<
+          string,
+          { supplier: any; coverageCount: number; subtotalCents: number; items: any[] }
+        >();
+
+        for (const item of itemsOut as any[]) {
+          const bestBySupplier = new Map<string, any>();
+          for (const offer of item.offers || []) {
+            const prev = bestBySupplier.get(offer.supplierId);
+            if (!prev || offer.priceCents < prev.priceCents) bestBySupplier.set(offer.supplierId, offer);
+          }
+          for (const offer of bestBySupplier.values()) {
+            const existing = supplierAgg.get(offer.supplierId);
+            const lineTotalCents = offer.priceCents * Math.max(1, Number(item.quantity || 1) || 1);
+            if (!existing) {
+              supplierAgg.set(offer.supplierId, {
+                supplier: offer.supplier,
+                coverageCount: 1,
+                subtotalCents: lineTotalCents,
+                items: [{ query: item.query, productId: offer.productId, priceCents: offer.priceCents, quantity: item.quantity }],
+              });
+            } else {
+              existing.coverageCount += 1;
+              existing.subtotalCents += lineTotalCents;
+              existing.items.push({ query: item.query, productId: offer.productId, priceCents: offer.priceCents, quantity: item.quantity });
+            }
+          }
+        }
+
+        const suppliersOut = Array.from(supplierAgg.entries())
+          .map(([supplierId, v]) => ({
+            supplierId,
+            supplier: v.supplier,
+            coverageCount: v.coverageCount,
+            missingCount: itemsOut.length - v.coverageCount,
+            subtotalCents: v.subtotalCents,
+            items: v.items,
+          }))
+          .sort((a: any, b: any) => {
+            if (b.coverageCount !== a.coverageCount) return b.coverageCount - a.coverageCount;
+            return a.subtotalCents - b.subtotalCents;
+          })
+          .slice(0, 25);
+
+        res.json({
+          success: true,
+          headers,
+          itemCount: itemsOut.length,
+          items: itemsOut,
+          suppliers: suppliersOut,
+          truncated: parsedItems.length > maxItems,
+        });
       } catch (error: any) {
-        console.error("Error uploading receipt:", error);
+        console.error("Error importing order list:", error);
         if (error instanceof z.ZodError) {
-          return res.status(400).json({ message: "Invalid receipt data", errors: error.errors });
+          return res.status(400).json({ message: "Invalid import request", errors: error.errors });
         }
         if (String(error?.message || "") === "Not authorized") {
           return res.status(403).json({ message: "Not authorized" });
         }
-        res.status(500).json({ message: error.message || "Failed to upload receipt" });
+        res.status(500).json({ message: error.message || "Failed to import order list" });
       }
     },
   );
-
-  app.post("/api/supply/receipts/:receiptId/items", isAuthenticated, async (req: any, res) => {
-    try {
-      const receiptId = String(req.params.receiptId || "").trim();
-      if (!receiptId) return res.status(400).json({ message: "Receipt ID required" });
-
-      const [receipt] = await db
-        .select()
-        .from(supplyReceipts)
-        .where(eq(supplyReceipts.id, receiptId))
-        .limit(1);
-      if (!receipt) return res.status(404).json({ message: "Receipt not found" });
-      if (String((receipt as any).uploadedByUserId) !== String(req.user.id)) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
-      const schema = z.object({
-        items: z
-          .array(
-            z.object({
-              itemName: z.string().min(1).max(200),
-              quantity: z.number().int().min(1).max(100_000).default(1),
-              unitPriceCents: z.number().int().min(0).optional().nullable(),
-              lineTotalCents: z.number().int().min(0).optional().nullable(),
-            }),
-          )
-          .min(1),
-      });
-      const parsed = schema.parse(req.body || {});
-
-      const now = new Date();
-      const values = parsed.items.map((i) => {
-        const itemName = String(i.itemName).trim();
-        const quantity = Math.max(1, Math.floor(Number(i.quantity || 1)));
-        const unitPriceCents =
-          i.unitPriceCents !== null && i.unitPriceCents !== undefined
-            ? Number(i.unitPriceCents)
-            : null;
-        const lineTotalCents =
-          i.lineTotalCents !== null && i.lineTotalCents !== undefined
-            ? Number(i.lineTotalCents)
-            : unitPriceCents !== null
-              ? unitPriceCents * quantity
-              : null;
-        return {
-          receiptId,
-          itemKey: normalizeSupplyKey(itemName),
-          itemName,
-          quantity,
-          unitPriceCents,
-          lineTotalCents,
-          createdAt: now,
-          updatedAt: now,
-        };
-      });
-
-      await db.insert(supplyReceiptItems).values(values as any);
-      await db
-        .update(supplyReceipts)
-        .set({ status: "processed", updatedAt: now } as any)
-        .where(eq(supplyReceipts.id, receiptId));
-
-      res.json({ success: true, added: values.length });
-    } catch (error: any) {
-      console.error("Error adding receipt items:", error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid receipt items", errors: error.errors });
-      }
-      res.status(500).json({ message: error.message || "Failed to add receipt items" });
-    }
-  });
-
-  app.get("/api/supply/best-prices", isAuthenticated, async (req: any, res) => {
-    try {
-      const q = String(req.query?.q || "").trim();
-      if (!q) return res.status(400).json({ message: "q is required" });
-      const limit = Math.min(Number(req.query?.limit || 20) || 20, 100);
-      const buyerRestaurantId = String(req.query?.buyerRestaurantId || "").trim();
-      const buyerRestaurant = buyerRestaurantId
-        ? await resolveBuyerRestaurantOrThrow(req, buyerRestaurantId)
-        : null;
-
-      const buyerState = buyerRestaurant ? String((buyerRestaurant as any).state || "").trim() : "";
-
-      // Supplier catalog prices (already-listed items)
-      const supplierRows = await db
-        .select({
-          product: supplierProducts,
-          supplier: suppliers,
-        })
-        .from(supplierProducts)
-        .innerJoin(suppliers, eq(supplierProducts.supplierId, suppliers.id))
-        .where(
-          and(
-            eq(supplierProducts.isActive, true),
-            eq(suppliers.isActive, true),
-            or(ilike(supplierProducts.name, `%${q}%`), ilike(supplierProducts.sku, `%${q}%`)),
-            ...(buyerState ? [eq(suppliers.state, buyerState)] : []),
-          ),
-        )
-        .orderBy(desc(supplierProducts.updatedAt))
-        .limit(200);
-
-      const key = normalizeSupplyKey(q);
-
-      // Receipt-observed prices (offsite merchants + suppliers)
-      const receiptConditions: any[] = [
-        or(ilike(supplyReceiptItems.itemName, `%${q}%`), eq(supplyReceiptItems.itemKey, key)),
-      ];
-      if (buyerState) receiptConditions.push(eq(supplyReceipts.merchantState, buyerState));
-
-      const receiptRows = await db
-        .select({
-          item: supplyReceiptItems,
-          receipt: supplyReceipts,
-        })
-        .from(supplyReceiptItems)
-        .innerJoin(supplyReceipts, eq(supplyReceiptItems.receiptId, supplyReceipts.id))
-        .where(and(...receiptConditions))
-        .orderBy(desc(supplyReceipts.purchasedAt))
-        .limit(300);
-
-      const results: any[] = [];
-
-      for (const r of supplierRows as any[]) {
-        results.push({
-          source: "supplier",
-          itemName: r.product.name,
-          unitPriceCents: Number(r.product.priceCents || 0) || 0,
-          unitLabel: r.product.unitLabel ?? null,
-          supplier: r.supplier,
-          product: r.product,
-          observedAt: r.product.updatedAt ?? null,
-        });
-      }
-
-      for (const r of receiptRows as any[]) {
-        const qty = Math.max(1, Number(r.item.quantity || 1) || 1);
-        const unitPriceCents =
-          r.item.unitPriceCents !== null && r.item.unitPriceCents !== undefined
-            ? Number(r.item.unitPriceCents)
-            : r.item.lineTotalCents !== null && r.item.lineTotalCents !== undefined
-              ? Math.round(Number(r.item.lineTotalCents) / qty)
-              : null;
-        if (unitPriceCents === null) continue;
-        results.push({
-          source: "receipt",
-          itemName: r.item.itemName,
-          unitPriceCents,
-          quantity: qty,
-          merchantName: r.receipt.merchantName ?? null,
-          merchantCity: r.receipt.merchantCity ?? null,
-          merchantState: r.receipt.merchantState ?? null,
-          purchasedAt: r.receipt.purchasedAt ?? null,
-          receiptId: r.receipt.id,
-        });
-      }
-
-      results.sort((a, b) => Number(a.unitPriceCents) - Number(b.unitPriceCents));
-
-      res.json(results.slice(0, limit));
-    } catch (error: any) {
-      console.error("Error loading best prices:", error);
-      if (String(error?.message || "") === "Not authorized") {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-      res.status(500).json({ message: error.message || "Failed to load best prices" });
-    }
-  });
 
   // Public-ish listing (requires auth for now).
   app.get("/api/suppliers", isAuthenticated, async (_req: any, res) => {

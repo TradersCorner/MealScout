@@ -20,6 +20,7 @@ import fs from "fs";
 import path from "path";
 import { validateEnv } from "./utils/env";
 import { healthRouter } from "./routes/health";
+import { apiMetricsMiddleware, requestIdMiddleware } from "./observability";
 import { videoStories, restaurants, requestLogs } from "@shared/schema";
 import { and, eq } from "drizzle-orm";
 
@@ -30,6 +31,9 @@ const sentryDsn = process.env.SENTRY_DSN;
 const sentryEnabled = Boolean(sentryDsn);
 
 // Minimal cookie parser (avoids adding a dependency). Several auth + affiliate flows rely on `req.cookies`.
+app.use(requestIdMiddleware());
+app.use(apiMetricsMiddleware());
+
 app.use((req: any, _res, next) => {
   const header = String(req.headers?.cookie || "");
   const cookies: Record<string, string> = {};

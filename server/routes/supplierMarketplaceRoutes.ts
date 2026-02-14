@@ -22,6 +22,10 @@ import multer from "multer";
 import { parseTabularFile } from "../utils/tabularImport";
 import { emailService } from "../emailService";
 import { decideSupplierIntentHandling } from "../utils/supplierPaymentIntent";
+import { rateLimitByUser } from "../rateLimiter";
+
+const createSupplierOrderLimiter = rateLimitByUser(40, 60 * 1000);
+const supplierPayIntentLimiter = rateLimitByUser(20, 60 * 1000);
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -2826,7 +2830,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
   );
 
   // Truck ordering
-  app.post("/api/supplier-orders", isAuthenticated, async (req: any, res) => {
+  app.post("/api/supplier-orders", isAuthenticated, createSupplierOrderLimiter, async (req: any, res) => {
     try {
       const schema = z.object({
         supplierId: z.string().min(1),
@@ -3112,7 +3116,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
   });
 
   // Buyer: create/reuse a Stripe PaymentIntent for an order (ACH first, card second).
-  app.post("/api/supplier-orders/:orderId/pay-intent", isAuthenticated, async (req: any, res) => {
+  app.post("/api/supplier-orders/:orderId/pay-intent", isAuthenticated, supplierPayIntentLimiter, async (req: any, res) => {
     try {
       if (!stripe) return res.status(500).json({ message: "Stripe not configured" });
 

@@ -21,6 +21,7 @@ import { isAuthenticated, isStaffOrAdmin, isSupplierOrAdmin } from "../unifiedAu
 import multer from "multer";
 import { parseTabularFile } from "../utils/tabularImport";
 import { emailService } from "../emailService";
+import { decideSupplierIntentHandling } from "../utils/supplierPaymentIntent";
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -2909,6 +2910,28 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       if (parsed.paymentMethod === "stripe" && !stripe && !bypassStripe) {
         return res.status(500).json({ message: "Stripe not configured" });
       }
+      if (parsed.paymentMethod === "stripe") {
+        if (!(supplier as any).onlinePaymentsEnabled) {
+          return res.status(400).json({ message: "Supplier does not accept online payments." });
+        }
+        const destination = String((supplier as any).stripeConnectAccountId || "").trim();
+        if (!destination) {
+          return res.status(400).json({
+            message: "Supplier is not set up to receive online payments yet.",
+            code: "supplier_stripe_not_connected",
+          });
+        }
+        if (
+          ((supplier as any).stripeChargesEnabled === false ||
+            (supplier as any).stripePayoutsEnabled === false) &&
+          !bypassStripe
+        ) {
+          return res.status(400).json({
+            message: "Supplier payout account is not fully enabled yet.",
+            code: "supplier_stripe_not_ready",
+          });
+        }
+      }
 
       const now = new Date();
 
@@ -2984,35 +3007,11 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         return res.status(500).json({ message: "Stripe not configured" });
       }
 
-      const intentParams: Stripe.PaymentIntentCreateParams = {
-        amount: totalCents,
-        currency: "usd",
-        metadata: {
-          supplierOrderId: String(created.id),
-          supplierId: String(supplier.id),
-          truckRestaurantId: String(parsed.truckRestaurantId),
-          subtotalCents: subtotalCents.toString(),
-          platformFeeCents: platformFeeCents.toString(),
-          stripeFeeEstimateCents: stripeFeeEstimateCents.toString(),
-          supplierGrossCents: supplierGrossCents.toString(),
-          buyerProcessingFeeCents: String(feeModel?.buyerProcessingFeeCents ?? 0),
-          sellerProcessingFeeCents: String(feeModel?.sellerProcessingFeeCents ?? 0),
-          platformBaseFeeCents: String(feeModel?.platformBaseFeeCents ?? 0),
-          totalCents: totalCents.toString(),
-        },
-      };
-      const intent = await stripe.paymentIntents.create(intentParams);
-
-      await db
-        .update(supplierOrders)
-        .set({ stripePaymentIntentId: intent.id, updatedAt: new Date() } as any)
-        .where(eq(supplierOrders.id, created.id));
-
       res.status(201).json({
-        order: { ...created, stripePaymentIntentId: intent.id },
+        order: created,
         payment: {
-          clientSecret: intent.client_secret,
-          paymentIntentId: intent.id,
+          method: "stripe",
+          requiresPaymentIntent: true,
           totalCents,
           breakdown: {
             supplierGrossCents,
@@ -3151,6 +3150,15 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       if (!(supplier as any).onlinePaymentsEnabled) {
         return res.status(400).json({ message: "Supplier does not accept online payments." });
       }
+      if (
+        (supplier as any).stripeChargesEnabled === false ||
+        (supplier as any).stripePayoutsEnabled === false
+      ) {
+        return res.status(400).json({
+          message: "Supplier payout account is not fully enabled yet.",
+          code: "supplier_stripe_not_ready",
+        });
+      }
 
       const destination = String((supplier as any).stripeConnectAccountId || "").trim();
       if (!destination) {
@@ -3229,27 +3237,6 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         return res.status(400).json({ message: "Supplier does not allow card payments." });
       }
 
-      const existingIntentId = String((order as any).stripePaymentIntentId || "").trim();
-      if (existingIntentId) {
-        const intent = await stripe.paymentIntents.retrieve(existingIntentId);
-        if (intent && intent.status !== "canceled" && intent.status !== "succeeded") {
-          return res.json({
-            paymentIntentId: intent.id,
-            clientSecret: (intent as any).client_secret,
-            totalCents: amountCents,
-            chargeAmountCents: Number((order as any).stripeChargeAmountCents || amountCents) || amountCents,
-            buyerDiscountCents: Number((order as any).buyerDiscountCents || 0) || 0,
-            paymentMethod: String((order as any).buyerPaymentMethod || "") || null,
-            breakdown: {
-              supplierGrossCents,
-              platformBaseFeeCents: feeModel.platformBaseFeeCents,
-              buyerProcessingFeeCents: feeModel.buyerProcessingFeeCents,
-              sellerProcessingFeeCents: feeModel.sellerProcessingFeeCents,
-            },
-          });
-        }
-      }
-
       const discountCents =
         paymentMethod === "ach" &&
         configuredDiscountCents > 0 &&
@@ -3260,6 +3247,47 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       const applicationFeeCents = Math.max(0, applicationFeeBaseCents - discountCents);
       const chargeAmountCents = Math.max(0, amountCents - discountCents);
       const transferAmountCents = Math.max(0, transferAmountBaseCents);
+
+      const existingIntentId = String((order as any).stripePaymentIntentId || "").trim();
+      if (existingIntentId) {
+        const intent = await stripe.paymentIntents.retrieve(existingIntentId);
+        const decision = decideSupplierIntentHandling({
+          intent: {
+            status: intent?.status,
+            amount: (intent as any)?.amount,
+            metadataPaymentMethod: (intent as any)?.metadata?.paymentMethod,
+            paymentMethodTypes: Array.isArray((intent as any)?.payment_method_types)
+              ? ((intent as any).payment_method_types as string[])
+              : [],
+          },
+          paymentMethod,
+          chargeAmountCents,
+        });
+
+        if (decision === "reuse") {
+          return res.json({
+            paymentIntentId: intent.id,
+            clientSecret: (intent as any).client_secret,
+            totalCents: amountCents,
+            chargeAmountCents,
+            buyerDiscountCents: discountCents,
+            paymentMethod,
+            breakdown: {
+              supplierGrossCents,
+              platformBaseFeeCents: feeModel.platformBaseFeeCents,
+              buyerProcessingFeeCents: feeModel.buyerProcessingFeeCents,
+              sellerProcessingFeeCents: feeModel.sellerProcessingFeeCents,
+            },
+          });
+        }
+        if (decision === "cancel_and_recreate") {
+          await stripe.paymentIntents.cancel(existingIntentId);
+        } else {
+          return res.status(409).json({
+            message: "Existing payment is processing. Try again after it completes or fails.",
+          });
+        }
+      }
 
       const intentParams: Stripe.PaymentIntentCreateParams = {
         amount: chargeAmountCents,

@@ -24,6 +24,7 @@ This checklist is the minimum baseline for stable growth under burst traffic.
 
 - Keep CSRF and CORS allowlist strict in production.
 - Keep strict rate limits on auth and payment endpoints.
+- Require `Idempotency-Key` on payment mutation endpoints.
 - Add WAF/bot controls in front of public endpoints if traffic grows materially.
 
 ## 4. Observability
@@ -50,6 +51,13 @@ This checklist is the minimum baseline for stable growth under burst traffic.
   - create pay-intent (ACH and card)
   - webhook success/failure processing
 - Test at 5x expected peak RPS for at least 10 minutes.
+- Use `npm run load:supplier-payments` for a repeatable supplier payment-intent load test harness.
+
+## 9. Required DB migrations for scale controls
+
+- Apply:
+  - `migrations/058_idempotency_keys.sql`
+  - `migrations/059_rate_limit_counters.sql`
 
 ## 7. Operational readiness
 
@@ -65,4 +73,3 @@ This checklist is the minimum baseline for stable growth under burst traffic.
 - Use feature flags for payment flow changes.
 - Roll out via canary (small traffic slice first).
 - Have a rollback procedure that is tested and documented.
-

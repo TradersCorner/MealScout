@@ -22,10 +22,30 @@ import multer from "multer";
 import { parseTabularFile } from "../utils/tabularImport";
 import { emailService } from "../emailService";
 import { decideSupplierIntentHandling } from "../utils/supplierPaymentIntent";
-import { rateLimitByUser } from "../rateLimiter";
+import { distributedRateLimit } from "../middleware/distributedRateLimit";
+import { requireIdempotencyKey } from "../middleware/idempotency";
+import { enqueueInProcessJob } from "../jobs/jobQueue";
 
-const createSupplierOrderLimiter = rateLimitByUser(40, 60 * 1000);
-const supplierPayIntentLimiter = rateLimitByUser(20, 60 * 1000);
+const createSupplierOrderLimiter = distributedRateLimit({
+  scope: "supplier_orders_create",
+  limit: 40,
+  windowMs: 60 * 1000,
+  key: (req) => String((req as any)?.user?.id || req.ip || "unknown"),
+});
+const supplierPayIntentLimiter = distributedRateLimit({
+  scope: "supplier_order_pay_intent",
+  limit: 20,
+  windowMs: 60 * 1000,
+  key: (req) => String((req as any)?.user?.id || req.ip || "unknown"),
+});
+const supplierOrderIdempotency = requireIdempotencyKey({
+  scope: "supplier_orders_create",
+  ttlMs: 24 * 60 * 60 * 1000,
+});
+const supplierPayIntentIdempotency = requireIdempotencyKey({
+  scope: "supplier_order_pay_intent",
+  ttlMs: 24 * 60 * 60 * 1000,
+});
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -351,7 +371,9 @@ async function recordDemandAndNotifyIfUnlisted(params: {
           <a href="${manageUrl}" class="cta-button">Add it to your catalog</a>
         </p>
       `;
-      await emailService.sendBasicEmail(to, subject, html, undefined, "general");
+      enqueueInProcessJob("supply-demand-email", async () => {
+        await emailService.sendBasicEmail(to, subject, html, undefined, "general");
+      });
 
       await db
         .insert(supplyDemandNotifications)
@@ -2199,7 +2221,9 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
               <a href="${manageUrl}" class="cta-button">View request</a>
             </p>
           `;
-          await emailService.sendBasicEmail(to, subject, html, undefined, "general");
+          enqueueInProcessJob("supplier-request-accepted-email", async () => {
+            await emailService.sendBasicEmail(to, subject, html, undefined, "general");
+          });
         }
       } catch (notifyError) {
         console.warn("Supplier request notify failed:", notifyError);
@@ -2811,7 +2835,9 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
                   <a href="${suppliersUrl}" class="cta-button">View suppliers</a>
                 </p>
               `;
-              await emailService.sendBasicEmail(to, subject, html, undefined, "general");
+              enqueueInProcessJob("supplier-delivery-status-email", async () => {
+                await emailService.sendBasicEmail(to, subject, html, undefined, "general");
+              });
             }
           } catch (notifyError) {
             console.warn("Buyer delivery status notify failed:", notifyError);
@@ -2830,7 +2856,12 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
   );
 
   // Truck ordering
-  app.post("/api/supplier-orders", isAuthenticated, createSupplierOrderLimiter, async (req: any, res) => {
+  app.post(
+    "/api/supplier-orders",
+    isAuthenticated,
+    supplierOrderIdempotency,
+    createSupplierOrderLimiter,
+    async (req: any, res) => {
     try {
       const schema = z.object({
         supplierId: z.string().min(1),
@@ -3034,7 +3065,8 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       }
       res.status(400).json({ message: error.message || "Failed to create order" });
     }
-  });
+    },
+  );
 
   app.get("/api/supplier/orders", isAuthenticated, isSupplierOrAdmin, async (req: any, res) => {
     try {
@@ -3116,7 +3148,12 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
   });
 
   // Buyer: create/reuse a Stripe PaymentIntent for an order (ACH first, card second).
-  app.post("/api/supplier-orders/:orderId/pay-intent", isAuthenticated, supplierPayIntentLimiter, async (req: any, res) => {
+  app.post(
+    "/api/supplier-orders/:orderId/pay-intent",
+    isAuthenticated,
+    supplierPayIntentIdempotency,
+    supplierPayIntentLimiter,
+    async (req: any, res) => {
     try {
       if (!stripe) return res.status(500).json({ message: "Stripe not configured" });
 
@@ -3350,7 +3387,8 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       }
       res.status(500).json({ message: error.message || "Failed to create payment intent" });
     }
-  });
+    },
+  );
 
   app.patch("/api/supplier/orders/:orderId/status", isAuthenticated, isSupplierOrAdmin, async (req: any, res) => {
     try {

@@ -43,6 +43,7 @@ Run each once:
 2. `npm run -s migrate:sql 059_rate_limit_counters.sql`
 3. `npm run -s migrate:sql 060_supplier_marketplace_performance_indexes.sql`
 4. `npm run -s migrate:sql 061_supplier_orders_created_at_index.sql`
+5. `npm run -s migrate:sql 062_supplier_search_trigram_indexes.sql`
 
 ## 4. Health + readiness verification
 

@@ -82,6 +82,7 @@ export default function SettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
   const [verifyingDomain, setVerifyingDomain] = useState(false);
+  const [dragSection, setDragSection] = useState<SectionKey | null>(null);
 
   const { data, isLoading, refetch } = useQuery<SettingsPayload>({
     queryKey: ["/api/settings/me"],
@@ -388,16 +389,15 @@ export default function SettingsPage() {
     return deduped;
   };
 
-  const moveSection = (section: SectionKey, direction: -1 | 1) => {
+  const reorderSections = (from: SectionKey, to: SectionKey) => {
+    if (from === to) return;
     const list = getSectionOrderList();
-    const idx = list.indexOf(section);
-    if (idx < 0) return;
-    const nextIdx = idx + direction;
-    if (nextIdx < 0 || nextIdx >= list.length) return;
+    const fromIdx = list.indexOf(from);
+    const toIdx = list.indexOf(to);
+    if (fromIdx < 0 || toIdx < 0) return;
     const next = [...list];
-    const temp = next[idx];
-    next[idx] = next[nextIdx];
-    next[nextIdx] = temp;
+    next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, from);
     setProfile((prev) => ({ ...prev, sectionOrder: next.join(",") }));
   };
 
@@ -623,29 +623,26 @@ export default function SettingsPage() {
                 <div>
                   <Label>Section order</Label>
                   <div className="mt-2 space-y-2 rounded-md border p-3">
-                    {getSectionOrderList().map((section, idx) => (
-                      <div key={section} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
+                    {getSectionOrderList().map((section) => (
+                      <div
+                        key={section}
+                        draggable
+                        onDragStart={() => setDragSection(section)}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          if (dragSection) reorderSections(dragSection, section);
+                          setDragSection(null);
+                        }}
+                        onDragEnd={() => setDragSection(null)}
+                        className={`flex cursor-move items-center justify-between rounded border px-3 py-2 text-sm ${
+                          dragSection === section ? "opacity-50" : ""
+                        }`}
+                      >
                         <span className="font-medium capitalize">{section}</span>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => moveSection(section, -1)}
-                            disabled={idx === 0}
-                          >
-                            Up
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => moveSection(section, 1)}
-                            disabled={idx === getSectionOrderList().length - 1}
-                          >
-                            Down
-                          </Button>
-                        </div>
+                        <span className="text-xs text-muted-foreground">Drag to reorder</span>
                       </div>
                     ))}
                   </div>

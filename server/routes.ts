@@ -226,6 +226,8 @@ const toSlug = (value: string | null | undefined) =>
 const publicProfileSettingsSchema = z.object({
   theme: z.enum(["sunset", "slate", "forest", "amber"]).optional(),
   accentColor: z.string().max(32).optional(),
+  fontFamily: z.enum(["system", "serif", "display", "mono"]).optional(),
+  heroLayout: z.enum(["center", "left", "split"]).optional(),
   heroTitle: z.string().max(120).optional(),
   heroSubtitle: z.string().max(220).optional(),
   ctaLabel: z.string().max(50).optional(),
@@ -242,9 +244,24 @@ const publicProfileSettingsSchema = z.object({
     .max(8)
     .optional(),
   galleryUrls: z.array(z.string().max(500)).max(12).optional(),
+  sectionOrder: z
+    .array(
+      z.enum([
+        "about",
+        "highlights",
+        "links",
+        "gallery",
+        "contact",
+        "location",
+        "metrics",
+      ]),
+    )
+    .max(12)
+    .optional(),
   showAddress: z.boolean().optional(),
   showContact: z.boolean().optional(),
   showHours: z.boolean().optional(),
+  hideProfileBadge: z.boolean().optional(),
 });
 
 const accountSettingsSchema = z.object({

@@ -26,6 +26,8 @@ type SettingsPayload = {
   publicProfileSettings: {
     theme?: "sunset" | "slate" | "forest" | "amber";
     accentColor?: string;
+    fontFamily?: "system" | "serif" | "display" | "mono";
+    heroLayout?: "center" | "left" | "split";
     heroTitle?: string;
     heroSubtitle?: string;
     ctaLabel?: string;
@@ -34,9 +36,13 @@ type SettingsPayload = {
     highlights?: string[];
     featuredLinks?: Array<{ label: string; url: string }>;
     galleryUrls?: string[];
+    sectionOrder?: Array<
+      "about" | "highlights" | "links" | "gallery" | "contact" | "location" | "metrics"
+    >;
     showAddress?: boolean;
     showContact?: boolean;
     showHours?: boolean;
+    hideProfileBadge?: boolean;
   };
   profileLinks?: Array<{
     entity: "restaurant" | "host" | "supplier";
@@ -72,6 +78,8 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState({
     theme: "sunset" as "sunset" | "slate" | "forest" | "amber",
     accentColor: "#f97316",
+    fontFamily: "system" as "system" | "serif" | "display" | "mono",
+    heroLayout: "left" as "center" | "left" | "split",
     heroTitle: "",
     heroSubtitle: "",
     ctaLabel: "",
@@ -80,9 +88,11 @@ export default function SettingsPage() {
     highlights: "",
     featuredLinks: "",
     galleryUrls: "",
+    sectionOrder: "about,location,contact,metrics,highlights,links,gallery",
     showAddress: true,
     showContact: true,
     showHours: true,
+    hideProfileBadge: false,
   });
 
   const hydratedRef = useRef(false);
@@ -100,6 +110,8 @@ export default function SettingsPage() {
     setProfile({
       theme: (p.theme as any) || "sunset",
       accentColor: p.accentColor || "#f97316",
+      fontFamily: (p.fontFamily as any) || "system",
+      heroLayout: (p.heroLayout as any) || "left",
       heroTitle: p.heroTitle || "",
       heroSubtitle: p.heroSubtitle || "",
       ctaLabel: p.ctaLabel || "",
@@ -110,9 +122,13 @@ export default function SettingsPage() {
         ? p.featuredLinks.map((l) => `${l.label}|${l.url}`).join("\n")
         : "",
       galleryUrls: Array.isArray(p.galleryUrls) ? p.galleryUrls.join("\n") : "",
+      sectionOrder: Array.isArray(p.sectionOrder)
+        ? p.sectionOrder.join(",")
+        : "about,location,contact,metrics,highlights,links,gallery",
       showAddress: p.showAddress ?? true,
       showContact: p.showContact ?? true,
       showHours: p.showHours ?? true,
+      hideProfileBadge: p.hideProfileBadge ?? false,
     });
     hydratedRef.current = true;
   }, [data]);
@@ -175,6 +191,23 @@ export default function SettingsPage() {
           return { label: label || url, url: url || label };
         })
         .filter((row) => row.label && row.url);
+      const parsedSectionOrder = profile.sectionOrder
+        .split(",")
+        .map((v) => v.trim().toLowerCase())
+        .filter(Boolean)
+        .filter((v) =>
+          [
+            "about",
+            "highlights",
+            "links",
+            "gallery",
+            "contact",
+            "location",
+            "metrics",
+          ].includes(v),
+        ) as Array<
+        "about" | "highlights" | "links" | "gallery" | "contact" | "location" | "metrics"
+      >;
 
       const res = await fetch("/api/settings/me", {
         method: "PATCH",
@@ -184,6 +217,8 @@ export default function SettingsPage() {
           publicProfileSettings: {
             theme: profile.theme,
             accentColor: profile.accentColor,
+            fontFamily: profile.fontFamily,
+            heroLayout: profile.heroLayout,
             heroTitle: profile.heroTitle,
             heroSubtitle: profile.heroSubtitle,
             ctaLabel: profile.ctaLabel,
@@ -192,9 +227,11 @@ export default function SettingsPage() {
             highlights: parsedHighlights,
             featuredLinks: parsedLinks,
             galleryUrls: parsedGallery,
+            sectionOrder: parsedSectionOrder,
             showAddress: profile.showAddress,
             showContact: profile.showContact,
             showHours: profile.showHours,
+            hideProfileBadge: profile.hideProfileBadge,
           },
         }),
       });
@@ -281,6 +318,38 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <Label>Font style</Label>
+                    <Select
+                      value={profile.fontFamily}
+                      onValueChange={(value: any) => setProfile((prev) => ({ ...prev, fontFamily: value }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="system">System</SelectItem>
+                        <SelectItem value="serif">Serif</SelectItem>
+                        <SelectItem value="display">Display</SelectItem>
+                        <SelectItem value="mono">Mono</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Hero layout</Label>
+                    <Select
+                      value={profile.heroLayout}
+                      onValueChange={(value: any) => setProfile((prev) => ({ ...prev, heroLayout: value }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="left">Left</SelectItem>
+                        <SelectItem value="center">Center</SelectItem>
+                        <SelectItem value="split">Split</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
                 <div>
                   <Label>Hero title</Label>
                   <Input
@@ -357,6 +426,15 @@ export default function SettingsPage() {
                   />
                 </div>
 
+                <div>
+                  <Label>Section order (comma-separated)</Label>
+                  <Input
+                    value={profile.sectionOrder}
+                    onChange={(e) => setProfile((prev) => ({ ...prev, sectionOrder: e.target.value }))}
+                    placeholder="about,location,contact,metrics,highlights,links,gallery"
+                  />
+                </div>
+
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="flex items-center justify-between rounded-md border p-3">
                     <Label>Show address</Label>
@@ -379,6 +457,13 @@ export default function SettingsPage() {
                       onCheckedChange={(checked) => setProfile((prev) => ({ ...prev, showHours: checked }))}
                     />
                   </div>
+                </div>
+                <div className="flex items-center justify-between rounded-md border p-3">
+                  <Label>Hide profile badge</Label>
+                  <Switch
+                    checked={profile.hideProfileBadge}
+                    onCheckedChange={(checked) => setProfile((prev) => ({ ...prev, hideProfileBadge: checked }))}
+                  />
                 </div>
 
                 <div className="flex justify-end">

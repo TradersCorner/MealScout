@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
+import type { ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,8 @@ type PublicProfile = {
   profileSettings?: {
     theme?: "sunset" | "slate" | "forest" | "amber";
     accentColor?: string;
+    fontFamily?: "system" | "serif" | "display" | "mono";
+    heroLayout?: "center" | "left" | "split";
     heroTitle?: string;
     heroSubtitle?: string;
     ctaLabel?: string;
@@ -31,9 +34,13 @@ type PublicProfile = {
     highlights?: string[];
     featuredLinks?: Array<{ label: string; url: string }>;
     galleryUrls?: string[];
+    sectionOrder?: Array<
+      "about" | "highlights" | "links" | "gallery" | "contact" | "location" | "metrics"
+    >;
     showAddress?: boolean;
     showContact?: boolean;
     showHours?: boolean;
+    hideProfileBadge?: boolean;
   };
   metrics?: {
     activeProductCount?: number;
@@ -138,9 +145,114 @@ export default function PublicProfilePage() {
   const accentStyle = profile.accentColor
     ? ({ borderColor: profile.accentColor, color: profile.accentColor } as any)
     : undefined;
+  const fontClass =
+    profile.fontFamily === "serif"
+      ? "font-serif"
+      : profile.fontFamily === "mono"
+        ? "font-mono"
+        : profile.fontFamily === "display"
+          ? "font-[Georgia]"
+          : "font-sans";
+  const heroLayoutClass =
+    profile.heroLayout === "center"
+      ? "text-center"
+      : profile.heroLayout === "split"
+        ? "grid gap-2 md:grid-cols-2 md:items-end"
+        : "text-left";
+
+  const sections = new Map<string, ReactNode>();
+  sections.set("about", about ? <p className="text-base leading-relaxed">{about}</p> : null);
+  sections.set(
+    "location",
+    locationLine ? (
+      <div className="flex items-start gap-2 text-sm">
+        <MapPin className="mt-0.5 h-4 w-4 text-muted-foreground" />
+        <span>{locationLine}</span>
+      </div>
+    ) : null,
+  );
+  sections.set(
+    "contact",
+    data.phone ? (
+      <div className="flex items-center gap-2 text-sm">
+        <Phone className="h-4 w-4 text-muted-foreground" />
+        <span>{data.phone}</span>
+      </div>
+    ) : null,
+  );
+  sections.set(
+    "metrics",
+    data.entity === "supplier" && typeof data.metrics?.activeProductCount === "number" ? (
+      <div className="text-sm text-muted-foreground">
+        Active products: <span className="font-medium text-foreground">{data.metrics.activeProductCount}</span>
+      </div>
+    ) : null,
+  );
+  sections.set(
+    "highlights",
+    highlights.length > 0 ? (
+      <div>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Highlights</h2>
+        <div className="flex flex-wrap gap-2">
+          {highlights.map((item, idx) => (
+            <Badge key={`${item}-${idx}`} variant="outline" style={accentStyle}>
+              {item}
+            </Badge>
+          ))}
+        </div>
+      </div>
+    ) : null,
+  );
+  sections.set(
+    "links",
+    featuredLinks.length > 0 ? (
+      <div>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Links</h2>
+        <div className="grid gap-2">
+          {featuredLinks.map((link, idx) => (
+            <a
+              key={`${link.url}-${idx}`}
+              href={link.url}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="rounded-md border px-3 py-2 text-sm hover:bg-muted"
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
+      </div>
+    ) : null,
+  );
+  sections.set(
+    "gallery",
+    galleryUrls.length > 0 ? (
+      <div>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Gallery</h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          {galleryUrls.map((url, idx) => (
+            <img
+              key={`${url}-${idx}`}
+              src={url}
+              alt={`${data.title} gallery ${idx + 1}`}
+              className="h-28 w-full rounded-md object-cover"
+              loading="lazy"
+            />
+          ))}
+        </div>
+      </div>
+    ) : null,
+  );
+  const defaultOrder = ["about", "location", "contact", "metrics", "highlights", "links", "gallery"];
+  const order = Array.isArray(profile.sectionOrder) && profile.sectionOrder.length > 0
+    ? profile.sectionOrder
+    : defaultOrder;
+  const renderedSections = order
+    .map((key) => sections.get(key))
+    .filter(Boolean);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className={`mx-auto max-w-3xl px-4 py-8 ${fontClass}`}>
       <SEOHead
         title={title}
         description={description}
@@ -152,48 +264,36 @@ export default function PublicProfilePage() {
 
       <Card className="overflow-hidden">
         <div className={`bg-gradient-to-br ${themePalette.bg} p-8 text-white`}>
-          <div className="mb-3 flex items-center gap-2">
+          <div className={`mb-3 flex items-center gap-2 ${profile.hideProfileBadge ? "hidden" : ""}`}>
             <Store className="h-5 w-5" />
             <Badge className={themePalette.chip}>{labelByEntity[data.entity] || "Public Profile"}</Badge>
           </div>
-          <h1 className="text-4xl font-bold tracking-tight">{heroTitle}</h1>
-          {heroSubtitle ? (
-            <p className="mt-2 max-w-2xl text-sm text-white/85">{heroSubtitle}</p>
-          ) : null}
-          {ctaLabel && ctaUrl ? (
-            <div className="mt-5">
-              <a
-                href={ctaUrl}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="inline-flex items-center rounded-md border border-white/40 bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur hover:bg-white/20"
-              >
-                {ctaLabel}
-              </a>
+          <div className={heroLayoutClass}>
+            <div>
+              <h1 className="text-4xl font-bold tracking-tight">{heroTitle}</h1>
+              {heroSubtitle ? (
+                <p className="mt-2 max-w-2xl text-sm text-white/85">{heroSubtitle}</p>
+              ) : null}
             </div>
-          ) : null}
+            {ctaLabel && ctaUrl ? (
+              <div className={profile.heroLayout === "split" ? "md:justify-self-end" : "mt-5"}>
+                <a
+                  href={ctaUrl}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex items-center rounded-md border border-white/40 bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur hover:bg-white/20"
+                >
+                  {ctaLabel}
+                </a>
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <CardHeader>
           <CardTitle className="text-2xl">{data.title}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {about ? <p className="text-base leading-relaxed">{about}</p> : null}
-
-          {locationLine ? (
-            <div className="flex items-start gap-2 text-sm">
-              <MapPin className="mt-0.5 h-4 w-4 text-muted-foreground" />
-              <span>{locationLine}</span>
-            </div>
-          ) : null}
-
-          {data.phone ? (
-            <div className="flex items-center gap-2 text-sm">
-              <Phone className="h-4 w-4 text-muted-foreground" />
-              <span>{data.phone}</span>
-            </div>
-          ) : null}
-
           {data.websiteUrl ? (
             <div className="flex items-center gap-2 text-sm">
               <Globe className="h-4 w-4 text-muted-foreground" />
@@ -208,60 +308,7 @@ export default function PublicProfilePage() {
             </div>
           ) : null}
 
-          {data.entity === "supplier" && typeof data.metrics?.activeProductCount === "number" ? (
-            <div className="text-sm text-muted-foreground">
-              Active products: <span className="font-medium text-foreground">{data.metrics.activeProductCount}</span>
-            </div>
-          ) : null}
-
-          {highlights.length > 0 ? (
-            <div>
-              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Highlights</h2>
-              <div className="flex flex-wrap gap-2">
-                {highlights.map((item, idx) => (
-                  <Badge key={`${item}-${idx}`} variant="outline" style={accentStyle}>
-                    {item}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {featuredLinks.length > 0 ? (
-            <div>
-              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Links</h2>
-              <div className="grid gap-2">
-                {featuredLinks.map((link, idx) => (
-                  <a
-                    key={`${link.url}-${idx}`}
-                    href={link.url}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="rounded-md border px-3 py-2 text-sm hover:bg-muted"
-                  >
-                    {link.label}
-                  </a>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {galleryUrls.length > 0 ? (
-            <div>
-              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Gallery</h2>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                {galleryUrls.map((url, idx) => (
-                  <img
-                    key={`${url}-${idx}`}
-                    src={url}
-                    alt={`${data.title} gallery ${idx + 1}`}
-                    className="h-28 w-full rounded-md object-cover"
-                    loading="lazy"
-                  />
-                ))}
-              </div>
-            </div>
-          ) : null}
+          {renderedSections}
 
           <div className="border-t pt-4 text-xs text-muted-foreground">
             Permanent profile link: {data.canonicalUrl}

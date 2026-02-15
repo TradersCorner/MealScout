@@ -11,6 +11,16 @@ const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY || "";
 const stripePromise = stripePublicKey ? loadStripe(stripePublicKey) : null;
 
 const formatMoney = (cents: number) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
+const createIdempotencyKey = () => {
+  try {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+  } catch {
+    // ignore and use fallback
+  }
+  return `idem-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
 
 function PaymentForm(props: {
   orderId: string;
@@ -164,7 +174,10 @@ export function SupplierOrderPaymentModal(props: {
       const res = await fetch(`/api/supplier-orders/${encodeURIComponent(props.orderId)}/pay-intent`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": createIdempotencyKey(),
+        },
         body: JSON.stringify({ paymentMethod: method }),
       });
       const data = await res.json().catch(() => null);

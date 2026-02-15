@@ -22,11 +22,13 @@ const SECOND_METHOD = (String(process.env.SECOND_METHOD || "card").trim().toLowe
   : "card") as "ach" | "card";
 
 async function createIntent(orderId: string, method: "ach" | "card") {
+  const idem = `switch-${method}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const res = await fetch(`${API_BASE}/api/supplier-orders/${encodeURIComponent(orderId)}/pay-intent`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Cookie: TEST_AUTH_COOKIE,
+      "Idempotency-Key": idem,
     },
     body: JSON.stringify({ paymentMethod: method }),
   });
@@ -91,4 +93,3 @@ run().catch((error) => {
   console.error("FAIL: script error", error);
   process.exit(1);
 });
-

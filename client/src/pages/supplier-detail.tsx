@@ -215,6 +215,21 @@ export default function SupplierDetailPage() {
 
   const canRequestDeliveryFull =
     canRequestDelivery && deliveryEligibilityMet;
+  const supplierAllowsAch = Boolean(supplier?.onlinePaymentsAllowAch ?? true);
+  const supplierAllowsCard = Boolean(supplier?.onlinePaymentsAllowCard ?? true);
+  const supplierOnlineMethodsEnabled = supplierAllowsAch || supplierAllowsCard;
+  const onlineMinOrderCents = Number(supplier?.onlinePaymentsMinOrderCents || 0) || 0;
+  const onlineMinMet = onlineMinOrderCents <= 0 || estimatedTotalCents >= onlineMinOrderCents;
+  const onlineEnabledForBuyer =
+    Boolean(supplier?.onlinePaymentsEnabled) && supplierOnlineMethodsEnabled;
+  const onlineSelectionValid =
+    paymentPreference !== "online" || (onlineEnabledForBuyer && onlineMinMet);
+
+  useEffect(() => {
+    if (paymentPreference !== "online") return;
+    if (onlineEnabledForBuyer && onlineMinMet) return;
+    setPaymentPreference("offsite");
+  }, [paymentPreference, onlineEnabledForBuyer, onlineMinMet]);
 
   const submitRequest = useMutation({
     mutationFn: async () => {
@@ -509,13 +524,31 @@ export default function SupplierDetailPage() {
             >
               <option value="offsite">Pay offsite</option>
               <option value="in_person">Pay in person</option>
-              <option value="online" disabled={!supplier?.onlinePaymentsEnabled}>
-                Pay through MealScout (ACH/Card)
+              <option value="online" disabled={!onlineEnabledForBuyer}>
+                Pay through MealScout
               </option>
             </select>
-            {paymentPreference === "online" && !supplier?.onlinePaymentsEnabled ? (
+            {onlineEnabledForBuyer ? (
+              <div className="text-xs text-muted-foreground">
+                Online methods:
+                {" "}
+                {[
+                  supplierAllowsAch ? "ACH" : null,
+                  supplierAllowsCard ? "Card" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" + ")}
+                {onlineMinOrderCents > 0 ? ` • Minimum ${formatMoney(onlineMinOrderCents)}` : ""}
+              </div>
+            ) : null}
+            {paymentPreference === "online" && !onlineEnabledForBuyer ? (
               <div className="text-xs text-muted-foreground">
                 This supplier isn't accepting online payments yet.
+              </div>
+            ) : null}
+            {paymentPreference === "online" && !onlineMinMet ? (
+              <div className="text-xs text-muted-foreground">
+                Add {formatMoney(onlineMinOrderCents - estimatedTotalCents)} more to use online payment.
               </div>
             ) : null}
             <div className="text-sm font-semibold">Pickup note</div>
@@ -550,7 +583,8 @@ export default function SupplierDetailPage() {
                 importRequest.isPending ||
                 !importFile ||
                 !selectedBuyerRestaurantId ||
-                (requestedFulfillment === "delivery" && !canRequestDeliveryFull)
+                (requestedFulfillment === "delivery" && !canRequestDeliveryFull) ||
+                !onlineSelectionValid
               }
               onClick={() => importRequest.mutate()}
             >
@@ -682,7 +716,8 @@ export default function SupplierDetailPage() {
                 !selectedBuyerRestaurantId ||
                 cartItems.length === 0 ||
                 subtotalCents <= 0 ||
-                (requestedFulfillment === "delivery" && !canRequestDeliveryFull)
+                (requestedFulfillment === "delivery" && !canRequestDeliveryFull) ||
+                !onlineSelectionValid
               }
               onClick={() => submitRequest.mutate()}
             >

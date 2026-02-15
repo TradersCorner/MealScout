@@ -181,6 +181,11 @@ export function SupplierOrderPaymentModal(props: {
         body: JSON.stringify({ paymentMethod: method }),
       });
       const data = await res.json().catch(() => null);
+      if (res.status === 409) {
+        throw new Error(
+          data?.message || "A payment attempt is already in progress for this order. Please wait and retry.",
+        );
+      }
       if (!res.ok) throw new Error(data?.message || "Failed to start payment");
       setPaymentMethod(method);
       setClientSecret(String(data?.clientSecret || ""));

@@ -29,6 +29,11 @@ type SupplierOrderRow = {
 };
 
 const formatMoney = (cents: number) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
+const prettify = (raw: string) => {
+  const s = String(raw || "").trim();
+  if (!s) return "Unknown";
+  return s.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+};
 
 export default function SupplyOrdersPage() {
   const { toast } = useToast();
@@ -56,7 +61,9 @@ export default function SupplyOrdersPage() {
     queryKey: ["/api/supplier-orders/mine", selectedBuyerRestaurantId],
     queryFn: async () => {
       const params = new URLSearchParams({ buyerRestaurantId: selectedBuyerRestaurantId });
-      const res = await fetch(`/api/supplier-orders/mine?${params.toString()}`, { credentials: "include" });
+      const res = await fetch(`/api/supplier-orders/mine?${params.toString()}`, {
+        credentials: "include",
+      });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.message || "Failed to load orders");
       return data;
@@ -69,6 +76,21 @@ export default function SupplyOrdersPage() {
     const rows = Array.isArray(orders) ? orders : [];
     return rows;
   }, [orders]);
+
+  const totals = useMemo(() => {
+    const rows = Array.isArray(sorted) ? sorted : [];
+    const open = rows.filter((o) => String(o.paymentStatus) !== "paid");
+    const dueCents = open.reduce((sum, o) => {
+      const total = Number(o.totalCents || 0) || 0;
+      const discount = Number(o.buyerDiscountCents || 0) || 0;
+      return sum + Math.max(0, total - discount);
+    }, 0);
+    return {
+      count: rows.length,
+      openCount: open.length,
+      dueCents,
+    };
+  }, [sorted]);
 
   return (
     <div className="min-h-screen pb-24">
@@ -99,11 +121,27 @@ export default function SupplyOrdersPage() {
             <Button variant="outline" onClick={() => refetch()} disabled={!selectedBuyerRestaurantId}>
               Refresh
             </Button>
+            {sorted.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <div className="rounded-md border p-2">
+                  <div className="text-xs text-muted-foreground">Orders</div>
+                  <div className="font-semibold">{totals.count}</div>
+                </div>
+                <div className="rounded-md border p-2">
+                  <div className="text-xs text-muted-foreground">Open</div>
+                  <div className="font-semibold">{totals.openCount}</div>
+                </div>
+                <div className="rounded-md border p-2">
+                  <div className="text-xs text-muted-foreground">Outstanding</div>
+                  <div className="font-semibold">{formatMoney(totals.dueCents)}</div>
+                </div>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 
         {isLoading ? (
-          <div className="text-sm text-muted-foreground">Loading…</div>
+          <div className="text-sm text-muted-foreground">Loading...</div>
         ) : isError ? (
           <div className="text-sm text-muted-foreground">Unable to load orders.</div>
         ) : sorted.length === 0 ? (
@@ -120,7 +158,16 @@ export default function SupplyOrdersPage() {
         ) : (
           <div className="space-y-3">
             {sorted.map((o) => {
-              const canPay = o.paymentMethod === "stripe" && o.paymentStatus !== "paid";
+              const orderStatus = String(o.status || "");
+              const paymentStatus = String(o.paymentStatus || "");
+              const paymentMethod = String(o.paymentMethod || "");
+              const discountCents = Number(o.buyerDiscountCents || 0) || 0;
+              const dueNowCents = Math.max(0, (Number(o.totalCents || 0) || 0) - discountCents);
+              const canPay =
+                paymentMethod === "stripe" &&
+                paymentStatus === "unpaid" &&
+                orderStatus !== "cancelled";
+
               return (
                 <Card key={o.id}>
                   <CardHeader className="pb-3">
@@ -130,11 +177,11 @@ export default function SupplyOrdersPage() {
                           {o.supplier?.businessName || "Supplier"}
                         </CardTitle>
                         <CardDescription className="truncate">
-                          Status: {o.status} • Payment: {o.paymentStatus}
+                          Status: {prettify(orderStatus)} • Payment: {prettify(paymentStatus)}
                         </CardDescription>
                       </div>
                       <Badge variant="secondary" className="shrink-0">
-                        {formatMoney(o.totalCents)}
+                        {formatMoney(dueNowCents)}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -153,10 +200,25 @@ export default function SupplyOrdersPage() {
                         <div className="font-semibold">{formatMoney(o.platformFeeCents || 0)}</div>
                       </div>
                       <div className="rounded-md border p-3">
-                        <div className="text-xs text-muted-foreground">Discount</div>
+                        <div className="text-xs text-muted-foreground">Buyer discount</div>
                         <div className="font-semibold">
-                          {o.buyerDiscountCents ? `-${formatMoney(o.buyerDiscountCents)}` : "$0.00"}
+                          {discountCents ? `-${formatMoney(discountCents)}` : "$0.00"}
                         </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border p-3 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Payment method</span>
+                        <span className="font-medium">
+                          {paymentMethod === "stripe"
+                            ? `Online${o.buyerPaymentMethod ? ` (${String(o.buyerPaymentMethod).toUpperCase()})` : ""}`
+                            : prettify(paymentMethod)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Amount due now</span>
+                        <span className="font-semibold">{formatMoney(dueNowCents)}</span>
                       </div>
                     </div>
 
@@ -167,7 +229,7 @@ export default function SupplyOrdersPage() {
                       {canPay ? (
                         <Button onClick={() => setPayOrderId(o.id)}>Pay now</Button>
                       ) : (
-                        <Badge variant="outline">{o.paymentMethod}</Badge>
+                        <Badge variant="outline">{prettify(paymentMethod)}</Badge>
                       )}
                     </div>
                   </CardContent>

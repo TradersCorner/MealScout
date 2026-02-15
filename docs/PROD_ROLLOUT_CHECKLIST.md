@@ -21,6 +21,10 @@ Use this checklist for each production release.
    - `VITE_STRIPE_PUBLIC_KEY`
    - `HEALTH_METRICS_TOKEN`
    - `SENTRY_DSN`
+   - `OPS_CLEANUP_ENABLED=true`
+   - `OPS_CLEANUP_INTERVAL_MINUTES=30`
+   - `IDEMPOTENCY_RETENTION_HOURS_AFTER_EXPIRY=24`
+   - `RATE_LIMIT_COUNTER_RETENTION_HOURS=48`
 3. Ensure bypass flags are disabled in production:
    - `MEALSCOUT_BYPASS_STRIPE=false`
    - `MEALSCOUT_TEST_MODE=false`
@@ -40,6 +44,9 @@ Run each once:
    - `GET /health/ready`
 3. Metrics:
    - `GET /health/metrics` with header `X-Health-Token: <HEALTH_METRICS_TOKEN>`
+4. Maintenance cleanup (manual trigger):
+   - `POST /health/maintenance/cleanup` with header `X-Health-Token: <HEALTH_METRICS_TOKEN>`
+   - Confirm response includes deleted row counts for `idempotency_keys` and `rate_limit_counters`.
 
 ## 5. Payment flow smoke test
 
@@ -75,4 +82,3 @@ Alert on:
 - API 5xx > 0.5% sustained
 - readiness check failures
 - webhook processing lag spikes
-

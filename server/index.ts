@@ -21,6 +21,7 @@ import path from "path";
 import { validateEnv } from "./utils/env";
 import { healthRouter } from "./routes/health";
 import { apiMetricsMiddleware, requestIdMiddleware } from "./observability";
+import { runOpsDataCleanup } from "./opsCleanup";
 import { videoStories, restaurants, requestLogs } from "@shared/schema";
 import { and, eq } from "drizzle-orm";
 
@@ -1220,6 +1221,35 @@ app.use((req, res, next) => {
           void runSessionCleanup();
           setInterval(runSessionCleanup, cleanupIntervalMs);
         }, 30_000);
+      }
+
+      const enableOpsCleanup = process.env.OPS_CLEANUP_ENABLED !== "false";
+      if (enableOpsCleanup) {
+        const cleanupIntervalRaw = Number(
+          process.env.OPS_CLEANUP_INTERVAL_MINUTES || 30,
+        );
+        const cleanupIntervalMinutes = Number.isFinite(cleanupIntervalRaw)
+          ? Math.max(5, Math.floor(cleanupIntervalRaw))
+          : 30;
+        const cleanupIntervalMs = cleanupIntervalMinutes * 60 * 1000;
+        const runCleanup = async () => {
+          const result = await runOpsDataCleanup();
+          if (!result.ok) {
+            console.warn(
+              "⚠️  Ops cleanup failed (non-blocking):",
+              result.error || "unknown_error",
+            );
+            return;
+          }
+          console.log(
+            `✅ Ops cleanup completed (idempotency=${result.idempotencyDeleted}, rateLimit=${result.rateLimitDeleted})`,
+          );
+        };
+
+        setTimeout(() => {
+          void runCleanup();
+          setInterval(runCleanup, cleanupIntervalMs);
+        }, 45_000);
       }
 
       // Perform database validation after server startup - non-blocking

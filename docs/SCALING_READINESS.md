@@ -37,13 +37,24 @@ This checklist is the minimum baseline for stable growth under burst traffic.
   - request volume
 - Alert on SLO breach windows (5m + 30m).
 
-## 5. Payments and webhook safety
+## 5. Retention cleanup
+
+- Enable scheduled cleanup in production:
+  - `OPS_CLEANUP_ENABLED=true`
+  - `OPS_CLEANUP_INTERVAL_MINUTES=30`
+  - `IDEMPOTENCY_RETENTION_HOURS_AFTER_EXPIRY=24`
+  - `RATE_LIMIT_COUNTER_RETENTION_HOURS=48`
+- Verify `/health/metrics` includes a `cleanup` snapshot.
+- Keep manual fallback available:
+  - `POST /health/maintenance/cleanup` with `X-Health-Token`.
+
+## 6. Payments and webhook safety
 
 - Keep all payment mutations idempotent.
 - Ensure webhook retry/replay is safe (idempotent DB writes).
 - Monitor Stripe webhook failure count and latency.
 
-## 6. Load testing cadence
+## 7. Load testing cadence
 
 - Run load tests before each major release:
   - browse suppliers
@@ -53,13 +64,13 @@ This checklist is the minimum baseline for stable growth under burst traffic.
 - Test at 5x expected peak RPS for at least 10 minutes.
 - Use `npm run load:supplier-payments` for a repeatable supplier payment-intent load test harness.
 
-## 9. Required DB migrations for scale controls
+## 8. Required DB migrations for scale controls
 
 - Apply:
   - `migrations/058_idempotency_keys.sql`
   - `migrations/059_rate_limit_counters.sql`
 
-## 7. Operational readiness
+## 9. Operational readiness
 
 - On-call owner and escalation path defined.
 - Incident runbook for:
@@ -68,7 +79,7 @@ This checklist is the minimum baseline for stable growth under burst traffic.
   - webhook backlog
   - elevated 5xx rates
 
-## 8. Release strategy
+## 10. Release strategy
 
 - Use feature flags for payment flow changes.
 - Roll out via canary (small traffic slice first).

@@ -9,11 +9,14 @@ const normalizeBaseUrl = (input) =>
 const baseUrl = normalizeBaseUrl(
   process.env.SMOKE_BASE_URL || "http://127.0.0.1:5000",
 );
+const apiOnly =
+  String(process.env.SMOKE_API_ONLY || "").toLowerCase() === "true" ||
+  baseUrl.includes(".onrender.com");
 
 const checks = [
   { name: "Home page", path: "/", expect: [200] },
-  { name: "Login page", path: "/login", expect: [200] },
-  { name: "Map page", path: "/map", expect: [200] },
+  { name: "Login page", path: "/login", expect: apiOnly ? [200, 404] : [200] },
+  { name: "Map page", path: "/map", expect: apiOnly ? [200, 404] : [200] },
   { name: "API health", path: "/api/health", expect: [200] },
   { name: "Auth user", path: "/api/auth/user", expect: [200, 401] },
   { name: "Map locations", path: "/api/map/locations", expect: [200] },

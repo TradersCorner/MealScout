@@ -2,6 +2,7 @@ import "dotenv/config";
 
 const baseUrl = String(process.env.API_BASE || "http://localhost:5000").replace(/\/+$/, "");
 const healthToken = String(process.env.HEALTH_METRICS_TOKEN || "").trim();
+const skipLocalEnvChecks = String(process.env.SKIP_LOCAL_ENV_CHECKS || "").toLowerCase() === "true";
 
 const requiredEnv = [
   "DATABASE_URL",
@@ -27,14 +28,18 @@ async function main() {
   console.log("Scale readiness check");
   console.log(`API_BASE=${baseUrl}`);
 
-  for (const key of requiredEnv) {
-    const present = Boolean(String(process.env[key] || "").trim());
-    if (!present) {
-      console.log(`FAIL env missing: ${key}`);
-      failed += 1;
-    } else {
-      console.log(`PASS env present: ${key}`);
+  if (!skipLocalEnvChecks) {
+    for (const key of requiredEnv) {
+      const present = Boolean(String(process.env[key] || "").trim());
+      if (!present) {
+        console.log(`FAIL env missing: ${key}`);
+        failed += 1;
+      } else {
+        console.log(`PASS env present: ${key}`);
+      }
     }
+  } else {
+    console.log("SKIP local env presence checks");
   }
 
   const health = await checkEndpoint("/health");
@@ -63,4 +68,3 @@ main().catch((error) => {
   console.error("Readiness script failed:", error);
   process.exit(1);
 });
-

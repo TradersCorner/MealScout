@@ -9,5 +9,6 @@ vite.config.ts.*
 .env
 .env.*
 .env*.local
+.tools/
 
 .env*.local

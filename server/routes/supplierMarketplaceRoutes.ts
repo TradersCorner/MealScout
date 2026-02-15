@@ -16,7 +16,7 @@ import {
   supplyShoppingLists,
   suppliers,
 } from "@shared/schema";
-import { and, desc, eq, ilike, inArray, or } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, lt, or } from "drizzle-orm";
 import { isAuthenticated, isStaffOrAdmin, isSupplierOrAdmin } from "../unifiedAuth";
 import multer from "multer";
 import { parseTabularFile } from "../utils/tabularImport";
@@ -46,6 +46,24 @@ const supplierPayIntentIdempotency = requireIdempotencyKey({
   scope: "supplier_order_pay_intent",
   ttlMs: 24 * 60 * 60 * 1000,
 });
+
+const parsePageLimit = (
+  raw: unknown,
+  fallback: number,
+  max: number,
+) => {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(1, Math.min(max, Math.floor(n)));
+};
+
+const parseBeforeTimestamp = (raw: unknown) => {
+  const value = String(raw || "").trim();
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime())) return null;
+  return parsed;
+};
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -3071,12 +3089,25 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
   app.get("/api/supplier/orders", isAuthenticated, isSupplierOrAdmin, async (req: any, res) => {
     try {
       const supplier = await ensureSupplierProfile(req.user.id);
+      const limit = parsePageLimit(req.query?.limit, 100, 300);
+      const before = parseBeforeTimestamp(req.query?.before);
+      const whereClause = before
+        ? and(
+            eq(supplierOrders.supplierId, supplier.id),
+            lt(supplierOrders.createdAt, before),
+          )
+        : eq(supplierOrders.supplierId, supplier.id);
       const orders = await db
         .select()
         .from(supplierOrders)
-        .where(eq(supplierOrders.supplierId, supplier.id))
+        .where(whereClause)
         .orderBy(desc(supplierOrders.createdAt))
-        .limit(500);
+        .limit(limit);
+      if (orders.length > 0) {
+        const tail: any = orders[orders.length - 1];
+        const tailCreatedAt = tail?.createdAt ? new Date(tail.createdAt).toISOString() : "";
+        if (tailCreatedAt) res.setHeader("X-Next-Before", tailCreatedAt);
+      }
       res.json(orders);
     } catch (error) {
       console.error("Error listing supplier orders:", error);
@@ -3090,14 +3121,29 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       const buyerRestaurantId = String(req.query?.buyerRestaurantId || "").trim();
       if (!buyerRestaurantId) return res.status(400).json({ message: "buyerRestaurantId required" });
       const buyerRestaurant = await resolveBuyerRestaurantOrThrow(req, buyerRestaurantId);
+      const limit = parsePageLimit(req.query?.limit, 100, 300);
+      const before = parseBeforeTimestamp(req.query?.before);
+      const whereClause = before
+        ? and(
+            eq(supplierOrders.truckRestaurantId, String((buyerRestaurant as any).id)),
+            lt(supplierOrders.createdAt, before),
+          )
+        : eq(supplierOrders.truckRestaurantId, String((buyerRestaurant as any).id));
 
       const rows = await db
         .select({ order: supplierOrders, supplier: suppliers })
         .from(supplierOrders)
         .innerJoin(suppliers, eq(supplierOrders.supplierId, suppliers.id))
-        .where(eq(supplierOrders.truckRestaurantId, String((buyerRestaurant as any).id)))
+        .where(whereClause)
         .orderBy(desc(supplierOrders.createdAt))
-        .limit(200);
+        .limit(limit);
+      if (rows.length > 0) {
+        const tail: any = rows[rows.length - 1];
+        const tailCreatedAt = tail?.order?.createdAt
+          ? new Date(tail.order.createdAt).toISOString()
+          : "";
+        if (tailCreatedAt) res.setHeader("X-Next-Before", tailCreatedAt);
+      }
 
       res.json(
         (rows as any[]).map((r: any) => ({
@@ -3424,13 +3470,27 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
   });
 
   // Admin helper: list all orders
-  app.get("/api/admin/supplier-orders", isAuthenticated, isStaffOrAdmin, async (_req: any, res) => {
+  app.get("/api/admin/supplier-orders", isAuthenticated, isStaffOrAdmin, async (req: any, res) => {
     try {
-      const orders = await db
-        .select()
-        .from(supplierOrders)
-        .orderBy(desc(supplierOrders.createdAt))
-        .limit(1000);
+      const limit = parsePageLimit(req.query?.limit, 200, 500);
+      const before = parseBeforeTimestamp(req.query?.before);
+      const orders = before
+        ? await db
+            .select()
+            .from(supplierOrders)
+            .where(lt(supplierOrders.createdAt, before))
+            .orderBy(desc(supplierOrders.createdAt))
+            .limit(limit)
+        : await db
+            .select()
+            .from(supplierOrders)
+            .orderBy(desc(supplierOrders.createdAt))
+            .limit(limit);
+      if (orders.length > 0) {
+        const tail: any = orders[orders.length - 1];
+        const tailCreatedAt = tail?.createdAt ? new Date(tail.createdAt).toISOString() : "";
+        if (tailCreatedAt) res.setHeader("X-Next-Before", tailCreatedAt);
+      }
       res.json(orders);
     } catch (error) {
       console.error("Error listing all supplier orders:", error);

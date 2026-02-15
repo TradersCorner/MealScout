@@ -110,6 +110,7 @@ const SuppliersPage = lazy(() => import("@/pages/suppliers"));
 const SupplierDetailPage = lazy(() => import("@/pages/supplier-detail"));
 const SupplierDashboardPage = lazy(() => import("@/pages/supplier-dashboard"));
 const SupplyOrdersPage = lazy(() => import("@/pages/supply-orders"));
+const PublicProfilePage = lazy(() => import("@/pages/public-profile"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -152,6 +153,7 @@ const publicRoutePrefixes = [
   "/sitemap",
   "/status",
   "/golden-plate-winners",
+  "/p/",
   "/forgot-password",
   "/reset-password",
   "/change-password",
@@ -260,6 +262,11 @@ function Router() {
               path="/golden-plate-winners"
               component={GoldenPlateWinners}
             />
+            <Route path="/p/:profileType/:profileId" component={PublicProfilePage} />
+            <Route
+              path="/p/:profileType/:profileId/:profileSlug"
+              component={PublicProfilePage}
+            />
             <Route path="/parking-pass" component={ParkingPassPage} />
             <Route path="/forgot-password" component={ForgotPassword} />
             <Route path="/reset-password" component={ResetPassword} />
@@ -358,6 +365,11 @@ function Router() {
             <Route path="/sitemap" component={Sitemap} />
             <Route path="/truck-landing" component={TruckLanding} />
             <Route path="/status" component={StatusPage} />
+            <Route path="/p/:profileType/:profileId" component={PublicProfilePage} />
+            <Route
+              path="/p/:profileType/:profileId/:profileSlug"
+              component={PublicProfilePage}
+            />
             <Route path="/forgot-password" component={ForgotPassword} />
             <Route path="/reset-password" component={ResetPassword} />
             <Route path="/change-password" component={ChangePassword} />

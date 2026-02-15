@@ -30,6 +30,14 @@ import {
   type ParkingScheduleItem,
 } from "@/components/parking-schedule-calendar";
 
+const toSlug = (value: string | null | undefined) =>
+  String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "")
+    .slice(0, 80);
+
 export default function RestaurantDetailPage() {
   const { id: restaurantId } = useParams();
   const { user } = useAuth();
@@ -227,6 +235,8 @@ export default function RestaurantDetailPage() {
   );
 
   const restaurantName = (restaurant as any)?.name || 'Restaurant';
+  const profileSlug = toSlug(restaurantName) || String(restaurantId || "");
+  const profilePath = `/p/restaurant/${restaurantId}/${profileSlug}`;
   const cuisineType = (restaurant as any)?.cuisineType || 'food';
   const address = (restaurant as any)?.address || '';
   const description = `Visit ${restaurantName} and discover exclusive food deals. ${cuisineType} restaurant with ${restaurantDeals.length} active deals. ${currentRating > 0 ? `Rated ${currentRating.toFixed(1)} stars by ${reviewCount} customers.` : ''}`;
@@ -242,7 +252,7 @@ export default function RestaurantDetailPage() {
     },
     "telephone": (restaurant as any)?.phone || "",
     "servesCuisine": cuisineType,
-    "url": `https://mealscout.us/restaurants/${restaurantId}`,
+    "url": `https://mealscout.us${profilePath}`,
     ...(currentRating > 0 && reviewCount > 0 ? {
       "aggregateRating": {
         "@type": "AggregateRating",
@@ -258,7 +268,7 @@ export default function RestaurantDetailPage() {
         title={`${restaurantName} - ${cuisineType} Restaurant | MealScout`}
         description={description}
         keywords={`${restaurantName}, ${cuisineType} restaurant, restaurant deals, ${address}, food discounts`}
-        canonicalUrl={`https://mealscout.us/restaurants/${restaurantId}`}
+        canonicalUrl={`https://mealscout.us${profilePath}`}
         schemaData={localBusinessSchema}
       />
       <BackHeader
@@ -301,7 +311,7 @@ export default function RestaurantDetailPage() {
           </div>
           <div className="mb-3">
             <ShareButton
-              url={`/restaurant/${restaurantId}`}
+              url={profilePath}
               title={`Check out ${(restaurant as any)?.name || "this spot"} on MealScout`}
               description={(restaurant as any)?.description || "Discover this location on MealScout."}
               size="sm"

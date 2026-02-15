@@ -83,6 +83,8 @@ import {
   userAddresses,
   locationRequests,
   restaurants,
+  suppliers,
+  supplierProducts,
   videoStories,
   truckImportListings,
   truckClaimRequests,
@@ -212,6 +214,14 @@ const stripe = process.env.STRIPE_SECRET_KEY
 
 // Pricing helpers: Stripe Price IDs
 const PROMO_DEADLINE = new Date("2026-03-01T00:00:00Z");
+
+const toSlug = (value: string | null | undefined) =>
+  String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "")
+    .slice(0, 80);
 
 const postToFacebookPage = async (message: string, link?: string | null) => {
   const pageId = process.env.MEALSCOUT_FB_PAGE_ID;
@@ -6662,6 +6672,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/public/profiles/:entity/:id", async (req, res) => {
+    try {
+      const entity = String(req.params.entity || "").toLowerCase();
+      const id = String(req.params.id || "").trim();
+      if (!id) {
+        return res.status(400).json({ message: "Profile id is required" });
+      }
+
+      const baseUrl = (
+        process.env.PUBLIC_BASE_URL ||
+        process.env.SERVICE_URL ||
+        "https://www.mealscout.us"
+      ).replace(/\/+$/, "");
+
+      if (entity === "restaurant") {
+        const row = await storage.getRestaurant(id);
+        if (!row || !row.isActive) {
+          return res.status(404).json({ message: "Profile not found" });
+        }
+        const slug = toSlug(row.name) || row.id;
+        const profilePath = `/p/restaurant/${row.id}/${slug}`;
+        return res.json({
+          entity: "restaurant",
+          id: row.id,
+          title: row.name,
+          subtitle: row.cuisineType || (row.isFoodTruck ? "Food Truck" : "Restaurant"),
+          description:
+            row.description ||
+            `${row.name} on MealScout. Local hours, deals, and direct booking visibility.`,
+          address: row.address || null,
+          city: row.city || null,
+          state: row.state || null,
+          phone: row.phone || null,
+          websiteUrl: row.websiteUrl || null,
+          imageUrl: row.coverImageUrl || row.logoUrl || null,
+          profilePath,
+          canonicalUrl: `${baseUrl}${profilePath}`,
+          social: {
+            instagramUrl: row.instagramUrl || null,
+            facebookPageUrl: row.facebookPageUrl || null,
+            xUrl: row.xUrl || null,
+          },
+        });
+      }
+
+      if (entity === "host") {
+        const row = await storage.getHost(id);
+        if (!row) {
+          return res.status(404).json({ message: "Profile not found" });
+        }
+        const slug = toSlug(row.businessName) || row.id;
+        const profilePath = `/p/host/${row.id}/${slug}`;
+        return res.json({
+          entity: "host",
+          id: row.id,
+          title: row.businessName,
+          subtitle:
+            row.locationType === "event_coordinator"
+              ? "Event Coordinator"
+              : "Host Location",
+          description:
+            row.notes ||
+            `${row.businessName} hosts trucks on MealScout with live event and parking availability.`,
+          address: row.address || null,
+          city: row.city || null,
+          state: row.state || null,
+          phone: row.contactPhone || null,
+          websiteUrl: null,
+          imageUrl: row.spotImageUrl || null,
+          profilePath,
+          canonicalUrl: `${baseUrl}${profilePath}`,
+          social: {
+            instagramUrl: null,
+            facebookPageUrl: null,
+            xUrl: null,
+          },
+        });
+      }
+
+      if (entity === "supplier") {
+        const [row] = await db
+          .select()
+          .from(suppliers)
+          .where(and(eq(suppliers.id, id), eq(suppliers.isActive, true)))
+          .limit(1);
+        if (!row) {
+          return res.status(404).json({ message: "Profile not found" });
+        }
+        const [counts] = await db
+          .select({
+            activeProductCount: sql<number>`count(*)`,
+          })
+          .from(supplierProducts)
+          .where(
+            and(
+              eq(supplierProducts.supplierId, row.id),
+              eq(supplierProducts.isActive, true),
+            ),
+          );
+        const slug = toSlug(row.businessName) || row.id;
+        const profilePath = `/p/supplier/${row.id}/${slug}`;
+        return res.json({
+          entity: "supplier",
+          id: row.id,
+          title: row.businessName,
+          subtitle: "Supplier",
+          description:
+            row.onlinePaymentsNotes ||
+            row.deliveryNotes ||
+            `${row.businessName} supplies local trucks and kitchens on MealScout.`,
+          address: row.address || null,
+          city: row.city || null,
+          state: row.state || null,
+          phone: row.contactPhone || null,
+          websiteUrl: null,
+          imageUrl: null,
+          profilePath,
+          canonicalUrl: `${baseUrl}${profilePath}`,
+          metrics: {
+            activeProductCount: Number(counts?.activeProductCount || 0),
+          },
+          social: {
+            instagramUrl: null,
+            facebookPageUrl: null,
+            xUrl: null,
+          },
+        });
+      }
+
+      return res.status(400).json({ message: "Unsupported profile entity" });
+    } catch (error) {
+      console.error("Error fetching public profile:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
   // Unified search endpoint for /search (sitewide).
   app.get("/api/search", async (req, res) => {
     try {
@@ -7054,22 +7200,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/sitemap.xml", async (_req, res) => {
     try {
       const { cities } = await import("@shared/schema");
-      const rows = await db
+      const cityRows = await db
         .select()
         .from(cities)
         .orderBy(desc(cities.createdAt));
-      const baseUrl = process.env.SERVICE_URL || "https://www.mealscout.us";
-      const urls = rows.map(
-        (c: any) => `${baseUrl}/food-trucks/${encodeURIComponent(c.slug)}`,
-      );
+      const restaurantRows = await db
+        .select({
+          id: restaurants.id,
+          name: restaurants.name,
+          updatedAt: restaurants.updatedAt,
+        })
+        .from(restaurants)
+        .where(eq(restaurants.isActive, true))
+        .orderBy(desc(restaurants.updatedAt));
+      const hostRows = await db
+        .select({
+          id: hosts.id,
+          name: hosts.businessName,
+          updatedAt: hosts.updatedAt,
+        })
+        .from(hosts)
+        .orderBy(desc(hosts.updatedAt));
+      const supplierRows = await db
+        .select({
+          id: suppliers.id,
+          name: suppliers.businessName,
+          updatedAt: suppliers.updatedAt,
+        })
+        .from(suppliers)
+        .where(eq(suppliers.isActive, true))
+        .orderBy(desc(suppliers.updatedAt));
+
+      const baseUrl = (
+        process.env.PUBLIC_BASE_URL ||
+        process.env.SERVICE_URL ||
+        "https://www.mealscout.us"
+      ).replace(/\/+$/, "");
+
+      const urls = [
+        ...cityRows.map((c: any) => ({
+          loc: `${baseUrl}/food-trucks/${encodeURIComponent(c.slug)}`,
+          lastmod: c.updatedAt || c.createdAt,
+        })),
+        ...restaurantRows.map((r: any) => ({
+          loc: `${baseUrl}/p/restaurant/${encodeURIComponent(r.id)}/${encodeURIComponent(toSlug(r.name) || r.id)}`,
+          lastmod: r.updatedAt,
+        })),
+        ...hostRows.map((h: any) => ({
+          loc: `${baseUrl}/p/host/${encodeURIComponent(h.id)}/${encodeURIComponent(toSlug(h.name) || h.id)}`,
+          lastmod: h.updatedAt,
+        })),
+        ...supplierRows.map((s: any) => ({
+          loc: `${baseUrl}/p/supplier/${encodeURIComponent(s.id)}/${encodeURIComponent(toSlug(s.name) || s.id)}`,
+          lastmod: s.updatedAt,
+        })),
+      ];
       const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
-        .map((u: string) => `  <url><loc>${u}</loc></url>`)
+        .map(
+          (entry: any) =>
+            `  <url><loc>${entry.loc}</loc>${entry.lastmod ? `<lastmod>${new Date(entry.lastmod).toISOString()}</lastmod>` : ""}</url>`,
+        )
         .join("\n")}\n</urlset>`;
       res.setHeader("Content-Type", "application/xml");
       res.send(xml);
     } catch (e) {
       console.error("sitemap failed", e);
       res.status(500).send("<error>failed</error>");
+    }
+  });
+
+  app.get("/robots.txt", async (_req, res) => {
+    try {
+      const baseUrl = (
+        process.env.PUBLIC_BASE_URL ||
+        process.env.SERVICE_URL ||
+        "https://www.mealscout.us"
+      ).replace(/\/+$/, "");
+      const robots = [
+        "User-agent: *",
+        "Allow: /",
+        `Sitemap: ${baseUrl}/sitemap.xml`,
+        "",
+      ].join("\n");
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.send(robots);
+    } catch (e) {
+      console.error("robots failed", e);
+      res.status(500).send("User-agent: *\nAllow: /\n");
     }
   });
 

@@ -161,26 +161,26 @@ export default function AdminControlCenter() {
 
         {/* Main Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="incidents" className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4" />
+          <TabsList className="w-full">
+            <TabsTrigger value="overview" className="min-w-[108px]">Overview</TabsTrigger>
+            <TabsTrigger value="incidents" className="min-w-[120px] gap-2">
+              <AlertCircle className="hidden h-4 w-4 sm:block" />
               Incidents
             </TabsTrigger>
-            <TabsTrigger value="tickets" className="flex items-center gap-2">
-              <Ticket className="w-4 h-4" />
+            <TabsTrigger value="tickets" className="min-w-[108px] gap-2">
+              <Ticket className="hidden h-4 w-4 sm:block" />
               Tickets
             </TabsTrigger>
-            <TabsTrigger value="moderation" className="flex items-center gap-2">
-              <Shield className="w-4 h-4" />
+            <TabsTrigger value="moderation" className="min-w-[132px] gap-2">
+              <Shield className="hidden h-4 w-4 sm:block" />
               Moderation
             </TabsTrigger>
-            <TabsTrigger value="audit" className="flex items-center gap-2">
-              <Activity className="w-4 h-4" />
+            <TabsTrigger value="audit" className="min-w-[96px] gap-2">
+              <Activity className="hidden h-4 w-4 sm:block" />
               Audit
             </TabsTrigger>
-            <TabsTrigger value="health" className="flex items-center gap-2">
-              <Bell className="w-4 h-4" />
+            <TabsTrigger value="health" className="min-w-[96px] gap-2">
+              <Bell className="hidden h-4 w-4 sm:block" />
               Health
             </TabsTrigger>
           </TabsList>

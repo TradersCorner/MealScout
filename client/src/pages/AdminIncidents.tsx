@@ -394,7 +394,7 @@ export default function AdminIncidents() {
               </DialogHeader>
 
               <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-4">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="timeline">Timeline</TabsTrigger>
                   <TabsTrigger value="audit">Audit</TabsTrigger>

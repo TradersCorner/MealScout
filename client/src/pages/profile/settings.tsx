@@ -459,18 +459,18 @@ export default function SettingsPage() {
 
       <div className="px-6 py-6">
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-4">
             <TabsTrigger value="profile">
-              <Palette className="w-4 h-4 mr-1" />
+              <Palette className="mr-1 hidden h-4 w-4 sm:block" />
               Studio
             </TabsTrigger>
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="notifications">
-              <Bell className="w-4 h-4 mr-1" />
+              <Bell className="mr-1 hidden h-4 w-4 sm:block" />
               Alerts
             </TabsTrigger>
             <TabsTrigger value="privacy">
-              <Shield className="w-4 h-4 mr-1" />
+              <Shield className="mr-1 hidden h-4 w-4 sm:block" />
               Privacy
             </TabsTrigger>
           </TabsList>

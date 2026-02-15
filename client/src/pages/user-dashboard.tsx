@@ -249,7 +249,7 @@ export default function UserDashboard() {
       {/* Dashboard Content */}
       <div className="px-6">
         <Tabs defaultValue="recent" className="space-y-4">
-          <TabsList className="grid grid-cols-4 lg:grid-cols-4">
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-4">
             <TabsTrigger value="recent">Recent</TabsTrigger>
             <TabsTrigger value="nearby">Nearby</TabsTrigger>
             <TabsTrigger value="favorites">Favorites</TabsTrigger>

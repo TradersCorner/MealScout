@@ -22,8 +22,16 @@ type SettingsPayload = {
     locationServices?: boolean;
     analytics?: boolean;
     marketing?: boolean;
+    customDomain?: {
+      hostname?: string;
+      status?: "unverified" | "verified" | "mismatch" | "error";
+      lastCheckedAt?: string;
+      expectedTarget?: string;
+      diagnostics?: string;
+    };
   };
   publicProfileSettings: {
+    templatePreset?: "classic" | "story" | "bold" | "minimal";
     theme?: "sunset" | "slate" | "forest" | "amber";
     accentColor?: string;
     fontFamily?: "system" | "serif" | "display" | "mono";
@@ -57,6 +65,8 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [savingGeneral, setSavingGeneral] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+  const [verifyingDomain, setVerifyingDomain] = useState(false);
 
   const { data, isLoading, refetch } = useQuery<SettingsPayload>({
     queryKey: ["/api/settings/me"],
@@ -74,8 +84,10 @@ export default function SettingsPage() {
     locationServices: true,
     analytics: true,
     marketing: false,
+    customDomainHost: "",
   });
   const [profile, setProfile] = useState({
+    templatePreset: "classic" as "classic" | "story" | "bold" | "minimal",
     theme: "sunset" as "sunset" | "slate" | "forest" | "amber",
     accentColor: "#f97316",
     fontFamily: "system" as "system" | "serif" | "display" | "mono",
@@ -106,8 +118,10 @@ export default function SettingsPage() {
       locationServices: a.locationServices ?? true,
       analytics: a.analytics ?? true,
       marketing: a.marketing ?? false,
+      customDomainHost: a.customDomain?.hostname || "",
     });
     setProfile({
+      templatePreset: (p.templatePreset as any) || "classic",
       theme: (p.theme as any) || "sunset",
       accentColor: p.accentColor || "#f97316",
       fontFamily: (p.fontFamily as any) || "system",
@@ -154,7 +168,20 @@ export default function SettingsPage() {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          accountSettings: general,
+          accountSettings: {
+            language: general.language,
+            currency: general.currency,
+            locationServices: general.locationServices,
+            analytics: general.analytics,
+            marketing: general.marketing,
+            customDomain: {
+              hostname: general.customDomainHost || "",
+              status: data?.accountSettings?.customDomain?.status,
+              lastCheckedAt: data?.accountSettings?.customDomain?.lastCheckedAt,
+              expectedTarget: data?.accountSettings?.customDomain?.expectedTarget,
+              diagnostics: data?.accountSettings?.customDomain?.diagnostics,
+            },
+          },
         }),
       });
       if (!res.ok) throw new Error("Failed to save settings");
@@ -215,6 +242,7 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           publicProfileSettings: {
+            templatePreset: profile.templatePreset,
             theme: profile.theme,
             accentColor: profile.accentColor,
             fontFamily: profile.fontFamily,
@@ -246,6 +274,88 @@ export default function SettingsPage() {
       });
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const applyPreset = (preset: "classic" | "story" | "bold" | "minimal") => {
+    const baseByPreset: Record<
+      typeof preset,
+      { theme: "sunset" | "slate" | "forest" | "amber"; fontFamily: "system" | "serif" | "display" | "mono"; heroLayout: "center" | "left" | "split"; accentColor: string }
+    > = {
+      classic: { theme: "sunset", fontFamily: "system", heroLayout: "left", accentColor: "#f97316" },
+      story: { theme: "forest", fontFamily: "serif", heroLayout: "split", accentColor: "#10b981" },
+      bold: { theme: "amber", fontFamily: "display", heroLayout: "center", accentColor: "#f59e0b" },
+      minimal: { theme: "slate", fontFamily: "system", heroLayout: "left", accentColor: "#64748b" },
+    };
+    const next = baseByPreset[preset];
+    setProfile((prev) => ({
+      ...prev,
+      templatePreset: preset,
+      theme: next.theme,
+      fontFamily: next.fontFamily,
+      heroLayout: next.heroLayout,
+      accentColor: next.accentColor,
+    }));
+  };
+
+  const uploadGalleryImage = async (file: File) => {
+    setUploadingGallery(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const res = await fetch("/api/settings/public-profile/gallery", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const payload = await res.json();
+      const urls = Array.isArray(payload?.galleryUrls) ? payload.galleryUrls : [];
+      setProfile((prev) => ({ ...prev, galleryUrls: urls.join("\n") }));
+      toast({ title: "Uploaded", description: "Image added to gallery." });
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error?.message || "Unable to upload image.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingGallery(false);
+    }
+  };
+
+  const verifyCustomDomain = async () => {
+    const hostname = String(general.customDomainHost || "").trim().toLowerCase();
+    if (!hostname) {
+      toast({ title: "Domain required", description: "Enter a custom domain first.", variant: "destructive" });
+      return;
+    }
+    setVerifyingDomain(true);
+    try {
+      const res = await fetch("/api/settings/custom-domain/verify", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hostname }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload?.message || "Domain verification failed");
+      toast({
+        title: payload?.status === "verified" ? "Domain verified" : "Domain check complete",
+        description:
+          payload?.status === "verified"
+            ? `DNS is correctly pointing to ${payload?.expectedTarget || "the platform"}`
+            : payload?.diagnostics || "DNS is not yet aligned.",
+      });
+      await refetch();
+    } catch (error: any) {
+      toast({
+        title: "Verification failed",
+        description: error?.message || "Unable to verify domain.",
+        variant: "destructive",
+      });
+    } finally {
+      setVerifyingDomain(false);
     }
   };
 
@@ -292,6 +402,29 @@ export default function SettingsPage() {
                 <CardTitle>Public Profile Studio</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <Label>Template preset</Label>
+                    <Select
+                      value={profile.templatePreset}
+                      onValueChange={(value: any) => applyPreset(value)}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="classic">Classic</SelectItem>
+                        <SelectItem value="story">Story</SelectItem>
+                        <SelectItem value="bold">Bold</SelectItem>
+                        <SelectItem value="minimal">Minimal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <Button variant="outline" onClick={() => applyPreset("classic")}>Classic</Button>
+                    <Button variant="outline" onClick={() => applyPreset("story")}>Story</Button>
+                    <Button variant="outline" onClick={() => applyPreset("bold")}>Bold</Button>
+                  </div>
+                </div>
+
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <Label>Theme</Label>
@@ -424,6 +557,21 @@ export default function SettingsPage() {
                     rows={4}
                     placeholder={"https://.../image1.jpg\nhttps://.../image2.jpg"}
                   />
+                  <div className="mt-2">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      disabled={uploadingGallery}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) void uploadGalleryImage(file);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Upload directly to your profile gallery (max 12 images).
+                    </p>
+                  </div>
                 </div>
 
                 <div>
@@ -544,6 +692,54 @@ export default function SettingsPage() {
                     {savingGeneral ? "Saving..." : "Save General Settings"}
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Custom Domain</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label>Your domain</Label>
+                  <Input
+                    value={general.customDomainHost}
+                    onChange={(e) =>
+                      setGeneral((prev) => ({ ...prev, customDomainHost: e.target.value }))
+                    }
+                    placeholder="profile.yourdomain.com"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Add a CNAME from your domain to the target shown after verification.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="outline" onClick={verifyCustomDomain} disabled={verifyingDomain}>
+                    {verifyingDomain ? "Verifying..." : "Verify DNS"}
+                  </Button>
+                  <Button onClick={saveGeneral} disabled={savingGeneral || isLoading || !hydratedRef.current}>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Domain
+                  </Button>
+                </div>
+                {data?.accountSettings?.customDomain?.hostname ? (
+                  <div className="rounded-md border p-3 text-sm">
+                    <p>
+                      <span className="font-medium">Status:</span>{" "}
+                      {String(data.accountSettings.customDomain.status || "unverified")}
+                    </p>
+                    {data.accountSettings.customDomain.expectedTarget ? (
+                      <p className="mt-1 text-muted-foreground">
+                        Expected target: {data.accountSettings.customDomain.expectedTarget}
+                      </p>
+                    ) : null}
+                    {data.accountSettings.customDomain.diagnostics ? (
+                      <p className="mt-1 text-muted-foreground">
+                        {data.accountSettings.customDomain.diagnostics}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
           </TabsContent>

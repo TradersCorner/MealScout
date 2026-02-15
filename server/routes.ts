@@ -224,6 +224,7 @@ const toSlug = (value: string | null | undefined) =>
     .slice(0, 80);
 
 const publicProfileSettingsSchema = z.object({
+  templatePreset: z.enum(["classic", "story", "bold", "minimal"]).optional(),
   theme: z.enum(["sunset", "slate", "forest", "amber"]).optional(),
   accentColor: z.string().max(32).optional(),
   fontFamily: z.enum(["system", "serif", "display", "mono"]).optional(),
@@ -270,6 +271,15 @@ const accountSettingsSchema = z.object({
   locationServices: z.boolean().optional(),
   analytics: z.boolean().optional(),
   marketing: z.boolean().optional(),
+  customDomain: z
+    .object({
+      hostname: z.string().max(255),
+      status: z.enum(["unverified", "verified", "mismatch", "error"]).optional(),
+      lastCheckedAt: z.string().optional(),
+      expectedTarget: z.string().optional(),
+      diagnostics: z.string().optional(),
+    })
+    .optional(),
 });
 
 const postToFacebookPage = async (message: string, link?: string | null) => {
@@ -1034,6 +1044,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       res.status(500).json({ message: "Failed to update settings" });
+    }
+  });
+
+  app.post(
+    "/api/settings/public-profile/gallery",
+    isAuthenticated,
+    upload.single("image"),
+    async (req: any, res) => {
+      try {
+        if (!isCloudinaryConfigured()) {
+          return res.status(503).json({ message: "Image upload service not configured" });
+        }
+        if (!req.file) {
+          return res.status(400).json({ message: "No image file provided" });
+        }
+        const user = await storage.getUser(req.user.id);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        const result = await uploadToCloudinary(
+          req.file.buffer,
+          "public-profiles",
+          `profile-${user.id}-${Date.now()}`,
+        );
+
+        const current = (user.publicProfileSettings || {}) as any;
+        const galleryUrls = Array.isArray(current.galleryUrls) ? current.galleryUrls : [];
+        const nextGalleryUrls = [result.secureUrl, ...galleryUrls].slice(0, 12);
+
+        await storage.updateUser(user.id, {
+          publicProfileSettings: {
+            ...current,
+            galleryUrls: nextGalleryUrls,
+          } as any,
+        });
+
+        res.json({
+          url: result.secureUrl,
+          thumbnailUrl: result.thumbnailUrl,
+          galleryUrls: nextGalleryUrls,
+        });
+      } catch (error) {
+        console.error("Error uploading public profile image:", error);
+        res.status(500).json({ message: "Failed to upload image" });
+      }
+    },
+  );
+
+  app.post("/api/settings/custom-domain/verify", isAuthenticated, async (req: any, res) => {
+    try {
+      const payloadSchema = z.object({
+        hostname: z
+          .string()
+          .trim()
+          .toLowerCase()
+          .regex(/^[a-z0-9.-]+\.[a-z]{2,}$/, "Invalid hostname"),
+      });
+      const { hostname } = payloadSchema.parse(req.body || {});
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const dns = await import("dns/promises");
+      const expectedTarget = String(
+        process.env.PROFILE_DOMAIN_CNAME_TARGET ||
+          process.env.RENDER_EXTERNAL_HOSTNAME ||
+          (process.env.PUBLIC_BASE_URL || "mealscout.us")
+            .replace(/^https?:\/\//, "")
+            .replace(/\/+$/, ""),
+      )
+        .toLowerCase()
+        .trim();
+      let status: "unverified" | "verified" | "mismatch" | "error" = "unverified";
+      let diagnostics = "";
+
+      try {
+        const cnames = await dns.resolveCname(hostname);
+        const normalized = cnames.map((c) => String(c || "").toLowerCase().replace(/\.$/, ""));
+        const expected = expectedTarget.replace(/\.$/, "");
+        if (normalized.includes(expected)) {
+          status = "verified";
+        } else {
+          status = "mismatch";
+          diagnostics = `CNAME points to ${normalized.join(", ") || "none"}, expected ${expected}`;
+        }
+      } catch (e: any) {
+        status = "error";
+        diagnostics = e?.message || "DNS lookup failed";
+      }
+
+      const accountSettings = {
+        ...(user.accountSettings || {}),
+        customDomain: {
+          hostname,
+          status,
+          lastCheckedAt: new Date().toISOString(),
+          expectedTarget,
+          diagnostics,
+        },
+      };
+      await storage.updateUser(user.id, {
+        accountSettings: accountSettings as any,
+      });
+
+      res.json(accountSettings.customDomain);
+    } catch (error: any) {
+      console.error("Error verifying custom domain:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Invalid domain payload",
+          errors: error.errors,
+        });
+      }
+      res.status(500).json({ message: "Failed to verify custom domain" });
     }
   });
 

@@ -22,6 +22,7 @@ type PublicProfile = {
   canonicalUrl: string;
   profilePath: string;
   profileSettings?: {
+    templatePreset?: "classic" | "story" | "bold" | "minimal";
     theme?: "sunset" | "slate" | "forest" | "amber";
     accentColor?: string;
     fontFamily?: "system" | "serif" | "display" | "mono";
@@ -97,6 +98,14 @@ export default function PublicProfilePage() {
 
   const locationLine = [data.address, data.city, data.state].filter(Boolean).join(", ");
   const profile = data.profileSettings || {};
+  const presetDefaults =
+    profile.templatePreset === "story"
+      ? { theme: "forest", heroLayout: "split", fontFamily: "serif" }
+      : profile.templatePreset === "bold"
+        ? { theme: "amber", heroLayout: "center", fontFamily: "display" }
+        : profile.templatePreset === "minimal"
+          ? { theme: "slate", heroLayout: "left", fontFamily: "system" }
+          : { theme: "sunset", heroLayout: "left", fontFamily: "system" };
   const heroTitle = profile.heroTitle || data.title;
   const heroSubtitle = profile.heroSubtitle || data.subtitle || data.description || "";
   const about = profile.about || data.description || "";
@@ -134,29 +143,32 @@ export default function PublicProfilePage() {
       : undefined,
   };
 
+  const resolvedTheme = profile.theme || presetDefaults.theme;
+  const resolvedHeroLayout = profile.heroLayout || presetDefaults.heroLayout;
+  const resolvedFontFamily = profile.fontFamily || presetDefaults.fontFamily;
   const themePalette =
-    profile.theme === "forest"
+    resolvedTheme === "forest"
       ? { bg: "from-emerald-900 to-emerald-700", panel: "bg-emerald-950/70", chip: "bg-emerald-400/20 text-emerald-100" }
-      : profile.theme === "slate"
+      : resolvedTheme === "slate"
         ? { bg: "from-slate-900 to-slate-700", panel: "bg-slate-950/70", chip: "bg-slate-300/20 text-slate-100" }
-        : profile.theme === "amber"
+        : resolvedTheme === "amber"
           ? { bg: "from-amber-900 to-amber-700", panel: "bg-amber-950/70", chip: "bg-amber-300/20 text-amber-100" }
           : { bg: "from-rose-900 to-orange-700", panel: "bg-rose-950/70", chip: "bg-rose-300/20 text-rose-100" };
   const accentStyle = profile.accentColor
     ? ({ borderColor: profile.accentColor, color: profile.accentColor } as any)
     : undefined;
   const fontClass =
-    profile.fontFamily === "serif"
+    resolvedFontFamily === "serif"
       ? "font-serif"
-      : profile.fontFamily === "mono"
+      : resolvedFontFamily === "mono"
         ? "font-mono"
-        : profile.fontFamily === "display"
+        : resolvedFontFamily === "display"
           ? "font-[Georgia]"
           : "font-sans";
   const heroLayoutClass =
-    profile.heroLayout === "center"
+    resolvedHeroLayout === "center"
       ? "text-center"
-      : profile.heroLayout === "split"
+      : resolvedHeroLayout === "split"
         ? "grid gap-2 md:grid-cols-2 md:items-end"
         : "text-left";
 
@@ -276,7 +288,7 @@ export default function PublicProfilePage() {
               ) : null}
             </div>
             {ctaLabel && ctaUrl ? (
-              <div className={profile.heroLayout === "split" ? "md:justify-self-end" : "mt-5"}>
+              <div className={resolvedHeroLayout === "split" ? "md:justify-self-end" : "mt-5"}>
                 <a
                   href={ctaUrl}
                   target="_blank"

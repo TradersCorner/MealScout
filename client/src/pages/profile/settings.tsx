@@ -75,6 +75,13 @@ const SECTION_OPTIONS = [
 ] as const;
 type SectionKey = (typeof SECTION_OPTIONS)[number];
 
+const PREVIEW_THEME_BG: Record<string, string> = {
+  sunset: "from-rose-900 to-orange-700",
+  slate: "from-slate-900 to-slate-700",
+  forest: "from-emerald-900 to-emerald-700",
+  amber: "from-amber-900 to-amber-700",
+};
+
 export default function SettingsPage() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -401,6 +408,36 @@ export default function SettingsPage() {
     setProfile((prev) => ({ ...prev, sectionOrder: next.join(",") }));
   };
 
+  const resolvedPreviewTheme = profile.theme || "sunset";
+  const resolvedPreviewFontClass =
+    profile.fontFamily === "serif"
+      ? "font-serif"
+      : profile.fontFamily === "mono"
+        ? "font-mono"
+        : profile.fontFamily === "display"
+          ? "font-[Georgia]"
+          : "font-sans";
+  const previewSections = getSectionOrderList();
+  const previewHighlights = profile.highlights
+    .split("\n")
+    .map((v) => v.trim())
+    .filter(Boolean)
+    .slice(0, 6);
+  const previewLinks = profile.featuredLinks
+    .split("\n")
+    .map((v) => v.trim())
+    .filter(Boolean)
+    .slice(0, 4)
+    .map((line) => {
+      const [label, url] = line.split("|").map((s) => s.trim());
+      return { label: label || url || "Link", url: url || label || "#" };
+    });
+  const previewGallery = profile.galleryUrls
+    .split("\n")
+    .map((v) => v.trim())
+    .filter(Boolean)
+    .slice(0, 6);
+
   return (
     <div className="max-w-3xl mx-auto bg-[var(--bg-app)] min-h-screen relative pb-20">
       <header className="px-6 py-6 bg-[hsl(var(--background))] border-b border-white/5">
@@ -439,6 +476,125 @@ export default function SettingsPage() {
           </TabsList>
 
           <TabsContent value="profile" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Live Preview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className={`overflow-hidden rounded-lg border ${resolvedPreviewFontClass}`}>
+                  <div className={`bg-gradient-to-br ${PREVIEW_THEME_BG[resolvedPreviewTheme] || PREVIEW_THEME_BG.sunset} p-6 text-white`}>
+                    {!profile.hideProfileBadge ? (
+                      <p className="mb-2 text-xs uppercase tracking-wide text-white/80">Public Profile</p>
+                    ) : null}
+                    <h3 className={`text-2xl font-bold ${profile.heroLayout === "center" ? "text-center" : "text-left"}`}>
+                      {profile.heroTitle || (data?.profileLinks?.[0]?.title ?? "Your Business Name")}
+                    </h3>
+                    {(profile.heroSubtitle || "").trim() ? (
+                      <p className={`mt-2 text-sm text-white/85 ${profile.heroLayout === "center" ? "text-center" : "text-left"}`}>
+                        {profile.heroSubtitle}
+                      </p>
+                    ) : null}
+                    {(profile.ctaLabel || "").trim() ? (
+                      <div className={`mt-3 ${profile.heroLayout === "center" ? "text-center" : ""}`}>
+                        <span className="inline-flex rounded border border-white/40 bg-white/10 px-3 py-1 text-xs">
+                          {profile.ctaLabel}
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="space-y-4 p-4">
+                    {previewSections.map((section) => {
+                      if (section === "about") {
+                        if (!profile.about.trim()) return null;
+                        return (
+                          <div key={section}>
+                            <p className="text-sm text-muted-foreground">{profile.about}</p>
+                          </div>
+                        );
+                      }
+                      if (section === "highlights") {
+                        if (!previewHighlights.length) return null;
+                        return (
+                          <div key={section}>
+                            <p className="mb-1 text-xs uppercase text-muted-foreground">Highlights</p>
+                            <div className="flex flex-wrap gap-2">
+                              {previewHighlights.map((h, i) => (
+                                <span
+                                  key={`${h}-${i}`}
+                                  className="rounded border px-2 py-1 text-xs"
+                                  style={{ borderColor: profile.accentColor, color: profile.accentColor }}
+                                >
+                                  {h}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+                      if (section === "links") {
+                        if (!previewLinks.length) return null;
+                        return (
+                          <div key={section}>
+                            <p className="mb-1 text-xs uppercase text-muted-foreground">Links</p>
+                            <div className="grid gap-2">
+                              {previewLinks.map((link, i) => (
+                                <div key={`${link.url}-${i}`} className="rounded border px-2 py-1 text-xs">
+                                  {link.label}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+                      if (section === "gallery") {
+                        if (!previewGallery.length) return null;
+                        return (
+                          <div key={section}>
+                            <p className="mb-1 text-xs uppercase text-muted-foreground">Gallery</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              {previewGallery.map((url, i) => (
+                                <img
+                                  key={`${url}-${i}`}
+                                  src={url}
+                                  alt={`Preview ${i + 1}`}
+                                  className="h-16 w-full rounded object-cover"
+                                  loading="lazy"
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+                      if (section === "contact") {
+                        if (!profile.showContact) return null;
+                        return (
+                          <p key={section} className="text-xs text-muted-foreground">
+                            Contact section enabled
+                          </p>
+                        );
+                      }
+                      if (section === "location") {
+                        if (!profile.showAddress) return null;
+                        return (
+                          <p key={section} className="text-xs text-muted-foreground">
+                            Address section enabled
+                          </p>
+                        );
+                      }
+                      if (section === "metrics") {
+                        return (
+                          <p key={section} className="text-xs text-muted-foreground">
+                            Metrics section enabled
+                          </p>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Public Profile Studio</CardTitle>

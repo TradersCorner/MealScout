@@ -69,6 +69,7 @@ This checklist is the minimum baseline for stable growth under burst traffic.
 - Apply:
   - `migrations/058_idempotency_keys.sql`
   - `migrations/059_rate_limit_counters.sql`
+  - `migrations/060_supplier_marketplace_performance_indexes.sql`
 
 ## 9. Operational readiness
 

@@ -35,6 +35,7 @@ Run each once:
 
 1. `npm run -s migrate:sql 058_idempotency_keys.sql`
 2. `npm run -s migrate:sql 059_rate_limit_counters.sql`
+3. `npm run -s migrate:sql 060_supplier_marketplace_performance_indexes.sql`
 
 ## 4. Health + readiness verification
 

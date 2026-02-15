@@ -69,6 +69,10 @@ type SupplierRequest = {
 };
 
 const formatMoney = (cents: number) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
+const prettify = (raw: string | null | undefined) =>
+  String(raw || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (m) => m.toUpperCase()) || "Unknown";
 
 const toDateTimeLocalValue = (raw: string | null | undefined) => {
   if (!raw) return "";
@@ -109,6 +113,15 @@ export default function SupplierDashboardPage() {
   const [deliveryEdits, setDeliveryEdits] = useState<
     Record<string, { deliveryScheduledFor: string; deliveryFeeDollars: string }>
   >({});
+  const [deliveryFilter, setDeliveryFilter] = useState<
+    "all" | "submitted" | "active" | "delivered" | "cancelled"
+  >("active");
+  const [requestFilter, setRequestFilter] = useState<
+    "all" | "submitted" | "accepted" | "closed"
+  >("submitted");
+  const [orderFilter, setOrderFilter] = useState<"all" | "open" | "ready" | "completed" | "cancelled">(
+    "open",
+  );
 
   const { data: supplier, isError: isSupplierError } = useQuery<Supplier>({
     queryKey: ["/api/supplier/me"],
@@ -512,6 +525,46 @@ export default function SupplierDashboardPage() {
     () => requests.filter((r) => String(r.requestedFulfillment || "") === "delivery"),
     [requests],
   );
+  const nonDeliveryRequests = useMemo(
+    () => requests.filter((r) => String(r.requestedFulfillment || "") !== "delivery"),
+    [requests],
+  );
+  const filteredDeliveryRequests = useMemo(() => {
+    const rows = deliveryRequests;
+    if (deliveryFilter === "all") return rows;
+    if (deliveryFilter === "submitted") return rows.filter((r) => String(r.status) === "submitted");
+    if (deliveryFilter === "delivered") {
+      return rows.filter((r) => String(r.deliveryStatus || "pending") === "delivered");
+    }
+    if (deliveryFilter === "cancelled") {
+      return rows.filter(
+        (r) =>
+          String(r.deliveryStatus || "pending") === "cancelled" || String(r.status) === "cancelled",
+      );
+    }
+    return rows.filter((r) =>
+      ["accepted", "out_for_delivery"].includes(String(r.deliveryStatus || "pending")),
+    );
+  }, [deliveryRequests, deliveryFilter]);
+  const filteredRequests = useMemo(() => {
+    if (requestFilter === "all") return nonDeliveryRequests;
+    if (requestFilter === "submitted") {
+      return nonDeliveryRequests.filter((r) => String(r.status) === "submitted");
+    }
+    if (requestFilter === "accepted") {
+      return nonDeliveryRequests.filter((r) => String(r.status) === "accepted");
+    }
+    return nonDeliveryRequests.filter((r) =>
+      ["declined", "cancelled"].includes(String(r.status)),
+    );
+  }, [nonDeliveryRequests, requestFilter]);
+  const filteredOrders = useMemo(() => {
+    if (orderFilter === "all") return orders;
+    if (orderFilter === "open") return orders.filter((o) => !["completed", "cancelled"].includes(String(o.status)));
+    if (orderFilter === "ready") return orders.filter((o) => String(o.status) === "ready");
+    if (orderFilter === "completed") return orders.filter((o) => String(o.status) === "completed");
+    return orders.filter((o) => String(o.status) === "cancelled");
+  }, [orders, orderFilter]);
 
   useEffect(() => {
     if (deliveryRequests.length === 0) return;
@@ -797,18 +850,45 @@ export default function SupplierDashboardPage() {
 
             <Card>
               <CardContent className="p-4 space-y-3">
-                <div className="text-sm font-semibold">Delivery portal</div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold">Delivery portal</div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-muted-foreground">
+                      {filteredDeliveryRequests.length}/{deliveryRequests.length}
+                    </div>
+                    <select
+                      className="border rounded px-2 py-1 text-xs bg-background"
+                      value={deliveryFilter}
+                      onChange={(e) => setDeliveryFilter(e.target.value as any)}
+                    >
+                      <option value="active">Active</option>
+                      <option value="submitted">Submitted</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="all">All</option>
+                    </select>
+                  </div>
+                </div>
                 {deliveryRequests.length === 0 ? (
                   <div className="text-sm text-muted-foreground">
                     No delivery requests yet.
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {deliveryRequests.map((r) => {
+                    {filteredDeliveryRequests.map((r) => {
                       const address = [r.deliveryAddress, r.deliveryCity, r.deliveryState]
                         .map((v) => (v || "").trim())
                         .filter(Boolean)
                         .join(", ");
+                      const reqStatus = String(r.status || "");
+                      const delStatus = String(r.deliveryStatus || "pending");
+                      const canMarkOutForDelivery =
+                        reqStatus === "accepted" &&
+                        ["accepted", "pending"].includes(delStatus);
+                      const canMarkDelivered =
+                        reqStatus === "accepted" && ["out_for_delivery", "accepted"].includes(delStatus);
+                      const canCancel =
+                        !["delivered", "cancelled"].includes(delStatus) && reqStatus !== "cancelled";
                       return (
                         <div key={r.id} className="border rounded p-3 space-y-2">
                           <div className="flex items-center justify-between">
@@ -816,7 +896,7 @@ export default function SupplierDashboardPage() {
                               Delivery - {r.paymentPreference}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {r.deliveryStatus || "pending"} - {r.status}
+                              {prettify(delStatus)} - {prettify(reqStatus)}
                             </div>
                           </div>
                           {address ? <div className="text-sm">{address}</div> : null}
@@ -891,7 +971,7 @@ export default function SupplierDashboardPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              disabled={updateDelivery.isPending}
+                              disabled={updateDelivery.isPending || !canMarkOutForDelivery}
                               onClick={() =>
                                 updateDelivery.mutate({
                                   requestId: r.id,
@@ -904,7 +984,7 @@ export default function SupplierDashboardPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              disabled={updateDelivery.isPending}
+                              disabled={updateDelivery.isPending || !canMarkDelivered}
                               onClick={() =>
                                 updateDelivery.mutate({
                                   requestId: r.id,
@@ -917,7 +997,7 @@ export default function SupplierDashboardPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              disabled={updateDelivery.isPending}
+                              disabled={updateDelivery.isPending || !canCancel}
                               onClick={() =>
                                 updateDelivery.mutate({
                                   requestId: r.id,
@@ -938,23 +1018,38 @@ export default function SupplierDashboardPage() {
 
             <Card>
               <CardContent className="p-4 space-y-3">
-                <div className="text-sm font-semibold">Requests</div>
-                {requests.length === 0 ? (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold">Requests</div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-muted-foreground">
+                      {filteredRequests.length}/{nonDeliveryRequests.length}
+                    </div>
+                    <select
+                      className="border rounded px-2 py-1 text-xs bg-background"
+                      value={requestFilter}
+                      onChange={(e) => setRequestFilter(e.target.value as any)}
+                    >
+                      <option value="submitted">Submitted</option>
+                      <option value="accepted">Accepted</option>
+                      <option value="closed">Closed</option>
+                      <option value="all">All</option>
+                    </select>
+                  </div>
+                </div>
+                {nonDeliveryRequests.length === 0 ? (
                   <div className="text-sm text-muted-foreground">
                     No requests yet.
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {requests
-                      .filter((r) => String(r.requestedFulfillment || "") !== "delivery")
-                      .map((r) => (
+                    {filteredRequests.map((r) => (
                       <div key={r.id} className="border rounded p-3 space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="text-xs text-muted-foreground">
-                            {r.paymentPreference}
+                            {prettify(r.paymentPreference)}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {r.status}
+                            {prettify(r.status)}
                           </div>
                         </div>
                         {r.note ? (
@@ -1022,31 +1117,49 @@ export default function SupplierDashboardPage() {
 
             <Card>
               <CardContent className="p-4 space-y-3">
-                <div className="text-sm font-semibold">Orders</div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold">Orders</div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-muted-foreground">
+                      {filteredOrders.length}/{orders.length}
+                    </div>
+                    <select
+                      className="border rounded px-2 py-1 text-xs bg-background"
+                      value={orderFilter}
+                      onChange={(e) => setOrderFilter(e.target.value as any)}
+                    >
+                      <option value="open">Open</option>
+                      <option value="ready">Ready</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="all">All</option>
+                    </select>
+                  </div>
+                </div>
                 {orders.length === 0 ? (
                   <div className="text-sm text-muted-foreground">
                     No orders yet.
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {orders.map((o) => (
+                    {filteredOrders.map((o) => (
                       <div key={o.id} className="border rounded p-3 space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="text-sm font-semibold">
                             {formatMoney(o.totalCents)}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {o.paymentMethod}:{o.paymentStatus}
+                            {prettify(o.paymentMethod)}:{prettify(o.paymentStatus)}
                           </div>
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          Status: {o.status}
+                          Status: {prettify(o.status)}
                         </div>
                         <div className="flex gap-2">
                           <Button
                             size="sm"
                             variant="outline"
-                            disabled={setOrderStatus.isPending}
+                            disabled={setOrderStatus.isPending || ["ready", "completed", "cancelled"].includes(String(o.status))}
                             onClick={() =>
                               setOrderStatus.mutate({ orderId: o.id, status: "ready" })
                             }
@@ -1056,7 +1169,7 @@ export default function SupplierDashboardPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            disabled={setOrderStatus.isPending}
+                            disabled={setOrderStatus.isPending || ["completed", "cancelled"].includes(String(o.status))}
                             onClick={() =>
                               setOrderStatus.mutate({
                                 orderId: o.id,

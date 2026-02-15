@@ -54,7 +54,7 @@ export default function ChangePassword() {
           user?.userType === "super_admin" ||
           user?.userType === "staff"
         ) {
-          setLocation("/admin-dashboard");
+          setLocation("/admin/dashboard");
         } else {
           setLocation("/map");
         }

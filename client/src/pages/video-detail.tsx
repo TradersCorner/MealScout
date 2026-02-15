@@ -204,7 +204,7 @@ export default function VideoDetailPage() {
             <div className="flex items-center space-x-2 text-sm text-[color:var(--text-secondary)]">
               <MapPin className="w-4 h-4" />
               <Link
-                href={`/restaurants/${videoData.restaurantId}`}
+                href={`/restaurant/${videoData.restaurantId}`}
                 className="hover:text-primary"
               >
                 {restaurantName}
@@ -245,7 +245,7 @@ export default function VideoDetailPage() {
             <p className="text-sm text-[color:var(--text-secondary)] mb-3">
               {location}
             </p>
-            <Link href={`/restaurants/${videoData.restaurantId}`}>
+            <Link href={`/restaurant/${videoData.restaurantId}`}>
               <Button className="w-full">View Restaurant & Deals</Button>
             </Link>
           </div>

@@ -307,12 +307,52 @@ export default function Navigation() {
               ? [...restaurantOwnerNavItems, bugNavItem]
               : isHost
                 ? [...hostNavItems, bugNavItem]
-                : [...customerNavItems, bugNavItem];
+              : [...customerNavItems, bugNavItem];
+
+  const desktopQuickActionPaths = [
+    "/search",
+    "/map",
+    "/events",
+    "/dashboard",
+    "/profile",
+    "/admin/dashboard",
+    "/staff",
+    "/host/dashboard",
+    "/supplier/dashboard",
+  ];
+  const desktopQuickActions = navItems
+    .filter((item) => item.path && desktopQuickActionPaths.includes(item.path))
+    .slice(0, 5);
 
   return (
-    <nav className="nav-bar fixed bottom-0 left-0 right-0 w-full border-t px-4 py-2 z-50">
-      <div className="w-full mx-auto overflow-x-auto md:overflow-visible md:max-w-none md:px-6">
-        <div className="flex items-center justify-start space-x-2 min-w-max md:flex-wrap md:justify-center md:gap-3">
+    <>
+      <div className="hidden md:block fixed top-4 right-4 z-50">
+        <div className="rounded-2xl border border-white/20 bg-[hsl(var(--background))/0.82] backdrop-blur-xl shadow-clean-lg p-2">
+          <div className="flex items-center gap-2">
+            {desktopQuickActions.map((item) =>
+              item.path ? (
+                <Link
+                  key={`quick-${item.path}`}
+                  href={item.path}
+                  className={`inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition-colors ${
+                    location === item.path
+                      ? "bg-[color:var(--accent-text)] text-white"
+                      : "bg-[var(--bg-surface)] text-foreground hover:bg-[var(--bg-card-hover)]"
+                  }`}
+                  aria-label={item.label}
+                >
+                  <item.icon className="h-4 w-4" />
+                  <span className="hidden lg:inline">{item.label}</span>
+                </Link>
+              ) : null,
+            )}
+          </div>
+        </div>
+      </div>
+
+      <nav className="nav-bar fixed bottom-0 left-0 right-0 w-full border-t px-4 py-2 z-50 md:hidden">
+      <div className="w-full mx-auto overflow-x-auto max-w-none">
+        <div className="flex items-center justify-start space-x-2 min-w-max">
           {navItems.map((item) =>
             item.path ? (
               <Link
@@ -354,6 +394,7 @@ export default function Navigation() {
         </div>
       </div>
     </nav>
+    </>
   );
 }
 

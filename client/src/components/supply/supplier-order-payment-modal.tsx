@@ -104,9 +104,6 @@ function PaymentForm(props: {
           <span className="text-muted-foreground">Total due</span>
           <span className="font-semibold">{formatMoney(props.totalCents)}</span>
         </div>
-        <div className="text-xs text-muted-foreground">
-          Bank transfer (ACH) is typically the lowest-cost option for large payments.
-        </div>
       </div>
 
       <div className="rounded-lg border p-4">
@@ -145,6 +142,12 @@ export function SupplierOrderPaymentModal(props: {
   const [chargeAmountCents, setChargeAmountCents] = useState<number>(0);
   const [buyerDiscountCents, setBuyerDiscountCents] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<"ach" | "card">("ach");
+  const [startError, setStartError] = useState<string | null>(null);
+  const [feeBreakdown, setFeeBreakdown] = useState<{
+    supplierGrossCents: number;
+    platformBaseFeeCents: number;
+    buyerProcessingFeeCents: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!props.open) {
@@ -152,6 +155,8 @@ export function SupplierOrderPaymentModal(props: {
       setTotalCents(0);
       setChargeAmountCents(0);
       setBuyerDiscountCents(0);
+      setStartError(null);
+      setFeeBreakdown(null);
       return;
     }
 
@@ -164,11 +169,10 @@ export function SupplierOrderPaymentModal(props: {
       props.onOpenChange(false);
       return;
     }
-
-    // Wait for user to choose method before creating PI (needed for ACH discount + method-specific PI).
   }, [props.open, props.orderId, props, toast]);
 
   const startPayment = async (method: "ach" | "card") => {
+    setStartError(null);
     setIsLoading(true);
     try {
       const res = await fetch(`/api/supplier-orders/${encodeURIComponent(props.orderId)}/pay-intent`, {
@@ -194,16 +198,27 @@ export function SupplierOrderPaymentModal(props: {
       setTotalCents(total);
       setChargeAmountCents(charge);
       setBuyerDiscountCents(Number(data?.buyerDiscountCents || 0) || 0);
+      setFeeBreakdown({
+        supplierGrossCents: Number(data?.breakdown?.supplierGrossCents || 0) || 0,
+        platformBaseFeeCents: Number(data?.breakdown?.platformBaseFeeCents || 0) || 0,
+        buyerProcessingFeeCents: Number(data?.breakdown?.buyerProcessingFeeCents || 0) || 0,
+      });
     } catch (err: any) {
+      const msg = err?.message || "Please try again.";
+      setStartError(msg);
       toast({
         title: "Unable to start payment",
-        description: err?.message || "Please try again.",
+        description: msg,
         variant: "destructive",
       });
-      props.onOpenChange(false);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const resetMethodSelection = () => {
+    setClientSecret(null);
+    setStartError(null);
   };
 
   const headerTotal = useMemo(() => {
@@ -246,20 +261,18 @@ export function SupplierOrderPaymentModal(props: {
               </div>
             </div>
 
+            {startError ? (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">
+                {startError}
+              </div>
+            ) : null}
+
             <div className="grid gap-2">
-              <Button
-                className="justify-between"
-                disabled={isLoading}
-                onClick={() => startPayment("ach")}
-              >
+              <Button className="justify-between" disabled={isLoading} onClick={() => startPayment("ach")}>
                 <span>Pay by bank transfer (ACH)</span>
                 <Badge variant="secondary">Recommended</Badge>
               </Button>
-              <Button
-                variant="outline"
-                disabled={isLoading}
-                onClick={() => startPayment("card")}
-              >
+              <Button variant="outline" disabled={isLoading} onClick={() => startPayment("card")}>
                 Pay by card
               </Button>
             </div>
@@ -267,25 +280,67 @@ export function SupplierOrderPaymentModal(props: {
             {isLoading ? (
               <div className="flex items-center text-sm text-muted-foreground">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Starting payment…
+                Starting payment...
               </div>
             ) : null}
           </div>
         ) : (
-          <Elements stripe={stripePromise} options={{ clientSecret }}>
-            <PaymentForm
-              orderId={props.orderId}
-              clientSecret={clientSecret}
-              totalCents={chargeAmountCents || totalCents}
-              onPaid={() => {
-                props.onPaid?.();
-                props.onOpenChange(false);
-              }}
-              onCancel={() => props.onOpenChange(false)}
-            />
-          </Elements>
+          <div className="space-y-3">
+            <div className="rounded-lg border p-3 text-sm space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Selected method</span>
+                <span className="font-medium">
+                  {paymentMethod === "ach" ? "Bank transfer (ACH)" : "Card"}
+                </span>
+              </div>
+              {feeBreakdown ? (
+                <>
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span>Supplier subtotal</span>
+                    <span>{formatMoney(feeBreakdown.supplierGrossCents)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span>Platform base fee</span>
+                    <span>{formatMoney(feeBreakdown.platformBaseFeeCents)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span>Buyer processing fee</span>
+                    <span>{formatMoney(feeBreakdown.buyerProcessingFeeCents)}</span>
+                  </div>
+                </>
+              ) : null}
+              {buyerDiscountCents > 0 ? (
+                <div className="flex items-center justify-between text-[color:var(--status-success)]">
+                  <span>ACH discount</span>
+                  <span>-{formatMoney(buyerDiscountCents)}</span>
+                </div>
+              ) : null}
+              <div className="flex items-center justify-between font-semibold">
+                <span>Pay now</span>
+                <span>{formatMoney(chargeAmountCents || totalCents)}</span>
+              </div>
+            </div>
+
+            <Button variant="outline" onClick={resetMethodSelection}>
+              Change method
+            </Button>
+
+            <Elements stripe={stripePromise} options={{ clientSecret }}>
+              <PaymentForm
+                orderId={props.orderId}
+                clientSecret={clientSecret}
+                totalCents={chargeAmountCents || totalCents}
+                onPaid={() => {
+                  props.onPaid?.();
+                  props.onOpenChange(false);
+                }}
+                onCancel={() => props.onOpenChange(false)}
+              />
+            </Elements>
+          </div>
         )}
       </DialogContent>
     </Dialog>
   );
 }
+

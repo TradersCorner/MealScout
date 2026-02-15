@@ -2952,6 +2952,9 @@ export const eventSeries = pgTable(
     hostId: varchar("host_id")
       .notNull()
       .references(() => hosts.id, { onDelete: "cascade" }),
+    coordinatorUserId: varchar("coordinator_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     name: varchar("name").notNull(), // e.g. "Summer Market Series"
     description: text("description"),
     timezone: varchar("timezone").notNull().default("America/New_York"), // IANA timezone
@@ -2998,6 +3001,7 @@ export const eventSeries = pgTable(
   },
   (table) => [
     index("idx_event_series_host").on(table.hostId),
+    index("idx_event_series_coordinator_user").on(table.coordinatorUserId),
     index("idx_event_series_status").on(table.status),
     index("idx_event_series_dates").on(table.startDate, table.endDate),
   ],
@@ -3012,6 +3016,9 @@ export const events = pgTable(
     hostId: varchar("host_id")
       .notNull()
       .references(() => hosts.id, { onDelete: "cascade" }),
+    coordinatorUserId: varchar("coordinator_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     seriesId: varchar("series_id").references(() => eventSeries.id, {
       onDelete: "set null",
     }), // Open Calls: FK to parent series
@@ -3046,6 +3053,7 @@ export const events = pgTable(
   },
   (table) => [
     index("idx_events_host").on(table.hostId),
+    index("idx_events_coordinator_user").on(table.coordinatorUserId),
     index("idx_events_series").on(table.seriesId),
     index("idx_events_date").on(table.date),
     index("idx_events_status").on(table.status),
@@ -3770,6 +3778,10 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   host: one(hosts, {
     fields: [events.hostId],
     references: [hosts.id],
+  }),
+  coordinator: one(users, {
+    fields: [events.coordinatorUserId],
+    references: [users.id],
   }),
   series: one(eventSeries, {
     fields: [events.seriesId],

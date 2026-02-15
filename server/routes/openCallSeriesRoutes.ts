@@ -5,7 +5,7 @@ import { emailService } from "../emailService";
 import { db } from "../db";
 import { events, eventSeries, insertEventSeriesSchema, type InsertEvent } from "@shared/schema";
 import { isAuthenticated } from "../unifiedAuth";
-import { getHostByUserId } from "../services/hostOwnership";
+import { getHostByUserId, userOwnsSeries } from "../services/hostOwnership";
 import { assertMaxSpan180Days, generateOccurrences, filterFutureOccurrences } from "../services/openCallSeries";
 import { eq } from "drizzle-orm";
 import { isParkingPassPublicReady } from "../services/parkingPassQuality";
@@ -25,6 +25,7 @@ export function registerOpenCallSeriesRoutes(app: Express) {
       const parsed = insertEventSeriesSchema.parse({
         ...req.body,
         hostId: host.id,
+        coordinatorUserId: req.user.id,
       });
 
       // Validation: End date must be after start date
@@ -81,7 +82,7 @@ export function registerOpenCallSeriesRoutes(app: Express) {
       }
 
       const host = await getHostByUserId(userId);
-      if (!host || host.id !== series.hostId) {
+      if (!userOwnsSeries(userId, host, series)) {
         return res.status(403).json({ message: 'Not authorized to publish this series' });
       }
 
@@ -122,6 +123,7 @@ export function registerOpenCallSeriesRoutes(app: Express) {
         recurrenceRule: series.recurrenceRule,
         defaults: {
           hostId: series.hostId,
+          coordinatorUserId: series.coordinatorUserId ?? req.user.id,
           seriesId: series.id,
           name: series.name,
           description: series.description,
@@ -169,7 +171,7 @@ export function registerOpenCallSeriesRoutes(app: Express) {
         return res.status(404).json({ message: 'Host profile not found' });
       }
 
-      const seriesList = await storage.getEventSeriesByHost(host.id);
+      const seriesList = await storage.getEventSeriesOwnedByUser(userId);
       res.json(seriesList);
     } catch (error: any) {
       console.error('Error fetching event series:', error);
@@ -189,7 +191,7 @@ export function registerOpenCallSeriesRoutes(app: Express) {
       }
 
       const host = await getHostByUserId(userId);
-      if (!host || host.id !== series.hostId) {
+      if (!userOwnsSeries(userId, host, series)) {
         return res.status(403).json({ message: 'Not authorized to view this series' });
       }
 
@@ -213,7 +215,7 @@ export function registerOpenCallSeriesRoutes(app: Express) {
       }
 
       const host = await getHostByUserId(userId);
-      if (!host || host.id !== series.hostId) {
+      if (!userOwnsSeries(userId, host, series)) {
         return res.status(403).json({ message: 'Not authorized to cancel this series' });
       }
 

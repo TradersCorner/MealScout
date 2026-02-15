@@ -31,9 +31,34 @@ export async function getInterestEventAndHostForUser(interestId: string, userId:
   return { interest, event, host } as const;
 }
 
-export function hostOwnsEvent(
+export function userOwnsEvent(
+  userId: string | null | undefined,
   host: { id: string } | null | undefined,
-  event: { hostId: string } | null | undefined
+  event:
+    | { hostId: string; coordinatorUserId?: string | null }
+    | null
+    | undefined
 ): boolean {
-  return !!host && !!event && host.id === event.hostId;
+  if (!event) return false;
+  const ownerId = String(event.coordinatorUserId || "").trim();
+  if (ownerId && userId) {
+    return ownerId === String(userId);
+  }
+  return !!host && host.id === event.hostId;
+}
+
+export function userOwnsSeries(
+  userId: string | null | undefined,
+  host: { id: string } | null | undefined,
+  series:
+    | { hostId: string; coordinatorUserId?: string | null }
+    | null
+    | undefined
+): boolean {
+  if (!series) return false;
+  const ownerId = String(series.coordinatorUserId || "").trim();
+  if (ownerId && userId) {
+    return ownerId === String(userId);
+  }
+  return !!host && host.id === series.hostId;
 }

@@ -46,6 +46,7 @@ interface GenerateOccurrencesConfig {
   recurrenceRule?: string | null;
   defaults: {
     hostId: string;
+    coordinatorUserId?: string | null;
     seriesId: string;
     name: string;
     description: string | null;
@@ -68,6 +69,7 @@ export function generateOccurrences(config: GenerateOccurrencesConfig): InsertEv
       if (selectedDays.includes(currentDate.getDay())) {
         occurrences.push({
           hostId: defaults.hostId,
+          coordinatorUserId: defaults.coordinatorUserId ?? null,
           seriesId: defaults.seriesId,
           name: defaults.name,
           description: defaults.description,
@@ -84,6 +86,7 @@ export function generateOccurrences(config: GenerateOccurrencesConfig): InsertEv
     // No recurrence: single occurrence on startDate
     occurrences.push({
       hostId: defaults.hostId,
+      coordinatorUserId: defaults.coordinatorUserId ?? null,
       seriesId: defaults.seriesId,
       name: defaults.name,
       description: defaults.description,

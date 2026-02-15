@@ -33,7 +33,7 @@ export function registerEventCoordinatorRoutes(app: Express) {
           return res.json([]);
         }
 
-        const events = await storage.getEventsByHost(host.id);
+        const events = await storage.getEventsOwnedByUser(req.user.id);
         const payload = events.map((event) => ({
           ...event,
           host: {
@@ -86,6 +86,7 @@ export function registerEventCoordinatorRoutes(app: Express) {
 
         const eventPayload = insertEventSchema.parse({
           hostId: host.id,
+          coordinatorUserId: req.user.id,
           name: parsed.name,
           description: parsed.description || null,
           date: parsed.date,

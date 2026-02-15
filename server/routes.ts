@@ -10,7 +10,7 @@ import {
   getHostByUserId,
   getEventAndHostForUser,
   getInterestEventAndHostForUser,
-  hostOwnsEvent,
+  userOwnsEvent,
 } from "./services/hostOwnership";
 import {
   assertMaxSpan180Days,
@@ -1980,7 +1980,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ message: "Event not found" });
         }
 
-        if (!hostOwnsEvent(host, event)) {
+        if (!userOwnsEvent(userId, host, event)) {
           return res
             .status(403)
             .json({ message: "Not authorized to manage this event" });
@@ -2104,7 +2104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const { event } = await getEventAndHostForUser(eventId, userId);
-        if (!event || !hostOwnsEvent(host, event)) {
+        if (!event || !userOwnsEvent(userId, host, event)) {
           return res.status(404).json({ message: "Event not found" });
         }
 

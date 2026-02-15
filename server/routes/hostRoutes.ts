@@ -20,7 +20,7 @@ import {
   getHostByUserId,
   getEventAndHostForUser,
   getInterestEventAndHostForUser,
-  hostOwnsEvent,
+  userOwnsEvent,
 } from "../services/hostOwnership";
 import {
   computeAcceptedCount,
@@ -1090,7 +1090,7 @@ export function registerHostRoutes(app: Express) {
       }
 
       // Verify host owns the event
-      if (!hostOwnsEvent(host, event)) {
+      if (!userOwnsEvent(userId, host, event)) {
         return res
           .status(403)
           .json({ message: "Not authorized to edit this parking pass listing" });
@@ -1704,7 +1704,7 @@ export function registerHostRoutes(app: Express) {
             .json({ message: "Parking pass listing not found" });
         }
 
-        if (!hostOwnsEvent(host, event)) {
+        if (!userOwnsEvent(userId, host, event)) {
           return res.status(403).json({
             message: "Not authorized to manage this parking pass listing",
           });
@@ -1828,7 +1828,7 @@ export function registerHostRoutes(app: Express) {
       }
 
       const { event } = await getEventAndHostForUser(eventId, userId);
-      if (!event || !hostOwnsEvent(host, event)) {
+      if (!event || !userOwnsEvent(userId, host, event)) {
         return res
           .status(404)
           .json({ message: "Parking pass listing not found" });

@@ -166,6 +166,9 @@ export interface IStorage {
   getEventsByHost(
     hostId: string
   ): Promise<(Event & { interests: EventInterest[] })[]>;
+  getEventsOwnedByUser(
+    userId: string
+  ): Promise<(Event & { interests: EventInterest[] })[]>;
   createEventInterest(interest: InsertEventInterest): Promise<EventInterest>;
   updateEventInterestStatus(id: string, status: string): Promise<EventInterest>;
   getEventInterest(id: string): Promise<EventInterest | undefined>;
@@ -181,6 +184,7 @@ export interface IStorage {
   createEventSeries(series: InsertEventSeries): Promise<EventSeries>;
   getEventSeries(id: string): Promise<EventSeries | undefined>;
   getEventSeriesByHost(hostId: string): Promise<EventSeries[]>;
+  getEventSeriesOwnedByUser(userId: string): Promise<EventSeries[]>;
   updateEventSeries(
     id: string,
     updates: Partial<InsertEventSeries>
@@ -1218,6 +1222,24 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
+  async getEventsOwnedByUser(
+    userId: string,
+  ): Promise<(Event & { interests: EventInterest[] })[]> {
+    return await db.query.events.findMany({
+      where: or(
+        eq(events.coordinatorUserId, userId),
+        and(
+          isNull(events.coordinatorUserId),
+          sql<boolean>`exists (select 1 from hosts h where h.id = ${events.hostId} and h.user_id = ${userId})`,
+        ),
+      ),
+      orderBy: asc(events.date),
+      with: {
+        interests: true,
+      },
+    });
+  }
+
   async getAllUpcomingEvents(): Promise<
     (Event & { host: Host; series?: EventSeries | null })[]
   > {
@@ -1365,6 +1387,22 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(eventSeries)
       .where(eq(eventSeries.hostId, hostId))
+      .orderBy(desc(eventSeries.createdAt));
+  }
+
+  async getEventSeriesOwnedByUser(userId: string): Promise<EventSeries[]> {
+    return await db
+      .select()
+      .from(eventSeries)
+      .where(
+        or(
+          eq(eventSeries.coordinatorUserId, userId),
+          and(
+            isNull(eventSeries.coordinatorUserId),
+            sql<boolean>`exists (select 1 from hosts h where h.id = ${eventSeries.hostId} and h.user_id = ${userId})`,
+          ),
+        ),
+      )
       .orderBy(desc(eventSeries.createdAt));
   }
 

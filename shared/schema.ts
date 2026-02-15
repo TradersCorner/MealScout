@@ -99,6 +99,8 @@ export const users: any = pgTable("users", {
   influenceScore: integer("influence_score").default(0), // Calculated from reviews, recommendations, favorites
   // App context for multi-platform shared auth (TradeScout + MealScout)
   appContext: varchar("app_context").default("mealscout"), // 'mealscout' | 'tradescout' | 'both'
+  publicProfileSettings: jsonb("public_profile_settings").notNull().default(sql`'{}'::jsonb`),
+  accountSettings: jsonb("account_settings").notNull().default(sql`'{}'::jsonb`),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

@@ -1,28 +1,125 @@
-import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { ArrowLeft, Bell, Globe, Palette, Save, Settings, Shield } from "lucide-react";
 import Navigation from "@/components/navigation";
 import NotificationSettings from "@/components/notification-settings";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Settings, Globe, Shield, Smartphone, Bell } from "lucide-react";
-import { Link } from "wouter";
+import { Textarea } from "@/components/ui/textarea";
+
+type SettingsPayload = {
+  accountSettings: {
+    language?: string;
+    currency?: string;
+    locationServices?: boolean;
+    analytics?: boolean;
+    marketing?: boolean;
+  };
+  publicProfileSettings: {
+    theme?: "sunset" | "slate" | "forest" | "amber";
+    accentColor?: string;
+    heroTitle?: string;
+    heroSubtitle?: string;
+    ctaLabel?: string;
+    ctaUrl?: string;
+    about?: string;
+    highlights?: string[];
+    featuredLinks?: Array<{ label: string; url: string }>;
+    galleryUrls?: string[];
+    showAddress?: boolean;
+    showContact?: boolean;
+    showHours?: boolean;
+  };
+  profileLinks?: Array<{
+    entity: "restaurant" | "host" | "supplier";
+    id: string;
+    title: string;
+    path: string;
+  }>;
+};
 
 export default function SettingsPage() {
   const { user, isAuthenticated } = useAuth();
-  const [settings, setSettings] = useState({
+  const { toast } = useToast();
+  const [savingGeneral, setSavingGeneral] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  const { data, isLoading, refetch } = useQuery<SettingsPayload>({
+    queryKey: ["/api/settings/me"],
+    enabled: isAuthenticated,
+    queryFn: async () => {
+      const res = await fetch("/api/settings/me", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load settings");
+      return res.json();
+    },
+  });
+
+  const [general, setGeneral] = useState({
     language: "english",
     currency: "usd",
     locationServices: true,
     analytics: true,
     marketing: false,
   });
+  const [profile, setProfile] = useState({
+    theme: "sunset" as "sunset" | "slate" | "forest" | "amber",
+    accentColor: "#f97316",
+    heroTitle: "",
+    heroSubtitle: "",
+    ctaLabel: "",
+    ctaUrl: "",
+    about: "",
+    highlights: "",
+    featuredLinks: "",
+    galleryUrls: "",
+    showAddress: true,
+    showContact: true,
+    showHours: true,
+  });
+
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (!data || hydratedRef.current) return;
+    const a = data.accountSettings || {};
+    const p = data.publicProfileSettings || {};
+    setGeneral({
+      language: a.language || "english",
+      currency: a.currency || "usd",
+      locationServices: a.locationServices ?? true,
+      analytics: a.analytics ?? true,
+      marketing: a.marketing ?? false,
+    });
+    setProfile({
+      theme: (p.theme as any) || "sunset",
+      accentColor: p.accentColor || "#f97316",
+      heroTitle: p.heroTitle || "",
+      heroSubtitle: p.heroSubtitle || "",
+      ctaLabel: p.ctaLabel || "",
+      ctaUrl: p.ctaUrl || "",
+      about: p.about || "",
+      highlights: Array.isArray(p.highlights) ? p.highlights.join("\n") : "",
+      featuredLinks: Array.isArray(p.featuredLinks)
+        ? p.featuredLinks.map((l) => `${l.label}|${l.url}`).join("\n")
+        : "",
+      galleryUrls: Array.isArray(p.galleryUrls) ? p.galleryUrls.join("\n") : "",
+      showAddress: p.showAddress ?? true,
+      showContact: p.showContact ?? true,
+      showHours: p.showHours ?? true,
+    });
+    hydratedRef.current = true;
+  }, [data]);
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="max-w-md mx-auto bg-[var(--bg-app)] min-h-screen relative pb-20">
+      <div className="max-w-3xl mx-auto bg-[var(--bg-app)] min-h-screen relative pb-20">
         <div className="text-center py-12">
           <Settings className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Sign in required</h2>
@@ -33,140 +130,384 @@ export default function SettingsPage() {
     );
   }
 
-  const handleToggle = (key: keyof typeof settings) => {
-    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
+  const saveGeneral = async () => {
+    setSavingGeneral(true);
+    try {
+      const res = await fetch("/api/settings/me", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountSettings: general,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save settings");
+      toast({ title: "Saved", description: "General settings updated." });
+      await refetch();
+    } catch (error: any) {
+      toast({
+        title: "Save failed",
+        description: error?.message || "Unable to save general settings.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingGeneral(false);
+    }
   };
 
-  const handleSelectChange = (key: keyof typeof settings, value: string) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+  const saveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const parsedHighlights = profile.highlights
+        .split("\n")
+        .map((v) => v.trim())
+        .filter(Boolean);
+      const parsedGallery = profile.galleryUrls
+        .split("\n")
+        .map((v) => v.trim())
+        .filter(Boolean);
+      const parsedLinks = profile.featuredLinks
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [label, url] = line.split("|").map((s) => s.trim());
+          return { label: label || url, url: url || label };
+        })
+        .filter((row) => row.label && row.url);
+
+      const res = await fetch("/api/settings/me", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          publicProfileSettings: {
+            theme: profile.theme,
+            accentColor: profile.accentColor,
+            heroTitle: profile.heroTitle,
+            heroSubtitle: profile.heroSubtitle,
+            ctaLabel: profile.ctaLabel,
+            ctaUrl: profile.ctaUrl,
+            about: profile.about,
+            highlights: parsedHighlights,
+            featuredLinks: parsedLinks,
+            galleryUrls: parsedGallery,
+            showAddress: profile.showAddress,
+            showContact: profile.showContact,
+            showHours: profile.showHours,
+          },
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save profile studio changes");
+      toast({ title: "Saved", description: "Public profile studio updated." });
+      await refetch();
+    } catch (error: any) {
+      toast({
+        title: "Save failed",
+        description: error?.message || "Unable to save profile settings.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   return (
-    <div className="max-w-md mx-auto bg-[var(--bg-app)] min-h-screen relative pb-20">
-      {/* Header */}
+    <div className="max-w-3xl mx-auto bg-[var(--bg-app)] min-h-screen relative pb-20">
       <header className="px-6 py-6 bg-[hsl(var(--background))] border-b border-white/5">
         <div className="flex items-center mb-2">
           <Link href="/profile">
-            <Button variant="ghost" size="sm" className="mr-3 -ml-2" data-testid="button-back-settings">
+            <Button variant="ghost" size="sm" className="mr-3 -ml-2">
               <ArrowLeft className="w-4 h-4" />
             </Button>
           </Link>
           <div className="flex items-center">
             <Settings className="w-6 h-6 text-primary mr-3" />
-            <h1 className="text-xl font-bold text-foreground">Settings</h1>
+            <h1 className="text-xl font-bold text-foreground">Settings + Profile Studio</h1>
           </div>
         </div>
-        <p className="text-sm text-muted-foreground">Customize your MealScout experience</p>
+        <p className="text-sm text-muted-foreground">
+          Build your public profile into a mini website and control account preferences.
+        </p>
       </header>
 
-      {/* Tabbed Content */}
       <div className="px-6 py-6">
-        <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="general" data-testid="tab-general">General</TabsTrigger>
-            <TabsTrigger value="notifications" data-testid="tab-notifications">
+        <Tabs defaultValue="profile" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="profile">
+              <Palette className="w-4 h-4 mr-1" />
+              Studio
+            </TabsTrigger>
+            <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="notifications">
               <Bell className="w-4 h-4 mr-1" />
               Alerts
             </TabsTrigger>
-            <TabsTrigger value="privacy" data-testid="tab-privacy">Privacy</TabsTrigger>
+            <TabsTrigger value="privacy">
+              <Shield className="w-4 h-4 mr-1" />
+              Privacy
+            </TabsTrigger>
           </TabsList>
 
-          {/* General Settings */}
-          <TabsContent value="general" className="space-y-6">
-
-            {/* Regional */}
+          <TabsContent value="profile" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center">
-                  <Globe className="w-5 h-5 mr-2" />
-                  Regional
-                </CardTitle>
+                <CardTitle>Public Profile Studio</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <Label>Theme</Label>
+                    <Select
+                      value={profile.theme}
+                      onValueChange={(value: any) => setProfile((prev) => ({ ...prev, theme: value }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sunset">Sunset</SelectItem>
+                        <SelectItem value="slate">Slate</SelectItem>
+                        <SelectItem value="forest">Forest</SelectItem>
+                        <SelectItem value="amber">Amber</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Accent color</Label>
+                    <Input
+                      value={profile.accentColor}
+                      onChange={(e) => setProfile((prev) => ({ ...prev, accentColor: e.target.value }))}
+                      placeholder="#f97316"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <p className="font-medium mb-2">Language</p>
-                  <Select 
-                    value={settings.language} 
-                    onValueChange={(value) => handleSelectChange('language', value)}
+                  <Label>Hero title</Label>
+                  <Input
+                    value={profile.heroTitle}
+                    onChange={(e) => setProfile((prev) => ({ ...prev, heroTitle: e.target.value }))}
+                    placeholder="Your headline"
+                  />
+                </div>
+                <div>
+                  <Label>Hero subtitle</Label>
+                  <Input
+                    value={profile.heroSubtitle}
+                    onChange={(e) => setProfile((prev) => ({ ...prev, heroSubtitle: e.target.value }))}
+                    placeholder="Short one-liner"
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <Label>CTA label</Label>
+                    <Input
+                      value={profile.ctaLabel}
+                      onChange={(e) => setProfile((prev) => ({ ...prev, ctaLabel: e.target.value }))}
+                      placeholder="Book now"
+                    />
+                  </div>
+                  <div>
+                    <Label>CTA URL</Label>
+                    <Input
+                      value={profile.ctaUrl}
+                      onChange={(e) => setProfile((prev) => ({ ...prev, ctaUrl: e.target.value }))}
+                      placeholder="https://..."
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label>About</Label>
+                  <Textarea
+                    value={profile.about}
+                    onChange={(e) => setProfile((prev) => ({ ...prev, about: e.target.value }))}
+                    rows={5}
+                    placeholder="Tell visitors what makes your business special."
+                  />
+                </div>
+
+                <div>
+                  <Label>Highlights (one per line)</Label>
+                  <Textarea
+                    value={profile.highlights}
+                    onChange={(e) => setProfile((prev) => ({ ...prev, highlights: e.target.value }))}
+                    rows={4}
+                    placeholder={"Fresh made daily\nFamily-owned\nAvailable for events"}
+                  />
+                </div>
+
+                <div>
+                  <Label>Featured links (one per line: label|url)</Label>
+                  <Textarea
+                    value={profile.featuredLinks}
+                    onChange={(e) => setProfile((prev) => ({ ...prev, featuredLinks: e.target.value }))}
+                    rows={4}
+                    placeholder={"Menu|https://example.com/menu\nCatering|https://example.com/catering"}
+                  />
+                </div>
+
+                <div>
+                  <Label>Gallery image URLs (one per line)</Label>
+                  <Textarea
+                    value={profile.galleryUrls}
+                    onChange={(e) => setProfile((prev) => ({ ...prev, galleryUrls: e.target.value }))}
+                    rows={4}
+                    placeholder={"https://.../image1.jpg\nhttps://.../image2.jpg"}
+                  />
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="flex items-center justify-between rounded-md border p-3">
+                    <Label>Show address</Label>
+                    <Switch
+                      checked={profile.showAddress}
+                      onCheckedChange={(checked) => setProfile((prev) => ({ ...prev, showAddress: checked }))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-md border p-3">
+                    <Label>Show contact</Label>
+                    <Switch
+                      checked={profile.showContact}
+                      onCheckedChange={(checked) => setProfile((prev) => ({ ...prev, showContact: checked }))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-md border p-3">
+                    <Label>Show hours</Label>
+                    <Switch
+                      checked={profile.showHours}
+                      onCheckedChange={(checked) => setProfile((prev) => ({ ...prev, showHours: checked }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button onClick={saveProfile} disabled={savingProfile || isLoading || !hydratedRef.current}>
+                    <Save className="w-4 h-4 mr-2" />
+                    {savingProfile ? "Saving..." : "Save Profile Studio"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Public Links</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {Array.isArray(data?.profileLinks) && data.profileLinks.length > 0 ? (
+                  data.profileLinks.map((row) => (
+                    <div key={`${row.entity}-${row.id}`} className="flex items-center justify-between rounded-md border p-3">
+                      <div>
+                        <p className="text-sm font-medium">{row.title}</p>
+                        <p className="text-xs text-muted-foreground">/{row.path.replace(/^\//, "")}</p>
+                      </div>
+                      <a href={row.path} target="_blank" rel="noreferrer noopener">
+                        <Button variant="outline" size="sm">
+                          <Globe className="w-4 h-4 mr-2" />
+                          Open
+                        </Button>
+                      </a>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Create a restaurant, host, or supplier profile to generate public links.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="general" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Regional Preferences</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label>Language</Label>
+                  <Select
+                    value={general.language}
+                    onValueChange={(value) => setGeneral((prev) => ({ ...prev, language: value }))}
                   >
-                    <SelectTrigger data-testid="select-language">
-                      <SelectValue placeholder="Select language" />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="english">English</SelectItem>
-                      <SelectItem value="spanish">Español</SelectItem>
-                      <SelectItem value="french">Français</SelectItem>
+                      <SelectItem value="spanish">Spanish</SelectItem>
+                      <SelectItem value="french">French</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <p className="font-medium mb-2">Currency</p>
-                  <Select 
-                    value={settings.currency} 
-                    onValueChange={(value) => handleSelectChange('currency', value)}
+                  <Label>Currency</Label>
+                  <Select
+                    value={general.currency}
+                    onValueChange={(value) => setGeneral((prev) => ({ ...prev, currency: value }))}
                   >
-                    <SelectTrigger data-testid="select-currency">
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="usd">USD ($)</SelectItem>
-                      <SelectItem value="eur">EUR (€)</SelectItem>
-                      <SelectItem value="gbp">GBP (£)</SelectItem>
+                      <SelectItem value="usd">USD</SelectItem>
+                      <SelectItem value="eur">EUR</SelectItem>
+                      <SelectItem value="gbp">GBP</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="md:col-span-2 flex justify-end">
+                  <Button onClick={saveGeneral} disabled={savingGeneral || isLoading || !hydratedRef.current}>
+                    <Save className="w-4 h-4 mr-2" />
+                    {savingGeneral ? "Saving..." : "Save General Settings"}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Notification Settings */}
           <TabsContent value="notifications">
             <NotificationSettings />
           </TabsContent>
 
-          {/* Privacy Settings */}
           <TabsContent value="privacy" className="space-y-6">
-            {/* Privacy */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center">
-                  <Shield className="w-5 h-5 mr-2" />
-                  Privacy
-                </CardTitle>
+                <CardTitle>Privacy Controls</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">Location Services</p>
-                    <p className="text-sm text-muted-foreground">Allow location access for nearby deals</p>
+                    <p className="text-sm text-muted-foreground">Enable nearby discovery and map context</p>
                   </div>
                   <Switch
-                    checked={settings.locationServices}
-                    onCheckedChange={() => handleToggle('locationServices')}
-                    data-testid="switch-location"
+                    checked={general.locationServices}
+                    onCheckedChange={(checked) => setGeneral((prev) => ({ ...prev, locationServices: checked }))}
                   />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">Analytics</p>
-                    <p className="text-sm text-muted-foreground">Help improve MealScout</p>
+                    <p className="text-sm text-muted-foreground">Help improve product quality and performance</p>
                   </div>
                   <Switch
-                    checked={settings.analytics}
-                    onCheckedChange={() => handleToggle('analytics')}
-                    data-testid="switch-analytics"
+                    checked={general.analytics}
+                    onCheckedChange={(checked) => setGeneral((prev) => ({ ...prev, analytics: checked }))}
                   />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">Marketing Communications</p>
-                    <p className="text-sm text-muted-foreground">Receive promotional emails</p>
+                    <p className="text-sm text-muted-foreground">Receive product updates and offers</p>
                   </div>
                   <Switch
-                    checked={settings.marketing}
-                    onCheckedChange={() => handleToggle('marketing')}
-                    data-testid="switch-marketing"
+                    checked={general.marketing}
+                    onCheckedChange={(checked) => setGeneral((prev) => ({ ...prev, marketing: checked }))}
                   />
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={saveGeneral} disabled={savingGeneral || isLoading || !hydratedRef.current}>
+                    <Save className="w-4 h-4 mr-2" />
+                    {savingGeneral ? "Saving..." : "Save Privacy Settings"}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -178,6 +519,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-
-

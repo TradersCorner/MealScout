@@ -262,6 +262,8 @@ export interface IStorage {
         | "lastName"
         | "phone"
         | "passwordHash"
+        | "publicProfileSettings"
+        | "accountSettings"
       >
     >
   ): Promise<User>;
@@ -1495,6 +1497,8 @@ export class DatabaseStorage implements IStorage {
         | "birthYear"
         | "gender"
         | "isActive"
+        | "publicProfileSettings"
+        | "accountSettings"
       >
     >
   ): Promise<User> {

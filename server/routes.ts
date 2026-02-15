@@ -223,6 +223,38 @@ const toSlug = (value: string | null | undefined) =>
     .replace(/(^-|-$)+/g, "")
     .slice(0, 80);
 
+const publicProfileSettingsSchema = z.object({
+  theme: z.enum(["sunset", "slate", "forest", "amber"]).optional(),
+  accentColor: z.string().max(32).optional(),
+  heroTitle: z.string().max(120).optional(),
+  heroSubtitle: z.string().max(220).optional(),
+  ctaLabel: z.string().max(50).optional(),
+  ctaUrl: z.string().max(300).optional(),
+  about: z.string().max(2000).optional(),
+  highlights: z.array(z.string().max(120)).max(8).optional(),
+  featuredLinks: z
+    .array(
+      z.object({
+        label: z.string().max(40),
+        url: z.string().max(300),
+      }),
+    )
+    .max(8)
+    .optional(),
+  galleryUrls: z.array(z.string().max(500)).max(12).optional(),
+  showAddress: z.boolean().optional(),
+  showContact: z.boolean().optional(),
+  showHours: z.boolean().optional(),
+});
+
+const accountSettingsSchema = z.object({
+  language: z.string().max(24).optional(),
+  currency: z.string().max(12).optional(),
+  locationServices: z.boolean().optional(),
+  analytics: z.boolean().optional(),
+  marketing: z.boolean().optional(),
+});
+
 const postToFacebookPage = async (message: string, link?: string | null) => {
   const pageId = process.env.MEALSCOUT_FB_PAGE_ID;
   const pageToken = process.env.MEALSCOUT_FB_PAGE_TOKEN;
@@ -887,6 +919,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("❌ Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  app.get("/api/settings/me", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const [ownedRestaurants, ownedHosts, ownedSuppliers] = await Promise.all([
+        storage.getRestaurantsByOwner(user.id),
+        storage.getHostsByUserId(user.id),
+        db
+          .select({
+            id: suppliers.id,
+            businessName: suppliers.businessName,
+            isActive: suppliers.isActive,
+          })
+          .from(suppliers)
+          .where(eq(suppliers.userId, user.id)),
+      ]);
+
+      const profileLinks = [
+        ...ownedRestaurants
+          .filter((row: any) => row?.isActive)
+          .map((row: any) => ({
+            entity: "restaurant",
+            id: row.id,
+            title: row.name,
+            path: `/p/restaurant/${row.id}/${toSlug(row.name) || row.id}`,
+          })),
+        ...ownedHosts.map((row: any) => ({
+          entity: "host",
+          id: row.id,
+          title: row.businessName,
+          path: `/p/host/${row.id}/${toSlug(row.businessName) || row.id}`,
+        })),
+        ...ownedSuppliers
+          .filter((row: any) => row?.isActive)
+          .map((row: any) => ({
+            entity: "supplier",
+            id: row.id,
+            title: row.businessName,
+            path: `/p/supplier/${row.id}/${toSlug(row.businessName) || row.id}`,
+          })),
+      ];
+
+      res.json({
+        accountSettings: user.accountSettings || {},
+        publicProfileSettings: user.publicProfileSettings || {},
+        profileLinks,
+      });
+    } catch (error) {
+      console.error("Error fetching user settings:", error);
+      res.status(500).json({ message: "Failed to fetch settings" });
+    }
+  });
+
+  app.patch("/api/settings/me", isAuthenticated, async (req: any, res) => {
+    try {
+      const payloadSchema = z.object({
+        accountSettings: accountSettingsSchema.optional(),
+        publicProfileSettings: publicProfileSettingsSchema.optional(),
+      });
+      const parsed = payloadSchema.parse(req.body || {});
+      const current = await storage.getUser(req.user.id);
+      if (!current) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const nextAccountSettings = {
+        ...(current.accountSettings || {}),
+        ...(parsed.accountSettings || {}),
+      };
+      const nextPublicProfileSettings = {
+        ...(current.publicProfileSettings || {}),
+        ...(parsed.publicProfileSettings || {}),
+      };
+
+      const updated = await storage.updateUser(req.user.id, {
+        accountSettings: nextAccountSettings as any,
+        publicProfileSettings: nextPublicProfileSettings as any,
+      });
+
+      res.json({
+        accountSettings: updated.accountSettings || {},
+        publicProfileSettings: updated.publicProfileSettings || {},
+      });
+    } catch (error: any) {
+      console.error("Error updating user settings:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Invalid settings payload",
+          errors: error.errors,
+        });
+      }
+      res.status(500).json({ message: "Failed to update settings" });
     }
   });
 
@@ -6691,6 +6821,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!row || !row.isActive) {
           return res.status(404).json({ message: "Profile not found" });
         }
+        const ownerUser = await storage.getUser(row.ownerId);
+        const profileSettings = (ownerUser?.publicProfileSettings || {}) as any;
+        const showAddress = profileSettings.showAddress !== false;
+        const showContact = profileSettings.showContact !== false;
         const slug = toSlug(row.name) || row.id;
         const profilePath = `/p/restaurant/${row.id}/${slug}`;
         return res.json({
@@ -6701,14 +6835,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           description:
             row.description ||
             `${row.name} on MealScout. Local hours, deals, and direct booking visibility.`,
-          address: row.address || null,
+          address: showAddress ? row.address || null : null,
           city: row.city || null,
           state: row.state || null,
-          phone: row.phone || null,
+          phone: showContact ? row.phone || null : null,
           websiteUrl: row.websiteUrl || null,
           imageUrl: row.coverImageUrl || row.logoUrl || null,
           profilePath,
           canonicalUrl: `${baseUrl}${profilePath}`,
+          profileSettings,
           social: {
             instagramUrl: row.instagramUrl || null,
             facebookPageUrl: row.facebookPageUrl || null,
@@ -6722,6 +6857,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!row) {
           return res.status(404).json({ message: "Profile not found" });
         }
+        const ownerUser = await storage.getUser(row.userId);
+        const profileSettings = (ownerUser?.publicProfileSettings || {}) as any;
+        const showAddress = profileSettings.showAddress !== false;
+        const showContact = profileSettings.showContact !== false;
         const slug = toSlug(row.businessName) || row.id;
         const profilePath = `/p/host/${row.id}/${slug}`;
         return res.json({
@@ -6735,14 +6874,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           description:
             row.notes ||
             `${row.businessName} hosts trucks on MealScout with live event and parking availability.`,
-          address: row.address || null,
+          address: showAddress ? row.address || null : null,
           city: row.city || null,
           state: row.state || null,
-          phone: row.contactPhone || null,
+          phone: showContact ? row.contactPhone || null : null,
           websiteUrl: null,
           imageUrl: row.spotImageUrl || null,
           profilePath,
           canonicalUrl: `${baseUrl}${profilePath}`,
+          profileSettings,
           social: {
             instagramUrl: null,
             facebookPageUrl: null,
@@ -6760,6 +6900,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!row) {
           return res.status(404).json({ message: "Profile not found" });
         }
+        const ownerUser = await storage.getUser(row.userId);
+        const profileSettings = (ownerUser?.publicProfileSettings || {}) as any;
+        const showAddress = profileSettings.showAddress !== false;
+        const showContact = profileSettings.showContact !== false;
         const [counts] = await db
           .select({
             activeProductCount: sql<number>`count(*)`,
@@ -6782,14 +6926,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             row.onlinePaymentsNotes ||
             row.deliveryNotes ||
             `${row.businessName} supplies local trucks and kitchens on MealScout.`,
-          address: row.address || null,
+          address: showAddress ? row.address || null : null,
           city: row.city || null,
           state: row.state || null,
-          phone: row.contactPhone || null,
+          phone: showContact ? row.contactPhone || null : null,
           websiteUrl: null,
           imageUrl: null,
           profilePath,
           canonicalUrl: `${baseUrl}${profilePath}`,
+          profileSettings,
           metrics: {
             activeProductCount: Number(counts?.activeProductCount || 0),
           },

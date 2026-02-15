@@ -20,6 +20,21 @@ type PublicProfile = {
   imageUrl?: string | null;
   canonicalUrl: string;
   profilePath: string;
+  profileSettings?: {
+    theme?: "sunset" | "slate" | "forest" | "amber";
+    accentColor?: string;
+    heroTitle?: string;
+    heroSubtitle?: string;
+    ctaLabel?: string;
+    ctaUrl?: string;
+    about?: string;
+    highlights?: string[];
+    featuredLinks?: Array<{ label: string; url: string }>;
+    galleryUrls?: string[];
+    showAddress?: boolean;
+    showContact?: boolean;
+    showHours?: boolean;
+  };
   metrics?: {
     activeProductCount?: number;
   };
@@ -74,6 +89,16 @@ export default function PublicProfilePage() {
   }
 
   const locationLine = [data.address, data.city, data.state].filter(Boolean).join(", ");
+  const profile = data.profileSettings || {};
+  const heroTitle = profile.heroTitle || data.title;
+  const heroSubtitle = profile.heroSubtitle || data.subtitle || data.description || "";
+  const about = profile.about || data.description || "";
+  const highlights = Array.isArray(profile.highlights) ? profile.highlights : [];
+  const featuredLinks = Array.isArray(profile.featuredLinks) ? profile.featuredLinks : [];
+  const galleryUrls = Array.isArray(profile.galleryUrls) ? profile.galleryUrls : [];
+  const ctaLabel = profile.ctaLabel || (data.websiteUrl ? "Visit website" : "");
+  const ctaUrl = profile.ctaUrl || data.websiteUrl || "";
+
   const title = `${data.title} | ${labelByEntity[data.entity] || "Public Profile"} | MealScout`;
   const description =
     data.description ||
@@ -102,6 +127,18 @@ export default function PublicProfilePage() {
       : undefined,
   };
 
+  const themePalette =
+    profile.theme === "forest"
+      ? { bg: "from-emerald-900 to-emerald-700", panel: "bg-emerald-950/70", chip: "bg-emerald-400/20 text-emerald-100" }
+      : profile.theme === "slate"
+        ? { bg: "from-slate-900 to-slate-700", panel: "bg-slate-950/70", chip: "bg-slate-300/20 text-slate-100" }
+        : profile.theme === "amber"
+          ? { bg: "from-amber-900 to-amber-700", panel: "bg-amber-950/70", chip: "bg-amber-300/20 text-amber-100" }
+          : { bg: "from-rose-900 to-orange-700", panel: "bg-rose-950/70", chip: "bg-rose-300/20 text-rose-100" };
+  const accentStyle = profile.accentColor
+    ? ({ borderColor: profile.accentColor, color: profile.accentColor } as any)
+    : undefined;
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <SEOHead
@@ -113,21 +150,35 @@ export default function PublicProfilePage() {
         schemaData={schemaData}
       />
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Store className="h-5 w-5 text-muted-foreground" />
-            <Badge variant="secondary">
-              {labelByEntity[data.entity] || "Public Profile"}
-            </Badge>
+      <Card className="overflow-hidden">
+        <div className={`bg-gradient-to-br ${themePalette.bg} p-8 text-white`}>
+          <div className="mb-3 flex items-center gap-2">
+            <Store className="h-5 w-5" />
+            <Badge className={themePalette.chip}>{labelByEntity[data.entity] || "Public Profile"}</Badge>
           </div>
-          <CardTitle className="text-3xl">{data.title}</CardTitle>
-          {data.subtitle ? (
-            <p className="text-sm text-muted-foreground">{data.subtitle}</p>
+          <h1 className="text-4xl font-bold tracking-tight">{heroTitle}</h1>
+          {heroSubtitle ? (
+            <p className="mt-2 max-w-2xl text-sm text-white/85">{heroSubtitle}</p>
           ) : null}
+          {ctaLabel && ctaUrl ? (
+            <div className="mt-5">
+              <a
+                href={ctaUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="inline-flex items-center rounded-md border border-white/40 bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur hover:bg-white/20"
+              >
+                {ctaLabel}
+              </a>
+            </div>
+          ) : null}
+        </div>
+
+        <CardHeader>
+          <CardTitle className="text-2xl">{data.title}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-5">
-          {data.description ? <p className="text-base leading-relaxed">{data.description}</p> : null}
+        <CardContent className="space-y-6">
+          {about ? <p className="text-base leading-relaxed">{about}</p> : null}
 
           {locationLine ? (
             <div className="flex items-start gap-2 text-sm">
@@ -160,6 +211,55 @@ export default function PublicProfilePage() {
           {data.entity === "supplier" && typeof data.metrics?.activeProductCount === "number" ? (
             <div className="text-sm text-muted-foreground">
               Active products: <span className="font-medium text-foreground">{data.metrics.activeProductCount}</span>
+            </div>
+          ) : null}
+
+          {highlights.length > 0 ? (
+            <div>
+              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Highlights</h2>
+              <div className="flex flex-wrap gap-2">
+                {highlights.map((item, idx) => (
+                  <Badge key={`${item}-${idx}`} variant="outline" style={accentStyle}>
+                    {item}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {featuredLinks.length > 0 ? (
+            <div>
+              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Links</h2>
+              <div className="grid gap-2">
+                {featuredLinks.map((link, idx) => (
+                  <a
+                    key={`${link.url}-${idx}`}
+                    href={link.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="rounded-md border px-3 py-2 text-sm hover:bg-muted"
+                  >
+                    {link.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {galleryUrls.length > 0 ? (
+            <div>
+              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Gallery</h2>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                {galleryUrls.map((url, idx) => (
+                  <img
+                    key={`${url}-${idx}`}
+                    src={url}
+                    alt={`${data.title} gallery ${idx + 1}`}
+                    className="h-28 w-full rounded-md object-cover"
+                    loading="lazy"
+                  />
+                ))}
+              </div>
             </div>
           ) : null}
 

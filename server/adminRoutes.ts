@@ -27,6 +27,7 @@ import { isAdmin, isStaffOrAdmin } from "./unifiedAuth";
 import { logAudit } from "./auditLogger";
 import { storage } from "./storage";
 import { sendAccountSetupInvite } from "./utils/accountSetup";
+import { getJobQueueStats } from "./jobs/jobQueue";
 
 const router = Router();
 
@@ -514,12 +515,14 @@ router.post("/moderation-events", isAdmin, async (req, res) => {
  */
 router.get("/health", isAdmin, async (req, res) => {
   try {
+    const jobQueue = getJobQueueStats();
     res.json({
       status: "healthy",
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       database: "connected",
       jobs: {
+        queue: jobQueue,
         escalations: { lastRun: "N/A", nextRun: "scheduled" },
         autoClose: { lastRun: "N/A", nextRun: "scheduled" },
       },

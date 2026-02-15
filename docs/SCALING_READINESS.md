@@ -36,8 +36,25 @@ This checklist is the minimum baseline for stable growth under burst traffic.
   - API 4xx/5xx rates
   - request volume
 - Alert on SLO breach windows (5m + 30m).
+- Track job-queue pressure from `/health/metrics`:
+  - `jobs.queued`
+  - `jobs.active`
+  - `jobs.totals.retried`
+  - `jobs.totals.failed`
+  - `jobs.totals.timedOut`
 
-## 5. Retention cleanup
+## 5. Async job reliability
+
+- Configure in-process job queue safety limits:
+  - `JOB_QUEUE_CONCURRENCY=4`
+  - `JOB_QUEUE_MAX_SIZE=5000`
+  - `JOB_QUEUE_MAX_ATTEMPTS=3`
+  - `JOB_QUEUE_TIMEOUT_MS=30000`
+  - `JOB_QUEUE_RETRY_BASE_MS=1000`
+  - `JOB_QUEUE_RETRY_MAX_MS=60000`
+- If queue depth grows persistently, move job execution to a dedicated worker service.
+
+## 6. Retention cleanup
 
 - Enable scheduled cleanup in production:
   - `OPS_CLEANUP_ENABLED=true`
@@ -48,13 +65,13 @@ This checklist is the minimum baseline for stable growth under burst traffic.
 - Keep manual fallback available:
   - `POST /health/maintenance/cleanup` with `X-Health-Token`.
 
-## 6. Payments and webhook safety
+## 7. Payments and webhook safety
 
 - Keep all payment mutations idempotent.
 - Ensure webhook retry/replay is safe (idempotent DB writes).
 - Monitor Stripe webhook failure count and latency.
 
-## 7. Load testing cadence
+## 8. Load testing cadence
 
 - Run load tests before each major release:
   - browse suppliers
@@ -64,7 +81,7 @@ This checklist is the minimum baseline for stable growth under burst traffic.
 - Test at 5x expected peak RPS for at least 10 minutes.
 - Use `npm run load:supplier-payments` for a repeatable supplier payment-intent load test harness.
 
-## 8. Required DB migrations for scale controls
+## 9. Required DB migrations for scale controls
 
 - Apply:
   - `migrations/058_idempotency_keys.sql`
@@ -72,7 +89,7 @@ This checklist is the minimum baseline for stable growth under burst traffic.
   - `migrations/060_supplier_marketplace_performance_indexes.sql`
   - `migrations/061_supplier_orders_created_at_index.sql`
 
-## 9. Operational readiness
+## 10. Operational readiness
 
 - On-call owner and escalation path defined.
 - Incident runbook for:
@@ -81,7 +98,7 @@ This checklist is the minimum baseline for stable growth under burst traffic.
   - webhook backlog
   - elevated 5xx rates
 
-## 10. Release strategy
+## 11. Release strategy
 
 - Use feature flags for payment flow changes.
 - Roll out via canary (small traffic slice first).

@@ -25,6 +25,12 @@ Use this checklist for each production release.
    - `OPS_CLEANUP_INTERVAL_MINUTES=30`
    - `IDEMPOTENCY_RETENTION_HOURS_AFTER_EXPIRY=24`
    - `RATE_LIMIT_COUNTER_RETENTION_HOURS=48`
+   - `JOB_QUEUE_CONCURRENCY=4`
+   - `JOB_QUEUE_MAX_SIZE=5000`
+   - `JOB_QUEUE_MAX_ATTEMPTS=3`
+   - `JOB_QUEUE_TIMEOUT_MS=30000`
+   - `JOB_QUEUE_RETRY_BASE_MS=1000`
+   - `JOB_QUEUE_RETRY_MAX_MS=60000`
 3. Ensure bypass flags are disabled in production:
    - `MEALSCOUT_BYPASS_STRIPE=false`
    - `MEALSCOUT_TEST_MODE=false`
@@ -46,6 +52,7 @@ Run each once:
    - `GET /health/ready`
 3. Metrics:
    - `GET /health/metrics` with header `X-Health-Token: <HEALTH_METRICS_TOKEN>`
+   - Verify `jobs` stats are present and queue depth is stable.
 4. Maintenance cleanup (manual trigger):
    - `POST /health/maintenance/cleanup` with header `X-Health-Token: <HEALTH_METRICS_TOKEN>`
    - Confirm response includes deleted row counts for `idempotency_keys` and `rate_limit_counters`.

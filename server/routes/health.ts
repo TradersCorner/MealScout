@@ -3,6 +3,7 @@ import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { getApiMetricsSnapshot } from "../observability";
 import { getOpsCleanupSnapshot, runOpsDataCleanup } from "../opsCleanup";
+import { getJobQueueStats } from "../jobs/jobQueue";
 
 export const healthRouter = Router();
 
@@ -39,6 +40,7 @@ healthRouter.get("/health/metrics", (req, res) => {
     ts: Date.now(),
     metrics: getApiMetricsSnapshot(),
     cleanup: getOpsCleanupSnapshot(),
+    jobs: getJobQueueStats(),
   });
 });
 

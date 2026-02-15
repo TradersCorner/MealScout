@@ -326,7 +326,7 @@ export default function Navigation() {
 
   return (
     <>
-      <div className="hidden md:block fixed top-4 right-4 z-50">
+      <div className="hidden lg:block fixed top-4 right-4 z-50">
         <div className="rounded-2xl border border-white/20 bg-[hsl(var(--background))/0.82] backdrop-blur-xl shadow-clean-lg p-2">
           <div className="flex items-center gap-2">
             {desktopQuickActions.map((item) =>
@@ -350,19 +350,20 @@ export default function Navigation() {
         </div>
       </div>
 
-      <nav className="nav-bar fixed bottom-0 left-0 right-0 w-full border-t px-4 py-2 z-50 md:hidden">
+      <nav className="nav-bar nav-bar-mobile fixed bottom-0 left-0 right-0 w-full border-t px-3 pt-2 pb-[calc(0.45rem+env(safe-area-inset-bottom))] z-50 lg:hidden">
       <div className="w-full mx-auto overflow-x-auto max-w-none">
-        <div className="flex items-center justify-start space-x-2 min-w-max">
+        <div className="flex items-stretch justify-start space-x-2 min-w-max snap-x snap-mandatory">
           {navItems.map((item) =>
             item.path ? (
               <Link
                 key={item.path}
                 href={item.path}
-                className={`nav-link flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-colors duration-200 ${
+                className={`nav-link snap-start min-h-[56px] min-w-[72px] flex flex-col items-center justify-center space-y-1 px-2 rounded-xl transition-colors duration-200 ${
                   location === item.path ? "nav-link--active" : "nav-link--inactive"
                 }`}
                 data-testid={`nav-${item.label.toLowerCase()}`}
                 aria-label={item.label}
+                aria-current={location === item.path ? "page" : undefined}
               >
                 <item.icon className="w-5 h-5" />
                 <span className="text-[11px] leading-tight font-semibold tracking-normal">
@@ -374,7 +375,7 @@ export default function Navigation() {
                 key={item.label}
                 onClick={item.onClick}
                 disabled={isReporting}
-                className={`nav-link flex flex-col items-center space-y-1 py-2 px-2 rounded-lg transition-colors duration-200 ${
+                className={`nav-link snap-start min-h-[56px] min-w-[72px] flex flex-col items-center justify-center space-y-1 px-2 rounded-xl transition-colors duration-200 ${
                   item.isBug ? "nav-bug" : "nav-link--inactive"
                 } ${isReporting ? "opacity-80 cursor-not-allowed" : ""}`}
                 data-testid={`nav-${item.label.toLowerCase()}`}

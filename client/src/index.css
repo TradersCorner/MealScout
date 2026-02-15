@@ -1009,17 +1009,17 @@
   }
 
   .theme-day .nav-bar {
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(255, 255, 255, 0.94);
     border-color: rgba(15, 23, 42, 0.12);
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.1);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
 
   .theme-night .nav-bar {
-    background: rgba(10, 10, 10, 0.96);
+    background: rgba(10, 10, 10, 0.97);
     border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 -8px 22px rgba(0, 0, 0, 0.45);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
@@ -1027,6 +1027,7 @@
   .theme-day .nav-link--active,
   .theme-night .nav-link--active {
     color: var(--accent-text);
+    background: rgba(249, 115, 22, 0.12);
   }
 
   .theme-day .nav-link--inactive {
@@ -1054,6 +1055,11 @@
 
   .theme-night .nav-link--active:hover {
     background: rgba(255, 255, 255, 0.06);
+  }
+
+  .nav-bar-mobile {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 
   .nav-link {

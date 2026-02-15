@@ -998,6 +998,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accountSettings: user.accountSettings || {},
         publicProfileSettings: user.publicProfileSettings || {},
         profileLinks,
+        media: {
+          provider: isCloudinaryConfigured() ? "cloudinary" : "none",
+          configured: isCloudinaryConfigured(),
+        },
       });
     } catch (error) {
       console.error("Error fetching user settings:", error);

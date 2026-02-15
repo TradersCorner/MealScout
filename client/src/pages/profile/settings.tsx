@@ -58,7 +58,22 @@ type SettingsPayload = {
     title: string;
     path: string;
   }>;
+  media?: {
+    provider?: "cloudinary" | "none" | string;
+    configured?: boolean;
+  };
 };
+
+const SECTION_OPTIONS = [
+  "about",
+  "location",
+  "contact",
+  "metrics",
+  "highlights",
+  "links",
+  "gallery",
+] as const;
+type SectionKey = (typeof SECTION_OPTIONS)[number];
 
 export default function SettingsPage() {
   const { user, isAuthenticated } = useAuth();
@@ -359,6 +374,33 @@ export default function SettingsPage() {
     }
   };
 
+  const getSectionOrderList = (): SectionKey[] => {
+    const parsed = profile.sectionOrder
+      .split(",")
+      .map((v) => v.trim().toLowerCase())
+      .filter((v): v is SectionKey =>
+        (SECTION_OPTIONS as readonly string[]).includes(v),
+      );
+    const deduped = Array.from(new Set(parsed));
+    for (const key of SECTION_OPTIONS) {
+      if (!deduped.includes(key)) deduped.push(key);
+    }
+    return deduped;
+  };
+
+  const moveSection = (section: SectionKey, direction: -1 | 1) => {
+    const list = getSectionOrderList();
+    const idx = list.indexOf(section);
+    if (idx < 0) return;
+    const nextIdx = idx + direction;
+    if (nextIdx < 0 || nextIdx >= list.length) return;
+    const next = [...list];
+    const temp = next[idx];
+    next[idx] = next[nextIdx];
+    next[nextIdx] = temp;
+    setProfile((prev) => ({ ...prev, sectionOrder: next.join(",") }));
+  };
+
   return (
     <div className="max-w-3xl mx-auto bg-[var(--bg-app)] min-h-screen relative pb-20">
       <header className="px-6 py-6 bg-[hsl(var(--background))] border-b border-white/5">
@@ -571,16 +613,42 @@ export default function SettingsPage() {
                     <p className="mt-1 text-xs text-muted-foreground">
                       Upload directly to your profile gallery (max 12 images).
                     </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Active upload provider: {data?.media?.provider || "unknown"}{" "}
+                      {data?.media?.configured ? "(configured)" : "(not configured)"}
+                    </p>
                   </div>
                 </div>
 
                 <div>
-                  <Label>Section order (comma-separated)</Label>
-                  <Input
-                    value={profile.sectionOrder}
-                    onChange={(e) => setProfile((prev) => ({ ...prev, sectionOrder: e.target.value }))}
-                    placeholder="about,location,contact,metrics,highlights,links,gallery"
-                  />
+                  <Label>Section order</Label>
+                  <div className="mt-2 space-y-2 rounded-md border p-3">
+                    {getSectionOrderList().map((section, idx) => (
+                      <div key={section} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
+                        <span className="font-medium capitalize">{section}</span>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => moveSection(section, -1)}
+                            disabled={idx === 0}
+                          >
+                            Up
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => moveSection(section, 1)}
+                            disabled={idx === getSectionOrderList().length - 1}
+                          >
+                            Down
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-3">

@@ -130,6 +130,10 @@ type OrderListImportResult = {
 const formatMoney = (cents: number) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
 const formatMiles = (miles: number) =>
   `${Number(miles).toFixed(miles < 10 ? 1 : 0)} mi`;
+const safeText = (v: string | null | undefined, fallback = "Unknown") => {
+  const s = String(v || "").trim();
+  return s.length > 0 ? s : fallback;
+};
 
 export default function SuppliersPage() {
   const { toast } = useToast();
@@ -228,8 +232,30 @@ export default function SuppliersPage() {
       if (!existing) bySupplier.set(supplierId, { supplier: row.supplier, rows: [row] });
       else existing.rows.push(row);
     }
-    return Array.from(bySupplier.values());
+    const out = Array.from(bySupplier.values());
+    out.sort((a, b) => {
+      const aDistance =
+        a.rows
+          .map((r) => r.distanceMiles)
+          .filter((d): d is number => typeof d === "number" && Number.isFinite(d))
+          .sort((x, y) => x - y)[0] ?? Number.POSITIVE_INFINITY;
+      const bDistance =
+        b.rows
+          .map((r) => r.distanceMiles)
+          .filter((d): d is number => typeof d === "number" && Number.isFinite(d))
+          .sort((x, y) => x - y)[0] ?? Number.POSITIVE_INFINITY;
+
+      if (b.rows.length !== a.rows.length) return b.rows.length - a.rows.length;
+      if (aDistance !== bDistance) return aDistance - bDistance;
+      return String(a.supplier.businessName || "").localeCompare(String(b.supplier.businessName || ""));
+    });
+    return out;
   }, [supplyMatches]);
+  const topMatch = groupedMatches[0] ?? null;
+  const totalMatchedProducts = useMemo(
+    () => groupedMatches.reduce((sum, g) => sum + g.rows.length, 0),
+    [groupedMatches],
+  );
 
   const savePreferences = useMutation({
     mutationFn: async () => {
@@ -690,6 +716,27 @@ export default function SuppliersPage() {
                 </Card>
               ) : (
                 <div className="space-y-3">
+                  <Card>
+                    <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
+                      <div className="text-sm">
+                        <span className="font-semibold">{groupedMatches.length}</span>{" "}
+                        supplier{groupedMatches.length === 1 ? "" : "s"} matched{" "}
+                        <span className="font-semibold">{totalMatchedProducts}</span>{" "}
+                        product{totalMatchedProducts === 1 ? "" : "s"} for{" "}
+                        <span className="font-semibold">{safeText(trimmedQ)}</span>.
+                      </div>
+                      {topMatch ? (
+                        <div className="flex items-center gap-2">
+                          <div className="text-xs text-muted-foreground">
+                            Best match: {safeText(topMatch.supplier.businessName)}
+                          </div>
+                          <Link href={`/suppliers/${topMatch.supplier.id}`}>
+                            <Button size="sm">Shop best match</Button>
+                          </Link>
+                        </div>
+                      ) : null}
+                    </CardContent>
+                  </Card>
                   {groupedMatches.map(({ supplier, rows }) => {
                     const location = [supplier.address, supplier.city, supplier.state]
                       .map((v) => (v || "").trim())
@@ -845,6 +892,11 @@ export default function SuppliersPage() {
                             </Link>
                           ))}
                         </div>
+                        {importResult.plan.suppliers.length > 0 ? (
+                          <Link href={`/suppliers/${importResult.plan.suppliers[0].id}`}>
+                            <Button size="sm">Open first recommended supplier</Button>
+                          </Link>
+                        ) : null}
                         <div className="grid grid-cols-3 gap-2">
                           <div className="rounded-md border p-3">
                             <div className="text-xs text-muted-foreground">Subtotal</div>

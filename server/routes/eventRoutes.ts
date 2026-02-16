@@ -14,6 +14,7 @@ import {
   hosts,
   insertEventInterestSchema,
   restaurants,
+  users,
   CLAIM_STATUS,
   CLAIM_TYPES,
 } from "@shared/schema";
@@ -878,6 +879,238 @@ export function registerEventRoutes(app: Express) {
       } catch (error: any) {
         console.error("Error building parking pass fix queue:", error);
         res.status(500).json({ message: "Failed to load fix queue" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/admin/parking-pass/host-trace",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (req: any, res) => {
+      try {
+        const horizonRaw = Number(req.query?.horizonDays ?? 30);
+        const horizonDays = Number.isFinite(horizonRaw)
+          ? Math.min(90, Math.max(1, Math.floor(horizonRaw)))
+          : 30;
+
+        const [hostRows, seriesRows, occurrenceResult, legacyUpcoming] =
+          await Promise.all([
+            db
+              .select({
+                id: hosts.id,
+                userId: hosts.userId,
+                businessName: hosts.businessName,
+                address: hosts.address,
+                city: hosts.city,
+                state: hosts.state,
+                latitude: hosts.latitude,
+                longitude: hosts.longitude,
+                isDisabled: users.isDisabled,
+              })
+              .from(hosts)
+              .leftJoin(users, eq(hosts.userId, users.id)),
+            db
+              .select({
+                id: eventSeries.id,
+                hostId: eventSeries.hostId,
+                status: eventSeries.status,
+                updatedAt: eventSeries.updatedAt,
+              })
+              .from(eventSeries)
+              .where(eq(eventSeries.seriesType, "parking_pass")),
+            listParkingPassOccurrences({ horizonDays, includeDraft: true }),
+            storage.getAllUpcomingEvents(),
+          ]);
+
+        const parseCoord = (value?: string | number | null) => {
+          if (value === null || value === undefined) return null;
+          const parsed = typeof value === "string" ? Number(value) : value;
+          return Number.isFinite(parsed) ? parsed : null;
+        };
+
+        const hostById = new Map<string, (typeof hostRows)[number]>();
+        hostRows.forEach((host: any) => {
+          hostById.set(String(host.id), host);
+        });
+
+        const seriesByHost = new Map<
+          string,
+          {
+            total: number;
+            published: number;
+            draft: number;
+            latestUpdatedAt: string | null;
+          }
+        >();
+        seriesRows.forEach((series: any) => {
+          const hostId = String(series.hostId || "").trim();
+          if (!hostId) return;
+          const prev = seriesByHost.get(hostId) || {
+            total: 0,
+            published: 0,
+            draft: 0,
+            latestUpdatedAt: null,
+          };
+          prev.total += 1;
+          if (String(series.status || "").toLowerCase() === "published") {
+            prev.published += 1;
+          }
+          if (String(series.status || "").toLowerCase() === "draft") {
+            prev.draft += 1;
+          }
+          const updatedAt = series.updatedAt ? new Date(series.updatedAt) : null;
+          const prevUpdatedAt = prev.latestUpdatedAt
+            ? new Date(prev.latestUpdatedAt)
+            : null;
+          if (
+            updatedAt &&
+            (!prevUpdatedAt || updatedAt.getTime() > prevUpdatedAt.getTime())
+          ) {
+            prev.latestUpdatedAt = updatedAt.toISOString();
+          }
+          seriesByHost.set(hostId, prev);
+        });
+
+        const occurrenceByHost = new Map<
+          string,
+          {
+            total: number;
+            publicReady: number;
+            qualityFlags: Set<string>;
+            nextDate: string | null;
+          }
+        >();
+        occurrenceResult.occurrences.forEach((event: any) => {
+          const hostId = String(event?.hostId ?? event?.host?.id ?? "").trim();
+          if (!hostId) return;
+          const prev = occurrenceByHost.get(hostId) || {
+            total: 0,
+            publicReady: 0,
+            qualityFlags: new Set<string>(),
+            nextDate: null,
+          };
+          prev.total += 1;
+          const flags = computeParkingPassQualityFlags(event);
+          flags.forEach((flag) => prev.qualityFlags.add(flag));
+          if (flags.length === 0) {
+            prev.publicReady += 1;
+          }
+          const dateKey = String(event?.date || "").slice(0, 10);
+          if (dateKey && (!prev.nextDate || dateKey < prev.nextDate)) {
+            prev.nextDate = dateKey;
+          }
+          occurrenceByHost.set(hostId, prev);
+        });
+
+        const legacyByHost = new Map<string, { total: number; publicReady: number }>();
+        legacyUpcoming.forEach((event: any) => {
+          if (event?.eventType !== "parking_pass") return;
+          const hostId = String(event?.hostId ?? event?.host?.id ?? "").trim();
+          if (!hostId) return;
+          const prev = legacyByHost.get(hostId) || { total: 0, publicReady: 0 };
+          prev.total += 1;
+          if (isParkingPassPublicReady(event)) {
+            prev.publicReady += 1;
+          }
+          legacyByHost.set(hostId, prev);
+        });
+
+        const allHostIds = new Set<string>();
+        hostById.forEach((_v, hostId) => allHostIds.add(hostId));
+        seriesByHost.forEach((_v, hostId) => allHostIds.add(hostId));
+        occurrenceByHost.forEach((_v, hostId) => allHostIds.add(hostId));
+        legacyByHost.forEach((_v, hostId) => allHostIds.add(hostId));
+
+        const rows = Array.from(allHostIds)
+          .map((hostId) => {
+            const host = hostById.get(hostId) || null;
+            const series = seriesByHost.get(hostId) || {
+              total: 0,
+              published: 0,
+              draft: 0,
+              latestUpdatedAt: null,
+            };
+            const occurrences = occurrenceByHost.get(hostId) || {
+              total: 0,
+              publicReady: 0,
+              qualityFlags: new Set<string>(),
+              nextDate: null,
+            };
+            const legacy = legacyByHost.get(hostId) || { total: 0, publicReady: 0 };
+
+            const lat = parseCoord(host?.latitude);
+            const lng = parseCoord(host?.longitude);
+            const hasCoords =
+              lat !== null &&
+              lng !== null &&
+              Math.abs(lat) <= 90 &&
+              Math.abs(lng) <= 180;
+            const hasAddress = Boolean(String(host?.address || "").trim());
+            const isDisabled = Boolean(host?.isDisabled);
+
+            const reasons: string[] = [];
+            if (!host) reasons.push("missing_host_profile");
+            if (isDisabled) reasons.push("user_disabled");
+            if (!hasAddress) reasons.push("missing_address");
+            if (!hasCoords) reasons.push("missing_coords");
+            if (series.total === 0) reasons.push("no_parking_pass_series");
+            if (occurrences.publicReady === 0 && legacy.publicReady === 0) {
+              reasons.push("no_public_ready_parking_pass");
+            }
+            occurrences.qualityFlags.forEach((flag) => reasons.push(`quality:${flag}`));
+
+            const mapFeedCandidate = Boolean(host && !isDisabled && hasAddress);
+            const parkingPassFeedVisible =
+              occurrences.publicReady > 0 || legacy.publicReady > 0;
+
+            return {
+              hostId,
+              businessName: host?.businessName || null,
+              city: host?.city || null,
+              state: host?.state || null,
+              isDisabled,
+              hasAddress,
+              hasCoords,
+              mapFeedCandidate,
+              parkingPass: {
+                seriesTotal: series.total,
+                seriesPublished: series.published,
+                seriesDraft: series.draft,
+                latestSeriesUpdatedAt: series.latestUpdatedAt,
+                occurrencesTotal: occurrences.total,
+                occurrencesPublicReady: occurrences.publicReady,
+                nextOccurrenceDate: occurrences.nextDate,
+                legacyEventsTotal: legacy.total,
+                legacyPublicReady: legacy.publicReady,
+                visibleInFeed: parkingPassFeedVisible,
+              },
+              reasons,
+            };
+          })
+          .sort((a, b) => {
+            const severityA = a.reasons.length;
+            const severityB = b.reasons.length;
+            if (severityA !== severityB) return severityB - severityA;
+            return String(a.businessName || a.hostId).localeCompare(
+              String(b.businessName || b.hostId),
+            );
+          });
+
+        const summary = {
+          hostCount: rows.length,
+          mapFeedCandidates: rows.filter((row) => row.mapFeedCandidate).length,
+          parkingPassVisible: rows.filter((row) => row.parkingPass.visibleInFeed)
+            .length,
+          withBlockingReasons: rows.filter((row) => row.reasons.length > 0).length,
+          generatedAt: new Date().toISOString(),
+          horizonDays,
+        };
+
+        res.json({ summary, rows });
+      } catch (error: any) {
+        console.error("Error building parking pass host trace:", error);
+        res.status(500).json({ message: "Failed to build host trace" });
       }
     },
   );

@@ -1170,11 +1170,18 @@ export default function MapPage() {
         `/api/admin/parking-pass/host-status?date=${todayKey}`,
         { credentials: "include" },
       );
-      if (!res.ok) throw new Error("Failed to load parking pass quality flags");
+      if (!res.ok) {
+        return {
+          generatedAt: new Date().toISOString(),
+          date: todayKey,
+          hosts: [],
+        };
+      }
       return res.json();
     },
     staleTime: 60_000,
     gcTime: 10 * 60 * 1000,
+    retry: false,
   });
 
   const qualityFlagsByHostId = useMemo(() => {

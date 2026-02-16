@@ -746,8 +746,8 @@ export function registerEventRoutes(app: Express) {
     isAuthenticated,
     isStaffOrAdmin,
     async (req: any, res) => {
+      const dateKey = normalizeDateKey(req.query?.date);
       try {
-        const dateKey = normalizeDateKey(req.query?.date);
         const payload = await buildParkingPassHostStatusPayload(dateKey);
 
         // Attach quality flags (staff/admin only) so map popups can show "needs fixes".
@@ -774,9 +774,27 @@ export function registerEventRoutes(app: Express) {
         res.json({ ...payload, hosts });
       } catch (error: any) {
         console.error("Error fetching admin parking pass host status:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch admin parking pass host status" });
+        try {
+          // Graceful fallback: keep map usable for staff/admin even if
+          // quality-flag enrichment fails.
+          const payload = await buildParkingPassHostStatusPayload(dateKey);
+          res.setHeader("X-MealScout-Stale", "1");
+          return res.status(200).json({
+            ...payload,
+            hosts: payload.hosts.map((host) => ({ ...host, qualityFlags: [] })),
+          });
+        } catch (fallbackError: any) {
+          console.error(
+            "Error building fallback admin parking pass host status:",
+            fallbackError,
+          );
+          res.setHeader("X-MealScout-Stale", "1");
+          return res.status(200).json({
+            generatedAt: new Date().toISOString(),
+            date: dateKey,
+            hosts: [],
+          });
+        }
       }
     },
   );

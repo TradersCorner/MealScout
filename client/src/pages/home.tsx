@@ -362,7 +362,7 @@ export default function Home() {
                   size="icon"
                   onClick={retryLocation}
                   disabled={isLoadingLocation}
-                  className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)] w-7 h-7"
+                  className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)]"
                   title="Refresh Location"
                 >
                   {isLoadingLocation ? (
@@ -791,7 +791,7 @@ export default function Home() {
                 </div>
 
                 <Link href="/customer-signup">
-                  <Button className="w-full h-9 text-xs font-medium">
+                  <Button className="w-full text-xs font-medium">
                     Create free account
                   </Button>
                 </Link>
@@ -863,7 +863,7 @@ export default function Home() {
                 </div>
 
                 <Link href={user ? "/affiliate-dashboard" : "/customer-signup"}>
-                  <Button className="w-full h-9 text-xs font-medium">
+                  <Button className="w-full text-xs font-medium">
                     {user ? "Community Builder Dashboard" : "Start Building"}
                   </Button>
                 </Link>

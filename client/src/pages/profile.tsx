@@ -291,7 +291,7 @@ export default function ProfilePage() {
                   </p>
                 </div>
               </div>
-              <div className="flex flex-col gap-2 md:flex-row md:items-center">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <div className="flex-1 flex items-center rounded-md border border-subtle bg-surface-muted px-3 py-2 text-sm text-[color:var(--accent-text)]">
                   <span className="text-secondary mr-1">
                     {`${window.location.origin}/ref/`}
@@ -304,7 +304,7 @@ export default function ProfilePage() {
                     placeholder="user1234"
                   />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Button
                     className="action-primary"
                     onClick={handleSaveTag}

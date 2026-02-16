@@ -73,8 +73,8 @@ function MapControls({
 }) {
   const map = useMap();
   const controlClassName = isNightTheme
-    ? "w-9 h-9 p-0 rounded-full bg-[var(--bg-card)]/90 border border-white/20 shadow-clean-lg backdrop-blur text-[color:var(--text-primary)]"
-    : "w-9 h-9 p-0 rounded-full bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean text-[color:var(--text-primary)]";
+    ? "w-11 h-11 p-0 rounded-full bg-[var(--bg-card)]/90 border border-white/20 shadow-clean-lg backdrop-blur text-[color:var(--text-primary)]"
+    : "w-11 h-11 p-0 rounded-full bg-[var(--bg-card)] border border-[color:var(--border-subtle)] shadow-clean text-[color:var(--text-primary)]";
 
   const handleZoomIn = () => {
     map.zoomIn();
@@ -1544,7 +1544,7 @@ export default function MapPage() {
               } nearby`}
           </div>
         )}
-        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        <div className="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <div>
             Paid parking locations:{" "}
             <span className="font-semibold text-foreground">
@@ -1557,6 +1557,7 @@ export default function MapPage() {
           <Button
             variant="outline"
             size="sm"
+            className="w-full sm:w-auto"
             onClick={handleRefreshPaidParking}
             data-testid="button-refresh-paid-parking"
           >
@@ -1863,16 +1864,16 @@ export default function MapPage() {
                 </div>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
                   onClick={() => setSelectedDeal(null)}
-                  className="p-1 h-6 w-6"
+                  className="h-11 w-11"
                   data-testid="button-close-selected-deal"
                 >
                   <X className="w-3 h-3" />
                 </Button>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center space-x-2">
                   <span className="text-primary font-bold text-sm">
                     {selectedDeal.discountValue}% OFF
@@ -1881,7 +1882,7 @@ export default function MapPage() {
                     Min: ${selectedDeal.minOrderAmount}
                   </span>
                 </div>
-                <Button size="sm" data-testid="button-view-deal">
+                <Button size="sm" className="w-full sm:w-auto" data-testid="button-view-deal">
                   View Deal
                 </Button>
               </div>

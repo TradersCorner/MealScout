@@ -229,7 +229,7 @@ export default function RestaurantDetailPage() {
   const reviewCount = Array.isArray(reviews) ? reviews.length : 0;
 
   const rightActions = (
-    <Button variant="ghost" size="sm" className="bg-[var(--bg-card)]/90 backdrop-blur-sm" data-testid="button-save-restaurant">
+    <Button variant="ghost" size="icon" className="bg-[var(--bg-card)]/90 backdrop-blur-sm" data-testid="button-save-restaurant">
       <Heart className="w-4 h-4" />
     </Button>
   );
@@ -357,12 +357,12 @@ export default function RestaurantDetailPage() {
           )}
 
           {/* Action Buttons */}
-          <div className="flex space-x-3">
-            <Button className="flex-1" data-testid="button-directions">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button className="w-full sm:flex-1" data-testid="button-directions">
               <DirectionsIcon className="w-4 h-4 mr-2" />
               Directions
             </Button>
-            <Button variant="outline" className="flex-1" data-testid="button-call-restaurant">
+            <Button variant="outline" className="w-full sm:flex-1" data-testid="button-call-restaurant">
               <Phone className="w-4 h-4 mr-2" />
               Call
             </Button>
@@ -371,7 +371,7 @@ export default function RestaurantDetailPage() {
                 <DialogTrigger asChild>
                   <Button
                     variant="outline"
-                    className="flex-1"
+                    className="w-full sm:flex-1"
                     data-testid="button-book-truck"
                   >
                     Book This Truck
@@ -483,7 +483,7 @@ export default function RestaurantDetailPage() {
             {!isFoodTruck && (
               <Button
                 variant="outline"
-                className="flex-1"
+                className="w-full sm:flex-1"
                 data-testid="button-view-specials"
                 onClick={() =>
                   document

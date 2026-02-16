@@ -223,20 +223,24 @@ export default function DealDetail() {
 
       {/* Action Buttons */}
       <div className="bg-[hsl(var(--background))/0.94] px-4 py-2 border-b border-[color:var(--border-subtle)] sticky top-16 z-10">
-        <div className="flex justify-end space-x-2">
-          <button
-            className="p-2 rounded-full hover:bg-[var(--bg-surface-muted)]"
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setShowShareModal(true)}
             data-testid="button-share"
+            aria-label="Share special"
           >
             <i className="fas fa-share text-foreground"></i>
-          </button>
-          <button
-            className="p-2 rounded-full hover:bg-[var(--bg-surface-muted)]"
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             data-testid="button-favorite"
+            aria-label="Save special"
           >
             <i className="fas fa-heart text-muted-foreground hover:text-[color:var(--accent-text)]"></i>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -469,7 +473,7 @@ export default function DealDetail() {
           <Button
             variant="outline"
             size="icon"
-            className="px-4 py-3"
+            className="h-11 w-11"
             data-testid="button-save-deal"
           >
             <i className="fas fa-heart text-muted-foreground"></i>

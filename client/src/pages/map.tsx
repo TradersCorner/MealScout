@@ -1517,7 +1517,11 @@ export default function MapPage() {
   const isGoogleProviderRequested = MAP_PROVIDER === "google";
   const isGoogleProviderMissingKey =
     isGoogleProviderRequested && !isGoogleMapsEnabled;
-  const mapProviderLabel = isGoogleMapsEnabled ? "Google Maps" : "Legacy map";
+  const mapProviderLabel = isGoogleMapsEnabled
+    ? "Google Maps"
+    : isGoogleProviderRequested
+      ? "Legacy map (Google key missing)"
+      : "Legacy map";
 
   const adapterMarkers = useMemo<MapAdapterMarker[]>(() => {
     const next: MapAdapterMarker[] = [];
@@ -1536,7 +1540,7 @@ export default function MapPage() {
     visibleGeoAds.forEach((ad) => {
       const lat = toNumberOrNull(ad.pinLat);
       const lng = toNumberOrNull(ad.pinLng);
-      if (!lat || !lng) return;
+      if (lat == null || lng == null) return;
       next.push({
         id: `geo_ad:${ad.id}`,
         sourceId: ad.id,
@@ -1550,7 +1554,7 @@ export default function MapPage() {
     visibleDeals.forEach((deal) => {
       const lat = toNumberOrNull(deal.restaurant?.latitude);
       const lng = toNumberOrNull(deal.restaurant?.longitude);
-      if (!lat || !lng) return;
+      if (lat == null || lng == null) return;
       next.push({
         id: `deal:${deal.id}`,
         sourceId: deal.id,
@@ -1565,7 +1569,7 @@ export default function MapPage() {
     visibleUnhostedTrucks.forEach((truck) => {
       const lat = toNumberOrNull(truck.currentLatitude);
       const lng = toNumberOrNull(truck.currentLongitude);
-      if (!lat || !lng) return;
+      if (lat == null || lng == null) return;
       next.push({
         id: `truck:${truck.id}`,
         sourceId: truck.id,
@@ -1721,6 +1725,12 @@ export default function MapPage() {
               <span> • Updated {lastHostIdsUpdatedLabel}</span>
             ) : null}
             <span> • {mapProviderLabel}</span>
+            {isGoogleProviderMissingKey ? (
+              <span className="text-[color:var(--status-warning)]">
+                {" "}
+                • Set `VITE_GOOGLE_MAPS_WEB_API_KEY` to enable Google Maps
+              </span>
+            ) : null}
           </div>
           <Button
             variant="outline"
@@ -1857,7 +1867,7 @@ export default function MapPage() {
               {visibleUnhostedTrucks.map((truck) => {
                 const lat = toNumberOrNull(truck.currentLatitude);
                 const lng = toNumberOrNull(truck.currentLongitude);
-                if (!lat || !lng) return null;
+                if (lat == null || lng == null) return null;
                 const distanceLabel = formatDistance({ lat, lng });
                 return (
                   <Marker

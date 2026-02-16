@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,10 @@ import {
   ChevronDown,
   ChevronUp,
   AlertCircle,
+  ArrowRight,
+  Megaphone,
+  RefreshCw,
+  Building2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
@@ -54,6 +58,23 @@ interface SeriesGroup {
   latestDate: string;
 }
 
+const normalizeEvents = (items: any[]): Event[] => {
+  const fallbackHost: Host = {
+    id: "venue-unknown",
+    businessName: "Event Venue",
+    address: "Location details coming soon",
+    locationType: "event",
+  };
+
+  return items.map((event) => ({
+    ...event,
+    host: {
+      ...fallbackHost,
+      ...(event?.host || {}),
+    },
+  }));
+};
+
 function TruckDiscovery() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
@@ -67,39 +88,91 @@ function TruckDiscovery() {
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set());
   const [myRestaurantId, setMyRestaurantId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const loadPortalData = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      const silent = opts?.silent ?? false;
+      if (silent) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
+      setError("");
+
       try {
-        // Fetch user's restaurant first
-        const restaurantRes = await fetch("/api/restaurants/my");
+        // Fetch truck profile if available (logged-in users only).
+        const restaurantRes = await fetch("/api/restaurants/my", {
+          credentials: "include",
+        });
         if (restaurantRes.ok) {
           const restaurants = await restaurantRes.json();
-          if (restaurants.length > 0) {
+          if (Array.isArray(restaurants) && restaurants.length > 0) {
             setMyRestaurantId(restaurants[0].id);
+          } else {
+            setMyRestaurantId(null);
           }
+        } else {
+          setMyRestaurantId(null);
         }
 
-        // Fetch events
-        const eventsRes = await fetch("/api/events");
-        if (!eventsRes.ok) {
-          if (eventsRes.status === 401) {
-            setLocation("/login?redirect=/truck-discovery");
-            return;
-          }
-          throw new Error("Failed to fetch events");
+        // Primary data source for truck workflows.
+        const eventsRes = await fetch("/api/events", {
+          credentials: "include",
+        });
+
+        if (eventsRes.ok) {
+          const data = await eventsRes.json();
+          setEvents(Array.isArray(data) ? normalizeEvents(data) : []);
+          return;
         }
-        const data = await eventsRes.json();
-        setEvents(data);
+
+        // Fallback to public event feed so the portal always has a usable surface.
+        const publicEventsRes = await fetch("/api/events/upcoming", {
+          credentials: "include",
+        });
+        if (publicEventsRes.ok) {
+          const data = await publicEventsRes.json();
+          setEvents(Array.isArray(data) ? normalizeEvents(data) : []);
+          return;
+        }
+
+        if (eventsRes.status === 401) {
+          setLocation("/login?redirect=/events");
+          return;
+        }
+
+        throw new Error("Live event feed is temporarily unavailable.");
       } catch (err: any) {
-        setError(err.message);
+        setEvents([]);
+        setError(err?.message || "Failed to load events.");
       } finally {
         setIsLoading(false);
+        setIsRefreshing(false);
       }
-    };
+    },
+    [setLocation],
+  );
 
-    fetchData();
-  }, [setLocation]);
+  useEffect(() => {
+    loadPortalData();
+  }, [loadPortalData]);
+
+  const roleState = useMemo(() => {
+    const roles = new Set<string>();
+    if (user?.userType) roles.add(user.userType);
+    if (Array.isArray((user as any)?.roles)) {
+      (user as any).roles.forEach((role: string | null) => {
+        if (role) roles.add(role);
+      });
+    }
+
+    return {
+      isGuest: !user,
+      isEventCoordinator: roles.has("event_coordinator"),
+      isTruck: roles.has("food_truck") || roles.has("restaurant_owner"),
+    };
+  }, [user]);
 
   const handleExpressInterest = async (eventId: string) => {
     if (!myRestaurantId) {
@@ -108,6 +181,7 @@ function TruckDiscovery() {
         description: "You must have a truck profile to express interest.",
         variant: "destructive",
       });
+      setLocation("/restaurant-signup?businessType=food_truck&claim=1");
       return;
     }
 
@@ -130,7 +204,7 @@ function TruckDiscovery() {
       setInterestedEvents((prev) => new Set(prev).add(eventId));
       toast({
         title: "Interest Sent",
-        description: "The host can now contact you directly.",
+        description: "The event coordinator can now contact you directly.",
       });
     } catch (err: any) {
       toast({
@@ -193,6 +267,44 @@ function TruckDiscovery() {
       new Date(a.earliestDate).getTime() - new Date(b.earliestDate).getTime(),
   );
 
+  const totalLiveOpportunities =
+    groupedData.series.reduce((sum, group) => sum + group.occurrences.length, 0) +
+    groupedData.standalone.length;
+
+  const primaryAction = (() => {
+    if (roleState.isGuest) {
+      return {
+        label: "Join as a Truck",
+        sublabel: "Create a truck account to send event interest requests.",
+        onClick: () =>
+          setLocation("/restaurant-signup?businessType=food_truck&claim=1"),
+      };
+    }
+
+    if (roleState.isEventCoordinator) {
+      return {
+        label: "Open Coordinator Dashboard",
+        sublabel: "Post and manage events from your organizer workspace.",
+        onClick: () => setLocation("/event-coordinator/dashboard"),
+      };
+    }
+
+    if (roleState.isTruck && !myRestaurantId) {
+      return {
+        label: "Finish Truck Profile",
+        sublabel: "Set up your truck profile so you can express interest.",
+        onClick: () =>
+          setLocation("/restaurant-signup?businessType=food_truck&claim=1"),
+      };
+    }
+
+    return {
+      label: "Open Truck Dashboard",
+      sublabel: "Manage your profile, availability, and requests.",
+      onClick: () => setLocation("/restaurant-owner-dashboard"),
+    };
+  })();
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[var(--bg-layered)]">
@@ -202,34 +314,114 @@ function TruckDiscovery() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-12 bg-[var(--bg-layered)] min-h-screen">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-[color:var(--text-primary)] mb-2">
-          Find Parking & Events
+    <div className="max-w-5xl mx-auto px-4 py-8 md:py-12 bg-[var(--bg-layered)] min-h-screen">
+      <div className="mb-6 md:mb-8 rounded-2xl border border-[color:var(--border-subtle)] bg-[linear-gradient(145deg,rgba(255,77,46,0.12),rgba(245,158,11,0.08),rgba(0,0,0,0.08))] p-5 md:p-7">
+        <div className="flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
+          <Megaphone className="h-3.5 w-3.5" />
+          Events Portal
+        </div>
+        <h1 className="mt-2 text-2xl md:text-3xl font-bold text-[color:var(--text-primary)]">
+          Discover Event Opportunities
         </h1>
-        <p className="text-[color:var(--text-secondary)]">
-          Browse host locations (gas stations, schools, breweries, etc.) and
-          high-volume events looking for food trucks. Express interest to
-          connect with hosts and event coordinators.
+        <p className="mt-2 text-sm md:text-base text-[color:var(--text-secondary)] max-w-3xl">
+          Browse active openings from event coordinators, review schedules, and
+          send interest requests in seconds.
+        </p>
+
+        <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-2">
+          <div className="rounded-lg border border-[color:var(--border-subtle)] bg-[var(--bg-card)]/70 px-3 py-2">
+            <div className="text-xs text-[color:var(--text-muted)]">Live opportunities</div>
+            <div className="text-lg font-semibold text-[color:var(--text-primary)]">
+              {totalLiveOpportunities}
+            </div>
+          </div>
+          <div className="rounded-lg border border-[color:var(--border-subtle)] bg-[var(--bg-card)]/70 px-3 py-2">
+            <div className="text-xs text-[color:var(--text-muted)]">Recurring series</div>
+            <div className="text-lg font-semibold text-[color:var(--text-primary)]">
+              {groupedData.series.length}
+            </div>
+          </div>
+          <div className="rounded-lg border border-[color:var(--border-subtle)] bg-[var(--bg-card)]/70 px-3 py-2 col-span-2 md:col-span-1">
+            <div className="text-xs text-[color:var(--text-muted)]">Single events</div>
+            <div className="text-lg font-semibold text-[color:var(--text-primary)]">
+              {groupedData.standalone.length}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col md:flex-row gap-2">
+          <Button className="w-full md:w-auto justify-between" onClick={primaryAction.onClick}>
+            <span>{primaryAction.label}</span>
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full md:w-auto justify-between"
+            onClick={() => setLocation("/events/public")}
+          >
+            <span>Public Listings</span>
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full md:w-auto justify-between"
+            onClick={() => setLocation("/event-signup")}
+          >
+            <span>Become Coordinator</span>
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
+        </div>
+        <p className="mt-2 text-xs text-[color:var(--text-muted)]">
+          {primaryAction.sublabel}
         </p>
       </div>
 
       {error && (
-        <div className="p-4 bg-[color:var(--status-error)]/10 text-[color:var(--status-error)] rounded-lg mb-6">
-          {error}
+        <div className="p-4 bg-[color:var(--status-error)]/10 text-[color:var(--status-error)] rounded-lg mb-6 border border-[color:var(--status-error)]/30">
+          <div className="font-medium">{error}</div>
+          <div className="mt-3 flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => loadPortalData({ silent: true })}
+              disabled={isRefreshing}
+            >
+              {isRefreshing ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Retry feed
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => setLocation("/events/public")}
+            >
+              Open public events
+            </Button>
+          </div>
         </div>
       )}
 
       {groupedData.series.length === 0 &&
       groupedData.standalone.length === 0 ? (
         <div className="text-center py-12 bg-[var(--bg-surface-muted)] rounded-xl border border-dashed border-[color:var(--border-subtle)]">
-          <Truck className="mx-auto h-12 w-12 text-[color:var(--text-muted)] mb-3" />
+          <Calendar className="mx-auto h-12 w-12 text-[color:var(--text-muted)] mb-3" />
           <h3 className="text-lg font-medium text-[color:var(--text-primary)]">
-            No events available right now
+            No event opportunities live right now
           </h3>
           <p className="text-[color:var(--text-secondary)]">
-            Check back later for new host locations and events.
+            New events appear here as coordinators publish them.
           </p>
+          <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
+            <Button onClick={() => setLocation("/events/public")}>
+              Browse public events
+            </Button>
+            <Button variant="outline" onClick={() => setLocation("/event-signup")}>
+              Become a coordinator
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="space-y-6">
@@ -260,8 +452,9 @@ function TruckDiscovery() {
 
                     <div className="space-y-1 text-sm text-[color:var(--text-secondary)]">
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-[color:var(--accent-text)]" />
-                        <span className="font-medium">
+                        <Building2 className="h-4 w-4 text-[color:var(--accent-text)]" />
+                        <span className="text-[color:var(--text-muted)]">Venue:</span>
+                        <span className="font-medium text-[color:var(--text-primary)]">
                           {group.host.businessName}
                         </span>
                         <span className="text-[color:var(--text-muted)]">-</span>
@@ -375,6 +568,9 @@ function TruckDiscovery() {
                   <div className="p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div>
+                        <div className="text-xs uppercase tracking-wide text-[color:var(--text-muted)] mb-1">
+                          Venue
+                        </div>
                         <h3 className="font-bold text-lg text-[color:var(--text-primary)] line-clamp-1">
                           {event.host.businessName}
                         </h3>

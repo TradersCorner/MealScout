@@ -381,7 +381,7 @@ export default function SuppliersPage() {
 
       <div className="px-4 space-y-4">
         <div className="rounded-xl border bg-gradient-to-br from-background to-muted/30 p-4 shadow-clean">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-1">
               <div className="text-base font-semibold">Order supplies like a catalog</div>
               <div className="text-sm text-muted-foreground">
@@ -403,13 +403,14 @@ export default function SuppliersPage() {
               </div>
             </div>
 
-            <Dialog open={prefsDialogOpen} onOpenChange={setPrefsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="shrink-0 gap-2">
-                  <SlidersHorizontal className="h-4 w-4" />
-                  Preferences
-                </Button>
-              </DialogTrigger>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <Dialog open={prefsDialogOpen} onOpenChange={setPrefsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="w-full gap-2 sm:w-auto">
+                    <SlidersHorizontal className="h-4 w-4" />
+                    Preferences
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-lg">
                 <DialogHeaderUI>
                   <DialogTitleUI>Preferences</DialogTitleUI>
@@ -546,16 +547,17 @@ export default function SuppliersPage() {
                   </Button>
                 </DialogFooter>
               </DialogContent>
-            </Dialog>
+              </Dialog>
 
-            <ShoppingListsDialog
-              buyerRestaurantId={selectedBuyerRestaurantId}
-              triggerLabel="My lists"
-            />
+              <ShoppingListsDialog
+                buyerRestaurantId={selectedBuyerRestaurantId}
+                triggerLabel="My lists"
+              />
 
-            <Link href="/supply/orders">
-              <Button variant="outline">Orders</Button>
-            </Link>
+              <Link href="/supply/orders">
+                <Button variant="outline" className="w-full sm:w-auto">Orders</Button>
+              </Link>
+            </div>
           </div>
         </div>
 

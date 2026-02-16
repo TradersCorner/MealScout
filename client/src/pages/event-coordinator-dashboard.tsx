@@ -157,7 +157,7 @@ export default function EventCoordinatorDashboard() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 bg-[var(--bg-layered)] min-h-screen">
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-[color:var(--text-primary)]">
             Event Coordinator Dashboard
@@ -166,7 +166,7 @@ export default function EventCoordinatorDashboard() {
             Post events and invite food trucks. Payments are handled offline.
           </p>
         </div>
-        <Button onClick={() => setIsCreating(!isCreating)}>
+        <Button onClick={() => setIsCreating(!isCreating)} className="w-full sm:w-auto">
           {isCreating ? (
             "Cancel"
           ) : (
@@ -351,11 +351,11 @@ export default function EventCoordinatorDashboard() {
       )}
 
       <Tabs defaultValue="upcoming" className="w-full">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-xl font-semibold text-[color:var(--text-primary)]">
             Your Events
           </h2>
-          <TabsList>
+          <TabsList className="w-full sm:w-auto">
             <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
             <TabsTrigger value="past">Past</TabsTrigger>
           </TabsList>

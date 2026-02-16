@@ -1091,19 +1091,19 @@ export default function RestaurantOwnerDashboard() {
         fallbackHref="/"
         icon={Store}
         rightActions={
-          <div className="flex gap-3">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             {(subscription as any)?.status === "active" ||
             (subscription as any)?.hasAccess === true ? (
               <Link href="/deal-creation">
-                <Button data-testid="button-create-deal">
-                  <Plus className="h-4 w-4 mr-2" />
+                <Button data-testid="button-create-deal" className="w-full sm:w-auto">
+                  <Plus className="mr-2 h-4 w-4" />
                   Create New Special
                 </Button>
               </Link>
             ) : (
               <Link href="/subscribe?next=/deal-creation&reason=create_deals">
-                <Button variant="default" data-testid="button-subscribe">
-                  <CreditCard className="h-4 w-4 mr-2" />
+                <Button variant="default" data-testid="button-subscribe" className="w-full sm:w-auto">
+                  <CreditCard className="mr-2 h-4 w-4" />
                   Subscribe to Create Specials
                 </Button>
               </Link>
@@ -1112,8 +1112,9 @@ export default function RestaurantOwnerDashboard() {
               <Button
                 variant="outline"
                 data-testid="button-manage-subscription"
+                className="w-full sm:w-auto"
               >
-                <Settings className="h-4 w-4 mr-2" />
+                <Settings className="mr-2 h-4 w-4" />
                 Manage Subscription
               </Button>
             </Link>
@@ -1194,16 +1195,16 @@ export default function RestaurantOwnerDashboard() {
 
       {/* Deals Management */}
       <Tabs defaultValue="active" className="space-y-4">
-        <TabsList>
+        <TabsList className="w-full">
           <TabsTrigger value="active">Active Specials</TabsTrigger>
           <TabsTrigger value="inactive">Inactive Specials</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="credits">
-            <CreditCard className="h-4 w-4 mr-1" />
+            <CreditCard className="mr-1 hidden h-4 w-4 sm:block" />
             MealScout Credits
           </TabsTrigger>
           <TabsTrigger value="foodtruck" data-testid="tab-food-truck">
-            <Truck className="h-4 w-4 mr-1" />
+            <Truck className="mr-1 hidden h-4 w-4 sm:block" />
             Food Truck
           </TabsTrigger>
         </TabsList>

@@ -35,10 +35,15 @@ export function registerEventRoutes(app: Express) {
   app.get("/api/events/upcoming", async (req: any, res) => {
     try {
       const upcomingEvents = await storage.getAllUpcomingEvents();
-      res.json(upcomingEvents.filter((event) => !event.requiresPayment));
+      res.json(
+        (Array.isArray(upcomingEvents) ? upcomingEvents : []).filter(
+          (event: any) => !Boolean(event?.requiresPayment),
+        ),
+      );
     } catch (error: any) {
       console.error("Error fetching upcoming events:", error);
-      res.status(500).json({ message: "Failed to fetch events" });
+      // Public feed should degrade gracefully instead of surfacing a 500.
+      res.json([]);
     }
   });
 
@@ -47,10 +52,15 @@ export function registerEventRoutes(app: Express) {
     try {
       // Optional: Filter by location (lat/lng/radius) in the future
       const upcomingEvents = await storage.getAllUpcomingEvents();
-      res.json(upcomingEvents.filter((event) => !event.requiresPayment));
+      res.json(
+        (Array.isArray(upcomingEvents) ? upcomingEvents : []).filter(
+          (event: any) => !Boolean(event?.requiresPayment),
+        ),
+      );
     } catch (error: any) {
       console.error("Error fetching all events:", error);
-      res.status(500).json({ message: "Failed to fetch events" });
+      // Keep authenticated discovery usable even if event feed query is temporarily broken.
+      res.json([]);
     }
   });
 

@@ -616,6 +616,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Public reverse-geocode helper for client-side location labeling.
+  // This keeps third-party geocoding calls on the server side to avoid browser CORS failures.
+  app.get("/api/location/reverse", async (req, res) => {
+    const lat = Number(req.query.lat);
+    const lng = Number(req.query.lng);
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      Math.abs(lat) > 90 ||
+      Math.abs(lng) > 180
+    ) {
+      return res.status(400).json({ message: "Invalid lat/lng" });
+    }
+
+    try {
+      const resolved = await reverseGeocode(lat, lng).catch(() => null);
+      const city = String(resolved?.city || "").trim();
+      const state = String(resolved?.state || "").trim();
+      const label = [city, state].filter(Boolean).join(", ") || "Location";
+      res.setHeader("Cache-Control", "public, max-age=600");
+      return res.json({
+        city: city || null,
+        state: state || null,
+        label,
+      });
+    } catch (error) {
+      console.error("Error reverse geocoding location:", error);
+      return res.json({ city: null, state: null, label: "Location" });
+    }
+  });
+
   // Static HTML routes for crawlers (Facebook, Google) - must come before SPA routes
   // These serve crawler-friendly HTML with content embedded directly in the page
   app.get("/privacy-policy", (_req, res) => {

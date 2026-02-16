@@ -1725,12 +1725,9 @@ export default function ParkingPassPage() {
   const geocodeAddress = async (address: string): Promise<GeoPoint | null> => {
     if (!address) return null;
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+      `/api/location/search?q=${encodeURIComponent(
         address,
       )}&limit=1`,
-      {
-        headers: { "Accept-Language": "en", "User-Agent": "MealScout/1.0" },
-      },
     );
     if (!res.ok) return null;
     const data = (await res.json()) as Array<{ lat: string; lon: string }>;

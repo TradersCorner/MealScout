@@ -631,12 +631,9 @@ function HostMarkerLayer({
 async function geocodeAddress(address: string): Promise<GeoPoint | null> {
   if (!address) return null;
   const res = await fetch(
-    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&countrycodes=us&q=${encodeURIComponent(
+    `/api/location/search?limit=1&q=${encodeURIComponent(
       address
     )}`,
-    {
-      headers: { "Accept-Language": "en", "User-Agent": "MealScout/1.0" },
-    }
   );
   if (!res.ok) return null;
   const data = (await res.json()) as Array<{ lat: string; lon: string }>;

@@ -170,7 +170,7 @@ export default function Home() {
     setIsLoadingLocation(true);
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        `/api/location/search?q=${encodeURIComponent(
           manualLocation
         )}&limit=1`
       );

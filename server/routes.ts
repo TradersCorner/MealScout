@@ -647,6 +647,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public forward-geocode helper for client-side address search/pinning.
+  app.get("/api/location/search", async (req, res) => {
+    const query = String(req.query.q || "").trim();
+    const limitRaw = Number(req.query.limit || 1);
+    const limit = Number.isFinite(limitRaw)
+      ? Math.min(5, Math.max(1, Math.floor(limitRaw)))
+      : 1;
+    if (!query) {
+      return res.json([]);
+    }
+
+    try {
+      const resolved = await forwardGeocode(query).catch(() => null);
+      if (!resolved) return res.json([]);
+      return res.json([
+        {
+          lat: String(resolved.lat),
+          lon: String(resolved.lng),
+          display_name: query,
+        },
+      ].slice(0, limit));
+    } catch (error) {
+      console.error("Error forward geocoding location:", error);
+      return res.json([]);
+    }
+  });
+
   // Static HTML routes for crawlers (Facebook, Google) - must come before SPA routes
   // These serve crawler-friendly HTML with content embedded directly in the page
   app.get("/privacy-policy", (_req, res) => {

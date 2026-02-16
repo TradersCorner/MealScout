@@ -1173,9 +1173,9 @@ function ManualUserCreation({ adminUser }: { adminUser?: any }) {
       setGeocoding(true);
       try {
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          `/api/location/search?q=${encodeURIComponent(
             formData.address,
-          )}`,
+          )}&limit=1`,
         );
         const data = await response.json();
 
@@ -1215,9 +1215,9 @@ function ManualUserCreation({ adminUser }: { adminUser?: any }) {
     setGeocoding(true);
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        `/api/location/search?q=${encodeURIComponent(
           formData.address,
-        )}`,
+        )}&limit=1`,
       );
       const data = await response.json();
 

@@ -54,25 +54,13 @@ export default function UserDashboard() {
           const { latitude, longitude } = position.coords;
           setLocation({ lat: latitude, lng: longitude });
 
-          // Better reverse geocoding that prioritizes real city names
           fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
+            `/api/location/reverse?lat=${encodeURIComponent(String(latitude))}&lng=${encodeURIComponent(String(longitude))}`
           )
             .then((res) => res.json())
             .then((data) => {
-              if (data.address) {
-                // Prioritize actual cities over administrative divisions
-                const locationName =
-                  data.address.city ||
-                  data.address.town ||
-                  data.address.village ||
-                  data.address.county ||
-                  data.address.state ||
-                  "Your Location";
-                setLocationName(locationName);
-              } else {
-                setLocationName("Your Location");
-              }
+              const nextName = String(data?.label || "").trim();
+              setLocationName(nextName || "Your Location");
             })
             .catch(() => {
               setLocationName("Your Location");

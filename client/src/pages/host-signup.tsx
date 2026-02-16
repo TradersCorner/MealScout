@@ -19,12 +19,9 @@ const locationTypeOptions = [
 async function geocodeAddress(address: string) {
   if (!address) return null;
   const response = await fetch(
-    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+    `/api/location/search?q=${encodeURIComponent(
       address,
     )}&limit=1`,
-    {
-      headers: { "Accept-Language": "en", "User-Agent": "MealScout/1.0" },
-    },
   );
   if (!response.ok) return null;
   const data = (await response.json()) as Array<{ lat: string; lon: string }>;

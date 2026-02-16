@@ -67,14 +67,10 @@ export default function WelcomeLocationModal({
       // Reverse geocode to get location name
       try {
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${newLocation.lat}&lon=${newLocation.lng}`
+          `/api/location/reverse?lat=${encodeURIComponent(String(newLocation.lat))}&lng=${encodeURIComponent(String(newLocation.lng))}`
         );
         const data = await response.json();
-        const locationName =
-          data.address?.city ||
-          data.address?.town ||
-          data.address?.county ||
-          "Your Location";
+        const locationName = String(data?.label || "Your Location");
         onLocationSet(newLocation, locationName);
       } catch {
         onLocationSet(newLocation, "Your Location");
@@ -96,7 +92,7 @@ export default function WelcomeLocationModal({
 
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        `/api/location/search?q=${encodeURIComponent(
           manualLocation
         )}&limit=1`
       );

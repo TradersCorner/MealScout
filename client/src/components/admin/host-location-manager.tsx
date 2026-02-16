@@ -87,10 +87,9 @@ export default function HostLocationManager({
     setGeocoding(true);
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&countrycodes=us&q=${encodeURIComponent(
+        `/api/location/search?limit=1&q=${encodeURIComponent(
           query,
         )}`,
-        { headers: { "User-Agent": "MealScout/1.0" } },
       );
       const data = await response.json();
 

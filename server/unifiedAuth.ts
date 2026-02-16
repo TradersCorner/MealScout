@@ -63,10 +63,56 @@ export function getSession() {
 }
 
 export async function setupUnifiedAuth(app: Express) {
+  const normalizeBaseUrl = (raw: string): string | null => {
+    const trimmed = raw.trim().replace(/^["']|["']$/g, "");
+    if (!trimmed) return null;
+    const withProtocol = /^https?:\/\//i.test(trimmed)
+      ? trimmed
+      : `https://${trimmed}`;
+    try {
+      const parsed = new URL(withProtocol);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return null;
+      }
+      const port = parsed.port ? `:${parsed.port}` : "";
+      return `${parsed.protocol}//${parsed.hostname}${port}`;
+    } catch {
+      return null;
+    }
+  };
+
+  const resolveConfiguredBaseUrl = (
+    rawValue: string | undefined,
+  ): string | null => {
+    if (!rawValue) return null;
+    const candidates = rawValue
+      .split(/[,\n;]/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    for (const candidate of candidates) {
+      const normalized = normalizeBaseUrl(candidate);
+      if (normalized) {
+        if (candidates.length > 1) {
+          console.warn(
+            `[oauth] PUBLIC_BASE_URL includes multiple values; using ${normalized}`,
+          );
+        }
+        return normalized;
+      }
+    }
+    return null;
+  };
+
   // Get canonical base URL for OAuth callbacks - must be set for multi-user access
   const getBaseUrl = () => {
+    const configured = resolveConfiguredBaseUrl(process.env.PUBLIC_BASE_URL);
+    if (configured) {
+      return configured;
+    }
     if (process.env.PUBLIC_BASE_URL) {
-      return process.env.PUBLIC_BASE_URL;
+      console.warn(
+        "[oauth] PUBLIC_BASE_URL is set but invalid; expected a single absolute URL.",
+      );
     }
     // Fallback for local development
     if (process.env.NODE_ENV === "development") {
@@ -95,8 +141,8 @@ export async function setupUnifiedAuth(app: Express) {
     const reqHost = req.get("host");
     const inferredBaseUrl = reqHost ? `${req.protocol}://${reqHost}` : null;
     const apiBaseUrl = (
-      process.env.PUBLIC_BASE_URL ||
-      inferredBaseUrl ||
+      resolveConfiguredBaseUrl(process.env.PUBLIC_BASE_URL) ||
+      resolveConfiguredBaseUrl(inferredBaseUrl || undefined) ||
       "http://localhost:5000"
     ).replace(/\/+$/, "");
     const verifyUrl = `${apiBaseUrl}/api/auth/verify-email?token=${encodeURIComponent(

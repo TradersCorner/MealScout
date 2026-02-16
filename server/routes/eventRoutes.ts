@@ -169,24 +169,9 @@ export function registerEventRoutes(app: Express) {
         host.longitude = coords.lng.toString();
       }
 
-      const toNumberOrNull = (value: any) => {
-        if (value === null || value === undefined) return null;
-        const parsed = typeof value === "string" ? Number(value) : value;
-        return Number.isFinite(parsed) ? parsed : null;
-      };
-      const parkingEventsWithPins = parkingEvents.filter((event: any) => {
-        const host = event?.host;
-        const lat = toNumberOrNull(host?.latitude);
-        const lng = toNumberOrNull(host?.longitude);
-        return (
-          lat !== null &&
-          lng !== null &&
-          Math.abs(lat) <= 90 &&
-          Math.abs(lng) <= 180
-        );
-      });
-
-      const eventIds = parkingEventsWithPins.map((event) => event.id);
+      // Do not drop listings just because coordinates are missing.
+      // Host locations can still render via /api/map/locations coords or client geocode fallback.
+      const eventIds = parkingEvents.map((event) => event.id);
 
       const bookingRows =
         eventIds.length > 0
@@ -234,7 +219,7 @@ export function registerEventRoutes(app: Express) {
         bookingsByEvent.set(row.eventId, list);
       }
 
-      const enhancedEvents = parkingEventsWithPins.map((event) => {
+      const enhancedEvents = parkingEvents.map((event) => {
         const rows = bookingsByEvent.get(event.id) ?? [];
         const pending = pendingByEvent.get(event.id) ?? 0;
         const maxSpots = event.maxTrucks ?? 1;

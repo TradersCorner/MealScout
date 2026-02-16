@@ -707,12 +707,22 @@ export default function ParkingPassPage() {
   }, [bookableHostIdPayload, cachedBookableHostIds]);
 
   const paidMapLocations = useMemo(() => {
-    const hostLocations = (baseMapLocations.hostLocations || []).filter((loc: any) => {
-      const hostId = String(loc?.hostId || "").trim();
-      return hostId && bookableHostIds.has(hostId);
-    });
+    const listingHostIds = new Set(
+      (passListings || [])
+        .map((listing) => String(listing?.host?.id || "").trim())
+        .filter(Boolean),
+    );
+    const hostLocations = (baseMapLocations.hostLocations || []).filter(
+      (loc: any) => {
+        const hostId = String(loc?.hostId || "").trim();
+        if (!hostId) return false;
+        // Primary source of truth: if we have a visible listing for the host, show it.
+        // Fallback to host-id feed for hosts with map records but no current listing payload.
+        return listingHostIds.has(hostId) || bookableHostIds.has(hostId);
+      },
+    );
     return { ...baseMapLocations, hostLocations };
-  }, [baseMapLocations, bookableHostIds]);
+  }, [baseMapLocations, bookableHostIds, passListings]);
   const [geocodeCache, setGeocodeCache] = useState<
     Record<string, GeoPoint>
   >({});

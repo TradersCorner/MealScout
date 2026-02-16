@@ -1226,7 +1226,6 @@ export default function MapPage() {
     return mapLocations.hostLocations.filter((host) => {
       const hostId = host.hostId ? String(host.hostId) : "";
       if (!hostId) return false;
-      if (!bookableHostIds.has(hostId)) return false;
       const coords = resolveHostCoords(host);
       if (!coords) return false;
       if (!mapBounds) return true;
@@ -1236,7 +1235,6 @@ export default function MapPage() {
     mapLocations,
     hostCoords,
     mapBounds,
-    bookableHostIds,
   ]);
 
   const lastHostIdsUpdatedLabel = (() => {

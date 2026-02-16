@@ -352,7 +352,7 @@ export default function SupplierDetailPage() {
                 <div className="text-sm text-muted-foreground">No requests yet.</div>
               ) : (
                 myRequestsForSupplier.map((r) => (
-                  <div key={r.id} className="rounded-lg border p-3 flex items-center justify-between gap-3">
+                  <div key={r.id} className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <div className="text-sm font-medium truncate">
                         {String(r.status || "submitted")}
@@ -362,7 +362,7 @@ export default function SupplierDetailPage() {
                       </div>
                     </div>
                     {String(r.status) === "accepted" && r.orderId && String(r.paymentPreference) === "online" ? (
-                      <Button size="sm" onClick={() => setPayOrderId(String(r.orderId))}>
+                      <Button size="sm" className="w-full sm:w-auto" onClick={() => setPayOrderId(String(r.orderId))}>
                         Pay
                       </Button>
                     ) : (
@@ -471,7 +471,7 @@ export default function SupplierDetailPage() {
                   onChange={(e) => setDeliveryAddress(e.target.value)}
                   placeholder="Street address"
                 />
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
                     value={deliveryCity}
                     onChange={(e) => setDeliveryCity(e.target.value)}
@@ -575,10 +575,12 @@ export default function SupplierDetailPage() {
             <input
               type="file"
               accept=".csv,.tsv,.xlsx"
+              className="w-full text-sm"
               onChange={(e) => setImportFile(e.target.files?.[0] || null)}
             />
             <Button
               variant="outline"
+              className="w-full sm:w-auto"
               disabled={
                 importRequest.isPending ||
                 !importFile ||
@@ -595,7 +597,7 @@ export default function SupplierDetailPage() {
 
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-1">
                 <CardTitle className="text-lg">Products</CardTitle>
                 <CardDescription>
@@ -651,7 +653,7 @@ export default function SupplierDetailPage() {
                         </div>
                       ) : null}
 
-                      <div className="flex items-center justify-between gap-3 pt-1">
+                      <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-xs text-muted-foreground">Quantity</div>
                         <div className="flex items-center gap-2">
                           <Button
@@ -679,7 +681,7 @@ export default function SupplierDetailPage() {
                                 [product.id]: Number.isFinite(next) ? next : 0,
                               }));
                             }}
-                            className="w-20 text-center"
+                            className="w-16 text-center sm:w-20"
                           />
                           <Button
                             type="button"
@@ -705,12 +707,13 @@ export default function SupplierDetailPage() {
         </Card>
 
         <Card>
-          <CardContent className="p-4 flex items-center justify-between">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-xs text-muted-foreground">Subtotal</div>
               <div className="text-lg font-semibold">{formatMoney(subtotalCents)}</div>
             </div>
             <Button
+              className="w-full sm:w-auto"
               disabled={
                 submitRequest.isPending ||
                 !selectedBuyerRestaurantId ||

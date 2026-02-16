@@ -229,7 +229,7 @@ export function SupplierOrderPaymentModal(props: {
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[85vh] w-[calc(100vw-1rem)] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Pay supplier</DialogTitle>
           <DialogDescription>
@@ -268,11 +268,11 @@ export function SupplierOrderPaymentModal(props: {
             ) : null}
 
             <div className="grid gap-2">
-              <Button className="justify-between" disabled={isLoading} onClick={() => startPayment("ach")}>
+              <Button className="h-auto justify-between gap-2 py-3 text-left" disabled={isLoading} onClick={() => startPayment("ach")}>
                 <span>Pay by bank transfer (ACH)</span>
                 <Badge variant="secondary">Recommended</Badge>
               </Button>
-              <Button variant="outline" disabled={isLoading} onClick={() => startPayment("card")}>
+              <Button variant="outline" className="h-auto py-3" disabled={isLoading} onClick={() => startPayment("card")}>
                 Pay by card
               </Button>
             </div>
@@ -321,7 +321,7 @@ export function SupplierOrderPaymentModal(props: {
               </div>
             </div>
 
-            <Button variant="outline" onClick={resetMethodSelection}>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={resetMethodSelection}>
               Change method
             </Button>
 
@@ -343,4 +343,3 @@ export function SupplierOrderPaymentModal(props: {
     </Dialog>
   );
 }
-

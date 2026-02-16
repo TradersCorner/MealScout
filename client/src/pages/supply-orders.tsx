@@ -118,11 +118,11 @@ export default function SupplyOrdersPage() {
                 ))}
               </select>
             )}
-            <Button variant="outline" onClick={() => refetch()} disabled={!selectedBuyerRestaurantId}>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => refetch()} disabled={!selectedBuyerRestaurantId}>
               Refresh
             </Button>
             {sorted.length > 0 ? (
-              <div className="grid grid-cols-3 gap-2 text-sm">
+              <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
                 <div className="rounded-md border p-2">
                   <div className="text-xs text-muted-foreground">Orders</div>
                   <div className="font-semibold">{totals.count}</div>
@@ -150,7 +150,7 @@ export default function SupplyOrdersPage() {
               No supply orders yet. Start by browsing suppliers.
               <div className="pt-3">
                 <Link href="/suppliers">
-                  <Button>Shop suppliers</Button>
+                  <Button className="w-full sm:w-auto">Shop suppliers</Button>
                 </Link>
               </div>
             </CardContent>
@@ -171,7 +171,7 @@ export default function SupplyOrdersPage() {
               return (
                 <Card key={o.id}>
                   <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <CardTitle className="text-lg truncate">
                           {o.supplier?.businessName || "Supplier"}
@@ -186,7 +186,7 @@ export default function SupplyOrdersPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="p-4 pt-0 space-y-3">
-                    <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                       <div className="rounded-md border p-3">
                         <div className="text-xs text-muted-foreground">Subtotal</div>
                         <div className="font-semibold">{formatMoney(o.subtotalCents)}</div>
@@ -222,12 +222,12 @@ export default function SupplyOrdersPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div className="text-xs text-muted-foreground">
                         {o.createdAt ? new Date(o.createdAt).toLocaleString() : ""}
                       </div>
                       {canPay ? (
-                        <Button onClick={() => setPayOrderId(o.id)}>Pay now</Button>
+                        <Button className="w-full sm:w-auto" onClick={() => setPayOrderId(o.id)}>Pay now</Button>
                       ) : (
                         <Badge variant="outline">{prettify(paymentMethod)}</Badge>
                       )}
@@ -258,4 +258,3 @@ export default function SupplyOrdersPage() {
     </div>
   );
 }
-

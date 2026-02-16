@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   MapContainer,
@@ -13,6 +13,12 @@ import Navigation from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { BackHeader } from "@/components/back-header";
 import { Card, CardContent } from "@/components/ui/card";
+import { GoogleMapSurface } from "@/components/maps/google-map-surface";
+import type {
+  MapAdapterMarker,
+  MapBoundsLike,
+} from "@/components/maps/map-adapter.types";
+import { GOOGLE_MAPS_WEB_API_KEY, MAP_PROVIDER, isGoogleMapsEnabled } from "@/lib/mapProvider";
 import {
   MapPin,
   Navigation as NavigationIcon,
@@ -135,21 +141,42 @@ function MapViewportWatcher({
   onBoundsChange,
 }: {
   onZoomChange: (zoom: number) => void;
-  onBoundsChange: (bounds: L.LatLngBounds) => void;
+  onBoundsChange: (bounds: MapBoundsLike) => void;
 }) {
+  const toBoundsLike = (bounds: L.LatLngBounds): MapBoundsLike => {
+    const north = bounds.getNorth();
+    const south = bounds.getSouth();
+    const east = bounds.getEast();
+    const west = bounds.getWest();
+    return {
+      north,
+      south,
+      east,
+      west,
+      contains: ([lat, lng]) => {
+        const withinLat = lat <= north && lat >= south;
+        const crossesDateLine = west > east;
+        const withinLng = crossesDateLine
+          ? lng >= west || lng <= east
+          : lng >= west && lng <= east;
+        return withinLat && withinLng;
+      },
+    };
+  };
+
   const map = useMapEvents({
     zoomend: (event) => {
       onZoomChange(event.target.getZoom());
-      onBoundsChange(event.target.getBounds());
+      onBoundsChange(toBoundsLike(event.target.getBounds()));
     },
     moveend: (event) => {
-      onBoundsChange(event.target.getBounds());
+      onBoundsChange(toBoundsLike(event.target.getBounds()));
     },
   });
 
   useEffect(() => {
     onZoomChange(map.getZoom());
-    onBoundsChange(map.getBounds());
+    onBoundsChange(toBoundsLike(map.getBounds()));
   }, [map, onZoomChange, onBoundsChange]);
 
   return null;
@@ -633,7 +660,7 @@ export default function MapPage() {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(16);
-  const [mapBounds, setMapBounds] = useState<L.LatLngBounds | null>(null);
+  const [mapBounds, setMapBounds] = useState<MapBoundsLike | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [hostCoords, setHostCoords] = useState<Record<string, GeoPoint>>({});
   const [eventCoords, setEventCoords] = useState<Record<string, GeoPoint>>({});
@@ -1198,13 +1225,14 @@ export default function MapPage() {
   }, [adminHostStatusPayload]);
 
   const visibleHostLocations = useMemo(() => {
-    if (!mapBounds || !mapLocations?.hostLocations?.length) return [];
+    if (!mapLocations?.hostLocations?.length) return [];
     return mapLocations.hostLocations.filter((host) => {
       const hostId = host.hostId ? String(host.hostId) : "";
       if (!hostId) return false;
       if (!bookableHostIds.has(hostId)) return false;
       const coords = resolveHostCoords(host);
       if (!coords) return false;
+      if (!mapBounds) return true;
       return mapBounds.contains([coords.lat, coords.lng]);
     });
   }, [
@@ -1234,10 +1262,11 @@ export default function MapPage() {
     Object.keys(cachedHostStatusById).length > 0;
 
   const visibleEventLocations = useMemo(() => {
-    if (!mapBounds || !mapLocations?.eventLocations?.length) return [];
+    if (!mapLocations?.eventLocations?.length) return [];
     return mapLocations.eventLocations.filter((event) => {
       const coords = resolveEventCoords(event);
       if (!coords) return false;
+      if (!mapBounds) return true;
       return mapBounds.contains([coords.lat, coords.lng]);
     });
   }, [mapLocations, eventCoords, mapBounds]);
@@ -1485,6 +1514,137 @@ export default function MapPage() {
     }
   };
 
+  const isGoogleProviderRequested = MAP_PROVIDER === "google";
+  const isGoogleProviderMissingKey =
+    isGoogleProviderRequested && !isGoogleMapsEnabled;
+  const mapProviderLabel = isGoogleMapsEnabled ? "Google Maps" : "Legacy map";
+
+  const adapterMarkers = useMemo<MapAdapterMarker[]>(() => {
+    const next: MapAdapterMarker[] = [];
+
+    if (userLocation) {
+      next.push({
+        id: "user:self",
+        sourceId: "self",
+        kind: "user",
+        lat: userLocation.lat,
+        lng: userLocation.lng,
+        title: "You are here",
+      });
+    }
+
+    visibleGeoAds.forEach((ad) => {
+      const lat = toNumberOrNull(ad.pinLat);
+      const lng = toNumberOrNull(ad.pinLng);
+      if (!lat || !lng) return;
+      next.push({
+        id: `geo_ad:${ad.id}`,
+        sourceId: ad.id,
+        kind: "geo_ad",
+        lat,
+        lng,
+        title: ad.title,
+      });
+    });
+
+    visibleDeals.forEach((deal) => {
+      const lat = toNumberOrNull(deal.restaurant?.latitude);
+      const lng = toNumberOrNull(deal.restaurant?.longitude);
+      if (!lat || !lng) return;
+      next.push({
+        id: `deal:${deal.id}`,
+        sourceId: deal.id,
+        kind: "deal",
+        lat,
+        lng,
+        title: deal.title,
+        subtitle: deal.restaurant?.name,
+      });
+    });
+
+    visibleUnhostedTrucks.forEach((truck) => {
+      const lat = toNumberOrNull(truck.currentLatitude);
+      const lng = toNumberOrNull(truck.currentLongitude);
+      if (!lat || !lng) return;
+      next.push({
+        id: `truck:${truck.id}`,
+        sourceId: truck.id,
+        kind: "truck",
+        lat,
+        lng,
+        title: truck.name,
+      });
+    });
+
+    visibleHostLocations.forEach((host) => {
+      const coords = resolveHostCoords(host);
+      if (!coords) return;
+      next.push({
+        id: `parking:${host.id}`,
+        sourceId: host.id,
+        kind: "parking",
+        lat: coords.lat,
+        lng: coords.lng,
+        title: host.name,
+        subtitle: host.address,
+      });
+    });
+
+    visibleEventLocations.forEach((event) => {
+      const coords = resolveEventCoords(event);
+      if (!coords) return;
+      next.push({
+        id: `event:${event.id}`,
+        sourceId: event.id,
+        kind: "event",
+        lat: coords.lat,
+        lng: coords.lng,
+        title: event.name,
+      });
+    });
+
+    return next;
+  }, [
+    userLocation,
+    visibleGeoAds,
+    visibleDeals,
+    visibleUnhostedTrucks,
+    visibleHostLocations,
+    visibleEventLocations,
+    resolveHostCoords,
+    resolveEventCoords,
+  ]);
+
+  const handleAdapterMarkerTap = useCallback(
+    (marker: MapAdapterMarker) => {
+      if (marker.kind === "deal") {
+        const deal =
+          visibleDeals.find((item) => item.id === marker.sourceId) ||
+          deals.find((item) => item.id === marker.sourceId);
+        if (deal) handleDealClick(deal);
+        return;
+      }
+
+      if (marker.kind === "geo_ad") {
+        const ad =
+          visibleGeoAds.find((item) => item.id === marker.sourceId) ||
+          geoAds.find((item) => item.id === marker.sourceId);
+        if (ad) handleGeoAdClick(ad);
+        return;
+      }
+
+      if (marker.kind === "truck") {
+        window.location.href = `/restaurant/${marker.sourceId}`;
+        return;
+      }
+
+      if (marker.kind === "parking" || marker.kind === "event") {
+        window.open(`https://maps.google.com/?q=${marker.lat},${marker.lng}`, "_blank");
+      }
+    },
+    [deals, geoAds, visibleDeals, visibleGeoAds],
+  );
+
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
       <SEOHead
@@ -1560,6 +1720,7 @@ export default function MapPage() {
             {lastHostIdsUpdatedLabel ? (
               <span> • Updated {lastHostIdsUpdatedLabel}</span>
             ) : null}
+            <span> • {mapProviderLabel}</span>
           </div>
           <Button
             variant="outline"
@@ -1573,10 +1734,23 @@ export default function MapPage() {
         </div>
       </header>
 
-      {/* Map Container */}
+        {/* Map Container */}
       <div className="relative flex-1">
         <div className="relative h-[60vh] min-h-[320px]">
           {mapCenter && (
+            isGoogleMapsEnabled ? (
+              <GoogleMapSurface
+                apiKey={GOOGLE_MAPS_WEB_API_KEY}
+                center={mapCenter}
+                zoom={zoomLevel}
+                markers={adapterMarkers}
+                userLocation={userLocation}
+                isNightTheme={isNightTheme}
+                onBoundsChanged={setMapBounds}
+                onZoomChanged={setZoomLevel}
+                onMarkerTap={handleAdapterMarkerTap}
+              />
+            ) : (
             <MapContainer
               center={[mapCenter.lat, mapCenter.lng]}
               zoom={zoomLevel}
@@ -1813,6 +1987,7 @@ export default function MapPage() {
                 onBoundsChange={setMapBounds}
               />
             </MapContainer>
+            )
           )}
 
           {/* Paid parking state overlay */}

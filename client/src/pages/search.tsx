@@ -336,7 +336,7 @@ export default function SearchPage() {
       <BackHeader title="Search" fallbackHref="/" />
       {/* Header */}
       <header className="px-6 py-6 bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean">
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6 flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Search</h1>
             <p className="text-sm text-muted-foreground">
@@ -354,6 +354,7 @@ export default function SearchPage() {
           <Button
             variant="outline"
             size="sm"
+            className="shrink-0"
             onClick={() => setShowFilters(!showFilters)}
             data-testid="button-filter"
           >
@@ -438,7 +439,7 @@ export default function SearchPage() {
               </div>
 
               {/* Clear Filters */}
-              <div className="flex justify-between items-center pt-2">
+              <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-sm text-muted-foreground">
                   {filteredDeals.length} deal
                   {filteredDeals.length === 1 ? "" : "s"} found
@@ -446,6 +447,7 @@ export default function SearchPage() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="w-full sm:w-auto"
                   onClick={() => {
                     setSortBy("relevance");
                     setPriceRange([0, 50]);
@@ -467,10 +469,10 @@ export default function SearchPage() {
         {/* Restaurants Section (when searching) */}
         {searchQuery && searchedRestaurants.length > 0 && (
             <div className="mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-foreground">
-                  Restaurants & Food Trucks
-                </h2>
+            <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-lg font-semibold text-foreground">
+                Restaurants & Food Trucks
+              </h2>
                 <span className="text-sm text-muted-foreground">
                   {searchedRestaurants.length} found
                 </span>
@@ -518,7 +520,7 @@ export default function SearchPage() {
 
         {searchQuery && searchedParkingPassHosts.length > 0 && (
           <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-lg font-semibold text-foreground">
                 Parking Pass Spots
               </h2>
@@ -570,7 +572,7 @@ export default function SearchPage() {
 
         {searchQuery && searchedVideos.length > 0 && (
           <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-lg font-semibold text-foreground">Videos</h2>
               <span className="text-sm text-muted-foreground">
                 {searchedVideos.length} found
@@ -601,7 +603,7 @@ export default function SearchPage() {
 
         {searchQuery && searchedEvents.length > 0 && (
           <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-lg font-semibold text-foreground">Events</h2>
               <span className="text-sm text-muted-foreground">
                 {searchedEvents.length} found
@@ -635,7 +637,7 @@ export default function SearchPage() {
         )}
 
         {/* Deals Section */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-foreground">
             {searchQuery ? `Deals for "${searchQuery}"` : "Popular Deals"}
           </h2>

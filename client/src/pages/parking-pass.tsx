@@ -4056,11 +4056,11 @@ export default function ParkingPassPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2">
+              <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-slate-500">
                   You can edit times later if plans change.
                 </p>
-                <Button type="submit" className="px-6" disabled={hasActiveHostPass}>
+                <Button type="submit" className="w-full px-6 sm:w-auto" disabled={hasActiveHostPass}>
                   Publish Parking Pass
                 </Button>
               </div>
@@ -4070,11 +4070,11 @@ export default function ParkingPassPage() {
 
         <div className="space-y-6">
           <Tabs defaultValue="upcoming" className="w-full">
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-xl font-semibold text-slate-900">
                 Your Parking Pass Listings
               </h2>
-              <TabsList>
+              <TabsList className="w-full sm:w-auto">
                 <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
                 <TabsTrigger value="past">Past</TabsTrigger>
               </TabsList>
@@ -4099,9 +4099,9 @@ export default function ParkingPassPage() {
                   {upcomingListings.map((listing) => (
                     <div
                       key={listing.id}
-                      className="bg-[var(--bg-surface)] p-6 rounded-xl border border-[var(--border-subtle)] shadow-clean flex items-center justify-between"
+                      className="bg-[var(--bg-surface)] p-6 rounded-xl border border-[var(--border-subtle)] shadow-clean flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
                     >
-                      <div className="flex items-center gap-6">
+                      <div className="flex items-start gap-4 sm:items-center sm:gap-6">
                         <div className="flex flex-col items-center justify-center w-16 h-16 bg-rose-50 rounded-lg text-rose-700">
                           <span className="text-xs font-bold uppercase">
                             {format(new Date(listing.date), "MMM")}
@@ -4112,7 +4112,7 @@ export default function ParkingPassPage() {
                         </div>
 
                         <div>
-                          <div className="flex items-center gap-4 text-sm text-[color:var(--text-muted)] mb-1">
+                          <div className="mb-1 flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-[color:var(--text-muted)]">
                             <span className="flex items-center gap-1">
                               <Clock className="h-4 w-4" />
                               {listing.startTime === "00:00" &&
@@ -4167,11 +4167,12 @@ export default function ParkingPassPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex w-full items-center gap-2 sm:w-auto">
                         <Badge variant="secondary">Listing</Badge>
                         <Button
                           variant="outline"
                           size="sm"
+                          className="ml-auto sm:ml-0"
                           onClick={() => {
                             setEditHostListing(listing);
                             setEditHostListingOpen(true);
@@ -4202,9 +4203,9 @@ export default function ParkingPassPage() {
                   {pastListings.map((listing) => (
                     <div
                       key={listing.id}
-                      className="bg-[var(--bg-surface)] p-6 rounded-xl border border-[var(--border-subtle)] flex items-center justify-between"
+                      className="bg-[var(--bg-surface)] p-6 rounded-xl border border-[var(--border-subtle)] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
                     >
-                      <div className="flex items-center gap-6">
+                      <div className="flex items-start gap-4 sm:items-center sm:gap-6">
                         <div className="flex flex-col items-center justify-center w-16 h-16 bg-slate-200 rounded-lg text-[color:var(--text-muted)]">
                           <span className="text-xs font-bold uppercase">
                             {format(new Date(listing.date), "MMM")}
@@ -4215,7 +4216,7 @@ export default function ParkingPassPage() {
                         </div>
 
                         <div>
-                          <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
+                          <div className="mb-1 flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500">
                             <span className="flex items-center gap-1">
                               <Clock className="h-4 w-4" />
                               {listing.startTime} - {listing.endTime}
@@ -4229,7 +4230,7 @@ export default function ParkingPassPage() {
                         </div>
                       </div>
 
-                      <Button variant="ghost" size="sm" disabled>
+                      <Button variant="ghost" size="sm" className="w-full sm:w-auto" disabled>
                         Archived
                       </Button>
                     </div>
@@ -4262,7 +4263,7 @@ export default function ParkingPassPage() {
         {topTab === "schedule" && isTruckViewUser && (
           <Card className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
             <CardContent className="p-5 space-y-4">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-foreground">
                     Live share
@@ -4273,6 +4274,7 @@ export default function ParkingPassPage() {
                 </div>
                 <Button
                   size="sm"
+                  className="w-full sm:w-auto"
                   onClick={handleShareLocation}
                   disabled={isSharingLocation || !truckId}
                 >

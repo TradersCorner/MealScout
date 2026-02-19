@@ -227,8 +227,8 @@ export default function FAQ() {
       <SEOHead
         title="Frequently Asked Questions - MealScout Help Center"
         description="Get clear answers about MealScout for diners, trucks, hosts, restaurants, bars, and event coordinators. Local tools, simple flows, full control."
-        keywords="mealscout faq, parking pass, food trucks, hosts, local events, restaurant tools, affiliate links"
-        canonicalUrl="https://mealscout.us/faq"
+        keywords="MealScout FAQ, food truck FAQ, parking pass FAQ, host booking questions, restaurant listing help, event coordinator support"
+        canonicalUrl="https://www.mealscout.us/faq"
         schemaData={schemaData}
       />
       

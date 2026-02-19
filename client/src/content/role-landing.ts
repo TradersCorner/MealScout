@@ -49,7 +49,7 @@ export const roleLandingContent = {
       title: "Food Trucks on MealScout",
       description:
         "Live food truck locations, local specials, and easy booking in one place. Join MealScout to get discovered and book better spots.",
-      keywords: "food trucks, local bookings, parking pass, host locations",
+      keywords: "food truck booking platform, food truck parking locations, host spots for food trucks, truck scheduling tools, local food truck discovery",
       canonicalPath: "/truck-landing",
     },
     badge: "MealScout for Trucks",
@@ -134,7 +134,7 @@ export const roleLandingContent = {
       title: "MealScout for Restaurants",
       description:
         "Bring locals to your restaurant with a profile built for discovery, specials, and repeat visits.",
-      keywords: "restaurants, local discovery, specials, meal deals",
+      keywords: "restaurant local discovery, restaurant specials platform, meal deals near me, restaurant marketing for locals, restaurant listing tools",
       canonicalPath: "/for-restaurants",
     },
     badge: "MealScout for Restaurants",
@@ -216,7 +216,7 @@ export const roleLandingContent = {
       title: "MealScout for Bars",
       description:
         "Get discovered locally, publish specials, and stay visible to the people who actually live nearby.",
-      keywords: "bars, local discovery, specials, nightlife",
+      keywords: "bar local discovery, bar specials near me, nightlife listings, local bar promotions, bar profile platform",
       canonicalPath: "/for-bars",
     },
     badge: "MealScout for Bars",
@@ -298,7 +298,7 @@ export const roleLandingContent = {
       title: "Find Food Near You | MealScout",
       description:
         "Discover local restaurants, bars, and food trucks with specials and recommendations from your community.",
-      keywords: "find food, local specials, food recommendations",
+      keywords: "find food near me, local food recommendations, nearby food trucks, nearby restaurant deals, local dining discovery",
       canonicalPath: "/find-food",
     },
     badge: "MealScout for Diners",
@@ -380,7 +380,7 @@ export const roleLandingContent = {
       title: "MealScout for Hosts",
       description:
         "List parking pass locations by address and make it easy for food trucks to book your spots.",
-      keywords: "hosts, parking pass, food trucks, locations",
+      keywords: "host food truck location, parking pass host tools, bookable truck spots, host scheduling slots, food truck host platform",
       canonicalPath: "/for-hosts",
     },
     badge: "MealScout for Hosts",
@@ -462,7 +462,7 @@ export const roleLandingContent = {
       title: "MealScout for Event Coordinators",
       description:
         "Create and manage events built for food trucks and local hosts. Keep the flow clean and coordinated.",
-      keywords: "event coordinators, food truck events, local events",
+      keywords: "food truck event coordinator, local food events platform, truck event management, event vendor booking, community event planning",
       canonicalPath: "/for-events",
     },
     badge: "MealScout for Events",

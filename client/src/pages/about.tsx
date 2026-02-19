@@ -66,8 +66,8 @@ export default function About() {
       <SEOHead
         title="About MealScout - Food Truck Finder & Parking Sourcing"
         description="MealScout helps food trucks find real places to park and serve and helps customers find active food trucks near them."
-        keywords="about mealscout, food truck finder, parking pass, host locations, food truck parking, local food trucks"
-        canonicalUrl="https://mealscout.us/about"
+        keywords="about MealScout, food truck finder platform, food truck parking pass, host locations for food trucks, local food truck discovery, restaurant and truck deals"
+        canonicalUrl="https://www.mealscout.us/about"
         schemaData={schemaData}
       />
       

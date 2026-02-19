@@ -45,10 +45,16 @@ export default function CityLanding() {
   const title = `${data.city.name}${data.city.state ? ", " + data.city.state : ""} Food Trucks & Restaurants`;
   const description = `Discover food trucks, restaurants, and upcoming events in ${data.city.name}. Real-time updates, top cuisines, and video stories.`;
   const canonical = `/food-trucks/${data.city.slug}`;
+  const keywords = `${data.city.name} food trucks, ${data.city.name} restaurants, ${data.city.name} food deals, food near ${data.city.name}, local events ${data.city.name}`;
 
   return (
     <div>
-      <SEOHead title={title} description={description} canonicalUrl={canonical} />
+      <SEOHead
+        title={title}
+        description={description}
+        keywords={keywords}
+        canonicalUrl={canonical}
+      />
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-6">
           <h1 className="text-4xl font-bold text-slate-900">

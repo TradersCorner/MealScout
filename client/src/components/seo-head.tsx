@@ -48,11 +48,25 @@ export function SEOHead({
       link.setAttribute("href", url);
     };
 
-    const resolvedCanonical =
+    const resolveCanonicalUrl = (url?: string) => {
+      if (!url) return "";
+      if (typeof window === "undefined") return url;
+
+      const absolute = url.startsWith("http")
+        ? new URL(url)
+        : new URL(url, window.location.origin);
+
+      absolute.protocol = "https:";
+      absolute.hostname = "www.mealscout.us";
+      return absolute.toString();
+    };
+
+    const resolvedCanonical = resolveCanonicalUrl(
       canonicalUrl ||
-      (typeof window !== "undefined"
-        ? `${window.location.origin}${window.location.pathname}${window.location.search}`
-        : undefined);
+        (typeof window !== "undefined"
+          ? `${window.location.pathname}${window.location.search}`
+          : undefined),
+    );
 
     const resolveOgImage = (imageUrl: string) => {
       if (!imageUrl) return "";

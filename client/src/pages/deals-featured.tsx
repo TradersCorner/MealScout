@@ -81,8 +81,8 @@ export default function FeaturedDealsPage() {
       <SEOHead
         title="Time-Sensitive Specials - MealScout | Nearby Limited-Time Offers"
         description="Discover time-sensitive food specials near you. Limited-time offers from local restaurants, sorted by proximity."
-        keywords="time-sensitive specials, nearby specials, restaurant discounts, limited time offers"
-        canonicalUrl="https://mealscout.us/deals/featured"
+        keywords="limited time food deals, nearby restaurant specials, today food discounts, local meal promotions, food deals near me"
+        canonicalUrl="https://www.mealscout.us/deals/featured"
       />
       {/* Header */}
       <header className="px-6 py-6 bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean">

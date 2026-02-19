@@ -43,6 +43,7 @@ import mealScoutLogo from "@assets/meal-scout-icon.png";
 import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
 import { getReverseGeocodedLocationName } from "@/utils/locationUtils";
 import { sendGeoPing, trackGeoAdEvent, trackGeoAdImpression } from "@/utils/geoAds";
+import { SEOHead } from "@/components/seo-head";
 
 // Version marker for deployment verification
 console.log("MealScout Client Loaded - Build: " + new Date().toISOString());
@@ -284,6 +285,12 @@ export default function Home() {
 
   return (
     <div className="page relative overflow-hidden home-cinematic">
+      <SEOHead
+        title="MealScout | Find Food Trucks Near You"
+        description="Find food trucks near you, discover live locations, and browse local deals from restaurants, bars, and hosts with MealScout."
+        keywords="food truck finder, food trucks near me, local food deals, meal deals, restaurant deals, food truck map"
+        canonicalUrl="https://www.mealscout.us/"
+      />
       <Navigation />
 
       {/* Header with Logo and Navigation */}
@@ -382,9 +389,9 @@ export default function Home() {
         <div className="content">
           <div className="home-hero-panel">
             <div className="mb-3">
-              <h2 className="hero-title text-xl mb-1">
+              <h1 className="hero-title text-xl mb-1">
                 {firstName ? `Hey ${firstName}, hungry?` : "Hungry?"}
-              </h2>
+              </h1>
               <p className="hero-subtitle text-sm">
                 See what's happening{" "}
                 {shortLocation === "Your Location"

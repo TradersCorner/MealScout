@@ -159,8 +159,8 @@ export default function HowItWorks() {
       <SEOHead
         title="How MealScout Works - Local Tools for Every Role"
         description="Choose your role, build a local presence, and use the tools built for diners, food trucks, hosts, restaurants, bars, and event coordinators."
-        keywords="how mealscout works, food trucks, parking pass, hosts, local events, restaurant tools, affiliate links"
-        canonicalUrl="https://mealscout.us/how-it-works"
+        keywords="how MealScout works, food truck booking workflow, parking pass for hosts, local restaurant discovery tools, event coordinator dashboard, affiliate links for local food"
+        canonicalUrl="https://www.mealscout.us/how-it-works"
         schemaData={schemaData}
       />
       

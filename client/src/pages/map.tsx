@@ -1649,8 +1649,8 @@ export default function MapPage() {
       <SEOHead
         title="Map View - MealScout | Find Deals Near You"
         description="Explore food deals on an interactive map. See nearby restaurants, view deal locations, and discover dining discounts in your area. Find the perfect meal deal near you!"
-        keywords="map view, nearby deals, restaurant map, food deals location, nearby restaurants, local deals map"
-        canonicalUrl="https://mealscout.us/map"
+        keywords="food truck map near me, restaurant deals map, local food map, nearby food trucks, meal deals near me, interactive food map"
+        canonicalUrl="https://www.mealscout.us/map"
       />
       <BackHeader title="Map" fallbackHref="/" />
       {/* Header */}

@@ -328,10 +328,10 @@ export default function SearchPage() {
       <SEOHead
         title={`${searchTitle} | MealScout`}
         description={searchDescription}
-        keywords={`search food deals, find restaurants, ${
+        keywords={`food deals near me, food truck search, restaurant specials, local food finder, ${
           searchQuery || "food search"
-        }, restaurant search, deal finder`}
-        canonicalUrl="https://mealscout.us/search"
+        }, nearby restaurants, meal deals`}
+        canonicalUrl="https://www.mealscout.us/search"
       />
       <BackHeader title="Search" fallbackHref="/" />
       {/* Header */}

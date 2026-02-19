@@ -406,6 +406,41 @@ export default function Home() {
               placeholder="Search deals, restaurants..."
             />
 
+            <div className="mb-5 grid grid-cols-3 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={retryLocation}
+                disabled={isLoadingLocation}
+                data-testid="button-home-use-location"
+              >
+                <MapPin className="w-4 h-4 mr-1" />
+                {isLoadingLocation ? "Locating..." : "Use location"}
+              </Button>
+              <Link href="/map">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  data-testid="button-home-open-map"
+                >
+                  <Map className="w-4 h-4 mr-1" />
+                  Open map
+                </Button>
+              </Link>
+              <Link href="/deals/featured">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  data-testid="button-home-featured"
+                >
+                  <Sparkles className="w-4 h-4 mr-1" />
+                  Featured
+                </Button>
+              </Link>
+            </div>
+
             {geoAds.length > 0 && (
               <div className="mb-5">
                 {geoAds.map((ad) => (
@@ -691,11 +726,23 @@ export default function Home() {
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <p className="mb-3">No deals nearby yet</p>
-              <Link href="/contact">
-                <Button size="sm" variant="outline">
-                  Recommend your favorite spot
-                </Button>
-              </Link>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Link href="/map">
+                  <Button size="sm" variant="outline">
+                    Open Map
+                  </Button>
+                </Link>
+                <Link href="/deals/featured">
+                  <Button size="sm" variant="outline">
+                    View Featured
+                  </Button>
+                </Link>
+                <Link href="/contact">
+                  <Button size="sm" variant="outline">
+                    Recommend a Spot
+                  </Button>
+                </Link>
+              </div>
             </div>
           )}
         </div>
@@ -908,6 +955,18 @@ export default function Home() {
               ) : (
                 <div className="text-center py-8 text-muted bg-surface-muted rounded-lg border border-dashed border-subtle">
                   <p className="text-sm">No deals nearby yet.</p>
+                  <div className="mt-3 flex flex-wrap justify-center gap-2">
+                    <Link href="/map">
+                      <Button size="sm" variant="outline">
+                        Open Map
+                      </Button>
+                    </Link>
+                    <Link href="/deals/featured">
+                      <Button size="sm" variant="outline">
+                        Featured Deals
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>

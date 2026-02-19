@@ -490,6 +490,31 @@ export default function SearchPage() {
           <p className="mb-4 text-xs text-[color:var(--status-error)]">{locationError}</p>
         )}
 
+        {!searchQuery && !userLocation && !isLocating && (
+          <div className="mb-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={requestUserLocation}
+              data-testid="button-search-quick-location"
+            >
+              <MapPin className="w-4 h-4 mr-1" />
+              Use location
+            </Button>
+            <Link href="/map">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto"
+                data-testid="button-search-quick-map"
+              >
+                <MapPin className="w-4 h-4 mr-1" />
+                Open map
+              </Button>
+            </Link>
+          </div>
+        )}
+
         {/* Search Bar */}
         <SmartSearch
           value={searchQuery}
@@ -844,6 +869,11 @@ export default function SearchPage() {
             <Link href="/deals/featured">
               <Button variant="outline" className="mt-2 ml-2" data-testid="button-empty-featured">
                 View featured deals
+              </Button>
+            </Link>
+            <Link href="/map">
+              <Button variant="outline" className="mt-2 ml-2" data-testid="button-empty-map">
+                Open map
               </Button>
             </Link>
           </div>

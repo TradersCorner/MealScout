@@ -700,6 +700,42 @@ export default function MapPage() {
       : "mealscout_last_location:anon";
   }, [user?.id]);
 
+  const requestUserLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not available on this device.");
+      setIsLocating(false);
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const currentLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        setUserLocation(currentLocation);
+        setMapCenter(currentLocation);
+        try {
+          localStorage.setItem(
+            locationStorageKey,
+            JSON.stringify({ ...currentLocation, timestamp: Date.now() }),
+          );
+        } catch {
+          // ignore localStorage issues
+        }
+        setLocationError(null);
+        setIsLocating(false);
+      },
+      async (error) => {
+        console.log("Location error:", error);
+        setLocationError("Location is off. Enable location to see what's nearby.");
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }, [locationStorageKey]);
+
   const isStaffOrAdmin =
     user?.userType === "staff" ||
     user?.userType === "admin" ||
@@ -784,38 +820,8 @@ export default function MapPage() {
       // ignore localStorage issues
     }
 
-    if (navigator.geolocation) {
-      setIsLocating(true);
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const location = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setUserLocation(location);
-          setMapCenter(location);
-          try {
-            localStorage.setItem(
-              locationStorageKey,
-              JSON.stringify({ ...location, timestamp: Date.now() }),
-            );
-          } catch {
-            // ignore localStorage issues
-          }
-          setIsLocating(false);
-          setLocationError(null);
-        },
-        async (error) => {
-          console.log("Location error:", error);
-          // Do not guess location: it's worse than being unknown.
-          // Users can still explore by moving the map; "Center on location" stays disabled.
-          setLocationError("Location is off. Enable location to see what’s nearby.");
-          setIsLocating(false);
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    }
-  }, [locationStorageKey]);
+    requestUserLocation();
+  }, [locationStorageKey, requestUserLocation]);
 
   // Fetch nearby deals based on user location
   const { data: dealsData = [], isLoading } = useQuery({
@@ -2080,7 +2086,7 @@ export default function MapPage() {
           {/* Empty map overlay messaging */}
           {!isLoading && !isLocating && deals.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-[var(--bg-card)]/90 rounded-xl px-4 py-3 text-center shadow-clean max-w-xs">
+              <div className="bg-[var(--bg-card)]/90 rounded-xl px-4 py-3 text-center shadow-clean max-w-xs pointer-events-auto">
                 <p className="text-sm font-medium text-foreground mb-1">
                   {hasLocation
                     ? "No trucks nearby right now"
@@ -2091,6 +2097,29 @@ export default function MapPage() {
                     ? "Try moving the map or check back later."
                     : "Use your location or move the map to explore different areas."}
                 </p>
+                <div className="mt-3 flex flex-wrap justify-center gap-2">
+                  {!hasLocation && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={requestUserLocation}
+                      disabled={isLocating}
+                      data-testid="button-map-empty-use-location"
+                    >
+                      {isLocating ? "Locating..." : "Use location"}
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      window.location.href = "/deals/featured";
+                    }}
+                    data-testid="button-map-empty-featured"
+                  >
+                    Featured deals
+                  </Button>
+                </div>
               </div>
             </div>
           )}

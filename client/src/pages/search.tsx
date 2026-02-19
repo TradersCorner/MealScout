@@ -534,13 +534,17 @@ export default function SearchPage() {
               className="shrink-0"
               onClick={() => setShowFilters(!showFilters)}
               data-testid="button-filter"
+              aria-label={showFilters ? "Hide filters" : "Show filters"}
+              aria-expanded={showFilters}
             >
               <SlidersHorizontal className="w-4 h-4" />
             </Button>
           </div>
         </div>
         {locationError && !searchQuery && (
-          <p className="mb-4 text-xs text-[color:var(--status-error)]">{locationError}</p>
+          <p className="mb-4 text-xs text-[color:var(--status-error)]" role="alert">
+            {locationError}
+          </p>
         )}
 
         {!searchQuery && !userLocation && !isLocating && (

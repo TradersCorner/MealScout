@@ -108,6 +108,7 @@ function MapControls({
         onClick={handleZoomIn}
         data-testid="button-zoom-in"
         title="Zoom in"
+        aria-label="Zoom in"
       >
         +
       </Button>
@@ -118,6 +119,7 @@ function MapControls({
         onClick={handleZoomOut}
         data-testid="button-zoom-out"
         title="Zoom out"
+        aria-label="Zoom out"
       >
         -
       </Button>
@@ -129,6 +131,7 @@ function MapControls({
         disabled={!userLocation}
         data-testid="button-center-location"
         title="Center on location"
+        aria-label="Center on location"
       >
         <NavigationIcon className="w-4 h-4" />
       </Button>
@@ -1752,6 +1755,8 @@ export default function MapPage() {
               size="sm"
               onClick={() => setShowList(!showList)}
               data-testid="button-toggle-list"
+              aria-label={showList ? "Hide deals list" : "Show deals list"}
+              aria-expanded={showList}
             >
               <List className="w-4 h-4" />
             </Button>
@@ -1760,7 +1765,7 @@ export default function MapPage() {
 
         {/* Location Status */}
         {locationError && (
-          <div className="text-xs text-[color:var(--status-error)] mb-4 bg-[color:var(--status-error)]/10 border border-[color:var(--status-error)]/30 rounded p-2">
+          <div className="text-xs text-[color:var(--status-error)] mb-4 bg-[color:var(--status-error)]/10 border border-[color:var(--status-error)]/30 rounded p-2" role="alert">
             Warning: {locationError}
           </div>
         )}
@@ -2165,6 +2170,7 @@ export default function MapPage() {
                   onClick={() => setSelectedDeal(null)}
                   className="h-11 w-11"
                   data-testid="button-close-selected-deal"
+                  aria-label="Close selected deal"
                 >
                   <X className="w-3 h-3" />
                 </Button>
@@ -2225,6 +2231,7 @@ export default function MapPage() {
                   className="h-9 w-9"
                   onClick={() => setSelectedHostCluster(null)}
                   data-testid="button-close-cluster-preview"
+                  aria-label="Close cluster preview"
                 >
                   <X className="w-3 h-3" />
                 </Button>
@@ -2297,6 +2304,7 @@ export default function MapPage() {
                 size="sm"
                 onClick={() => setShowList(false)}
                 data-testid="button-close-list"
+                aria-label="Close nearby deals list"
               >
                 <X className="w-4 h-4" />
               </Button>

@@ -312,6 +312,7 @@ export default function Home() {
                   onClick={() => setNavigateTo("/login")}
                   className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)]"
                   title="Login"
+                  aria-label="Log in"
                 >
                   <LogIn className="w-5 h-5" />
                 </Button>
@@ -321,6 +322,7 @@ export default function Home() {
                   onClick={() => setNavigateTo("/customer-signup")}
                   className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)]"
                   title="Customer Sign Up"
+                  aria-label="Customer sign up"
                 >
                   <UserPlus className="w-5 h-5" />
                 </Button>
@@ -332,6 +334,7 @@ export default function Home() {
                   }
                   className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)]"
                   title="Restaurant/Bar/Food Truck Sign Up"
+                  aria-label="Business sign up"
                 >
                   <Store className="w-5 h-5" />
                 </Button>
@@ -342,6 +345,7 @@ export default function Home() {
                   disabled={isLoadingLocation}
                   className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)]"
                   title="Refresh Location"
+                  aria-label="Refresh location"
                 >
                   {isLoadingLocation ? (
                     <div className="w-4 h-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
@@ -366,6 +370,7 @@ export default function Home() {
                   disabled={isLoadingLocation}
                   className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)]"
                   title="Refresh Location"
+                  aria-label="Refresh location"
                 >
                   {isLoadingLocation ? (
                     <div className="w-3.5 h-3.5 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
@@ -599,7 +604,7 @@ export default function Home() {
                     value={manualLocation}
                     onChange={(e) => setManualLocation(e.target.value)}
                     className="manual-location-input"
-                    onKeyPress={(e) =>
+                    onKeyDown={(e) =>
                       e.key === "Enter" && handleManualLocation()
                     }
                   />
@@ -621,7 +626,7 @@ export default function Home() {
                   Use my location
                 </Button>
                 {locationError && (
-                  <p className="manual-location-error">{locationError}</p>
+                  <p className="manual-location-error" role="alert">{locationError}</p>
                 )}
               </div>
             )}

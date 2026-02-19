@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Link } from "wouter";
@@ -171,6 +171,28 @@ const relevanceScore = (deal: any, queryGroups: string[][]) => {
   });
 
   return score;
+};
+
+const levenshteinDistance = (a: string, b: string) => {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const dp = Array.from({ length: a.length + 1 }, () =>
+    Array(b.length + 1).fill(0),
+  );
+  for (let i = 0; i <= a.length; i += 1) dp[i][0] = i;
+  for (let j = 0; j <= b.length; j += 1) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost,
+      );
+    }
+  }
+  return dp[a.length][b.length];
 };
 
 export default function SearchPage() {
@@ -419,6 +441,37 @@ export default function SearchPage() {
           return 0;
       }
     });
+
+  const suggestionTerms = useMemo(() => {
+    const fromCategories = Object.values(categoryConfig).flatMap((category) =>
+      category.keywords.map(normalizeSearchText),
+    );
+    const fromSynonyms = synonymGroups.flat().map(normalizeSearchText);
+    const fromRestaurants = searchedRestaurants
+      .map((restaurant: any) => normalizeSearchText(restaurant.name || ""))
+      .filter((value: string) => value.length >= 3);
+    const fromCuisine = searchedRestaurants
+      .map((restaurant: any) => normalizeSearchText(restaurant.cuisineType || ""))
+      .filter((value: string) => value.length >= 3);
+    return Array.from(
+      new Set([...fromCategories, ...fromSynonyms, ...fromRestaurants, ...fromCuisine]),
+    ).filter((value) => value.length >= 3);
+  }, [searchedRestaurants]);
+
+  const didYouMean = useMemo(() => {
+    const query = normalizeSearchText(searchQuery);
+    if (!query || query.length < 3) return null;
+    let best: { term: string; score: number } | null = null;
+    for (const term of suggestionTerms) {
+      if (term === query) continue;
+      const score = levenshteinDistance(query, term);
+      const threshold = query.length <= 5 ? 1 : 2;
+      if (score <= threshold && (!best || score < best.score)) {
+        best = { term, score };
+      }
+    }
+    return best ? best.term : null;
+  }, [searchQuery, suggestionTerms]);
 
   const searchTitle = searchQuery
     ? `${searchQuery} - Search Results`
@@ -846,6 +899,21 @@ export default function SearchPage() {
                 ? "Check out the restaurants above to see when they post new deals"
                 : "Try adjusting your search or browse all deals"}
             </p>
+            {didYouMean && (
+              <div className="mt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchQuery(didYouMean);
+                    setLocation(`/search?q=${encodeURIComponent(didYouMean)}`);
+                  }}
+                  data-testid="button-did-you-mean"
+                >
+                  Did you mean "{didYouMean}"?
+                </Button>
+              </div>
+            )}
             <Button
               onClick={() => {
                 setSearchQuery("");
@@ -879,6 +947,33 @@ export default function SearchPage() {
           </div>
         )}
       </div>
+
+      {!userLocation && !isLocating && (
+        <div className="fixed bottom-24 left-1/2 z-40 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 md:hidden">
+          <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)]/95 p-2 shadow-clean-lg backdrop-blur">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={requestUserLocation}
+                data-testid="button-search-sticky-location"
+              >
+                Use location
+              </Button>
+              <Link href="/map">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  data-testid="button-search-sticky-map"
+                >
+                  Open map
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Navigation />
     </div>

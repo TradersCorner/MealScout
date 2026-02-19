@@ -1045,6 +1045,34 @@ export default function Home() {
         </div>
       </footer>
 
+      {!location && !showWelcomeModal && (
+        <div className="fixed bottom-24 left-1/2 z-40 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 md:hidden">
+          <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)]/95 p-2 shadow-clean-lg backdrop-blur">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={retryLocation}
+                disabled={isLoadingLocation}
+                data-testid="button-home-sticky-location"
+              >
+                {isLoadingLocation ? "Locating..." : "Use location"}
+              </Button>
+              <Link href="/map">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  data-testid="button-home-sticky-map"
+                >
+                  Open map
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Welcome Modal for First-Time Session Visitors */}
       <WelcomeLocationModal
         open={showWelcomeModal}

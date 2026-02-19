@@ -142,6 +142,7 @@ export default function RestaurantOwnerDashboard() {
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   const isRestaurantOwner = user?.userType === "restaurant_owner";
+  const isFoodTruck = user?.userType === "food_truck";
   const isAdmin =
     user?.userType === "admin" || user?.userType === "super_admin";
   const isStaff = user?.userType === "staff";
@@ -149,11 +150,11 @@ export default function RestaurantOwnerDashboard() {
   useEffect(() => {
     if (!user) return;
 
-    // Only restaurant owners, admins, and staff should see this dashboard.
-    if (!isRestaurantOwner && !isAdmin && !isStaff) {
+    // Restaurant owners and food trucks share this dashboard, plus staff/admin access.
+    if (!isRestaurantOwner && !isFoodTruck && !isAdmin && !isStaff) {
       setLocation("/");
     }
-  }, [user, isRestaurantOwner, isAdmin, isStaff, setLocation]);
+  }, [user, isRestaurantOwner, isFoodTruck, isAdmin, isStaff, setLocation]);
 
   // Location update state
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);

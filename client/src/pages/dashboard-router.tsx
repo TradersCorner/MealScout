@@ -24,6 +24,44 @@ export default function DashboardRouter() {
       return;
     }
 
+    const primaryType = String(user.userType || "").trim();
+
+    if (primaryType === "admin" || primaryType === "super_admin") {
+      setLocation("/admin/dashboard");
+      return;
+    }
+
+    if (primaryType === "staff") {
+      setLocation("/staff");
+      return;
+    }
+
+    if (primaryType === "event_coordinator") {
+      setLocation("/event-coordinator/dashboard");
+      return;
+    }
+
+    if (primaryType === "host") {
+      setLocation("/host/dashboard");
+      return;
+    }
+
+    if (primaryType === "restaurant_owner" || primaryType === "food_truck") {
+      setLocation("/restaurant-owner-dashboard");
+      return;
+    }
+
+    if (primaryType === "supplier") {
+      setLocation("/supplier/dashboard");
+      return;
+    }
+
+    if (primaryType === "customer") {
+      setLocation("/user-dashboard");
+      return;
+    }
+
+    // Fallback for legacy accounts where userType is missing/inconsistent.
     if (roles.has("admin") || roles.has("super_admin")) {
       setLocation("/admin/dashboard");
       return;

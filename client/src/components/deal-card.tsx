@@ -91,6 +91,23 @@ interface DealCardProps {
   deal: Deal;
 }
 
+function formatRelativeTime(value?: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  const ts = date.getTime();
+  if (Number.isNaN(ts)) return null;
+
+  const deltaMs = Date.now() - ts;
+  if (deltaMs < 0) return "Updated recently";
+  const minutes = Math.floor(deltaMs / 60000);
+  if (minutes < 1) return "Updated just now";
+  if (minutes < 60) return `Updated ${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Updated ${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `Updated ${days}d ago`;
+}
+
 const getDefaultImage = (cuisineType?: string, title?: string) => {
   const images = {
     pizza:
@@ -207,6 +224,7 @@ export default function DealCard({ deal }: DealCardProps) {
     (user as any)?.influenceScore && (user as any)?.influenceScore > 0
   );
   const [, setLocation] = useLocation();
+  const lastUpdatedLabel = formatRelativeTime(deal.restaurant?.lastBroadcastAt);
 
   // Initialize saved state from localStorage for quick UX feedback
   useEffect(() => {
@@ -648,6 +666,7 @@ export default function DealCard({ deal }: DealCardProps) {
               onMouseLeave={() => setForkPressed(false)}
               className="absolute top-1.5 right-1.5 w-7 h-7 bg-[var(--bg-surface)]/95 backdrop-blur-sm rounded-full flex items-center justify-center shadow-clean-lg hover:bg-[var(--bg-surface)] transition-all duration-300 hover:scale-110 z-10"
               title="Recommend this restaurant"
+              aria-label="Recommend this restaurant"
             >
               <GoldenForkIcon
                 className={`w-3.5 h-3.5 transition-colors duration-200 ${
@@ -724,6 +743,11 @@ export default function DealCard({ deal }: DealCardProps) {
                 <Clock className="w-3 h-3" />
                 <span>Available now</span>
               </div>
+              {lastUpdatedLabel && (
+                <div className="rounded-full bg-[var(--bg-surface-muted)] px-2 py-0.5 text-[10px] text-secondary">
+                  {lastUpdatedLabel}
+                </div>
+              )}
               <div className="flex items-center gap-0.5">
                 <Flame className="w-3 h-3 text-[color:var(--accent-text)]" />
                 <span className="font-medium text-secondary">
@@ -739,6 +763,7 @@ export default function DealCard({ deal }: DealCardProps) {
                 size="sm"
                 className="h-7 text-[11px] px-1 text-primary border-[color:var(--border-strong)] bg-[color:var(--bg-surface-muted)] hover:bg-[color:var(--bg-surface-muted)]"
                 onClick={(e) => handleSave(e)}
+                aria-label={isSaved ? "Unsave deal" : "Save deal"}
               >
                 {isSaved ? "Saved" : "Save"}
               </Button>
@@ -748,6 +773,7 @@ export default function DealCard({ deal }: DealCardProps) {
                 size="sm"
                 className="h-7 text-[11px] px-1 text-primary border-[color:var(--border-strong)] bg-[color:var(--bg-surface-muted)] hover:bg-[color:var(--bg-surface-muted)]"
                 onClick={handleShare}
+                aria-label="Share deal"
               >
                 Share
               </Button>
@@ -756,6 +782,7 @@ export default function DealCard({ deal }: DealCardProps) {
                 size="sm"
                 className="h-7 text-[11px] px-1 text-primary border-[color:var(--border-strong)] bg-[color:var(--bg-surface-muted)] hover:bg-[color:var(--bg-surface-muted)]"
                 onClick={handleFollowCta}
+                aria-label={isRestaurantFollowed ? "Following restaurant" : "Follow restaurant"}
               >
                 {isRestaurantFollowed ? "Following" : "Follow"}
               </Button>

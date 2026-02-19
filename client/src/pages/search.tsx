@@ -110,28 +110,30 @@ export default function SearchPage() {
     }
   }, [location]);
 
-  // Get user location on component mount
-  useEffect(() => {
-    if (navigator.geolocation) {
-      setIsLocating(true);
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setUserLocation(location);
-          setIsLocating(false);
-        },
-        (error) => {
-          console.log("Location error:", error);
-          setLocationError("Unable to get your location");
-          setIsLocating(false);
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
+  const requestUserLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not available on this device.");
+      return;
     }
-  }, []);
+
+    setIsLocating(true);
+    setLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        setUserLocation(location);
+        setIsLocating(false);
+      },
+      () => {
+        setLocationError("Unable to get your location.");
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   // Fetch nearby deals when location is available, otherwise featured deals
   const { data: nearbyDeals, isLoading: nearbyLoading } = useQuery({
@@ -167,8 +169,7 @@ export default function SearchPage() {
     staleTime: 30_000,
   });
 
-  const isLoading =
-    nearbyLoading || featuredLoading || unifiedLoading || isLocating;
+  const isLoading = nearbyLoading || featuredLoading || unifiedLoading || isLocating;
 
   // Function to map cuisine types and titles to category IDs
   const mapDealToCategory = (deal: any): string[] => {
@@ -339,28 +340,45 @@ export default function SearchPage() {
         <div className="mb-6 flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Search</h1>
-            <p className="text-sm text-muted-foreground">
-              {isLocating && !searchQuery
-                ? "Finding your location..."
+              <p className="text-sm text-muted-foreground">
+                {isLocating && !searchQuery
+                  ? "Finding your location..."
                 : userLocation && !searchQuery
                 ? "Popular deals near you"
                 : filteredDeals.length > 0
                 ? "Showing results that match your search"
                 : searchQuery
                 ? "No matches yet"
-                : "Set your location to see what's nearby"}
-            </p>
+                : "Use location for nearby results or browse featured deals"}
+              </p>
+            </div>
+          <div className="flex items-center gap-2">
+            {!searchQuery && !userLocation && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={requestUserLocation}
+                disabled={isLocating}
+                data-testid="button-request-location"
+              >
+                <MapPin className="w-4 h-4 mr-1" />
+                {isLocating ? "Locating..." : "Use location"}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => setShowFilters(!showFilters)}
+              data-testid="button-filter"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="shrink-0"
-            onClick={() => setShowFilters(!showFilters)}
-            data-testid="button-filter"
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-          </Button>
         </div>
+        {locationError && !searchQuery && (
+          <p className="mb-4 text-xs text-[color:var(--status-error)]">{locationError}</p>
+        )}
 
         {/* Search Bar */}
         <SmartSearch
@@ -703,6 +721,21 @@ export default function SearchPage() {
             >
               Clear Search
             </Button>
+            {!userLocation && !isLocating && (
+              <Button
+                variant="outline"
+                onClick={requestUserLocation}
+                className="mt-2 ml-2"
+                data-testid="button-empty-use-location"
+              >
+                Use location
+              </Button>
+            )}
+            <Link href="/deals/featured">
+              <Button variant="outline" className="mt-2 ml-2" data-testid="button-empty-featured">
+                View featured deals
+              </Button>
+            </Link>
           </div>
         )}
       </div>

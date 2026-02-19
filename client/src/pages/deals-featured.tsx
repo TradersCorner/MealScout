@@ -192,6 +192,13 @@ export default function FeaturedDealsPage() {
                 Browse All Specials
               </Button>
             </Link>
+            <div className="mt-2">
+              <Link href="/map">
+                <Button variant="outline" data-testid="button-open-map-featured">
+                  Open Map
+                </Button>
+              </Link>
+            </div>
           </div>
         )}
       </div>

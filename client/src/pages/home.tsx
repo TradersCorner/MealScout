@@ -89,17 +89,12 @@ export default function Home() {
 
   const { isConnected, subscribeToNearby } = useFoodTruckSocket();
 
-  // Show welcome modal only for anonymous users; auto-detect for logged-in users
+  // Show welcome modal only for anonymous users.
   useEffect(() => {
     const hasSeenWelcome = sessionStorage.getItem("mealscout_welcome_seen");
 
     if (user) {
-      // Logged-in: skip welcome modal and auto-detect location silently
       setShowWelcomeModal(false);
-      if (!location) {
-        setIsLoadingLocation(true);
-        handleLocationDetection();
-      }
       return;
     }
 
@@ -581,6 +576,15 @@ export default function Home() {
                     {isLoadingLocation ? "..." : "Go"}
                   </Button>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={retryLocation}
+                  disabled={isLoadingLocation}
+                  className="mt-2 text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)]"
+                >
+                  Use my location
+                </Button>
                 {locationError && (
                   <p className="manual-location-error">{locationError}</p>
                 )}

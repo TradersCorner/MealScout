@@ -43,8 +43,18 @@ export default function SmartSearch({
 }: SmartSearchProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const listboxId = "smart-search-listbox";
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedValue(value);
+    }, 200);
+    return () => window.clearTimeout(timeout);
+  }, [value]);
 
   // Load recent searches from localStorage
   useEffect(() => {
@@ -60,8 +70,8 @@ export default function SmartSearch({
 
   // Get search suggestions based on current input
   const { data: suggestions } = useQuery<SearchSuggestion[]>({
-    queryKey: ["/api/search/suggestions", value],
-    enabled: value.length >= 2,
+    queryKey: ["/api/search/suggestions", debouncedValue],
+    enabled: debouncedValue.length >= 2,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -120,20 +130,54 @@ export default function SmartSearch({
     const newValue = e.target.value;
     onChange(newValue);
     setIsOpen(showSuggestions && newValue.length > 0);
+    setActiveIndex(-1);
   };
 
   const handleInputFocus = () => {
     setIsOpen(showSuggestions);
   };
 
+  const keyboardOptions =
+    value.length >= 2 && suggestions && suggestions.length > 0
+      ? suggestions.map((item) => item.text)
+      : value.length === 0
+      ? popularSearches
+      : recentSearches;
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setIsOpen(true);
+      if (keyboardOptions.length > 0) {
+        setActiveIndex((prev) => (prev + 1) % keyboardOptions.length);
+      }
+      return;
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setIsOpen(true);
+      if (keyboardOptions.length > 0) {
+        setActiveIndex((prev) =>
+          prev <= 0 ? keyboardOptions.length - 1 : prev - 1
+        );
+      }
+      return;
+    }
     if (e.key === "Enter") {
       e.preventDefault();
+      if (isOpen && activeIndex >= 0 && keyboardOptions[activeIndex]) {
+        const selected = keyboardOptions[activeIndex];
+        onChange(selected);
+        handleSearch(selected);
+        return;
+      }
       handleSearch(value);
+      return;
     }
     if (e.key === "Escape") {
       setIsOpen(false);
       inputRef.current?.blur();
+      setActiveIndex(-1);
     }
   };
 
@@ -184,6 +228,13 @@ export default function SmartSearch({
             onChange={handleInputChange}
             onFocus={handleInputFocus}
             onKeyDown={handleKeyDown}
+            role="combobox"
+            aria-expanded={isOpen}
+            aria-controls={listboxId}
+            aria-autocomplete="list"
+            aria-activedescendant={
+              activeIndex >= 0 ? `smart-search-option-${activeIndex}` : undefined
+            }
             className="smart-search-input w-full pl-11 pr-4 py-3 text-sm sm:text-base rounded-full border border-transparent bg-transparent shadow-none focus:border-transparent focus:ring-2 focus:ring-[#F59E0B]/40 focus:ring-offset-0"
             data-testid="input-smart-search"
           />
@@ -199,7 +250,11 @@ export default function SmartSearch({
 
       {/* Search Suggestions Dropdown */}
       {isOpen && showSuggestions && (
-        <Card className="absolute top-full left-0 right-0 mt-2 max-h-96 overflow-y-auto z-50 shadow-clean-lg border-2">
+        <Card
+          className="absolute top-full left-0 right-0 mt-2 max-h-96 overflow-y-auto z-50 shadow-clean-lg border-2"
+          role="listbox"
+          id={listboxId}
+        >
           <CardContent className="p-0">
             {/* Current search results */}
             {value.length >= 2 && suggestions && suggestions.length > 0 && (
@@ -207,13 +262,16 @@ export default function SmartSearch({
                 <div className="px-4 py-2 text-sm font-medium text-muted-foreground bg-muted/30">
                   Suggestions
                 </div>
-                {suggestions.map((suggestion) => (
+                {suggestions.map((suggestion, index) => (
                   <button
                     key={suggestion.id}
                     onClick={() => {
                       onChange(suggestion.text);
                       handleSearch(suggestion.text);
                     }}
+                    id={`smart-search-option-${index}`}
+                    role="option"
+                    aria-selected={activeIndex === index}
                     className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors flex items-center space-x-3"
                     data-testid={`suggestion-${suggestion.type}-${suggestion.id}`}
                   >
@@ -242,7 +300,12 @@ export default function SmartSearch({
                   <Clock className="w-4 h-4" />
                   <span>Recent</span>
                 </div>
-                {recentSearches.map((search, index) => (
+                {recentSearches.map((search, index) => {
+                  const optionIndex =
+                    value.length >= 2 && suggestions && suggestions.length > 0
+                      ? suggestions.length + index
+                      : index;
+                  return (
                   <div
                     key={index}
                     className="flex items-center hover:bg-muted/50 transition-colors"
@@ -252,6 +315,9 @@ export default function SmartSearch({
                         onChange(search);
                         handleSearch(search);
                       }}
+                      id={`smart-search-option-${optionIndex}`}
+                      role="option"
+                      aria-selected={activeIndex === optionIndex}
                       className="flex-1 px-4 py-3 text-left flex items-center space-x-3"
                       data-testid={`recent-search-${index}`}
                     >
@@ -269,7 +335,8 @@ export default function SmartSearch({
                       <X className="w-3 h-3 text-muted-foreground" />
                     </button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -287,6 +354,9 @@ export default function SmartSearch({
                       onChange(search);
                       handleSearch(search);
                     }}
+                    id={`smart-search-option-${index}`}
+                    role="option"
+                    aria-selected={activeIndex === index}
                     className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors flex items-center space-x-3"
                     data-testid={`popular-search-${index}`}
                   >

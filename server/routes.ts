@@ -2021,42 +2021,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getAllUpcomingEvents(),
       ]);
 
-      // Don't call `storage.getAllHosts()` here because older production DBs can be missing
-      // newer `hosts` columns that our shared schema expects, which would blank the map feed.
-      const hostProfiles: Array<{
+      // Use storage's safe host projection so older DBs missing newer columns
+      // do not break the map feed.
+      const allHosts = (await storage.getAllHosts()) as Array<{
         id: string;
+        userId?: string | null;
         businessName: string;
         address: string;
-        city: string | null;
-        state: string | null;
-        latitude: string | null;
-        longitude: string | null;
-        locationType: string;
-        expectedFootTraffic: number | null;
-        notes: string | null;
-        isVerified: boolean | null;
-      }> = (await db
-        .select({
-          id: hosts.id,
-          businessName: hosts.businessName,
-          address: hosts.address,
-          city: hosts.city,
-          state: hosts.state,
-          latitude: hosts.latitude,
-          longitude: hosts.longitude,
-          locationType: hosts.locationType,
-          expectedFootTraffic: hosts.expectedFootTraffic,
-          notes: hosts.notes,
-          isVerified: hosts.isVerified,
-        })
-        .from(hosts)
-        .innerJoin(users, eq(hosts.userId, users.id))
-        .where(
-          and(
-            sql`${hosts.address} IS NOT NULL`,
-            or(eq(users.isDisabled, false), isNull(users.isDisabled)),
-          ),
-        )) as any;
+        city?: string | null;
+        state?: string | null;
+        latitude?: string | null;
+        longitude?: string | null;
+        locationType?: string | null;
+        expectedFootTraffic?: number | null;
+        notes?: string | null;
+        isVerified?: boolean | null;
+      }>;
+      const hostUserIds = Array.from(
+        new Set(
+          allHosts
+            .map((host) => String(host.userId || "").trim())
+            .filter(Boolean),
+        ),
+      );
+      const activeHostUserIds =
+        hostUserIds.length > 0
+          ? new Set(
+              (
+                await db
+                  .select({ id: users.id })
+                  .from(users)
+                  .where(
+                    and(
+                      inArray(users.id, hostUserIds),
+                      or(eq(users.isDisabled, false), isNull(users.isDisabled)),
+                    ),
+                  )
+              ).map((row: { id: string }) => row.id),
+            )
+          : null;
+      const hostProfiles = allHosts.filter((host) => {
+        const address = String(host.address || "").trim();
+        if (!address) return false;
+        if (!activeHostUserIds) return true;
+        const userId = String(host.userId || "").trim();
+        return userId ? activeHostUserIds.has(userId) : false;
+      });
 
       const publicEvents = upcomingEvents.filter(
         (event) => !event.requiresPayment,
@@ -2069,16 +2079,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           locationRequestId: null,
           name: host.businessName,
           address: host.address,
-          city: host.city,
-          state: host.state,
+          city: host.city ?? null,
+          state: host.state ?? null,
           spotImageUrl: null,
-          locationType: host.locationType,
-          expectedFootTraffic: host.expectedFootTraffic,
-          notes: host.notes,
+          locationType: host.locationType || "other",
+          expectedFootTraffic: host.expectedFootTraffic ?? null,
+          notes: host.notes ?? null,
           preferredDates: [],
           status: host.isVerified ? "verified" : "active",
-          latitude: host.latitude,
-          longitude: host.longitude,
+          latitude: host.latitude ?? null,
+          longitude: host.longitude ?? null,
         }));
 
       const hostLocations = [

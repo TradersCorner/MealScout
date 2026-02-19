@@ -1,13 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { apiUrl } from "@/lib/api";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import DealCard from "@/components/deal-card";
 import Navigation from "@/components/navigation";
 import SmartSearch from "@/components/smart-search";
-import WelcomeLocationModal from "@/components/WelcomeLocationModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -44,6 +43,8 @@ import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
 import { getReverseGeocodedLocationName } from "@/utils/locationUtils";
 import { sendGeoPing, trackGeoAdEvent, trackGeoAdImpression } from "@/utils/geoAds";
 import { SEOHead } from "@/components/seo-head";
+
+const WelcomeLocationModal = lazy(() => import("@/components/WelcomeLocationModal"));
 
 // Version marker for deployment verification
 console.log("MealScout Client Loaded - Build: " + new Date().toISOString());
@@ -232,13 +233,17 @@ export default function Home() {
       ),
   });
 
-  const sortedFeaturedDeals = featuredDeals
-    ? [...featuredDeals].sort((a: Deal, b: Deal) => {
-        const aDistance = a.distance ?? Number.POSITIVE_INFINITY;
-        const bDistance = b.distance ?? Number.POSITIVE_INFINITY;
-        return aDistance - bDistance;
-      })
-    : [];
+  const sortedFeaturedDeals = useMemo(
+    () =>
+      featuredDeals
+        ? [...featuredDeals].sort((a: Deal, b: Deal) => {
+            const aDistance = a.distance ?? Number.POSITIVE_INFINITY;
+            const bDistance = b.distance ?? Number.POSITIVE_INFINITY;
+            return aDistance - bDistance;
+          })
+        : [],
+    [featuredDeals],
+  );
 
   const { data: geoAds = [] } = useQuery<GeoAd[]>({
     queryKey: ["/api/geo-ads", "home", location?.lat, location?.lng],
@@ -1079,11 +1084,13 @@ export default function Home() {
       )}
 
       {/* Welcome Modal for First-Time Session Visitors */}
-      <WelcomeLocationModal
-        open={showWelcomeModal}
-        onLocationSet={handleWelcomeLocationSet}
-        onSkip={handleWelcomeSkip}
-      />
+      <Suspense fallback={null}>
+        <WelcomeLocationModal
+          open={showWelcomeModal}
+          onLocationSet={handleWelcomeLocationSet}
+          onSkip={handleWelcomeSkip}
+        />
+      </Suspense>
     </div>
   );
 }

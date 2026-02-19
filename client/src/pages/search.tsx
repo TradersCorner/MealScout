@@ -389,58 +389,62 @@ export default function SearchPage() {
       : staticCategories;
 
   // allDeals is already defined above
-  const filteredDeals = dealsForPage
-    .filter((deal: any) => {
-      const matchesSearch =
-        !searchQuery || matchesQueryGroups(deal, queryGroups);
+  const filteredDeals = useMemo(
+    () =>
+      dealsForPage
+        .filter((deal: any) => {
+          const matchesSearch =
+            !searchQuery || matchesQueryGroups(deal, queryGroups);
 
-      const matchesCategory =
-        selectedCategory === "all" ||
-        (selectedCategory &&
-          mapDealToCategory(deal).includes(selectedCategory));
+          const matchesCategory =
+            selectedCategory === "all" ||
+            (selectedCategory &&
+              mapDealToCategory(deal).includes(selectedCategory));
 
-      // Apply price range filter
-      const dealPrice = parseFloat(deal.minOrderAmount) || 0;
-      const matchesPrice =
-        dealPrice >= priceRange[0] && dealPrice <= priceRange[1];
+          // Apply price range filter
+          const dealPrice = parseFloat(deal.minOrderAmount) || 0;
+          const matchesPrice =
+            dealPrice >= priceRange[0] && dealPrice <= priceRange[1];
 
-      return matchesSearch && matchesCategory && matchesPrice;
-    })
-    .sort((a: any, b: any) => {
-      // Apply sorting
-      switch (sortBy) {
-        case "price_low":
-          return (
-            parseFloat(a.minOrderAmount || "0") -
-            parseFloat(b.minOrderAmount || "0")
-          );
-        case "price_high":
-          return (
-            parseFloat(b.minOrderAmount || "0") -
-            parseFloat(a.minOrderAmount || "0")
-          );
-        case "discount":
-          return (
-            parseFloat(b.discountValue || "0") -
-            parseFloat(a.discountValue || "0")
-          );
-        case "newest":
-          return (
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-        default:
-          if (searchQuery) {
-            const bScore = relevanceScore(b, queryGroups);
-            const aScore = relevanceScore(a, queryGroups);
-            if (bScore !== aScore) return bScore - aScore;
-            return (
-              parseFloat(b.discountValue || "0") -
-              parseFloat(a.discountValue || "0")
-            );
+          return matchesSearch && matchesCategory && matchesPrice;
+        })
+        .sort((a: any, b: any) => {
+          // Apply sorting
+          switch (sortBy) {
+            case "price_low":
+              return (
+                parseFloat(a.minOrderAmount || "0") -
+                parseFloat(b.minOrderAmount || "0")
+              );
+            case "price_high":
+              return (
+                parseFloat(b.minOrderAmount || "0") -
+                parseFloat(a.minOrderAmount || "0")
+              );
+            case "discount":
+              return (
+                parseFloat(b.discountValue || "0") -
+                parseFloat(a.discountValue || "0")
+              );
+            case "newest":
+              return (
+                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              );
+            default:
+              if (searchQuery) {
+                const bScore = relevanceScore(b, queryGroups);
+                const aScore = relevanceScore(a, queryGroups);
+                if (bScore !== aScore) return bScore - aScore;
+                return (
+                  parseFloat(b.discountValue || "0") -
+                  parseFloat(a.discountValue || "0")
+                );
+              }
+              return 0;
           }
-          return 0;
-      }
-    });
+        }),
+    [dealsForPage, searchQuery, queryGroups, selectedCategory, priceRange, sortBy],
+  );
 
   const suggestionTerms = useMemo(() => {
     const fromCategories = Object.values(categoryConfig).flatMap((category) =>

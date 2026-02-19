@@ -180,6 +180,7 @@ export default function SearchPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState([0, 50]);
   const [sortBy, setSortBy] = useState("relevance");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
   // Location state management
   const [userLocation, setUserLocation] = useState<{
@@ -197,6 +198,13 @@ export default function SearchPage() {
       setSearchQuery(decodeURIComponent(query));
     }
   }, [location]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 250);
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
 
   const requestUserLocation = () => {
     if (!navigator.geolocation) {
@@ -246,14 +254,14 @@ export default function SearchPage() {
   });
 
   const { data: unifiedResults, isLoading: unifiedLoading } = useQuery({
-    queryKey: ["/api/search", searchQuery],
+    queryKey: ["/api/search", debouncedSearchQuery],
     queryFn: async () => {
-      const params = new URLSearchParams({ q: searchQuery });
+      const params = new URLSearchParams({ q: debouncedSearchQuery });
       const res = await fetch(`/api/search?${params}`);
       if (!res.ok) throw new Error("Failed to search");
       return res.json();
     },
-    enabled: searchQuery.length >= 2,
+    enabled: debouncedSearchQuery.length >= 2,
     staleTime: 30_000,
   });
 

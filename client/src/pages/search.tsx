@@ -85,6 +85,94 @@ const categoryConfig = {
   },
 };
 
+const synonymGroups = [
+  ["bbq", "barbecue", "smokehouse"],
+  ["burger", "burgers", "sandwich"],
+  ["taco", "tacos", "burrito", "mexican"],
+  ["pizza", "pizzeria", "italian"],
+  ["coffee", "cafe", "latte"],
+  ["dessert", "desserts", "sweet", "sweets", "bakery"],
+  ["seafood", "fish", "shrimp"],
+  ["vegan", "vegetarian", "plant"],
+  ["breakfast", "brunch"],
+];
+
+const synonymIndex = synonymGroups.reduce<Record<string, string[]>>(
+  (acc, group) => {
+    group.forEach((term) => {
+      acc[term] = group.filter((candidate) => candidate !== term);
+    });
+    return acc;
+  },
+  {},
+);
+
+const normalizeSearchText = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const tokenVariants = (token: string): string[] => {
+  const variants = new Set<string>();
+  const normalized = normalizeSearchText(token);
+  if (!normalized) return [];
+
+  variants.add(normalized);
+  if (normalized.endsWith("s") && normalized.length > 3) {
+    variants.add(normalized.slice(0, -1));
+  } else if (normalized.length > 3) {
+    variants.add(`${normalized}s`);
+  }
+
+  (synonymIndex[normalized] || []).forEach((term) => variants.add(term));
+  return Array.from(variants);
+};
+
+const buildQueryGroups = (query: string): string[][] => {
+  const normalized = normalizeSearchText(query);
+  if (!normalized) return [];
+
+  const tokens = normalized.split(" ").filter((token) => token.length > 1);
+  if (tokens.length === 0) return [];
+  return tokens.map(tokenVariants).filter((variants) => variants.length > 0);
+};
+
+const normalizeDealFields = (deal: any) => ({
+  title: normalizeSearchText(deal.title || ""),
+  description: normalizeSearchText(deal.description || ""),
+  restaurantName: normalizeSearchText(deal.restaurant?.name || ""),
+  cuisineType: normalizeSearchText(deal.restaurant?.cuisineType || ""),
+});
+
+const matchesQueryGroups = (deal: any, queryGroups: string[][]) => {
+  if (queryGroups.length === 0) return true;
+
+  const fields = normalizeDealFields(deal);
+  const haystack = `${fields.title} ${fields.description} ${fields.restaurantName} ${fields.cuisineType}`;
+  return queryGroups.every((group) =>
+    group.some((variant) => haystack.includes(variant)),
+  );
+};
+
+const relevanceScore = (deal: any, queryGroups: string[][]) => {
+  if (queryGroups.length === 0) return 0;
+  const fields = normalizeDealFields(deal);
+  let score = 0;
+
+  queryGroups.forEach((group) => {
+    if (group.some((variant) => fields.title.includes(variant))) score += 6;
+    if (group.some((variant) => fields.restaurantName.includes(variant))) score += 4;
+    if (group.some((variant) => fields.cuisineType.includes(variant))) score += 3;
+    if (group.some((variant) => fields.description.includes(variant))) score += 2;
+  });
+
+  return score;
+};
+
 export default function SearchPage() {
   const [location, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
@@ -174,14 +262,16 @@ export default function SearchPage() {
   // Function to map cuisine types and titles to category IDs
   const mapDealToCategory = (deal: any): string[] => {
     const categories: string[] = [];
-    const cuisineType = deal.restaurant?.cuisineType?.toLowerCase() || "";
-    const title = deal.title?.toLowerCase() || "";
+    const cuisineType = normalizeSearchText(deal.restaurant?.cuisineType || "");
+    const title = normalizeSearchText(deal.title || "");
 
     // Check each category for matches
     Object.entries(categoryConfig).forEach(([categoryId, config]) => {
       const keywords = config.keywords;
       const matches = keywords.some(
-        (keyword) => cuisineType.includes(keyword) || title.includes(keyword)
+        (keyword) =>
+          cuisineType.includes(normalizeSearchText(keyword)) ||
+          title.includes(normalizeSearchText(keyword))
       );
       if (matches) {
         categories.push(categoryId);
@@ -262,6 +352,7 @@ export default function SearchPage() {
     : [];
 
   const dealsForPage = searchQuery ? searchedDeals : allDeals;
+  const queryGroups = buildQueryGroups(searchQuery);
   const categories =
     !searchQuery && userLocation && nearbyDeals && nearbyDeals.length > 0
       ? generateDynamicCategories(nearbyDeals)
@@ -271,12 +362,7 @@ export default function SearchPage() {
   const filteredDeals = dealsForPage
     .filter((deal: any) => {
       const matchesSearch =
-        !searchQuery ||
-        deal.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        deal.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        deal.restaurant?.name
-          ?.toLowerCase()
-          .includes(searchQuery.toLowerCase());
+        !searchQuery || matchesQueryGroups(deal, queryGroups);
 
       const matchesCategory =
         selectedCategory === "all" ||
@@ -313,6 +399,15 @@ export default function SearchPage() {
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           );
         default:
+          if (searchQuery) {
+            const bScore = relevanceScore(b, queryGroups);
+            const aScore = relevanceScore(a, queryGroups);
+            if (bScore !== aScore) return bScore - aScore;
+            return (
+              parseFloat(b.discountValue || "0") -
+              parseFloat(a.discountValue || "0")
+            );
+          }
           return 0;
       }
     });
@@ -323,6 +418,13 @@ export default function SearchPage() {
   const searchDescription = searchQuery
     ? `Find nearby deals for "${searchQuery}". Browse local restaurants and discover limited-time discounts close to you.`
     : "Search for deals, restaurants, parking pass spots, videos, and events.";
+  const searchKeywordVariants = searchQuery
+    ? Array.from(
+        new Set(queryGroups.flat()).values(),
+      )
+        .slice(0, 8)
+        .join(", ")
+    : "food search";
 
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
@@ -330,7 +432,7 @@ export default function SearchPage() {
         title={`${searchTitle} | MealScout`}
         description={searchDescription}
         keywords={`food deals near me, food truck search, restaurant specials, local food finder, ${
-          searchQuery || "food search"
+          searchKeywordVariants
         }, nearby restaurants, meal deals`}
         canonicalUrl="https://www.mealscout.us/search"
       />

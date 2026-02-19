@@ -260,6 +260,14 @@ type HostLocation = {
   longitude?: number | string | null;
 };
 
+type HostCluster = {
+  id: string;
+  lat: number;
+  lng: number;
+  count: number;
+  hosts: HostLocation[];
+};
+
 type EventLocation = {
   id: string;
   name: string;
@@ -427,6 +435,7 @@ function HostMarkerLayer({
   bookableHostIds,
   isStaffOrAdmin,
   qualityFlagsByHostId,
+  onClusterSelect,
 }: {
   hosts: HostLocation[];
   zoomLevel: number;
@@ -449,6 +458,7 @@ function HostMarkerLayer({
   bookableHostIds: Set<string>;
   isStaffOrAdmin: boolean;
   qualityFlagsByHostId: Map<string, string[]>;
+  onClusterSelect?: (cluster: HostCluster) => void;
 }) {
   const map = useMap();
 
@@ -485,7 +495,7 @@ function HostMarkerLayer({
       lng: item.lngSum / Math.max(1, item.count),
       count: item.count,
       hosts: item.hosts,
-    }));
+    })) satisfies HostCluster[];
   }, [hosts, resolveHostCoords, useClusters, cellSize]);
 
   if (useClusters && clusters) {
@@ -498,10 +508,7 @@ function HostMarkerLayer({
             icon={clusterIcon(cluster.count)}
             eventHandlers={{
               click: () => {
-                map.setView(
-                  [cluster.lat, cluster.lng],
-                  Math.min(18, map.getZoom() + 2),
-                );
+                onClusterSelect?.(cluster);
               },
             }}
           >
@@ -674,6 +681,7 @@ export default function MapPage() {
   });
   const [showList, setShowList] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+  const [selectedHostCluster, setSelectedHostCluster] = useState<HostCluster | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(16);
   const [mapBounds, setMapBounds] = useState<MapBoundsLike | null>(null);
@@ -1489,6 +1497,7 @@ export default function MapPage() {
 
   const handleDealClick = (deal: Deal) => {
     setSelectedDeal(deal);
+    setSelectedHostCluster(null);
     if (deal.restaurant) {
       setMapCenter({
         lat: deal.restaurant.latitude,
@@ -1559,8 +1568,15 @@ export default function MapPage() {
       setMapCenter(pendingMapCenter);
     }
     setSelectedDeal(null);
+    setSelectedHostCluster(null);
     setHasPendingAreaSearch(false);
   };
+
+  useEffect(() => {
+    if (zoomLevel >= 14 && selectedHostCluster) {
+      setSelectedHostCluster(null);
+    }
+  }, [zoomLevel, selectedHostCluster]);
 
   const isGoogleProviderRequested = MAP_PROVIDER === "google";
   const isGoogleProviderMissingKey =
@@ -1988,6 +2004,11 @@ export default function MapPage() {
                 bookableHostIds={bookableHostIds}
                 isStaffOrAdmin={isStaffOrAdmin}
                 qualityFlagsByHostId={qualityFlagsByHostId}
+                onClusterSelect={(cluster) => {
+                  setSelectedDeal(null);
+                  setSelectedHostCluster(cluster);
+                  setMapCenter({ lat: cluster.lat, lng: cluster.lng });
+                }}
               />
 
               {/* Event Markers */}
@@ -2180,6 +2201,82 @@ export default function MapPage() {
                   }
                 >
                   Directions
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {!selectedDeal && selectedHostCluster && (
+          <Card className="absolute bottom-4 left-4 right-4 z-20 shadow-clean-lg">
+            <CardContent className="p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {selectedHostCluster.count} nearby parking locations
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Pick a location or zoom in for exact pins.
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  onClick={() => setSelectedHostCluster(null)}
+                  data-testid="button-close-cluster-preview"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {selectedHostCluster.hosts.slice(0, 4).map((host) => {
+                  const coords = resolveHostCoords(host);
+                  if (!coords) return null;
+                  return (
+                    <div
+                      key={`cluster-preview-${host.id}`}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-[color:var(--border-subtle)] p-2"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-foreground">
+                          {host.name}
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {host.address}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          window.open(
+                            `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
+                            "_blank",
+                          );
+                        }}
+                      >
+                        Directions
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+              {selectedHostCluster.count > 4 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  +{selectedHostCluster.count - 4} more in this area
+                </p>
+              )}
+              <div className="mt-3">
+                <Button
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    setZoomLevel((prev) => Math.min(18, prev + 2));
+                  }}
+                  data-testid="button-cluster-zoom-in"
+                >
+                  Zoom in
                 </Button>
               </div>
             </CardContent>

@@ -721,6 +721,9 @@ export class DatabaseStorage implements IStorage {
   private hostTableInfoPromise:
     | Promise<{ schema: string; columns: Set<string> }>
     | null = null;
+  private eventTableInfoPromise:
+    | Promise<{ schema: string; columns: Set<string> }>
+    | null = null;
 
   private async getHostTableInfo(): Promise<{ schema: string; columns: Set<string> }> {
     if (this.hostTableInfoPromise) return this.hostTableInfoPromise;
@@ -764,6 +767,99 @@ export class DatabaseStorage implements IStorage {
       }
     })();
     return this.hostTableInfoPromise;
+  }
+
+  private async getEventTableInfo(): Promise<{ schema: string; columns: Set<string> }> {
+    if (this.eventTableInfoPromise) return this.eventTableInfoPromise;
+    this.eventTableInfoPromise = (async () => {
+      try {
+        if (!pool) {
+          return { schema: "public", columns: new Set<string>() };
+        }
+
+        const schemaRes = await pool.query(
+          `
+            select table_schema
+            from information_schema.tables
+            where table_name = 'events'
+            order by case when table_schema = 'public' then 0 else 1 end
+            limit 1
+          `,
+        );
+        const schema =
+          String(schemaRes.rows?.[0]?.table_schema || "").trim() || "public";
+
+        const colsRes = await pool.query(
+          `
+            select column_name
+            from information_schema.columns
+            where table_schema = $1 and table_name = 'events'
+          `,
+          [schema],
+        );
+        const columns = new Set<string>(
+          (colsRes.rows || [])
+            .map((row: any) => String(row.column_name || "").trim())
+            .filter(Boolean),
+        );
+        return { schema, columns };
+      } catch (error) {
+        console.warn("getEventTableInfo failed; using safe event projection:", error);
+        return { schema: "public", columns: new Set<string>() };
+      }
+    })();
+    return this.eventTableInfoPromise;
+  }
+
+  private async selectUpcomingEventsSafe(fromDate: Date): Promise<any[]> {
+    if (!pool) return [];
+    const { schema, columns } = await this.getEventTableInfo();
+
+    const has = (col: string) => columns.has(col);
+    const q = (ident: string) => `"${ident.replace(/"/g, '""')}"`;
+    const select = [
+      `${q("id")} as "id"`,
+      `${q("host_id")} as "hostId"`,
+      `${has("coordinator_user_id") ? `${q("coordinator_user_id")} as "coordinatorUserId"` : `null as "coordinatorUserId"`}`,
+      `${has("series_id") ? `${q("series_id")} as "seriesId"` : `null as "seriesId"`}`,
+      `${has("name") ? `${q("name")} as "name"` : `null as "name"`}`,
+      `${has("description") ? `${q("description")} as "description"` : `null as "description"`}`,
+      `${has("event_type") ? `${q("event_type")} as "eventType"` : `'event' as "eventType"`}`,
+      `${q("date")} as "date"`,
+      `${has("start_time") ? `${q("start_time")} as "startTime"` : `'00:00' as "startTime"`}`,
+      `${has("end_time") ? `${q("end_time")} as "endTime"` : `'00:00' as "endTime"`}`,
+      `${has("max_trucks") ? `${q("max_trucks")} as "maxTrucks"` : `1 as "maxTrucks"`}`,
+      `${has("status") ? `${q("status")} as "status"` : `'open' as "status"`}`,
+      `${has("booked_restaurant_id") ? `${q("booked_restaurant_id")} as "bookedRestaurantId"` : `null as "bookedRestaurantId"`}`,
+      `${has("hard_cap_enabled") ? `${q("hard_cap_enabled")} as "hardCapEnabled"` : `false as "hardCapEnabled"`}`,
+      `${has("host_price_cents") ? `${q("host_price_cents")} as "hostPriceCents"` : `null as "hostPriceCents"`}`,
+      `${has("breakfast_price_cents") ? `${q("breakfast_price_cents")} as "breakfastPriceCents"` : `null as "breakfastPriceCents"`}`,
+      `${has("lunch_price_cents") ? `${q("lunch_price_cents")} as "lunchPriceCents"` : `null as "lunchPriceCents"`}`,
+      `${has("dinner_price_cents") ? `${q("dinner_price_cents")} as "dinnerPriceCents"` : `null as "dinnerPriceCents"`}`,
+      `${has("daily_price_cents") ? `${q("daily_price_cents")} as "dailyPriceCents"` : `null as "dailyPriceCents"`}`,
+      `${has("weekly_price_cents") ? `${q("weekly_price_cents")} as "weeklyPriceCents"` : `null as "weeklyPriceCents"`}`,
+      `${has("monthly_price_cents") ? `${q("monthly_price_cents")} as "monthlyPriceCents"` : `null as "monthlyPriceCents"`}`,
+      `${has("requires_payment") ? `${q("requires_payment")} as "requiresPayment"` : `false as "requiresPayment"`}`,
+      `${has("stripe_product_id") ? `${q("stripe_product_id")} as "stripeProductId"` : `null as "stripeProductId"`}`,
+      `${has("stripe_price_id") ? `${q("stripe_price_id")} as "stripePriceId"` : `null as "stripePriceId"`}`,
+      `${has("unbooked_notification_sent_at") ? `${q("unbooked_notification_sent_at")} as "unbookedNotificationSentAt"` : `null as "unbookedNotificationSentAt"`}`,
+      `${has("created_at") ? `${q("created_at")} as "createdAt"` : `null as "createdAt"`}`,
+      `${has("updated_at") ? `${q("updated_at")} as "updatedAt"` : `null as "updatedAt"`}`,
+    ];
+
+    const whereStatus =
+      has("status")
+        ? ` and coalesce(${q("status")}::text, 'open') <> 'cancelled'`
+        : "";
+    const sqlText = `
+      select ${select.join(", ")}
+      from ${q(schema)}.${q("events")}
+      where ${q("date")} >= $1
+      ${whereStatus}
+      order by ${q("date")} asc
+    `;
+    const result = await pool.query(sqlText, [fromDate]);
+    return result.rows || [];
   }
 
   private async selectHostsSafe(whereSql: string, params: any[]): Promise<any[]> {
@@ -1248,19 +1344,14 @@ export class DatabaseStorage implements IStorage {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Avoid `with: { host: true }` here because older deployments may not have all
-    // host columns that our shared schema expects, which would 500 map endpoints.
-    const rows = await db
-      .select({ event: events, series: eventSeries })
-      .from(events)
-      .leftJoin(eventSeries, eq(eventSeries.id, events.seriesId))
-      .where(and(gte(events.date, today), ne(events.status, "cancelled")))
-      .orderBy(asc(events.date));
+    // Use a schema-safe projection so older DBs missing newer events columns
+    // (for example `coordinator_user_id`) do not break map/discovery feeds.
+    const eventRows = await this.selectUpcomingEventsSafe(today);
 
     const hostIds = Array.from(
       new Set<string>(
-        rows
-          .map((row: any) => String(row.event.hostId || "").trim())
+        eventRows
+          .map((row: any) => String(row.hostId || "").trim())
           .filter(Boolean),
       ),
     );
@@ -1296,10 +1387,10 @@ export class DatabaseStorage implements IStorage {
         updatedAt: null as any,
       }) as any;
 
-    return rows.map(({ event, series }: any) => ({
+    return eventRows.map((event: any) => ({
       ...(event as any),
       host: hostById.get(String(event.hostId || "")) ?? stubHost(String(event.hostId || "")),
-      series: (series as any) ?? null,
+      series: null,
     })) as any;
   }
 

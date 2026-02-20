@@ -31,6 +31,60 @@ const app = express();
 const sentryDsn = process.env.SENTRY_DSN;
 const sentryEnabled = Boolean(sentryDsn);
 
+function resolveCanonicalBaseUrl() {
+  const raw =
+    process.env.PUBLIC_BASE_URL ||
+    process.env.SERVICE_URL ||
+    "https://www.mealscout.us";
+  const withScheme = raw.startsWith("http://") || raw.startsWith("https://")
+    ? raw
+    : `https://${raw}`;
+  try {
+    return new URL(withScheme);
+  } catch {
+    return new URL("https://www.mealscout.us");
+  }
+}
+
+const canonicalBaseUrl = resolveCanonicalBaseUrl().toString().replace(/\/+$/, "");
+
+// Canonical redirect for SEO/indexing consistency (https + canonical host).
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV !== "production") return next();
+
+  const canonical = resolveCanonicalBaseUrl();
+  const canonicalHost = canonical.host.toLowerCase();
+  const canonicalProto = canonical.protocol.replace(":", "").toLowerCase();
+
+  const rawHost = String(req.headers["x-forwarded-host"] || req.headers.host || "")
+    .split(",")[0]
+    .trim();
+  const reqHost = rawHost.toLowerCase();
+
+  const rawProto = String(
+    req.headers["x-forwarded-proto"] || (req as any).protocol || "",
+  )
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+  const reqProto = rawProto || (req.secure ? "https" : "http");
+
+  // Only enforce host redirects when we're on the mealscout.us family (avoid breaking preview domains).
+  const shouldEnforceHost =
+    canonicalHost.endsWith("mealscout.us") && reqHost.endsWith("mealscout.us");
+  const needsHostRedirect =
+    shouldEnforceHost && Boolean(reqHost) && reqHost !== canonicalHost;
+  const needsProtoRedirect = Boolean(reqProto) && reqProto !== canonicalProto;
+
+  if (needsHostRedirect || needsProtoRedirect) {
+    const dest = `${canonicalProto}://${canonical.host}${req.originalUrl}`;
+    res.setHeader("Cache-Control", "public, max-age=300");
+    return res.redirect(308, dest);
+  }
+
+  return next();
+});
+
 // Minimal cookie parser (avoids adding a dependency). Several auth + affiliate flows rely on `req.cookies`.
 app.use(requestIdMiddleware());
 app.use(apiMetricsMiddleware());
@@ -718,7 +772,7 @@ app.use((req, res, next) => {
   </p>
 
   <p style="text-align: center; margin-top: 30px;">
-    <a href="https://mealscout.us" style="color: #2563eb; text-decoration: none;">← Back to MealScout</a>
+    <a href="${canonicalBaseUrl}" style="color: #2563eb; text-decoration: none;">← Back to MealScout</a>
   </p>
 </body>
 </html>
@@ -754,7 +808,7 @@ app.use((req, res, next) => {
               <meta charset="UTF-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
               <title>Video Not Found | MealScout</title>
-              <link rel="canonical" href="https://mealscout.us/video/${storyId}">
+              <link rel="canonical" href="${canonicalBaseUrl}/video/${storyId}">
             </head>
             <body>
               <h1>Video Not Found</h1>
@@ -780,7 +834,7 @@ app.use((req, res, next) => {
       const description =
         story.description ||
         `Watch ${title} - a local food recommendation on MealScout`;
-      const canonical = `https://mealscout.us/video/${storyId}`;
+      const canonical = `${canonicalBaseUrl}/video/${storyId}`;
 
       const schema = {
         "@context": "https://schema.org",
@@ -984,7 +1038,7 @@ app.use((req, res, next) => {
   </p>
 
   <p style="text-align: center; margin-top: 30px;">
-    <a href="https://mealscout.us" style="color: #dc2626; text-decoration: none;">← Back to MealScout</a>
+    <a href="${canonicalBaseUrl}" style="color: #dc2626; text-decoration: none;">← Back to MealScout</a>
   </p>
 </body>
 </html>

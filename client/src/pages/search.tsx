@@ -550,14 +550,15 @@ export default function SearchPage() {
     }),
     [searchQuery, searchCanonicalUrl, searchDescription, filteredDeals],
   );
-  const { data: cityIndexData } = useQuery<DiscoveryCity[]>({
-    queryKey: ["/api/cities", "search-discovery"],
+  type TrendingSearchRow = { query: string; count: number };
+  const { data: trendingSearches = [] } = useQuery<TrendingSearchRow[]>({
+    queryKey: ["/api/search/trending", "search-discovery"],
     queryFn: async () => {
-      const res = await fetch("/api/cities");
-      if (!res.ok) throw new Error("Failed to fetch city discovery links");
+      const res = await fetch("/api/search/trending?limit=8");
+      if (!res.ok) throw new Error("Failed to fetch trending searches");
       return res.json();
     },
-    staleTime: 60_000,
+    staleTime: 30_000,
   });
   const searchExploreLinks = [
     {
@@ -581,25 +582,39 @@ export default function SearchPage() {
       description: "Get quick answers about accounts, deals, and location-based results.",
     },
   ];
-  const cityDiscoveryLinks = (Array.isArray(cityIndexData) ? cityIndexData : [])
-    .slice(0, 6)
-    .flatMap((city) => {
-      const cityLabel = `${city.name}${city.state ? `, ${city.state}` : ""}`;
-      const cityRoutes = [
-        {
-          href: `/food-trucks/${city.slug}`,
-          title: `Food Trucks in ${cityLabel}`,
-          description: "Live city page with active local trucks and nearby food deals.",
-        },
-      ];
-      const cuisineRoutes = (city.cuisines || []).slice(0, 1).map((cuisine) => ({
-        href: `/food-trucks/${city.slug}/${cuisine.slug}`,
-        title: `${titleCaseSlug(cuisine.slug)} in ${cityLabel}`,
-        description: "City + cuisine route for high-intent local discovery.",
-      }));
-      return [...cityRoutes, ...cuisineRoutes];
-    })
-    .slice(0, 8);
+  const fallbackTrending = [
+    "tacos",
+    "bbq",
+    "wings",
+    "seafood",
+    "breakfast",
+    "food trucks",
+    "pizza",
+    "coffee",
+  ];
+  const trendingLinks = (Array.isArray(trendingSearches) && trendingSearches.length > 0
+    ? trendingSearches.map((row) => row?.query).filter(Boolean)
+    : fallbackTrending
+  )
+    .slice(0, 8)
+    .map((query) => ({
+      href: `/search?q=${encodeURIComponent(query)}`,
+      title: query,
+      description: "See matching restaurants, trucks, deals, parking, and events.",
+    }));
+
+  async function trackSearch(query: string, source: string) {
+    try {
+      await fetch("/api/search/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, source }),
+        keepalive: true,
+      });
+    } catch {
+      // no-op
+    }
+  }
 
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
@@ -710,6 +725,7 @@ export default function SearchPage() {
           onChange={setSearchQuery}
           onSearch={(query) => {
             setSearchQuery(query);
+            void trackSearch(query, "search_submit");
             // Update URL with search query
             const newUrl = `/search?q=${encodeURIComponent(query)}`;
             setLocation(newUrl);
@@ -1129,13 +1145,13 @@ export default function SearchPage() {
               </Link>
             ))}
           </div>
-          {cityDiscoveryLinks.length > 0 && (
+          {trendingLinks.length > 0 && (
             <>
               <h3 className="mt-5 text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Popular City Routes
+                Trending Searches
               </h3>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {cityDiscoveryLinks.map((link) => (
+                {trendingLinks.map((link) => (
                   <Link key={link.href} href={link.href}>
                     <Card className="h-full border-[color:var(--border-subtle)] bg-[var(--bg-surface)] shadow-clean transition-shadow hover:shadow-clean-lg">
                       <CardContent className="p-4">

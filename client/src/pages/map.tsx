@@ -1778,14 +1778,15 @@ export default function MapPage() {
     }),
     [visibleDeals],
   );
-  const { data: cityIndexData } = useQuery<DiscoveryCity[]>({
-    queryKey: ["/api/cities", "map-discovery"],
+  type TrendingSearchRow = { query: string; count: number };
+  const { data: trendingSearches = [] } = useQuery<TrendingSearchRow[]>({
+    queryKey: ["/api/search/trending", "map-discovery"],
     queryFn: async () => {
-      const res = await fetch("/api/cities");
-      if (!res.ok) throw new Error("Failed to fetch city discovery links");
+      const res = await fetch("/api/search/trending?limit=8");
+      if (!res.ok) throw new Error("Failed to fetch trending searches");
       return res.json();
     },
-    staleTime: 60_000,
+    staleTime: 30_000,
   });
   const mapExploreLinks = [
     {
@@ -1809,25 +1810,26 @@ export default function MapPage() {
       description: "Learn how map pins, live trucks, and deal availability work.",
     },
   ];
-  const cityDiscoveryLinks = (Array.isArray(cityIndexData) ? cityIndexData : [])
-    .slice(0, 6)
-    .flatMap((city) => {
-      const cityLabel = `${city.name}${city.state ? `, ${city.state}` : ""}`;
-      const cityRoutes = [
-        {
-          href: `/food-trucks/${city.slug}`,
-          title: `Food Trucks in ${cityLabel}`,
-          description: "City route with active trucks, deals, and event context.",
-        },
-      ];
-      const cuisineRoutes = (city.cuisines || []).slice(0, 1).map((cuisine) => ({
-        href: `/food-trucks/${city.slug}/${cuisine.slug}`,
-        title: `${titleCaseSlug(cuisine.slug)} in ${cityLabel}`,
-        description: "City + cuisine route for targeted local map searches.",
-      }));
-      return [...cityRoutes, ...cuisineRoutes];
-    })
-    .slice(0, 8);
+  const fallbackTrending = [
+    "food trucks",
+    "tacos",
+    "bbq",
+    "breakfast",
+    "seafood",
+    "wings",
+    "pizza",
+    "coffee",
+  ];
+  const trendingLinks = (Array.isArray(trendingSearches) && trendingSearches.length > 0
+    ? trendingSearches.map((row) => row?.query).filter(Boolean)
+    : fallbackTrending
+  )
+    .slice(0, 8)
+    .map((query) => ({
+      href: `/search?q=${encodeURIComponent(query)}`,
+      title: query,
+      description: "Jump into search results across deals, trucks, parking, and events.",
+    }));
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
@@ -2489,13 +2491,13 @@ export default function MapPage() {
               </Link>
             ))}
           </div>
-          {cityDiscoveryLinks.length > 0 && (
+          {trendingLinks.length > 0 && (
             <>
               <h3 className="mt-5 text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Popular City Routes
+                Trending Searches
               </h3>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {cityDiscoveryLinks.map((link) => (
+                {trendingLinks.map((link) => (
                   <Link key={link.href} href={link.href}>
                     <Card className="h-full border-[color:var(--border-subtle)] bg-[var(--bg-surface)] shadow-clean transition-shadow hover:shadow-clean-lg">
                       <CardContent className="p-4">

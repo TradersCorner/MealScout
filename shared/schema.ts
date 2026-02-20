@@ -4457,6 +4457,26 @@ export const socialPostQueue = pgTable(
 export type SocialPostQueueItem = typeof socialPostQueue.$inferSelect;
 export type InsertSocialPostQueueItem = typeof socialPostQueue.$inferInsert;
 
+export const searchQueryEvents = pgTable(
+  "search_query_events",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    query: text("query").notNull(),
+    source: varchar("source").notNull().default("unknown"),
+    userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_search_query_events_created_at").on(table.createdAt),
+    index("idx_search_query_events_query_created_at").on(table.query, table.createdAt),
+  ],
+);
+
+export type SearchQueryEvent = typeof searchQueryEvents.$inferSelect;
+export type InsertSearchQueryEvent = typeof searchQueryEvents.$inferInsert;
+
 // LISA Phase 4A: Claim Persistence Table
 // Purpose: Write-only fact recording layer for deterministic resolution
 // NO scoring, NO automation, NO user-facing effects yet

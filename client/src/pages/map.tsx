@@ -33,6 +33,21 @@ import { sendGeoPing, trackGeoAdEvent, trackGeoAdImpression } from "@/utils/geoA
 import { useAuth } from "@/hooks/useAuth";
 import { trackUxEvent } from "@/utils/uxTelemetry";
 
+type DiscoveryCity = {
+  id: string;
+  name: string;
+  slug: string;
+  state?: string | null;
+  cuisines: Array<{ slug: string; count: number }>;
+};
+
+const titleCaseSlug = (value: string) =>
+  value
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -1744,6 +1759,15 @@ export default function MapPage() {
     }),
     [visibleDeals],
   );
+  const { data: cityIndexData } = useQuery<DiscoveryCity[]>({
+    queryKey: ["/api/cities", "map-discovery"],
+    queryFn: async () => {
+      const res = await fetch("/api/cities");
+      if (!res.ok) throw new Error("Failed to fetch city discovery links");
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
   const mapExploreLinks = [
     {
       href: "/search",
@@ -1766,6 +1790,25 @@ export default function MapPage() {
       description: "Learn how map pins, live trucks, and deal availability work.",
     },
   ];
+  const cityDiscoveryLinks = (Array.isArray(cityIndexData) ? cityIndexData : [])
+    .slice(0, 6)
+    .flatMap((city) => {
+      const cityLabel = `${city.name}${city.state ? `, ${city.state}` : ""}`;
+      const cityRoutes = [
+        {
+          href: `/food-trucks/${city.slug}`,
+          title: `Food Trucks in ${cityLabel}`,
+          description: "City route with active trucks, deals, and event context.",
+        },
+      ];
+      const cuisineRoutes = (city.cuisines || []).slice(0, 1).map((cuisine) => ({
+        href: `/food-trucks/${city.slug}/${cuisine.slug}`,
+        title: `${titleCaseSlug(cuisine.slug)} in ${cityLabel}`,
+        description: "City + cuisine route for targeted local map searches.",
+      }));
+      return [...cityRoutes, ...cuisineRoutes];
+    })
+    .slice(0, 8);
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
@@ -2427,6 +2470,25 @@ export default function MapPage() {
               </Link>
             ))}
           </div>
+          {cityDiscoveryLinks.length > 0 && (
+            <>
+              <h3 className="mt-5 text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Popular City Routes
+              </h3>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {cityDiscoveryLinks.map((link) => (
+                  <Link key={link.href} href={link.href}>
+                    <Card className="h-full border-[color:var(--border-subtle)] bg-[var(--bg-surface)] shadow-clean transition-shadow hover:shadow-clean-lg">
+                      <CardContent className="p-4">
+                        <div className="font-medium text-foreground">{link.title}</div>
+                        <p className="mt-1 text-xs text-muted-foreground">{link.description}</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </section>
 

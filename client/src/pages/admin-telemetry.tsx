@@ -37,7 +37,17 @@ export default function AdminTelemetry() {
     }
   });
 
-  if (loadingVelocity || loadingFillRates || loadingCoverage) {
+  // 4. UX Recovery Telemetry Query
+  const { data: uxRecovery, isLoading: loadingUxRecovery } = useQuery({
+    queryKey: ['/api/admin/telemetry/ux-recovery'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/telemetry/ux-recovery?days=7');
+      if (!res.ok) throw new Error('Failed to fetch UX recovery telemetry');
+      return res.json();
+    }
+  });
+
+  if (loadingVelocity || loadingFillRates || loadingCoverage || loadingUxRecovery) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -153,6 +163,69 @@ export default function AdminTelemetry() {
               <Tooltip />
               <Bar yAxisId="left" dataKey="sent" name="Sent Emails" fill="#8884d8" radius={[4, 4, 0, 0]} />
               <Line yAxisId="right" type="monotone" dataKey="coverage" name="Coverage %" stroke="#82ca9d" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">UX Recovery Events (7d)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{uxRecovery?.totals?.totalEvents || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              Total clicks on recovery paths
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Unique Users (7d)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{uxRecovery?.totals?.totalUniqueUsers || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              Users interacting with recovery flows
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Top Recovery Action</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-base font-semibold truncate">
+              {uxRecovery?.topEvents?.[0]?.eventName || "N/A"}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {uxRecovery?.topEvents?.[0]?.count || 0} events
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>UX Recovery Actions (Last 7 Days)</CardTitle>
+          <CardDescription>
+            What users click when they hit empty states or fallback prompts
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="h-[320px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={uxRecovery?.topEvents || []} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+              <XAxis type="number" fontSize={12} />
+              <YAxis
+                type="category"
+                dataKey="eventName"
+                width={220}
+                fontSize={12}
+              />
+              <Tooltip />
+              <Bar dataKey="count" name="Events" fill="#2563eb" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>

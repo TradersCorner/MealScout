@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "./db";
 import { telemetryEvents, events, eventInterests, hosts } from "@shared/schema";
-import { eq, and, gte, sql, desc } from "drizzle-orm";
+import { eq, and, gte, sql, desc, inArray } from "drizzle-orm";
 import { isAdmin } from "./unifiedAuth";
 
 const router = Router();
@@ -12,6 +12,25 @@ const getRange = (days: number) => {
   date.setDate(date.getDate() - days);
   return date;
 };
+
+const UX_RECOVERY_EVENT_NAMES = [
+  "search_did_you_mean_clicked",
+  "search_location_request_primary",
+  "search_location_request_quick",
+  "search_location_request_empty",
+  "search_location_request_sticky",
+  "search_open_map_quick",
+  "search_open_map_empty",
+  "search_open_map_sticky",
+  "search_featured_empty",
+  "home_location_request_quick",
+  "home_location_request_sticky",
+  "home_open_map_quick",
+  "home_open_map_sticky",
+  "home_open_featured_quick",
+  "map_cluster_preview_opened",
+  "map_cluster_zoom_in_clicked",
+] as const;
 
 /**
  * GET /api/admin/telemetry/velocity
@@ -195,6 +214,70 @@ router.get("/digest-coverage", isAdmin, async (req, res) => {
   } catch (error) {
     console.error("Error fetching digest coverage:", error);
     res.status(500).json({ error: "Failed to fetch digest coverage" });
+  }
+});
+
+/**
+ * GET /api/admin/telemetry/ux-recovery
+ * Aggregated UX recovery funnel events for recent windows
+ */
+router.get("/ux-recovery", isAdmin, async (req, res) => {
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days as string) || 7, 1), 90);
+    const startDate = getRange(days);
+
+    const rows = await db
+      .select({
+        eventName: telemetryEvents.eventName,
+        count: sql<number>`count(*)`,
+        uniqueUsers: sql<number>`count(distinct user_id)`,
+      })
+      .from(telemetryEvents)
+      .where(
+        and(
+          gte(telemetryEvents.createdAt, startDate),
+          inArray(telemetryEvents.eventName, [...UX_RECOVERY_EVENT_NAMES]),
+        ),
+      )
+      .groupBy(telemetryEvents.eventName)
+      .orderBy(desc(sql`count(*)`));
+
+    const byEventName = Object.fromEntries(
+      rows.map((row: { eventName: string; count: number; uniqueUsers: number }) => [
+        row.eventName,
+        {
+          count: Number(row.count || 0),
+          uniqueUsers: Number(row.uniqueUsers || 0),
+        },
+      ]),
+    );
+
+    const events = UX_RECOVERY_EVENT_NAMES.map((name) => ({
+      eventName: name,
+      count: byEventName[name]?.count || 0,
+      uniqueUsers: byEventName[name]?.uniqueUsers || 0,
+    }));
+
+    const totals = events.reduce(
+      (acc, item) => {
+        acc.totalEvents += item.count;
+        acc.totalUniqueUsers += item.uniqueUsers;
+        return acc;
+      },
+      { totalEvents: 0, totalUniqueUsers: 0 },
+    );
+
+    res.json({
+      days,
+      totals,
+      events,
+      topEvents: [...events]
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8),
+    });
+  } catch (error) {
+    console.error("Error fetching ux recovery telemetry:", error);
+    res.status(500).json({ error: "Failed to fetch ux recovery telemetry" });
   }
 });
 

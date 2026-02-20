@@ -295,6 +295,7 @@ export default function CustomerSignup() {
         canonicalUrl="https://mealscout.us/customer-signup"
         noIndex={true}
       />
+      <h1 className="sr-only">Create a MealScout account</h1>
       <BackHeader
         title="Create Account"
         fallbackHref="/"

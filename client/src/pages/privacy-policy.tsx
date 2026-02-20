@@ -12,6 +12,7 @@ export default function PrivacyPolicy() {
         keywords="privacy policy, data protection, privacy rights, data security, personal information"
         canonicalUrl="https://mealscout.us/privacy-policy"
       />
+      <h1 className="sr-only">MealScout Privacy Policy</h1>
       <BackHeader
         title="Privacy Policy"
         fallbackHref="/"

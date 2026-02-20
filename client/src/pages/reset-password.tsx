@@ -208,6 +208,7 @@ export default function ResetPassword() {
         canonicalUrl="https://mealscout.us/reset-password"
         noIndex={true}
       />
+      <h1 className="sr-only">Reset your MealScout password</h1>
       <BackHeader
         title="Reset Password"
         fallbackHref="/forgot-password"

@@ -12,6 +12,7 @@ export default function TermsOfService() {
         keywords="terms of service, user agreement, terms and conditions, legal terms, platform rules"
         canonicalUrl="https://mealscout.us/terms-of-service"
       />
+      <h1 className="sr-only">MealScout Terms of Service</h1>
       <BackHeader
         title="Terms of Service"
         fallbackHref="/"

@@ -112,6 +112,7 @@ export default function ForgotPassword() {
         canonicalUrl="https://mealscout.us/forgot-password"
         noIndex={true}
       />
+      <h1 className="sr-only">Forgot your MealScout password</h1>
       <BackHeader
         title="Reset Password"
         fallbackHref="/login"

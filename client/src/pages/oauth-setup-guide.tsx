@@ -69,6 +69,7 @@ export default function OAuthSetupGuide() {
         description="Configuration guide for Google and Facebook OAuth authentication"
         noIndex={true}
       />
+      <h1 className="sr-only">MealScout OAuth Setup Guide</h1>
 
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-[-10rem] right-[-8rem] h-[26rem] w-[26rem] rounded-full bg-[color:var(--action-primary)]/15 blur-3xl" />

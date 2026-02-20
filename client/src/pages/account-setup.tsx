@@ -216,6 +216,7 @@ export default function AccountSetup() {
           description="This account setup link is invalid or has expired."
           noIndex={true}
         />
+        <h1 className="sr-only">Invalid MealScout setup link</h1>
         <BackHeader
           title="Account Setup"
           fallbackHref="/login"
@@ -253,6 +254,7 @@ export default function AccountSetup() {
           description="Your MealScout account is ready!"
           noIndex={true}
         />
+        <h1 className="sr-only">MealScout setup complete</h1>
         <div className="flex items-center justify-center min-h-screen p-4">
           <Card className="w-full max-w-md border-[color:var(--border-subtle)] bg-[var(--bg-card)]">
             <CardHeader>
@@ -280,6 +282,7 @@ export default function AccountSetup() {
         description="Set up your MealScout account password and profile."
         noIndex={true}
       />
+      <h1 className="sr-only">Complete your MealScout account</h1>
       <BackHeader
         title="Complete Your Account"
         fallbackHref="/login"

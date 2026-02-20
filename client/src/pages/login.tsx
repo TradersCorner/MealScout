@@ -131,6 +131,7 @@ export default function Login() {
         canonicalUrl="https://mealscout.us/login"
         noIndex={true}
       />
+      <h1 className="sr-only">Login to MealScout</h1>
       <BackHeader
         title="Log In"
         fallbackHref="/"

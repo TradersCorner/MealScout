@@ -126,6 +126,7 @@ export default function OrdersPage() {
         canonicalUrl="https://mealscout.us/orders"
         noIndex={true}
       />
+      <h1 className="sr-only">MealScout deal history</h1>
       <BackHeader
         title="Deal History"
         fallbackHref="/"

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
 import {
   MapContainer,
   TileLayer,
@@ -1743,6 +1744,28 @@ export default function MapPage() {
     }),
     [visibleDeals],
   );
+  const mapExploreLinks = [
+    {
+      href: "/search",
+      title: "Search Food Deals",
+      description: "Search by cuisine, restaurant, and deal type across MealScout.",
+    },
+    {
+      href: "/deals/featured",
+      title: "Featured Local Deals",
+      description: "See top local deals curated from restaurants and food trucks.",
+    },
+    {
+      href: "/events/public",
+      title: "Food Truck Events",
+      description: "Check upcoming public events with trucks and pop-up vendors.",
+    },
+    {
+      href: "/faq",
+      title: "Map & Deal FAQ",
+      description: "Learn how map pins, live trucks, and deal availability work.",
+    },
+  ];
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
@@ -2385,6 +2408,27 @@ export default function MapPage() {
           </div>
         </div>
       )}
+
+      <section className="px-6 pb-4">
+        <div className="mx-auto rounded-2xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-5 shadow-clean">
+          <h2 className="text-base font-semibold text-foreground">Explore MealScout Pages</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Continue browsing local food trucks, restaurants, and active deals.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {mapExploreLinks.map((link) => (
+              <Link key={link.href} href={link.href}>
+                <Card className="h-full border-[color:var(--border-subtle)] bg-[var(--bg-surface)] shadow-clean transition-shadow hover:shadow-clean-lg">
+                  <CardContent className="p-4">
+                    <div className="font-medium text-foreground">{link.title}</div>
+                    <p className="mt-1 text-xs text-muted-foreground">{link.description}</p>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <Navigation />
     </div>

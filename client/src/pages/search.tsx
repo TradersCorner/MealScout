@@ -535,6 +535,28 @@ export default function SearchPage() {
     }),
     [searchQuery, searchCanonicalUrl, searchDescription, filteredDeals],
   );
+  const searchExploreLinks = [
+    {
+      href: "/map",
+      title: "Live Food Truck Map",
+      description: "Open the interactive map to see trucks, events, and nearby deals.",
+    },
+    {
+      href: "/deals/featured",
+      title: "Featured Food Deals",
+      description: "Browse hand-picked local restaurant and food truck offers.",
+    },
+    {
+      href: "/how-it-works",
+      title: "How MealScout Works",
+      description: "Learn how to discover, save, and redeem local food deals.",
+    },
+    {
+      href: "/faq",
+      title: "MealScout FAQ",
+      description: "Get quick answers about accounts, deals, and location-based results.",
+    },
+  ];
 
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
@@ -1044,6 +1066,27 @@ export default function SearchPage() {
             </Link>
           </div>
         )}
+
+        <section className="mt-10 rounded-2xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-5 shadow-clean">
+          <h2 className="text-base font-semibold text-foreground">
+            Explore More Food Deals Nearby
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Keep browsing popular MealScout pages for restaurants, food trucks, and local deals.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {searchExploreLinks.map((link) => (
+              <Link key={link.href} href={link.href}>
+                <Card className="h-full border-[color:var(--border-subtle)] bg-[var(--bg-surface)] shadow-clean transition-shadow hover:shadow-clean-lg">
+                  <CardContent className="p-4">
+                    <div className="font-medium text-foreground">{link.title}</div>
+                    <p className="mt-1 text-xs text-muted-foreground">{link.description}</p>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </section>
       </div>
 
       {!userLocation && !isLocating && (

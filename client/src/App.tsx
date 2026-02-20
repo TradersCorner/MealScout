@@ -255,6 +255,10 @@ function Router() {
             <Route path="/events/public" component={EventsPage} />
             <Route path="/dashboard" component={DashboardRouter} />
             <Route path="/food-trucks/:citySlug" component={CityLanding} />
+            <Route
+              path="/food-trucks/:citySlug/:cuisineSlug"
+              component={CityLanding}
+            />
             <Route path="/truck-landing" component={TruckLanding} />
             <Route path="/sitemap" component={Sitemap} />
             <Route path="/status" component={StatusPage} />
@@ -362,6 +366,11 @@ function Router() {
             <Route path="/event-signup" component={EventSignup} />
             <Route path="/events" component={EventsRouter} />
             <Route path="/events/public" component={EventsPage} />
+            <Route path="/food-trucks/:citySlug" component={CityLanding} />
+            <Route
+              path="/food-trucks/:citySlug/:cuisineSlug"
+              component={CityLanding}
+            />
             <Route path="/sitemap" component={Sitemap} />
             <Route path="/truck-landing" component={TruckLanding} />
             <Route path="/status" component={StatusPage} />

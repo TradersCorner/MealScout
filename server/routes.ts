@@ -7568,6 +7568,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .select({
           id: restaurants.id,
           name: restaurants.name,
+          city: restaurants.city,
+          cuisineType: restaurants.cuisineType,
+          isFoodTruck: restaurants.isFoodTruck,
           updatedAt: restaurants.updatedAt,
         })
         .from(restaurants)
@@ -7615,6 +7618,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastmod: s.updatedAt,
         })),
       ];
+
+      const citySlugByName = new Map<string, string>(
+        cityRows.map((c: any) => [String(c.name || "").toLowerCase(), c.slug]),
+      );
+      const cuisinePageMap = new Map<string, Date | string | null | undefined>();
+      for (const row of restaurantRows as any[]) {
+        const cityName = String(row.city || "").toLowerCase();
+        const citySlug = citySlugByName.get(cityName);
+        const cuisineSlug = toSlug(row.cuisineType || "");
+        if (!citySlug || !cuisineSlug) continue;
+        const key = `${citySlug}:${cuisineSlug}`;
+        const prev = cuisinePageMap.get(key);
+        if (!prev || new Date(row.updatedAt).getTime() > new Date(prev).getTime()) {
+          cuisinePageMap.set(key, row.updatedAt);
+        }
+      }
+      urls.push(
+        ...Array.from(cuisinePageMap.entries()).map(([key, lastmod]) => {
+          const [citySlug, cuisineSlug] = key.split(":");
+          return {
+            loc: `${baseUrl}/food-trucks/${encodeURIComponent(citySlug)}/${encodeURIComponent(cuisineSlug)}`,
+            lastmod,
+          };
+        }),
+      );
       const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
         .map(
           (entry: any) =>

@@ -1,7 +1,5 @@
 node_modules
 /dist
-server
-scripts
 archive
 .git
 *.log

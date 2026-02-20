@@ -234,7 +234,7 @@ export default function SupplierDetailPage() {
   const onlineMinOrderCents = Number(supplier?.onlinePaymentsMinOrderCents || 0) || 0;
   const onlineMinMet = onlineMinOrderCents <= 0 || estimatedTotalCents >= onlineMinOrderCents;
   const onlineEnabledForBuyer =
-    Boolean(selectedBuyerRestaurantId) && Boolean(supplier?.onlinePaymentsEnabled) && supplierOnlineMethodsEnabled;
+    Boolean(supplier?.onlinePaymentsEnabled) && supplierOnlineMethodsEnabled;
   const onlineSelectionValid =
     paymentPreference !== "online" || (onlineEnabledForBuyer && onlineMinMet);
 

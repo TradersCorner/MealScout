@@ -2031,10 +2031,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         throw authError;
       }
 
-      // Current supplier_orders schema requires a business. Personal buyers can still submit requests.
-      if (!buyerRestaurant && parsed.paymentPreference === "online") {
-        return res.status(400).json({ message: "Online payment requires a business profile." });
-      }
+      // Personal buyers are allowed. Business profile is optional.
 
       const [supplier] = await db
         .select()
@@ -2316,9 +2313,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           throw authError;
         }
 
-        if (!buyerRestaurant && parsedMeta.paymentPreference === "online") {
-          return res.status(400).json({ message: "Online payment requires a business profile." });
-        }
+        // Personal buyers are allowed. Business profile is optional.
 
       const [supplier] = await db
         .select()
@@ -2713,57 +2708,13 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         ? computeOnPlatformPaymentFees(supplierGrossCents)
         : null;
 
-      // Personal buyers (no buyerRestaurantId) can submit requests, but we can't create supplier_orders yet.
-      if (!String((request as any).buyerRestaurantId || "").trim()) {
-        if (isOnline) {
-          return res.status(400).json({ message: "Online payments require a business profile." });
-        }
-
-        await db
-          .update(supplierRequests)
-          .set({
-            status: "accepted",
-            acceptedAt: now,
-            acceptedBy: req.user.id,
-            orderId: null,
-            deliveryStatus: requestedFulfillment === "delivery" ? "accepted" : "pending",
-            updatedAt: now,
-          } as any)
-          .where(eq(supplierRequests.id, requestId));
-
-        // Notify buyer (best-effort).
-        try {
-          const buyerUser = (request as any).buyerUserId
-            ? await storage.getUser(String((request as any).buyerUserId))
-            : null;
-          const to = String((buyerUser as any)?.email || "").trim();
-          if (to) {
-            const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:5000";
-            const ordersUrl = `${baseUrl.replace(/\/+$/, "")}/suppliers`;
-            const subject = "Supplier accepted your request";
-            const html = `
-              <h2>Your supply request was accepted</h2>
-              <p><strong>Supplier:</strong> ${supplier.businessName}</p>
-              <p>Your request was accepted. Coordinate pickup and payment with the supplier.</p>
-              <p style="margin: 18px 0;">
-                <a href=\"${ordersUrl}\" class=\"cta-button\">View suppliers</a>
-              </p>
-            `;
-            await emailService.sendBasicEmail(to, subject, html, undefined, "general");
-          }
-        } catch (notifyError) {
-          console.warn("Buyer accept notify failed:", notifyError);
-        }
-
-        return res.json({ success: true, orderId: null });
-      }
-
       const order = await db.transaction(async (tx: any) => {
         const [createdOrder] = await tx
           .insert(supplierOrders)
           .values({
             supplierId: supplier.id,
-            truckRestaurantId: (request as any).buyerRestaurantId,
+            buyerUserId: String((request as any).buyerUserId || req.user.id),
+            truckRestaurantId: (request as any).buyerRestaurantId ? String((request as any).buyerRestaurantId) : null,
             status: "submitted",
             paymentMethod: isOnline ? "stripe" : "offsite",
             paymentStatus: isOnline ? "unpaid" : "offsite",
@@ -2979,7 +2930,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     },
   );
 
-  // Truck ordering
+  // Buyer ordering (business or individual)
   app.post(
     "/api/supplier-orders",
     isAuthenticated,
@@ -2989,7 +2940,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     try {
       const schema = z.object({
         supplierId: z.string().min(1),
-        truckRestaurantId: z.string().min(1),
+        truckRestaurantId: z.string().optional().nullable(),
         paymentMethod: z.enum(["stripe", "offsite"]).default("offsite"),
         pickupNote: z.string().max(2000).optional().nullable(),
         items: z
@@ -3003,13 +2954,13 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       });
       const parsed = schema.parse(req.body || {});
 
-      // Verify truck ownership + that it's a food truck.
-      const truck = await storage.getRestaurant(parsed.truckRestaurantId);
-      if (!truck || String(truck.ownerId) !== String(req.user.id)) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-      if (!truck.isFoodTruck) {
-        return res.status(403).json({ message: "Only food trucks can order supplies." });
+      const truckRestaurantId = String(parsed.truckRestaurantId || "").trim();
+      if (truckRestaurantId) {
+        // Verify business ownership.
+        const biz = await storage.getRestaurant(truckRestaurantId);
+        if (!biz || String(biz.ownerId) !== String(req.user.id)) {
+          return res.status(403).json({ message: "Not authorized" });
+        }
       }
 
       const [supplier] = await db
@@ -3099,7 +3050,8 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           .insert(supplierOrders)
           .values({
             supplierId: supplier.id,
-            truckRestaurantId: parsed.truckRestaurantId,
+            buyerUserId: String(req.user.id),
+            truckRestaurantId: truckRestaurantId || null,
             status: "submitted",
             paymentMethod: parsed.paymentMethod,
             paymentStatus: parsed.paymentMethod === "offsite" ? "offsite" : "unpaid",
@@ -3221,20 +3173,21 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     }
   });
 
-  // Buyer: list my supplier orders (for a specific business).
+  // Buyer: list my supplier orders (optionally scoped to a specific business).
   app.get("/api/supplier-orders/mine", isAuthenticated, async (req: any, res) => {
     try {
       const buyerRestaurantId = String(req.query?.buyerRestaurantId || "").trim();
-      if (!buyerRestaurantId) return res.status(400).json({ message: "buyerRestaurantId required" });
-      const buyerRestaurant = await resolveBuyerRestaurantOrThrow(req, buyerRestaurantId);
       const limit = parsePageLimit(req.query?.limit, 100, 300);
       const before = parseBeforeTimestamp(req.query?.before);
-      const whereClause = before
-        ? and(
-            eq(supplierOrders.truckRestaurantId, String((buyerRestaurant as any).id)),
-            lt(supplierOrders.createdAt, before),
-          )
-        : eq(supplierOrders.truckRestaurantId, String((buyerRestaurant as any).id));
+
+      let whereClause: any = eq(supplierOrders.buyerUserId, String(req.user.id));
+      if (buyerRestaurantId) {
+        const buyerRestaurant = await resolveBuyerRestaurantOrThrow(req, buyerRestaurantId);
+        whereClause = eq(supplierOrders.truckRestaurantId, String((buyerRestaurant as any).id));
+      }
+      if (before) {
+        whereClause = and(whereClause, lt(supplierOrders.createdAt, before));
+      }
 
       const rows = await db
         .select({ order: supplierOrders, supplier: suppliers })
@@ -3285,9 +3238,14 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         .limit(1);
       if (!order) return res.status(404).json({ message: "Order not found" });
 
-      const buyerRestaurant = await storage.getRestaurant(String((order as any).truckRestaurantId)).catch(
-        () => null,
-      );
+      const buyerUserId = String((order as any).buyerUserId || "").trim();
+      if (buyerUserId && buyerUserId === String(req.user.id)) {
+        return res.json(order);
+      }
+      const buyerRestaurantId = String((order as any).truckRestaurantId || "").trim();
+      const buyerRestaurant = buyerRestaurantId
+        ? await storage.getRestaurant(buyerRestaurantId).catch(() => null)
+        : null;
       if (!buyerRestaurant || String((buyerRestaurant as any).ownerId) !== String(req.user.id)) {
         return res.status(403).json({ message: "Not authorized" });
       }
@@ -3319,11 +3277,19 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         .limit(1);
       if (!order) return res.status(404).json({ message: "Order not found" });
 
-      const buyerRestaurant = await storage.getRestaurant(String((order as any).truckRestaurantId)).catch(
-        () => null,
-      );
-      if (!buyerRestaurant || String((buyerRestaurant as any).ownerId) !== String(req.user.id)) {
-        return res.status(403).json({ message: "Not authorized" });
+      const buyerUserId = String((order as any).buyerUserId || "").trim();
+      if (buyerUserId) {
+        if (buyerUserId !== String(req.user.id)) {
+          return res.status(403).json({ message: "Not authorized" });
+        }
+      } else {
+        const buyerRestaurantId = String((order as any).truckRestaurantId || "").trim();
+        const buyerRestaurant = buyerRestaurantId
+          ? await storage.getRestaurant(buyerRestaurantId).catch(() => null)
+          : null;
+        if (!buyerRestaurant || String((buyerRestaurant as any).ownerId) !== String(req.user.id)) {
+          return res.status(403).json({ message: "Not authorized" });
+        }
       }
 
       if (String((order as any).paymentMethod || "") !== "stripe") {
@@ -3489,7 +3455,8 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         metadata: {
           supplierOrderId: String((order as any).id),
           supplierId: supplierId,
-          buyerRestaurantId: String((order as any).truckRestaurantId),
+          buyerUserId: String((order as any).buyerUserId || ""),
+          buyerRestaurantId: String((order as any).truckRestaurantId || ""),
           paymentType: "supplier_order",
           paymentMethod: paymentMethod,
           buyerDiscountCents: String(discountCents),

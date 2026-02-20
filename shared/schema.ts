@@ -476,8 +476,10 @@ export const supplierOrders = pgTable(
     supplierId: varchar("supplier_id")
       .notNull()
       .references(() => suppliers.id, { onDelete: "cascade" }),
+    buyerUserId: varchar("buyer_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     truckRestaurantId: varchar("truck_restaurant_id")
-      .notNull()
       .references(() => restaurants.id, { onDelete: "restrict" }),
     status: varchar("status").notNull().default("submitted"), // 'submitted' | 'ready' | 'completed' | 'cancelled'
     paymentMethod: varchar("payment_method").notNull().default("offsite"), // 'stripe' | 'offsite'
@@ -503,6 +505,7 @@ export const supplierOrders = pgTable(
   (table) => [
     index("idx_supplier_orders_supplier").on(table.supplierId),
     index("idx_supplier_orders_truck").on(table.truckRestaurantId),
+    index("idx_supplier_orders_buyer_user").on(table.buyerUserId),
     index("idx_supplier_orders_status").on(table.status),
     index("idx_supplier_orders_fulfillment").on(table.requestedFulfillment),
   ],

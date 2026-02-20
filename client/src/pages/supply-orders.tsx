@@ -60,15 +60,16 @@ export default function SupplyOrdersPage() {
   const { data: orders = [], isLoading, isError, refetch } = useQuery<SupplierOrderRow[]>({
     queryKey: ["/api/supplier-orders/mine", selectedBuyerRestaurantId],
     queryFn: async () => {
-      const params = new URLSearchParams({ buyerRestaurantId: selectedBuyerRestaurantId });
-      const res = await fetch(`/api/supplier-orders/mine?${params.toString()}`, {
+      const params = new URLSearchParams();
+      if (selectedBuyerRestaurantId) params.set("buyerRestaurantId", selectedBuyerRestaurantId);
+      const q = params.toString();
+      const res = await fetch(`/api/supplier-orders/mine${q ? `?${q}` : ""}`, {
         credentials: "include",
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.message || "Failed to load orders");
       return data;
     },
-    enabled: Boolean(selectedBuyerRestaurantId),
     staleTime: 10_000,
   });
 
@@ -100,17 +101,18 @@ export default function SupplyOrdersPage() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Your business</CardTitle>
-            <CardDescription>Orders are tied to a specific business profile.</CardDescription>
+            <CardDescription>Business-first, but you can also order as an individual.</CardDescription>
           </CardHeader>
           <CardContent className="p-4 pt-0 space-y-3">
             {myRestaurants.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No business profiles yet.</div>
+              <div className="text-sm text-muted-foreground">Ordering as an individual.</div>
             ) : (
               <select
                 className="w-full border rounded px-2 py-2 text-sm bg-background"
                 value={selectedBuyerRestaurantId}
                 onChange={(e) => setSelectedBuyerRestaurantId(e.target.value)}
               >
+                <option value="">Order as individual</option>
                 {myRestaurants.map((biz) => (
                   <option key={biz.id} value={biz.id}>
                     {biz.name}
@@ -118,7 +120,7 @@ export default function SupplyOrdersPage() {
                 ))}
               </select>
             )}
-            <Button variant="outline" className="w-full sm:w-auto" onClick={() => refetch()} disabled={!selectedBuyerRestaurantId}>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => refetch()}>
               Refresh
             </Button>
             {sorted.length > 0 ? (

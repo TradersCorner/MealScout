@@ -3,7 +3,7 @@ services:
     name: mealscout
     runtime: node
     plan: starter
-    buildCommand: npm ci && npm run build:platform
+    buildCommand: npm ci --include=dev && npm run build:platform
     startCommand: npm run start
     autoDeploy: true
     envVars:

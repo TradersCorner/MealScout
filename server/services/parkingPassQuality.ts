@@ -183,6 +183,7 @@ export function computeParkingPassQualityFlags(listing: {
 
 export function isParkingPassPublicReady(listing: Parameters<typeof computeParkingPassQualityFlags>[0]) {
   const flags = computeParkingPassQualityFlags(listing);
-  // Strict: public listings must have zero data-quality flags (including platform payments enabled).
-  return flags.length === 0;
+  // Visibility should not hard-fail just because platform payments are temporarily misconfigured.
+  // Booking flows will still fail safely if payments are disabled.
+  return flags.filter((flag) => flag !== "payments_disabled").length === 0;
 }

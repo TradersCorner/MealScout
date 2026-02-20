@@ -396,79 +396,46 @@ export function registerEventRoutes(app: Express) {
         return parts.join(", ");
       };
 
-      // Prefer series-level gating (not occurrences) so hosts remain visible even if they have no
-      // occurrences in the next N days.
-      const seriesRows = await db
+      // Host signup addresses are parking-pass locations by default.
+      // Do not gate this feed by pricing/payments/public-ready checks.
+      const hostRows = await db
         .select({
-          seriesId: eventSeries.id,
-          hostId: eventSeries.hostId,
-          status: eventSeries.status,
-          publishedAt: eventSeries.publishedAt,
-          defaultStartTime: eventSeries.defaultStartTime,
-          defaultEndTime: eventSeries.defaultEndTime,
-          defaultMaxTrucks: eventSeries.defaultMaxTrucks,
-          breakfastPriceCents: eventSeries.defaultBreakfastPriceCents,
-          lunchPriceCents: eventSeries.defaultLunchPriceCents,
-          dinnerPriceCents: eventSeries.defaultDinnerPriceCents,
-          dailyPriceCents: eventSeries.defaultDailyPriceCents,
-          weeklyPriceCents: eventSeries.defaultWeeklyPriceCents,
-          monthlyPriceCents: eventSeries.defaultMonthlyPriceCents,
-          updatedAt: eventSeries.updatedAt,
+          id: hosts.id,
+          userId: hosts.userId,
+          address: hosts.address,
+          city: hosts.city,
+          state: hosts.state,
+          latitude: hosts.latitude,
+          longitude: hosts.longitude,
+          isDisabled: users.isDisabled,
         })
-        .from(eventSeries)
-        .where(
-          sql`${eventSeries.seriesType} = 'parking_pass' and ${eventSeries.status} in ('published', 'draft')`,
-        )
-        .orderBy(asc(eventSeries.updatedAt));
-
-      // De-dupe: keep the most-recent published series per host.
-      const bestByHostId = new Map<string, (typeof seriesRows)[number]>();
-      for (const row of seriesRows) {
-        bestByHostId.set(String(row.hostId), row);
-      }
-
-      const seriesHostIds = Array.from(bestByHostId.keys()).filter(Boolean);
-      // Avoid `storage.getHostsByIds()` here because schema mismatches on older DBs can
-      // cause this endpoint to return zero hosts (and blank the map).
-      const hostRows =
-        seriesHostIds.length > 0
-          ? await db
-              .select({
-                id: hosts.id,
-                address: hosts.address,
-                city: hosts.city,
-                state: hosts.state,
-                latitude: hosts.latitude,
-                longitude: hosts.longitude,
-              })
-              .from(hosts)
-              .where(inArray(hosts.id, seriesHostIds))
-          : [];
-      const hostById = new Map<string, any>(
-        (hostRows || []).map((host: any) => [String(host.id), host]),
-      );
+        .from(hosts)
+        .leftJoin(users, eq(hosts.userId, users.id));
 
       // Opportunistic geocode: map pins can only render with coords, so try to backfill a few per request.
       const MAX_GEOCODE_PER_REQUEST = 20;
       let geocoded = 0;
       const MAX_REVERSE_CHECKS = 20;
       let reverseChecks = 0;
-      const MAX_PUBLISH_PER_REQUEST = 50;
-      let published = 0;
 
       const hostIds = new Set<string>();
-      for (const row of bestByHostId.values()) {
-        const host = hostById.get(String(row.hostId)) ?? null;
-        const address = host?.address ?? null;
-        const city = host?.city ?? null;
-        const state = host?.state ?? null;
+      for (const row of hostRows) {
+        const hostId = String(row.id || "").trim();
+        if (!hostId) continue;
+        if (row.isDisabled === true) continue;
+
+        const address = row.address ?? null;
+        const city = row.city ?? null;
+        const state = row.state ?? null;
+        if (!String(address || "").trim()) continue;
+
         const expectedStateRaw = normalizeUsStateAbbr(String(state || "").trim());
         const expectedState =
           expectedStateRaw && VALID_US_STATE_ABBRS.has(expectedStateRaw)
             ? expectedStateRaw
             : extractStateAbbr(address) || extractStateAbbr(city);
-        let lat = parseCoord(host?.latitude);
-        let lng = parseCoord(host?.longitude);
+        let lat = parseCoord(row.latitude);
+        let lng = parseCoord(row.longitude);
 
         if (
           expectedState &&
@@ -509,7 +476,7 @@ export function registerEventRoutes(app: Express) {
               lat = coords.lat;
               lng = coords.lng;
               try {
-                await storage.updateHostCoordinates(String(row.hostId), coords.lat, coords.lng);
+                await storage.updateHostCoordinates(hostId, coords.lat, coords.lng);
               } catch {
                 // ignore persist failures; still allow map rendering when coords are returned.
               }
@@ -517,55 +484,7 @@ export function registerEventRoutes(app: Express) {
           }
         }
 
-        const flags = computeParkingPassQualityFlags({
-          host: {
-            address,
-            city,
-            state,
-            latitude: lat,
-            longitude: lng,
-            stripeConnectAccountId: null,
-            stripeChargesEnabled: null,
-          },
-          startTime: row.defaultStartTime,
-          endTime: row.defaultEndTime,
-          maxTrucks: row.defaultMaxTrucks,
-          breakfastPriceCents: row.breakfastPriceCents,
-          lunchPriceCents: row.lunchPriceCents,
-          dinnerPriceCents: row.dinnerPriceCents,
-          dailyPriceCents: row.dailyPriceCents,
-          weeklyPriceCents: row.weeklyPriceCents,
-          monthlyPriceCents: row.monthlyPriceCents,
-        });
-        if (flags.length > 0) continue;
-
-        hostIds.add(String(row.hostId));
-
-        // If a draft series is now public-ready (often after coords are geocoded),
-        // promote it to published so subsequent requests don't depend on this endpoint.
-        if (
-          String(row.status || "").toLowerCase() !== "published" &&
-          published < MAX_PUBLISH_PER_REQUEST
-        ) {
-          published += 1;
-          await db
-            .update(eventSeries)
-            .set({
-              status: "published" as any,
-              publishedAt: row.publishedAt ?? new Date(),
-              updatedAt: new Date(),
-            })
-            .where(eq(eventSeries.id, row.seriesId));
-        }
-      }
-
-      // Legacy fallback: some old parking pass events can exist without a series.
-      const legacyUpcoming = await storage.getAllUpcomingEvents();
-      for (const event of legacyUpcoming) {
-        if (event?.eventType !== "parking_pass") continue;
-        if (!isParkingPassPublicReady(event)) continue;
-        const hostId = String((event as any)?.hostId ?? (event as any)?.host?.id ?? "").trim();
-        if (hostId) hostIds.add(hostId);
+        hostIds.add(hostId);
       }
 
       const payload = {

@@ -537,7 +537,7 @@ function HostMarkerLayer({
             <Popup>
               <div className="min-w-52 space-y-1 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg">
                 <div className="font-semibold text-sm">
-                  {cluster.count} paid parking locations
+                  {cluster.count} host parking locations
                 </div>
                 <div className="text-xs text-[color:var(--text-muted)]">
                   Zoom in to see individual spots.
@@ -1562,7 +1562,7 @@ export default function MapPage() {
   const hostPins = visibleHostLocations.length;
   const eventPins = visibleEventLocations.length;
   const activityPins = liveTruckPins + hostPins + eventPins;
-  const totalPaidParkingHosts = effectiveBookableHostIds.size;
+  const totalHostParkingLocations = effectiveBookableHostIds.size;
   const isNightTheme =
     typeof document !== "undefined" &&
     document.documentElement.classList.contains("theme-night");
@@ -1579,7 +1579,7 @@ export default function MapPage() {
     ? "No live trucks or hosts nearby right now"
     : "Set your location to see live trucks and hosts.";
 
-  const handleRefreshPaidParking = async () => {
+  const handleRefreshHostParking = async () => {
     await queryClient.invalidateQueries({ queryKey: ["/api/parking-pass/host-ids"] });
     await queryClient.invalidateQueries({
       queryKey: ["/api/parking-pass/host-status", todayKey],
@@ -1763,7 +1763,7 @@ export default function MapPage() {
           "@type": "Map",
           name: "MealScout Live Food Map",
           description:
-            "Interactive map of food trucks, nearby deals, paid parking spots, and event locations.",
+            "Interactive map of food trucks, nearby deals, host parking spots, and event locations.",
           url: "https://www.mealscout.us/map",
         },
         {
@@ -1921,9 +1921,9 @@ export default function MapPage() {
         )}
         <div className="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <div>
-            Paid parking locations:{" "}
+            Host parking locations:{" "}
             <span className="font-semibold text-foreground">
-              {totalPaidParkingHosts}
+              {totalHostParkingLocations}
             </span>
             {lastHostIdsUpdatedLabel ? (
               <span> | Updated {lastHostIdsUpdatedLabel}</span>
@@ -1940,7 +1940,7 @@ export default function MapPage() {
             variant="outline"
             size="sm"
             className="w-full sm:w-auto"
-            onClick={handleRefreshPaidParking}
+            onClick={handleRefreshHostParking}
             data-testid="button-refresh-paid-parking"
           >
             Refresh
@@ -2227,14 +2227,14 @@ export default function MapPage() {
           )}
 
           {/* Paid parking state overlay */}
-          {!isBookableHostIdsLoading && totalPaidParkingHosts === 0 && (
+          {!isBookableHostIdsLoading && totalHostParkingLocations === 0 && (
             <div className="absolute inset-0 z-10 flex items-center justify-center">
               <div className="pointer-events-auto bg-[var(--bg-card)] rounded-xl px-4 py-3 text-center shadow-clean max-w-xs border border-[color:var(--border-subtle)]">
                 <p className="text-sm font-medium text-foreground mb-1">
-                  No paid parking locations available yet
+                  No host parking locations available yet
                 </p>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Hosts must add pricing before a spot can appear on the map.
+                  Add a host address to show parking availability on the map.
                 </p>
                 <Button
                   size="sm"
@@ -2242,7 +2242,7 @@ export default function MapPage() {
                     window.location.href = "/parking-pass?tab=host";
                   }}
                 >
-                  Add prices (Host)
+                  Add host location
                 </Button>
               </div>
             </div>

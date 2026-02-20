@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BackHeader } from "@/components/back-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Utensils, Truck, CalendarDays } from "lucide-react";
+import { MapPin, Utensils, Truck, CalendarDays, ChevronRight } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
 
 type CityPayload = {
@@ -22,6 +22,14 @@ type CityPayload = {
   cuisines: Array<{ name: string; count: number }>;
   stories: Array<{ id: string; title?: string | null }>;
   updatedAt: string;
+};
+
+type CityIndexItem = {
+  id: string;
+  name: string;
+  slug: string;
+  state?: string | null;
+  cuisines: Array<{ slug: string; count: number }>;
 };
 
 const normalize = (value?: string | null) =>
@@ -54,6 +62,16 @@ export default function CityLanding() {
     queryKey: ["city", citySlug],
     queryFn: () => fetchCity(citySlug),
     enabled: Boolean(citySlug),
+    staleTime: 60_000,
+  });
+
+  const { data: cityIndexData } = useQuery<CityIndexItem[]>({
+    queryKey: ["/api/cities", "city-landing-related"],
+    queryFn: async () => {
+      const res = await fetch("/api/cities");
+      if (!res.ok) throw new Error("Failed to fetch city index");
+      return res.json();
+    },
     staleTime: 60_000,
   });
 
@@ -137,6 +155,9 @@ export default function CityLanding() {
   };
 
   const topCuisineLinks = data.cuisines.slice(0, 8);
+  const relatedCities = (Array.isArray(cityIndexData) ? cityIndexData : [])
+    .filter((city) => city.slug !== data.city.slug)
+    .slice(0, 8);
   const topDealsLink = cuisineLabel
     ? `/search?q=${encodeURIComponent(`${cuisineLabel} ${data.city.name} food truck`)}` 
     : `/search?q=${encodeURIComponent(`${data.city.name} food truck deals`)}`;
@@ -152,6 +173,28 @@ export default function CityLanding() {
       <BackHeader title={cityLabel} fallbackHref="/search" icon={MapPin} />
 
       <main className="px-6 py-6 space-y-6">
+        <nav className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <Link href="/">
+            <span className="hover:text-[color:var(--accent-text)]">Home</span>
+          </Link>
+          <ChevronRight className="h-3 w-3" />
+          <Link href="/truck-landing">
+            <span className="hover:text-[color:var(--accent-text)]">Food Trucks</span>
+          </Link>
+          <ChevronRight className="h-3 w-3" />
+          <Link href={`/food-trucks/${data.city.slug}`}>
+            <span className="hover:text-[color:var(--accent-text)]">
+              {data.city.name}{data.city.state ? `, ${data.city.state}` : ""}
+            </span>
+          </Link>
+          {cuisineLabel && (
+            <>
+              <ChevronRight className="h-3 w-3" />
+              <span className="text-foreground">{cuisineLabel}</span>
+            </>
+          )}
+        </nav>
+
         <section className="rounded-2xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-5 shadow-clean">
           <h1 className="text-2xl font-bold text-foreground">
             {cuisineLabel ? `${cuisineLabel} in ${cityLabel}` : `Food Trucks in ${cityLabel}`}
@@ -245,9 +288,34 @@ export default function CityLanding() {
                 >
                   <div className="font-medium text-foreground">{event.name || "Local event"}</div>
                   <div className="text-xs text-muted-foreground">
-                    {new Date(event.date).toLocaleDateString()} {event.startTime ? `• ${event.startTime}` : ""}
+                    {new Date(event.date).toLocaleDateString()} {event.startTime ? ` - ${event.startTime}` : ""}
                   </div>
                 </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {relatedCities.length > 0 && (
+          <section className="rounded-2xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-5 shadow-clean">
+            <h2 className="text-lg font-semibold text-foreground">More City Routes</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Keep exploring other active city pages with live truck and cuisine intent.
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {relatedCities.map((city) => (
+                <Link key={city.id} href={`/food-trucks/${city.slug}`}>
+                  <Card className="border-[color:var(--border-subtle)] bg-[var(--bg-surface)] shadow-clean hover:shadow-clean-lg transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="font-medium text-foreground">
+                        {city.name}{city.state ? `, ${city.state}` : ""}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {city.cuisines.length} cuisine pages available
+                      </p>
+                    </CardContent>
+                  </Card>
+                </Link>
               ))}
             </div>
           </section>

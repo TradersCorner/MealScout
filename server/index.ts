@@ -1248,7 +1248,18 @@ app.use((req, res, next) => {
       setImmediate(async () => {
         try {
           await storage.ensureAdminExists();
-          await storage.seedDevelopmentData();
+
+          // Never seed fake content unless explicitly enabled for local development.
+          const seedEnabled =
+            process.env.NODE_ENV === "development" &&
+            String(process.env.SEED_DEV_DATA || "").toLowerCase() === "true";
+          if (seedEnabled) {
+            await storage.seedDevelopmentData();
+          } else {
+            console.log(
+              "[seed] Development seed disabled. Set SEED_DEV_DATA=true (and NODE_ENV=development) to enable.",
+            );
+          }
           console.log("✅ Database initialization completed successfully");
         } catch (error) {
           console.warn(

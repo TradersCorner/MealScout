@@ -1,4 +1,4 @@
-import {
+﻿import {
   users,
   restaurants,
   deals,
@@ -1758,7 +1758,7 @@ export class DatabaseStorage implements IStorage {
     try {
       if (authType === "tradescout") {
         const tsData = userData as TradeScoutUserData;
-        console.log("🔍 upsertUserByAuth - TradeScout:", {
+        console.log("ðŸ” upsertUserByAuth - TradeScout:", {
           tradescoutId: tsData.tradescoutId,
           email: tsData.email,
           userType,
@@ -1773,10 +1773,10 @@ export class DatabaseStorage implements IStorage {
           .limit(1);
 
         if (existingUser.length > 0) {
-          console.log("✅ Found existing user by TradeScout ID, updating...");
+          console.log("âœ… Found existing user by TradeScout ID, updating...");
           const current = existingUser[0];
 
-          // Merge app contexts: if user previously used mealscout, now using tradescout → set to 'both'
+          // Merge app contexts: if user previously used mealscout, now using tradescout â†’ set to 'both'
           const newAppContext =
             current.appContext && current.appContext !== appContext
               ? "both"
@@ -1808,10 +1808,10 @@ export class DatabaseStorage implements IStorage {
 
           if (existingUser.length > 0) {
             console.log(
-              "✅ Found existing user by email, linking TradeScout account..."
+              "âœ… Found existing user by email, linking TradeScout account..."
             );
             console.log(
-              "⚠️  Preserving existing userType:",
+              "âš ï¸  Preserving existing userType:",
               existingUser[0].userType
             );
             const current = existingUser[0];
@@ -1839,7 +1839,7 @@ export class DatabaseStorage implements IStorage {
         }
 
         // Step 3: Create new user linked to TradeScout
-        console.log("✅ Creating new TradeScout-linked user...");
+        console.log("âœ… Creating new TradeScout-linked user...");
         const [user] = await db
           .insert(users)
           .values({
@@ -1852,7 +1852,7 @@ export class DatabaseStorage implements IStorage {
             appContext,
           })
           .returning();
-        console.log("✅ TradeScout user created successfully:", {
+        console.log("âœ… TradeScout user created successfully:", {
           userId: user.id,
           email: user.email,
           appContext,
@@ -1861,7 +1861,7 @@ export class DatabaseStorage implements IStorage {
         return user;
       } else if (authType === "google") {
         const googleData = userData as GoogleUserData;
-        console.log("🔍 upsertUserByAuth - Google:", {
+        console.log("ðŸ” upsertUserByAuth - Google:", {
           googleId: googleData.googleId,
           email: googleData.email,
           userType,
@@ -1876,7 +1876,7 @@ export class DatabaseStorage implements IStorage {
           .limit(1);
 
         if (existingUser.length > 0) {
-          console.log("✅ Found existing user by Google ID, updating...");
+          console.log("âœ… Found existing user by Google ID, updating...");
           const current = existingUser[0];
           const newAppContext =
             current.appContext && current.appContext !== appContext
@@ -1911,10 +1911,10 @@ export class DatabaseStorage implements IStorage {
 
           if (existingUser.length > 0) {
             console.log(
-              "✅ Found existing user by email, linking Google account..."
+              "âœ… Found existing user by email, linking Google account..."
             );
             console.log(
-              "⚠️  Preserving existing userType:",
+              "âš ï¸  Preserving existing userType:",
               existingUser[0].userType
             );
             const current = existingUser[0];
@@ -1945,7 +1945,7 @@ export class DatabaseStorage implements IStorage {
         }
 
         // Step 3: Create new user
-        console.log("✅ Creating new Google user...");
+        console.log("âœ… Creating new Google user...");
         const [user] = await db
           .insert(users)
           .values({
@@ -1960,7 +1960,7 @@ export class DatabaseStorage implements IStorage {
             appContext,
           })
           .returning();
-        console.log("✅ Google user created successfully:", {
+        console.log("âœ… Google user created successfully:", {
           userId: user.id,
           email: user.email,
           appContext,
@@ -1969,7 +1969,7 @@ export class DatabaseStorage implements IStorage {
         return user;
       } else if (authType === "facebook") {
         const facebookData = userData as FacebookUserData;
-        console.log("🔍 upsertUserByAuth - Facebook:", {
+        console.log("ðŸ” upsertUserByAuth - Facebook:", {
           facebookId: facebookData.facebookId,
           email: facebookData.email,
           userType,
@@ -1984,7 +1984,7 @@ export class DatabaseStorage implements IStorage {
           .limit(1);
 
         if (existingUser.length > 0) {
-          console.log("✅ Found existing user by Facebook ID, updating...");
+          console.log("âœ… Found existing user by Facebook ID, updating...");
           const current = existingUser[0];
           const newAppContext =
             current.appContext && current.appContext !== appContext
@@ -2019,10 +2019,10 @@ export class DatabaseStorage implements IStorage {
 
           if (existingUser.length > 0) {
             console.log(
-              "✅ Found existing user by email, linking Facebook account..."
+              "âœ… Found existing user by email, linking Facebook account..."
             );
             console.log(
-              "⚠️  Preserving existing userType:",
+              "âš ï¸  Preserving existing userType:",
               existingUser[0].userType
             );
             const current = existingUser[0];
@@ -2054,7 +2054,7 @@ export class DatabaseStorage implements IStorage {
         }
 
         // Step 3: Create new user
-        console.log("✅ Creating new Facebook user...");
+        console.log("âœ… Creating new Facebook user...");
         const [user] = await db
           .insert(users)
           .values({
@@ -2069,7 +2069,7 @@ export class DatabaseStorage implements IStorage {
             appContext,
           })
           .returning();
-        console.log("✅ Facebook user created successfully:", {
+        console.log("âœ… Facebook user created successfully:", {
           userId: user.id,
           email: user.email,
           appContext,
@@ -2078,7 +2078,7 @@ export class DatabaseStorage implements IStorage {
         return user;
       } else {
         const emailData = userData as EmailUserData;
-        console.log("🔍 upsertUserByAuth - Email:", {
+        console.log("ðŸ” upsertUserByAuth - Email:", {
           email: emailData.email,
           userType,
           appContext,
@@ -2097,7 +2097,7 @@ export class DatabaseStorage implements IStorage {
             appContext,
           })
           .returning();
-        console.log("✅ Email user created successfully:", {
+        console.log("âœ… Email user created successfully:", {
           userId: user.id,
           email: user.email,
           appContext,
@@ -2106,7 +2106,7 @@ export class DatabaseStorage implements IStorage {
         return user;
       }
     } catch (error: any) {
-      console.error("❌ upsertUserByAuth error:", {
+      console.error("âŒ upsertUserByAuth error:", {
         authType,
         userType,
         appContext,
@@ -2119,7 +2119,7 @@ export class DatabaseStorage implements IStorage {
       // Handle unique constraint violations (23505)
       if (error.code === "23505") {
         console.log(
-          "🔄 Handling unique constraint violation, retrying with fetch-and-update..."
+          "ðŸ”„ Handling unique constraint violation, retrying with fetch-and-update..."
         );
 
         if (authType === "tradescout") {
@@ -2140,10 +2140,10 @@ export class DatabaseStorage implements IStorage {
 
           if (existingUser.length > 0) {
             console.log(
-              "✅ Found existing user during TradeScout retry, updating..."
+              "âœ… Found existing user during TradeScout retry, updating..."
             );
             console.log(
-              "⚠️  Preserving existing userType:",
+              "âš ï¸  Preserving existing userType:",
               existingUser[0].userType
             );
             const current = existingUser[0];
@@ -2180,9 +2180,9 @@ export class DatabaseStorage implements IStorage {
             .limit(1);
 
           if (existingUser.length > 0) {
-            console.log("✅ Found existing user during retry, updating...");
+            console.log("âœ… Found existing user during retry, updating...");
             console.log(
-              "⚠️  Preserving existing userType:",
+              "âš ï¸  Preserving existing userType:",
               existingUser[0].userType
             );
             const [user] = await db
@@ -2220,9 +2220,9 @@ export class DatabaseStorage implements IStorage {
             .limit(1);
 
           if (existingUser.length > 0) {
-            console.log("✅ Found existing user during retry, updating...");
+            console.log("âœ… Found existing user during retry, updating...");
             console.log(
-              "⚠️  Preserving existing userType:",
+              "âš ï¸  Preserving existing userType:",
               existingUser[0].userType
             );
             const [user] = await db
@@ -3431,7 +3431,7 @@ export class DatabaseStorage implements IStorage {
 
     if (!adminEmail || !adminPassword) {
       console.log(
-        "⚠️  Admin credentials not configured - skipping admin creation"
+        "âš ï¸  Admin credentials not configured - skipping admin creation"
       );
       return;
     }
@@ -3441,7 +3441,7 @@ export class DatabaseStorage implements IStorage {
       const existingAdmin = await this.getUserByEmail(adminEmail);
 
       if (existingAdmin) {
-        console.log("✅ Admin account already exists");
+        console.log("âœ… Admin account already exists");
         // If an admin exists but the configured ADMIN_PASSWORD does not match,
         // update the stored hash to eliminate password drift between env and DB
         if (existingAdmin.passwordHash) {
@@ -3451,21 +3451,21 @@ export class DatabaseStorage implements IStorage {
           );
           if (!matches) {
             console.log(
-              "🔄 Admin password differs from configured ADMIN_PASSWORD – updating hash"
+              "ðŸ”„ Admin password differs from configured ADMIN_PASSWORD â€“ updating hash"
             );
             const newHash = await bcrypt.hash(adminPassword, 12);
             await db
               .update(users)
               .set({ passwordHash: newHash, userType: "super_admin" })
               .where(eq(users.id, existingAdmin.id));
-            console.log("✅ Admin password updated to match environment");
+            console.log("âœ… Admin password updated to match environment");
           } else if (existingAdmin.userType !== "super_admin") {
             // Ensure the admin is super_admin
             await db
               .update(users)
               .set({ userType: "super_admin" })
               .where(eq(users.id, existingAdmin.id));
-            console.log("✅ Admin upgraded to super_admin");
+            console.log("âœ… Admin upgraded to super_admin");
           }
         } else {
           // If no password hash exists, set it now
@@ -3474,7 +3474,7 @@ export class DatabaseStorage implements IStorage {
             .update(users)
             .set({ passwordHash: newHash, userType: "super_admin" })
             .where(eq(users.id, existingAdmin.id));
-          console.log("✅ Admin password initialized from environment");
+          console.log("âœ… Admin password initialized from environment");
         }
 
         // Ensure env-configured admin can log in even if email providers are
@@ -3509,23 +3509,32 @@ export class DatabaseStorage implements IStorage {
         .set({ userType: "super_admin", emailVerified: true })
         .where(eq(users.id, created.id));
 
-      console.log("✅ Super Admin account created successfully");
+      console.log("âœ… Super Admin account created successfully");
     } catch (error) {
-      console.error("❌ Failed to create admin account:", error);
+      console.error("âŒ Failed to create admin account:", error);
     }
   }
 
   // Seed data for development and testing
   async seedDevelopmentData(): Promise<void> {
     try {
+      const seedEnabled =
+        process.env.NODE_ENV === "development" &&
+        String(process.env.SEED_DEV_DATA || "").toLowerCase() === "true";
+      if (!seedEnabled) {
+        console.log(
+          "[seed] Skipping development seed. Set SEED_DEV_DATA=true (and NODE_ENV=development) to enable.",
+        );
+        return;
+      }
       // Check if data already exists
       const existingRestaurants = await db.select().from(restaurants).limit(1);
       if (existingRestaurants.length > 0) {
-        console.log("✅ Seed data already exists");
+        console.log("âœ… Seed data already exists");
         return;
       }
 
-      console.log("🌱 Seeding development data...");
+      console.log("ðŸŒ± Seeding development data...");
 
       // Create sample restaurant owners
       const owner1 = await this.upsertUserByAuth(
@@ -3618,7 +3627,7 @@ export class DatabaseStorage implements IStorage {
 
       // Hammond, LA (Local area)
       const restaurant1 = await this.createRestaurant({
-        name: "Café du Monde Hammond",
+        name: "CafÃ© du Monde Hammond",
         address: "315 W Thomas St, Hammond, LA 70401",
         city: "Hammond",
         state: "LA",
@@ -3814,7 +3823,7 @@ export class DatabaseStorage implements IStorage {
         restaurantId: restaurant1.id,
         title: "Free Beignets with Coffee Purchase",
         description:
-          "Get 3 fresh, hot beignets absolutely free when you purchase any coffee or café au lait. Served with powdered sugar!",
+          "Get 3 fresh, hot beignets absolutely free when you purchase any coffee or cafÃ© au lait. Served with powdered sugar!",
         dealType: "percentage",
         discountValue: "100.00",
         minOrderAmount: "3.50",
@@ -4009,7 +4018,7 @@ export class DatabaseStorage implements IStorage {
         restaurantId: restaurant11.id,
         title: "Free Cuban Coffee with Breakfast",
         description:
-          "Complimentary café cubano with any breakfast order before 11 AM.",
+          "Complimentary cafÃ© cubano with any breakfast order before 11 AM.",
         dealType: "percentage",
         discountValue: "100.00",
         minOrderAmount: "12.00",
@@ -4188,7 +4197,7 @@ export class DatabaseStorage implements IStorage {
         restaurantId: restaurant11.id,
         rating: 4,
         comment:
-          "Authentic Cuban food in Miami! The café cubano is perfect and the breakfast is hearty. Real Cuban flavors.",
+          "Authentic Cuban food in Miami! The cafÃ© cubano is perfect and the breakfast is hearty. Real Cuban flavors.",
       });
 
       await this.createReview({
@@ -4228,8 +4237,8 @@ export class DatabaseStorage implements IStorage {
       await this.startTruckSession(foodTruck2.id, "demo-device-456", owner2.id);
       await this.startTruckSession(foodTruck3.id, "demo-device-789", owner3.id);
 
-      console.log("✅ Development seed data created successfully");
-      console.log("📊 Created:");
+      console.log("âœ… Development seed data created successfully");
+      console.log("ðŸ“Š Created:");
       console.log("   - 6 restaurant owners (password: password123)");
       console.log(
         "   - 1 customer (customer@example.com, password: password123)"
@@ -4242,7 +4251,7 @@ export class DatabaseStorage implements IStorage {
       console.log("   - 15 authentic location-specific reviews");
       console.log("   - 3 active food truck sessions");
     } catch (error) {
-      console.error("❌ Failed to seed development data:", error);
+      console.error("âŒ Failed to seed development data:", error);
     }
   }
 
@@ -6192,7 +6201,7 @@ export class DatabaseStorage implements IStorage {
         confidence: claim.confidence?.toString() || "1.0",
       });
 
-      console.log("✅ LISA claim emitted:", {
+      console.log("âœ… LISA claim emitted:", {
         claimType: claim.claimType,
         app: claim.app,
         subjectType: claim.subjectType,
@@ -6200,7 +6209,7 @@ export class DatabaseStorage implements IStorage {
       });
     } catch (error) {
       // Claim recording failures should NOT block business operations
-      console.error("❌ LISA claim emission failed (non-blocking):", error);
+      console.error("âŒ LISA claim emission failed (non-blocking):", error);
     }
   }
 
@@ -6282,3 +6291,4 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
+

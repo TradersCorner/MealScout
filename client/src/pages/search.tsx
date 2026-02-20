@@ -37,6 +37,7 @@ import {
   Beef,
   ChefHat,
   Crown,
+  ArrowDownToLine,
 } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
 import { trackUxEvent } from "@/utils/uxTelemetry";
@@ -646,6 +647,23 @@ export default function SearchPage() {
               </p>
             </div>
           <div className="flex items-center gap-2">
+            <Link href="/install">
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                data-testid="button-install"
+                onPointerDown={() => {
+                  trackUxEvent("search_install_click", {
+                    surface: "search_header",
+                  });
+                }}
+                aria-label="Install app"
+                title="Install app"
+              >
+                <ArrowDownToLine className="w-4 h-4" />
+              </Button>
+            </Link>
             {!searchQuery && !userLocation && (
               <Button
                 variant="outline"

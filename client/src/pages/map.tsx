@@ -25,6 +25,7 @@ import {
   Navigation as NavigationIcon,
   List,
   X,
+  ArrowDownToLine,
 } from "lucide-react";
 import DealCard from "@/components/deal-card";
 import { SEOHead } from "@/components/seo-head";
@@ -1866,6 +1867,20 @@ export default function MapPage() {
             </div>
           </div>
           <div className="flex space-x-2">
+            <Link href="/install">
+              <Button
+                variant="outline"
+                size="sm"
+                aria-label="Install app"
+                title="Install app"
+                data-testid="button-map-install"
+                onPointerDown={() => {
+                  trackUxEvent("map_install_click", { surface: "map_header" });
+                }}
+              >
+                <ArrowDownToLine className="w-4 h-4" />
+              </Button>
+            </Link>
             <Button
               variant="outline"
               size="sm"

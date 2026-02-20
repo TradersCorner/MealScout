@@ -37,6 +37,7 @@ import {
   Cake,
   Beef,
   Flame,
+  ArrowDownToLine,
 } from "lucide-react";
 import mealScoutLogo from "@assets/meal-scout-icon.png";
 import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
@@ -348,6 +349,17 @@ export default function Home() {
           </div>
 
           <div className="flex items-center space-x-2">
+            <Link href="/install">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)]"
+                title="Install app"
+                aria-label="Install app"
+              >
+                <ArrowDownToLine className="w-5 h-5" />
+              </Button>
+            </Link>
             {!user ? (
               <>
                 <Button

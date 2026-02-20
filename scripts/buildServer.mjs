@@ -1,5 +1,5 @@
-import { build } from "esbuild";
 import { existsSync } from "node:fs";
+import { execSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,11 +16,22 @@ if (!existsSync(serverIndex) || !existsSync(serverVite)) {
   process.exit(0);
 }
 
-await build({
-  entryPoints: [serverIndex, serverVite],
-  platform: "node",
-  packages: "external",
-  bundle: true,
-  format: "esm",
-  outdir: outDir,
-});
+const command = [
+  "npm exec -- esbuild",
+  `"${serverIndex}"`,
+  `"${serverVite}"`,
+  "--platform=node",
+  "--packages=external",
+  "--bundle",
+  "--format=esm",
+  `--outdir=\"${outDir}\"`,
+].join(" ");
+
+try {
+  execSync(command, {
+    cwd: repoRoot,
+    stdio: "inherit",
+  });
+} catch (error) {
+  process.exit(1);
+}

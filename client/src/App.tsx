@@ -9,6 +9,7 @@ import { BetaDisclaimer } from "@/components/beta-disclaimer";
 import Navigation from "@/components/navigation";
 import { apiUrl } from "@/lib/api";
 import { TimeOfDayBackground } from "@/components/TimeOfDayBackground";
+import { PwaInstallBanner } from "@/components/pwa-install-banner";
 
 // Eager load only critical pages (home, login) - everything else lazy loads
 import NotFound from "@/pages/not-found";
@@ -416,6 +417,7 @@ function App() {
         <div className="desktop-full-width app-background app-content min-h-screen md:pt-16 relative z-10">
           <Toaster />
           <BetaDisclaimer />
+          <PwaInstallBanner />
           <Router />
           <Navigation />
           {/* Build canary - shows deployment timestamp */}

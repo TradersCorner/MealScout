@@ -83,6 +83,17 @@ export function serveStatic(app: Express) {
   app.use(
     express.static(distPath, {
       setHeaders: (res, filePath) => {
+        // Service workers and web manifests must be revalidated to allow updates.
+        if (
+          filePath.endsWith(`${path.sep}sw.js`) ||
+          filePath.endsWith(`${path.sep}manifest.json`) ||
+          filePath.endsWith(".webmanifest")
+        ) {
+          res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+          res.setHeader("Pragma", "no-cache");
+          res.setHeader("Expires", "0");
+          return;
+        }
         if (filePath.endsWith(".html")) {
           res.setHeader(
             "Cache-Control",

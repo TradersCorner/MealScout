@@ -54,5 +54,14 @@ if (import.meta.env.PROD) {
   });
 }
 
+// Register a minimal Service Worker for PWA installability and "Add to Home Screen" UX.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // ignore; app should still work without SW
+    });
+  });
+}
+
 createRoot(document.getElementById("root")!).render(<App />);
 

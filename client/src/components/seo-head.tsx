@@ -36,6 +36,13 @@ export function SEOHead({
       }
       meta.setAttribute("content", content);
     };
+    const removeMetaTag = (name: string, isProperty = false) => {
+      const attribute = isProperty ? "property" : "name";
+      const meta = document.querySelector(`meta[${attribute}="${name}"]`);
+      if (meta) {
+        meta.remove();
+      }
+    };
 
     // Set canonical URL
     const setCanonical = (url: string) => {
@@ -79,9 +86,9 @@ export function SEOHead({
 
     // Basic meta tags
     setMetaTag("description", description);
-    if (keywords) {
-      setMetaTag("keywords", keywords);
-    }
+    // The legacy keywords tag is ignored by modern search engines and can
+    // produce misleading SEO audit warnings, so we explicitly remove it.
+    removeMetaTag("keywords");
     
     // Robots meta
     if (noIndex) {

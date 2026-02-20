@@ -1,12 +1,19 @@
 {
   "installCommand": "npm ci",
-  "buildCommand": "node scripts/vercelBuild.mjs",
+  "buildCommand": "npm --prefix client run build",
+  "outputDirectory": "client/dist",
   "redirects": [
     {
       "source": "/(.*)",
       "has": [{ "type": "host", "value": "mealscout.us" }],
       "destination": "https://www.mealscout.us/$1",
       "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }

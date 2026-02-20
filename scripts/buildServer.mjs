@@ -7,7 +7,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
 const serverIndex = path.resolve(repoRoot, "server", "index.ts");
 const serverVite = path.resolve(repoRoot, "server", "vite.ts");
-const outDir = path.resolve(repoRoot, "dist");
+const outDir = path.resolve(repoRoot, "dist", "server");
 
 if (!existsSync(serverIndex) || !existsSync(serverVite)) {
   console.log(
@@ -24,4 +24,3 @@ await build({
   format: "esm",
   outdir: outDir,
 });
-

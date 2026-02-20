@@ -430,7 +430,7 @@ export default function SupplierDetailPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Request settings</CardTitle>
             <CardDescription>
-              Choose fulfillment and payment preference. Business profile is optional (used for online payment and distance).
+              Business-first: pick a restaurant or truck profile if you have one. Individuals can still request supplies.
             </CardDescription>
             <div className="flex flex-wrap gap-2 pt-2">
               <Badge variant="secondary">Pickup</Badge>

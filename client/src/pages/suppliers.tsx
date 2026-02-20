@@ -205,10 +205,12 @@ export default function SuppliersPage() {
   });
 
   useEffect(() => {
+    // Business-first: default to the first business profile when the user is a business buyer.
+    if (!isBuyerBusiness) return;
     if (!selectedBuyerRestaurantId && myRestaurants.length > 0) {
       setSelectedBuyerRestaurantId(myRestaurants[0].id);
     }
-  }, [myRestaurants, selectedBuyerRestaurantId]);
+  }, [isBuyerBusiness, myRestaurants, selectedBuyerRestaurantId]);
 
   const trimmedQ = q.trim();
   const showSearch = trimmedQ.length > 0;
@@ -634,11 +636,13 @@ export default function SuppliersPage() {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <Label>Your business</Label>
-                    <div className="text-xs text-muted-foreground">Used for local ranking</div>
+                    <div className="text-xs text-muted-foreground">
+                      Optional, but recommended for restaurants and trucks
+                    </div>
                   </div>
                   {myRestaurants.length === 0 ? (
                     <div className="text-sm text-muted-foreground">
-                      You don't have a business profile yet.
+                      Ordering as an individual. Add a business profile for better local ranking.
                     </div>
                   ) : (
                     <select
@@ -646,6 +650,7 @@ export default function SuppliersPage() {
                       value={selectedBuyerRestaurantId}
                       onChange={(e) => setSelectedBuyerRestaurantId(e.target.value)}
                     >
+                      <option value="">Order as individual</option>
                       {myRestaurants.map((biz) => (
                         <option key={biz.id} value={biz.id}>
                           {biz.name}
@@ -671,11 +676,13 @@ export default function SuppliersPage() {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <Label>Your business</Label>
-                    <div className="text-xs text-muted-foreground">Used for local ranking</div>
+                    <div className="text-xs text-muted-foreground">
+                      Optional, but recommended for restaurants and trucks
+                    </div>
                   </div>
                   {myRestaurants.length === 0 ? (
                     <div className="text-sm text-muted-foreground">
-                      You don't have a business profile yet.
+                      Ordering as an individual. Add a business profile for better local ranking.
                     </div>
                   ) : (
                     <select
@@ -683,6 +690,7 @@ export default function SuppliersPage() {
                       value={selectedBuyerRestaurantId}
                       onChange={(e) => setSelectedBuyerRestaurantId(e.target.value)}
                     >
+                      <option value="">Order as individual</option>
                       {myRestaurants.map((biz) => (
                         <option key={biz.id} value={biz.id}>
                           {biz.name}

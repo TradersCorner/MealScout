@@ -7678,6 +7678,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public cities index for dynamic sitemap/discovery pages
+  app.get("/api/cities", async (_req, res) => {
+    try {
+      const { cities, restaurants } = await import("@shared/schema");
+      const cityRows = await db
+        .select({
+          id: cities.id,
+          name: cities.name,
+          slug: cities.slug,
+          state: cities.state,
+          createdAt: cities.createdAt,
+        })
+        .from(cities)
+        .orderBy(desc(cities.createdAt));
+
+      const restaurantRows = await db
+        .select({
+          city: restaurants.city,
+          cuisineType: restaurants.cuisineType,
+          updatedAt: restaurants.updatedAt,
+        })
+        .from(restaurants)
+        .where(eq(restaurants.isActive, true));
+
+      const cuisineByCity = new Map<string, Map<string, number>>();
+      for (const row of restaurantRows as any[]) {
+        const cityName = String(row.city || "").trim().toLowerCase();
+        const cuisine = toSlug(row.cuisineType || "");
+        if (!cityName || !cuisine) continue;
+        if (!cuisineByCity.has(cityName)) cuisineByCity.set(cityName, new Map());
+        const cityMap = cuisineByCity.get(cityName)!;
+        cityMap.set(cuisine, (cityMap.get(cuisine) || 0) + 1);
+      }
+
+      const payload = cityRows.map((city: any) => {
+        const cityCuisineMap = cuisineByCity.get(String(city.name || "").toLowerCase()) || new Map();
+        const cuisines = Array.from(cityCuisineMap.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 6)
+          .map(([slug, count]) => ({ slug, count }));
+        return {
+          id: city.id,
+          name: city.name,
+          slug: city.slug,
+          state: city.state,
+          updatedAt: city.createdAt,
+          cuisines,
+        };
+      });
+
+      res.json(payload);
+    } catch (error) {
+      console.error("Error loading cities index:", error);
+      res.status(500).json({ message: "Failed to load cities" });
+    }
+  });
+
   // City landing page API: returns real data for a city slug
   app.get("/api/cities/:slug", async (req, res) => {
     try {

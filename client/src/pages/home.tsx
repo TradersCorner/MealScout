@@ -43,6 +43,7 @@ import { useFoodTruckSocket } from "@/hooks/useFoodTruckSocket";
 import { getReverseGeocodedLocationName } from "@/utils/locationUtils";
 import { sendGeoPing, trackGeoAdEvent, trackGeoAdImpression } from "@/utils/geoAds";
 import { SEOHead } from "@/components/seo-head";
+import { trackUxEvent } from "@/utils/uxTelemetry";
 
 const WelcomeLocationModal = lazy(() => import("@/components/WelcomeLocationModal"));
 
@@ -423,6 +424,11 @@ export default function Home() {
                 onClick={retryLocation}
                 disabled={isLoadingLocation}
                 data-testid="button-home-use-location"
+                onPointerDown={() => {
+                  trackUxEvent("home_location_request_quick", {
+                    surface: "home_quick_actions",
+                  });
+                }}
               >
                 <MapPin className="w-4 h-4 mr-1" />
                 {isLoadingLocation ? "Locating..." : "Use location"}
@@ -433,6 +439,11 @@ export default function Home() {
                   size="sm"
                   className="w-full"
                   data-testid="button-home-open-map"
+                  onPointerDown={() => {
+                    trackUxEvent("home_open_map_quick", {
+                      surface: "home_quick_actions",
+                    });
+                  }}
                 >
                   <Map className="w-4 h-4 mr-1" />
                   Open map
@@ -444,6 +455,11 @@ export default function Home() {
                   size="sm"
                   className="w-full"
                   data-testid="button-home-featured"
+                  onPointerDown={() => {
+                    trackUxEvent("home_open_featured_quick", {
+                      surface: "home_quick_actions",
+                    });
+                  }}
                 >
                   <Sparkles className="w-4 h-4 mr-1" />
                   Featured
@@ -1065,6 +1081,11 @@ export default function Home() {
                 onClick={retryLocation}
                 disabled={isLoadingLocation}
                 data-testid="button-home-sticky-location"
+                onPointerDown={() => {
+                  trackUxEvent("home_location_request_sticky", {
+                    surface: "home_sticky_cta",
+                  });
+                }}
               >
                 {isLoadingLocation ? "Locating..." : "Use location"}
               </Button>
@@ -1074,6 +1095,11 @@ export default function Home() {
                   variant="outline"
                   className="w-full"
                   data-testid="button-home-sticky-map"
+                  onPointerDown={() => {
+                    trackUxEvent("home_open_map_sticky", {
+                      surface: "home_sticky_cta",
+                    });
+                  }}
                 >
                   Open map
                 </Button>

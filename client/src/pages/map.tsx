@@ -30,6 +30,7 @@ import { SEOHead } from "@/components/seo-head";
 import mealScoutIcon from "@assets/meal-scout-icon.png";
 import { sendGeoPing, trackGeoAdEvent, trackGeoAdImpression } from "@/utils/geoAds";
 import { useAuth } from "@/hooks/useAuth";
+import { trackUxEvent } from "@/utils/uxTelemetry";
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -2010,6 +2011,10 @@ export default function MapPage() {
                 isStaffOrAdmin={isStaffOrAdmin}
                 qualityFlagsByHostId={qualityFlagsByHostId}
                 onClusterSelect={(cluster) => {
+                  trackUxEvent("map_cluster_preview_opened", {
+                    clusterSize: cluster.count,
+                    zoomLevel,
+                  });
                   setSelectedDeal(null);
                   setSelectedHostCluster(cluster);
                   setMapCenter({ lat: cluster.lat, lng: cluster.lng });
@@ -2279,6 +2284,9 @@ export default function MapPage() {
                   size="sm"
                   className="w-full"
                   onClick={() => {
+                    trackUxEvent("map_cluster_zoom_in_clicked", {
+                      clusterSize: selectedHostCluster.count,
+                    });
                     setZoomLevel((prev) => Math.min(18, prev + 2));
                   }}
                   data-testid="button-cluster-zoom-in"

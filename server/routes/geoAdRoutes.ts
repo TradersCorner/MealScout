@@ -12,7 +12,7 @@ import {
 } from "drizzle-orm";
 import { db } from "../db";
 import { isAdmin } from "../unifiedAuth";
-import { geoAds, geoAdEvents, geoLocationPings } from "@shared/schema";
+import { geoAds, geoAdEvents, geoLocationPings, telemetryEvents } from "@shared/schema";
 
 const placementSchema = z.enum(["map", "home", "deals"]);
 const statusSchema = z.enum(["draft", "active", "paused", "archived"]);
@@ -67,6 +67,11 @@ const pingSchema = z.object({
   lat: z.coerce.number(),
   lng: z.coerce.number(),
   source: placementSchema.optional(),
+});
+
+const telemetrySchema = z.object({
+  eventName: z.string().min(1).max(120),
+  properties: z.record(z.unknown()).optional(),
 });
 
 const toDecimalString = (value: number, scale = 8) =>
@@ -311,6 +316,36 @@ export function registerGeoAdRoutes(app: Express) {
       }
       throw error;
     }
+
+    res.json({ ok: true });
+  });
+
+  app.post("/api/telemetry/track", async (req: any, res) => {
+    const parsed = telemetrySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid telemetry payload" });
+    }
+
+    const session = req.session as any;
+    const now = Date.now();
+    const eventName = parsed.data.eventName.trim();
+    const throttleKey = `telemetry:${eventName}`;
+    const lastAt = Number(session?.[throttleKey] || 0);
+    if (now - lastAt < 1500) {
+      return res.json({ ok: true, skipped: true });
+    }
+    if (session) {
+      session[throttleKey] = now;
+    }
+
+    await db.insert(telemetryEvents).values({
+      eventName,
+      userId: req.user?.id || null,
+      properties: {
+        ...(parsed.data.properties || {}),
+        path: req.path,
+      },
+    });
 
     res.json({ ok: true });
   });

@@ -39,6 +39,7 @@ import {
   Crown,
 } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
+import { trackUxEvent } from "@/utils/uxTelemetry";
 
 // Category configuration mapping (from category.tsx)
 const categoryConfig = {
@@ -524,10 +525,16 @@ export default function SearchPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={requestUserLocation}
-                disabled={isLocating}
-                data-testid="button-request-location"
-              >
+              onClick={requestUserLocation}
+              disabled={isLocating}
+              data-testid="button-request-location"
+              aria-label="Use my location"
+              onPointerDown={() => {
+                trackUxEvent("search_location_request_primary", {
+                  surface: "search_header",
+                });
+              }}
+            >
                 <MapPin className="w-4 h-4 mr-1" />
                 {isLocating ? "Locating..." : "Use location"}
               </Button>
@@ -558,6 +565,12 @@ export default function SearchPage() {
               size="sm"
               onClick={requestUserLocation}
               data-testid="button-search-quick-location"
+              aria-label="Use my location"
+              onPointerDown={() => {
+                trackUxEvent("search_location_request_quick", {
+                  surface: "search_quick_actions",
+                });
+              }}
             >
               <MapPin className="w-4 h-4 mr-1" />
               Use location
@@ -568,6 +581,11 @@ export default function SearchPage() {
                 size="sm"
                 className="w-full sm:w-auto"
                 data-testid="button-search-quick-map"
+                onPointerDown={() => {
+                  trackUxEvent("search_open_map_quick", {
+                    surface: "search_quick_actions",
+                  });
+                }}
               >
                 <MapPin className="w-4 h-4 mr-1" />
                 Open map
@@ -913,6 +931,10 @@ export default function SearchPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => {
+                    trackUxEvent("search_did_you_mean_clicked", {
+                      fromQuery: searchQuery,
+                      suggestion: didYouMean,
+                    });
                     setSearchQuery(didYouMean);
                     setLocation(`/search?q=${encodeURIComponent(didYouMean)}`);
                   }}
@@ -938,17 +960,40 @@ export default function SearchPage() {
                 onClick={requestUserLocation}
                 className="mt-2 ml-2"
                 data-testid="button-empty-use-location"
+                onPointerDown={() => {
+                  trackUxEvent("search_location_request_empty", {
+                    surface: "search_empty_state",
+                  });
+                }}
               >
                 Use location
               </Button>
             )}
             <Link href="/deals/featured">
-              <Button variant="outline" className="mt-2 ml-2" data-testid="button-empty-featured">
+              <Button
+                variant="outline"
+                className="mt-2 ml-2"
+                data-testid="button-empty-featured"
+                onPointerDown={() => {
+                  trackUxEvent("search_featured_empty", {
+                    surface: "search_empty_state",
+                  });
+                }}
+              >
                 View featured deals
               </Button>
             </Link>
             <Link href="/map">
-              <Button variant="outline" className="mt-2 ml-2" data-testid="button-empty-map">
+              <Button
+                variant="outline"
+                className="mt-2 ml-2"
+                data-testid="button-empty-map"
+                onPointerDown={() => {
+                  trackUxEvent("search_open_map_empty", {
+                    surface: "search_empty_state",
+                  });
+                }}
+              >
                 Open map
               </Button>
             </Link>
@@ -965,6 +1010,11 @@ export default function SearchPage() {
                 variant="outline"
                 onClick={requestUserLocation}
                 data-testid="button-search-sticky-location"
+                onPointerDown={() => {
+                  trackUxEvent("search_location_request_sticky", {
+                    surface: "search_sticky_cta",
+                  });
+                }}
               >
                 Use location
               </Button>
@@ -974,6 +1024,11 @@ export default function SearchPage() {
                   variant="outline"
                   className="w-full"
                   data-testid="button-search-sticky-map"
+                  onPointerDown={() => {
+                    trackUxEvent("search_open_map_sticky", {
+                      surface: "search_sticky_cta",
+                    });
+                  }}
                 >
                   Open map
                 </Button>

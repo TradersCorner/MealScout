@@ -44,6 +44,19 @@ export function PwaInstallBanner() {
     [],
   );
 
+  const isDismissedRecently = () => {
+    try {
+      const raw = localStorage.getItem(DISMISS_KEY);
+      if (!raw) return false;
+      const ts = Number(raw);
+      if (!Number.isFinite(ts)) return false;
+      const ms = DISMISS_DAYS * 24 * 60 * 60 * 1000;
+      return Date.now() - ts < ms;
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(DISMISS_KEY);
@@ -60,6 +73,10 @@ export function PwaInstallBanner() {
   useEffect(() => {
     const handler = (event: Event) => {
       // Chrome/Edge on Android/Desktop.
+      // IMPORTANT: Only suppress the browser prompt when we intend to show our own UI.
+      // If the banner is dismissed (or we're already installed), let the browser handle install UX.
+      if (isStandaloneMode()) return;
+      if (isDismissedRecently()) return;
       event.preventDefault();
       setDeferredPrompt(event as BeforeInstallPromptEvent);
     };
@@ -67,7 +84,11 @@ export function PwaInstallBanner() {
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
-  const shouldShow = !standalone && !dismissed && (ios || Boolean(deferredPrompt));
+  // In iOS in-app browsers (FB/Messenger/IG), A2HS is commonly blocked.
+  // Always show instructions there (even if previously dismissed) so users can open in Safari.
+  const shouldShow =
+    !standalone &&
+    ((ios && inApp) || (!dismissed && (ios || Boolean(deferredPrompt))));
   if (!shouldShow) return null;
 
   const dismiss = () => {
@@ -94,7 +115,7 @@ export function PwaInstallBanner() {
   const body = deferredPrompt
     ? "Get faster access and an app-like experience."
     : inApp
-      ? "You’re in an in-app browser. Tap ••• then Open in Safari, then Share and Add to Home Screen."
+      ? "You're in an in-app browser. Tap ... then Open in Safari, then Share and Add to Home Screen."
       : "Tap Share, then Add to Home Screen.";
 
   return (
@@ -143,4 +164,3 @@ export function PwaInstallBanner() {
     </div>
   );
 }
-

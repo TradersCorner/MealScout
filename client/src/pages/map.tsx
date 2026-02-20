@@ -1313,6 +1313,25 @@ export default function MapPage() {
     isHostStatusError &&
     !hostStatusPayload &&
     Object.keys(cachedHostStatusById).length > 0;
+  const fallbackBookableHostIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (hostStatusPayload?.hosts?.length) {
+      hostStatusPayload.hosts.forEach((row) => {
+        const id = String(row?.hostId || "").trim();
+        if (id) ids.add(id);
+      });
+      return ids;
+    }
+    Object.keys(cachedHostStatusById).forEach((id) => {
+      const hostId = String(id || "").trim();
+      if (hostId) ids.add(hostId);
+    });
+    return ids;
+  }, [hostStatusPayload, cachedHostStatusById]);
+  const effectiveBookableHostIds = useMemo(() => {
+    if (bookableHostIds.size > 0) return bookableHostIds;
+    return fallbackBookableHostIds;
+  }, [bookableHostIds, fallbackBookableHostIds]);
 
   const visibleEventLocations = useMemo(() => {
     if (!mapLocations?.eventLocations?.length) return [];
@@ -1540,7 +1559,7 @@ export default function MapPage() {
   const hostPins = visibleHostLocations.length;
   const eventPins = visibleEventLocations.length;
   const activityPins = liveTruckPins + hostPins + eventPins;
-  const totalPaidParkingHosts = bookableHostIds.size;
+  const totalPaidParkingHosts = effectiveBookableHostIds.size;
   const isNightTheme =
     typeof document !== "undefined" &&
     document.documentElement.classList.contains("theme-night");
@@ -2101,7 +2120,7 @@ export default function MapPage() {
                 findNearbyTruck={findNearbyTruck}
                 formatDistance={formatDistance}
                 cachedHostStatusById={cachedHostStatusById}
-                bookableHostIds={bookableHostIds}
+                bookableHostIds={effectiveBookableHostIds}
                 isStaffOrAdmin={isStaffOrAdmin}
                 qualityFlagsByHostId={qualityFlagsByHostId}
                 onClusterSelect={(cluster) => {

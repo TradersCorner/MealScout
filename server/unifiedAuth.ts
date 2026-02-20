@@ -1084,6 +1084,88 @@ export async function setupUnifiedAuth(app: Express) {
     }
   });
 
+  // Email/password registration for suppliers
+  app.post("/api/auth/supplier/register", async (req, res) => {
+    try {
+      const { email, firstName, lastName, phone, password, otpCode } = req.body;
+
+      if (!email || !firstName || !lastName || !phone || !password) {
+        return res.status(400).json({ error: "All fields are required" });
+      }
+
+      if (!isPasswordStrong(password)) {
+        return res.status(400).json({ error: PASSWORD_REQUIREMENTS });
+      }
+
+      const normalizedPhone = normalizePhone(phone);
+      if (normalizedPhone.length < 10) {
+        return res
+          .status(400)
+          .json({ error: "Valid phone number is required" });
+      }
+
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res
+          .status(400)
+          .json({ error: "User with this email already exists" });
+      }
+      const existingPhone = await storage.getUserByPhone(normalizedPhone);
+      if (existingPhone) {
+        return res.status(400).json({ error: "Phone number already in use" });
+      }
+
+      if (requirePhoneVerification) {
+        if (!otpCode) {
+          return res
+            .status(400)
+            .json({ error: "Verification code is required" });
+        }
+        const phoneVerified = await verifyPhoneCode(
+          normalizedPhone,
+          String(otpCode),
+        );
+        if (!phoneVerified) {
+          return res.status(400).json({ error: "Phone verification failed" });
+        }
+      }
+
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      const userData: EmailUserData = {
+        email,
+        firstName,
+        lastName,
+        phone: normalizedPhone,
+        passwordHash,
+      };
+
+      const user = await storage.upsertUserByAuth("email", userData, "supplier");
+      kickAffiliateTag(user);
+      await applyAffiliateReferral(req, user);
+
+      // Send welcome email with verification link (don't block auth flow)
+      void sendWelcomeOrVerification(user, req, "supplier");
+      // Send admin signup notification with context asynchronously
+      emailService
+        .sendAdminSignupNotification(user, {
+          signupMethod: "email",
+        })
+        .catch((err) =>
+          console.error("Failed to send admin signup notification:", err),
+        );
+
+      // Require email verification before first login/session.
+      res.status(201).json({
+        message: "Supplier account created. Please verify your email before logging in.",
+        requiresEmailVerification: true,
+      });
+    } catch (error) {
+      console.error("Supplier registration error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Email/password login for restaurant owners
   app.post("/api/auth/restaurant/login", async (req, res) => {
     try {

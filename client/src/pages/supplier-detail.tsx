@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Minus, Plus, Truck } from "lucide-react";
 import { SupplierOrderPaymentModal } from "@/components/supply/supplier-order-payment-modal";
+import { useAuth } from "@/hooks/useAuth";
 
 type Supplier = {
   id: string;
@@ -54,6 +55,7 @@ const formatMoney = (cents: number) => `$${(Number(cents || 0) / 100).toFixed(2)
 export default function SupplierDetailPage() {
   const { supplierId } = useParams();
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [pickupNote, setPickupNote] = useState("");
   const [productQ, setProductQ] = useState("");
@@ -132,6 +134,9 @@ export default function SupplierDetailPage() {
     () => myRestaurants,
     [myRestaurants],
   );
+
+  const userType = String((user as any)?.userType || "").trim();
+  const isBuyerBusiness = userType === "restaurant_owner" || userType === "food_truck";
 
   const selectedBiz = useMemo(() => {
     return myRestaurants.find((r) => r.id === selectedBuyerRestaurantId) || null;
@@ -339,6 +344,44 @@ export default function SupplierDetailPage() {
       />
 
       <div className="px-4 space-y-4">
+        {!isBuyerBusiness && (
+          <Card>
+            <CardContent className="p-4 text-sm text-muted-foreground">
+              Supply requests are built for food trucks and restaurants. Create a business account to place pickup or delivery requests.
+              <div className="pt-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    window.location.href = "/customer-signup?role=business";
+                  }}
+                >
+                  Create business account
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {isBuyerBusiness && myRestaurants.length === 0 && (
+          <Card>
+            <CardContent className="p-4 text-sm text-muted-foreground">
+              Add a restaurant or food truck profile before requesting supplies.
+              <div className="pt-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    window.location.href = "/restaurant-signup";
+                  }}
+                >
+                  Create my business profile
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {selectedBuyerRestaurantId ? (
           <Card>
             <CardHeader className="pb-3">
@@ -358,7 +401,7 @@ export default function SupplierDetailPage() {
                         {String(r.status || "submitted")}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">
-                        {String(r.requestedFulfillment || "pickup")} • {String(r.paymentPreference || "offsite")}
+                        {String(r.requestedFulfillment || "pickup")} - {String(r.paymentPreference || "offsite")}
                       </div>
                     </div>
                     {String(r.status) === "accepted" && r.orderId && String(r.paymentPreference) === "online" ? (

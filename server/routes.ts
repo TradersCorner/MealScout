@@ -7728,6 +7728,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       });
 
+      res.setHeader(
+        "Cache-Control",
+        "public, max-age=300, s-maxage=600, stale-while-revalidate=1200",
+      );
       res.json(payload);
     } catch (error) {
       console.error("Error loading cities index:", error);

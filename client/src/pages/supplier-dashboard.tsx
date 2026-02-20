@@ -90,6 +90,14 @@ const toDateTimeLocalValue = (raw: string | null | undefined) => {
 export default function SupplierDashboardPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [profileDraft, setProfileDraft] = useState({
+    businessName: "",
+    contactEmail: "",
+    contactPhone: "",
+    address: "",
+    city: "",
+    state: "",
+  });
   const [newProduct, setNewProduct] = useState({
     name: "",
     priceDollars: "",
@@ -183,6 +191,19 @@ export default function SupplierDashboardPage() {
 
   useEffect(() => {
     if (!supplier) return;
+    setProfileDraft((prev) => ({
+      ...prev,
+      businessName: String(supplier.businessName || ""),
+      contactEmail: String(supplier.contactEmail || ""),
+      contactPhone: String(supplier.contactPhone || ""),
+      address: String((supplier as any)?.address || ""),
+      city: String((supplier as any)?.city || ""),
+      state: String((supplier as any)?.state || ""),
+    }));
+  }, [supplier]);
+
+  useEffect(() => {
+    if (!supplier) return;
     setDeliverySettings((prev) => ({ ...prev, ...supplierDeliveryDefaults }));
   }, [supplier, supplierDeliveryDefaults]);
 
@@ -190,6 +211,41 @@ export default function SupplierDashboardPage() {
     if (!supplier) return;
     setOnlineSettings((prev) => ({ ...prev, ...supplierOnlineDefaults }));
   }, [supplier, supplierOnlineDefaults]);
+
+  const updateProfile = useMutation({
+    mutationFn: async () => {
+      const businessName = profileDraft.businessName.trim();
+      if (!businessName) throw new Error("Business name is required");
+
+      const res = await fetch("/api/supplier/me", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName,
+          contactEmail: profileDraft.contactEmail.trim() || null,
+          contactPhone: profileDraft.contactPhone.trim() || null,
+          address: profileDraft.address.trim() || null,
+          city: profileDraft.city.trim() || null,
+          state: profileDraft.state.trim() || null,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to update profile");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/me"] });
+      toast({ title: "Profile saved" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Save failed",
+        description: error?.message || "Unable to save profile",
+        variant: "destructive",
+      });
+    },
+  });
 
   const { data: products = [] } = useQuery<SupplierProduct[]>({
     queryKey: ["/api/supplier/products"],
@@ -589,7 +645,18 @@ export default function SupplierDashboardPage() {
         {isSupplierError ? (
           <Card>
             <CardContent className="p-4 text-sm text-muted-foreground">
-              This dashboard is for supplier accounts.
+              This dashboard is for supplier accounts. Create a supplier account to list products and accept orders.
+              <div className="pt-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    window.location.href = "/customer-signup?role=supplier";
+                  }}
+                >
+                  Create supplier account
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (
@@ -620,6 +687,65 @@ export default function SupplierDashboardPage() {
                     {stripeStatus?.connected ? "Manage Stripe" : "Enable payouts"}
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="text-sm font-semibold">Profile</div>
+                <Input
+                  placeholder="Business name"
+                  value={profileDraft.businessName}
+                  onChange={(e) =>
+                    setProfileDraft((p) => ({ ...p, businessName: e.target.value }))
+                  }
+                />
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Contact email (optional)"
+                    value={profileDraft.contactEmail}
+                    onChange={(e) =>
+                      setProfileDraft((p) => ({ ...p, contactEmail: e.target.value }))
+                    }
+                  />
+                  <Input
+                    placeholder="Contact phone (optional)"
+                    value={profileDraft.contactPhone}
+                    onChange={(e) =>
+                      setProfileDraft((p) => ({ ...p, contactPhone: e.target.value }))
+                    }
+                  />
+                </div>
+                <Input
+                  placeholder="Address (optional)"
+                  value={profileDraft.address}
+                  onChange={(e) =>
+                    setProfileDraft((p) => ({ ...p, address: e.target.value }))
+                  }
+                />
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="City (optional)"
+                    value={profileDraft.city}
+                    onChange={(e) =>
+                      setProfileDraft((p) => ({ ...p, city: e.target.value }))
+                    }
+                  />
+                  <Input
+                    placeholder="State (optional)"
+                    value={profileDraft.state}
+                    onChange={(e) =>
+                      setProfileDraft((p) => ({ ...p, state: e.target.value }))
+                    }
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  disabled={updateProfile.isPending}
+                  onClick={() => updateProfile.mutate()}
+                >
+                  {updateProfile.isPending ? "Saving..." : "Save profile"}
+                </Button>
               </CardContent>
             </Card>
 

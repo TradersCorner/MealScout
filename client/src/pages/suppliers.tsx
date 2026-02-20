@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import Navigation from "@/components/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Card,
   CardContent,
@@ -137,6 +138,7 @@ const safeText = (v: string | null | undefined, fallback = "Unknown") => {
 
 export default function SuppliersPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [tab, setTab] = useState<"catalog" | "import">("catalog");
   const [q, setQ] = useState("");
   const [orderListFile, setOrderListFile] = useState<File | null>(null);
@@ -145,6 +147,10 @@ export default function SuppliersPage() {
   const [importResult, setImportResult] = useState<OrderListImportResult | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [prefsDialogOpen, setPrefsDialogOpen] = useState(false);
+
+  const userType = String((user as any)?.userType || "").trim();
+  const isSupplierUser = userType === "supplier";
+  const isBuyerBusiness = userType === "restaurant_owner" || userType === "food_truck";
 
   const { data: prefs } = useQuery<SupplyPreferences>({
     queryKey: ["/api/supply/preferences"],
@@ -156,6 +162,7 @@ export default function SuppliersPage() {
     },
     staleTime: 60_000,
     gcTime: 10 * 60_000,
+    enabled: !isSupplierUser,
   });
 
   const [prefsDraft, setPrefsDraft] = useState<Partial<SupplyPreferences>>({});
@@ -194,6 +201,7 @@ export default function SuppliersPage() {
     },
     staleTime: 60_000,
     gcTime: 10 * 60_000,
+    enabled: !isSupplierUser,
   });
 
   useEffect(() => {
@@ -387,6 +395,28 @@ export default function SuppliersPage() {
               <div className="text-sm text-muted-foreground">
                 Search supplier products, request pickup or delivery, and upload order sheets to compare deals.
               </div>
+              <div className="flex flex-wrap gap-2 pt-3">
+                {isSupplierUser ? (
+                  <Link href="/supplier/dashboard">
+                    <Button size="sm" className="w-full sm:w-auto">Supplier dashboard</Button>
+                  </Link>
+                ) : (
+                  <>
+                    <Link href="/customer-signup?role=supplier">
+                      <Button size="sm" variant="outline" className="w-full sm:w-auto">
+                        Become a supplier
+                      </Button>
+                    </Link>
+                    {!isBuyerBusiness && (
+                      <Link href="/customer-signup?role=business">
+                        <Button size="sm" variant="outline" className="w-full sm:w-auto">
+                          Create business account
+                        </Button>
+                      </Link>
+                    )}
+                  </>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2 pt-2">
                 <Badge variant="secondary" className="gap-1">
                   <Zap className="h-3.5 w-3.5" />
@@ -404,20 +434,21 @@ export default function SuppliersPage() {
             </div>
 
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-              <Dialog open={prefsDialogOpen} onOpenChange={setPrefsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full gap-2 sm:w-auto">
-                    <SlidersHorizontal className="h-4 w-4" />
-                    Preferences
-                  </Button>
-                </DialogTrigger>
-              <DialogContent className="max-w-lg">
-                <DialogHeaderUI>
-                  <DialogTitleUI>Preferences</DialogTitleUI>
-                  <DialogDescriptionUI>
-                    Make recommendations match your radius, stops, and stop cost.
-                  </DialogDescriptionUI>
-                </DialogHeaderUI>
+              {isSupplierUser ? null : (
+                <Dialog open={prefsDialogOpen} onOpenChange={setPrefsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full gap-2 sm:w-auto">
+                      <SlidersHorizontal className="h-4 w-4" />
+                      Preferences
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg">
+                    <DialogHeaderUI>
+                      <DialogTitleUI>Preferences</DialogTitleUI>
+                      <DialogDescriptionUI>
+                        Make recommendations match your radius, stops, and stop cost.
+                      </DialogDescriptionUI>
+                    </DialogHeaderUI>
 
                 <div className="grid gap-4">
                   <div className="grid grid-cols-2 gap-3">
@@ -522,7 +553,7 @@ export default function SuppliersPage() {
                     <div>
                       <div className="text-sm font-medium">Allow substitutions</div>
                       <div className="text-xs text-muted-foreground">
-                        Match close items when exact names aren’t listed.
+                        Match close items when exact names aren't listed.
                       </div>
                     </div>
                     <Switch
@@ -534,32 +565,50 @@ export default function SuppliersPage() {
                   </div>
                 </div>
 
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => setPrefsDialogOpen(false)}
-                    disabled={savePreferences.isPending}
-                  >
-                    Cancel
-                  </Button>
-                  <Button onClick={() => savePreferences.mutate()} disabled={savePreferences.isPending}>
-                    {savePreferences.isPending ? "Saving..." : "Save"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-              </Dialog>
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => setPrefsDialogOpen(false)}
+                        disabled={savePreferences.isPending}
+                      >
+                        Cancel
+                      </Button>
+                      <Button onClick={() => savePreferences.mutate()} disabled={savePreferences.isPending}>
+                        {savePreferences.isPending ? "Saving..." : "Save"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
 
-              <ShoppingListsDialog
-                buyerRestaurantId={selectedBuyerRestaurantId}
-                triggerLabel="My lists"
-              />
+              {!isSupplierUser && (
+                <ShoppingListsDialog
+                  buyerRestaurantId={selectedBuyerRestaurantId}
+                  triggerLabel="My lists"
+                />
+              )}
 
-              <Link href="/supply/orders">
-                <Button variant="outline" className="w-full sm:w-auto">Orders</Button>
-              </Link>
+              {!isSupplierUser && (
+                <Link href="/supply/orders">
+                  <Button variant="outline" className="w-full sm:w-auto">Orders</Button>
+                </Link>
+              )}
             </div>
           </div>
         </div>
+
+        {isBuyerBusiness && myRestaurants.length === 0 && (
+          <Card>
+            <CardContent className="p-4 text-sm text-muted-foreground">
+              Add a restaurant or food truck profile to request supplies and calculate local delivery distance.
+              <div className="pt-3">
+                <Link href="/restaurant-signup">
+                  <Button size="sm" variant="outline">Create my business profile</Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
           <TabsList className="w-full">

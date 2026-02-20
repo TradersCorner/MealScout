@@ -61,9 +61,17 @@ export default function CustomerSignup() {
 
   const searchParams = new URLSearchParams(window.location.search);
   const role = searchParams.get("role");
-  const initialAccountType: "diner" | "host" | "business" =
-    role === "business" ? "business" : role === "host" ? "host" : "diner";
-  const [accountType, setAccountType] = useState<"diner" | "host" | "business">(
+  const initialAccountType: "diner" | "host" | "business" | "supplier" =
+    role === "business"
+      ? "business"
+      : role === "host"
+        ? "host"
+        : role === "supplier"
+          ? "supplier"
+          : "diner";
+  const [accountType, setAccountType] = useState<
+    "diner" | "host" | "business" | "supplier"
+  >(
     initialAccountType
   );
   const initialBusinessSubType: "restaurant" | "food_truck" =
@@ -211,6 +219,45 @@ export default function CustomerSignup() {
     },
   });
 
+  const supplierSignupMutation = useMutation({
+    mutationFn: async (data: SignupFormData) => {
+      const { confirmPassword, ...signupData } = data;
+      const res = await apiRequest(
+        "POST",
+        "/api/auth/supplier/register",
+        signupData
+      );
+      return await res.json();
+    },
+    onSuccess: async (payload: any) => {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(SIGNUP_DRAFT_KEY);
+      }
+      try {
+        window.sessionStorage.setItem(
+          "mealscout:lastSignupEmail",
+          form.getValues("email") || "",
+        );
+      } catch {}
+      toast({
+        title: "Verify your email",
+        description:
+          payload?.message ||
+          "We sent a verification link to your email. Verify it, then log in to continue.",
+      });
+      window.location.href = `/login?redirect=${encodeURIComponent(
+        "/supplier/dashboard",
+      )}&signup=1`;
+    },
+    onError: (error) => {
+      toast({
+        title: "Supplier signup failed",
+        description: error.message || "Failed to create supplier account",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: SignupFormData) => {
     if (accountType === "business") {
       const digitsOnly = (data.phone || "").replace(/\D/g, "");
@@ -239,6 +286,15 @@ export default function CustomerSignup() {
         return;
       }
       customerSignupMutation.mutate(data);
+    } else if (accountType === "supplier") {
+      if (requirePhoneVerification && !data.otpCode) {
+        form.setError("otpCode", {
+          type: "manual",
+          message: "Verification code is required",
+        });
+        return;
+      }
+      supplierSignupMutation.mutate(data);
     } else {
       if (requirePhoneVerification && !data.otpCode) {
         form.setError("otpCode", {
@@ -284,7 +340,9 @@ export default function CustomerSignup() {
   };
 
   const isSubmitting =
-    customerSignupMutation.isPending || businessSignupMutation.isPending;
+    customerSignupMutation.isPending ||
+    businessSignupMutation.isPending ||
+    supplierSignupMutation.isPending;
 
   return (
     <div className="min-h-screen bg-[var(--bg-layered)] flex flex-col">
@@ -319,6 +377,8 @@ export default function CustomerSignup() {
                 ? "Create your login so we can connect your restaurant or truck, list your deals, and pass savings directly to your regulars."
                 : accountType === "host"
                 ? "Organize events and invite food trucks to your location. Free forever to unlock local food truck supply."
+                : accountType === "supplier"
+                ? "Set up your supplier profile, publish products, and accept orders from food trucks and restaurants."
                 : "Save favorite deals and never miss new drops from local spots."}
             </p>
           </div>
@@ -360,6 +420,17 @@ export default function CustomerSignup() {
                   }`}
                 >
                   Restaurant / Food Truck
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAccountType("supplier")}
+                  className={`px-3 py-1 border-l border-[color:var(--border-subtle)] transition-colors ${
+                    accountType === "supplier"
+                      ? "bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)]"
+                      : "bg-transparent text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-muted)]"
+                  }`}
+                >
+                  Supplier
                 </button>
               </div>
             </div>
@@ -413,6 +484,8 @@ export default function CustomerSignup() {
                   ? "This login powers your business dashboard. Pricing stays transparent and your discounts go straight to your guests."
                   : accountType === "host"
                   ? "This login lets you post events and connect with food trucks. No monthly fees, just bring food to your spot."
+                  : accountType === "supplier"
+                  ? "This login powers your supplier dashboard, products, and incoming orders."
                   : "Create your account to get started with local food deals."}
               </p>
             </div>

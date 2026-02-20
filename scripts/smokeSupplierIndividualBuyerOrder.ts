@@ -37,19 +37,30 @@ async function httpJson<T>(
     headers?: Record<string, string>;
   } = {},
 ): Promise<HttpResult<T>> {
-  const ORIGIN = String(process.env.API_ORIGIN || process.env.ORIGIN || "http://localhost:5000").replace(/\/+$/, "");
-  const res = await fetch(url, {
-    method: opts.method || "GET",
-    headers: {
-      ...(opts.body ? { "Content-Type": "application/json" } : {}),
-      Origin: ORIGIN,
-      Referer: `${ORIGIN}/`,
-      ...(opts.cookie ? { Cookie: opts.cookie } : {}),
-      ...(opts.headers || {}),
-    },
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-    redirect: "manual",
-  });
+  const ORIGIN = String(
+    process.env.API_ORIGIN ||
+      process.env.ORIGIN ||
+      process.env.API_BASE ||
+      "http://localhost:5200",
+  ).replace(/\/+$/, "");
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: opts.method || "GET",
+      headers: {
+        ...(opts.body ? { "Content-Type": "application/json" } : {}),
+        Origin: ORIGIN,
+        Referer: `${ORIGIN}/`,
+        ...(opts.cookie ? { Cookie: opts.cookie } : {}),
+        ...(opts.headers || {}),
+      },
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      redirect: "manual",
+    });
+  } catch (err: any) {
+    const cause = err?.cause ? ` cause=${String(err.cause)}` : "";
+    throw new Error(`fetch failed url=${url}${cause}`);
+  }
   const data = (await res.json().catch(() => null)) as T;
   const setCookies =
     // Node/undici supports getSetCookie()
@@ -112,7 +123,8 @@ async function createVerifiedUser(params: {
 }
 
 async function run() {
-  const API_BASE = String(process.env.API_BASE || "http://127.0.0.1:5000").replace(/\/+$/, "");
+  const port = Number(process.env.PORT || 5200) || 5200;
+  const API_BASE = String(process.env.API_BASE || `http://127.0.0.1:${port}`).replace(/\/+$/, "");
   const CLEANUP = String(process.env.CLEANUP || "true").toLowerCase() !== "false";
   const AUTO_START_SERVER = String(process.env.AUTO_START_SERVER || "true").toLowerCase() !== "false";
 
@@ -136,13 +148,18 @@ async function run() {
 
     // Best-effort local server start for smoke tests.
     const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
+    const debugServer = String(process.env.DEBUG_SERVER || "").trim() === "1";
     serverProc = spawn(npmCmd, ["run", "-s", "dev:server"], {
       cwd: process.cwd(),
       env: process.env,
-      stdio: ["ignore", "pipe", "pipe"],
+      // On Windows, spawning .cmd directly can fail without a shell in some environments.
+      shell: process.platform === "win32",
+      stdio: debugServer ? "inherit" : ["ignore", "pipe", "pipe"],
     });
-    serverProc.stdout.on("data", () => {});
-    serverProc.stderr.on("data", () => {});
+    if (!debugServer) {
+      serverProc.stdout.on("data", () => {});
+      serverProc.stderr.on("data", () => {});
+    }
     serverProc.on("error", () => {});
 
     const ok = await waitForHealth(30_000);
@@ -362,6 +379,6 @@ async function run() {
 }
 
 run().catch((err) => {
-  console.error("FAIL:", err?.message || err);
+  console.error("FAIL:", err?.stack || err?.message || err);
   process.exit(1);
 });

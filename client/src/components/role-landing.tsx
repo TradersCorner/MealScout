@@ -8,12 +8,14 @@ import type { RoleLandingContent } from "@/content/role-landing";
 type RoleLandingPageProps = {
   content: RoleLandingContent;
   mapSlot?: React.ReactNode;
+  discoverySlot?: React.ReactNode;
   theme?: "default" | "ember";
 };
 
 export default function RoleLandingPage({
   content,
   mapSlot,
+  discoverySlot,
   theme = "default",
 }: RoleLandingPageProps) {
   const canonicalUrl =
@@ -260,6 +262,8 @@ export default function RoleLandingPage({
             </CardContent>
           </Card>
         </section>
+
+        {discoverySlot && <section>{discoverySlot}</section>}
 
         <section className="rounded-3xl px-6 py-10 text-center shadow-clean-lg" style={{ backgroundColor: "var(--panel-dark-bg)" }}>
           <h2 className="text-3xl font-semibold text-[var(--ink)]">

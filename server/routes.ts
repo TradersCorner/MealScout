@@ -8448,6 +8448,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const isMissingColumnError = (error: any, columnName?: string) => {
+    if (!error || String(error?.code || "") !== "42703") return false;
+    if (!columnName) return true;
+    return String(error?.message || "")
+      .toLowerCase()
+      .includes(columnName.toLowerCase());
+  };
+
   // Daily request log summary for admin reporting
   cron.schedule("5 6 * * *", async () => {
     console.log("⏰ Triggering Daily Request Log Summary");
@@ -8457,14 +8465,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const start = new Date(end);
       start.setDate(start.getDate() - 1);
 
-      const [totals] = await db
-        .select({
-          total: sql<number>`count(*)`,
-          uniqueUsers: sql<number>`count(distinct ${requestLogs.userId})`,
-          avgDurationMs: sql<number>`avg(${requestLogs.durationMs})`,
-        })
-        .from(requestLogs)
-        .where(and(gte(requestLogs.createdAt, start), lt(requestLogs.createdAt, end)));
+      let totals: {
+        total?: number;
+        uniqueUsers?: number;
+        avgDurationMs?: number;
+      } = {};
+      try {
+        const [row] = await db
+          .select({
+            total: sql<number>`count(*)`,
+            uniqueUsers: sql<number>`count(distinct ${requestLogs.userId})`,
+            avgDurationMs: sql<number>`avg(${requestLogs.durationMs})`,
+          })
+          .from(requestLogs)
+          .where(and(gte(requestLogs.createdAt, start), lt(requestLogs.createdAt, end)));
+        totals = row || {};
+      } catch (summaryError: any) {
+        if (isMissingColumnError(summaryError, "duration_ms")) {
+          const [row] = await db
+            .select({
+              total: sql<number>`count(*)`,
+              uniqueUsers: sql<number>`count(distinct ${requestLogs.userId})`,
+            })
+            .from(requestLogs)
+            .where(and(gte(requestLogs.createdAt, start), lt(requestLogs.createdAt, end)));
+          totals = { ...(row || {}), avgDurationMs: 0 };
+        } else {
+          throw summaryError;
+        }
+      }
 
       const statusBuckets: Array<{ statusCode: number; count: number }> = await db
         .select({
@@ -8476,17 +8505,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .groupBy(requestLogs.statusCode)
         .orderBy(desc(sql`count(*)`));
 
-      const topPaths: Array<{ path: string; count: number; avgDurationMs: number }> = await db
-        .select({
-          path: requestLogs.path,
-          count: sql<number>`count(*)`,
-          avgDurationMs: sql<number>`avg(${requestLogs.durationMs})`,
-        })
-        .from(requestLogs)
-        .where(and(gte(requestLogs.createdAt, start), lt(requestLogs.createdAt, end)))
-        .groupBy(requestLogs.path)
-        .orderBy(desc(sql`count(*)`))
-        .limit(25);
+      let topPaths: Array<{ path: string; count: number; avgDurationMs: number }> = [];
+      try {
+        topPaths = await db
+          .select({
+            path: requestLogs.path,
+            count: sql<number>`count(*)`,
+            avgDurationMs: sql<number>`avg(${requestLogs.durationMs})`,
+          })
+          .from(requestLogs)
+          .where(and(gte(requestLogs.createdAt, start), lt(requestLogs.createdAt, end)))
+          .groupBy(requestLogs.path)
+          .orderBy(desc(sql`count(*)`))
+          .limit(25);
+      } catch (topPathsError: any) {
+        if (isMissingColumnError(topPathsError, "duration_ms")) {
+          const rows = await db
+            .select({
+              path: requestLogs.path,
+              count: sql<number>`count(*)`,
+            })
+            .from(requestLogs)
+            .where(and(gte(requestLogs.createdAt, start), lt(requestLogs.createdAt, end)))
+            .groupBy(requestLogs.path)
+            .orderBy(desc(sql`count(*)`))
+            .limit(25);
+          topPaths = rows.map((row) => ({
+            path: row.path,
+            count: Number(row.count || 0),
+            avgDurationMs: 0,
+          }));
+        } else {
+          throw topPathsError;
+        }
+      }
 
       const topErrors: Array<{ path: string; statusCode: number; count: number }> = await db
         .select({
@@ -8568,18 +8620,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Best-effort: cancel any PaymentIntents tied to expired holds so a truck can't
       // complete payment later after we released capacity.
       try {
-        const expiredRows = await db
-          .select({
-            paymentIntentId: eventBookings.stripePaymentIntentId,
-            stripeAccountId: eventBookings.stripeTransferDestination,
-          })
-          .from(eventBookings)
-          .where(
-            and(
-              eq(eventBookings.status, "pending"),
-              lt(eventBookings.createdAt, cutoff),
-            ),
-          );
+        let expiredRows: Array<{
+          paymentIntentId: string | null;
+          stripeAccountId?: string | null;
+        }> = [];
+        try {
+          expiredRows = await db
+            .select({
+              paymentIntentId: eventBookings.stripePaymentIntentId,
+              stripeAccountId: eventBookings.stripeTransferDestination,
+            })
+            .from(eventBookings)
+            .where(
+              and(
+                eq(eventBookings.status, "pending"),
+                lt(eventBookings.createdAt, cutoff),
+              ),
+            );
+        } catch (selectError: any) {
+          if (isMissingColumnError(selectError, "stripe_transfer_destination")) {
+            expiredRows = await db
+              .select({
+                paymentIntentId: eventBookings.stripePaymentIntentId,
+              })
+              .from(eventBookings)
+              .where(
+                and(
+                  eq(eventBookings.status, "pending"),
+                  lt(eventBookings.createdAt, cutoff),
+                ),
+              );
+          } else {
+            throw selectError;
+          }
+        }
 
         if (stripe) {
           const unique = new Map<string, { intentId: string; accountId?: string }>();
@@ -8617,21 +8691,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("❌ Expired hold PaymentIntent cancel scan failed:", cancelError);
       }
 
-      await db
-        .update(eventBookings)
-        .set({
-          status: "cancelled",
-          stripePaymentStatus: "cancelled",
-          cancelledAt: now,
-          cancellationReason: "Payment not completed (hold expired)",
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(eventBookings.status, "pending"),
-            lt(eventBookings.createdAt, cutoff),
-          ),
-        );
+      try {
+        await db
+          .update(eventBookings)
+          .set({
+            status: "cancelled",
+            stripePaymentStatus: "cancelled",
+            cancelledAt: now,
+            cancellationReason: "Payment not completed (hold expired)",
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(eventBookings.status, "pending"),
+              lt(eventBookings.createdAt, cutoff),
+            ),
+          );
+      } catch (updateError: any) {
+        if (isMissingColumnError(updateError)) {
+          await db
+            .update(eventBookings)
+            .set({
+              status: "cancelled" as any,
+            })
+            .where(
+              and(
+                eq(eventBookings.status, "pending"),
+                lt(eventBookings.createdAt, cutoff),
+              ),
+            );
+        } else {
+          throw updateError;
+        }
+      }
     } catch (error) {
       console.error("❌ Booking hold cleanup failed:", error);
     }

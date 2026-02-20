@@ -27,9 +27,11 @@ import {
 import { SEOHead } from "@/components/seo-head";
 import { apiUrl } from "@/lib/api";
 import { getOptimizedImageUrl } from "@/lib/images";
+import { useIsStandalone } from "@/hooks/useIsStandalone";
 
 export default function ProfilePage() {
   const { user, isAuthenticated } = useAuth();
+  const isStandalone = useIsStandalone();
   const [affiliateTag, setAffiliateTag] = useState<string>("");
   const [tagInput, setTagInput] = useState("");
   const [tagSaving, setTagSaving] = useState(false);
@@ -140,12 +142,16 @@ export default function ProfilePage() {
       badge: null,
       href: "/profile/settings",
     },
-    {
-      icon: ArrowDownToLine,
-      label: "Install App",
-      badge: null,
-      href: "/install",
-    },
+    ...(!isStandalone
+      ? [
+          {
+            icon: ArrowDownToLine,
+            label: "Install App",
+            badge: null,
+            href: "/install",
+          },
+        ]
+      : []),
     {
       icon: HelpCircle,
       label: "Help & Support",

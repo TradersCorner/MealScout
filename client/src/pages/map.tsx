@@ -33,6 +33,7 @@ import mealScoutIcon from "@assets/meal-scout-icon.png";
 import { sendGeoPing, trackGeoAdEvent, trackGeoAdImpression } from "@/utils/geoAds";
 import { useAuth } from "@/hooks/useAuth";
 import { trackUxEvent } from "@/utils/uxTelemetry";
+import { useIsStandalone } from "@/hooks/useIsStandalone";
 
 type DiscoveryCity = {
   id: string;
@@ -690,6 +691,7 @@ async function geocodeAddress(address: string): Promise<GeoPoint | null> {
 
 export default function MapPage() {
   const queryClient = useQueryClient();
+  const isStandalone = useIsStandalone();
   const { user } = useAuth();
   const [userLocation, setUserLocation] = useState<{
     lat: number;
@@ -1867,20 +1869,22 @@ export default function MapPage() {
             </div>
           </div>
           <div className="flex space-x-2">
-            <Link href="/install">
-              <Button
-                variant="outline"
-                size="sm"
-                aria-label="Install app"
-                title="Install app"
-                data-testid="button-map-install"
-                onPointerDown={() => {
-                  trackUxEvent("map_install_click", { surface: "map_header" });
-                }}
-              >
-                <ArrowDownToLine className="w-4 h-4" />
-              </Button>
-            </Link>
+            {!isStandalone && (
+              <Link href="/install">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label="Install app"
+                  title="Install app"
+                  data-testid="button-map-install"
+                  onPointerDown={() => {
+                    trackUxEvent("map_install_click", { surface: "map_header" });
+                  }}
+                >
+                  <ArrowDownToLine className="w-4 h-4" />
+                </Button>
+              </Link>
+            )}
             <Button
               variant="outline"
               size="sm"

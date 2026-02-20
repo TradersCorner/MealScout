@@ -45,6 +45,7 @@ import { getReverseGeocodedLocationName } from "@/utils/locationUtils";
 import { sendGeoPing, trackGeoAdEvent, trackGeoAdImpression } from "@/utils/geoAds";
 import { SEOHead } from "@/components/seo-head";
 import { trackUxEvent } from "@/utils/uxTelemetry";
+import { useIsStandalone } from "@/hooks/useIsStandalone";
 
 const WelcomeLocationModal = lazy(() => import("@/components/WelcomeLocationModal"));
 
@@ -78,6 +79,7 @@ interface GeoAd {
 }
 
 export default function Home() {
+  const isStandalone = useIsStandalone();
   const { user } = useAuth();
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
     null
@@ -349,17 +351,19 @@ export default function Home() {
           </div>
 
           <div className="flex items-center space-x-2">
-            <Link href="/install">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)]"
-                title="Install app"
-                aria-label="Install app"
-              >
-                <ArrowDownToLine className="w-5 h-5" />
-              </Button>
-            </Link>
+            {!isStandalone && (
+              <Link href="/install">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text-hover)]"
+                  title="Install app"
+                  aria-label="Install app"
+                >
+                  <ArrowDownToLine className="w-5 h-5" />
+                </Button>
+              </Link>
+            )}
             {!user ? (
               <>
                 <Button

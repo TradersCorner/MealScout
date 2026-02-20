@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
 import { trackUxEvent } from "@/utils/uxTelemetry";
+import { useIsStandalone } from "@/hooks/useIsStandalone";
 
 type DiscoveryCity = {
   id: string;
@@ -213,6 +214,7 @@ const levenshteinDistance = (a: string, b: string) => {
 };
 
 export default function SearchPage() {
+  const isStandalone = useIsStandalone();
   const [location, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -647,23 +649,25 @@ export default function SearchPage() {
               </p>
             </div>
           <div className="flex items-center gap-2">
-            <Link href="/install">
-              <Button
-                variant="outline"
-                size="sm"
-                className="shrink-0"
-                data-testid="button-install"
-                onPointerDown={() => {
-                  trackUxEvent("search_install_click", {
-                    surface: "search_header",
-                  });
-                }}
-                aria-label="Install app"
-                title="Install app"
-              >
-                <ArrowDownToLine className="w-4 h-4" />
-              </Button>
-            </Link>
+            {!isStandalone && (
+              <Link href="/install">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  data-testid="button-install"
+                  onPointerDown={() => {
+                    trackUxEvent("search_install_click", {
+                      surface: "search_header",
+                    });
+                  }}
+                  aria-label="Install app"
+                  title="Install app"
+                >
+                  <ArrowDownToLine className="w-4 h-4" />
+                </Button>
+              </Link>
+            )}
             {!searchQuery && !userLocation && (
               <Button
                 variant="outline"

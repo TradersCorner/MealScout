@@ -9,7 +9,6 @@ import { BetaDisclaimer } from "@/components/beta-disclaimer";
 import Navigation from "@/components/navigation";
 import { apiUrl } from "@/lib/api";
 import { TimeOfDayBackground } from "@/components/TimeOfDayBackground";
-import { PwaInstallBanner } from "@/components/pwa-install-banner";
 
 // Eager load only critical pages (home, login) - everything else lazy loads
 import NotFound from "@/pages/not-found";
@@ -79,6 +78,7 @@ const FAQ = lazy(() => import("@/pages/faq"));
 const HowItWorks = lazy(() => import("@/pages/how-it-works"));
 const Contact = lazy(() => import("@/pages/contact"));
 const Sitemap = lazy(() => import("@/pages/sitemap"));
+const InstallApp = lazy(() => import("@/pages/install"));
 const ForgotPassword = lazy(() => import("@/pages/forgot-password"));
 const ResetPassword = lazy(() => import("@/pages/reset-password"));
 const AccountSetup = lazy(() => import("@/pages/account-setup"));
@@ -141,6 +141,7 @@ const publicRoutePrefixes = [
   "/faq",
   "/how-it-works",
   "/contact",
+  "/install",
   "/host-signup",
   "/for-restaurants",
   "/for-bars",
@@ -245,6 +246,7 @@ function Router() {
             <Route path="/faq" component={FAQ} />
             <Route path="/how-it-works" component={HowItWorks} />
             <Route path="/contact" component={Contact} />
+            <Route path="/install" component={InstallApp} />
             <Route path="/host-signup" component={HostSignup} />
             <Route path="/for-restaurants" component={ForRestaurants} />
             <Route path="/for-bars" component={ForBars} />
@@ -363,6 +365,7 @@ function Router() {
             <Route path="/faq" component={FAQ} />
             <Route path="/how-it-works" component={HowItWorks} />
             <Route path="/contact" component={Contact} />
+            <Route path="/install" component={InstallApp} />
             <Route path="/host-signup" component={HostSignup} />
             <Route path="/event-signup" component={EventSignup} />
             <Route path="/events" component={EventsRouter} />
@@ -417,7 +420,6 @@ function App() {
         <div className="desktop-full-width app-background app-content min-h-screen md:pt-16 relative z-10">
           <Toaster />
           <BetaDisclaimer />
-          <PwaInstallBanner />
           <Router />
           <Navigation />
           {/* Build canary - shows deployment timestamp */}

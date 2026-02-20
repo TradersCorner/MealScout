@@ -12,6 +12,7 @@ import {
   Heart,
   Receipt,
   CreditCard,
+  ArrowDownToLine,
   HelpCircle,
   LogOut,
   ChevronRight,
@@ -138,6 +139,12 @@ export default function ProfilePage() {
       label: "Settings",
       badge: null,
       href: "/profile/settings",
+    },
+    {
+      icon: ArrowDownToLine,
+      label: "Install App",
+      badge: null,
+      href: "/install",
     },
     {
       icon: HelpCircle,

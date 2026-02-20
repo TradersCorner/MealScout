@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { X, Share2, PlusSquare } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ArrowDownToLine, ExternalLink, PlusSquare, Share2, X } from "lucide-react";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -36,6 +43,7 @@ export function PwaInstallBanner() {
     null,
   );
   const [dismissed, setDismissed] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const ios = useMemo(() => (typeof window === "undefined" ? false : isIosDevice()), []);
   const inApp = useMemo(() => (typeof window === "undefined" ? false : isInAppBrowser()), []);
@@ -111,56 +119,120 @@ export function PwaInstallBanner() {
     }
   };
 
-  const title = deferredPrompt ? "Install MealScout" : "Add MealScout to your Home Screen";
-  const body = deferredPrompt
-    ? "Get faster access and an app-like experience."
-    : inApp
-      ? "You're in an in-app browser. Tap ... then Open in Safari, then Share and Add to Home Screen."
-      : "Tap Share, then Add to Home Screen.";
+  const pillLabel = deferredPrompt
+    ? "Install"
+    : ios
+      ? "Add to Home Screen"
+      : "Install";
+
+  const pillIcon = deferredPrompt ? (
+    <ArrowDownToLine className="h-4 w-4" />
+  ) : ios ? (
+    <PlusSquare className="h-4 w-4" />
+  ) : (
+    <ArrowDownToLine className="h-4 w-4" />
+  );
+
+  const showInstallPill = Boolean(deferredPrompt) || ios;
 
   return (
-    <div className="fixed left-0 right-0 bottom-[72px] z-50 px-4 md:bottom-4 md:px-6">
-      <Card className="mx-auto max-w-md border-[color:var(--border-subtle)] bg-[var(--bg-card)] shadow-clean-lg">
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-foreground">{title}</div>
-              <div className="mt-1 text-xs text-muted-foreground">{body}</div>
-              {!deferredPrompt && ios && (
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[color:var(--border-subtle)] px-2 py-1">
-                    <Share2 className="h-3 w-3" />
-                    Share
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[color:var(--border-subtle)] px-2 py-1">
-                    <PlusSquare className="h-3 w-3" />
-                    Add to Home Screen
-                  </span>
+    <>
+      {showInstallPill && (
+        <div className="fixed left-4 right-auto bottom-[calc(0.75rem+env(safe-area-inset-bottom)+4.5rem)] z-40 md:left-auto md:right-4 md:bottom-auto md:top-4">
+          <div className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-[color:var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 shadow-clean-lg">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2"
+              onClick={() => {
+                if (deferredPrompt) {
+                  void onInstall();
+                  return;
+                }
+                setOpen(true);
+              }}
+              data-testid="button-pwa-pill"
+            >
+              {pillIcon}
+              <span className="ml-1 text-sm font-semibold">{pillLabel}</span>
+            </Button>
+            <button
+              type="button"
+              onClick={dismiss}
+              aria-label="Dismiss install prompt"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-[var(--bg-surface)] hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add MealScout to your Home Screen</DialogTitle>
+            <DialogDescription>
+              iPhone and iPad install via Safari: Share, then Add to Home Screen.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 text-sm text-foreground">
+            {inApp ? (
+              <div className="rounded-lg border border-[color:var(--border-subtle)] bg-[var(--bg-surface)] p-3">
+                <div className="font-semibold">You're in an in-app browser</div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  Facebook/Messenger browsers usually block install. Open this page in Safari first.
                 </div>
-              )}
-              <div className="mt-3 flex gap-2">
-                {deferredPrompt ? (
-                  <Button size="sm" onClick={onInstall} data-testid="button-pwa-install">
-                    Install
-                  </Button>
-                ) : (
-                  <Button size="sm" variant="outline" onClick={dismiss}>
-                    Got it
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={dismiss}
-                  aria-label="Dismiss install banner"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
               </div>
+            ) : null}
+
+            <div className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1 rounded-full border border-[color:var(--border-subtle)] px-2 py-1">
+                <Share2 className="h-3 w-3" />
+                Share
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-[color:var(--border-subtle)] px-2 py-1">
+                <PlusSquare className="h-3 w-3" />
+                Add to Home Screen
+              </span>
             </div>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                try {
+                  navigator.clipboard?.writeText(window.location.href);
+                } catch {
+                  // ignore
+                }
+              }}
+            >
+              Copy link
+            </Button>
+            <Button
+              onClick={() => {
+                setOpen(false);
+              }}
+            >
+              Done
+            </Button>
+            {inApp && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  // Can't force-open Safari; this is a hint action only.
+                  window.open(window.location.href, "_blank", "noopener,noreferrer");
+                }}
+              >
+                Open in browser <ExternalLink className="ml-1 h-4 w-4" />
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

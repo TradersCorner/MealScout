@@ -138,7 +138,7 @@ const safeText = (v: string | null | undefined, fallback = "Unknown") => {
 
 export default function SuppliersPage() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [tab, setTab] = useState<"catalog" | "import">("catalog");
   const [q, setQ] = useState("");
   const [orderListFile, setOrderListFile] = useState<File | null>(null);
@@ -151,6 +151,7 @@ export default function SuppliersPage() {
   const userType = String((user as any)?.userType || "").trim();
   const isSupplierUser = userType === "supplier";
   const isBuyerBusiness = userType === "restaurant_owner" || userType === "food_truck";
+  const canUseBuyerTools = isAuthenticated && !isSupplierUser;
 
   const { data: prefs } = useQuery<SupplyPreferences>({
     queryKey: ["/api/supply/preferences"],
@@ -162,7 +163,7 @@ export default function SuppliersPage() {
     },
     staleTime: 60_000,
     gcTime: 10 * 60_000,
-    enabled: !isSupplierUser,
+    enabled: canUseBuyerTools,
   });
 
   const [prefsDraft, setPrefsDraft] = useState<Partial<SupplyPreferences>>({});
@@ -201,7 +202,7 @@ export default function SuppliersPage() {
     },
     staleTime: 60_000,
     gcTime: 10 * 60_000,
-    enabled: !isSupplierUser,
+    enabled: canUseBuyerTools,
   });
 
   useEffect(() => {
@@ -230,7 +231,7 @@ export default function SuppliersPage() {
       if (!res.ok) throw new Error("Failed to search supply");
       return res.json();
     },
-    enabled: showSearch,
+    enabled: canUseBuyerTools && showSearch,
     staleTime: 15_000,
   });
 
@@ -269,6 +270,9 @@ export default function SuppliersPage() {
 
   const savePreferences = useMutation({
     mutationFn: async () => {
+      if (!canUseBuyerTools) {
+        throw new Error("Please log in to save supply preferences.");
+      }
       const body: any = {};
       const pickNum = (v: any) => (v === "" || v === null || v === undefined ? undefined : v);
       if (prefsDraft.maxStops !== undefined) body.maxStops = pickNum(prefsDraft.maxStops);
@@ -304,6 +308,9 @@ export default function SuppliersPage() {
 
   const requestDemand = useMutation({
     mutationFn: async () => {
+      if (!canUseBuyerTools) {
+        throw new Error("Please log in to request an item.");
+      }
       const res = await fetch("/api/supply/demand", {
         method: "POST",
         credentials: "include",
@@ -344,6 +351,9 @@ export default function SuppliersPage() {
 
   const importOrderList = useMutation({
     mutationFn: async () => {
+      if (!canUseBuyerTools) {
+        throw new Error("Please log in to import an order list.");
+      }
       if (!orderListFile) throw new Error("Choose an order list file first.");
       const form = new FormData();
       form.append("file", orderListFile);
@@ -385,9 +395,39 @@ export default function SuppliersPage() {
 
   return (
     <div className="min-h-screen pb-24">
+      <h1 className="sr-only">MealScout supply marketplace</h1>
       <BackHeader title="Supply Marketplace" fallbackHref="/map" />
 
       <div className="px-4 space-y-4">
+        {!canUseBuyerTools && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Browse suppliers</CardTitle>
+              <CardDescription>
+                You can browse without an account. Sign in to search across suppliers, upload order
+                sheets, and place orders.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 flex flex-col gap-2 sm:flex-row">
+              <Button
+                onClick={() => {
+                  window.location.href = "/login";
+                }}
+              >
+                Sign in
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  window.location.href = "/customer-signup";
+                }}
+              >
+                Create account
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="rounded-xl border bg-gradient-to-br from-background to-muted/30 p-4 shadow-clean">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-1">
@@ -407,7 +447,7 @@ export default function SuppliersPage() {
                         Become a supplier
                       </Button>
                     </Link>
-                    {!isBuyerBusiness && (
+                    {canUseBuyerTools && !isBuyerBusiness && (
                       <Link href="/customer-signup?role=business">
                         <Button size="sm" variant="outline" className="w-full sm:w-auto">
                           Create business account
@@ -588,7 +628,7 @@ export default function SuppliersPage() {
                 />
               )}
 
-              {!isSupplierUser && (
+              {canUseBuyerTools && (
                 <Link href="/supply/orders">
                   <Button variant="outline" className="w-full sm:w-auto">Orders</Button>
                 </Link>
@@ -610,15 +650,15 @@ export default function SuppliersPage() {
           </Card>
         )}
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
-          <TabsList className="w-full">
-            <TabsTrigger value="catalog" className="flex-1">
-              Catalog
-            </TabsTrigger>
-            <TabsTrigger value="import" className="flex-1">
-              Best-deal import
-            </TabsTrigger>
-          </TabsList>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+            <TabsList className="w-full">
+              <TabsTrigger value="catalog" className="flex-1">
+                Catalog
+              </TabsTrigger>
+              <TabsTrigger value="import" className="flex-1" disabled={!canUseBuyerTools}>
+                Best-deal import
+              </TabsTrigger>
+            </TabsList>
 
           <TabsContent value="catalog">
             <Card>
@@ -631,7 +671,13 @@ export default function SuppliersPage() {
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   placeholder="Try: lemons, cups, ice, tortillas..."
+                  disabled={!canUseBuyerTools}
                 />
+                {!canUseBuyerTools && (
+                  <div className="text-sm text-muted-foreground">
+                    Sign in to search across suppliers and place orders. You can still browse suppliers below.
+                  </div>
+                )}
 
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">

@@ -233,6 +233,8 @@ function Router() {
             <Route path="/deal/:id" component={DealDetail} />
             <Route path="/search" component={Search} />
             <Route path="/map" component={MapPage} />
+            <Route path="/suppliers" component={SuppliersPage} />
+            <Route path="/suppliers/:supplierId" component={SupplierDetailPage} />
             <Route path="/video" component={VideoPage} />
             <Route path="/video/:id" component={VideoDetailPage} />
             <Route path="/category/:category" component={CategoryPage} />

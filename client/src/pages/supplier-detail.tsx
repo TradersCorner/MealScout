@@ -55,7 +55,7 @@ const formatMoney = (cents: number) => `$${(Number(cents || 0) / 100).toFixed(2)
 export default function SupplierDetailPage() {
   const { supplierId } = useParams();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const [pickupNote, setPickupNote] = useState("");
   const [productQ, setProductQ] = useState("");
@@ -128,6 +128,7 @@ export default function SupplierDetailPage() {
     },
     staleTime: 60_000,
     gcTime: 10 * 60_000,
+    enabled: isAuthenticated,
   });
 
   const myTrucks = useMemo(
@@ -137,6 +138,7 @@ export default function SupplierDetailPage() {
 
   const userType = String((user as any)?.userType || "").trim();
   const isBuyerBusiness = userType === "restaurant_owner" || userType === "food_truck";
+  const canOrder = isAuthenticated;
 
   useEffect(() => {
     if (!isBuyerBusiness) return;
@@ -163,6 +165,7 @@ export default function SupplierDetailPage() {
       return data;
     },
     staleTime: 10_000,
+    enabled: isAuthenticated,
   });
 
   const myRequestsForSupplier = useMemo(() => {
@@ -346,35 +349,47 @@ export default function SupplierDetailPage() {
 
   return (
     <div className="min-h-screen pb-24">
+      <h1 className="sr-only">
+        {supplier?.businessName ? `${supplier.businessName} supplies` : "Supplier supplies"}
+      </h1>
       <BackHeader
         title={supplier?.businessName || "Supplier"}
         fallbackHref="/suppliers"
       />
 
       <div className="px-4 space-y-4">
-        {!isBuyerBusiness && (
+        {!canOrder && (
           <Card>
             <CardContent className="p-4 text-sm text-muted-foreground">
-              Supply requests are built for food trucks and restaurants. Create a business account to place pickup or delivery requests.
+              Sign in to place an order or request supplies. You can browse products without an account.
               <div className="pt-3">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    window.location.href = "/customer-signup?role=business";
+                    window.location.href = "/login";
                   }}
                 >
-                  Create business account
+                  Sign in
+                </Button>
+                <Button
+                  size="sm"
+                  className="ml-2"
+                  onClick={() => {
+                    window.location.href = "/customer-signup";
+                  }}
+                >
+                  Create account
                 </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {isBuyerBusiness && myRestaurants.length === 0 && (
+        {canOrder && myRestaurants.length === 0 && (
           <Card>
             <CardContent className="p-4 text-sm text-muted-foreground">
-              Add a restaurant or food truck profile before requesting supplies.
+              Ordering as an individual. Add a restaurant or food truck profile to keep orders separated by business.
               <div className="pt-3">
                 <Button
                   size="sm"
@@ -390,7 +405,7 @@ export default function SupplierDetailPage() {
           </Card>
         )}
 
-        {selectedBuyerRestaurantId ? (
+        {canOrder ? (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Your requests</CardTitle>

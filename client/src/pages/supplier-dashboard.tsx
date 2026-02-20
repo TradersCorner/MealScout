@@ -639,6 +639,7 @@ export default function SupplierDashboardPage() {
 
   return (
     <div className="min-h-screen pb-24">
+      <h1 className="sr-only">MealScout supplier dashboard</h1>
       <BackHeader title="Supplier Dashboard" fallbackHref="/" />
 
       <div className="px-4 space-y-4">

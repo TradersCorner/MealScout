@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import Navigation from "@/components/navigation";
@@ -95,6 +95,7 @@ export default function SupplyOrdersPage() {
 
   return (
     <div className="min-h-screen pb-24">
+      <h1 className="sr-only">MealScout supply orders</h1>
       <BackHeader title="Supply Orders" fallbackHref="/suppliers" />
 
       <div className="px-4 space-y-4">
@@ -179,7 +180,7 @@ export default function SupplyOrdersPage() {
                           {o.supplier?.businessName || "Supplier"}
                         </CardTitle>
                         <CardDescription className="truncate">
-                          Status: {prettify(orderStatus)} • Payment: {prettify(paymentStatus)}
+                          Status: {prettify(orderStatus)} | Payment: {prettify(paymentStatus)}
                         </CardDescription>
                       </div>
                       <Badge variant="secondary" className="shrink-0">
@@ -260,3 +261,4 @@ export default function SupplyOrdersPage() {
     </div>
   );
 }
+

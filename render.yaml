@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: mealscout
+    runtime: node
+    plan: starter
+    buildCommand: npm ci && npm run build:platform
+    startCommand: npm run start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20

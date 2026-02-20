@@ -2065,7 +2065,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!address) return false;
         if (!activeHostUserIds) return true;
         const userId = String(host.userId || "").trim();
-        return userId ? activeHostUserIds.has(userId) : false;
+        // Legacy host rows may not be tied to a user. Only hide a host when we explicitly
+        // know the owning user is disabled.
+        return userId ? activeHostUserIds.has(userId) : true;
       });
 
       const publicEvents = upcomingEvents.filter(

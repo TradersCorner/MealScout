@@ -401,8 +401,10 @@ export const supplierRequests = pgTable(
     supplierId: varchar("supplier_id")
       .notNull()
       .references(() => suppliers.id, { onDelete: "cascade" }),
+    buyerUserId: varchar("buyer_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     buyerRestaurantId: varchar("buyer_restaurant_id")
-      .notNull()
       .references(() => restaurants.id, { onDelete: "restrict" }),
     status: varchar("status").notNull().default("submitted"), // 'submitted' | 'accepted' | 'declined' | 'cancelled'
     requestedFulfillment: varchar("requested_fulfillment")
@@ -438,6 +440,7 @@ export const supplierRequests = pgTable(
   (table) => [
     index("idx_supplier_requests_supplier").on(table.supplierId),
     index("idx_supplier_requests_buyer").on(table.buyerRestaurantId),
+    index("idx_supplier_requests_buyer_user").on(table.buyerUserId),
     index("idx_supplier_requests_status").on(table.status),
     index("idx_supplier_requests_fulfillment").on(table.requestedFulfillment),
     index("idx_supplier_requests_delivery_status").on(table.deliveryStatus),

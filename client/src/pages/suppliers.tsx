@@ -302,13 +302,12 @@ export default function SuppliersPage() {
 
   const requestDemand = useMutation({
     mutationFn: async () => {
-      if (!selectedBuyerRestaurantId) throw new Error("Select a business first.");
       const res = await fetch("/api/supply/demand", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          buyerRestaurantId: selectedBuyerRestaurantId,
+          ...(selectedBuyerRestaurantId ? { buyerRestaurantId: selectedBuyerRestaurantId } : {}),
           itemName: trimmedQ,
           quantity: null,
         }),
@@ -344,10 +343,9 @@ export default function SuppliersPage() {
   const importOrderList = useMutation({
     mutationFn: async () => {
       if (!orderListFile) throw new Error("Choose an order list file first.");
-      if (!selectedBuyerRestaurantId) throw new Error("Select a business first.");
       const form = new FormData();
       form.append("file", orderListFile);
-      form.append("buyerRestaurantId", selectedBuyerRestaurantId);
+      if (selectedBuyerRestaurantId) form.append("buyerRestaurantId", selectedBuyerRestaurantId);
       const res = await fetch("/api/supply/order-list/import", {
         method: "POST",
         credentials: "include",
@@ -705,7 +703,7 @@ export default function SuppliersPage() {
 
                 <div className="flex items-center gap-2">
                   <Button
-                    disabled={!orderListFile || !selectedBuyerRestaurantId || importOrderList.isPending}
+                    disabled={!orderListFile || importOrderList.isPending}
                     onClick={() => importOrderList.mutate()}
                     className="gap-2"
                   >

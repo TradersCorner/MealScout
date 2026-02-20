@@ -4,6 +4,7 @@ import Stripe from "stripe";
 import { db } from "../db";
 import { storage } from "../storage";
 import {
+  restaurants,
   supplierOrders,
   supplierOrderItems,
   supplierProducts,
@@ -191,6 +192,12 @@ async function resolveBuyerRestaurantOrThrow(req: any, buyerRestaurantId: string
   return buyerRestaurant;
 }
 
+async function resolveBuyerRestaurantOrNull(req: any, buyerRestaurantId: unknown) {
+  const id = String(buyerRestaurantId || "").trim();
+  if (!id) return null;
+  return resolveBuyerRestaurantOrThrow(req, id);
+}
+
 async function resolveSupplyShoppingListOrThrow(req: any, listId: string) {
   const [list] = await db
     .select()
@@ -285,7 +292,7 @@ async function searchSupplierProductsForTerms(params: {
 }
 
 async function recordDemandAndNotifyIfUnlisted(params: {
-  buyerRestaurant: any;
+  buyerRestaurant?: any | null;
   itemNameRaw: string;
   quantity?: number | null;
   source: "manual" | "request" | "import";
@@ -310,17 +317,18 @@ async function recordDemandAndNotifyIfUnlisted(params: {
   if (existing) return { created: false, notified: 0, reason: "already_listed" };
 
   const now = new Date();
+  const buyer = params.buyerRestaurant ?? null;
   const [demand] = await db
     .insert(supplyDemands)
     .values({
-      buyerRestaurantId: String((params.buyerRestaurant as any).id),
+      buyerRestaurantId: buyer ? String((buyer as any).id) : null,
       itemKey,
       itemName,
       quantity: params.quantity ?? null,
-      buyerCity: (params.buyerRestaurant as any).city ?? null,
-      buyerState: (params.buyerRestaurant as any).state ?? null,
-      buyerLatitude: (params.buyerRestaurant as any).latitude ?? null,
-      buyerLongitude: (params.buyerRestaurant as any).longitude ?? null,
+      buyerCity: buyer ? ((buyer as any).city ?? null) : null,
+      buyerState: buyer ? ((buyer as any).state ?? null) : null,
+      buyerLatitude: buyer ? ((buyer as any).latitude ?? null) : null,
+      buyerLongitude: buyer ? ((buyer as any).longitude ?? null) : null,
       source: params.source,
       createdAt: now,
       updatedAt: now,
@@ -330,8 +338,9 @@ async function recordDemandAndNotifyIfUnlisted(params: {
   const notifyEnabled =
     String(process.env.SUPPLY_DEMAND_NOTIFY || "").toLowerCase() !== "false";
   if (!notifyEnabled) return { created: true, notified: 0, demandId: demand?.id };
+  if (!buyer) return { created: true, notified: 0, demandId: demand?.id };
 
-  const localSuppliers = await findLocalSuppliersForBuyer(params.buyerRestaurant);
+  const localSuppliers = await findLocalSuppliersForBuyer(buyer);
   if (localSuppliers.length === 0) return { created: true, notified: 0, demandId: demand?.id };
 
   const supplierIds = localSuppliers.map((s: any) => String(s.id));
@@ -865,7 +874,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     try {
       const list = await resolveSupplyShoppingListOrThrow(req, String(req.params.listId));
       const schema = z.object({
-        buyerRestaurantId: z.string().optional(),
+        buyerRestaurantId: z.string().optional().nullable(),
         maxStops: z.coerce.number().int().min(1).max(5).optional(),
         maxRadiusMiles: z.coerce.number().int().min(1).max(250).optional(),
         // Legacy
@@ -881,10 +890,9 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       const effectiveBuyerRestaurantId =
         String((list as any).buyerRestaurantId || "").trim() ||
         String(parsedMeta.buyerRestaurantId || "").trim();
-      if (!effectiveBuyerRestaurantId) {
-        return res.status(400).json({ message: "buyerRestaurantId is required for optimization." });
-      }
-      const buyerRestaurant = await resolveBuyerRestaurantOrThrow(req, effectiveBuyerRestaurantId);
+      const buyerRestaurant = effectiveBuyerRestaurantId
+        ? await resolveBuyerRestaurantOrThrow(req, effectiveBuyerRestaurantId)
+        : null;
 
       const prefs = await ensureSupplyOrderPreferences(String(req.user.id));
       const maxStops =
@@ -946,8 +954,8 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         limit: 1200,
       });
 
-      const buyerLat = Number((buyerRestaurant as any).latitude);
-      const buyerLon = Number((buyerRestaurant as any).longitude);
+      const buyerLat = buyerRestaurant ? Number((buyerRestaurant as any).latitude) : NaN;
+      const buyerLon = buyerRestaurant ? Number((buyerRestaurant as any).longitude) : NaN;
       const hasBuyerCoords = Number.isFinite(buyerLat) && Number.isFinite(buyerLon);
       const radiusMiles = maxRadiusMiles;
 
@@ -1239,12 +1247,12 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
   app.post("/api/supply/demand", isAuthenticated, async (req: any, res) => {
     try {
       const schema = z.object({
-        buyerRestaurantId: z.string().min(1),
+        buyerRestaurantId: z.string().optional().nullable(),
         itemName: z.string().min(1).max(120),
         quantity: z.number().int().min(1).max(100_000).optional().nullable(),
       });
       const parsed = schema.parse(req.body || {});
-      const buyerRestaurant = await resolveBuyerRestaurantOrThrow(req, parsed.buyerRestaurantId);
+      const buyerRestaurant = await resolveBuyerRestaurantOrNull(req, parsed.buyerRestaurantId);
 
       const result = await recordDemandAndNotifyIfUnlisted({
         buyerRestaurant,
@@ -1277,7 +1285,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         if (!file) return res.status(400).json({ message: "File is required" });
 
         const schema = z.object({
-          buyerRestaurantId: z.string().min(1),
+          buyerRestaurantId: z.string().optional().nullable(),
           maxStops: z.coerce.number().int().min(1).max(5).optional(),
           maxRadiusMiles: z.coerce.number().int().min(1).max(250).optional(),
           // Legacy
@@ -1290,7 +1298,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         });
         const parsedMeta = schema.parse(req.body || {});
 
-        const buyerRestaurant = await resolveBuyerRestaurantOrThrow(req, parsedMeta.buyerRestaurantId);
+        const buyerRestaurant = await resolveBuyerRestaurantOrNull(req, parsedMeta.buyerRestaurantId);
 
         const prefs = await ensureSupplyOrderPreferences(String(req.user.id));
         const maxStops =
@@ -1388,8 +1396,8 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           limit: 1200,
         });
 
-        const buyerLat = Number((buyerRestaurant as any).latitude);
-        const buyerLon = Number((buyerRestaurant as any).longitude);
+        const buyerLat = buyerRestaurant ? Number((buyerRestaurant as any).latitude) : NaN;
+        const buyerLon = buyerRestaurant ? Number((buyerRestaurant as any).longitude) : NaN;
         const hasBuyerCoords = Number.isFinite(buyerLat) && Number.isFinite(buyerLon);
         const radiusMiles = maxRadiusMiles;
 
@@ -1991,7 +1999,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     try {
       const schema = z.object({
         supplierId: z.string().min(1),
-        buyerRestaurantId: z.string().min(1),
+        buyerRestaurantId: z.string().optional().nullable(),
         requestedFulfillment: z.enum(["pickup", "delivery"]).default("pickup"),
         paymentPreference: z.enum(["offsite", "in_person", "online"]).default("offsite"),
         note: z.string().max(2000).optional().nullable(),
@@ -2013,9 +2021,19 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       });
       const parsed = schema.parse(req.body || {});
 
-      const buyerRestaurant = await storage.getRestaurant(parsed.buyerRestaurantId);
-      if (!buyerRestaurant || String(buyerRestaurant.ownerId) !== String(req.user.id)) {
-        return res.status(403).json({ message: "Not authorized" });
+      let buyerRestaurant: any | null = null;
+      try {
+        buyerRestaurant = await resolveBuyerRestaurantOrNull(req, parsed.buyerRestaurantId);
+      } catch (authError: any) {
+        if (String(authError?.message || "") === "Not authorized") {
+          return res.status(403).json({ message: "Not authorized" });
+        }
+        throw authError;
+      }
+
+      // Current supplier_orders schema requires a business. Personal buyers can still submit requests.
+      if (!buyerRestaurant && parsed.paymentPreference === "online") {
+        return res.status(400).json({ message: "Online payment requires a business profile." });
       }
 
       const [supplier] = await db
@@ -2031,10 +2049,9 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         return res.status(400).json({ message: "Supplier does not accept online payments." });
       }
       if (parsed.requestedFulfillment === "delivery") {
-        const addr =
-          parsed.deliveryAddress ?? (buyerRestaurant as any).address ?? null;
-        const city = parsed.deliveryCity ?? (buyerRestaurant as any).city ?? null;
-        const state = parsed.deliveryState ?? (buyerRestaurant as any).state ?? null;
+        const addr = parsed.deliveryAddress ?? (buyerRestaurant as any)?.address ?? null;
+        const city = parsed.deliveryCity ?? (buyerRestaurant as any)?.city ?? null;
+        const state = parsed.deliveryState ?? (buyerRestaurant as any)?.state ?? null;
         if (!String(addr || "").trim() || !String(city || "").trim() || !String(state || "").trim()) {
           return res.status(400).json({
             message: "Delivery requires deliveryAddress, deliveryCity, and deliveryState.",
@@ -2046,8 +2063,8 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           : null;
         const supplierLat = Number((supplier as any).latitude);
         const supplierLon = Number((supplier as any).longitude);
-        const buyerLat = Number((buyerRestaurant as any).latitude);
-        const buyerLon = Number((buyerRestaurant as any).longitude);
+        const buyerLat = buyerRestaurant ? Number((buyerRestaurant as any).latitude) : NaN;
+        const buyerLon = buyerRestaurant ? Number((buyerRestaurant as any).longitude) : NaN;
         if (
           radiusMiles &&
           Number.isFinite(radiusMiles) &&
@@ -2144,12 +2161,16 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       }
 
       const now = new Date();
+      const deliveryAddressEffective =
+        parsed.deliveryAddress ?? (buyerRestaurant as any)?.address ?? null;
+      const deliveryCityEffective = parsed.deliveryCity ?? (buyerRestaurant as any)?.city ?? null;
+      const deliveryStateEffective = parsed.deliveryState ?? (buyerRestaurant as any)?.state ?? null;
       const deliveryDefaults =
         parsed.requestedFulfillment === "delivery"
           ? {
-              deliveryAddress: parsed.deliveryAddress ?? (buyerRestaurant as any).address ?? null,
-              deliveryCity: parsed.deliveryCity ?? (buyerRestaurant as any).city ?? null,
-              deliveryState: parsed.deliveryState ?? (buyerRestaurant as any).state ?? null,
+              deliveryAddress: deliveryAddressEffective,
+              deliveryCity: deliveryCityEffective,
+              deliveryState: deliveryStateEffective,
               deliveryPostalCode: parsed.deliveryPostalCode ?? null,
               deliveryInstructions: parsed.deliveryInstructions ?? null,
               deliveryFeeCents: Number((supplier as any).deliveryFeeCents || 0) || 0,
@@ -2170,7 +2191,8 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           .insert(supplierRequests)
           .values({
             supplierId: supplier.id,
-            buyerRestaurantId: parsed.buyerRestaurantId,
+            buyerUserId: String(req.user.id),
+            buyerRestaurantId: buyerRestaurant ? String((buyerRestaurant as any).id) : null,
             status: "submitted",
             requestedFulfillment: parsed.requestedFulfillment,
             paymentPreference: parsed.paymentPreference,
@@ -2222,6 +2244,10 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
 
       // Notify supplier immediately (best-effort).
       try {
+        const buyerUser = await storage.getUser(String(req.user.id)).catch(() => null);
+        const buyerLabel = buyerRestaurant
+          ? String((buyerRestaurant as any).name || "Buyer")
+          : String((buyerUser as any)?.name || (buyerUser as any)?.email || "Individual buyer");
         const supplierUser = await storage.getUser(String((supplier as any).userId));
         const to =
           String((supplier as any).contactEmail || "").trim() ||
@@ -2229,10 +2255,10 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         if (to) {
           const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:5000";
           const manageUrl = `${baseUrl.replace(/\/+$/, "")}/supplier/dashboard`;
-          const subject = `New supply request: ${buyerRestaurant.name}`;
+          const subject = `New supply request: ${buyerLabel}`;
           const html = `
             <h2>New supply request</h2>
-            <p><strong>Buyer:</strong> ${buyerRestaurant.name}</p>
+            <p><strong>Buyer:</strong> ${buyerLabel}</p>
             <p><strong>Payment preference:</strong> ${parsed.paymentPreference}</p>
             <p><strong>Note:</strong> ${parsed.note ?? ""}</p>
             <p style="margin: 18px 0;">
@@ -2268,7 +2294,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
 
         const schema = z.object({
           supplierId: z.string().min(1),
-          buyerRestaurantId: z.string().min(1),
+          buyerRestaurantId: z.string().optional().nullable(),
           requestedFulfillment: z.enum(["pickup", "delivery"]).default("pickup"),
           paymentPreference: z.enum(["offsite", "in_person", "online"]).default("offsite"),
           note: z.string().max(2000).optional().nullable(),
@@ -2280,9 +2306,18 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         });
         const parsedMeta = schema.parse(req.body || {});
 
-        const buyerRestaurant = await storage.getRestaurant(parsedMeta.buyerRestaurantId);
-        if (!buyerRestaurant || String(buyerRestaurant.ownerId) !== String(req.user.id)) {
-          return res.status(403).json({ message: "Not authorized" });
+        let buyerRestaurant: any | null = null;
+        try {
+          buyerRestaurant = await resolveBuyerRestaurantOrNull(req, parsedMeta.buyerRestaurantId);
+        } catch (authError: any) {
+          if (String(authError?.message || "") === "Not authorized") {
+            return res.status(403).json({ message: "Not authorized" });
+          }
+          throw authError;
+        }
+
+        if (!buyerRestaurant && parsedMeta.paymentPreference === "online") {
+          return res.status(400).json({ message: "Online payment requires a business profile." });
         }
 
       const [supplier] = await db
@@ -2298,10 +2333,9 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         return res.status(400).json({ message: "Supplier does not accept online payments." });
       }
       if (parsedMeta.requestedFulfillment === "delivery") {
-        const addr =
-          parsedMeta.deliveryAddress ?? (buyerRestaurant as any).address ?? null;
-        const city = parsedMeta.deliveryCity ?? (buyerRestaurant as any).city ?? null;
-        const state = parsedMeta.deliveryState ?? (buyerRestaurant as any).state ?? null;
+        const addr = parsedMeta.deliveryAddress ?? (buyerRestaurant as any)?.address ?? null;
+        const city = parsedMeta.deliveryCity ?? (buyerRestaurant as any)?.city ?? null;
+        const state = parsedMeta.deliveryState ?? (buyerRestaurant as any)?.state ?? null;
         if (!String(addr || "").trim() || !String(city || "").trim() || !String(state || "").trim()) {
           return res.status(400).json({
             message: "Delivery requires deliveryAddress, deliveryCity, and deliveryState.",
@@ -2313,8 +2347,8 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           : null;
         const supplierLat = Number((supplier as any).latitude);
         const supplierLon = Number((supplier as any).longitude);
-        const buyerLat = Number((buyerRestaurant as any).latitude);
-        const buyerLon = Number((buyerRestaurant as any).longitude);
+        const buyerLat = buyerRestaurant ? Number((buyerRestaurant as any).latitude) : NaN;
+        const buyerLon = buyerRestaurant ? Number((buyerRestaurant as any).longitude) : NaN;
         if (
           radiusMiles &&
           Number.isFinite(radiusMiles) &&
@@ -2429,13 +2463,16 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         }
 
         const now = new Date();
+        const deliveryAddressEffective =
+          parsedMeta.deliveryAddress ?? (buyerRestaurant as any)?.address ?? null;
+        const deliveryCityEffective = parsedMeta.deliveryCity ?? (buyerRestaurant as any)?.city ?? null;
+        const deliveryStateEffective = parsedMeta.deliveryState ?? (buyerRestaurant as any)?.state ?? null;
         const deliveryDefaults =
           parsedMeta.requestedFulfillment === "delivery"
             ? {
-                deliveryAddress:
-                  parsedMeta.deliveryAddress ?? (buyerRestaurant as any).address ?? null,
-                deliveryCity: parsedMeta.deliveryCity ?? (buyerRestaurant as any).city ?? null,
-                deliveryState: parsedMeta.deliveryState ?? (buyerRestaurant as any).state ?? null,
+                deliveryAddress: deliveryAddressEffective,
+                deliveryCity: deliveryCityEffective,
+                deliveryState: deliveryStateEffective,
                 deliveryPostalCode: parsedMeta.deliveryPostalCode ?? null,
                 deliveryInstructions: parsedMeta.deliveryInstructions ?? null,
                 deliveryFeeCents: Number((supplier as any).deliveryFeeCents || 0) || 0,
@@ -2456,7 +2493,8 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
             .insert(supplierRequests)
             .values({
               supplierId: supplier.id,
-              buyerRestaurantId: parsedMeta.buyerRestaurantId,
+              buyerUserId: String(req.user.id),
+              buyerRestaurantId: buyerRestaurant ? String((buyerRestaurant as any).id) : null,
               status: "submitted",
               requestedFulfillment: parsedMeta.requestedFulfillment,
               paymentPreference: parsedMeta.paymentPreference,
@@ -2523,16 +2561,34 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
   app.get("/api/supplier-requests/mine", isAuthenticated, async (req: any, res) => {
     try {
       const buyerRestaurantId = String(req.query?.buyerRestaurantId || "").trim();
-      if (!buyerRestaurantId) return res.status(400).json({ message: "buyerRestaurantId required" });
-      const buyerRestaurant = await storage.getRestaurant(buyerRestaurantId);
-      if (!buyerRestaurant || String(buyerRestaurant.ownerId) !== String(req.user.id)) {
-        return res.status(403).json({ message: "Not authorized" });
+      let whereClause: any = eq(supplierRequests.buyerUserId, String(req.user.id));
+
+      if (buyerRestaurantId) {
+        try {
+          const buyerRestaurant = await resolveBuyerRestaurantOrThrow(req, buyerRestaurantId);
+          whereClause = eq(supplierRequests.buyerRestaurantId, String((buyerRestaurant as any).id));
+        } catch (authError: any) {
+          if (String(authError?.message || "") === "Not authorized") {
+            return res.status(403).json({ message: "Not authorized" });
+          }
+          throw authError;
+        }
+      } else {
+        // Backstop for older data: include requests tied to any business the user owns.
+        const bizRows = await db
+          .select({ id: restaurants.id })
+          .from(restaurants)
+          .where(eq(restaurants.ownerId, String(req.user.id)));
+        const ids = (bizRows || []).map((r: any) => String(r.id)).filter(Boolean);
+        if (ids.length > 0) {
+          whereClause = or(whereClause, inArray(supplierRequests.buyerRestaurantId, ids as any));
+        }
       }
 
       const requests = await db
         .select()
         .from(supplierRequests)
-        .where(eq(supplierRequests.buyerRestaurantId, buyerRestaurantId))
+        .where(whereClause)
         .orderBy(desc(supplierRequests.createdAt))
         .limit(200);
       res.json(requests);
@@ -2622,11 +2678,12 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
           : null;
         const supplierLat = Number((supplier as any).latitude);
         const supplierLon = Number((supplier as any).longitude);
-        const buyer = await storage.getRestaurant(String((request as any).buyerRestaurantId)).catch(
-          () => null,
-        );
-        const buyerLat = Number((buyer as any)?.latitude);
-        const buyerLon = Number((buyer as any)?.longitude);
+        const buyer =
+          (request as any).buyerRestaurantId
+            ? await storage.getRestaurant(String((request as any).buyerRestaurantId)).catch(() => null)
+            : null;
+        const buyerLat = buyer ? Number((buyer as any)?.latitude) : NaN;
+        const buyerLon = buyer ? Number((buyer as any)?.longitude) : NaN;
         if (
           radiusMiles &&
           Number.isFinite(radiusMiles) &&
@@ -2655,6 +2712,51 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
       const feeModel = isOnline
         ? computeOnPlatformPaymentFees(supplierGrossCents)
         : null;
+
+      // Personal buyers (no buyerRestaurantId) can submit requests, but we can't create supplier_orders yet.
+      if (!String((request as any).buyerRestaurantId || "").trim()) {
+        if (isOnline) {
+          return res.status(400).json({ message: "Online payments require a business profile." });
+        }
+
+        await db
+          .update(supplierRequests)
+          .set({
+            status: "accepted",
+            acceptedAt: now,
+            acceptedBy: req.user.id,
+            orderId: null,
+            deliveryStatus: requestedFulfillment === "delivery" ? "accepted" : "pending",
+            updatedAt: now,
+          } as any)
+          .where(eq(supplierRequests.id, requestId));
+
+        // Notify buyer (best-effort).
+        try {
+          const buyerUser = (request as any).buyerUserId
+            ? await storage.getUser(String((request as any).buyerUserId))
+            : null;
+          const to = String((buyerUser as any)?.email || "").trim();
+          if (to) {
+            const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:5000";
+            const ordersUrl = `${baseUrl.replace(/\/+$/, "")}/suppliers`;
+            const subject = "Supplier accepted your request";
+            const html = `
+              <h2>Your supply request was accepted</h2>
+              <p><strong>Supplier:</strong> ${supplier.businessName}</p>
+              <p>Your request was accepted. Coordinate pickup and payment with the supplier.</p>
+              <p style="margin: 18px 0;">
+                <a href=\"${ordersUrl}\" class=\"cta-button\">View suppliers</a>
+              </p>
+            `;
+            await emailService.sendBasicEmail(to, subject, html, undefined, "general");
+          }
+        } catch (notifyError) {
+          console.warn("Buyer accept notify failed:", notifyError);
+        }
+
+        return res.json({ success: true, orderId: null });
+      }
 
       const order = await db.transaction(async (tx: any) => {
         const [createdOrder] = await tx
@@ -2712,12 +2814,14 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
 
       // Notify buyer (best-effort).
       try {
-        const buyerRestaurant = await storage.getRestaurant(
-          String((request as any).buyerRestaurantId),
-        );
-        const buyerUser = buyerRestaurant?.ownerId
-          ? await storage.getUser(String(buyerRestaurant.ownerId))
-          : null;
+        const buyerRestaurant = await storage
+          .getRestaurant(String((request as any).buyerRestaurantId))
+          .catch(() => null);
+        const buyerUser = (request as any).buyerUserId
+          ? await storage.getUser(String((request as any).buyerUserId))
+          : buyerRestaurant?.ownerId
+            ? await storage.getUser(String(buyerRestaurant.ownerId))
+            : null;
         const to = String((buyerUser as any)?.email || "").trim();
         if (to) {
           const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:5000";
@@ -2826,12 +2930,14 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
         // Notify buyer on status changes (best-effort).
         if (nextStatus && nextStatus !== currentStatus) {
           try {
-            const buyerRestaurant = await storage.getRestaurant(
-              String((request as any).buyerRestaurantId),
-            );
-            const buyerUser = buyerRestaurant?.ownerId
-              ? await storage.getUser(String(buyerRestaurant.ownerId))
+            const buyerRestaurant = (request as any).buyerRestaurantId
+              ? await storage.getRestaurant(String((request as any).buyerRestaurantId))
               : null;
+            const buyerUser = (request as any).buyerUserId
+              ? await storage.getUser(String((request as any).buyerUserId))
+              : buyerRestaurant?.ownerId
+                ? await storage.getUser(String(buyerRestaurant.ownerId))
+                : null;
             const to = String((buyerUser as any)?.email || "").trim();
             if (to) {
               const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:5000";

@@ -138,6 +138,13 @@ export default function SupplierDetailPage() {
   const userType = String((user as any)?.userType || "").trim();
   const isBuyerBusiness = userType === "restaurant_owner" || userType === "food_truck";
 
+  useEffect(() => {
+    if (!isBuyerBusiness) return;
+    if (selectedBuyerRestaurantId) return;
+    if (myRestaurants.length === 0) return;
+    setSelectedBuyerRestaurantId(myRestaurants[0].id);
+  }, [isBuyerBusiness, myRestaurants, selectedBuyerRestaurantId]);
+
   const selectedBiz = useMemo(() => {
     return myRestaurants.find((r) => r.id === selectedBuyerRestaurantId) || null;
   }, [myRestaurants, selectedBuyerRestaurantId]);
@@ -145,15 +152,16 @@ export default function SupplierDetailPage() {
   const { data: myRequests = [] } = useQuery<any[]>({
     queryKey: ["/api/supplier-requests/mine", selectedBuyerRestaurantId],
     queryFn: async () => {
-      const params = new URLSearchParams({ buyerRestaurantId: selectedBuyerRestaurantId });
-      const res = await fetch(`/api/supplier-requests/mine?${params.toString()}`, {
+      const params = new URLSearchParams();
+      if (selectedBuyerRestaurantId) params.set("buyerRestaurantId", selectedBuyerRestaurantId);
+      const q = params.toString();
+      const res = await fetch(`/api/supplier-requests/mine${q ? `?${q}` : ""}`, {
         credentials: "include",
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.message || "Failed to load requests");
       return data;
     },
-    enabled: Boolean(selectedBuyerRestaurantId),
     staleTime: 10_000,
   });
 
@@ -226,7 +234,7 @@ export default function SupplierDetailPage() {
   const onlineMinOrderCents = Number(supplier?.onlinePaymentsMinOrderCents || 0) || 0;
   const onlineMinMet = onlineMinOrderCents <= 0 || estimatedTotalCents >= onlineMinOrderCents;
   const onlineEnabledForBuyer =
-    Boolean(supplier?.onlinePaymentsEnabled) && supplierOnlineMethodsEnabled;
+    Boolean(selectedBuyerRestaurantId) && Boolean(supplier?.onlinePaymentsEnabled) && supplierOnlineMethodsEnabled;
   const onlineSelectionValid =
     paymentPreference !== "online" || (onlineEnabledForBuyer && onlineMinMet);
 
@@ -244,7 +252,7 @@ export default function SupplierDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           supplierId,
-          buyerRestaurantId: selectedBuyerRestaurantId,
+          ...(selectedBuyerRestaurantId ? { buyerRestaurantId: selectedBuyerRestaurantId } : {}),
           requestedFulfillment,
           paymentPreference,
           note: pickupNote.trim() || null,
@@ -298,7 +306,7 @@ export default function SupplierDetailPage() {
       const form = new FormData();
       form.set("file", importFile);
       form.set("supplierId", String(supplierId || ""));
-      form.set("buyerRestaurantId", selectedBuyerRestaurantId);
+      if (selectedBuyerRestaurantId) form.set("buyerRestaurantId", selectedBuyerRestaurantId);
       form.set("requestedFulfillment", requestedFulfillment);
       form.set("paymentPreference", paymentPreference);
       form.set("note", pickupNote.trim());
@@ -422,7 +430,7 @@ export default function SupplierDetailPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Request settings</CardTitle>
             <CardDescription>
-              Choose your business, fulfillment, and payment preference.
+              Choose fulfillment and payment preference. Business profile is optional (used for online payment and distance).
             </CardDescription>
             <div className="flex flex-wrap gap-2 pt-2">
               <Badge variant="secondary">Pickup</Badge>
@@ -448,7 +456,7 @@ export default function SupplierDetailPage() {
             <div className="text-sm font-semibold">Your business</div>
             {myTrucks.length === 0 ? (
               <div className="text-sm text-muted-foreground">
-                You don't have a business profile yet.
+                Ordering as a personal buyer (no business profile).
               </div>
             ) : (
               <select
@@ -759,7 +767,6 @@ export default function SupplierDetailPage() {
               className="w-full sm:w-auto"
               disabled={
                 submitRequest.isPending ||
-                !selectedBuyerRestaurantId ||
                 cartItems.length === 0 ||
                 subtotalCents <= 0 ||
                 (requestedFulfillment === "delivery" && !canRequestDeliveryFull) ||

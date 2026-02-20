@@ -1,62 +1,11 @@
 {
-  "buildCommand": "npm --prefix client ci && npm --prefix client run build",
-  "outputDirectory": "client/dist",
-  "installCommand": "npm install",
-  "headers": [
-    {
-      "source": "/(.*).html",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-store, no-cache, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/assets/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://mealscout.onrender.com/api/:path*"
-    },
-    {
-      "source": "/socket.io/:path*",
-      "destination": "https://mealscout.onrender.com/socket.io/:path*"
-    },
-    {
-      "source": "/sitemap.xml",
-      "destination": "https://mealscout.onrender.com/sitemap.xml"
-    },
-    {
-      "source": "/privacy-policy",
-      "destination": "https://mealscout.onrender.com/privacy-policy"
-    },
-    {
-      "source": "/data-deletion",
-      "destination": "https://mealscout.onrender.com/data-deletion"
-    },
-    {
-      "source": "/video/:storyId",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": "(?i)(facebookexternalhit|twitterbot|slackbot|discordbot|googlebot|bingbot|linkedinbot)"
-        }
-      ],
-      "destination": "https://mealscout.onrender.com/video/:storyId"
-    },
+  "redirects": [
     {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "has": [{ "type": "host", "value": "mealscout.us" }],
+      "destination": "https://www.mealscout.us/$1",
+      "permanent": true
     }
   ]
 }
+

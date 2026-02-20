@@ -40,7 +40,13 @@ function resolveCanonicalBaseUrl() {
     ? raw
     : `https://${raw}`;
   try {
-    return new URL(withScheme);
+    const url = new URL(withScheme);
+    // Avoid redirect loops if env is set to the apex domain while edge redirects apex -> www.
+    // Canonical for mealscout.us should always be www.mealscout.us.
+    if (url.hostname.toLowerCase() === "mealscout.us") {
+      url.hostname = "www.mealscout.us";
+    }
+    return url;
   } catch {
     return new URL("https://www.mealscout.us");
   }

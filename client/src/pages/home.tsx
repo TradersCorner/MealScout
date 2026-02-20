@@ -284,13 +284,51 @@ export default function Home() {
     window.open(ad.targetUrl, "_blank", "noopener,noreferrer");
   };
 
+  const homeSchemaData = useMemo(
+    () => ({
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          name: "MealScout",
+          url: "https://www.mealscout.us/",
+          potentialAction: {
+            "@type": "SearchAction",
+            target: "https://www.mealscout.us/search?q={search_term_string}",
+            "query-input": "required name=search_term_string",
+          },
+        },
+        {
+          "@type": "CollectionPage",
+          name: "MealScout Home",
+          description:
+            "Find food trucks near you, discover live locations, and browse local deals from restaurants, bars, and hosts with MealScout.",
+          url: "https://www.mealscout.us/",
+          mainEntity: {
+            "@type": "ItemList",
+            name: "Featured Local Deals",
+            numberOfItems: sortedFeaturedDeals.slice(0, 10).length,
+            itemListElement: sortedFeaturedDeals.slice(0, 10).map((deal: Deal, index: number) => ({
+              "@type": "ListItem",
+              position: index + 1,
+              name: deal.title,
+              url: `${typeof window !== "undefined" ? window.location.origin : "https://www.mealscout.us"}/deal/${deal.id}`,
+            })),
+          },
+        },
+      ],
+    }),
+    [sortedFeaturedDeals],
+  );
+
   return (
     <div className="page relative overflow-hidden home-cinematic">
       <SEOHead
         title="MealScout | Find Food Trucks Near You"
         description="Find food trucks near you, discover live locations, and browse local deals from restaurants, bars, and hosts with MealScout."
-        keywords="food truck finder, food trucks near me, local food deals, meal deals, restaurant deals, food truck map"
+        keywords="food truck finder, food trucks near me, local food deals, meal deals, restaurant deals, food truck map, food truck events near me, food deals today"
         canonicalUrl="https://www.mealscout.us/"
+        schemaData={homeSchemaData}
       />
       <Navigation />
 

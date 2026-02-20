@@ -491,16 +491,61 @@ export default function SearchPage() {
         .slice(0, 8)
         .join(", ")
     : "food search";
+  const searchCanonicalUrl = searchQuery
+    ? `https://www.mealscout.us/search?q=${encodeURIComponent(searchQuery)}`
+    : "https://www.mealscout.us/search";
+
+  const searchSchemaData = useMemo(
+    () => ({
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SearchResultsPage",
+          name: searchQuery
+            ? `MealScout search results for ${searchQuery}`
+            : "MealScout Search",
+          url: searchCanonicalUrl,
+          description: searchDescription,
+          about: searchQuery || "local food deals",
+          mainEntity: {
+            "@type": "ItemList",
+            name: searchQuery
+              ? `Deals matching ${searchQuery}`
+              : "Featured searchable deals",
+            numberOfItems: filteredDeals.slice(0, 12).length,
+            itemListElement: filteredDeals.slice(0, 12).map((deal: any, index: number) => ({
+              "@type": "ListItem",
+              position: index + 1,
+              name: deal.title,
+              url: `https://www.mealscout.us/deal/${deal.id}`,
+            })),
+          },
+        },
+        {
+          "@type": "WebSite",
+          name: "MealScout",
+          url: "https://www.mealscout.us/",
+          potentialAction: {
+            "@type": "SearchAction",
+            target: "https://www.mealscout.us/search?q={search_term_string}",
+            "query-input": "required name=search_term_string",
+          },
+        },
+      ],
+    }),
+    [searchQuery, searchCanonicalUrl, searchDescription, filteredDeals],
+  );
 
   return (
     <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
       <SEOHead
         title={`${searchTitle} | MealScout`}
         description={searchDescription}
-        keywords={`food deals near me, food truck search, restaurant specials, local food finder, ${
+        keywords={`food deals near me, food truck search, restaurant specials, local food finder, nearby food trucks, event food vendors, ${
           searchKeywordVariants
-        }, nearby restaurants, meal deals`}
-        canonicalUrl="https://www.mealscout.us/search"
+        }, nearby restaurants, meal deals, food truck locations`}
+        canonicalUrl={searchCanonicalUrl}
+        schemaData={searchSchemaData}
       />
       <BackHeader title="Search" fallbackHref="/" />
       {/* Header */}

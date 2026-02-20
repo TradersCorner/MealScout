@@ -1717,13 +1717,41 @@ export default function MapPage() {
     [deals, geoAds, visibleDeals, visibleGeoAds],
   );
 
+  const mapSchemaData = useMemo(
+    () => ({
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Map",
+          name: "MealScout Live Food Map",
+          description:
+            "Interactive map of food trucks, nearby deals, paid parking spots, and event locations.",
+          url: "https://www.mealscout.us/map",
+        },
+        {
+          "@type": "ItemList",
+          name: "Nearby Map Deals",
+          numberOfItems: visibleDeals.slice(0, 12).length,
+          itemListElement: visibleDeals.slice(0, 12).map((deal: Deal, index: number) => ({
+            "@type": "ListItem",
+            position: index + 1,
+            name: deal.title,
+            url: `https://www.mealscout.us/deal/${deal.id}`,
+          })),
+        },
+      ],
+    }),
+    [visibleDeals],
+  );
+
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen relative pb-20">
       <SEOHead
         title="Map View - MealScout | Find Deals Near You"
         description="Explore food deals on an interactive map. See nearby restaurants, view deal locations, and discover dining discounts in your area. Find the perfect meal deal near you!"
-        keywords="food truck map near me, restaurant deals map, local food map, nearby food trucks, meal deals near me, interactive food map"
+        keywords="food truck map near me, restaurant deals map, local food map, nearby food trucks, meal deals near me, interactive food map, food truck parking map, local dining map"
         canonicalUrl="https://www.mealscout.us/map"
+        schemaData={mapSchemaData}
       />
       <BackHeader title="Map" fallbackHref="/" />
       {/* Header */}

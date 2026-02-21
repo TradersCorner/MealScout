@@ -77,7 +77,12 @@ export function registerEventRoutes(app: Express) {
       ) {
         return res.json(parkingPassPublicFeedCache.payload);
       }
-      const { occurrences } = await listParkingPassOccurrences({ horizonDays: 30 });
+      // Include draft series here; the public-ready filter below controls visibility.
+      // This prevents "priced but still draft" series from disappearing from booking feeds.
+      const { occurrences } = await listParkingPassOccurrences({
+        horizonDays: 30,
+        includeDraft: true,
+      });
 
       const payoutsEnabled = (event: any) =>
         Boolean(
@@ -416,7 +421,10 @@ export function registerEventRoutes(app: Express) {
         city: host?.city || event?.hostCity || event?.city,
         state: host?.state || event?.hostState || event?.state,
       });
-    const { occurrences } = await listParkingPassOccurrences({ horizonDays: 30 });
+    const { occurrences } = await listParkingPassOccurrences({
+      horizonDays: 30,
+      includeDraft: true,
+    });
     const virtualEvents = occurrences.filter((event: any) => {
       if (!isParkingPassPublicReady(event)) return false;
       if (!isPublicHostProfile(event?.host, event)) return false;

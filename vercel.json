@@ -12,6 +12,14 @@
   ],
   "rewrites": [
     {
+      "source": "/sitemap.xml",
+      "destination": "https://mealscout.onrender.com/sitemap.xml"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "https://mealscout.onrender.com/robots.txt"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "https://mealscout.onrender.com/api/$1"
     },

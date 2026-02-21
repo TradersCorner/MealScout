@@ -7748,6 +7748,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const resolveSitemapSiteUrl = () => {
+    const normalizeCandidate = (raw?: string | null): string | null => {
+      const value = String(raw || "").trim();
+      if (!value) return null;
+      try {
+        const withProtocol = /^[a-z]+:\/\//i.test(value)
+          ? value
+          : `https://${value}`;
+        const parsed = new URL(withProtocol);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          return null;
+        }
+        let hostname = parsed.hostname.toLowerCase();
+        if (hostname.endsWith(".onrender.com")) return null;
+        if (hostname === "mealscout.us") hostname = "www.mealscout.us";
+        if (hostname === "api.mealscout.us") hostname = "www.mealscout.us";
+        const port = parsed.port ? `:${parsed.port}` : "";
+        return `${parsed.protocol}//${hostname}${port}`.replace(/\/+$/, "");
+      } catch {
+        return null;
+      }
+    };
+
+    return (
+      normalizeCandidate(process.env.SITEMAP_SITE_URL) ||
+      normalizeCandidate(process.env.CLIENT_ORIGIN) ||
+      normalizeCandidate(process.env.PUBLIC_BASE_URL) ||
+      "https://www.mealscout.us"
+    );
+  };
+
+  const toIsoDateOrNull = (value: unknown): string | null => {
+    if (!value) return null;
+    const dt = new Date(value as any);
+    if (!Number.isFinite(dt.getTime())) return null;
+    return dt.toISOString();
+  };
+
   // Dynamic sitemap.xml (proxied by Vercel)
   app.get("/sitemap.xml", async (_req, res) => {
     try {
@@ -7786,62 +7824,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(suppliers.isActive, true))
         .orderBy(desc(suppliers.updatedAt));
 
-      const baseUrl = (
-        process.env.PUBLIC_BASE_URL ||
-        process.env.SERVICE_URL ||
-        "https://www.mealscout.us"
-      ).replace(/\/+$/, "");
+      const baseUrl = resolveSitemapSiteUrl();
+      const lastmodByLoc = new Map<string, string | null>();
+      const mergeUrl = (loc: string, lastmod?: unknown) => {
+        const normalizedLoc = String(loc || "").trim();
+        if (!normalizedLoc) return;
+        const nextLastmod = toIsoDateOrNull(lastmod);
+        const prevLastmod = lastmodByLoc.get(normalizedLoc) || null;
+        if (!prevLastmod) {
+          lastmodByLoc.set(normalizedLoc, nextLastmod);
+          return;
+        }
+        if (!nextLastmod) return;
+        if (new Date(nextLastmod).getTime() > new Date(prevLastmod).getTime()) {
+          lastmodByLoc.set(normalizedLoc, nextLastmod);
+        }
+      };
 
-      const urls = [
-        ...cityRows.map((c: any) => ({
-          loc: `${baseUrl}/food-trucks/${encodeURIComponent(c.slug)}`,
-          lastmod: c.updatedAt || c.createdAt,
-        })),
-        ...restaurantRows.map((r: any) => ({
-          loc: `${baseUrl}/p/restaurant/${encodeURIComponent(r.id)}/${encodeURIComponent(toSlug(r.name) || r.id)}`,
-          lastmod: r.updatedAt,
-        })),
-        ...hostRows.map((h: any) => ({
-          loc: `${baseUrl}/p/host/${encodeURIComponent(h.id)}/${encodeURIComponent(toSlug(h.name) || h.id)}`,
-          lastmod: h.updatedAt,
-        })),
-        ...supplierRows.map((s: any) => ({
-          loc: `${baseUrl}/p/supplier/${encodeURIComponent(s.id)}/${encodeURIComponent(toSlug(s.name) || s.id)}`,
-          lastmod: s.updatedAt,
-        })),
+      const staticPaths = [
+        "/",
+        "/truck-landing",
+        "/for-hosts",
+        "/for-restaurants",
+        "/for-bars",
+        "/for-events",
+        "/find-food",
+        "/restaurant-signup",
+        "/host-signup",
+        "/event-signup",
+        "/search",
+        "/map",
+        "/deals",
+        "/deals/featured",
+        "/suppliers",
+        "/events/public",
+        "/about",
+        "/faq",
+        "/how-it-works",
+        "/contact",
+        "/terms-of-service",
+        "/privacy-policy",
+        "/sitemap",
+        "/status",
       ];
+      staticPaths.forEach((path) => mergeUrl(`${baseUrl}${path}`));
 
-      const citySlugByName = new Map<string, string>(
-        cityRows.map((c: any) => [String(c.name || "").toLowerCase(), c.slug]),
-      );
-      const cuisinePageMap = new Map<string, Date | string | null | undefined>();
+      const latestCityBySlug = new Map<string, any>();
+      for (const city of cityRows as any[]) {
+        const slug = String(city?.slug || "").trim().toLowerCase();
+        if (!slug) continue;
+        const existing = latestCityBySlug.get(slug);
+        if (!existing) {
+          latestCityBySlug.set(slug, city);
+          continue;
+        }
+        const existingTs = new Date(
+          existing.updatedAt || existing.createdAt || 0,
+        ).getTime();
+        const nextTs = new Date(city.updatedAt || city.createdAt || 0).getTime();
+        if (nextTs >= existingTs) {
+          latestCityBySlug.set(slug, city);
+        }
+      }
+      const uniqueCityRows = Array.from(latestCityBySlug.values());
+
+      uniqueCityRows.forEach((city: any) => {
+        mergeUrl(
+          `${baseUrl}/food-trucks/${encodeURIComponent(city.slug)}`,
+          city.updatedAt || city.createdAt,
+        );
+      });
+
+      restaurantRows.forEach((row: any) => {
+        mergeUrl(
+          `${baseUrl}/p/restaurant/${encodeURIComponent(row.id)}/${encodeURIComponent(
+            toSlug(row.name) || row.id,
+          )}`,
+          row.updatedAt,
+        );
+      });
+
+      hostRows.forEach((row: any) => {
+        mergeUrl(
+          `${baseUrl}/p/host/${encodeURIComponent(row.id)}/${encodeURIComponent(
+            toSlug(row.name) || row.id,
+          )}`,
+          row.updatedAt,
+        );
+      });
+
+      supplierRows.forEach((row: any) => {
+        mergeUrl(
+          `${baseUrl}/p/supplier/${encodeURIComponent(row.id)}/${encodeURIComponent(
+            toSlug(row.name) || row.id,
+          )}`,
+          row.updatedAt,
+        );
+      });
+
+      const citySlugByName = new Map<string, string>();
+      uniqueCityRows.forEach((city: any) => {
+        const key = String(city?.name || "").trim().toLowerCase();
+        const slug = String(city?.slug || "").trim();
+        if (!key || !slug || citySlugByName.has(key)) return;
+        citySlugByName.set(key, slug);
+      });
+
+      const cuisineLastmodByCity = new Map<string, string | null>();
       for (const row of restaurantRows as any[]) {
-        const cityName = String(row.city || "").toLowerCase();
+        const cityName = String(row.city || "").trim().toLowerCase();
         const citySlug = citySlugByName.get(cityName);
         const cuisineSlug = toSlug(row.cuisineType || "");
         if (!citySlug || !cuisineSlug) continue;
         const key = `${citySlug}:${cuisineSlug}`;
-        const prev = cuisinePageMap.get(key);
-        if (!prev || new Date(row.updatedAt).getTime() > new Date(prev).getTime()) {
-          cuisinePageMap.set(key, row.updatedAt);
+        const existing = cuisineLastmodByCity.get(key) || null;
+        const next = toIsoDateOrNull(row.updatedAt);
+        if (!existing) {
+          cuisineLastmodByCity.set(key, next);
+          continue;
+        }
+        if (!next) continue;
+        if (new Date(next).getTime() > new Date(existing).getTime()) {
+          cuisineLastmodByCity.set(key, next);
         }
       }
-      urls.push(
-        ...Array.from(cuisinePageMap.entries()).map(([key, lastmod]) => {
-          const [citySlug, cuisineSlug] = key.split(":");
-          return {
-            loc: `${baseUrl}/food-trucks/${encodeURIComponent(citySlug)}/${encodeURIComponent(cuisineSlug)}`,
-            lastmod,
-          };
-        }),
-      );
+      cuisineLastmodByCity.forEach((lastmod, key) => {
+        const [citySlug, cuisineSlug] = key.split(":");
+        if (!citySlug || !cuisineSlug) return;
+        mergeUrl(
+          `${baseUrl}/food-trucks/${encodeURIComponent(citySlug)}/${encodeURIComponent(cuisineSlug)}`,
+          lastmod || undefined,
+        );
+      });
+
+      const urls = Array.from(lastmodByLoc.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([loc, lastmod]) => ({ loc, lastmod }));
+
       const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
         .map(
-          (entry: any) =>
-            `  <url><loc>${entry.loc}</loc>${entry.lastmod ? `<lastmod>${new Date(entry.lastmod).toISOString()}</lastmod>` : ""}</url>`,
+          (entry) =>
+            `  <url><loc>${entry.loc}</loc>${entry.lastmod ? `<lastmod>${entry.lastmod}</lastmod>` : ""}</url>`,
         )
         .join("\n")}\n</urlset>`;
-      res.setHeader("Content-Type", "application/xml");
+
+      res.setHeader("Content-Type", "application/xml; charset=utf-8");
+      res.setHeader(
+        "Cache-Control",
+        "public, max-age=300, s-maxage=1800, stale-while-revalidate=86400",
+      );
       res.send(xml);
     } catch (e) {
       console.error("sitemap failed", e);
@@ -7851,11 +7982,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/robots.txt", async (_req, res) => {
     try {
-      const baseUrl = (
-        process.env.PUBLIC_BASE_URL ||
-        process.env.SERVICE_URL ||
-        "https://www.mealscout.us"
-      ).replace(/\/+$/, "");
+      const baseUrl = resolveSitemapSiteUrl();
       const robots = [
         "User-agent: *",
         "Allow: /",
@@ -7863,6 +7990,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "",
       ].join("\n");
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=300, s-maxage=1800");
       res.send(robots);
     } catch (e) {
       console.error("robots failed", e);

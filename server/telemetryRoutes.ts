@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "./db";
-import { telemetryEvents, events, eventInterests, hosts } from "@shared/schema";
+import { telemetryEvents, events, eventInterests, eventSeries, hosts } from "@shared/schema";
 import { eq, and, gte, sql, desc, inArray } from "drizzle-orm";
 import { isAdmin } from "./unifiedAuth";
 
@@ -278,6 +278,199 @@ router.get("/ux-recovery", isAdmin, async (req, res) => {
   } catch (error) {
     console.error("Error fetching ux recovery telemetry:", error);
     res.status(500).json({ error: "Failed to fetch ux recovery telemetry" });
+  }
+});
+
+/**
+ * GET /api/admin/telemetry/open-call-series
+ * Open-call series operator metrics:
+ * - Fill rate for upcoming occurrences
+ * - Acceptance throughput (accepted/declined decisions)
+ * - Cancellation impact (occurrences cancelled + trucks notified)
+ */
+router.get("/open-call-series", isAdmin, async (req, res) => {
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days as string) || 30, 1), 90);
+    const decisionsSince = getRange(days);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const upcomingWindowDays = Math.min(
+      Math.max(parseInt(req.query.upcomingDays as string) || 30, 7),
+      90,
+    );
+    const upcomingUntil = new Date(today);
+    upcomingUntil.setDate(upcomingUntil.getDate() + upcomingWindowDays);
+
+    const [
+      publishedSeriesRows,
+      upcomingCapacityRows,
+      upcomingAcceptedRows,
+      throughputRows,
+      cancellationRows,
+      seriesBreakdownRows,
+    ] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(eventSeries)
+        .where(
+          and(
+            inArray(eventSeries.seriesType, ["event", "open_call"]),
+            eq(eventSeries.status, "published"),
+          ),
+        ),
+      db.execute(sql`
+        select
+          count(*)::int as events_count,
+          coalesce(sum(e.max_trucks), 0)::int as capacity_total
+        from events e
+        inner join event_series s on s.id = e.series_id
+        where s.series_type in ('event', 'open_call')
+          and e.date >= ${today}
+          and e.date < ${upcomingUntil}
+          and e.status in ('open', 'booked')
+      `),
+      db.execute(sql`
+        select count(*)::int as accepted_total
+        from event_interests i
+        inner join events e on e.id = i.event_id
+        inner join event_series s on s.id = e.series_id
+        where i.status = 'accepted'
+          and s.series_type in ('event', 'open_call')
+          and e.date >= ${today}
+          and e.date < ${upcomingUntil}
+          and e.status in ('open', 'booked')
+      `),
+      db.execute(sql`
+        select
+          t.event_name as event_name,
+          count(*)::int as count
+        from telemetry_events t
+        inner join events e on (t.properties->>'eventId') = e.id
+        where t.event_name in ('interest_accepted', 'interest_declined')
+          and t.created_at >= ${decisionsSince}
+          and e.series_id is not null
+        group by t.event_name
+      `),
+      db.execute(sql`
+        select
+          count(*)::int as series_cancelled,
+          coalesce(sum(coalesce(nullif(t.properties->>'futureOccurrencesCancelled', ''), '0')::int), 0)::int as occurrences_cancelled,
+          coalesce(sum(coalesce(nullif(t.properties->>'trucksNotified', ''), '0')::int), 0)::int as trucks_impacted
+        from telemetry_events t
+        where t.event_name = 'series_cancelled'
+          and t.created_at >= ${decisionsSince}
+      `),
+      db.execute(sql`
+        select
+          s.id as series_id,
+          s.name as series_name,
+          count(distinct e.id)::int as event_count,
+          coalesce(sum(e.max_trucks), 0)::int as capacity_total,
+          count(i.id) filter (where i.status = 'accepted')::int as accepted_total
+        from event_series s
+        inner join events e on e.series_id = s.id
+        left join event_interests i on i.event_id = e.id
+        where s.series_type in ('event', 'open_call')
+          and e.date >= ${today}
+          and e.date < ${upcomingUntil}
+          and e.status in ('open', 'booked')
+        group by s.id, s.name
+        order by accepted_total desc, capacity_total desc
+        limit 12
+      `),
+    ]);
+
+    const publishedSeriesCount = Number(
+      (publishedSeriesRows?.[0] as any)?.count || 0,
+    );
+
+    const upcomingCapacityRow = Array.isArray((upcomingCapacityRows as any)?.rows)
+      ? (upcomingCapacityRows as any).rows[0]
+      : Array.isArray(upcomingCapacityRows)
+        ? (upcomingCapacityRows as any)[0]
+        : null;
+
+    const upcomingAcceptedRow = Array.isArray((upcomingAcceptedRows as any)?.rows)
+      ? (upcomingAcceptedRows as any).rows[0]
+      : Array.isArray(upcomingAcceptedRows)
+        ? (upcomingAcceptedRows as any)[0]
+        : null;
+
+    const throughputSource = Array.isArray((throughputRows as any)?.rows)
+      ? (throughputRows as any).rows
+      : Array.isArray(throughputRows)
+        ? throughputRows
+        : [];
+
+    const cancellationRow = Array.isArray((cancellationRows as any)?.rows)
+      ? (cancellationRows as any).rows[0]
+      : Array.isArray(cancellationRows)
+        ? (cancellationRows as any)[0]
+        : null;
+
+    const seriesRows = Array.isArray((seriesBreakdownRows as any)?.rows)
+      ? (seriesBreakdownRows as any).rows
+      : Array.isArray(seriesBreakdownRows)
+        ? seriesBreakdownRows
+        : [];
+
+    const upcomingEventsCount = Number(upcomingCapacityRow?.events_count || 0);
+    const upcomingCapacityTotal = Number(upcomingCapacityRow?.capacity_total || 0);
+    const upcomingAcceptedTotal = Number(upcomingAcceptedRow?.accepted_total || 0);
+    const fillRatePct =
+      upcomingCapacityTotal > 0
+        ? Number(((upcomingAcceptedTotal / upcomingCapacityTotal) * 100).toFixed(2))
+        : 0;
+
+    const throughputByName = new Map<string, number>(
+      throughputSource.map((row: any) => [
+        String(row.event_name || ""),
+        Number(row.count || 0),
+      ]),
+    );
+
+    const acceptedDecisions = throughputByName.get("interest_accepted") || 0;
+    const declinedDecisions = throughputByName.get("interest_declined") || 0;
+    const throughputTotal = acceptedDecisions + declinedDecisions;
+    const acceptanceRatePct =
+      throughputTotal > 0
+        ? Number(((acceptedDecisions / throughputTotal) * 100).toFixed(2))
+        : 0;
+
+    res.json({
+      days,
+      upcomingWindowDays,
+      totals: {
+        publishedSeries: publishedSeriesCount,
+        upcomingOccurrences: upcomingEventsCount,
+        upcomingCapacity: upcomingCapacityTotal,
+        acceptedUpcoming: upcomingAcceptedTotal,
+        fillRatePct,
+        acceptedDecisions,
+        declinedDecisions,
+        acceptanceRatePct,
+        seriesCancelled: Number(cancellationRow?.series_cancelled || 0),
+        occurrencesCancelled: Number(cancellationRow?.occurrences_cancelled || 0),
+        trucksImpacted: Number(cancellationRow?.trucks_impacted || 0),
+      },
+      topSeries: (seriesRows as any[]).map((row: any) => {
+        const accepted = Number(row.accepted_total || 0);
+        const capacity = Number(row.capacity_total || 0);
+        const rowFillRate =
+          capacity > 0 ? Number(((accepted / capacity) * 100).toFixed(2)) : 0;
+        return {
+          seriesId: String(row.series_id || ""),
+          seriesName: String(row.series_name || "Untitled series"),
+          eventCount: Number(row.event_count || 0),
+          capacityTotal: capacity,
+          acceptedTotal: accepted,
+          fillRatePct: rowFillRate,
+        };
+      }),
+    });
+  } catch (error) {
+    console.error("Error fetching open-call series telemetry:", error);
+    res.status(500).json({ error: "Failed to fetch open-call series telemetry" });
   }
 });
 

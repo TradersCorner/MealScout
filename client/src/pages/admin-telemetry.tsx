@@ -47,7 +47,17 @@ export default function AdminTelemetry() {
     }
   });
 
-  if (loadingVelocity || loadingFillRates || loadingCoverage || loadingUxRecovery) {
+  // 5. Open-call series telemetry
+  const { data: openCallSeries, isLoading: loadingOpenCallSeries } = useQuery({
+    queryKey: ['/api/admin/telemetry/open-call-series'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/telemetry/open-call-series?days=30&upcomingDays=30');
+      if (!res.ok) throw new Error('Failed to fetch open-call series telemetry');
+      return res.json();
+    }
+  });
+
+  if (loadingVelocity || loadingFillRates || loadingCoverage || loadingUxRecovery || loadingOpenCallSeries) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -95,6 +105,57 @@ export default function AdminTelemetry() {
               {coverage?.history?.[0]?.coverage || 0}%
             </div>
             <p className="text-xs text-muted-foreground">Last week's eligible hosts reached</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Open-Call Fill Rate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {openCallSeries?.totals?.fillRatePct?.toFixed?.(1) ?? 0}%
+            </div>
+            <p className="text-xs text-muted-foreground">Accepted vs upcoming capacity</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Accepted Decisions (30d)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {openCallSeries?.totals?.acceptedDecisions || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {openCallSeries?.totals?.declinedDecisions || 0} declined
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Acceptance Rate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {openCallSeries?.totals?.acceptanceRatePct?.toFixed?.(1) ?? 0}%
+            </div>
+            <p className="text-xs text-muted-foreground">Accepted out of total decisions</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Trucks Impacted (30d)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-600">
+              {openCallSeries?.totals?.trucksImpacted || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {openCallSeries?.totals?.seriesCancelled || 0} cancelled series
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -163,6 +224,28 @@ export default function AdminTelemetry() {
               <Tooltip />
               <Bar yAxisId="left" dataKey="sent" name="Sent Emails" fill="#8884d8" radius={[4, 4, 0, 0]} />
               <Line yAxisId="right" type="monotone" dataKey="coverage" name="Coverage %" stroke="#82ca9d" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Top Open-Call Series (Upcoming {openCallSeries?.upcomingWindowDays || 30} Days)
+          </CardTitle>
+          <CardDescription>
+            Fill rate by series for active upcoming occurrences
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="h-[320px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={openCallSeries?.topSeries || []}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="seriesName" fontSize={12} interval={0} angle={-18} textAnchor="end" height={72} />
+              <YAxis fontSize={12} />
+              <Tooltip />
+              <Bar dataKey="fillRatePct" name="Fill Rate %" fill="#f59e0b" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>

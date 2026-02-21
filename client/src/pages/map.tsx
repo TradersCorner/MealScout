@@ -627,32 +627,46 @@ function HostMarkerLayer({
                   </div>
                 )}
                 {hostedTruck ? (
-                  <div className="grid grid-cols-2 gap-2 pt-2">
+                  <div className="space-y-2 pt-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        onClick={() => {
+                          window.location.href = `/restaurant/${hostedTruck.truck.id}`;
+                        }}
+                      >
+                        View menu
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          window.open(
+                            `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
+                            "_blank",
+                          );
+                        }}
+                      >
+                        Directions
+                      </Button>
+                    </div>
                     <Button
                       size="sm"
+                      variant="secondary"
                       className="w-full"
                       onClick={() => {
-                        window.location.href = `/restaurant/${hostedTruck.truck.id}`;
+                        window.location.href = `/parking-pass?hostId=${encodeURIComponent(
+                          hostId || host.id,
+                        )}&intent=request-truck`;
                       }}
                     >
-                      View menu
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => {
-                        window.open(
-                          `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
-                          "_blank",
-                        );
-                      }}
-                    >
-                      Directions
+                      Request truck here
                     </Button>
                   </div>
                 ) : (
-                  <div className="pt-2">
+                  <div className="space-y-2 pt-2">
                     <Button
                       size="sm"
                       className="w-full"
@@ -664,6 +678,18 @@ function HostMarkerLayer({
                       }}
                     >
                       Directions
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() => {
+                        window.location.href = `/parking-pass?hostId=${encodeURIComponent(
+                          hostId || host.id,
+                        )}&intent=request-truck`;
+                      }}
+                    >
+                      Request truck here
                     </Button>
                   </div>
                 )}

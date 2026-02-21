@@ -208,12 +208,18 @@ export function registerHostRoutes(app: Express) {
             ? coords.lng.toString()
             : null,
       });
+      const parkingPassSeriesReady = await storage.ensureDraftParkingPassForHost(
+        host.id,
+      ).catch(() => false);
 
       // Hosts should keep their existing user type (typically "customer").
       // We no longer auto-upgrade hosts into restaurant_owner accounts so
       // they don't see restaurant dashboards or deal creation flows.
 
-      res.status(201).json(host);
+      res.status(201).json({
+        ...host,
+        parkingPassSeriesReady,
+      });
     } catch (error: any) {
       console.error("Error creating host:", error);
       if (error instanceof z.ZodError) {

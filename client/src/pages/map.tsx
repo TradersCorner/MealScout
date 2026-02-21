@@ -660,14 +660,19 @@ function HostMarkerLayer({
         const hostStatus = hostId ? cachedHostStatusById[hostId] : undefined;
         const isFullToday = Boolean(hostStatus?.isFull);
         const isBookable = hostId ? bookableHostIds.has(hostId) : false;
-        const availableLabel = hostStatus
-          ? hostStatus.isFull
-            ? "Fully booked today"
-            : `${hostStatus.availableCount}/${hostStatus.spotCount} spots open today`
-          : "Availability updating...";
+        const availableLabel = !isBookable
+          ? "No parking pass listing yet"
+          : hostStatus
+            ? hostStatus.isFull
+              ? "Fully booked today"
+              : `${hostStatus.availableCount}/${hostStatus.spotCount} spots open today`
+            : "Availability updating...";
         const qualityFlags = hostId ? qualityFlagsByHostId.get(hostId) || [] : [];
         const distanceLabel = formatDistance(coords);
         const hostIsVerified = String(host.status || "").toLowerCase() === "verified";
+        const parkingPassHref = `/parking-pass?hostId=${encodeURIComponent(
+          hostId || host.id,
+        )}`;
 
         return (
           <Marker
@@ -751,12 +756,10 @@ function HostMarkerLayer({
                       variant="secondary"
                       className="w-full"
                       onClick={() => {
-                        window.location.href = `/parking-pass?hostId=${encodeURIComponent(
-                          hostId || host.id,
-                        )}&intent=request-truck`;
+                        window.location.href = parkingPassHref;
                       }}
                     >
-                      Request truck here
+                      {isBookable ? "View parking pass" : "View spot"}
                     </Button>
                   </div>
                 ) : (
@@ -778,12 +781,10 @@ function HostMarkerLayer({
                       variant="secondary"
                       className="w-full"
                       onClick={() => {
-                        window.location.href = `/parking-pass?hostId=${encodeURIComponent(
-                          hostId || host.id,
-                        )}&intent=request-truck`;
+                        window.location.href = parkingPassHref;
                       }}
                     >
-                      Request truck here
+                      {isBookable ? "View parking pass" : "View spot"}
                     </Button>
                   </div>
                 )}

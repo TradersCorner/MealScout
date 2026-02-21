@@ -594,6 +594,7 @@ export default function ParkingPassPage() {
   const [viewMode, setViewMode] = useState<"map" | "list">("map");
   const [activeLocationKey, setActiveLocationKey] = useState<string | null>(null);
   const [pendingPassId, setPendingPassId] = useState<string | null>(null);
+  const [requestedHostId, setRequestedHostId] = useState<string | null>(null);
   const [bookingReturnIntentId, setBookingReturnIntentId] = useState<string | null>(null);
   const [bookingReturnHandled, setBookingReturnHandled] = useState(false);
   const [parkingCoords, setParkingCoords] = useState<
@@ -892,6 +893,10 @@ export default function ParkingPassPage() {
     if (passId) {
       setPendingPassId(passId);
     }
+    const hostId = String(params.get("hostId") || "").trim();
+    if (hostId) {
+      setRequestedHostId(hostId);
+    }
     if (params.get("booking") === "success") {
       setBookingReturnIntentId(params.get("payment_intent"));
     }
@@ -996,6 +1001,16 @@ export default function ParkingPassPage() {
     }
     setPendingPassId(null);
   }, [pendingPassId, passListings]);
+
+  useEffect(() => {
+    if (!requestedHostId) return;
+    const match = passListings.find(
+      (listing) => String(listing?.host?.id || "").trim() === requestedHostId,
+    );
+    if (!match) return;
+    setActiveLocationKey(getLocationKey(match));
+    setSelectedDate(getListingDateKey(match.date));
+  }, [requestedHostId, passListings]);
 
   useEffect(() => {
     if (bookingReturnHandled) return;
@@ -2777,6 +2792,65 @@ export default function ParkingPassPage() {
         ),
     [filteredLocations, hostLocationsByHostId, parkingCoords],
   );
+  const fallbackHostPins = useMemo(
+    () =>
+      (paidMapLocations?.hostLocations ?? [])
+        .map((loc) => {
+          const lat = parseCoord(loc.latitude);
+          const lng = parseCoord(loc.longitude);
+          if (lat === null || lng === null) return null;
+
+          const hostId = String(loc.hostId || "").trim();
+          if (!hostId) return null;
+
+          if (normalizedCityQuery) {
+            const searchable = [
+              loc.name,
+              loc.address,
+              loc.city,
+              loc.state,
+            ]
+              .filter(Boolean)
+              .join(" ")
+              .toLowerCase();
+            if (!searchable.includes(normalizedCityQuery)) {
+              return null;
+            }
+          }
+
+          return {
+            key: `host:${loc.id}`,
+            hostId,
+            name: String(loc.name || "Host location"),
+            coords: { lat, lng },
+            addressLabel: buildAddressLabel(
+              loc.address ?? "",
+              loc.city ?? "",
+              loc.state ?? "",
+            ),
+            spotImageUrl: loc.spotImageUrl ?? null,
+          };
+        })
+        .filter(
+          (
+            item,
+          ): item is {
+            key: string;
+            hostId: string;
+            name: string;
+            coords: GeoPoint;
+            addressLabel: string;
+            spotImageUrl: string | null;
+          } => item !== null,
+        ),
+    [paidMapLocations, normalizedCityQuery],
+  );
+  const fallbackMapCenter = useMemo(() => {
+    const requestedPin = requestedHostId
+      ? fallbackHostPins.find((pin) => pin.hostId === requestedHostId)
+      : null;
+    return requestedPin?.coords || fallbackHostPins[0]?.coords || defaultMapCenter;
+  }, [fallbackHostPins, requestedHostId]);
   const mapCenter = useMemo(() => {
     const activeHostLocations = activeLocation
       ? hostLocationsByHostId.get(activeLocation.host.id)
@@ -4911,11 +4985,77 @@ export default function ParkingPassPage() {
                   </p>
                 </div>
               ) : passListings.length === 0 ? (
-                <div className="space-y-3">
-                  <div className="rounded-2xl pp-glass-muted p-6 text-center text-sm text-slate-700">
-                    No bookable parking pass spots are available right now.
+                viewMode === "map" && fallbackHostPins.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="rounded-2xl pp-glass shadow-clean overflow-hidden">
+                      <div className="relative h-72 w-full bg-slate-100/60">
+                        <MapContainer
+                          center={[fallbackMapCenter.lat, fallbackMapCenter.lng]}
+                          zoom={13}
+                          zoomControl={false}
+                          scrollWheelZoom
+                          className="h-full w-full"
+                        >
+                          <MapCenterer center={fallbackMapCenter} />
+                          <TileLayer
+                            attribution={parkingMapAttribution}
+                            url={parkingMapTileUrl}
+                          />
+                          {fallbackHostPins.map(
+                            ({
+                              key,
+                              hostId,
+                              name,
+                              coords,
+                              addressLabel,
+                              spotImageUrl,
+                            }) => (
+                              <Marker
+                                key={key}
+                                position={[coords.lat, coords.lng]}
+                                icon={parkingPassPinIcon}
+                                eventHandlers={{
+                                  click: () => setRequestedHostId(hostId),
+                                }}
+                              >
+                                <Popup>
+                                  <div className="space-y-2 text-xs">
+                                    <p className="font-semibold text-orange-600">{name}</p>
+                                    <p className="text-[color:var(--text-muted)]">
+                                      {addressLabel}
+                                    </p>
+                                    {spotImageUrl && (
+                                      <img
+                                        src={spotImageUrl}
+                                        alt={`${name} parking spot`}
+                                        className="h-24 w-full rounded-lg border border-border/50 object-cover"
+                                        loading="lazy"
+                                      />
+                                    )}
+                                    <p className="text-[11px] text-[color:var(--text-muted)]">
+                                      No active parking pass listing is open here right now.
+                                    </p>
+                                  </div>
+                                </Popup>
+                              </Marker>
+                            ),
+                          )}
+                        </MapContainer>
+                      </div>
+                      <div className="border-t border-[color:var(--border-subtle)] px-4 py-2 text-xs text-[color:var(--text-muted)]">
+                        {requestedHostId
+                          ? "This host is visible on the map, but has no active parking pass listing yet."
+                          : "Host locations are visible, but no active parking pass listings are open right now."}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="rounded-2xl pp-glass-muted p-6 text-center text-sm text-slate-700">
+                      No bookable parking pass spots are available right now.
+                    </div>
+                  </div>
+                )
               ) : viewMode === "map" ? (
                 <div className="space-y-3">
                   <div className="rounded-2xl pp-glass shadow-clean overflow-hidden">

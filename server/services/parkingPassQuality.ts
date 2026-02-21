@@ -12,6 +12,13 @@ type ParkingPassQualityFlag =
   | "invalid_spots"
   | "payments_disabled";
 
+type HostProfileQualityFlag =
+  | "missing_business_name"
+  | "suspicious_business_name"
+  | "missing_address"
+  | "bad_address_format"
+  | "suspicious_address";
+
 const normalize = (value?: string | number | null) =>
   String(value ?? "").trim();
 
@@ -89,6 +96,54 @@ const toNumberOrNull = (value: any): number | null => {
   const parsed = typeof value === "string" ? Number(value) : value;
   return Number.isFinite(parsed) ? parsed : null;
 };
+
+const SUSPICIOUS_TEST_TOKEN =
+  /\b(test|asdf|qwer|dummy|sample|temp|fake|placeholder)\b/i;
+const LONG_GIBBERISH_TOKEN = /^[a-z0-9]{16,}$/i;
+const STREET_HINT =
+  /\b(st|street|ave|avenue|rd|road|dr|drive|blvd|boulevard|ln|lane|hwy|highway|pkwy|parkway|way|ct|court)\b/i;
+
+export function computeHostProfileQualityFlags(profile: {
+  businessName?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+}): HostProfileQualityFlag[] {
+  const flags: HostProfileQualityFlag[] = [];
+  const businessName = normalize(profile.businessName);
+  const address = normalize(profile.address);
+
+  if (!businessName) {
+    flags.push("missing_business_name");
+  } else {
+    const compactName = businessName.replace(/\s+/g, "");
+    if (
+      SUSPICIOUS_TEST_TOKEN.test(businessName) ||
+      LONG_GIBBERISH_TOKEN.test(compactName)
+    ) {
+      flags.push("suspicious_business_name");
+    }
+  }
+
+  if (!address) {
+    flags.push("missing_address");
+  } else {
+    if (!/\d/.test(address) && !STREET_HINT.test(address)) {
+      flags.push("bad_address_format");
+    }
+    if (SUSPICIOUS_TEST_TOKEN.test(address)) {
+      flags.push("suspicious_address");
+    }
+  }
+
+  return Array.from(new Set(flags));
+}
+
+export function isHostProfileMapEligible(
+  profile: Parameters<typeof computeHostProfileQualityFlags>[0],
+) {
+  return computeHostProfileQualityFlags(profile).length === 0;
+}
 
 export function computeParkingPassQualityFlags(listing: {
   host?: {

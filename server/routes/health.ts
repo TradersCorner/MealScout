@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { getApiMetricsSnapshot } from "../observability";
 import { getOpsCleanupSnapshot, runOpsDataCleanup } from "../opsCleanup";
 import { getJobQueueStats } from "../jobs/jobQueue";
+import { getMapEndpointWatchdogSnapshot } from "../mapEndpointWatchdog";
 
 export const healthRouter = Router();
 
@@ -45,6 +46,16 @@ healthRouter.get("/health/realtime", (_req, res) => {
   res.json({ status: "ok", realtime: "ready", ts: Date.now() });
 });
 
+healthRouter.get("/health/map-endpoints", (_req, res) => {
+  const snapshot = getMapEndpointWatchdogSnapshot();
+  const status = snapshot.ok ? "ok" : "degraded";
+  res.status(snapshot.ok ? 200 : 503).json({
+    status,
+    ts: Date.now(),
+    watchdog: snapshot,
+  });
+});
+
 healthRouter.get("/health/ready", async (_req, res) => {
   try {
     await db.execute(sql`SELECT 1`);
@@ -69,6 +80,7 @@ healthRouter.get("/health/metrics", (req, res) => {
     status: "ok",
     ts: Date.now(),
     metrics: getApiMetricsSnapshot(),
+    mapEndpoints: getMapEndpointWatchdogSnapshot(),
     cleanup: getOpsCleanupSnapshot(),
     jobs: getJobQueueStats(),
     config: getConfigSnapshot(),

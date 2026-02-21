@@ -25,7 +25,11 @@ import {
 } from "./services/interestDecision";
 import { registerHostRoutes } from "./routes/hostRoutes";
 import { forwardGeocode } from "./utils/geocoding";
-import { normalizeUsStateAbbr } from "./services/parkingPassQuality";
+import {
+  computeParkingPassQualityFlags,
+  isHostProfileMapEligible,
+  normalizeUsStateAbbr,
+} from "./services/parkingPassQuality";
 import { registerOpenCallSeriesRoutes } from "./routes/openCallSeriesRoutes";
 import { registerEventRoutes } from "./routes/eventRoutes";
 import { registerEventCoordinatorRoutes } from "./routes/eventCoordinatorRoutes";
@@ -105,7 +109,6 @@ import { randomBytes, timingSafeEqual, createHash } from "crypto";
 import { sanitizeUser } from "./utils/sanitize";
 import { ensureAffiliateTag } from "./affiliateTagService";
 import { sendAccountSetupInvite } from "./utils/accountSetup";
-import { computeParkingPassQualityFlags } from "./services/parkingPassQuality";
 import { sendEmailVerificationIfNeeded } from "./utils/emailVerification";
 import {
   isPasswordStrong,
@@ -207,6 +210,7 @@ import {
   or,
 } from "drizzle-orm";
 import { registerStoryCronJobs } from "./storiesCronJobs";
+import { runMapEndpointWatchdog } from "./mapEndpointWatchdog";
 
 function normalizeSearchQuery(input: string) {
   return String(input || "")
@@ -2080,6 +2084,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hostProfiles = allHosts.filter((host) => {
         const address = String(host.address || "").trim();
         if (!address) return false;
+        if (
+          !isHostProfileMapEligible({
+            businessName: host.businessName,
+            address: host.address,
+            city: host.city,
+            state: host.state,
+          })
+        ) {
+          return false;
+        }
         if (!activeHostUserIds) return true;
         const userId = String(host.userId || "").trim();
         // Legacy host rows may not be tied to a user. Only hide a host when we explicitly
@@ -2087,9 +2101,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return userId ? activeHostUserIds.has(userId) : true;
       });
 
-      const publicEvents = upcomingEvents.filter(
-        (event) => !event.requiresPayment,
-      );
+      const hostProfileById = new Map<string, (typeof hostProfiles)[number]>();
+      hostProfiles.forEach((host) => {
+        hostProfileById.set(String(host.id), host);
+      });
+
+      const publicEvents = upcomingEvents.filter((event) => {
+        if (event.requiresPayment) return false;
+        const hostId = String(event.hostId || event.host?.id || "").trim();
+        if (!hostId) return true;
+        const fromProfile = hostProfileById.get(hostId);
+        if (fromProfile) return true;
+        // Fall back to event host projection for legacy rows.
+        return isHostProfileMapEligible({
+          businessName: event.host?.businessName,
+          address: event.host?.address,
+          city: event.host?.city,
+          state: event.host?.state,
+        });
+      });
 
       const primaryHostLocations = hostProfiles.map((host) => ({
           id: host.id,
@@ -2111,23 +2141,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }));
 
       const hostLocations = [
-        ...openLocations.map((loc) => ({
-          id: loc.id,
-          type: "host_location" as const,
-          hostId: null,
-          name: loc.businessName,
-          address: loc.address,
-          city: null,
-          state: null,
-          locationType: loc.locationType,
-          expectedFootTraffic: loc.expectedFootTraffic,
-          notes: loc.notes,
-          preferredDates: loc.preferredDates,
-          status: loc.status,
-          latitude: loc.latitude,
-          longitude: loc.longitude,
-          locationRequestId: loc.id,
-        })),
+        ...openLocations
+          .filter((loc) =>
+            isHostProfileMapEligible({
+              businessName: loc.businessName,
+              address: loc.address,
+            }),
+          )
+          .map((loc) => ({
+            id: loc.id,
+            type: "host_location" as const,
+            hostId: null,
+            name: loc.businessName,
+            address: loc.address,
+            city: null,
+            state: null,
+            locationType: loc.locationType,
+            expectedFootTraffic: loc.expectedFootTraffic,
+            notes: loc.notes,
+            preferredDates: loc.preferredDates,
+            status: loc.status,
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            locationRequestId: loc.id,
+          })),
         ...primaryHostLocations,
       ];
 
@@ -8447,6 +8484,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("❌ Unbooked Event Notification Check Failed:", error);
     }
   });
+
+  // Critical map endpoint watchdog
+  cron.schedule("*/5 * * * *", async () => {
+    try {
+      const snapshot = await runMapEndpointWatchdog("scheduled");
+      if (!snapshot.ok) {
+        console.warn("Map endpoint watchdog degraded:", snapshot.checks);
+      }
+    } catch (error) {
+      console.error("Map endpoint watchdog failed:", error);
+    }
+  });
+
+  // Warm startup probe so watchdog status is available soon after deploy.
+  setTimeout(() => {
+    void runMapEndpointWatchdog("startup").catch((error) => {
+      console.error("Startup map endpoint watchdog failed:", error);
+    });
+  }, 15000);
 
   const isMissingColumnError = (error: any, columnName?: string) => {
     if (!error || String(error?.code || "") !== "42703") return false;

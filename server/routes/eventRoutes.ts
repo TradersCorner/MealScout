@@ -22,7 +22,9 @@ import { asc, eq, inArray, sql } from "drizzle-orm";
 import { forwardGeocode, reverseGeocode } from "../utils/geocoding";
 import { listParkingPassOccurrences } from "../services/parkingPassVirtual";
 import {
+  computeHostProfileQualityFlags,
   computeParkingPassQualityFlags,
+  isHostProfileMapEligible,
   isParkingPassPublicReady,
   normalizeUsStateAbbr,
 } from "../services/parkingPassQuality";
@@ -81,12 +83,22 @@ export function registerEventRoutes(app: Express) {
         Boolean(
           event?.host?.stripeConnectAccountId && event?.host?.stripeChargesEnabled,
         );
+      const isPublicHostProfile = (host: any, event?: any) =>
+        isHostProfileMapEligible({
+          businessName: host?.businessName || event?.host?.businessName,
+          address: host?.address || event?.hostAddress || event?.address,
+          city: host?.city || event?.hostCity || event?.city,
+          state: host?.state || event?.hostState || event?.state,
+        });
 
       // NOTE: Public feed must only show Parking Pass listings that have pricing
       // and a clean, geocodable address. Draft/incomplete listings can exist
       // but must not be returned here.
       const virtualEvents = occurrences
-        .filter((event: any) => isParkingPassPublicReady(event))
+        .filter(
+          (event: any) =>
+            isParkingPassPublicReady(event) && isPublicHostProfile(event?.host, event),
+        )
         .map((event: any) => ({
           ...event,
           paymentsEnabled: payoutsEnabled(event),
@@ -97,7 +109,9 @@ export function registerEventRoutes(app: Express) {
       const legacyEvents = legacyUpcoming
         .filter(
           (event: any) =>
-            event?.eventType === "parking_pass" && isParkingPassPublicReady(event),
+            event?.eventType === "parking_pass" &&
+            isParkingPassPublicReady(event) &&
+            isPublicHostProfile(event?.host, event),
         )
         .map((event: any) => ({
           ...event,
@@ -402,6 +416,7 @@ export function registerEventRoutes(app: Express) {
         .select({
           id: hosts.id,
           userId: hosts.userId,
+          businessName: hosts.businessName,
           address: hosts.address,
           city: hosts.city,
           state: hosts.state,
@@ -423,6 +438,16 @@ export function registerEventRoutes(app: Express) {
         const hostId = String(row.id || "").trim();
         if (!hostId) continue;
         if (row.isDisabled === true) continue;
+        if (
+          !isHostProfileMapEligible({
+            businessName: row.businessName,
+            address: row.address,
+            city: row.city,
+            state: row.state,
+          })
+        ) {
+          continue;
+        }
 
         const address = row.address ?? null;
         const city = row.city ?? null;
@@ -532,9 +557,17 @@ export function registerEventRoutes(app: Express) {
   };
 
   const buildParkingPassHostStatusPayload = async (dateKey: string) => {
+    const isPublicHostProfile = (host: any, event?: any) =>
+      isHostProfileMapEligible({
+        businessName: host?.businessName || event?.host?.businessName,
+        address: host?.address || event?.hostAddress || event?.address,
+        city: host?.city || event?.hostCity || event?.city,
+        state: host?.state || event?.hostState || event?.state,
+      });
     const { occurrences } = await listParkingPassOccurrences({ horizonDays: 30 });
     const virtualEvents = occurrences.filter((event: any) => {
       if (!isParkingPassPublicReady(event)) return false;
+      if (!isPublicHostProfile(event?.host, event)) return false;
       const eventDate = String(event?.date || "").slice(0, 10);
       return eventDate === dateKey;
     });
@@ -543,6 +576,7 @@ export function registerEventRoutes(app: Express) {
     const legacyEvents = legacyUpcoming.filter((event: any) => {
       if (event?.eventType !== "parking_pass") return false;
       if (!isParkingPassPublicReady(event)) return false;
+      if (!isPublicHostProfile(event?.host, event)) return false;
       const eventDate = String(event?.date || "").slice(0, 10);
       return eventDate === dateKey;
     });
@@ -967,11 +1001,18 @@ export function registerEventRoutes(app: Express) {
               Math.abs(lng) <= 180;
             const hasAddress = Boolean(String(host?.address || "").trim());
             const isDisabled = Boolean(host?.isDisabled);
+            const hostQualityFlags = computeHostProfileQualityFlags({
+              businessName: host?.businessName,
+              address: host?.address,
+              city: host?.city,
+              state: host?.state,
+            });
 
             const reasons: string[] = [];
             if (!host) reasons.push("missing_host_profile");
             if (isDisabled) reasons.push("user_disabled");
             if (!hasAddress) reasons.push("missing_address");
+            hostQualityFlags.forEach((flag) => reasons.push(`quality:${flag}`));
             if (!hasCoords) reasons.push("missing_coords");
             if (series.total === 0) reasons.push("no_parking_pass_series");
             if (occurrences.publicReady === 0 && legacy.publicReady === 0) {
@@ -979,7 +1020,9 @@ export function registerEventRoutes(app: Express) {
             }
             occurrences.qualityFlags.forEach((flag) => reasons.push(`quality:${flag}`));
 
-            const mapFeedCandidate = Boolean(host && !isDisabled && hasAddress);
+            const mapFeedCandidate = Boolean(
+              host && !isDisabled && hasAddress && hostQualityFlags.length === 0,
+            );
             const parkingPassFeedVisible =
               occurrences.publicReady > 0 || legacy.publicReady > 0;
 

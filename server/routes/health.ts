@@ -57,6 +57,18 @@ healthRouter.get("/health/map-endpoints", (_req, res) => {
   });
 });
 
+// Backward-compatible alias with a clearer name now that checks include
+// map + parking + health + auth-protected host status endpoints.
+healthRouter.get("/health/critical-endpoints", (_req, res) => {
+  const snapshot = getMapEndpointWatchdogSnapshot();
+  const status = snapshot.ok ? "ok" : "degraded";
+  res.status(snapshot.ok ? 200 : 503).json({
+    status,
+    ts: Date.now(),
+    watchdog: snapshot,
+  });
+});
+
 healthRouter.get("/health/payments", async (_req, res) => {
   try {
     const snapshot = await getPaymentHealthSnapshot();

@@ -204,7 +204,7 @@ export default function ProfilePage() {
         title="My Profile - MealScout | Account Settings"
         description="Manage your MealScout profile, view account settings, update preferences, and access your deal history. Customize your food deal discovery experience."
         keywords="profile, account settings, user profile, account management, preferences"
-        canonicalUrl="https://mealscout.us/profile"
+        canonicalUrl="https://www.mealscout.us/profile"
         noIndex={true}
       />
       {/* Header */}

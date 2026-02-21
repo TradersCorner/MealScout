@@ -1,8 +1,6 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import Navigation from "@/components/navigation";
-import DealCard from "@/components/deal-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Heart, Search, MapPin, Star } from "lucide-react";
@@ -19,15 +17,6 @@ export default function FavoritesPage() {
     enabled: isAuthenticated,
   });
 
-  // Also fetch featured deals for the legacy favorites display
-  const { data: featuredDeals, isLoading: loadingDeals } = useQuery({
-    queryKey: ["/api/deals/featured"],
-    enabled: true,
-  });
-
-  const allDeals = Array.isArray(featuredDeals) ? featuredDeals : [];
-  const favoriteDeals = allDeals.slice(0, 2); // Show first 2 as favorites for demo (legacy)
-
   if (authState === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-layered)]">
@@ -43,7 +32,7 @@ export default function FavoritesPage() {
           title="My Favorites - MealScout | Saved Deals & Restaurants"
           description="Sign in to save your favorite restaurants and specials so you can get back to them quickly."
           keywords="favorites, saved specials, favorite restaurants, saved restaurants, bookmarked specials"
-          canonicalUrl="https://mealscout.us/favorites"
+          canonicalUrl="https://www.mealscout.us/favorites"
           noIndex={true}
         />
         <div className="w-16 h-16 bg-[color:var(--accent-text)]/12 rounded-2xl flex items-center justify-center mb-4">
@@ -77,7 +66,7 @@ export default function FavoritesPage() {
         title="My Favorites - MealScout | Saved Deals & Restaurants"
         description="View your saved favorite restaurants and specials. Quick access to the food specials you love most. Never lose track of great dining discounts."
         keywords="favorites, saved specials, favorite restaurants, saved restaurants, bookmarked specials"
-        canonicalUrl="https://mealscout.us/favorites"
+        canonicalUrl="https://www.mealscout.us/favorites"
         noIndex={true}
       />
       <BackHeader
@@ -167,35 +156,8 @@ export default function FavoritesPage() {
           </div>
         ) : null}
 
-        {/* Legacy Deals Section (for backward compatibility) */}
-        {loadingDeals ? (
-          <div className="space-y-4">
-            <div className="h-6 bg-muted rounded w-32 animate-pulse"></div>
-            {[1, 2].map((i) => (
-              <div key={i} className="bg-[var(--bg-card)] rounded-2xl overflow-hidden animate-pulse shadow-clean border border-[color:var(--border-subtle)]">
-                <div className="w-full h-48 bg-muted"></div>
-                <div className="p-6 space-y-3">
-                  <div className="h-6 bg-muted rounded-lg w-3/4"></div>
-                  <div className="h-4 bg-muted rounded-lg w-1/2"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : favoriteDeals.length > 0 ? (
-          <div>
-            <h2 className="text-lg font-semibold text-foreground mb-6">
-              Time-Sensitive Deals ({favoriteDeals.length})
-            </h2>
-            <div className="space-y-4 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:space-y-0">
-              {favoriteDeals.map((deal: any) => (
-                <DealCard key={deal.id} deal={deal} />
-              ))}
-            </div>
-          </div>
-        ) : null}
-
         {/* Empty state when no favorites at all */}
-        {!loadingFavorites && !loadingDeals && !user && (
+        {!loadingFavorites && !user && (
           <div className="text-center py-12">
             <div className="w-20 h-20 bg-[color:var(--status-error)]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Heart className="w-8 h-8 text-[color:var(--status-error)]" />

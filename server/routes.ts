@@ -210,7 +210,10 @@ import {
   or,
 } from "drizzle-orm";
 import { registerStoryCronJobs } from "./storiesCronJobs";
-import { runMapEndpointWatchdog } from "./mapEndpointWatchdog";
+import {
+  getMapEndpointWatchdogSnapshot,
+  runMapEndpointWatchdog,
+} from "./mapEndpointWatchdog";
 
 function normalizeSearchQuery(input: string) {
   return String(input || "")
@@ -987,7 +990,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   </p>
 
   <p style="text-align: center; margin-top: 30px;">
-    <a href="https://mealscout.us" style="color: #2563eb; text-decoration: none;">← Back to MealScout</a>
+    <a href="https://www.mealscout.us" style="color: #2563eb; text-decoration: none;">← Back to MealScout</a>
   </p>
 </body>
 </html>
@@ -1127,7 +1130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   </p>
 
   <p style="text-align: center; margin-top: 30px;">
-    <a href="https://mealscout.us" style="color: #dc2626; text-decoration: none;">← Back to MealScout</a>
+    <a href="https://www.mealscout.us" style="color: #dc2626; text-decoration: none;">← Back to MealScout</a>
   </p>
 </body>
 </html>
@@ -7900,13 +7903,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Test database connectivity
       await storage.getUser("health-check");
+      const endpointWatchdog = getMapEndpointWatchdogSnapshot();
+      const isHealthy = Boolean(endpointWatchdog?.ok ?? true);
 
-      res.json({
-        status: "healthy",
+      res.status(isHealthy ? 200 : 503).json({
+        status: isHealthy ? "healthy" : "degraded",
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         environment: process.env.NODE_ENV || "development",
         version: "1.0.0",
+        criticalEndpointWatchdog: endpointWatchdog,
       });
     } catch (error) {
       res.status(503).json({
@@ -7994,8 +8000,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const baseUrl = resolveSitemapSiteUrl();
       const lastmodByLoc = new Map<string, string | null>();
+      const normalizeSitemapLoc = (loc: string): string | null => {
+        const value = String(loc || "").trim();
+        if (!value) return null;
+        try {
+          const parsed = new URL(value);
+          const bareHost = parsed.hostname.toLowerCase().replace(/^www\./, "");
+          if (bareHost !== "mealscout.us") return null;
+          parsed.protocol = "https:";
+          parsed.hostname = "www.mealscout.us";
+          parsed.hash = "";
+          parsed.search = "";
+          return parsed.toString();
+        } catch {
+          return null;
+        }
+      };
       const mergeUrl = (loc: string, lastmod?: unknown) => {
-        const normalizedLoc = String(loc || "").trim();
+        const normalizedLoc = normalizeSitemapLoc(loc);
         if (!normalizedLoc) return;
         const nextLastmod = toIsoDateOrNull(lastmod);
         const prevLastmod = lastmodByLoc.get(normalizedLoc) || null;
@@ -8022,14 +8044,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "/event-signup",
         "/search",
         "/map",
+        "/parking-pass",
         "/deals",
         "/deals/featured",
+        "/video",
         "/suppliers",
         "/events/public",
         "/about",
         "/faq",
         "/how-it-works",
         "/contact",
+        "/install",
         "/terms-of-service",
         "/privacy-policy",
         "/sitemap",

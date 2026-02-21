@@ -947,6 +947,25 @@ export default function RestaurantSignup() {
       />
 
       <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+        {isAuthenticated && user && user.userType !== "admin" && user.userType !== "staff" && (
+          <Card className="mb-4 border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] shadow-clean">
+            <CardContent className="p-4">
+              <p className="text-sm font-semibold text-[color:var(--text-primary)]">
+                {COPY.main.authenticatedBanner.title}
+              </p>
+              <p className="mt-1 text-xs text-[color:var(--text-secondary)]">
+                {COPY.main.authenticatedBanner.body}
+              </p>
+              <p className="mt-2 text-xs text-[color:var(--text-secondary)]">
+                {COPY.main.authenticatedBanner.freeLine}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-[color:var(--text-primary)]">
+                {COPY.main.authenticatedBanner.paidLine}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="mb-6 border-[color:var(--border-subtle)] bg-[var(--bg-card)] shadow-clean-lg">
           <CardContent className="p-6">
             <div className="inline-flex items-center rounded-full border border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text-secondary)]">

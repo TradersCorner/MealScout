@@ -123,7 +123,7 @@ export default function OrdersPage() {
         title="Deal History - MealScout | My Orders & Claims"
         description="View your complete deal history and claimed deals. Track active orders, see past purchases, and review your savings on MealScout."
         keywords="deal history, orders, claimed deals, order tracking, purchase history"
-        canonicalUrl="https://mealscout.us/orders"
+        canonicalUrl="https://www.mealscout.us/orders"
         noIndex={true}
       />
       <h1 className="sr-only">MealScout deal history</h1>

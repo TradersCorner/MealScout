@@ -39,7 +39,7 @@ export default function DataDeletion() {
         title="Data Deletion - MealScout | Delete Your Account & Data"
         description="Learn how to request deletion of your personal data from MealScout. Step-by-step instructions for account deletion and data removal in compliance with privacy regulations."
         keywords="data deletion, account deletion, delete account, remove data, privacy rights"
-        canonicalUrl="https://mealscout.us/data-deletion"
+        canonicalUrl="https://www.mealscout.us/data-deletion"
       />
 
       <div className="absolute inset-0 pointer-events-none">

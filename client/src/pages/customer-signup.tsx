@@ -536,7 +536,7 @@ export default function CustomerSignup() {
         title="Sign Up - MealScout | Create Free Account"
         description="Join MealScout for free and start discovering exclusive food deals from local restaurants. Save your favorites, track deals, and never miss amazing dining discounts."
         keywords="sign up, create account, register, join mealscout, free account, food deals signup"
-        canonicalUrl="https://mealscout.us/customer-signup"
+        canonicalUrl="https://www.mealscout.us/customer-signup"
         noIndex={true}
       />
       <h1 className="sr-only">Create a MealScout account</h1>

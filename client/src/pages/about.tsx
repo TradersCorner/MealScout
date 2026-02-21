@@ -20,8 +20,8 @@ export default function About() {
     "@type": "Organization",
     "name": "MealScout",
     "description": "MealScout helps food trucks find real places to park and serve - and helps customers find where food trucks are today.",
-    "url": "https://mealscout.us",
-    "logo": "https://mealscout.us/logo.png",
+    "url": "https://www.mealscout.us",
+    "logo": "https://www.mealscout.us/logo.png",
     "foundingDate": "2024",
     "sameAs": [],
     "contactPoint": {

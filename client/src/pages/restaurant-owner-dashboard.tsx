@@ -1083,7 +1083,7 @@ export default function RestaurantOwnerDashboard() {
         title="Restaurant Dashboard - MealScout | Manage Your Specials"
         description="Manage your restaurant specials, view analytics, track performance, and engage with customers. Access insights on special claims, views, conversion rates, and customer feedback."
         keywords="restaurant dashboard, manage specials, restaurant analytics, special performance, customer insights"
-        canonicalUrl="https://mealscout.us/restaurant-owner-dashboard"
+        canonicalUrl="https://www.mealscout.us/restaurant-owner-dashboard"
         noIndex={true}
       />
       {/* Header with Back Button */}

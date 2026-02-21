@@ -4,7 +4,10 @@ import { requestLogs } from "@shared/schema";
 import { emailService, getEmailConfigSummary } from "./emailService";
 
 type EndpointId =
+  | "health"
   | "map_locations"
+  | "parking_pass_feed"
+  | "hosts_me"
   | "parking_pass_host_ids"
   | "parking_pass_host_status";
 
@@ -13,7 +16,9 @@ type EndpointStatus = "ok" | "degraded" | "critical";
 type CriticalEndpointSpec = {
   id: EndpointId;
   path: string;
+  expectedStatusCodes?: number[];
   emptyPayloadCritical: boolean;
+  payloadCountMode?: "none" | "array" | "hostLocations" | "hostIds" | "hosts";
 };
 
 type EndpointCheckResult = {
@@ -45,19 +50,48 @@ type WatchdogSnapshot = {
 
 const CRITICAL_ENDPOINTS: CriticalEndpointSpec[] = [
   {
+    id: "health",
+    path: "/api/health",
+    expectedStatusCodes: [200],
+    emptyPayloadCritical: false,
+    payloadCountMode: "none",
+  },
+  {
     id: "map_locations",
     path: "/api/map/locations",
+    expectedStatusCodes: [200],
     emptyPayloadCritical: true,
+    payloadCountMode: "hostLocations",
+  },
+  {
+    id: "parking_pass_feed",
+    path: "/api/parking-pass",
+    expectedStatusCodes: [200],
+    // Empty parking-pass feeds can happen when no paid slots are live; alert on 5xx spikes instead.
+    emptyPayloadCritical: false,
+    payloadCountMode: "array",
+  },
+  {
+    id: "hosts_me",
+    path: "/api/hosts/me",
+    // Guest probes are expected to return 401; this still catches 5xx and latency regressions.
+    expectedStatusCodes: [200, 401],
+    emptyPayloadCritical: false,
+    payloadCountMode: "none",
   },
   {
     id: "parking_pass_host_ids",
     path: "/api/parking-pass/host-ids",
-    emptyPayloadCritical: true,
+    expectedStatusCodes: [200],
+    emptyPayloadCritical: false,
+    payloadCountMode: "hostIds",
   },
   {
     id: "parking_pass_host_status",
     path: "/api/parking-pass/host-status",
+    expectedStatusCodes: [200],
     emptyPayloadCritical: false,
+    payloadCountMode: "hosts",
   },
 ];
 
@@ -225,13 +259,15 @@ async function probeEndpoint(spec: CriticalEndpointSpec): Promise<{
 
     let dataCount: number | null = null;
     if (!parseError && payload) {
-      if (spec.id === "map_locations") {
+      if (spec.payloadCountMode === "array") {
+        dataCount = Array.isArray(payload) ? payload.length : null;
+      } else if (spec.payloadCountMode === "hostLocations") {
         dataCount = Array.isArray(payload.hostLocations)
           ? payload.hostLocations.length
           : null;
-      } else if (spec.id === "parking_pass_host_ids") {
+      } else if (spec.payloadCountMode === "hostIds") {
         dataCount = Array.isArray(payload.hostIds) ? payload.hostIds.length : null;
-      } else if (spec.id === "parking_pass_host_status") {
+      } else if (spec.payloadCountMode === "hosts") {
         dataCount = Array.isArray(payload.hosts) ? payload.hosts.length : null;
       }
     }
@@ -315,8 +351,12 @@ export async function runMapEndpointWatchdog(reason = "scheduled") {
     ]);
 
     const reasons: string[] = [];
+    const expectedStatusCodes =
+      Array.isArray(spec.expectedStatusCodes) && spec.expectedStatusCodes.length > 0
+        ? spec.expectedStatusCodes
+        : [200];
     const okHttp =
-      probe.httpStatus !== null && probe.httpStatus >= 200 && probe.httpStatus < 300;
+      probe.httpStatus !== null && expectedStatusCodes.includes(probe.httpStatus);
     if (!okHttp) reasons.push("unavailable");
     if (probe.timedOut) reasons.push("timeout");
     if (probe.parseError) reasons.push("invalid_json");
@@ -389,4 +429,3 @@ export async function runMapEndpointWatchdog(reason = "scheduled") {
 export function getMapEndpointWatchdogSnapshot() {
   return lastSnapshot;
 }
-

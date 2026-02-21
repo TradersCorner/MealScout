@@ -10,7 +10,7 @@ export default function PrivacyPolicy() {
         title="Privacy Policy - MealScout | Data Protection & Privacy"
         description="Learn how MealScout collects, uses, and protects your personal information. Our privacy policy details data handling practices, security measures, and your privacy rights."
         keywords="privacy policy, data protection, privacy rights, data security, personal information"
-        canonicalUrl="https://mealscout.us/privacy-policy"
+        canonicalUrl="https://www.mealscout.us/privacy-policy"
       />
       <h1 className="sr-only">MealScout Privacy Policy</h1>
       <BackHeader

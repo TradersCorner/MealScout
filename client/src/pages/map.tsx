@@ -240,6 +240,7 @@ interface LiveTruck {
   currentLatitude?: string | number | null;
   currentLongitude?: string | number | null;
   distance?: number;
+  isVerified?: boolean;
 }
 
 interface Deal {
@@ -281,6 +282,7 @@ type HostLocation = {
   preferredDates?: string[];
   latitude?: number | string | null;
   longitude?: number | string | null;
+  status?: string | null;
 };
 
 type HostCluster = {
@@ -665,6 +667,7 @@ function HostMarkerLayer({
           : "Availability updating...";
         const qualityFlags = hostId ? qualityFlagsByHostId.get(hostId) || [] : [];
         const distanceLabel = formatDistance(coords);
+        const hostIsVerified = String(host.status || "").toLowerCase() === "verified";
 
         return (
           <Marker
@@ -687,6 +690,11 @@ function HostMarkerLayer({
                 <div className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide border border-[color:var(--border-subtle)]">
                   {availableLabel}
                 </div>
+                {hostIsVerified && (
+                  <div className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide border border-[color:var(--status-success)]/40 text-[color:var(--status-success)]">
+                    Verified host
+                  </div>
+                )}
                 {overlapCount > 1 && (
                   <div className="text-xs text-[color:var(--text-muted)]">
                     {overlapCount} host locations share this same spot.
@@ -2306,7 +2314,9 @@ export default function MapPage() {
                           {truck.name}
                         </div>
                         <div className="text-xs text-[color:var(--text-muted)]">
-                          Food Truck | Live now
+                          {truck.isVerified
+                            ? "Food Truck | Verified | Live now"
+                            : "Food Truck | Live now"}
                         </div>
                         {distanceLabel && (
                           <div className="text-xs text-[color:var(--text-muted)]">

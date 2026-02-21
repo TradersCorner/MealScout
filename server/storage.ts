@@ -5166,6 +5166,12 @@ export class DatabaseStorage implements IStorage {
     lng: number,
     radiusKm: number
   ): Promise<Array<Restaurant & { distance: number; sessionId?: string }>> {
+    const staleMinutesRaw = Number(process.env.LIVE_TRUCK_STALE_MINUTES || 120);
+    const staleMinutes = Number.isFinite(staleMinutesRaw)
+      ? Math.max(5, staleMinutesRaw)
+      : 120;
+    const freshnessCutoffMs = Date.now() - staleMinutes * 60_000;
+
     // Simple query first - just return food trucks with valid locations
     const results = await db
       .select({
@@ -5208,9 +5214,15 @@ export class DatabaseStorage implements IStorage {
           sql`current_longitude IS NOT NULL`
         )
       );
+    const freshResults = results.filter((truck: any) => {
+      const lastBroadcastMs = truck?.lastBroadcastAt
+        ? new Date(truck.lastBroadcastAt).getTime()
+        : Number.NaN;
+      return Number.isFinite(lastBroadcastMs) && lastBroadcastMs >= freshnessCutoffMs;
+    });
 
     // Calculate distance in JavaScript for now (simpler than complex SQL)
-    const trucksWithDistance = results.map((truck: any) => {
+    const trucksWithDistance = freshResults.map((truck: any) => {
       if (!truck.currentLatitude || !truck.currentLongitude) {
         return {
           ...truck,

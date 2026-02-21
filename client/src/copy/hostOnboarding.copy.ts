@@ -13,7 +13,7 @@ export const HOST_ONBOARDING_COPY = {
       "Join MealScout and reach more customers with targeted local deals. Restaurant owners can create promotional deals, attract new diners, and boost sales. Sign up for free today!",
     keywords:
       "restaurant signup, business registration, restaurant promotions, attract customers, boost restaurant sales, local marketing",
-    canonicalUrl: "https://mealscout.us/restaurant-signup",
+    canonicalUrl: "https://www.mealscout.us/restaurant-signup",
   },
 
   unauth: {
@@ -54,6 +54,15 @@ export const HOST_ONBOARDING_COPY = {
 
   main: {
     backHeaderTitle: "Business Registration",
+    authenticatedBanner: {
+      title: "Signed in: add a business profile to this account",
+      body:
+        "You are creating an additional business profile on your existing account. No new account is created.",
+      freeLine:
+        "Free profile: parking pass + search visibility stay available.",
+      paidLine:
+        "Paid visibility: feed/maps + deal posting require an active plan after your 30-day trial.",
+    },
     hero: {
       badge: "Business profile setup",
       prompt: "Choose your business type",

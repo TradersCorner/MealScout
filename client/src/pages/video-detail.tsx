@@ -125,7 +125,7 @@ export default function VideoDetailPage() {
         keywords={`${videoTitle}, ${videoData.cuisine || "food"} video, ${
           restaurantName || "food recommendation"
         }, local food`}
-        canonicalUrl={`https://mealscout.us/video/${videoId}`}
+        canonicalUrl={`https://www.mealscout.us/video/${videoId}`}
         schemaData={videoSchema}
       />
 

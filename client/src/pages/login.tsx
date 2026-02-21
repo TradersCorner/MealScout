@@ -128,7 +128,7 @@ export default function Login() {
         title="Login - MealScout | Access Your Account"
         description="Log in to MealScout to discover exclusive food deals, save your favorite restaurants, and track your claimed deals. Join thousands of users finding amazing dining discounts."
         keywords="login, sign in, mealscout account, food deals login, restaurant deals access"
-        canonicalUrl="https://mealscout.us/login"
+        canonicalUrl="https://www.mealscout.us/login"
         noIndex={true}
       />
       <h1 className="sr-only">Login to MealScout</h1>

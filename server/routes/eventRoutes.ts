@@ -628,18 +628,10 @@ export function registerEventRoutes(app: Express) {
     isStaffOrAdmin,
     async (_req: any, res) => {
       try {
-        const rows = await db
-          .select({
-            series: eventSeries,
-          })
-          .from(eventSeries)
-          .where(eq(eventSeries.seriesType, "parking_pass"));
-
+        const seriesRows = await storage.getParkingPassSeriesSafe();
         const hostIds = Array.from(
           new Set<string>(
-            rows
-              .map((row: any) => String(row.series?.hostId || "").trim())
-              .filter(Boolean),
+            seriesRows.map((row) => String(row.hostId || "").trim()).filter(Boolean),
           ),
         );
         const hostRows = await storage.getHostsByIds(hostIds);
@@ -647,28 +639,28 @@ export function registerEventRoutes(app: Express) {
           (hostRows || []).map((host: any) => [host.id, host]),
         );
 
-        const items = rows.map(({ series }: any) => {
+        const items = seriesRows.map((series: any) => {
           const hostId = String(series.hostId || "").trim();
           const host = hostById.get(hostId) ?? null;
           const platformPaymentsEnabled = Boolean(process.env.STRIPE_SECRET_KEY);
           const listing = {
             host,
-            startTime: (series as any).defaultStartTime,
-            endTime: (series as any).defaultEndTime,
-            maxTrucks: (series as any).defaultMaxTrucks,
-            breakfastPriceCents: (series as any).defaultBreakfastPriceCents,
-            lunchPriceCents: (series as any).defaultLunchPriceCents,
-            dinnerPriceCents: (series as any).defaultDinnerPriceCents,
-            dailyPriceCents: (series as any).defaultDailyPriceCents,
-            weeklyPriceCents: (series as any).defaultWeeklyPriceCents,
-            monthlyPriceCents: (series as any).defaultMonthlyPriceCents,
+            startTime: series.defaultStartTime,
+            endTime: series.defaultEndTime,
+            maxTrucks: series.defaultMaxTrucks,
+            breakfastPriceCents: series.defaultBreakfastPriceCents,
+            lunchPriceCents: series.defaultLunchPriceCents,
+            dinnerPriceCents: series.defaultDinnerPriceCents,
+            dailyPriceCents: series.defaultDailyPriceCents,
+            weeklyPriceCents: series.defaultWeeklyPriceCents,
+            monthlyPriceCents: series.defaultMonthlyPriceCents,
           };
           const qualityFlags = computeParkingPassQualityFlags(listing);
           const publicReady = isParkingPassPublicReady(listing);
 
           return {
             seriesId: series.id,
-            seriesStatus: (series as any).status ?? null,
+            seriesStatus: series.status ?? null,
             hostId: host?.id ?? hostId,
             hostUserId: host?.userId ?? null,
             businessName: host?.businessName ?? null,

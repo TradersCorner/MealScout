@@ -724,6 +724,9 @@ export class DatabaseStorage implements IStorage {
   private eventTableInfoPromise:
     | Promise<{ schema: string; columns: Set<string> }>
     | null = null;
+  private eventSeriesTableInfoPromise:
+    | Promise<{ schema: string; columns: Set<string> }>
+    | null = null;
 
   private async getHostTableInfo(): Promise<{ schema: string; columns: Set<string> }> {
     if (this.hostTableInfoPromise) return this.hostTableInfoPromise;
@@ -809,6 +812,130 @@ export class DatabaseStorage implements IStorage {
       }
     })();
     return this.eventTableInfoPromise;
+  }
+
+  private async getEventSeriesTableInfo(): Promise<{
+    schema: string;
+    columns: Set<string>;
+  }> {
+    if (this.eventSeriesTableInfoPromise) return this.eventSeriesTableInfoPromise;
+    this.eventSeriesTableInfoPromise = (async () => {
+      try {
+        if (!pool) {
+          return { schema: "public", columns: new Set<string>() };
+        }
+
+        const schemaRes = await pool.query(
+          `
+            select table_schema
+            from information_schema.tables
+            where table_name = 'event_series'
+            order by case when table_schema = 'public' then 0 else 1 end
+            limit 1
+          `,
+        );
+        const schema =
+          String(schemaRes.rows?.[0]?.table_schema || "").trim() || "public";
+
+        const colsRes = await pool.query(
+          `
+            select column_name
+            from information_schema.columns
+            where table_schema = $1 and table_name = 'event_series'
+          `,
+          [schema],
+        );
+        const columns = new Set<string>(
+          (colsRes.rows || [])
+            .map((row: any) => String(row.column_name || "").trim())
+            .filter(Boolean),
+        );
+        return { schema, columns };
+      } catch (error) {
+        console.warn(
+          "getEventSeriesTableInfo failed; using safe event_series projection:",
+          error,
+        );
+        return { schema: "public", columns: new Set<string>() };
+      }
+    })();
+    return this.eventSeriesTableInfoPromise;
+  }
+
+  private async selectEventSeriesSafe(
+    whereSql: string,
+    params: any[],
+  ): Promise<any[]> {
+    if (!pool) return [];
+    const { schema, columns } = await this.getEventSeriesTableInfo();
+    const has = (col: string) => columns.size === 0 || columns.has(col);
+    const q = (ident: string) => `"${ident.replace(/"/g, '""')}"`;
+
+    // If we cannot confirm required columns exist, bail out safely.
+    if (columns.size > 0 && (!columns.has("id") || !columns.has("host_id"))) {
+      return [];
+    }
+
+    const select = [
+      `${q("id")} as "id"`,
+      `${q("host_id")} as "hostId"`,
+      `${has("series_type") ? `${q("series_type")} as "seriesType"` : `null as "seriesType"`}`,
+      `${has("status") ? `${q("status")} as "status"` : `null as "status"`}`,
+      `${has("published_at") ? `${q("published_at")} as "publishedAt"` : `null as "publishedAt"`}`,
+      `${has("default_start_time") ? `${q("default_start_time")} as "defaultStartTime"` : `null as "defaultStartTime"`}`,
+      `${has("default_end_time") ? `${q("default_end_time")} as "defaultEndTime"` : `null as "defaultEndTime"`}`,
+      `${has("default_max_trucks") ? `${q("default_max_trucks")} as "defaultMaxTrucks"` : `null as "defaultMaxTrucks"`}`,
+      `${has("default_breakfast_price_cents") ? `${q("default_breakfast_price_cents")} as "defaultBreakfastPriceCents"` : `null as "defaultBreakfastPriceCents"`}`,
+      `${has("default_lunch_price_cents") ? `${q("default_lunch_price_cents")} as "defaultLunchPriceCents"` : `null as "defaultLunchPriceCents"`}`,
+      `${has("default_dinner_price_cents") ? `${q("default_dinner_price_cents")} as "defaultDinnerPriceCents"` : `null as "defaultDinnerPriceCents"`}`,
+      `${has("default_daily_price_cents") ? `${q("default_daily_price_cents")} as "defaultDailyPriceCents"` : `null as "defaultDailyPriceCents"`}`,
+      `${has("default_weekly_price_cents") ? `${q("default_weekly_price_cents")} as "defaultWeeklyPriceCents"` : `null as "defaultWeeklyPriceCents"`}`,
+      `${has("default_monthly_price_cents") ? `${q("default_monthly_price_cents")} as "defaultMonthlyPriceCents"` : `null as "defaultMonthlyPriceCents"`}`,
+      `${has("updated_at") ? `${q("updated_at")} as "updatedAt"` : `null as "updatedAt"`}`,
+    ];
+
+    const sqlText = `select ${select.join(", ")} from ${q(schema)}.${q("event_series")} ${whereSql}`;
+    const result = await pool.query(sqlText, params);
+    return result.rows || [];
+  }
+
+  async getParkingPassSeriesSafe(): Promise<
+    Array<{
+      id: string;
+      hostId: string;
+      status: string | null;
+      publishedAt: string | null;
+      defaultStartTime: string | null;
+      defaultEndTime: string | null;
+      defaultMaxTrucks: number | null;
+      defaultBreakfastPriceCents: number | null;
+      defaultLunchPriceCents: number | null;
+      defaultDinnerPriceCents: number | null;
+      defaultDailyPriceCents: number | null;
+      defaultWeeklyPriceCents: number | null;
+      defaultMonthlyPriceCents: number | null;
+    }>
+  > {
+    const { columns } = await this.getEventSeriesTableInfo();
+    const hasSeriesType = columns.size === 0 || columns.has("series_type");
+    const whereSql = hasSeriesType ? `where "series_type" = $1` : "";
+    const params = hasSeriesType ? ["parking_pass"] : [];
+    const rows = await this.selectEventSeriesSafe(whereSql, params);
+    return rows.map((row: any) => ({
+      id: String(row.id),
+      hostId: String(row.hostId),
+      status: row.status == null ? null : String(row.status),
+      publishedAt: row.publishedAt ? new Date(row.publishedAt).toISOString() : null,
+      defaultStartTime: row.defaultStartTime == null ? null : String(row.defaultStartTime),
+      defaultEndTime: row.defaultEndTime == null ? null : String(row.defaultEndTime),
+      defaultMaxTrucks: row.defaultMaxTrucks == null ? null : Number(row.defaultMaxTrucks),
+      defaultBreakfastPriceCents: row.defaultBreakfastPriceCents == null ? null : Number(row.defaultBreakfastPriceCents),
+      defaultLunchPriceCents: row.defaultLunchPriceCents == null ? null : Number(row.defaultLunchPriceCents),
+      defaultDinnerPriceCents: row.defaultDinnerPriceCents == null ? null : Number(row.defaultDinnerPriceCents),
+      defaultDailyPriceCents: row.defaultDailyPriceCents == null ? null : Number(row.defaultDailyPriceCents),
+      defaultWeeklyPriceCents: row.defaultWeeklyPriceCents == null ? null : Number(row.defaultWeeklyPriceCents),
+      defaultMonthlyPriceCents: row.defaultMonthlyPriceCents == null ? null : Number(row.defaultMonthlyPriceCents),
+    }));
   }
 
   private async selectUpcomingEventsSafe(fromDate: Date): Promise<any[]> {
@@ -970,7 +1097,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async ensureDraftParkingPassesForHosts(): Promise<number> {
-    const hostList = await db.select().from(hosts);
+    // Use the schema-tolerant host projection so admin tools don't 500 when the DB schema lags.
+    const hostList = await this.getAllHosts();
     let created = 0;
     for (const host of hostList) {
       try {

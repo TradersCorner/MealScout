@@ -60,13 +60,29 @@ Run each once:
 
 ## 5. Payment flow smoke test
 
-1. Create unpaid supplier order with `paymentMethod="stripe"`.
-2. Call pay-intent endpoint with `Idempotency-Key`.
-3. Retry same request with same key:
-   - Expect cached/replayed response.
-4. Retry with same key + different payload:
-   - Expect 409 mismatch error.
-5. Verify webhook marks order as paid after successful Stripe confirmation.
+1. Supplier pay-intent idempotency (existing flow):
+   - Create unpaid supplier order with `paymentMethod="stripe"`.
+   - Call pay-intent endpoint with `Idempotency-Key`.
+   - Retry same request with same key and same payload (expect replayed response).
+   - Retry with same key and different payload (expect `409` mismatch).
+2. Parking Pass booking + Stripe host onboarding smoke:
+   - Set env vars:
+     - `API_BASE=https://<your-origin>`
+     - `TEST_PARKING_PASS_ID=<existing open paid pass>`
+     - `TEST_TRUCK_ID=<truck that owns the authenticated session>`
+     - `TEST_TRUCK_AUTH_COOKIE=<authenticated truck cookie>`
+     - `TEST_HOST_AUTH_COOKIE=<authenticated host cookie>` (optional but recommended)
+     - `EXPECT_HOST_CONNECTED=true` (optional)
+     - `EXPECT_HOST_CHARGES_ENABLED=true` (optional)
+     - `EXPECT_HOST_ONBOARDING_COMPLETED=true` (optional)
+     - `CANCEL_PENDING_AFTER_CHECK=true` (recommended)
+   - Run:
+     - `npm run smoke:parking-pass-stripe`
+   - Verify:
+     - Host Stripe status endpoint returns expected flags.
+     - Booking intent is created (`paymentIntentId` returned).
+     - Duplicate booking attempt is blocked (`400` or `409`).
+     - Cancel endpoint clears pending hold when cancel flag is enabled.
 
 ## 6. Rate limit verification
 

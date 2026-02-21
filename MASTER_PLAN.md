@@ -162,7 +162,7 @@ Keep but inactive unless approved for activation:
 - [In Progress] Verify parking pass visibility and event posting role rules in production.
 - [In Progress] Run map pin parity audit: host address count vs rendered pin count.
 - [In Progress] Reconcile admin counts against DB queries and lock definitions.
-- [Pending] Run full booking and Stripe onboarding smoke test in production mode.
+- [In Progress] Run full booking and Stripe onboarding smoke test in production mode (scripted runner added; awaiting production execution).
 
 ## Execution Log
 
@@ -180,3 +180,4 @@ Keep but inactive unless approved for activation:
 - Tokenized remaining component/UI surfaces (`video-feed`, `deal-share-modal`, `cancel-series-dialog`, `dashboard-switcher`, `document-upload`, `WelcomeLocationModal`, `RestaurantCreditRedemptionForm`, `ui/toast`) and removed legacy color utility blocks from `client/src/index.css` and `client/src/facebook-browser.css`.
 - Cleaned remaining encoding artifacts in `client/src/content/role-landing.ts` (ASCII-safe copy).
 - Addressed TypeScript check failures: added missing `useQuery` import in `parking-pass`, typed map pin audit and geocode helpers in `server/routes.ts` and `server/routes/adminManagementRoutes.ts`, added missing copy labels in `hostOnboarding.copy.ts`, guarded Stripe usage in `hostRoutes`, and tightened reducer typing in `server/storage.ts`.
+- Added `smoke:parking-pass-stripe` script to validate host Stripe status, parking-pass checkout intent creation, duplicate booking protection, and hold cancellation behavior in staging/production.

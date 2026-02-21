@@ -128,6 +128,10 @@ interface DashboardTotalsResponse {
     bookings: {
       parkingPassConfirmedToday: number;
       parkingPassConfirmedNext7Days: number;
+      pendingCheckoutHolds?: number;
+      staleCheckoutHolds?: number;
+      failedPaymentsLast24h?: number;
+      confirmedLast24h?: number;
     };
     trucks: {
       liveTrucks15m: number;
@@ -4180,7 +4184,7 @@ export default function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div>
                 <p className="text-muted-foreground">Parking Passes (Live)</p>
                 <p className="font-semibold">
@@ -4206,9 +4210,45 @@ export default function AdminDashboard() {
                 </p>
               </div>
               <div>
+                <p className="text-muted-foreground">Bookings Confirmed (24h)</p>
+                <p className="font-semibold">
+                  {operations?.bookings?.confirmedLast24h ?? 0}
+                </p>
+              </div>
+              <div>
                 <p className="text-muted-foreground">Bookings (Next 7d)</p>
                 <p className="font-semibold">
                   {operations?.bookings?.parkingPassConfirmedNext7Days ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Checkout Holds (Pending)</p>
+                <p className="font-semibold">
+                  {operations?.bookings?.pendingCheckoutHolds ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Checkout Holds (Stale)</p>
+                <p
+                  className={`font-semibold ${
+                    (operations?.bookings?.staleCheckoutHolds ?? 0) > 0
+                      ? "text-[color:var(--status-error)]"
+                      : ""
+                  }`}
+                >
+                  {operations?.bookings?.staleCheckoutHolds ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Failed Payments (24h)</p>
+                <p
+                  className={`font-semibold ${
+                    (operations?.bookings?.failedPaymentsLast24h ?? 0) > 0
+                      ? "text-[color:var(--status-error)]"
+                      : ""
+                  }`}
+                >
+                  {operations?.bookings?.failedPaymentsLast24h ?? 0}
                 </p>
               </div>
               <div>

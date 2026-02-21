@@ -5,6 +5,7 @@ import { getApiMetricsSnapshot } from "../observability";
 import { getOpsCleanupSnapshot, runOpsDataCleanup } from "../opsCleanup";
 import { getJobQueueStats } from "../jobs/jobQueue";
 import { getMapEndpointWatchdogSnapshot } from "../mapEndpointWatchdog";
+import { getPaymentHealthSnapshot } from "../services/paymentHealth";
 
 export const healthRouter = Router();
 
@@ -56,6 +57,26 @@ healthRouter.get("/health/map-endpoints", (_req, res) => {
   });
 });
 
+healthRouter.get("/health/payments", async (_req, res) => {
+  try {
+    const snapshot = await getPaymentHealthSnapshot();
+    const degraded =
+      snapshot.counts.pendingExpired > 0 ||
+      (snapshot.counts.failedLast24h || 0) > 0;
+    res.status(degraded ? 503 : 200).json({
+      status: degraded ? "degraded" : "ok",
+      ts: Date.now(),
+      payments: snapshot,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      status: "error",
+      message: error?.message || "Payment health check failed",
+      ts: Date.now(),
+    });
+  }
+});
+
 healthRouter.get("/health/ready", async (_req, res) => {
   try {
     await db.execute(sql`SELECT 1`);
@@ -70,17 +91,19 @@ healthRouter.get("/health/ready", async (_req, res) => {
   }
 });
 
-healthRouter.get("/health/metrics", (req, res) => {
+healthRouter.get("/health/metrics", async (req, res) => {
   const expected = String(process.env.HEALTH_METRICS_TOKEN || "").trim();
   const provided = String(req.headers["x-health-token"] || "").trim();
   if (expected && provided !== expected) {
     return res.status(401).json({ message: "Unauthorized" });
   }
+  const paymentHealth = await getPaymentHealthSnapshot().catch(() => null);
   res.json({
     status: "ok",
     ts: Date.now(),
     metrics: getApiMetricsSnapshot(),
     mapEndpoints: getMapEndpointWatchdogSnapshot(),
+    payments: paymentHealth,
     cleanup: getOpsCleanupSnapshot(),
     jobs: getJobQueueStats(),
     config: getConfigSnapshot(),

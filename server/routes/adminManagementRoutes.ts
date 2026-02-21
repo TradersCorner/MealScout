@@ -43,6 +43,7 @@ import {
 } from "../services/parkingPassQuality";
 import { listParkingPassOccurrences } from "../services/parkingPassVirtual";
 import { runParkingPassIntegrity } from "../services/parkingPassIntegrity";
+import { getPaymentHealthSnapshot } from "../services/paymentHealth";
 
 // Optional Stripe integration (mirrors server/routes.ts)
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -562,6 +563,7 @@ export function registerAdminManagementRoutes(app: Express) {
               bookings7dTotals,
               liveTruckTotals,
               activeSessionTotals,
+              paymentHealth,
             ] = await Promise.all([
               db
                 .select({
@@ -627,6 +629,10 @@ export function registerAdminManagementRoutes(app: Express) {
                     isNull(foodTruckSessions.endedAt),
                   ),
                 ),
+              getPaymentHealthSnapshot().catch((error) => {
+                console.error("[admin] Failed to compute payment health totals:", error);
+                return null;
+              }),
             ]);
 
             return {
@@ -639,6 +645,10 @@ export function registerAdminManagementRoutes(app: Express) {
               bookings: {
                 parkingPassConfirmedToday: Number(bookingsTodayTotals?.[0]?.count ?? 0),
                 parkingPassConfirmedNext7Days: Number(bookings7dTotals?.[0]?.count ?? 0),
+                pendingCheckoutHolds: Number(paymentHealth?.counts?.pendingTotal ?? 0),
+                staleCheckoutHolds: Number(paymentHealth?.counts?.pendingExpired ?? 0),
+                failedPaymentsLast24h: Number(paymentHealth?.counts?.failedLast24h ?? 0),
+                confirmedLast24h: Number(paymentHealth?.counts?.confirmedLast24h ?? 0),
               },
               trucks: {
                 liveTrucks15m: Number(liveTruckTotals?.[0]?.live ?? 0),
@@ -671,6 +681,21 @@ export function registerAdminManagementRoutes(app: Express) {
       } catch (error) {
         console.error("Error fetching dashboard totals:", error);
         res.status(500).json({ message: "Failed to fetch dashboard totals" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/admin/payments/health",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (_req: any, res) => {
+      try {
+        const snapshot = await getPaymentHealthSnapshot();
+        res.json(snapshot);
+      } catch (error) {
+        console.error("Error fetching payment health:", error);
+        res.status(500).json({ message: "Failed to fetch payment health" });
       }
     },
   );

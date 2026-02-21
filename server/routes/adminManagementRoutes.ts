@@ -17,6 +17,7 @@ import { ensurePremiumTrialForUserId } from "../services/premiumTrial";
 import {
   deals,
   eventBookings,
+  eventInterests,
   eventSeries,
   events,
   foodTruckLocations,
@@ -561,6 +562,8 @@ export function registerAdminManagementRoutes(app: Express) {
               seriesPublishedTotals,
               bookingsTodayTotals,
               bookings7dTotals,
+              openCallCapacity7dRows,
+              openCallAccepted7dRows,
               liveTruckTotals,
               activeSessionTotals,
               paymentHealth,
@@ -612,6 +615,26 @@ export function registerAdminManagementRoutes(app: Express) {
                     eq(eventBookings.status, "confirmed" as any),
                   ),
                 ),
+              db.execute(sql`
+                select coalesce(sum(e.max_trucks), 0)::int as capacity_total
+                from events e
+                inner join event_series s on s.id = e.series_id
+                where s.series_type in ('event', 'open_call')
+                  and e.date >= ${today}
+                  and e.date < ${upcoming7d}
+                  and e.status in ('open', 'booked')
+              `),
+              db.execute(sql`
+                select count(*)::int as accepted_total
+                from event_interests i
+                inner join events e on e.id = i.event_id
+                inner join event_series s on s.id = e.series_id
+                where i.status = 'accepted'
+                  and s.series_type in ('event', 'open_call')
+                  and e.date >= ${today}
+                  and e.date < ${upcoming7d}
+                  and e.status in ('open', 'booked')
+              `),
               db
                 .select({
                   live: sql<number>`count(distinct ${foodTruckLocations.restaurantId})`.mapWith(Number),
@@ -635,12 +658,34 @@ export function registerAdminManagementRoutes(app: Express) {
               }),
             ]);
 
+            const openCallCapacityRow = Array.isArray((openCallCapacity7dRows as any)?.rows)
+              ? (openCallCapacity7dRows as any).rows[0]
+              : Array.isArray(openCallCapacity7dRows)
+                ? (openCallCapacity7dRows as any)[0]
+                : null;
+            const openCallAcceptedRow = Array.isArray((openCallAccepted7dRows as any)?.rows)
+              ? (openCallAccepted7dRows as any).rows[0]
+              : Array.isArray(openCallAccepted7dRows)
+                ? (openCallAccepted7dRows as any)[0]
+                : null;
+            const openCallCapacity7d = Number(openCallCapacityRow?.capacity_total || 0);
+            const openCallAccepted7d = Number(openCallAcceptedRow?.accepted_total || 0);
+            const openCallFillRate7dPct =
+              openCallCapacity7d > 0
+                ? Number(((openCallAccepted7d / openCallCapacity7d) * 100).toFixed(2))
+                : 0;
+
             return {
               parkingPass: {
                 seriesTotal: Number(seriesTotals?.[0]?.total ?? 0),
                 seriesPublished: Number(seriesPublishedTotals?.[0]?.published ?? 0),
                 hostsPublished: Number(seriesPublishedTotals?.[0]?.publishedHosts ?? 0),
                 spotCapacityPublished: Number(seriesPublishedTotals?.[0]?.spotCapacity ?? 0),
+              },
+              openCalls: {
+                acceptedNext7Days: openCallAccepted7d,
+                capacityNext7Days: openCallCapacity7d,
+                fillRateNext7DaysPct: openCallFillRate7dPct,
               },
               bookings: {
                 parkingPassConfirmedToday: Number(bookingsTodayTotals?.[0]?.count ?? 0),

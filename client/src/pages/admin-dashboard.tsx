@@ -125,6 +125,11 @@ interface DashboardTotalsResponse {
       hostsPublished: number;
       spotCapacityPublished: number;
     };
+    openCalls?: {
+      acceptedNext7Days: number;
+      capacityNext7Days: number;
+      fillRateNext7DaysPct: number;
+    };
     bookings: {
       parkingPassConfirmedToday: number;
       parkingPassConfirmedNext7Days: number;
@@ -4219,6 +4224,21 @@ export default function AdminDashboard() {
                 <p className="text-muted-foreground">Bookings (Next 7d)</p>
                 <p className="font-semibold">
                   {operations?.bookings?.parkingPassConfirmedNext7Days ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Open Call Accepted (7d)</p>
+                <p className="font-semibold">
+                  {operations?.openCalls?.acceptedNext7Days ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Open Call Fill Rate (7d)</p>
+                <p className="font-semibold">
+                  {operations?.openCalls?.fillRateNext7DaysPct?.toFixed?.(1) ?? 0}%
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {operations?.openCalls?.capacityNext7Days ?? 0} total capacity
                 </p>
               </div>
               <div>

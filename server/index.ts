@@ -53,6 +53,37 @@ function resolveCanonicalBaseUrl() {
 }
 
 const canonicalBaseUrl = resolveCanonicalBaseUrl().toString().replace(/\/+$/, "");
+const trackingQueryKeys = new Set([
+  "ref",
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+  "utm_id",
+  "gclid",
+  "fbclid",
+  "msclkid",
+  "twclid",
+  "dclid",
+  "yclid",
+  "mc_cid",
+  "mc_eid",
+]);
+const privateNoIndexPrefixes = [
+  "/admin",
+  "/staff",
+  "/profile",
+  "/settings",
+  "/orders",
+  "/favorites",
+  "/user-dashboard",
+  "/restaurant-owner-dashboard",
+  "/host/dashboard",
+  "/event-coordinator/dashboard",
+  "/supplier/dashboard",
+  "/account-setup",
+];
 
 // Canonical redirect for SEO/indexing consistency (https + canonical host).
 app.use((req, res, next) => {
@@ -86,6 +117,47 @@ app.use((req, res, next) => {
     const dest = `${canonicalProto}://${canonical.host}${req.originalUrl}`;
     res.setHeader("Cache-Control", "public, max-age=300");
     return res.redirect(308, dest);
+  }
+
+  return next();
+});
+
+// Protect indexation quality while keeping affiliate/tracking params functional.
+// We keep params working for attribution, but mark tracking/private URL variants noindex.
+app.use((req, res, next) => {
+  if (!["GET", "HEAD"].includes(req.method)) return next();
+
+  const pathValue = String(req.path || "/");
+  const isApiOrAsset =
+    pathValue.startsWith("/api/") ||
+    pathValue.startsWith("/assets/") ||
+    pathValue.startsWith("/static/") ||
+    pathValue.startsWith("/@") ||
+    /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|map|txt|xml)$/i.test(pathValue);
+  if (isApiOrAsset) return next();
+
+  const requestUrl = new URL(req.originalUrl || req.url || "/", canonicalBaseUrl);
+  const hasTrackingParams = Array.from(requestUrl.searchParams.keys()).some((key) =>
+    trackingQueryKeys.has(String(key).toLowerCase()),
+  );
+  const isPrivatePath = privateNoIndexPrefixes.some((prefix) =>
+    pathValue.toLowerCase().startsWith(prefix),
+  );
+
+  if (hasTrackingParams || isPrivatePath) {
+    res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
+  }
+
+  if (hasTrackingParams) {
+    const canonical = new URL(`${requestUrl.pathname}${requestUrl.search}`, canonicalBaseUrl);
+    const cleaned = new URLSearchParams();
+    requestUrl.searchParams.forEach((value, key) => {
+      if (!trackingQueryKeys.has(String(key).toLowerCase())) {
+        cleaned.append(key, value);
+      }
+    });
+    canonical.search = cleaned.toString() ? `?${cleaned.toString()}` : "";
+    res.setHeader("Link", `<${canonical.toString()}>; rel="canonical"`);
   }
 
   return next();

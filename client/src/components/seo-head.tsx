@@ -11,6 +11,39 @@ interface SEOHeadProps {
   noIndex?: boolean;
 }
 
+const TRACKING_QUERY_KEYS = new Set([
+  "ref",
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+  "utm_id",
+  "gclid",
+  "fbclid",
+  "msclkid",
+  "twclid",
+  "dclid",
+  "yclid",
+  "mc_cid",
+  "mc_eid",
+]);
+
+const PRIVATE_NOINDEX_PREFIXES = [
+  "/admin",
+  "/staff",
+  "/profile",
+  "/settings",
+  "/orders",
+  "/favorites",
+  "/user-dashboard",
+  "/restaurant-owner-dashboard",
+  "/host/dashboard",
+  "/event-coordinator/dashboard",
+  "/supplier/dashboard",
+  "/account-setup",
+];
+
 export function SEOHead({
   title,
   description,
@@ -63,6 +96,18 @@ export function SEOHead({
         ? new URL(url)
         : new URL(url, window.location.origin);
 
+      // Keep functional query params (e.g. search?q=...) but remove tracking params
+      // so affiliate/share URLs don't fragment indexation.
+      const cleanedParams = new URLSearchParams();
+      absolute.searchParams.forEach((value, key) => {
+        if (!TRACKING_QUERY_KEYS.has(key.toLowerCase())) {
+          cleanedParams.append(key, value);
+        }
+      });
+      absolute.search = cleanedParams.toString()
+        ? `?${cleanedParams.toString()}`
+        : "";
+      absolute.hash = "";
       absolute.protocol = "https:";
       absolute.hostname = "www.mealscout.us";
       return absolute.toString();
@@ -74,6 +119,20 @@ export function SEOHead({
           ? `${window.location.pathname}${window.location.search}`
           : undefined),
     );
+    const currentPath =
+      typeof window !== "undefined"
+        ? window.location.pathname.toLowerCase()
+        : "";
+    const currentSearchParams =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search)
+        : new URLSearchParams();
+    const autoNoIndex =
+      PRIVATE_NOINDEX_PREFIXES.some((prefix) => currentPath.startsWith(prefix)) ||
+      Array.from(currentSearchParams.keys()).some((key) =>
+        TRACKING_QUERY_KEYS.has(String(key).toLowerCase()),
+      );
+    const effectiveNoIndex = noIndex || autoNoIndex;
 
     const resolveOgImage = (imageUrl: string) => {
       if (!imageUrl) return "";
@@ -91,7 +150,7 @@ export function SEOHead({
     removeMetaTag("keywords");
     
     // Robots meta
-    if (noIndex) {
+    if (effectiveNoIndex) {
       setMetaTag("robots", "noindex, nofollow");
     } else {
       setMetaTag(

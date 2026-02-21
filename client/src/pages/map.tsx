@@ -372,6 +372,30 @@ const areBoundsEqual = (a: MapBoundsLike | null, b: MapBoundsLike | null) => {
   );
 };
 
+const overlapKey = (coords: GeoPoint) =>
+  `${coords.lat.toFixed(6)}:${coords.lng.toFixed(6)}`;
+
+const offsetOverlappingCoords = (
+  coords: GeoPoint,
+  index: number,
+  count: number,
+  zoomLevel: number,
+): GeoPoint => {
+  if (count <= 1) return coords;
+  const radiusMeters =
+    zoomLevel >= 17 ? 9 : zoomLevel >= 15 ? 13 : zoomLevel >= 13 ? 20 : 28;
+  const angle = (2 * Math.PI * index) / count;
+  const metersPerLat = 111_320;
+  const metersPerLng = Math.max(
+    111_320 * Math.cos((coords.lat * Math.PI) / 180),
+    1,
+  );
+  return {
+    lat: coords.lat + (Math.sin(angle) * radiusMeters) / metersPerLat,
+    lng: coords.lng + (Math.cos(angle) * radiusMeters) / metersPerLng,
+  };
+};
+
 const hostPinIcon = new L.Icon({
   iconUrl: mealScoutIcon,
   iconSize: [36, 36],
@@ -485,11 +509,48 @@ function HostMarkerLayer({
 }) {
   const map = useMap();
 
-  const overlapStats = useMemo(() => {
-    const buckets = new Map<string, number>();
+  const positionedHosts = useMemo(() => {
+    const groups = new Map<
+      string,
+      Array<{ host: HostLocation; coords: GeoPoint }>
+    >();
     hosts.forEach((host) => {
       const coords = resolveHostCoords(host);
       if (!coords) return;
+      const key = overlapKey(coords);
+      const prev = groups.get(key) || [];
+      prev.push({ host, coords });
+      groups.set(key, prev);
+    });
+
+    const next: Array<{
+      host: HostLocation;
+      coords: GeoPoint;
+      markerCoords: GeoPoint;
+      overlapCount: number;
+    }> = [];
+    groups.forEach((items) => {
+      const count = items.length;
+      items.forEach((item, index) => {
+        next.push({
+          host: item.host,
+          coords: item.coords,
+          markerCoords: offsetOverlappingCoords(
+            item.coords,
+            index,
+            count,
+            zoomLevel,
+          ),
+          overlapCount: count,
+        });
+      });
+    });
+    return next;
+  }, [hosts, resolveHostCoords, zoomLevel]);
+
+  const overlapStats = useMemo(() => {
+    const buckets = new Map<string, number>();
+    positionedHosts.forEach(({ coords }) => {
       // ~110m buckets to detect visually overlapping markers.
       const key = `${coords.lat.toFixed(3)}:${coords.lng.toFixed(3)}`;
       buckets.set(key, (buckets.get(key) || 0) + 1);
@@ -503,7 +564,7 @@ function HostMarkerLayer({
       if (count > maxBucketSize) maxBucketSize = count;
     });
     return { overlappingMarkers, maxBucketSize };
-  }, [hosts, resolveHostCoords]);
+  }, [positionedHosts]);
 
   const useClusters =
     zoomLevel < 14 &&
@@ -589,9 +650,7 @@ function HostMarkerLayer({
 
   return (
     <>
-      {hosts.map((host) => {
-        const coords = resolveHostCoords(host);
-        if (!coords) return null;
+      {positionedHosts.map(({ host, coords, markerCoords, overlapCount }) => {
         const hostedTruck = findNearbyTruck(coords);
         const title = hostedTruck ? hostedTruck.truck.name : host.name;
         const subtitle = hostedTruck ? `At ${host.name}` : "Hosts food trucks";
@@ -610,7 +669,7 @@ function HostMarkerLayer({
         return (
           <Marker
             key={`host-${host.id}`}
-            position={[coords.lat, coords.lng]}
+            position={[markerCoords.lat, markerCoords.lng]}
             icon={
               hostedTruck
                 ? hostPinActiveIcon
@@ -628,6 +687,11 @@ function HostMarkerLayer({
                 <div className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide border border-[color:var(--border-subtle)]">
                   {availableLabel}
                 </div>
+                {overlapCount > 1 && (
+                  <div className="text-xs text-[color:var(--text-muted)]">
+                    {overlapCount} host locations share this same spot.
+                  </div>
+                )}
                 {isStaffOrAdmin && qualityFlags.length > 0 && (
                   <div className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide border border-[color:var(--border-subtle)] text-[color:var(--status-warning)]">
                     Data issues: {qualityFlags.slice(0, 4).join(", ")}
@@ -1393,6 +1457,33 @@ export default function MapPage() {
     });
   }, [mapLocations, eventCoords, appliedMapBounds]);
 
+  const hostMarkerCoordsById = useMemo(() => {
+    const groups = new Map<
+      string,
+      Array<{ id: string; coords: GeoPoint }>
+    >();
+    visibleHostLocations.forEach((host) => {
+      const coords = resolveHostCoords(host);
+      if (!coords) return;
+      const key = overlapKey(coords);
+      const prev = groups.get(key) || [];
+      prev.push({ id: host.id, coords });
+      groups.set(key, prev);
+    });
+
+    const next = new Map<string, GeoPoint>();
+    groups.forEach((items) => {
+      const count = items.length;
+      items.forEach((item, index) => {
+        next.set(
+          item.id,
+          offsetOverlappingCoords(item.coords, index, count, zoomLevel),
+        );
+      });
+    });
+    return next;
+  }, [visibleHostLocations, resolveHostCoords, zoomLevel]);
+
   const hostedTruckIds = useMemo(() => {
     const ids = new Set<string>();
     visibleHostLocations.forEach((host) => {
@@ -1737,12 +1828,13 @@ export default function MapPage() {
     visibleHostLocations.forEach((host) => {
       const coords = resolveHostCoords(host);
       if (!coords) return;
+      const markerCoords = hostMarkerCoordsById.get(host.id) || coords;
       next.push({
         id: `parking:${host.id}`,
         sourceId: host.id,
         kind: "parking",
-        lat: coords.lat,
-        lng: coords.lng,
+        lat: markerCoords.lat,
+        lng: markerCoords.lng,
         title: host.name,
         subtitle: host.address,
       });
@@ -1769,6 +1861,7 @@ export default function MapPage() {
     visibleUnhostedTrucks,
     visibleHostLocations,
     visibleEventLocations,
+    hostMarkerCoordsById,
     resolveHostCoords,
     resolveEventCoords,
   ]);
@@ -1796,11 +1889,37 @@ export default function MapPage() {
         return;
       }
 
-      if (marker.kind === "parking" || marker.kind === "event") {
-        window.open(`https://maps.google.com/?q=${marker.lat},${marker.lng}`, "_blank");
+      if (marker.kind === "parking") {
+        const host = visibleHostLocations.find(
+          (item) => item.id === marker.sourceId,
+        );
+        const coords = host ? resolveHostCoords(host) : null;
+        const lat = coords?.lat ?? marker.lat;
+        const lng = coords?.lng ?? marker.lng;
+        window.open(`https://maps.google.com/?q=${lat},${lng}`, "_blank");
+        return;
+      }
+
+      if (marker.kind === "event") {
+        const event = visibleEventLocations.find(
+          (item) => item.id === marker.sourceId,
+        );
+        const coords = event ? resolveEventCoords(event) : null;
+        const lat = coords?.lat ?? marker.lat;
+        const lng = coords?.lng ?? marker.lng;
+        window.open(`https://maps.google.com/?q=${lat},${lng}`, "_blank");
       }
     },
-    [deals, geoAds, visibleDeals, visibleGeoAds],
+    [
+      deals,
+      geoAds,
+      visibleDeals,
+      visibleGeoAds,
+      visibleHostLocations,
+      visibleEventLocations,
+      resolveHostCoords,
+      resolveEventCoords,
+    ],
   );
 
   const mapSchemaData = useMemo(

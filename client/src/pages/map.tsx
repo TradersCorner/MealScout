@@ -827,6 +827,8 @@ export default function MapPage() {
   const [hasPendingAreaSearch, setHasPendingAreaSearch] = useState(false);
   const [pendingMapCenter, setPendingMapCenter] = useState<GeoPoint | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [forceLegacyMap, setForceLegacyMap] = useState(false);
+  const [googleMapsRuntimeError, setGoogleMapsRuntimeError] = useState<string | null>(null);
   const [hostCoords, setHostCoords] = useState<Record<string, GeoPoint>>({});
   const [eventCoords, setEventCoords] = useState<Record<string, GeoPoint>>({});
   const geocodeInFlight = useRef(false);
@@ -1762,11 +1764,19 @@ export default function MapPage() {
   const isGoogleProviderRequested = MAP_PROVIDER === "google";
   const isGoogleProviderMissingKey =
     isGoogleProviderRequested && !isGoogleMapsEnabled;
-  const mapProviderLabel = isGoogleMapsEnabled
+  const isUsingGoogleMap = isGoogleMapsEnabled && !forceLegacyMap;
+  const mapProviderLabel = isUsingGoogleMap
     ? "Google Maps"
-    : isGoogleProviderRequested
+    : isGoogleProviderMissingKey
       ? "Legacy map (Google key missing)"
-      : "Legacy map";
+      : isGoogleProviderRequested
+        ? "Legacy map (Google unavailable)"
+        : "Legacy map";
+
+  const handleGoogleMapsFatalError = useCallback((message: string) => {
+    setGoogleMapsRuntimeError(message || "Google Maps failed to load for this domain.");
+    setForceLegacyMap(true);
+  }, []);
 
   const adapterMarkers = useMemo<MapAdapterMarker[]>(() => {
     const next: MapAdapterMarker[] = [];
@@ -2071,6 +2081,16 @@ export default function MapPage() {
             Warning: {locationError}
           </div>
         )}
+        {googleMapsRuntimeError && (
+          <div className="mb-4 rounded border border-[color:var(--status-warning)]/40 bg-[color:var(--status-warning)]/10 p-2 text-xs text-[color:var(--text-primary)]" role="status">
+            <div>
+              Using legacy map because Google Maps is blocked for this domain.
+            </div>
+            <div className="text-[color:var(--text-muted)]">
+              Authorize your key referrers for `https://www.mealscout.us/*` and `https://mealscout.us/*`.
+            </div>
+          </div>
+        )}
         {(usingCachedBookableHosts || usingCachedHostStatus) && (
           <div className="text-xs mb-4 bg-amber-50 border border-amber-200 rounded p-2 text-amber-900">
             Using cached Parking Pass map data. Refresh may fix this.
@@ -2115,6 +2135,20 @@ export default function MapPage() {
           >
             Refresh
           </Button>
+          {forceLegacyMap && isGoogleProviderRequested && !isGoogleProviderMissingKey && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setGoogleMapsRuntimeError(null);
+                setForceLegacyMap(false);
+              }}
+              data-testid="button-retry-google-map"
+            >
+              Retry Google Map
+            </Button>
+          )}
         </div>
       </header>
 
@@ -2134,7 +2168,7 @@ export default function MapPage() {
             </div>
           )}
           {mapCenter && (
-            isGoogleMapsEnabled ? (
+            isUsingGoogleMap ? (
               <GoogleMapSurface
                 apiKey={GOOGLE_MAPS_WEB_API_KEY}
                 center={mapCenter}
@@ -2145,6 +2179,7 @@ export default function MapPage() {
                 onBoundsChanged={setMapBounds}
                 onZoomChanged={setZoomLevel}
                 onMarkerTap={handleAdapterMarkerTap}
+                onFatalError={handleGoogleMapsFatalError}
               />
             ) : (
             <MapContainer

@@ -15,11 +15,13 @@ type GoogleMapSurfaceProps = {
   onBoundsChanged: (bounds: MapBoundsLike) => void;
   onZoomChanged: (zoom: number) => void;
   onMarkerTap: (marker: MapAdapterMarker) => void;
+  onFatalError?: (message: string) => void;
 };
 
 type GoogleMapsWindow = Window & {
   google?: any;
   __mealScoutGoogleMapsPromise?: Promise<void>;
+  gm_authFailure?: () => void;
 };
 
 const createBoundsLike = (
@@ -105,7 +107,7 @@ const loadGoogleMaps = async (apiKey: string) => {
     const script = document.createElement("script");
     script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
       apiKey,
-    )}&v=weekly`;
+    )}&v=weekly&loading=async`;
     script.async = true;
     script.defer = true;
     script.dataset.mealscoutGoogleMaps = "1";
@@ -128,16 +130,50 @@ export function GoogleMapSurface({
   onBoundsChanged,
   onZoomChanged,
   onMarkerTap,
+  onFatalError,
 }: GoogleMapSurfaceProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
   const markerRefs = useRef<Map<string, any>>(new Map());
   const [loadError, setLoadError] = useState<string | null>(null);
+  const hasReportedFatalErrorRef = useRef(false);
 
   const markerIndex = useMemo(
     () => new Map(markers.map((marker) => [marker.id, marker])),
     [markers],
   );
+
+  useEffect(() => {
+    hasReportedFatalErrorRef.current = false;
+  }, [apiKey]);
+
+  useEffect(() => {
+    const w = window as GoogleMapsWindow;
+    const previousAuthFailure = w.gm_authFailure;
+    const handleAuthFailure = () => {
+      if (typeof previousAuthFailure === "function") {
+        try {
+          previousAuthFailure();
+        } catch {
+          // ignore downstream handler errors
+        }
+      }
+      const message =
+        "Google Maps authorization failed for this domain. Falling back to legacy map.";
+      setLoadError(message);
+      if (!hasReportedFatalErrorRef.current) {
+        hasReportedFatalErrorRef.current = true;
+        onFatalError?.(message);
+      }
+    };
+
+    w.gm_authFailure = handleAuthFailure;
+    return () => {
+      if (w.gm_authFailure === handleAuthFailure) {
+        w.gm_authFailure = previousAuthFailure;
+      }
+    };
+  }, [onFatalError]);
 
   useEffect(() => {
     let mounted = true;
@@ -183,16 +219,20 @@ export function GoogleMapSurface({
         setLoadError(null);
       } catch (error: any) {
         if (!mounted) return;
-        setLoadError(
-          error?.message || "Unable to load Google Maps. Falling back is recommended.",
-        );
+        const message =
+          error?.message || "Unable to load Google Maps. Falling back to legacy map.";
+        setLoadError(message);
+        if (!hasReportedFatalErrorRef.current) {
+          hasReportedFatalErrorRef.current = true;
+          onFatalError?.(message);
+        }
       }
     };
     init();
     return () => {
       mounted = false;
     };
-  }, [apiKey, center, zoom, isNightTheme, onBoundsChanged, onZoomChanged]);
+  }, [apiKey, center, zoom, isNightTheme, onBoundsChanged, onZoomChanged, onFatalError]);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -295,4 +335,3 @@ export function GoogleMapSurface({
     </div>
   );
 }
-

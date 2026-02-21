@@ -88,12 +88,66 @@ export async function listParkingPassOccurrences(options?: {
       )
     : and(eq(eventSeries.seriesType, "parking_pass"), statusFilter as any);
 
-  const seriesRows: Array<{ series: EventSeries }> = await db
-    .select({
-      series: eventSeries,
-    })
-    .from(eventSeries)
-    .where(whereSeries as any);
+  let seriesRows: Array<{ series: EventSeries }> = [];
+  try {
+    seriesRows = await db
+      .select({
+        series: eventSeries,
+      })
+      .from(eventSeries)
+      .where(whereSeries as any);
+  } catch (error) {
+    // Production DB schema drift has historically caused Drizzle "select all columns" queries to throw.
+    // Fall back to the schema-tolerant storage projection so public feeds degrade gracefully.
+    console.warn("listParkingPassOccurrences: falling back to safe event_series projection:", error);
+    const raw = await storage.getParkingPassSeriesSafe();
+    const allowStatuses = includeDraft ? new Set(["published", "draft"]) : new Set(["published"]);
+    const allowHostIds = options?.hostIds?.length
+      ? new Set(options.hostIds.map((id) => String(id || "").trim()).filter(Boolean))
+      : null;
+
+    const safeRows = raw.filter((row) => {
+      const hostId = String(row.hostId || "").trim();
+      if (!hostId) return false;
+      if (allowHostIds && !allowHostIds.has(hostId)) return false;
+      const status = row.status == null ? "" : String(row.status);
+      if (status && !allowStatuses.has(status)) return false;
+      if (!status && !includeDraft) return false;
+      return true;
+    });
+
+    seriesRows = safeRows.map((row: any) => ({
+      series: {
+        id: row.id,
+        hostId: row.hostId,
+        coordinatorUserId: null,
+        name: row.name ?? `Parking Pass - ${row.hostId}`,
+        description: row.description ?? null,
+        timezone: "America/New_York",
+        recurrenceRule: null,
+        startDate: start as any,
+        endDate: end as any,
+        defaultStartTime:
+          row.defaultStartTime ?? PARKING_PASS_MEAL_WINDOWS.breakfast.start,
+        defaultEndTime: row.defaultEndTime ?? PARKING_PASS_MEAL_WINDOWS.dinner.end,
+        defaultMaxTrucks: row.defaultMaxTrucks ?? 1,
+        defaultHardCapEnabled: row.defaultHardCapEnabled ?? false,
+        seriesType: "parking_pass",
+        parkingPassDaysOfWeek: row.parkingPassDaysOfWeek ?? [],
+        defaultBreakfastPriceCents: row.defaultBreakfastPriceCents ?? 0,
+        defaultLunchPriceCents: row.defaultLunchPriceCents ?? 0,
+        defaultDinnerPriceCents: row.defaultDinnerPriceCents ?? 0,
+        defaultDailyPriceCents: row.defaultDailyPriceCents ?? 0,
+        defaultWeeklyPriceCents: row.defaultWeeklyPriceCents ?? 0,
+        defaultMonthlyPriceCents: row.defaultMonthlyPriceCents ?? 0,
+        defaultHostPriceCents: row.defaultHostPriceCents ?? 0,
+        status: row.status ?? (includeDraft ? "draft" : "published"),
+        publishedAt: row.publishedAt ? (new Date(row.publishedAt) as any) : null,
+        createdAt: null as any,
+        updatedAt: row.updatedAt ? (new Date(row.updatedAt) as any) : null,
+      } as any,
+    }));
+  }
 
   if (seriesRows.length === 0) {
     return { occurrences: [] as ParkingPassOccurrence[], start, end };

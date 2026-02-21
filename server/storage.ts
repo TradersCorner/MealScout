@@ -880,17 +880,22 @@ export class DatabaseStorage implements IStorage {
       `${q("id")} as "id"`,
       `${q("host_id")} as "hostId"`,
       `${has("series_type") ? `${q("series_type")} as "seriesType"` : `null as "seriesType"`}`,
+      `${has("name") ? `${q("name")} as "name"` : `null as "name"`}`,
+      `${has("description") ? `${q("description")} as "description"` : `null as "description"`}`,
       `${has("status") ? `${q("status")} as "status"` : `null as "status"`}`,
       `${has("published_at") ? `${q("published_at")} as "publishedAt"` : `null as "publishedAt"`}`,
       `${has("default_start_time") ? `${q("default_start_time")} as "defaultStartTime"` : `null as "defaultStartTime"`}`,
       `${has("default_end_time") ? `${q("default_end_time")} as "defaultEndTime"` : `null as "defaultEndTime"`}`,
       `${has("default_max_trucks") ? `${q("default_max_trucks")} as "defaultMaxTrucks"` : `null as "defaultMaxTrucks"`}`,
+      `${has("default_hard_cap_enabled") ? `${q("default_hard_cap_enabled")} as "defaultHardCapEnabled"` : `null as "defaultHardCapEnabled"`}`,
+      `${has("parking_pass_days_of_week") ? `${q("parking_pass_days_of_week")} as "parkingPassDaysOfWeek"` : `null as "parkingPassDaysOfWeek"`}`,
       `${has("default_breakfast_price_cents") ? `${q("default_breakfast_price_cents")} as "defaultBreakfastPriceCents"` : `null as "defaultBreakfastPriceCents"`}`,
       `${has("default_lunch_price_cents") ? `${q("default_lunch_price_cents")} as "defaultLunchPriceCents"` : `null as "defaultLunchPriceCents"`}`,
       `${has("default_dinner_price_cents") ? `${q("default_dinner_price_cents")} as "defaultDinnerPriceCents"` : `null as "defaultDinnerPriceCents"`}`,
       `${has("default_daily_price_cents") ? `${q("default_daily_price_cents")} as "defaultDailyPriceCents"` : `null as "defaultDailyPriceCents"`}`,
       `${has("default_weekly_price_cents") ? `${q("default_weekly_price_cents")} as "defaultWeeklyPriceCents"` : `null as "defaultWeeklyPriceCents"`}`,
       `${has("default_monthly_price_cents") ? `${q("default_monthly_price_cents")} as "defaultMonthlyPriceCents"` : `null as "defaultMonthlyPriceCents"`}`,
+      `${has("default_host_price_cents") ? `${q("default_host_price_cents")} as "defaultHostPriceCents"` : `null as "defaultHostPriceCents"`}`,
       `${has("updated_at") ? `${q("updated_at")} as "updatedAt"` : `null as "updatedAt"`}`,
     ];
 
@@ -903,17 +908,23 @@ export class DatabaseStorage implements IStorage {
     Array<{
       id: string;
       hostId: string;
+      name: string | null;
+      description: string | null;
       status: string | null;
       publishedAt: string | null;
+      updatedAt: string | null;
       defaultStartTime: string | null;
       defaultEndTime: string | null;
       defaultMaxTrucks: number | null;
+      defaultHardCapEnabled: boolean | null;
+      parkingPassDaysOfWeek: unknown | null;
       defaultBreakfastPriceCents: number | null;
       defaultLunchPriceCents: number | null;
       defaultDinnerPriceCents: number | null;
       defaultDailyPriceCents: number | null;
       defaultWeeklyPriceCents: number | null;
       defaultMonthlyPriceCents: number | null;
+      defaultHostPriceCents: number | null;
     }>
   > {
     const { columns } = await this.getEventSeriesTableInfo();
@@ -924,17 +935,23 @@ export class DatabaseStorage implements IStorage {
     return rows.map((row: any) => ({
       id: String(row.id),
       hostId: String(row.hostId),
+      name: row.name == null ? null : String(row.name),
+      description: row.description == null ? null : String(row.description),
       status: row.status == null ? null : String(row.status),
       publishedAt: row.publishedAt ? new Date(row.publishedAt).toISOString() : null,
+      updatedAt: row.updatedAt ? new Date(row.updatedAt).toISOString() : null,
       defaultStartTime: row.defaultStartTime == null ? null : String(row.defaultStartTime),
       defaultEndTime: row.defaultEndTime == null ? null : String(row.defaultEndTime),
       defaultMaxTrucks: row.defaultMaxTrucks == null ? null : Number(row.defaultMaxTrucks),
+      defaultHardCapEnabled: row.defaultHardCapEnabled == null ? null : Boolean(row.defaultHardCapEnabled),
+      parkingPassDaysOfWeek: row.parkingPassDaysOfWeek ?? null,
       defaultBreakfastPriceCents: row.defaultBreakfastPriceCents == null ? null : Number(row.defaultBreakfastPriceCents),
       defaultLunchPriceCents: row.defaultLunchPriceCents == null ? null : Number(row.defaultLunchPriceCents),
       defaultDinnerPriceCents: row.defaultDinnerPriceCents == null ? null : Number(row.defaultDinnerPriceCents),
       defaultDailyPriceCents: row.defaultDailyPriceCents == null ? null : Number(row.defaultDailyPriceCents),
       defaultWeeklyPriceCents: row.defaultWeeklyPriceCents == null ? null : Number(row.defaultWeeklyPriceCents),
       defaultMonthlyPriceCents: row.defaultMonthlyPriceCents == null ? null : Number(row.defaultMonthlyPriceCents),
+      defaultHostPriceCents: row.defaultHostPriceCents == null ? null : Number(row.defaultHostPriceCents),
     }));
   }
 

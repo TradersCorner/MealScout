@@ -153,6 +153,49 @@ export default function SuppliersPage() {
   const isBuyerBusiness = userType === "restaurant_owner" || userType === "food_truck";
   const canUseBuyerTools = isAuthenticated && !isSupplierUser;
 
+  const { data: supplierProfile } = useQuery<Supplier | null>({
+    queryKey: ["/api/supplier/me", "presence"],
+    queryFn: async () => {
+      const res = await fetch("/api/supplier/me", { credentials: "include" });
+      if ([401, 403, 404].includes(res.status)) return null;
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to load supplier profile");
+      return data as Supplier;
+    },
+    enabled: isAuthenticated && !isSupplierUser,
+    retry: false,
+    staleTime: 30_000,
+  });
+  const hasSupplierProfile = Boolean(supplierProfile?.id);
+
+  const activateSupplierProfile = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/supplier/profile/activate", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to create supplier profile");
+      return data;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Supplier profile created",
+        description: "Opening your supplier dashboard.",
+      });
+      window.location.href = "/supplier/dashboard";
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Unable to create supplier profile",
+        description: error?.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const { data: prefs } = useQuery<SupplyPreferences>({
     queryKey: ["/api/supply/preferences"],
     queryFn: async () => {
@@ -436,10 +479,22 @@ export default function SuppliersPage() {
                 Search supplier products, request pickup or delivery, and upload order sheets to compare deals.
               </div>
               <div className="flex flex-wrap gap-2 pt-3">
-                {isSupplierUser ? (
+                {isSupplierUser || hasSupplierProfile ? (
                   <Link href="/supplier/dashboard">
                     <Button size="sm" className="w-full sm:w-auto">Supplier dashboard</Button>
                   </Link>
+                ) : isAuthenticated ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    disabled={activateSupplierProfile.isPending}
+                    onClick={() => activateSupplierProfile.mutate()}
+                  >
+                    {activateSupplierProfile.isPending
+                      ? "Creating profile..."
+                      : "Become a supplier"}
+                  </Button>
                 ) : (
                   <>
                     <Link href="/customer-signup?role=supplier">

@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 type Supplier = {
   id: string;
@@ -89,6 +90,7 @@ const toDateTimeLocalValue = (raw: string | null | undefined) => {
 
 export default function SupplierDashboardPage() {
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const [profileDraft, setProfileDraft] = useState({
     businessName: "",
@@ -131,7 +133,7 @@ export default function SupplierDashboardPage() {
     "open",
   );
 
-  const { data: supplier, isError: isSupplierError } = useQuery<Supplier>({
+  const { data: supplier, isError: isSupplierError, refetch: refetchSupplier } = useQuery<Supplier>({
     queryKey: ["/api/supplier/me"],
     queryFn: async () => {
       const res = await fetch("/api/supplier/me", { credentials: "include" });
@@ -154,6 +156,33 @@ export default function SupplierDashboardPage() {
     staleTime: 30_000,
     gcTime: 10 * 60_000,
     enabled: !isSupplierError,
+  });
+
+  const activateSupplierProfile = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/supplier/profile/activate", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to create supplier profile");
+      return data;
+    },
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      await refetchSupplier();
+      toast({ title: "Supplier profile created" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Unable to create supplier profile",
+        description: error?.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const supplierDeliveryDefaults = useMemo(() => {
@@ -646,17 +675,30 @@ export default function SupplierDashboardPage() {
         {isSupplierError ? (
           <Card>
             <CardContent className="p-4 text-sm text-muted-foreground">
-              This dashboard is for supplier accounts. Create a supplier account to list products and accept orders.
+              This dashboard is for supplier profiles. Add a supplier profile to this account to list products and accept orders.
               <div className="pt-3">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    window.location.href = "/customer-signup?role=supplier";
-                  }}
-                >
-                  Create supplier account
-                </Button>
+                {isAuthenticated ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={activateSupplierProfile.isPending}
+                    onClick={() => activateSupplierProfile.mutate()}
+                  >
+                    {activateSupplierProfile.isPending
+                      ? "Creating profile..."
+                      : "Create supplier profile"}
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      window.location.href = "/login?redirect=/supplier/dashboard";
+                    }}
+                  >
+                    Sign in
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

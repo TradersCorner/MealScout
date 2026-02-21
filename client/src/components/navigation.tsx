@@ -107,7 +107,8 @@ export default function Navigation() {
   const isEventCoordinator = user && user.userType === "event_coordinator";
 
   const [isHost, setIsHost] = useState(false);
-  const canSeeParkingPassNav = isAdmin || isStaff || isFoodTruck || isHost;
+  const canSeeParkingPassNav =
+    isAdmin || isStaff || isFoodTruck || isRestaurantOwner || isHost;
 
   // Detect if this user has a host profile so we can show host flows
   useEffect(() => {

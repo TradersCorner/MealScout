@@ -126,8 +126,9 @@ export const HOST_ONBOARDING_COPY = {
 
   pricing: {
     hero: {
-      title: "Simple, Transparent Pricing",
-      coreLine: "Create unlimited deals and reach more customers",
+      title: "Free Profile + Premium Trial",
+      coreLine:
+        "Create your profile for free. Full features are included for 30 days from account creation.",
       originalPrice: "$50",
       monthlyPrice: "$25",
       monthlySuffix: "/month",
@@ -144,8 +145,14 @@ export const HOST_ONBOARDING_COPY = {
       ],
     },
     formCard: {
-      title: "Simple Pricing",
-      badge: "Best Deal",
+      title: "Free Profile Setup",
+      badge: "No payment required to create your profile.",
+      freeProfileLine:
+        "Profiles stay active for parking pass access and search visibility.",
+      trialLine:
+        "30-day full-feature trial starts from account creation.",
+      paidLine:
+        "After trial: $25/month to appear in feed/maps and post deals.",
       originalPrice: "$50",
       monthlyPrice: "$25",
       monthlySuffix: "/month",
@@ -321,7 +328,7 @@ export const HOST_ONBOARDING_COPY = {
 
   cta: {
     restaurantSubmit: {
-      idle: "Get Started",
+      idle: "Create Free Profile",
       pending: "Creating...",
     },
   },

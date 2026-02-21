@@ -18,7 +18,7 @@ import {
   suppliers,
 } from "@shared/schema";
 import { and, desc, eq, ilike, inArray, lt, or } from "drizzle-orm";
-import { isAuthenticated, isStaffOrAdmin, isSupplierOrAdmin } from "../unifiedAuth";
+import { isAuthenticated, isStaffOrAdmin } from "../unifiedAuth";
 import multer from "multer";
 import { parseTabularFile } from "../utils/tabularImport";
 import { emailService } from "../emailService";
@@ -450,6 +450,41 @@ async function ensureSupplierProfile(userId: string) {
   return created;
 }
 
+const isSupplierProfileOrAdmin = async (req: any, res: any, next: any) => {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+
+  if (req.user?.isDisabled) {
+    return res.status(403).json({ error: "Account disabled" });
+  }
+
+  const userType = String(req.user?.userType || "");
+  if (["supplier", "admin", "super_admin"].includes(userType)) {
+    return next();
+  }
+
+  try {
+    const [existing] = await db
+      .select({ id: suppliers.id })
+      .from(suppliers)
+      .where(eq(suppliers.userId, String(req.user.id)))
+      .limit(1);
+
+    if (existing) {
+      return next();
+    }
+  } catch (error) {
+    console.error("Error checking supplier profile access:", error);
+    return res.status(500).json({ message: "Failed to verify supplier access" });
+  }
+
+  return res.status(403).json({
+    error: "Forbidden",
+    message: "Supplier profile required",
+  });
+};
+
 async function ensureSupplyOrderPreferences(userId: string) {
   const [existing] = await db
     .select()
@@ -478,8 +513,47 @@ async function ensureSupplyOrderPreferences(userId: string) {
 }
 
 export function registerSupplierMarketplaceRoutes(app: Express) {
+  // Logged-in users can add a supplier profile to their existing account.
+  app.post("/api/supplier/profile/activate", isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user?.isDisabled) {
+        return res.status(403).json({ message: "Account disabled" });
+      }
+
+      const schema = z.object({
+        businessName: z.string().trim().min(1).max(120).optional(),
+      });
+      const parsed = schema.parse(req.body || {});
+
+      let supplier = await ensureSupplierProfile(String(req.user.id));
+      const businessName = String(parsed.businessName || "").trim();
+      if (businessName && businessName !== String((supplier as any)?.businessName || "")) {
+        const [updated] = await db
+          .update(suppliers)
+          .set({
+            businessName,
+            updatedAt: new Date(),
+          } as any)
+          .where(eq(suppliers.id, String((supplier as any).id)))
+          .returning();
+        if (updated) supplier = updated as any;
+      }
+
+      return res.json({
+        success: true,
+        supplier,
+      });
+    } catch (error: any) {
+      console.error("Error activating supplier profile:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid supplier activation payload" });
+      }
+      return res.status(500).json({ message: "Failed to activate supplier profile" });
+    }
+  });
+
   // Stripe Connect onboarding for suppliers (payout setup).
-  app.post("/api/supplier/stripe/onboard", isAuthenticated, isSupplierOrAdmin, async (req: any, res) => {
+  app.post("/api/supplier/stripe/onboard", isAuthenticated, isSupplierProfileOrAdmin, async (req: any, res) => {
     try {
       if (!stripe) return res.status(500).json({ message: "Stripe not configured" });
 
@@ -523,7 +597,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     }
   });
 
-  app.get("/api/supplier/stripe/status", isAuthenticated, isSupplierOrAdmin, async (req: any, res) => {
+  app.get("/api/supplier/stripe/status", isAuthenticated, isSupplierProfileOrAdmin, async (req: any, res) => {
     try {
       if (!stripe) return res.status(500).json({ message: "Stripe not configured" });
 
@@ -1754,7 +1828,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
   app.post(
     "/api/supplier/products/import",
     isAuthenticated,
-    isSupplierOrAdmin,
+    isSupplierProfileOrAdmin,
     importUpload.single("file"),
     async (req: any, res) => {
       try {
@@ -1908,7 +1982,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
   );
 
   // Supplier self-management
-  app.get("/api/supplier/me", isAuthenticated, isSupplierOrAdmin, async (req: any, res) => {
+  app.get("/api/supplier/me", isAuthenticated, isSupplierProfileOrAdmin, async (req: any, res) => {
     try {
       const supplier = await ensureSupplierProfile(req.user.id);
       res.json(supplier);
@@ -1918,7 +1992,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/supplier/me", isAuthenticated, isSupplierOrAdmin, async (req: any, res) => {
+  app.patch("/api/supplier/me", isAuthenticated, isSupplierProfileOrAdmin, async (req: any, res) => {
     try {
       const supplier = await ensureSupplierProfile(req.user.id);
       const schema = z.object({
@@ -1972,7 +2046,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     }
   });
 
-  app.get("/api/supplier/products", isAuthenticated, isSupplierOrAdmin, async (req: any, res) => {
+  app.get("/api/supplier/products", isAuthenticated, isSupplierProfileOrAdmin, async (req: any, res) => {
     try {
       const supplier = await ensureSupplierProfile(req.user.id);
       const rows = await db
@@ -1988,7 +2062,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     }
   });
 
-  app.post("/api/supplier/products", isAuthenticated, isSupplierOrAdmin, async (req: any, res) => {
+  app.post("/api/supplier/products", isAuthenticated, isSupplierProfileOrAdmin, async (req: any, res) => {
     try {
       const supplier = await ensureSupplierProfile(req.user.id);
       const schema = z.object({
@@ -2027,7 +2101,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/supplier/products/:productId", isAuthenticated, isSupplierOrAdmin, async (req: any, res) => {
+  app.patch("/api/supplier/products/:productId", isAuthenticated, isSupplierProfileOrAdmin, async (req: any, res) => {
     try {
       const supplier = await ensureSupplierProfile(req.user.id);
       const productId = String(req.params.productId || "").trim();
@@ -2665,7 +2739,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     }
   });
 
-  app.get("/api/supplier/requests", isAuthenticated, isSupplierOrAdmin, async (req: any, res) => {
+  app.get("/api/supplier/requests", isAuthenticated, isSupplierProfileOrAdmin, async (req: any, res) => {
     try {
       const supplier = await ensureSupplierProfile(req.user.id);
       const requests = await db
@@ -2681,7 +2755,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     }
   });
 
-  app.post("/api/supplier/requests/:requestId/accept", isAuthenticated, isSupplierOrAdmin, async (req: any, res) => {
+  app.post("/api/supplier/requests/:requestId/accept", isAuthenticated, isSupplierProfileOrAdmin, async (req: any, res) => {
     try {
       const supplier = await ensureSupplierProfile(req.user.id);
       const requestId = String(req.params.requestId || "").trim();
@@ -2875,7 +2949,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
   app.patch(
     "/api/supplier/requests/:requestId/delivery",
     isAuthenticated,
-    isSupplierOrAdmin,
+    isSupplierProfileOrAdmin,
     async (req: any, res) => {
       try {
         const supplier = await ensureSupplierProfile(req.user.id);
@@ -3216,7 +3290,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     },
   );
 
-  app.get("/api/supplier/orders", isAuthenticated, isSupplierOrAdmin, async (req: any, res) => {
+  app.get("/api/supplier/orders", isAuthenticated, isSupplierProfileOrAdmin, async (req: any, res) => {
     try {
       const supplier = await ensureSupplierProfile(req.user.id);
       const limit = parsePageLimit(req.query?.limit, 100, 300);
@@ -3581,7 +3655,7 @@ export function registerSupplierMarketplaceRoutes(app: Express) {
     },
   );
 
-  app.patch("/api/supplier/orders/:orderId/status", isAuthenticated, isSupplierOrAdmin, async (req: any, res) => {
+  app.patch("/api/supplier/orders/:orderId/status", isAuthenticated, isSupplierProfileOrAdmin, async (req: any, res) => {
     try {
       const supplier = await ensureSupplierProfile(req.user.id);
       const orderId = String(req.params.orderId || "").trim();

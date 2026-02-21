@@ -7,7 +7,7 @@ export function isPremiumTrialActive(user: User | null): boolean {
 }
 
 export async function ensurePremiumTrialForUser(user: User): Promise<User> {
-  if (isPremiumTrialActive(user) || user.trialUsed || user.stripeSubscriptionId) {
+  if (user.stripeSubscriptionId) {
     return user;
   }
 
@@ -23,27 +23,41 @@ export async function ensurePremiumTrialForUser(user: User): Promise<User> {
     return user;
   }
 
-  // Trial starts only after the business is verified (user requirement).
-  const hasVerifiedBusiness = restaurantsForUser.some((restaurant: any) => {
-    if (!restaurant?.isVerified) return false;
-    return (
-      restaurant.businessType === "restaurant" ||
-      restaurant.businessType === "bar" ||
-      restaurant.isFoodTruck
-    );
-  });
-
-  if (!hasVerifiedBusiness) {
+  if (restaurantsForUser.length === 0) {
     return user;
   }
 
-  const startedAt = new Date();
+  // Trial is anchored to account creation date, not verification date.
+  const createdAt = user.createdAt ? new Date(user.createdAt) : new Date();
+  if (!Number.isFinite(createdAt.getTime())) {
+    return user;
+  }
+
+  const startedAt = createdAt;
   const endsAt = new Date(startedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  const hasSameWindow =
+    user.trialStartedAt &&
+    user.trialEndsAt &&
+    Math.abs(new Date(user.trialStartedAt).getTime() - startedAt.getTime()) < 1_000 &&
+    Math.abs(new Date(user.trialEndsAt).getTime() - endsAt.getTime()) < 1_000;
+
+  if (hasSameWindow) {
+    return user;
+  }
+  const trialStillActive = endsAt.getTime() > Date.now();
+  const nextInterval =
+    trialStillActive
+      ? "trial"
+      : user.subscriptionBillingInterval === "trial"
+        ? null
+        : user.subscriptionBillingInterval;
+
   const updated = await storage.updateUser(user.id, {
     trialStartedAt: startedAt,
     trialEndsAt: endsAt,
     trialUsed: true,
-    subscriptionBillingInterval: "trial",
+    subscriptionBillingInterval: nextInterval,
   });
 
   return updated || user;

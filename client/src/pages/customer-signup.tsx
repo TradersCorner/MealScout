@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { Link, useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,7 @@ type SignupFormData = z.infer<typeof signupSchema>;
 export default function CustomerSignup() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { isAuthenticated, isLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
@@ -258,7 +260,65 @@ export default function CustomerSignup() {
     },
   });
 
+  const activateSupplierProfileMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/supplier/profile/activate", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to activate supplier profile");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/me"] });
+      toast({
+        title: "Supplier profile created",
+        description: "Your supplier profile was added to this account.",
+      });
+      setLocation("/supplier/dashboard");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Unable to create supplier profile",
+        description: error?.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const continueWithExistingAccount = () => {
+    if (accountType === "host") {
+      setLocation("/host-signup");
+      return;
+    }
+
+    if (accountType === "business") {
+      const businessRedirect =
+        businessSubType === "food_truck"
+          ? "/restaurant-signup?businessType=food_truck&claim=1"
+          : "/restaurant-signup";
+      setLocation(businessRedirect);
+      return;
+    }
+
+    if (accountType === "supplier") {
+      activateSupplierProfileMutation.mutate();
+      return;
+    }
+
+    setLocation("/dashboard");
+  };
+
   const onSubmit = (data: SignupFormData) => {
+    if (isAuthenticated) {
+      continueWithExistingAccount();
+      return;
+    }
+
     if (accountType === "business") {
       const digitsOnly = (data.phone || "").replace(/\D/g, "");
       if (!digitsOnly || digitsOnly.length < 10) {
@@ -342,7 +402,133 @@ export default function CustomerSignup() {
   const isSubmitting =
     customerSignupMutation.isPending ||
     businessSignupMutation.isPending ||
-    supplierSignupMutation.isPending;
+    supplierSignupMutation.isPending ||
+    activateSupplierProfileMutation.isPending;
+
+  const existingAccountActionLabel =
+    accountType === "host"
+      ? "Create host profile"
+      : accountType === "business"
+        ? businessSubType === "food_truck"
+          ? "Create food truck profile"
+          : "Create restaurant profile"
+        : accountType === "supplier"
+          ? "Create supplier profile"
+          : "Go to dashboard";
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-layered)] flex items-center justify-center">
+        <div className="animate-spin w-10 h-10 border-4 border-[color:var(--action-primary)] border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-layered)] flex flex-col">
+        <BackHeader
+          title="Account Setup"
+          fallbackHref="/dashboard"
+          icon={UserPlus}
+          className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
+        />
+        <main className="flex-1 px-4 py-6 max-w-md mx-auto w-full">
+          <div className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-2xl shadow-clean-lg p-4 space-y-4">
+            <div className="text-center">
+              <h1 className="text-xl font-bold text-[color:var(--text-primary)]">You are already signed in</h1>
+              <p className="text-sm text-[color:var(--text-secondary)] mt-1">
+                Add another profile to this same account instead of creating a new login.
+              </p>
+            </div>
+
+            <div className="inline-flex rounded-full bg-[var(--bg-surface)] border border-[color:var(--border-subtle)] shadow-clean text-[11px] font-medium text-[color:var(--text-secondary)] overflow-hidden w-full">
+              <button
+                type="button"
+                onClick={() => setAccountType("diner")}
+                className={`flex-1 px-3 py-1 transition-colors ${
+                  accountType === "diner"
+                    ? "bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)]"
+                    : "bg-transparent text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-muted)]"
+                }`}
+              >
+                Diner
+              </button>
+              <button
+                type="button"
+                onClick={() => setAccountType("host")}
+                className={`flex-1 px-3 py-1 border-l border-[color:var(--border-subtle)] transition-colors ${
+                  accountType === "host"
+                    ? "bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)]"
+                    : "bg-transparent text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-muted)]"
+                }`}
+              >
+                Host
+              </button>
+              <button
+                type="button"
+                onClick={() => setAccountType("business")}
+                className={`flex-1 px-3 py-1 border-l border-[color:var(--border-subtle)] transition-colors ${
+                  accountType === "business"
+                    ? "bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)]"
+                    : "bg-transparent text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-muted)]"
+                }`}
+              >
+                Business
+              </button>
+              <button
+                type="button"
+                onClick={() => setAccountType("supplier")}
+                className={`flex-1 px-3 py-1 border-l border-[color:var(--border-subtle)] transition-colors ${
+                  accountType === "supplier"
+                    ? "bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)]"
+                    : "bg-transparent text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-muted)]"
+                }`}
+              >
+                Supplier
+              </button>
+            </div>
+
+            {accountType === "business" && (
+              <div className="inline-flex w-full overflow-hidden rounded-full border border-[color:var(--border-subtle)] bg-[var(--bg-surface)] text-[11px] font-semibold text-[color:var(--text-secondary)] shadow-clean">
+                <button
+                  type="button"
+                  onClick={() => setBusinessSubType("restaurant")}
+                  className={`flex-1 px-3 py-2 transition-colors ${
+                    businessSubType === "restaurant"
+                      ? "bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)]"
+                      : "bg-transparent hover:bg-[var(--bg-surface-muted)]"
+                  }`}
+                >
+                  Restaurant
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBusinessSubType("food_truck")}
+                  className={`flex-1 border-l border-[color:var(--border-subtle)] px-3 py-2 transition-colors ${
+                    businessSubType === "food_truck"
+                      ? "bg-[color:var(--action-primary)] text-[color:var(--action-primary-text)]"
+                      : "bg-transparent hover:bg-[var(--bg-surface-muted)]"
+                  }`}
+                >
+                  Food Truck
+                </button>
+              </div>
+            )}
+
+            <Button
+              type="button"
+              onClick={continueWithExistingAccount}
+              disabled={isSubmitting}
+              className="w-full py-3 font-semibold text-base rounded-2xl bg-[color:var(--action-primary)] hover:bg-[color:var(--action-hover)] text-[color:var(--action-primary-text)] border-0 shadow-clean"
+            >
+              {isSubmitting ? "Working..." : existingAccountActionLabel}
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--bg-layered)] flex flex-col">

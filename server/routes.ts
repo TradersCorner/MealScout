@@ -659,6 +659,125 @@ async function validateSubscriptionLimits(
   }
 }
 
+const BUSINESS_FEATURE_TRIAL_DAYS = 30;
+const BUSINESS_ACCESS_CACHE_TTL_MS = 5 * 60 * 1000;
+const businessAccessCache = new Map<
+  string,
+  { hasAccess: boolean; expiresAt: number }
+>();
+
+function hasAccountAgeTrialAccess(user: User | null): boolean {
+  if (!user?.createdAt) return false;
+  if (!["restaurant_owner", "food_truck"].includes(String(user.userType || ""))) {
+    return false;
+  }
+  const createdAtMs = new Date(user.createdAt).getTime();
+  if (!Number.isFinite(createdAtMs)) return false;
+  const trialEndsAtMs =
+    createdAtMs + BUSINESS_FEATURE_TRIAL_DAYS * 24 * 60 * 60 * 1000;
+  return trialEndsAtMs > Date.now();
+}
+
+async function hasBusinessDistributionAccess(userId: string): Promise<boolean> {
+  const key = String(userId || "");
+  if (!key) return false;
+
+  const now = Date.now();
+  const cached = businessAccessCache.get(key);
+  if (cached && cached.expiresAt > now) {
+    return cached.hasAccess;
+  }
+
+  let hasAccess = false;
+  try {
+    const user = await storage.getUser(key);
+    if (user) {
+      if (["admin", "super_admin"].includes(String(user.userType || ""))) {
+        hasAccess = true;
+      } else if (hasAccountAgeTrialAccess(user)) {
+        hasAccess = true;
+      } else if (stripe && user.stripeSubscriptionId) {
+        try {
+          const subscription = await stripe.subscriptions.retrieve(
+            user.stripeSubscriptionId,
+          );
+          hasAccess = ["active", "trialing"].includes(
+            String(subscription?.status || ""),
+          );
+        } catch (subscriptionError) {
+          console.warn(
+            "[subscription] Unable to verify subscription for visibility",
+            {
+              userId: key,
+              error: (subscriptionError as any)?.message || subscriptionError,
+            },
+          );
+          hasAccess = false;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn("[subscription] Failed to compute business access", {
+      userId: key,
+      error: (error as any)?.message || error,
+    });
+    hasAccess = false;
+  }
+
+  businessAccessCache.set(key, {
+    hasAccess,
+    expiresAt: now + BUSINESS_ACCESS_CACHE_TTL_MS,
+  });
+  return hasAccess;
+}
+
+async function filterDealsByBusinessAccess<T extends { restaurantId?: string | null }>(
+  dealRows: T[],
+): Promise<T[]> {
+  if (!Array.isArray(dealRows) || dealRows.length === 0) return [];
+
+  const restaurantIds = Array.from(
+    new Set(
+      dealRows
+        .map((row) => String(row?.restaurantId || "").trim())
+        .filter(Boolean),
+    ),
+  );
+  if (restaurantIds.length === 0) return dealRows;
+
+  const restaurantRows = await db
+    .select({
+      id: restaurants.id,
+      ownerId: restaurants.ownerId,
+    })
+    .from(restaurants)
+    .where(inArray(restaurants.id, restaurantIds));
+
+  const ownerByRestaurant = new Map<string, string>();
+  for (const row of restaurantRows) {
+    const restaurantId = String(row.id || "").trim();
+    const ownerId = String(row.ownerId || "").trim();
+    if (!restaurantId || !ownerId) continue;
+    ownerByRestaurant.set(restaurantId, ownerId);
+  }
+
+  const ownerIds = Array.from(new Set(ownerByRestaurant.values()));
+  const ownerAccess = new Map<string, boolean>();
+  await Promise.all(
+    ownerIds.map(async (ownerId) => {
+      ownerAccess.set(ownerId, await hasBusinessDistributionAccess(ownerId));
+    }),
+  );
+
+  return dealRows.filter((deal) => {
+    const restaurantId = String(deal?.restaurantId || "").trim();
+    if (!restaurantId) return false;
+    const ownerId = ownerByRestaurant.get(restaurantId);
+    if (!ownerId) return false;
+    return ownerAccess.get(ownerId) === true;
+  });
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint - responds immediately with 200 for deployment health checks
   app.get("/health", (_req, res) => {
@@ -2589,11 +2708,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid radius" });
       }
 
-      const restaurants = await storage.getSubscribedRestaurants(
+      const nearbyRestaurants = await storage.getNearbyRestaurants(
         latitude,
         longitude,
         radius,
       );
+      const restaurants = (
+        await Promise.all(
+          nearbyRestaurants.map(async (restaurant) => {
+            const ownerId = String((restaurant as any)?.ownerId || "").trim();
+            if (!ownerId) return null;
+            const hasAccess = await hasBusinessDistributionAccess(ownerId);
+            return hasAccess ? restaurant : null;
+          }),
+        )
+      ).filter(Boolean) as any[];
 
       // Get all restaurant IDs to fetch deal counts efficiently
       const restaurantIds = restaurants.map((r) => r.id);
@@ -3646,7 +3775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Restaurant owner signup endpoint (creates user account + restaurant in one flow)
   app.post("/api/restaurants/signup", async (req: any, res) => {
     try {
-      const { userData, restaurantData, subscriptionPlan } = req.body;
+      const { userData, restaurantData } = req.body;
 
       let user: User;
 
@@ -3880,7 +4009,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user,
         restaurant,
         message: "Restaurant owner account created successfully",
-        subscriptionPlan,
       });
     } catch (error: any) {
       console.error("Error in restaurant signup:", error);
@@ -5073,7 +5201,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/deals/active", async (req, res) => {
     try {
       const deals = await storage.getActiveDeals();
-      res.json(deals);
+      const filteredDeals = await filterDealsByBusinessAccess(deals as any[]);
+      res.json(filteredDeals);
     } catch (error) {
       console.error("Error fetching active deals:", error);
       res.status(500).json({ message: "Failed to fetch deals" });
@@ -5113,6 +5242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const showLimitedTimeOnly = filter === "limited-time";
 
       const deals = await storage.getFilteredDeals(showLimitedTimeOnly);
+      const filteredDeals = await filterDealsByBusinessAccess(deals as any[]);
 
       // Add cache headers for client-side caching
       res.set({
@@ -5120,7 +5250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ETag: `"deals-${filter || "all"}-${Date.now()}"`,
       });
 
-      res.json(deals);
+      res.json(filteredDeals);
     } catch (error) {
       console.error("Error fetching featured deals:", error);
       res.status(500).json({ message: "Failed to fetch featured deals" });
@@ -5140,6 +5270,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const restaurant = await storage.getRestaurant(restaurantId);
       if (!restaurant) {
         return res.status(404).json({ message: "Restaurant not found" });
+      }
+      const isOwnerViewing =
+        Boolean(req.isAuthenticated?.()) &&
+        String((req as any)?.user?.id || "") ===
+          String((restaurant as any).ownerId || "");
+      const ownerHasAccess = await hasBusinessDistributionAccess(
+        String((restaurant as any).ownerId || ""),
+      );
+      if (!ownerHasAccess && !isOwnerViewing) {
+        return res.json([]);
       }
 
       // Get all active deals for this restaurant with restaurant data included
@@ -5181,7 +5321,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const radius = parseFloat(req.query.radius as string) || 5;
 
       const deals = await storage.getNearbyDeals(lat, lng, radius);
-      res.json(deals);
+      const filteredDeals = await filterDealsByBusinessAccess(deals as any[]);
+      res.json(filteredDeals);
     } catch (error) {
       console.error("Error fetching nearby deals:", error);
       res.status(500).json({ message: "Failed to fetch nearby deals" });
@@ -5213,7 +5354,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sortBy: sortBy as string,
       });
 
-      res.json(deals);
+      const filteredDeals = await filterDealsByBusinessAccess(deals as any[]);
+      res.json(filteredDeals);
     } catch (error) {
       console.error("Error searching deals:", error);
       res.status(500).json({ message: "Failed to search deals" });
@@ -5229,12 +5371,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For now, return featured deals (active deals)
       // In a real implementation, this would use ML/AI recommendations
       const recommendedDeals = await storage.getActiveDeals();
+      const filteredDeals = await filterDealsByBusinessAccess(
+        recommendedDeals as any[],
+      );
 
       // Track restaurant recommendations for analytics (background task)
-      if (recommendedDeals.length > 0) {
+      if (filteredDeals.length > 0) {
         // Track recommendations for analytics (don't wait for completion)
         Promise.all(
-          recommendedDeals.slice(0, 10).map(async (deal: any) => {
+          filteredDeals.slice(0, 10).map(async (deal: any) => {
             try {
               await storage.trackRestaurantRecommendation({
                 restaurantId: deal.restaurantId,
@@ -5252,7 +5397,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
 
-      res.json(recommendedDeals);
+      res.json(filteredDeals);
     } catch (error) {
       console.error("Error fetching recommended deals:", error);
       res.status(500).json({ message: "Failed to fetch recommended deals" });
@@ -5263,6 +5408,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const deal = await storage.getDeal(req.params.id);
       if (!deal) {
+        return res.status(404).json({ message: "Deal not found" });
+      }
+      const restaurant = await storage.getRestaurant(String(deal.restaurantId));
+      if (!restaurant) {
+        return res.status(404).json({ message: "Restaurant not found" });
+      }
+      const isOwnerViewing =
+        Boolean(req.isAuthenticated?.()) &&
+        String((req as any)?.user?.id || "") ===
+          String((restaurant as any).ownerId || "");
+      const ownerHasAccess = await hasBusinessDistributionAccess(
+        String((restaurant as any).ownerId || ""),
+      );
+      if (!ownerHasAccess && !isOwnerViewing) {
         return res.status(404).json({ message: "Deal not found" });
       }
       res.json(deal);

@@ -158,38 +158,6 @@ export default function RestaurantSignup() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
   const [authMode, setAuthMode] = useState<"signup" | "login">("signup");
-  const [isHost, setIsHost] = useState(false);
-  const [hostCheckDone, setHostCheckDone] = useState(false);
-
-  // Detect if this authenticated user is a host/event coordinator
-  useEffect(() => {
-    if (!user) {
-      setIsHost(false);
-      setHostCheckDone(true);
-      return;
-    }
-
-    let cancelled = false;
-    setHostCheckDone(false);
-
-    fetch("/api/hosts/me")
-      .then((res) => {
-        if (cancelled) return;
-        setIsHost(res.ok);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setIsHost(false);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setHostCheckDone(true);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id]);
 
   // Redirect admin/staff away from this flow to their dashboard
   useEffect(() => {
@@ -199,13 +167,6 @@ export default function RestaurantSignup() {
     }
   }, [isAuthenticated, user, setLocation]);
 
-  // Hosts/event coordinators are not restaurants/food trucks - send them to host tools
-  useEffect(() => {
-    if (!isAuthenticated || !user || !hostCheckDone) return;
-    if (user.userType === "customer" && isHost) {
-      setLocation("/host/dashboard");
-    }
-  }, [isAuthenticated, user, isHost, hostCheckDone, setLocation]);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -451,7 +412,6 @@ export default function RestaurantSignup() {
               outdoor_seating: data.hasOutdoorSeating,
             },
           },
-          subscriptionPlan: "month",
         };
         const res = await apiRequest(
           "POST",
@@ -490,7 +450,6 @@ export default function RestaurantSignup() {
               outdoor_seating: data.hasOutdoorSeating,
             },
           },
-          subscriptionPlan: "month",
         };
         const res = await apiRequest(
           "POST",
@@ -754,7 +713,7 @@ export default function RestaurantSignup() {
     loginMutation.mutate(data);
   };
 
-  if (isLoading || (!hostCheckDone && isAuthenticated)) {
+  if (isLoading) {
     return (
       <div className="max-w-md mx-auto bg-background min-h-screen flex items-center justify-center">
         <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full" />
@@ -1182,15 +1141,16 @@ export default function RestaurantSignup() {
                       {COPY.pricing.formCard.title}
                     </p>
                     <p className="mt-1 text-xs text-[color:var(--text-secondary)]">
-                      {COPY.pricing.formCard.badge}{" "}
-                      <span className="line-through opacity-70">
-                        {COPY.pricing.formCard.originalPrice}
-                      </span>{" "}
-                      <span className="font-semibold text-[color:var(--text-primary)]">
-                        {COPY.pricing.formCard.monthlyPrice}
-                      </span>{" "}
-                      {COPY.pricing.formCard.monthlySuffix} forever for signups
-                      before April 1, 2026
+                      {COPY.pricing.formCard.badge}
+                    </p>
+                    <p className="mt-1 text-xs text-[color:var(--text-secondary)]">
+                      {COPY.pricing.formCard.freeProfileLine}
+                    </p>
+                    <p className="mt-1 text-xs text-[color:var(--text-secondary)]">
+                      {COPY.pricing.formCard.trialLine}
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-[color:var(--text-primary)]">
+                      {COPY.pricing.formCard.paidLine}
                     </p>
                   </div>
 

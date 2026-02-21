@@ -1409,12 +1409,15 @@ export default function MapPage() {
 
   const visibleHostLocations = useMemo(() => {
     if (!mapLocations?.hostLocations?.length) return [];
+    // Host parking pins should follow the live viewport; don't require "Search this area"
+    // (which is primarily for refreshing/filtering other content like deals).
+    const boundsForPins = mapBounds ?? appliedMapBounds;
     return mapLocations.hostLocations.filter((host) => {
       const hostId = host.hostId ? String(host.hostId) : "";
       if (!hostId) return false;
       const coords = resolveHostCoords(host);
       if (!coords) return false;
-      if (appliedMapBounds && !appliedMapBounds.contains([coords.lat, coords.lng])) {
+      if (boundsForPins && !boundsForPins.contains([coords.lat, coords.lng])) {
         return false;
       }
       return true;
@@ -1422,6 +1425,7 @@ export default function MapPage() {
   }, [
     mapLocations,
     hostCoords,
+    mapBounds,
     appliedMapBounds,
   ]);
 

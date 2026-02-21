@@ -156,6 +156,7 @@ export function GoogleMapSurface({
   const mapRef = useRef<any>(null);
   const markerRefs = useRef<Map<string, any>>(new Map());
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [mapReadyVersion, setMapReadyVersion] = useState(0);
   const hasReportedFatalErrorRef = useRef(false);
 
   const markerIndex = useMemo(
@@ -234,6 +235,13 @@ export function GoogleMapSurface({
               ),
             );
           });
+
+          // Ensure marker sync runs after first map instance initialization.
+          setMapReadyVersion((prev) => prev + 1);
+        } else {
+          mapRef.current.setOptions({
+            styles: isNightTheme ? mapStyleDark : null,
+          });
         }
 
         setLoadError(null);
@@ -269,7 +277,7 @@ export function GoogleMapSurface({
 
   useEffect(() => {
     const googleMaps = (window as GoogleMapsWindow).google?.maps;
-    if (!googleMaps || !mapRef.current) return;
+    if (!googleMaps || !mapRef.current || mapReadyVersion === 0) return;
 
     const usedIds = new Set<string>();
     markers.forEach((marker) => {
@@ -299,7 +307,7 @@ export function GoogleMapSurface({
       instance.setMap(null);
       markerRefs.current.delete(id);
     });
-  }, [markers, markerIndex, onMarkerTap]);
+  }, [markers, markerIndex, onMarkerTap, mapReadyVersion]);
 
   const controlClassName = isNightTheme
     ? "w-11 h-11 p-0 rounded-full bg-[var(--bg-card)]/90 border border-white/20 shadow-clean-lg backdrop-blur text-[color:var(--text-primary)]"

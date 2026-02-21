@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Navigation as NavigationIcon } from "lucide-react";
 import type { MapAdapterMarker, MapBoundsLike } from "./map-adapter.types";
+import mealScoutIcon from "@assets/meal-scout-icon.png";
 
 type GeoPoint = { lat: number; lng: number };
 
@@ -77,6 +78,25 @@ const markerColor = (kind: MapAdapterMarker["kind"]) => {
     default:
       return "#F97316";
   }
+};
+
+const buildMarkerIcon = (googleMaps: any, marker: MapAdapterMarker) => {
+  if (marker.kind === "parking") {
+    return {
+      url: mealScoutIcon,
+      scaledSize: new googleMaps.Size(34, 34),
+      anchor: new googleMaps.Point(17, 34),
+    };
+  }
+
+  return {
+    path: googleMaps.SymbolPath.CIRCLE,
+    scale: marker.kind === "user" ? 8 : 7,
+    fillColor: markerColor(marker.kind),
+    fillOpacity: 0.95,
+    strokeColor: "#111827",
+    strokeWeight: 1,
+  };
 };
 
 const loadGoogleMaps = async (apiKey: string) => {
@@ -257,6 +277,7 @@ export function GoogleMapSurface({
       const existing = markerRefs.current.get(marker.id);
       if (existing) {
         existing.setPosition({ lat: marker.lat, lng: marker.lng });
+        existing.setIcon(buildMarkerIcon(googleMaps, marker));
         return;
       }
 
@@ -264,14 +285,7 @@ export function GoogleMapSurface({
         map: mapRef.current,
         position: { lat: marker.lat, lng: marker.lng },
         title: marker.title || marker.subtitle || marker.kind,
-        icon: {
-          path: googleMaps.SymbolPath.CIRCLE,
-          scale: marker.kind === "user" ? 8 : 7,
-          fillColor: markerColor(marker.kind),
-          fillOpacity: 0.95,
-          strokeColor: "#111827",
-          strokeWeight: 1,
-        },
+        icon: buildMarkerIcon(googleMaps, marker),
       });
       instance.addListener("click", () => {
         const tapped = markerIndex.get(marker.id);

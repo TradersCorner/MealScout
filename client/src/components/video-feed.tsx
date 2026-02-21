@@ -119,7 +119,8 @@ function UserVideoCard({ video, isVisible }: UserVideoCardProps) {
   const watchStartRef = useRef<number>(0);
 
   useEffect(() => {
-    if (!videoRef.current || !isVisible) return;
+    const target = videoRef.current;
+    if (!(target instanceof Element) || !isVisible) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -134,7 +135,7 @@ function UserVideoCard({ video, isVisible }: UserVideoCardProps) {
       { threshold: 0.5 }
     );
 
-    observer.observe(videoRef.current);
+    observer.observe(target);
     return () => observer.disconnect();
   }, [isVisible]);
 
@@ -350,6 +351,9 @@ export function VideoFeed({ onUploadClick }: VideoFeedProps) {
   }, [status]);
 
   useEffect(() => {
+    const target = observerTarget.current;
+    if (!(target instanceof Element)) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
@@ -359,9 +363,7 @@ export function VideoFeed({ onUploadClick }: VideoFeedProps) {
       { threshold: 0.1 }
     );
 
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
-    }
+    observer.observe(target);
 
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);

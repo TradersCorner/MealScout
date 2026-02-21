@@ -3386,7 +3386,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         longitude,
         radius,
       );
-      res.json({ trucks });
+      const visibleTrucks = (
+        await Promise.all(
+          trucks.map(async (truck: any) => {
+            const ownerId = String(truck?.ownerId || "").trim();
+            if (!ownerId) return null;
+            const hasAccess = await hasBusinessDistributionAccess(ownerId);
+            return hasAccess ? truck : null;
+          }),
+        )
+      ).filter(Boolean);
+      res.json({ trucks: visibleTrucks });
     } catch (error) {
       console.error("Error fetching live trucks:", error);
       res.status(500).json({ message: "Failed to fetch live trucks" });

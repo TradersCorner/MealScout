@@ -1019,34 +1019,56 @@ export class DatabaseStorage implements IStorage {
     try {
       const rows = await this.selectHostsSafe(`where "id" = $1 limit 1`, [id]);
       return (rows[0] as any) || undefined;
-    } catch {
-      const [host] = await db.select().from(hosts).where(eq(hosts.id, id));
-      return host;
+    } catch (error) {
+      console.warn("getHost safe projection failed, falling back:", error);
+      try {
+        const [host] = await db.select().from(hosts).where(eq(hosts.id, id));
+        return host;
+      } catch (fallbackError) {
+        console.warn("getHost fallback failed:", fallbackError);
+        return undefined;
+      }
     }
   }
 
   async getHostByUserId(userId: string): Promise<Host | undefined> {
+    const normalizedUserId = String(userId || "").trim();
+    if (!normalizedUserId) return undefined;
     try {
-      const rows = await this.selectHostsSafe(`where "user_id" = $1 limit 1`, [userId]);
+      const rows = await this.selectHostsSafe(`where "user_id" = $1 limit 1`, [normalizedUserId]);
       return (rows[0] as any) || undefined;
-    } catch {
-      const [host] = await db
-        .select()
-        .from(hosts)
-        .where(eq(hosts.userId, userId));
-      return host;
+    } catch (error) {
+      console.warn("getHostByUserId safe projection failed, falling back:", error);
+      try {
+        const [host] = await db
+          .select()
+          .from(hosts)
+          .where(eq(hosts.userId, normalizedUserId));
+        return host;
+      } catch (fallbackError) {
+        console.warn("getHostByUserId fallback failed:", fallbackError);
+        return undefined;
+      }
     }
   }
 
   async getHostsByUserId(userId: string): Promise<Host[]> {
+    const normalizedUserId = String(userId || "").trim();
+    if (!normalizedUserId) return [];
     try {
-      return (await this.selectHostsSafe(`where "user_id" = $1`, [userId])) as any;
-    } catch {
-      return await db
-        .select()
-        .from(hosts)
-        .where(eq(hosts.userId, userId))
-        .orderBy(desc(hosts.createdAt));
+      return (await this.selectHostsSafe(`where "user_id" = $1`, [normalizedUserId])) as any;
+    } catch (error) {
+      console.warn("getHostsByUserId safe projection failed, falling back:", error);
+      try {
+        return await db
+          .select()
+          .from(hosts)
+          .where(eq(hosts.userId, normalizedUserId))
+          .orderBy(desc(hosts.createdAt));
+      } catch (fallbackError) {
+        console.warn("getHostsByUserId fallback failed:", fallbackError);
+        return [];
+      }
     }
   }
 

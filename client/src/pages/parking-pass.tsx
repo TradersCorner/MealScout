@@ -2777,6 +2777,53 @@ export default function ParkingPassPage() {
         ),
     [filteredLocations, hostLocationsByHostId, parkingCoords],
   );
+  const discoveryPins = useMemo(() => {
+    if (passListings.length > 0) return [];
+    const locations = (paidMapLocations?.hostLocations ?? []).filter(
+      (loc: PublicMapLocation) => loc.type === "host_location",
+    );
+    const filtered = normalizedCityQuery
+      ? locations.filter((loc) => {
+          const text = [
+            loc.name,
+            loc.address,
+            loc.city,
+            loc.state,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return text.includes(normalizedCityQuery);
+        })
+      : locations;
+
+    return filtered
+      .map((loc) => {
+        const lat = parseCoord(loc.latitude);
+        const lng = parseCoord(loc.longitude);
+        if (lat === null || lng === null) return null;
+        return {
+          key: String(loc.id || loc.hostId || `${lat}:${lng}`),
+          name: String(loc.name || "Host location"),
+          addressLabel: buildAddressLabel(
+            loc.address ?? "",
+            loc.city ?? "",
+            loc.state ?? "",
+          ),
+          coords: { lat, lng },
+        };
+      })
+      .filter(
+        (
+          pin,
+        ): pin is {
+          key: string;
+          name: string;
+          addressLabel: string;
+          coords: GeoPoint;
+        } => pin !== null,
+      );
+  }, [passListings.length, paidMapLocations, normalizedCityQuery]);
   const mapCenter = useMemo(() => {
     const activeHostLocations = activeLocation
       ? hostLocationsByHostId.get(activeLocation.host.id)
@@ -2792,6 +2839,10 @@ export default function ParkingPassPage() {
         : null);
     return activeCoords || mapPins[0]?.coords || defaultMapCenter;
   }, [activeLocation, hostLocationsByHostId, mapPins, parkingCoords]);
+  const discoveryMapCenter = useMemo(
+    () => discoveryPins[0]?.coords || defaultMapCenter,
+    [discoveryPins],
+  );
 
   useEffect(() => {
     if (geocodeInFlight.current) return;
@@ -4911,8 +4962,58 @@ export default function ParkingPassPage() {
                   </p>
                 </div>
               ) : passListings.length === 0 ? (
-                <div className="rounded-2xl pp-glass-muted p-6 text-center text-sm text-slate-700">
-                  No parking pass spots are available right now.
+                <div className="space-y-3">
+                  <div className="rounded-2xl pp-glass-muted p-6 text-center text-sm text-slate-700">
+                    No bookable parking pass spots are available right now.
+                  </div>
+                  {viewMode === "map" && (
+                    <div className="rounded-2xl pp-glass shadow-clean overflow-hidden">
+                      <div className="relative h-72 w-full bg-slate-100/60">
+                        <MapContainer
+                          center={[discoveryMapCenter.lat, discoveryMapCenter.lng]}
+                          zoom={13}
+                          zoomControl={false}
+                          scrollWheelZoom
+                          className="h-full w-full"
+                        >
+                          <MapCenterer center={discoveryMapCenter} />
+                          <TileLayer
+                            attribution={parkingMapAttribution}
+                            url={parkingMapTileUrl}
+                          />
+                          {discoveryPins.map((pin) => (
+                            <Marker
+                              key={pin.key}
+                              position={[pin.coords.lat, pin.coords.lng]}
+                              icon={parkingPassPinIcon}
+                            >
+                              <Popup>
+                                <div className="space-y-1 text-xs">
+                                  <p className="font-semibold text-orange-600">
+                                    {pin.name}
+                                  </p>
+                                  <p className="text-[color:var(--text-muted)]">
+                                    {pin.addressLabel}
+                                  </p>
+                                  <p className="text-[11px] text-[color:var(--text-muted)]">
+                                    Location is visible, but no active priced slots are posted yet.
+                                  </p>
+                                </div>
+                              </Popup>
+                            </Marker>
+                          ))}
+                        </MapContainer>
+                        {discoveryPins.length === 0 && (
+                          <div className="absolute inset-0 flex items-center justify-center text-sm text-[color:var(--text-muted)] pointer-events-none">
+                            No mappable host locations yet.
+                          </div>
+                        )}
+                      </div>
+                      <div className="border-t border-[color:var(--border-subtle)] px-4 py-2 text-xs text-[color:var(--text-muted)]">
+                        Showing host locations while bookable slots are unavailable.
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : viewMode === "map" ? (
                 <div className="space-y-3">

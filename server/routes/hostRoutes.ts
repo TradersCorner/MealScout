@@ -236,14 +236,18 @@ export function registerHostRoutes(app: Express) {
   app.get("/api/hosts/me", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const host = await getHostByUserId(userId);
+      let host = await getHostByUserId(userId);
+      if (!host) {
+        const hostProfiles = await storage.getHostsByUserId(userId);
+        host = hostProfiles[0];
+      }
       if (!host) {
         return res.status(404).json({ message: "Host profile not found" });
       }
       res.json(host);
     } catch (error: any) {
       console.error("Error fetching host profile:", error);
-      res.status(500).json({ message: "Failed to fetch host profile" });
+      res.status(404).json({ message: "Host profile not found" });
     }
   });
 

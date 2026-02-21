@@ -535,8 +535,8 @@ export default function RestaurantSignup() {
       });
       setLocation(
         selectedBusinessType === "food_truck"
-          ? "/subscribe?next=/parking-pass&src=onboarding"
-          : "/subscribe?next=/restaurant-owner-dashboard&src=onboarding",
+          ? "/parking-pass?src=onboarding"
+          : "/restaurant-owner-dashboard?src=onboarding",
       );
     },
     onError: (error) => {
@@ -608,8 +608,8 @@ export default function RestaurantSignup() {
     });
     setLocation(
       selectedBusinessType === "food_truck"
-        ? "/subscribe?next=/parking-pass&src=onboarding"
-        : "/subscribe?next=/restaurant-owner-dashboard&src=onboarding",
+        ? "/parking-pass?src=onboarding"
+        : "/restaurant-owner-dashboard?src=onboarding",
     );
   };
 

@@ -1405,11 +1405,15 @@ export default function MapPage() {
       if (!hostId) return false;
       const coords = resolveHostCoords(host);
       if (!coords) return false;
+      if (appliedMapBounds && !appliedMapBounds.contains([coords.lat, coords.lng])) {
+        return false;
+      }
       return true;
     });
   }, [
     mapLocations,
     hostCoords,
+    appliedMapBounds,
   ]);
 
   const lastHostIdsUpdatedLabel = (() => {
@@ -1976,11 +1980,6 @@ export default function MapPage() {
       description: "Search by cuisine, restaurant, and deal type across MealScout.",
     },
     {
-      href: "/deals/featured",
-      title: "Featured Local Deals",
-      description: "See top local deals curated from restaurants and food trucks.",
-    },
-    {
       href: "/events/public",
       title: "Food Truck Events",
       description: "Check upcoming public events with trucks and pop-up vendors.",
@@ -2458,46 +2457,6 @@ export default function MapPage() {
             </div>
           )}
 
-          {/* Empty map overlay messaging */}
-          {!isLoading && !isLocating && deals.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-[var(--bg-card)]/90 rounded-xl px-4 py-3 text-center shadow-clean max-w-xs pointer-events-auto">
-                <p className="text-sm font-medium text-foreground mb-1">
-                  {hasLocation
-                    ? "No trucks nearby right now"
-                    : "Set your location to see trucks nearby"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {hasLocation
-                    ? "Try moving the map or check back later."
-                    : "Use your location or move the map to explore different areas."}
-                </p>
-                <div className="mt-3 flex flex-wrap justify-center gap-2">
-                  {!hasLocation && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={requestUserLocation}
-                      disabled={isLocating}
-                      data-testid="button-map-empty-use-location"
-                    >
-                      {isLocating ? "Locating..." : "Use location"}
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      window.location.href = "/deals/featured";
-                    }}
-                    data-testid="button-map-empty-featured"
-                  >
-                    Featured deals
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Selected Deal Info Card */}

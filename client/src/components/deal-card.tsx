@@ -257,7 +257,7 @@ export default function DealCard({ deal }: DealCardProps) {
       { threshold: 0.5 } // Track when 50% of card is visible
     );
 
-    if (cardRef.current) {
+    if (cardRef.current instanceof Element) {
       observer.observe(cardRef.current);
     }
 
@@ -266,7 +266,7 @@ export default function DealCard({ deal }: DealCardProps) {
         window.clearTimeout(viewTimerRef.current);
         viewTimerRef.current = null;
       }
-      if (cardRef.current) {
+      if (cardRef.current instanceof Element) {
         observer.unobserve(cardRef.current);
       }
     };

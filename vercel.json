@@ -13,7 +13,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://www.mealscout.us/api/$1"
+      "destination": "https://mealscout.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",

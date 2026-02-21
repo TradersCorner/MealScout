@@ -318,199 +318,51 @@ export function registerEventRoutes(app: Express) {
         return res.json(parkingPassHostIdsCache.payload);
       }
 
-      const VALID_US_STATE_ABBRS = new Set([
-        "AL",
-        "AK",
-        "AZ",
-        "AR",
-        "CA",
-        "CO",
-        "CT",
-        "DE",
-        "FL",
-        "GA",
-        "HI",
-        "ID",
-        "IL",
-        "IN",
-        "IA",
-        "KS",
-        "KY",
-        "LA",
-        "ME",
-        "MD",
-        "MA",
-        "MI",
-        "MN",
-        "MS",
-        "MO",
-        "MT",
-        "NE",
-        "NV",
-        "NH",
-        "NJ",
-        "NM",
-        "NY",
-        "NC",
-        "ND",
-        "OH",
-        "OK",
-        "OR",
-        "PA",
-        "RI",
-        "SC",
-        "SD",
-        "TN",
-        "TX",
-        "UT",
-        "VT",
-        "VA",
-        "WA",
-        "WV",
-        "WI",
-        "WY",
-        "DC",
-      ]);
-
-      const extractStateAbbr = (value?: string | null) => {
-        const raw = String(value || "").toUpperCase();
-        if (!raw) return "";
-        const matches = raw.match(/\b[A-Z]{2}\b/g) || [];
-        for (let i = matches.length - 1; i >= 0; i -= 1) {
-          const candidate = matches[i];
-          if (VALID_US_STATE_ABBRS.has(candidate)) return candidate;
-        }
-        return "";
-      };
-
-      const parseCoord = (value?: string | number | null) => {
-        if (value === null || value === undefined) return null;
-        const parsed = typeof value === "string" ? Number(value) : value;
-        return Number.isFinite(parsed) ? parsed : null;
-      };
-      const buildFullAddress = (
-        address?: string | null,
-        city?: string | null,
-        state?: string | null,
-      ) => {
-        const base = (address ?? "").trim();
-        if (!base) return "";
-        const baseLower = base.toLowerCase();
-        const normalizedCity = (city ?? "").trim();
-        const normalizedState = (state ?? "").trim();
-
-        const parts: string[] = [base];
-        if (normalizedCity && !baseLower.includes(normalizedCity.toLowerCase())) {
-          parts.push(normalizedCity);
-        }
-        if (normalizedState && !baseLower.includes(normalizedState.toLowerCase())) {
-          parts.push(normalizedState);
-        }
-        parts.push("USA");
-        return parts.join(", ");
-      };
-
-      // Host signup addresses are parking-pass locations by default.
-      // Do not gate this feed by pricing/payments/public-ready checks.
-      const hostRows = await db
+      // Bookable = host has a public-ready Parking Pass series (address + pricing + valid window/spots).
+      // Coordinates are best-effort and do not block bookability.
+      const rows = await db
         .select({
-          id: hosts.id,
-          userId: hosts.userId,
-          businessName: hosts.businessName,
-          address: hosts.address,
-          city: hosts.city,
-          state: hosts.state,
-          latitude: hosts.latitude,
-          longitude: hosts.longitude,
+          host: hosts,
+          series: eventSeries,
           isDisabled: users.isDisabled,
         })
-        .from(hosts)
-        .leftJoin(users, eq(hosts.userId, users.id));
-
-      // Opportunistic geocode: map pins can only render with coords, so try to backfill a few per request.
-      const MAX_GEOCODE_PER_REQUEST = 20;
-      let geocoded = 0;
-      const MAX_REVERSE_CHECKS = 20;
-      let reverseChecks = 0;
+        .from(eventSeries)
+        .innerJoin(hosts, eq(hosts.id, eventSeries.hostId))
+        .leftJoin(users, eq(hosts.userId, users.id))
+        .where(eq(eventSeries.seriesType, "parking_pass"));
 
       const hostIds = new Set<string>();
-      for (const row of hostRows) {
-        const hostId = String(row.id || "").trim();
-        if (!hostId) continue;
-        if (row.isDisabled === true) continue;
+      rows.forEach((row: any) => {
+        const hostId = String(row?.host?.id || "").trim();
+        if (!hostId) return;
+        if (row?.isDisabled === true) return;
         if (
           !isHostProfileMapEligible({
-            businessName: row.businessName,
-            address: row.address,
-            city: row.city,
-            state: row.state,
+            businessName: row?.host?.businessName,
+            address: row?.host?.address,
+            city: row?.host?.city,
+            state: row?.host?.state,
           })
         ) {
-          continue;
+          return;
         }
 
-        const address = row.address ?? null;
-        const city = row.city ?? null;
-        const state = row.state ?? null;
-        if (!String(address || "").trim()) continue;
-
-        const expectedStateRaw = normalizeUsStateAbbr(String(state || "").trim());
-        const expectedState =
-          expectedStateRaw && VALID_US_STATE_ABBRS.has(expectedStateRaw)
-            ? expectedStateRaw
-            : extractStateAbbr(address) || extractStateAbbr(city);
-        let lat = parseCoord(row.latitude);
-        let lng = parseCoord(row.longitude);
-
-        if (
-          expectedState &&
-          lat !== null &&
-          lng !== null &&
-          reverseChecks < MAX_REVERSE_CHECKS
-        ) {
-          reverseChecks += 1;
-          const reversed = await reverseGeocode(lat, lng).catch(() => null);
-          const reversedState = normalizeUsStateAbbr(
-            String(reversed?.state || "").trim(),
-          );
-          if (reversedState && reversedState !== expectedState) {
-            // Coordinates appear to be for the wrong state; force re-geocode.
-            lat = null;
-            lng = null;
-          }
-        }
-
-        if ((lat === null || lng === null) && geocoded < MAX_GEOCODE_PER_REQUEST) {
-          const addr = buildFullAddress(address, city, state);
-          if (addr) {
-            const coords = await forwardGeocode(addr).catch(() => null);
-            if (coords) {
-              if (expectedState && reverseChecks < MAX_REVERSE_CHECKS) {
-                reverseChecks += 1;
-                const verify = await reverseGeocode(coords.lat, coords.lng).catch(
-                  () => null,
-                );
-                const verifyState = normalizeUsStateAbbr(
-                  String(verify?.state || "").trim(),
-                );
-                if (verifyState && verifyState !== expectedState) {
-                  continue;
-                }
-              }
-              geocoded += 1;
-              lat = coords.lat;
-              lng = coords.lng;
-              try {
-                await storage.updateHostCoordinates(hostId, coords.lat, coords.lng);
-              } catch {
-                // ignore persist failures; still allow map rendering when coords are returned.
-              }
-            }
-          }
-        }
+        const publicReady = isParkingPassPublicReady({
+          host: row.host,
+          startTime: row?.series?.defaultStartTime,
+          endTime: row?.series?.defaultEndTime,
+          maxTrucks: row?.series?.defaultMaxTrucks,
+          breakfastPriceCents: row?.series?.defaultBreakfastPriceCents,
+          lunchPriceCents: row?.series?.defaultLunchPriceCents,
+          dinnerPriceCents: row?.series?.defaultDinnerPriceCents,
+          dailyPriceCents: row?.series?.defaultDailyPriceCents,
+          weeklyPriceCents: row?.series?.defaultWeeklyPriceCents,
+          monthlyPriceCents: row?.series?.defaultMonthlyPriceCents,
+        });
+        if (!publicReady) return;
 
         hostIds.add(hostId);
-      }
+      });
 
       const payload = {
         generatedAt: new Date().toISOString(),

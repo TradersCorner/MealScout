@@ -240,5 +240,14 @@ export function isParkingPassPublicReady(listing: Parameters<typeof computeParki
   const flags = computeParkingPassQualityFlags(listing);
   // Visibility should not hard-fail just because platform payments are temporarily misconfigured.
   // Booking flows will still fail safely if payments are disabled.
-  return flags.filter((flag) => flag !== "payments_disabled").length === 0;
+  // Coordinates are best-effort: map feeds and clients can geocode/pin-fix without blocking bookings.
+  // Treat missing/invalid coords like a non-blocking flag for "public ready".
+  return (
+    flags.filter(
+      (flag) =>
+        flag !== "payments_disabled" &&
+        flag !== "missing_coords" &&
+        flag !== "invalid_coords",
+    ).length === 0
+  );
 }

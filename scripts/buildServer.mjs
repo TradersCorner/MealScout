@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,6 +7,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
 const serverIndex = path.resolve(repoRoot, "server", "index.ts");
 const serverVite = path.resolve(repoRoot, "server", "vite.ts");
+const distRoot = path.resolve(repoRoot, "dist");
 const outDir = path.resolve(repoRoot, "dist", "server");
 
 if (!existsSync(serverIndex) || !existsSync(serverVite)) {
@@ -32,6 +33,9 @@ try {
     cwd: repoRoot,
     stdio: "inherit",
   });
+  // Backward-compatible entrypoint for environments still starting `node dist/index.js`.
+  const compatEntry = path.resolve(distRoot, "index.js");
+  writeFileSync(compatEntry, 'import "./server/index.js";\n', "utf8");
 } catch (error) {
   process.exit(1);
 }

@@ -20,6 +20,7 @@ import type {
   MapBoundsLike,
 } from "@/components/maps/map-adapter.types";
 import { GOOGLE_MAPS_WEB_API_KEY, MAP_PROVIDER, isGoogleMapsEnabled } from "@/lib/mapProvider";
+import { apiUrl } from "@/lib/api";
 import {
   MapPin,
   Navigation as NavigationIcon,
@@ -679,9 +680,9 @@ function HostMarkerLayer({
 async function geocodeAddress(address: string): Promise<GeoPoint | null> {
   if (!address) return null;
   const res = await fetch(
-    `/api/location/search?limit=1&q=${encodeURIComponent(
+    apiUrl(`/api/location/search?limit=1&q=${encodeURIComponent(
       address
-    )}`,
+    )}`),
   );
   if (!res.ok) return null;
   const data = (await res.json()) as Array<{ lat: string; lon: string }>;
@@ -862,7 +863,7 @@ export default function MapPage() {
     queryFn: userLocation
       ? async () => {
           const response = await fetch(
-            `/api/deals/nearby/${userLocation.lat}/${userLocation.lng}`
+            apiUrl(`/api/deals/nearby/${userLocation.lat}/${userLocation.lng}`)
           );
           if (!response.ok) throw new Error("Failed to fetch nearby deals");
           return response.json();
@@ -880,7 +881,7 @@ export default function MapPage() {
     queryFn: userLocation
       ? async () => {
           const response = await fetch(
-            `/api/trucks/live?lat=${userLocation.lat}&lng=${userLocation.lng}&radiusKm=5`
+            apiUrl(`/api/trucks/live?lat=${userLocation.lat}&lng=${userLocation.lng}&radiusKm=5`)
           );
           if (!response.ok) throw new Error("Failed to fetch live trucks");
           return response.json();
@@ -902,7 +903,7 @@ export default function MapPage() {
     queryFn: async () => {
       if (!adLocation) return [];
       const res = await fetch(
-        `/api/geo-ads?placement=map&lat=${adLocation.lat}&lng=${adLocation.lng}&limit=10`,
+        apiUrl(`/api/geo-ads?placement=map&lat=${adLocation.lat}&lng=${adLocation.lng}&limit=10`),
         { credentials: "include" }
       );
       if (!res.ok) return [];
@@ -1039,7 +1040,7 @@ export default function MapPage() {
   const { data: mapLocationsData } = useQuery<MapLocationsResponse>({
     queryKey: ["/api/map/locations"],
     queryFn: async () => {
-      const res = await fetch("/api/map/locations");
+      const res = await fetch(apiUrl("/api/map/locations"));
       if (!res.ok) throw new Error("Failed to load map locations");
       return res.json();
     },
@@ -1111,7 +1112,7 @@ export default function MapPage() {
   } = useQuery<{ generatedAt: string; hostIds: string[] }>({
     queryKey: ["/api/parking-pass/host-ids"],
     queryFn: async () => {
-      const res = await fetch("/api/parking-pass/host-ids");
+      const res = await fetch(apiUrl("/api/parking-pass/host-ids"));
       if (!res.ok) throw new Error("Failed to load bookable hosts");
       return res.json();
     },
@@ -1200,7 +1201,7 @@ export default function MapPage() {
   >({
     queryKey: ["/api/parking-pass/host-status", todayKey],
     queryFn: async () => {
-      const res = await fetch(`/api/parking-pass/host-status?date=${todayKey}`);
+      const res = await fetch(apiUrl(`/api/parking-pass/host-status?date=${todayKey}`));
       if (!res.ok) throw new Error("Failed to load parking pass availability");
       return res.json();
     },
@@ -1252,7 +1253,7 @@ export default function MapPage() {
     enabled: Boolean(isStaffOrAdmin),
     queryFn: async () => {
       const res = await fetch(
-        `/api/admin/parking-pass/host-status?date=${todayKey}`,
+        apiUrl(`/api/admin/parking-pass/host-status?date=${todayKey}`),
         { credentials: "include" },
       );
       if (!res.ok) {
@@ -1785,7 +1786,7 @@ export default function MapPage() {
   const { data: trendingSearches = [] } = useQuery<TrendingSearchRow[]>({
     queryKey: ["/api/search/trending", "map-discovery"],
     queryFn: async () => {
-      const res = await fetch("/api/search/trending?limit=8");
+      const res = await fetch(apiUrl("/api/search/trending?limit=8"));
       if (!res.ok) throw new Error("Failed to fetch trending searches");
       return res.json();
     },

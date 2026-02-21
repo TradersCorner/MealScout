@@ -3,6 +3,25 @@ import App from "./App";
 import "./index.css";
 import "leaflet/dist/leaflet.css";
 
+function shouldEnablePwaRuntime() {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname.toLowerCase();
+  if (host === "localhost" || host === "127.0.0.1") return true;
+  if (host === "www.mealscout.us" || host === "mealscout.us") return true;
+  if (host === "mealscout.onrender.com") return true;
+  return false;
+}
+
+function ensureManifestLink() {
+  if (typeof document === "undefined") return;
+  const existing = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+  if (existing) return;
+  const link = document.createElement("link");
+  link.rel = "manifest";
+  link.href = "/manifest.json";
+  document.head.appendChild(link);
+}
+
 if (import.meta.env.PROD) {
   const reloadOnceKey = "mealscout_chunk_reload";
   const shouldReload = () => {
@@ -55,7 +74,11 @@ if (import.meta.env.PROD) {
 }
 
 // Register a minimal Service Worker for PWA installability and "Add to Home Screen" UX.
-if (import.meta.env.PROD && "serviceWorker" in navigator) {
+if (import.meta.env.PROD && shouldEnablePwaRuntime()) {
+  ensureManifestLink();
+}
+
+if (import.meta.env.PROD && shouldEnablePwaRuntime() && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => {
       // ignore; app should still work without SW

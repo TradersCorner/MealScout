@@ -3469,6 +3469,7 @@ export default function ParkingPassPage() {
                         <MapContainer
                           center={[settingsMapCenter.lat, settingsMapCenter.lng]}
                           zoom={settingsMapZoom}
+                          zoomControl={false}
                           scrollWheelZoom
                           className="h-full w-full"
                         >
@@ -3642,6 +3643,7 @@ export default function ParkingPassPage() {
                             newLocationMapCenter.lng,
                           ]}
                           zoom={newLocationMapZoom}
+                          zoomControl={false}
                           scrollWheelZoom
                           className="h-full w-full"
                         >
@@ -4919,6 +4921,7 @@ export default function ParkingPassPage() {
                       <MapContainer
                         center={[mapCenter.lat, mapCenter.lng]}
                         zoom={13}
+                        zoomControl={false}
                         scrollWheelZoom
                         className="h-full w-full"
                       >

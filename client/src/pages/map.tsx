@@ -886,6 +886,7 @@ export default function MapPage() {
     user?.userType === "staff" ||
     user?.userType === "admin" ||
     user?.userType === "super_admin";
+  const showMapDiagnostics = isStaffOrAdmin;
 
   const getLocalDateKey = () => {
     const now = new Date();
@@ -2081,7 +2082,7 @@ export default function MapPage() {
             Warning: {locationError}
           </div>
         )}
-        {googleMapsRuntimeError && (
+        {showMapDiagnostics && googleMapsRuntimeError && (
           <div className="mb-4 rounded border border-[color:var(--status-warning)]/40 bg-[color:var(--status-warning)]/10 p-2 text-xs text-[color:var(--text-primary)]" role="status">
             <div>
               Using legacy map because Google Maps is blocked for this domain.
@@ -2118,8 +2119,8 @@ export default function MapPage() {
             {lastHostIdsUpdatedLabel ? (
               <span> | Updated {lastHostIdsUpdatedLabel}</span>
             ) : null}
-            <span> | {mapProviderLabel}</span>
-            {isGoogleProviderMissingKey ? (
+            {showMapDiagnostics ? <span> | {mapProviderLabel}</span> : null}
+            {showMapDiagnostics && isGoogleProviderMissingKey ? (
               <span className="text-[color:var(--status-warning)]">
                 {" "}
                 | Set `VITE_GOOGLE_MAPS_WEB_API_KEY` to enable Google Maps
@@ -2135,7 +2136,10 @@ export default function MapPage() {
           >
             Refresh
           </Button>
-          {forceLegacyMap && isGoogleProviderRequested && !isGoogleProviderMissingKey && (
+          {showMapDiagnostics &&
+          forceLegacyMap &&
+          isGoogleProviderRequested &&
+          !isGoogleProviderMissingKey && (
             <Button
               variant="outline"
               size="sm"
@@ -2185,6 +2189,7 @@ export default function MapPage() {
             <MapContainer
               center={[mapCenter.lat, mapCenter.lng]}
               zoom={zoomLevel}
+              zoomControl={false}
               preferCanvas
               style={{ height: "100%", width: "100%" }}
               className="rounded-lg overflow-hidden"

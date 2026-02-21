@@ -507,7 +507,7 @@ function HostMarkerLayer({
 
   const useClusters =
     zoomLevel < 14 &&
-    (hosts.length >= 12 || overlapStats.overlappingMarkers >= 2 || overlapStats.maxBucketSize >= 2);
+    (overlapStats.overlappingMarkers >= 2 || overlapStats.maxBucketSize >= 2);
   const cellSize = zoomLevel < 10 ? 0.2 : zoomLevel < 12 ? 0.1 : 0.04;
 
   const clusters = useMemo(() => {
@@ -1338,13 +1338,11 @@ export default function MapPage() {
       if (!hostId) return false;
       const coords = resolveHostCoords(host);
       if (!coords) return false;
-      if (!appliedMapBounds) return true;
-      return appliedMapBounds.contains([coords.lat, coords.lng]);
+      return true;
     });
   }, [
     mapLocations,
     hostCoords,
-    appliedMapBounds,
   ]);
 
   const lastHostIdsUpdatedLabel = (() => {
@@ -1612,6 +1610,7 @@ export default function MapPage() {
   const eventPins = visibleEventLocations.length;
   const activityPins = liveTruckPins + hostPins + eventPins;
   const totalHostParkingLocations = effectiveBookableHostIds.size;
+  const mapHostParkingLocations = visibleHostLocations.length;
   const isNightTheme =
     typeof document !== "undefined" &&
     document.documentElement.classList.contains("theme-night");
@@ -1972,8 +1971,11 @@ export default function MapPage() {
           <div>
             Host parking locations:{" "}
             <span className="font-semibold text-foreground">
-              {totalHostParkingLocations}
+              {mapHostParkingLocations}
             </span>
+            {totalHostParkingLocations !== mapHostParkingLocations ? (
+              <span> | {totalHostParkingLocations} active total</span>
+            ) : null}
             {lastHostIdsUpdatedLabel ? (
               <span> | Updated {lastHostIdsUpdatedLabel}</span>
             ) : null}

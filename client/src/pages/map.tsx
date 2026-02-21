@@ -485,7 +485,29 @@ function HostMarkerLayer({
 }) {
   const map = useMap();
 
-  const useClusters = hosts.length > 60 && zoomLevel < 14;
+  const overlapStats = useMemo(() => {
+    const buckets = new Map<string, number>();
+    hosts.forEach((host) => {
+      const coords = resolveHostCoords(host);
+      if (!coords) return;
+      // ~110m buckets to detect visually overlapping markers.
+      const key = `${coords.lat.toFixed(3)}:${coords.lng.toFixed(3)}`;
+      buckets.set(key, (buckets.get(key) || 0) + 1);
+    });
+    let overlappingMarkers = 0;
+    let maxBucketSize = 0;
+    buckets.forEach((count) => {
+      if (count > 1) {
+        overlappingMarkers += count;
+      }
+      if (count > maxBucketSize) maxBucketSize = count;
+    });
+    return { overlappingMarkers, maxBucketSize };
+  }, [hosts, resolveHostCoords]);
+
+  const useClusters =
+    zoomLevel < 14 &&
+    (hosts.length >= 12 || overlapStats.overlappingMarkers >= 2 || overlapStats.maxBucketSize >= 2);
   const cellSize = zoomLevel < 10 ? 0.2 : zoomLevel < 12 ? 0.1 : 0.04;
 
   const clusters = useMemo(() => {

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import L from "leaflet";
+import { apiUrl } from "@/lib/api";
 import RoleLandingPage from "@/components/role-landing";
 import { roleLandingContent } from "@/content/role-landing";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,12 +25,11 @@ type DiscoveryCity = {
   cuisines: Array<{ slug: string; count: number }>;
 };
 
-const titleCase = (value: string) =>
-  value
-    .split("-")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+type SearchTrend = {
+  query: string;
+  count?: number;
+  lastSeen?: string | null;
+};
 
 const hostIcon = new L.Icon({
   iconUrl:
@@ -51,8 +51,26 @@ export default function TruckLanding() {
   const { data: cityData } = useQuery<DiscoveryCity[]>({
     queryKey: ["/api/cities", "truck-landing"],
     queryFn: async () => {
-      const res = await fetch("/api/cities");
+      const res = await fetch(apiUrl("/api/cities"));
       if (!res.ok) throw new Error("Failed to fetch cities");
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+  const { data: trendingSearches = [] } = useQuery<SearchTrend[]>({
+    queryKey: ["/api/search/trending", "truck-landing"],
+    queryFn: async () => {
+      const res = await fetch(apiUrl("/api/search/trending?limit=8&windowDays=7"));
+      if (!res.ok) throw new Error("Failed to fetch trending searches");
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+  const { data: latestSearches = [] } = useQuery<SearchTrend[]>({
+    queryKey: ["/api/search/latest", "truck-landing"],
+    queryFn: async () => {
+      const res = await fetch(apiUrl("/api/search/latest?limit=8&windowDays=7"));
+      if (!res.ok) throw new Error("Failed to fetch latest searches");
       return res.json();
     },
     staleTime: 60_000,
@@ -63,8 +81,8 @@ export default function TruckLanding() {
     const fetchPins = async () => {
       try {
         const [hostIdsRes, locationsRes] = await Promise.all([
-          fetch("/api/parking-pass/host-ids"),
-          fetch("/api/map/locations"),
+          fetch(apiUrl("/api/parking-pass/host-ids")),
+          fetch(apiUrl("/api/map/locations")),
         ]);
         if (!hostIdsRes.ok) throw new Error("Parking pass host ids unavailable");
         if (!locationsRes.ok) throw new Error("Map locations unavailable");
@@ -126,12 +144,19 @@ export default function TruckLanding() {
 
   const showLiveMap = hostPins.length > 0 && !mapError;
   const cities = Array.isArray(cityData) ? cityData.slice(0, 12) : [];
-  const cityCuisineRoutes = cities.flatMap((city) =>
-    (city.cuisines || []).slice(0, 3).map((cuisine) => ({
-      href: `/food-trucks/${city.slug}/${cuisine.slug}`,
-      label: `${titleCase(cuisine.slug)} in ${city.name}${city.state ? `, ${city.state}` : ""}`,
-    })),
-  );
+  const trendingQueries = (Array.isArray(trendingSearches) ? trendingSearches : [])
+    .map((row) => String(row?.query || "").trim())
+    .filter(Boolean);
+  const latestQueries = (Array.isArray(latestSearches) ? latestSearches : [])
+    .map((row) => String(row?.query || "").trim())
+    .filter(Boolean);
+  const fallbackQueries = cities
+    .slice(0, 8)
+    .map((city) => `food trucks in ${city.name}${city.state ? ` ${city.state}` : ""}`);
+  const resolvedTrending = trendingQueries.length > 0 ? trendingQueries : fallbackQueries;
+  const resolvedLatest = latestQueries.length > 0
+    ? latestQueries
+    : fallbackQueries.slice(2).concat(fallbackQueries.slice(0, 2));
   const content = {
     ...roleLandingContent.truck,
     map: {
@@ -148,47 +173,82 @@ export default function TruckLanding() {
           <Card className="border shadow-clean-lg bg-[var(--card)]" style={{ borderColor: "var(--border)" }}>
             <CardContent className="p-6 space-y-4">
               <h2 className="text-2xl font-semibold text-[var(--ink-dark)]">
-                Explore Food Truck Routes by City
+                Trending + Latest Searches
               </h2>
               <p className="text-sm text-[var(--ink-dark-muted)]">
-                Browse live local landing pages to see where trucks are active and what cuisine demand is growing.
+                Real search intent from MealScout users. Use this to spot active demand and open routes.
               </p>
-              {cities.length === 0 ? (
+
+              {resolvedTrending.length === 0 && resolvedLatest.length === 0 ? (
                 <p className="text-sm text-[var(--ink-dark-muted)]">
-                  Loading city routes...
+                  Loading search intent...
                 </p>
               ) : (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {cities.map((city) => (
-                    <Link key={city.id} href={`/food-trucks/${city.slug}`}>
-                      <div className="rounded-xl border bg-[var(--card)] p-4 transition-colors hover:bg-[var(--card-muted)]" style={{ borderColor: "var(--border)" }}>
-                        <div className="text-sm font-semibold text-[var(--ink-dark)]">
-                          {city.name}{city.state ? `, ${city.state}` : ""}
-                        </div>
-                        <div className="mt-1 text-xs text-[var(--ink-dark-muted)]">
-                          {city.cuisines.length} cuisine routes
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--ink-dark-muted)]">
+                      Trending now
+                    </h3>
+                    <div className="mt-3 grid gap-2">
+                      {resolvedTrending.slice(0, 8).map((query) => (
+                        <Link
+                          key={`trend-${query}`}
+                          href={`/search?q=${encodeURIComponent(query)}`}
+                        >
+                          <div className="rounded-lg border bg-[var(--card)] px-3 py-2 text-sm text-[var(--ink-dark)] transition-colors hover:bg-[var(--card-muted)]" style={{ borderColor: "var(--border)" }}>
+                            {query}
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--ink-dark-muted)]">
+                      Latest searches
+                    </h3>
+                    <div className="mt-3 grid gap-2">
+                      {resolvedLatest.slice(0, 8).map((query) => (
+                        <Link
+                          key={`latest-${query}`}
+                          href={`/search?q=${encodeURIComponent(query)}`}
+                        >
+                          <div className="rounded-lg border bg-[var(--card)] px-3 py-2 text-sm text-[var(--ink-dark)] transition-colors hover:bg-[var(--card-muted)]" style={{ borderColor: "var(--border)" }}>
+                            {query}
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {cityCuisineRoutes.length > 0 && (
+              {cities.length > 0 && (
                 <div className="pt-2">
                   <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--ink-dark-muted)]">
-                    Popular City + Cuisine Pages
+                    Active Markets
                   </h3>
-                  <div className="mt-3 grid gap-2 md:grid-cols-2">
-                    {cityCuisineRoutes.slice(0, 20).map((route) => (
-                      <Link key={route.href} href={route.href}>
-                        <div className="rounded-lg border bg-[var(--card)] px-3 py-2 text-sm text-[var(--ink-dark)] transition-colors hover:bg-[var(--card-muted)]" style={{ borderColor: "var(--border)" }}>
-                          {route.label}
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {cities.map((city) => (
+                      <Link key={city.id} href={`/food-trucks/${city.slug}`}>
+                        <div className="rounded-xl border bg-[var(--card)] p-4 transition-colors hover:bg-[var(--card-muted)]" style={{ borderColor: "var(--border)" }}>
+                          <div className="text-sm font-semibold text-[var(--ink-dark)]">
+                            {city.name}{city.state ? `, ${city.state}` : ""}
+                          </div>
+                          <div className="mt-1 text-xs text-[var(--ink-dark-muted)]">
+                            {city.cuisines.length} local cuisine pages
+                          </div>
                         </div>
                       </Link>
                     ))}
                   </div>
                 </div>
+              )}
+
+              {cities.length === 0 && (
+                <p className="text-xs text-[var(--ink-dark-muted)]">
+                  Market pages will appear here as activity expands.
+                </p>
               )}
             </CardContent>
           </Card>
@@ -234,6 +294,3 @@ export default function TruckLanding() {
     />
   );
 }
-
-
-

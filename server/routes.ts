@@ -7252,11 +7252,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const payload = (Array.isArray(rows) ? rows : []).map((row: any) => ({
         query: String(row.display_query || row.normalized_query || "").trim(),
         count: Number(row.count || 0),
+        lastSeen: row.last_seen ? new Date(row.last_seen).toISOString() : null,
       }));
       res.json(payload.filter((x: any) => x.query));
     } catch (error) {
       console.error("Error fetching trending searches:", error);
       res.status(500).json({ message: "Failed to fetch trending searches" });
+    }
+  });
+
+  // Latest unique searches (public).
+  app.get("/api/search/latest", async (req, res) => {
+    try {
+      const limitRaw = Number(req.query?.limit ?? 8);
+      const windowDaysRaw = Number(req.query?.windowDays ?? 7);
+      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(20, limitRaw)) : 8;
+      const windowDays = Number.isFinite(windowDaysRaw)
+        ? Math.max(1, Math.min(30, windowDaysRaw))
+        : 7;
+
+      const result: any = await db.execute(sql`
+        select
+          lower(trim(query)) as normalized_query,
+          (array_agg(query order by created_at desc))[1] as display_query,
+          max(created_at) as last_seen
+        from search_query_events
+        where created_at >= (now() - make_interval(days => ${windowDays}))
+          and length(trim(query)) between 2 and 80
+        group by 1
+        order by last_seen desc
+        limit ${limit}
+      `);
+
+      const rows = Array.isArray(result?.rows) ? result.rows : result;
+      const payload = (Array.isArray(rows) ? rows : []).map((row: any) => ({
+        query: String(row.display_query || row.normalized_query || "").trim(),
+        lastSeen: row.last_seen ? new Date(row.last_seen).toISOString() : null,
+      }));
+      res.json(payload.filter((x: any) => x.query));
+    } catch (error) {
+      console.error("Error fetching latest searches:", error);
+      res.status(500).json({ message: "Failed to fetch latest searches" });
     }
   });
 
@@ -8586,7 +8622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .groupBy(requestLogs.path)
             .orderBy(desc(sql`count(*)`))
             .limit(25);
-          topPaths = rows.map((row) => ({
+          topPaths = rows.map((row: any) => ({
             path: row.path,
             count: Number(row.count || 0),
             avgDurationMs: 0,

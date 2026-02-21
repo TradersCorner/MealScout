@@ -1126,41 +1126,46 @@ export default function Home() {
       </footer>
 
       {!location && !showWelcomeModal && (
-        <div className="fixed bottom-24 left-1/2 z-40 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 md:hidden">
-          <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)]/95 p-2 shadow-clean-lg backdrop-blur">
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={retryLocation}
-                disabled={isLoadingLocation}
-                data-testid="button-home-sticky-location"
-                onPointerDown={() => {
-                  trackUxEvent("home_location_request_sticky", {
-                    surface: "home_sticky_cta",
-                  });
-                }}
-              >
-                {isLoadingLocation ? "Locating..." : "Use location"}
-              </Button>
-              <Link href="/map">
+        <section className="section section--full md:hidden pb-4">
+          <div className="content">
+            <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-3 shadow-clean">
+              <p className="text-xs text-muted-foreground mb-2">
+                Turn on location to unlock nearby deals and live map updates.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   size="sm"
                   variant="outline"
-                  className="w-full"
-                  data-testid="button-home-sticky-map"
+                  onClick={retryLocation}
+                  disabled={isLoadingLocation}
+                  data-testid="button-home-inline-location"
                   onPointerDown={() => {
-                    trackUxEvent("home_open_map_sticky", {
-                      surface: "home_sticky_cta",
+                    trackUxEvent("home_location_request_inline", {
+                      surface: "home_inline_cta",
                     });
                   }}
                 >
-                  Open map
+                  {isLoadingLocation ? "Locating..." : "Use location"}
                 </Button>
-              </Link>
+                <Link href="/map">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                    data-testid="button-home-inline-map"
+                    onPointerDown={() => {
+                      trackUxEvent("home_open_map_inline", {
+                        surface: "home_inline_cta",
+                      });
+                    }}
+                  >
+                    Open map
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
+        </section>
       )}
 
       {/* Welcome Modal for First-Time Session Visitors */}

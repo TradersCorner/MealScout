@@ -1190,17 +1190,20 @@ export default function SearchPage() {
       </div>
 
       {!userLocation && !isLocating && (
-        <div className="fixed bottom-24 left-1/2 z-40 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 md:hidden">
-          <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)]/95 p-2 shadow-clean-lg backdrop-blur">
+        <section className="mt-4 md:hidden">
+          <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-3 shadow-clean">
+            <p className="text-xs text-muted-foreground mb-2">
+              Use your location for better nearby matches and faster results.
+            </p>
             <div className="grid grid-cols-2 gap-2">
               <Button
                 size="sm"
                 variant="outline"
                 onClick={requestUserLocation}
-                data-testid="button-search-sticky-location"
+                data-testid="button-search-inline-location"
                 onPointerDown={() => {
-                  trackUxEvent("search_location_request_sticky", {
-                    surface: "search_sticky_cta",
+                  trackUxEvent("search_location_request_inline", {
+                    surface: "search_inline_cta",
                   });
                 }}
               >
@@ -1211,10 +1214,10 @@ export default function SearchPage() {
                   size="sm"
                   variant="outline"
                   className="w-full"
-                  data-testid="button-search-sticky-map"
+                  data-testid="button-search-inline-map"
                   onPointerDown={() => {
-                    trackUxEvent("search_open_map_sticky", {
-                      surface: "search_sticky_cta",
+                    trackUxEvent("search_open_map_inline", {
+                      surface: "search_inline_cta",
                     });
                   }}
                 >
@@ -1223,7 +1226,7 @@ export default function SearchPage() {
               </Link>
             </div>
           </div>
-        </div>
+        </section>
       )}
 
       <Navigation />

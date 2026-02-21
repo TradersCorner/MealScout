@@ -181,3 +181,4 @@ Keep but inactive unless approved for activation:
 - Cleaned remaining encoding artifacts in `client/src/content/role-landing.ts` (ASCII-safe copy).
 - Addressed TypeScript check failures: added missing `useQuery` import in `parking-pass`, typed map pin audit and geocode helpers in `server/routes.ts` and `server/routes/adminManagementRoutes.ts`, added missing copy labels in `hostOnboarding.copy.ts`, guarded Stripe usage in `hostRoutes`, and tightened reducer typing in `server/storage.ts`.
 - Added `smoke:parking-pass-stripe` script to validate host Stripe status, parking-pass checkout intent creation, duplicate booking protection, and hold cancellation behavior in staging/production.
+- Rebuilt `/profile/notifications` as a server-backed preferences surface using `accountSettings.notifications` (channels, topics, location radius, quiet hours, max/day), with browser notification service sync for consistent behavior.

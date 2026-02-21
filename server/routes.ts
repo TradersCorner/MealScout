@@ -292,6 +292,39 @@ const accountSettingsSchema = z.object({
   locationServices: z.boolean().optional(),
   analytics: z.boolean().optional(),
   marketing: z.boolean().optional(),
+  notifications: z
+    .object({
+      channels: z
+        .object({
+          push: z.boolean().optional(),
+          email: z.boolean().optional(),
+          sms: z.boolean().optional(),
+        })
+        .optional(),
+      topics: z
+        .object({
+          dealAlerts: z.boolean().optional(),
+          orderUpdates: z.boolean().optional(),
+          newRestaurants: z.boolean().optional(),
+          weeklyDigest: z.boolean().optional(),
+          nearbyEvents: z.boolean().optional(),
+        })
+        .optional(),
+      location: z
+        .object({
+          enabled: z.boolean().optional(),
+          radiusKm: z.number().min(0.5).max(50).optional(),
+          maxPerDay: z.number().int().min(1).max(50).optional(),
+          quietHours: z
+            .object({
+              start: z.string().regex(/^\d{2}:\d{2}$/),
+              end: z.string().regex(/^\d{2}:\d{2}$/),
+            })
+            .optional(),
+        })
+        .optional(),
+    })
+    .optional(),
   customDomain: z
     .object({
       hostname: z.string().max(255),

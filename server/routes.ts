@@ -7760,12 +7760,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
           return null;
         }
-        let hostname = parsed.hostname.toLowerCase();
-        if (hostname.endsWith(".onrender.com")) return null;
-        if (hostname === "mealscout.us") hostname = "www.mealscout.us";
-        if (hostname === "api.mealscout.us") hostname = "www.mealscout.us";
-        const port = parsed.port ? `:${parsed.port}` : "";
-        return `${parsed.protocol}//${hostname}${port}`.replace(/\/+$/, "");
+        const hostname = parsed.hostname.toLowerCase();
+        const bareHost = hostname.replace(/^www\./, "");
+        // Only allow first-party website hosts in sitemap/robots output.
+        if (bareHost !== "mealscout.us") return null;
+        return "https://www.mealscout.us";
       } catch {
         return null;
       }

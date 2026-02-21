@@ -1,7 +1,18 @@
 import { db } from "./db";
-import { events, eventInterests, hosts, users, telemetryEvents } from "@shared/schema";
-import { eq, and, gte, lt, sql } from "drizzle-orm";
+import { events, hosts, telemetryEvents } from "@shared/schema";
+import { and, eq, gte, lt, sql } from "drizzle-orm";
 import { emailService } from "./emailService";
+
+type WeeklyDigestPreferenceShape = {
+  notifications?: {
+    channels?: {
+      email?: boolean;
+    };
+    topics?: {
+      weeklyDigest?: boolean;
+    };
+  };
+};
 
 export class DigestService {
   private static instance: DigestService;
@@ -16,40 +27,47 @@ export class DigestService {
   }
 
   async sendWeeklyDigests() {
-    console.log('📧 Starting weekly digest generation...');
-    
+    console.log("[Digest] Starting weekly digest generation...");
+
     try {
-      // 1. Define time window (Next 7 days)
       const now = new Date();
       const nextWeek = new Date(now);
       nextWeek.setDate(now.getDate() + 7);
 
-      // Idempotency Key: Year + Week Number
       const weekNumber = this.getWeekNumber(now);
       const idempotencyKey = `${now.getFullYear()}-W${weekNumber}`;
 
-      // 2. Fetch all hosts with their users
-      // In a real app, we might batch this or filter by active status
       const allHosts = await db.query.hosts.findMany({
         with: {
-          user: true
-        }
+          user: true,
+        },
       });
 
       let sentCount = 0;
       let skippedCount = 0;
+      let skippedOptOutCount = 0;
+      let skippedNoEmailCount = 0;
       let duplicateCount = 0;
 
       for (const host of allHosts) {
-        if (!host.user.email) continue;
+        const userAny: any = host.user || {};
+        const hostEmail = String(userAny.email || "").trim();
+        if (!hostEmail) {
+          skippedNoEmailCount++;
+          continue;
+        }
 
-        // Check Idempotency via Telemetry
+        if (!this.isWeeklyDigestEnabledForUser(userAny)) {
+          skippedOptOutCount++;
+          continue;
+        }
+
         const alreadySent = await db.query.telemetryEvents.findFirst({
           where: and(
-            eq(telemetryEvents.eventName, 'weekly_digest_sent'),
+            eq(telemetryEvents.eventName, "weekly_digest_sent"),
             eq(telemetryEvents.userId, host.userId),
-            sql`properties->>'week' = ${idempotencyKey}`
-          )
+            sql`properties->>'week' = ${idempotencyKey}`,
+          ),
         });
 
         if (alreadySent) {
@@ -57,84 +75,90 @@ export class DigestService {
           continue;
         }
 
-        // 3. Fetch upcoming events for this host
         const upcomingEvents = await db.query.events.findMany({
           where: and(
             eq(events.hostId, host.id),
             gte(events.date, now),
-            lt(events.date, nextWeek)
+            lt(events.date, nextWeek),
           ),
           with: {
-            interests: true
+            interests: true,
           },
-          orderBy: (events: any, { asc }: any) => [asc(events.date)]
+          orderBy: (events: any, { asc }: any) => [asc(events.date)],
         });
 
-        // Skip if no events (per spec: "Empty digest behavior: skip send")
         if (upcomingEvents.length === 0) {
           skippedCount++;
           continue;
         }
 
-        // 4. Aggregate Data
         let pendingInterestCount = 0;
-        const capacityAlerts: { eventName: string; date: string; accepted: number; max: number }[] = [];
-        const eventSummaries: { name: string; date: string; accepted: number; max: number }[] = [];
+        const capacityAlerts: {
+          eventName: string;
+          date: string;
+          accepted: number;
+          max: number;
+        }[] = [];
+        const eventSummaries: {
+          name: string;
+          date: string;
+          accepted: number;
+          max: number;
+        }[] = [];
 
         for (const event of upcomingEvents) {
           const interests = event.interests || [];
-          const pending = interests.filter((i: any) => i.status === 'pending').length;
-          const accepted = interests.filter((i: any) => i.status === 'accepted').length;
-          
+          const pending = interests.filter((i: any) => i.status === "pending").length;
+          const accepted = interests.filter((i: any) => i.status === "accepted").length;
+
           pendingInterestCount += pending;
 
           eventSummaries.push({
-            name: event.name || 'Event',
+            name: event.name || "Event",
             date: new Date(event.date).toLocaleDateString(),
             accepted,
-            max: event.maxTrucks
+            max: event.maxTrucks,
           });
 
           if (accepted >= event.maxTrucks) {
             capacityAlerts.push({
-              eventName: event.name || 'Event',
+              eventName: event.name || "Event",
               date: new Date(event.date).toLocaleDateString(),
               accepted,
-              max: event.maxTrucks
+              max: event.maxTrucks,
             });
           }
         }
 
-        // 5. Send Email
-        await emailService.sendWeeklyDigest(host.user.email, {
+        await emailService.sendWeeklyDigest(hostEmail, {
           hostName: host.businessName,
           weekStart: now.toLocaleDateString(),
           weekEnd: nextWeek.toLocaleDateString(),
           events: eventSummaries,
           pendingCount: pendingInterestCount,
-          capacityAlerts
+          capacityAlerts,
         });
 
-        // Log Telemetry (Idempotency)
         await db.insert(telemetryEvents).values({
-          eventName: 'weekly_digest_sent',
+          eventName: "weekly_digest_sent",
           userId: host.userId,
           properties: {
             week: idempotencyKey,
             hostId: host.id,
             eventCount: upcomingEvents.length,
             pendingCount: pendingInterestCount,
-            alertCount: capacityAlerts.length
-          }
+            alertCount: capacityAlerts.length,
+          },
         });
 
         sentCount++;
       }
 
-      console.log(`✅ Weekly digest complete. Sent: ${sentCount}, Skipped: ${skippedCount}, Duplicates: ${duplicateCount}`);
-
+      console.log(
+        `[Digest] Weekly digest complete. Sent=${sentCount} SkippedEmpty=${skippedCount} SkippedOptOut=${skippedOptOutCount} SkippedNoEmail=${skippedNoEmailCount} Duplicates=${duplicateCount}`,
+      );
     } catch (error) {
-      console.error('❌ Error generating weekly digests:', error);
+      console.error("[Digest] Error generating weekly digests:", error);
     }
   }
 
@@ -143,7 +167,18 @@ export class DigestService {
     const dayNum = date.getUTCDay() || 7;
     date.setUTCDate(date.getUTCDate() + 4 - dayNum);
     const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-    return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  }
+
+  private isWeeklyDigestEnabledForUser(user: any): boolean {
+    const settings = user?.accountSettings as WeeklyDigestPreferenceShape | undefined;
+    if (!settings || typeof settings !== "object") return true;
+    const channels = settings.notifications?.channels;
+    const topics = settings.notifications?.topics;
+
+    if (channels?.email === false) return false;
+    if (topics?.weeklyDigest === false) return false;
+    return true;
   }
 }
 

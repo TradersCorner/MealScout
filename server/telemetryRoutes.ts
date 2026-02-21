@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "./db";
-import { telemetryEvents, events, eventInterests, eventSeries, hosts } from "@shared/schema";
+import { telemetryEvents, events, eventInterests, eventSeries, hosts, users } from "@shared/schema";
 import { eq, and, gte, sql, desc, inArray } from "drizzle-orm";
 import { isAdmin } from "./unifiedAuth";
 
@@ -194,11 +194,17 @@ router.get("/digest-coverage", isAdmin, async (req, res) => {
       .orderBy(desc(sql`properties->>'week'`))
       .limit(12); // Last 12 weeks
 
-    // 2. Get total eligible hosts (approximate - current count)
-    const totalHosts = await db
+    // 2. Get currently eligible hosts (host has email + has not opted out of weekly digest emails)
+    const eligibleHosts = await db
       .select({ count: sql<number>`count(*)` })
-      .from(hosts);
-    const eligibleCount = totalHosts[0].count;
+      .from(hosts)
+      .innerJoin(users, eq(users.id, hosts.userId))
+      .where(
+        sql`coalesce(nullif(${users.email}, ''), '') <> ''
+            and coalesce((${users.accountSettings}->'notifications'->'channels'->>'email')::boolean, true) = true
+            and coalesce((${users.accountSettings}->'notifications'->'topics'->>'weeklyDigest')::boolean, true) = true`,
+      );
+    const eligibleCount = Number(eligibleHosts?.[0]?.count || 0);
 
     res.json({
       history: sentCounts.map((row: any) => ({

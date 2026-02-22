@@ -4554,7 +4554,24 @@ export function registerAdminManagementRoutes(app: Express) {
             missingColumns: check?.missing ?? undefined,
           });
         }
-        res.status(500).json({ message: "Failed to update host" });
+        const code = typeof error?.code === "string" ? error.code : null;
+        const allowDetailCodes = new Set([
+          "42703", // undefined_column
+          "22P02", // invalid_text_representation
+          "23502", // not_null_violation
+          "23503", // foreign_key_violation
+          "42804", // datatype_mismatch
+        ]);
+        const detail =
+          allowDetailCodes.has(code || "") && typeof error?.message === "string"
+            ? String(error.message).split("\n")[0].slice(0, 220)
+            : null;
+
+        res.status(500).json({
+          message: `Failed to update host${
+            code ? ` (code=${code})` : ""
+          }${detail ? `: ${detail}` : ""}`,
+        });
       }
     }
   );

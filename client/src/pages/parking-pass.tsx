@@ -5265,7 +5265,7 @@ export default function ParkingPassPage() {
                                         new Date(displayListing.date),
                                         "EEE, MMM d",
                                       )}{" "}
-                                      •{" "}
+                                      -{" "}
                                       {displayListing.startTime === "00:00" &&
                                       displayListing.endTime === "23:59"
                                         ? "Any time"
@@ -5362,7 +5362,7 @@ export default function ParkingPassPage() {
                                           >
                                             {booking.truckName}
                                             {booking.slotType
-                                              ? ` • ${formatSlotLabel(
+                                              ? ` - ${formatSlotLabel(
                                                   booking.slotType,
                                                 )}`
                                               : ""}
@@ -6036,7 +6036,7 @@ export default function ParkingPassPage() {
                                     ? formatSlotLabel(booking.slotType)
                                     : "Booked"}
                                   {booking.spotNumber
-                                    ? ` • Spot ${booking.spotNumber}`
+                                    ? ` - Spot ${booking.spotNumber}`
                                     : ""}
                                 </span>
                               </div>

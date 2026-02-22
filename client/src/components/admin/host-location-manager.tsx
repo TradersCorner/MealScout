@@ -33,24 +33,16 @@ const coerceCents = (value: unknown) => {
   return Math.max(0, Math.round(num));
 };
 
-const applySlotSumToDailyIfUntouched = (prev: any, nextSlotSumCents: number) => {
-  const breakfast = coerceCents(prev?.parkingPassBreakfastPriceCents);
-  const lunch = coerceCents(prev?.parkingPassLunchPriceCents);
-  const dinner = coerceCents(prev?.parkingPassDinnerPriceCents);
-  const currentSlotSum = breakfast + lunch + dinner;
-  const currentDaily = coerceCents(prev?.parkingPassDailyPriceCents);
-
-  // If the daily price hasn't been explicitly set (0), or it was previously
-  // auto-derived from slots, keep it in sync with the slot sum.
-  const shouldAutoUpdateDaily = currentDaily === 0 || currentDaily === currentSlotSum;
-  if (!shouldAutoUpdateDaily) return prev;
-
+const applySlotSumToDailyIfAuto = (prev: any, nextSlotSumCents: number) => {
+  if (prev?._dailyManuallyEdited) return prev;
   const nextDaily = Math.max(0, Math.round(nextSlotSumCents));
+  if (nextDaily <= 0) return prev;
+
   return {
     ...prev,
     parkingPassDailyPriceCents: nextDaily,
-    parkingPassWeeklyPriceCents: nextDaily > 0 ? nextDaily * 7 : coerceCents(prev?.parkingPassWeeklyPriceCents),
-    parkingPassMonthlyPriceCents: nextDaily > 0 ? nextDaily * 30 : coerceCents(prev?.parkingPassMonthlyPriceCents),
+    parkingPassWeeklyPriceCents: nextDaily * 7,
+    parkingPassMonthlyPriceCents: nextDaily * 30,
   };
 };
 
@@ -277,24 +269,30 @@ export default function HostLocationManager({
                   variant="secondary"
                   onClick={() => {
                     setEditingPricingHostId(host.id);
+                    const breakfast = coerceCents(host.parkingPassBreakfastPriceCents);
+                    const lunch = coerceCents(host.parkingPassLunchPriceCents);
+                    const dinner = coerceCents(host.parkingPassDinnerPriceCents);
+                    const slotSum = breakfast + lunch + dinner;
+                    const initialDaily = slotSum > 0 ? slotSum : coerceCents(host.parkingPassDailyPriceCents);
                     setPricingEdits({
                       parkingPassStartTime: host.parkingPassStartTime || "",
                       parkingPassEndTime: host.parkingPassEndTime || "",
                       parkingPassDaysOfWeek: Array.isArray(host.parkingPassDaysOfWeek)
                         ? host.parkingPassDaysOfWeek
                         : [],
-                      parkingPassBreakfastPriceCents:
-                        host.parkingPassBreakfastPriceCents ?? 0,
-                      parkingPassLunchPriceCents:
-                        host.parkingPassLunchPriceCents ?? 0,
-                      parkingPassDinnerPriceCents:
-                        host.parkingPassDinnerPriceCents ?? 0,
-                      parkingPassDailyPriceCents:
-                        host.parkingPassDailyPriceCents ?? 0,
+                      parkingPassBreakfastPriceCents: breakfast,
+                      parkingPassLunchPriceCents: lunch,
+                      parkingPassDinnerPriceCents: dinner,
+                      parkingPassDailyPriceCents: initialDaily,
                       parkingPassWeeklyPriceCents:
-                        host.parkingPassWeeklyPriceCents ?? 0,
+                        initialDaily > 0
+                          ? initialDaily * 7
+                          : coerceCents(host.parkingPassWeeklyPriceCents),
                       parkingPassMonthlyPriceCents:
-                        host.parkingPassMonthlyPriceCents ?? 0,
+                        initialDaily > 0
+                          ? initialDaily * 30
+                          : coerceCents(host.parkingPassMonthlyPriceCents),
+                      _dailyManuallyEdited: false,
                     });
                   }}
                   disabled={!canEdit}
@@ -448,7 +446,7 @@ export default function HostLocationManager({
                             coerceCents(cents) +
                             coerceCents(next?.parkingPassLunchPriceCents) +
                             coerceCents(next?.parkingPassDinnerPriceCents);
-                          return applySlotSumToDailyIfUntouched(next, sum);
+                          return applySlotSumToDailyIfAuto(next, sum);
                         });
                       }}
                       className="px-2 py-1 border rounded text-sm w-full"
@@ -469,7 +467,7 @@ export default function HostLocationManager({
                             coerceCents(next?.parkingPassBreakfastPriceCents) +
                             coerceCents(cents) +
                             coerceCents(next?.parkingPassDinnerPriceCents);
-                          return applySlotSumToDailyIfUntouched(next, sum);
+                          return applySlotSumToDailyIfAuto(next, sum);
                         });
                       }}
                       className="px-2 py-1 border rounded text-sm w-full"
@@ -490,7 +488,7 @@ export default function HostLocationManager({
                             coerceCents(next?.parkingPassBreakfastPriceCents) +
                             coerceCents(next?.parkingPassLunchPriceCents) +
                             coerceCents(cents);
-                          return applySlotSumToDailyIfUntouched(next, sum);
+                          return applySlotSumToDailyIfAuto(next, sum);
                         });
                       }}
                       className="px-2 py-1 border rounded text-sm w-full"
@@ -510,6 +508,7 @@ export default function HostLocationManager({
                           parkingPassDailyPriceCents: cents,
                           parkingPassWeeklyPriceCents: cents * 7,
                           parkingPassMonthlyPriceCents: cents * 30,
+                          _dailyManuallyEdited: cents > 0,
                         });
                       }}
                       className="px-2 py-1 border rounded text-sm w-full"

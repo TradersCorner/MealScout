@@ -50,45 +50,59 @@ import {
  * No inline labels, helper text, or validation messages.
  */
 
-const restaurantSchema = z.object({
-  name: z.string().min(1, COPY.validation.restaurant.nameRequired),
-  address: z.string().min(1, COPY.validation.restaurant.addressRequired),
-  city: z.string().min(1, "City is required"),
-  state: z.string().min(2, "State is required"),
-  phone: z.string().min(10, COPY.validation.restaurant.phoneInvalid),
-  businessType: z.enum(["restaurant", "bar", "food_truck"], {
-    required_error: COPY.validation.restaurant.businessTypeRequired,
-  }),
-  cuisineType: z.string().min(1, COPY.validation.restaurant.cuisineRequired),
-  description: z
-    .string()
-    .max(500, "Description must be less than 500 characters")
-    .optional(),
-  websiteUrl: z
-    .string()
-    .url("Must be a valid URL")
-    .optional()
-    .or(z.literal("")),
-  instagramUrl: z
-    .string()
-    .url("Must be a valid URL")
-    .optional()
-    .or(z.literal("")),
-  facebookPageUrl: z
-    .string()
-    .url("Must be a valid URL")
-    .optional()
-    .or(z.literal("")),
-  hasParking: z.boolean().default(false),
-  hasWifi: z.boolean().default(false),
-  hasOutdoorSeating: z.boolean().default(false),
-  acceptTerms: z
-    .boolean()
-    .refine(
-      (val) => val === true,
-      COPY.validation.restaurant.acceptTermsRequired
-    ),
-});
+const restaurantSchema = z
+  .object({
+    name: z.string().min(1, COPY.validation.restaurant.nameRequired),
+    address: z.string().min(1, COPY.validation.restaurant.addressRequired),
+    city: z.string().min(1, "City is required"),
+    state: z.string().min(2, "State is required"),
+    phone: z.string().min(10, COPY.validation.restaurant.phoneInvalid),
+    businessType: z.enum(["restaurant", "bar", "food_truck"], {
+      required_error: COPY.validation.restaurant.businessTypeRequired,
+    }),
+    confirmNotFoodTruck: z.boolean().default(false),
+    cuisineType: z.string().min(1, COPY.validation.restaurant.cuisineRequired),
+    description: z
+      .string()
+      .max(500, "Description must be less than 500 characters")
+      .optional(),
+    websiteUrl: z
+      .string()
+      .url("Must be a valid URL")
+      .optional()
+      .or(z.literal("")),
+    instagramUrl: z
+      .string()
+      .url("Must be a valid URL")
+      .optional()
+      .or(z.literal("")),
+    facebookPageUrl: z
+      .string()
+      .url("Must be a valid URL")
+      .optional()
+      .or(z.literal("")),
+    hasParking: z.boolean().default(false),
+    hasWifi: z.boolean().default(false),
+    hasOutdoorSeating: z.boolean().default(false),
+    acceptTerms: z
+      .boolean()
+      .refine(
+        (val) => val === true,
+        COPY.validation.restaurant.acceptTermsRequired
+      ),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.businessType !== "food_truck" &&
+      data.confirmNotFoodTruck !== true
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["confirmNotFoodTruck"],
+        message: COPY.validation.restaurant.confirmNotFoodTruckRequired,
+      });
+    }
+  });
 
 const signupSchema = z
   .object({
@@ -117,6 +131,10 @@ const loginSchema = z.object({
 type RestaurantFormData = z.infer<typeof restaurantSchema>;
 type SignupFormData = z.infer<typeof signupSchema>;
 type LoginFormData = z.infer<typeof loginSchema>;
+type RestaurantSubmissionData = Omit<
+  RestaurantFormData,
+  "acceptTerms" | "confirmNotFoodTruck"
+>;
 
 type HostOnboardingStep = "restaurant" | "verification";
 
@@ -200,6 +218,7 @@ export default function RestaurantSignup() {
       state: "",
       phone: "",
       businessType: "food_truck",
+      confirmNotFoodTruck: false,
       cuisineType: "",
       description: "",
       websiteUrl: "",
@@ -293,6 +312,7 @@ export default function RestaurantSignup() {
 
   useEffect(() => {
     if (selectedBusinessType === "food_truck") {
+      form.setValue("confirmNotFoodTruck", false);
       form.setValue("hasParking", false);
       form.setValue("hasWifi", false);
       form.setValue("hasOutdoorSeating", false);
@@ -374,7 +394,7 @@ export default function RestaurantSignup() {
   });
 
   const createRestaurantMutation = useMutation({
-    mutationFn: async (data: Omit<RestaurantFormData, "acceptTerms">) => {
+    mutationFn: async (data: RestaurantSubmissionData) => {
       if (claimSelection && data.businessType === "food_truck") {
         const res = await apiRequest("POST", "/api/truck-claims", {
           listingId: claimSelection.id,
@@ -550,7 +570,7 @@ export default function RestaurantSignup() {
   });
 
   const onSubmit = async (data: RestaurantFormData) => {
-    const { acceptTerms, ...restaurantData } = data;
+    const { acceptTerms, confirmNotFoodTruck, ...restaurantData } = data;
 
     try {
       // Create restaurant first
@@ -1016,10 +1036,39 @@ export default function RestaurantSignup() {
                             <SelectItem value="bar">Bar</SelectItem>
                           </SelectContent>
                         </Select>
+                        <p className="text-xs text-[color:var(--text-secondary)]">
+                          {COPY.forms.restaurant.businessTypeHelp}
+                        </p>
                         <FormMessage />
                       </FormItem>
                     )} />
                   </div>
+
+                  {selectedBusinessType !== "food_truck" && (
+                    <FormField
+                      control={form.control}
+                      name="confirmNotFoodTruck"
+                      render={({ field }) => (
+                        <FormItem>
+                          <label className="flex items-start gap-2 rounded-md border border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] p-3 text-sm text-[color:var(--text-primary)]">
+                            <FormControl>
+                              <Checkbox
+                                checked={Boolean(field.value)}
+                                onCheckedChange={(checked) =>
+                                  field.onChange(Boolean(checked))
+                                }
+                              />
+                            </FormControl>
+                            <span>{COPY.forms.restaurant.stationaryConfirmLabel}</span>
+                          </label>
+                          <p className="text-xs text-[color:var(--text-secondary)]">
+                            {COPY.forms.restaurant.stationaryWarning}
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   {selectedBusinessType === "food_truck" && (
                     <div className="space-y-3 rounded-xl border border-[color:var(--border-subtle)] bg-[var(--bg-surface-muted)] p-4">

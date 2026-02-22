@@ -221,6 +221,8 @@ export const HOST_ONBOARDING_COPY = {
       addressRequired: "Address is required",
       phoneInvalid: "Valid phone number is required",
       businessTypeRequired: "Please select your business type",
+      confirmNotFoodTruckRequired:
+        "Confirm this is not a mobile food truck before continuing.",
       cuisineRequired: "Cuisine type is required",
       acceptTermsRequired: "You must accept the terms",
     },
@@ -308,6 +310,12 @@ export const HOST_ONBOARDING_COPY = {
       namePlaceholder: "Enter your business name",
       businessTypeLabel: "Business Type",
       businessTypePlaceholder: "Select your business type...",
+      businessTypeHelp:
+        "Food Truck is for mobile units. Restaurant/Bar is for fixed-location businesses.",
+      stationaryConfirmLabel:
+        "I confirm this is a fixed location (not a food truck).",
+      stationaryWarning:
+        "If this business moves locations, select Food Truck instead.",
       addressLabel: "Business Address",
       addressPlaceholder: "123 Main Street, Chicago, IL",
       cityLabel: "City",

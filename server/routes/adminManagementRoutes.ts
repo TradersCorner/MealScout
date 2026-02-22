@@ -75,6 +75,60 @@ const retryGeocodeAddress = async (rawAddress: string) => {
   return null;
 };
 
+type HostPricingColumnsCheck = {
+  checkedAt: number;
+  hasAll: boolean;
+  missing: string[];
+};
+
+const HOST_PRICING_COLUMNS = [
+  "parking_pass_breakfast_price_cents",
+  "parking_pass_lunch_price_cents",
+  "parking_pass_dinner_price_cents",
+  "parking_pass_daily_price_cents",
+  "parking_pass_weekly_price_cents",
+  "parking_pass_monthly_price_cents",
+  "parking_pass_start_time",
+  "parking_pass_end_time",
+  "parking_pass_days_of_week",
+] as const;
+
+let hostPricingColumnsCache: HostPricingColumnsCheck | null = null;
+
+async function getHostPricingColumnsCheck(): Promise<HostPricingColumnsCheck> {
+  const now = Date.now();
+  if (
+    hostPricingColumnsCache &&
+    now - hostPricingColumnsCache.checkedAt < 5 * 60 * 1000
+  ) {
+    return hostPricingColumnsCache;
+  }
+
+  const rows = await db.execute(
+    sql`
+      select column_name
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'hosts'
+        and column_name in (${sql.join(
+          HOST_PRICING_COLUMNS.map((col) => sql`${col}`),
+          sql`, `,
+        )})
+    `,
+  );
+
+  const present = new Set<string>(
+    (rows as any)?.rows?.map((r: any) => String(r?.column_name || "")) ?? [],
+  );
+  const missing = HOST_PRICING_COLUMNS.filter((col) => !present.has(col));
+  hostPricingColumnsCache = {
+    checkedAt: now,
+    hasAll: missing.length === 0,
+    missing: missing.slice(),
+  };
+  return hostPricingColumnsCache;
+}
+
 const truckImportUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -4415,6 +4469,28 @@ export function registerAdminManagementRoutes(app: Express) {
           });
         }
 
+        const wantsHostPricingUpdate =
+          req.body?.parkingPassBreakfastPriceCents !== undefined ||
+          req.body?.parkingPassLunchPriceCents !== undefined ||
+          req.body?.parkingPassDinnerPriceCents !== undefined ||
+          req.body?.parkingPassDailyPriceCents !== undefined ||
+          req.body?.parkingPassWeeklyPriceCents !== undefined ||
+          req.body?.parkingPassMonthlyPriceCents !== undefined ||
+          req.body?.parkingPassStartTime !== undefined ||
+          req.body?.parkingPassEndTime !== undefined ||
+          req.body?.parkingPassDaysOfWeek !== undefined;
+
+        if (wantsHostPricingUpdate) {
+          const check = await getHostPricingColumnsCheck();
+          if (!check.hasAll) {
+            return res.status(409).json({
+              message:
+                "Parking Pass pricing columns are missing in the database. Run migration `071_add_hosts_parking_pass_pricing.sql` and redeploy.",
+              missingColumns: check.missing,
+            });
+          }
+        }
+
         const updates: any = {
           businessName: req.body?.businessName,
           address: req.body?.address,
@@ -4465,6 +4541,19 @@ export function registerAdminManagementRoutes(app: Express) {
         res.json(updated);
       } catch (error: any) {
         console.error("Error updating host:", error);
+        if (
+          isMissingColumnError(error) &&
+          (error?.message?.includes("parking_pass_") ||
+            error?.message?.includes("parkingPass"))
+        ) {
+          hostPricingColumnsCache = null;
+          const check = await getHostPricingColumnsCheck().catch(() => null);
+          return res.status(409).json({
+            message:
+              "Parking Pass pricing columns are missing in the database. Run migration `071_add_hosts_parking_pass_pricing.sql` and redeploy.",
+            missingColumns: check?.missing ?? undefined,
+          });
+        }
         res.status(500).json({ message: "Failed to update host" });
       }
     }

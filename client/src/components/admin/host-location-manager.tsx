@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +12,20 @@ const normalize = (value?: string | null) => (value ?? "").trim();
 
 const includesLoose = (haystack: string, needle: string) =>
   haystack.toLowerCase().includes(needle.toLowerCase());
+
+const toCents = (value: string) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return 0;
+  const num = Number(raw);
+  if (!Number.isFinite(num) || num < 0) return 0;
+  return Math.round(num * 100);
+};
+
+const toDollars = (cents: unknown) => {
+  const num = Number(cents ?? 0);
+  if (!Number.isFinite(num) || num <= 0) return "";
+  return String((num / 100).toFixed(0));
+};
 
 const buildGeocodeQuery = (host: any) => {
   const address = normalize(host?.address);
@@ -34,6 +48,24 @@ export default function HostLocationManager({
   const [editingHostId, setEditingHostId] = useState<string | null>(null);
   const [coordinates, setCoordinates] = useState({ lat: "", lng: "" });
   const [geocoding, setGeocoding] = useState(false);
+  const [editingPricingHostId, setEditingPricingHostId] = useState<string | null>(
+    null,
+  );
+  const [pricingEdits, setPricingEdits] = useState<any>({
+    parkingPassStartTime: "",
+    parkingPassEndTime: "",
+    parkingPassDaysOfWeek: [] as number[],
+    parkingPassBreakfastPriceCents: 0,
+    parkingPassLunchPriceCents: 0,
+    parkingPassDinnerPriceCents: 0,
+    parkingPassDailyPriceCents: 0,
+    parkingPassWeeklyPriceCents: 0,
+    parkingPassMonthlyPriceCents: 0,
+  });
+  const dayLabels = useMemo(
+    () => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    [],
+  );
 
   const { data: hosts = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/admin/hosts"],
@@ -68,6 +100,30 @@ export default function HostLocationManager({
       toast({
         title: "Error",
         description: error.message || "Failed to update coordinates",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateHostDefaults = useMutation({
+    mutationFn: async (payload: { hostId: string; updates: any }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/admin/hosts/${payload.hostId}`,
+        payload.updates,
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/hosts"] });
+      setEditingPricingHostId(null);
+      toast({ title: "Saved", description: "Parking Pass defaults updated." });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description:
+          error?.message || "Failed to update Parking Pass defaults.",
         variant: "destructive",
       });
     },
@@ -154,14 +210,45 @@ export default function HostLocationManager({
                   </p>
                 )}
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => geocodeHost(host)}
-                disabled={geocoding || !canEdit}
-              >
-                {geocoding ? "..." : "Geocode"}
-              </Button>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => geocodeHost(host)}
+                  disabled={geocoding || !canEdit}
+                >
+                  {geocoding ? "..." : "Geocode"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setEditingPricingHostId(host.id);
+                    setPricingEdits({
+                      parkingPassStartTime: host.parkingPassStartTime || "",
+                      parkingPassEndTime: host.parkingPassEndTime || "",
+                      parkingPassDaysOfWeek: Array.isArray(host.parkingPassDaysOfWeek)
+                        ? host.parkingPassDaysOfWeek
+                        : [],
+                      parkingPassBreakfastPriceCents:
+                        host.parkingPassBreakfastPriceCents ?? 0,
+                      parkingPassLunchPriceCents:
+                        host.parkingPassLunchPriceCents ?? 0,
+                      parkingPassDinnerPriceCents:
+                        host.parkingPassDinnerPriceCents ?? 0,
+                      parkingPassDailyPriceCents:
+                        host.parkingPassDailyPriceCents ?? 0,
+                      parkingPassWeeklyPriceCents:
+                        host.parkingPassWeeklyPriceCents ?? 0,
+                      parkingPassMonthlyPriceCents:
+                        host.parkingPassMonthlyPriceCents ?? 0,
+                    });
+                  }}
+                  disabled={!canEdit}
+                >
+                  Edit pricing
+                </Button>
+              </div>
             </div>
 
             {editingHostId === host.id && canEdit && (
@@ -211,6 +298,242 @@ export default function HostLocationManager({
                       setEditingHostId(null);
                       setCoordinates({ lat: "", lng: "" });
                     }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {editingPricingHostId === host.id && canEdit && (
+              <div className="pt-2 border-t space-y-3">
+                <div className="text-xs font-semibold text-muted-foreground">
+                  Parking Pass defaults (host)
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <div className="text-[11px] text-muted-foreground">Start</div>
+                    <input
+                      type="time"
+                      value={pricingEdits.parkingPassStartTime}
+                      onChange={(e) =>
+                        setPricingEdits({
+                          ...pricingEdits,
+                          parkingPassStartTime: e.target.value,
+                        })
+                      }
+                      className="px-2 py-1 border rounded text-sm w-full"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-[11px] text-muted-foreground">End</div>
+                    <input
+                      type="time"
+                      value={pricingEdits.parkingPassEndTime}
+                      onChange={(e) =>
+                        setPricingEdits({
+                          ...pricingEdits,
+                          parkingPassEndTime: e.target.value,
+                        })
+                      }
+                      className="px-2 py-1 border rounded text-sm w-full"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-[11px] text-muted-foreground">Days</div>
+                    <div className="flex flex-wrap gap-2">
+                      {dayLabels.map((label, idx) => {
+                        const days: number[] = Array.isArray(
+                          pricingEdits.parkingPassDaysOfWeek,
+                        )
+                          ? pricingEdits.parkingPassDaysOfWeek
+                          : [];
+                        const checked = days.includes(idx);
+                        return (
+                          <label
+                            key={label}
+                            className="flex items-center gap-1 text-xs text-muted-foreground"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                const next = new Set<number>(days);
+                                if (e.target.checked) next.add(idx);
+                                else next.delete(idx);
+                                setPricingEdits({
+                                  ...pricingEdits,
+                                  parkingPassDaysOfWeek: Array.from(next).sort(
+                                    (a, b) => a - b,
+                                  ),
+                                });
+                              }}
+                            />
+                            {label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <div className="text-[11px] text-muted-foreground">
+                      Breakfast ($)
+                    </div>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={toDollars(pricingEdits.parkingPassBreakfastPriceCents)}
+                      onChange={(e) =>
+                        setPricingEdits({
+                          ...pricingEdits,
+                          parkingPassBreakfastPriceCents: toCents(e.target.value),
+                        })
+                      }
+                      className="px-2 py-1 border rounded text-sm w-full"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-[11px] text-muted-foreground">Lunch ($)</div>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={toDollars(pricingEdits.parkingPassLunchPriceCents)}
+                      onChange={(e) =>
+                        setPricingEdits({
+                          ...pricingEdits,
+                          parkingPassLunchPriceCents: toCents(e.target.value),
+                        })
+                      }
+                      className="px-2 py-1 border rounded text-sm w-full"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-[11px] text-muted-foreground">Dinner ($)</div>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={toDollars(pricingEdits.parkingPassDinnerPriceCents)}
+                      onChange={(e) =>
+                        setPricingEdits({
+                          ...pricingEdits,
+                          parkingPassDinnerPriceCents: toCents(e.target.value),
+                        })
+                      }
+                      className="px-2 py-1 border rounded text-sm w-full"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-[11px] text-muted-foreground">Daily ($)</div>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={toDollars(pricingEdits.parkingPassDailyPriceCents)}
+                      onChange={(e) => {
+                        const cents = toCents(e.target.value);
+                        setPricingEdits({
+                          ...pricingEdits,
+                          parkingPassDailyPriceCents: cents,
+                          parkingPassWeeklyPriceCents: cents * 7,
+                          parkingPassMonthlyPriceCents: cents * 30,
+                        });
+                      }}
+                      className="px-2 py-1 border rounded text-sm w-full"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-[11px] text-muted-foreground">Weekly ($)</div>
+                    <input
+                      type="number"
+                      value={
+                        Number(pricingEdits.parkingPassDailyPriceCents || 0)
+                          ? String(
+                              (
+                                (Number(pricingEdits.parkingPassDailyPriceCents || 0) *
+                                  7) /
+                                100
+                              ).toFixed(0),
+                            )
+                          : toDollars(pricingEdits.parkingPassWeeklyPriceCents)
+                      }
+                      readOnly
+                      disabled
+                      className="px-2 py-1 border rounded text-sm w-full bg-muted/30"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-[11px] text-muted-foreground">Monthly ($)</div>
+                    <input
+                      type="number"
+                      value={
+                        Number(pricingEdits.parkingPassDailyPriceCents || 0)
+                          ? String(
+                              (
+                                (Number(pricingEdits.parkingPassDailyPriceCents || 0) *
+                                  30) /
+                                100
+                              ).toFixed(0),
+                            )
+                          : toDollars(pricingEdits.parkingPassMonthlyPriceCents)
+                      }
+                      readOnly
+                      disabled
+                      className="px-2 py-1 border rounded text-sm w-full bg-muted/30"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      updateHostDefaults.mutate({
+                        hostId: host.id,
+                        updates: {
+                          parkingPassStartTime:
+                            pricingEdits.parkingPassStartTime || null,
+                          parkingPassEndTime: pricingEdits.parkingPassEndTime || null,
+                          parkingPassDaysOfWeek: Array.isArray(
+                            pricingEdits.parkingPassDaysOfWeek,
+                          )
+                            ? pricingEdits.parkingPassDaysOfWeek
+                            : [],
+                          parkingPassBreakfastPriceCents: Number(
+                            pricingEdits.parkingPassBreakfastPriceCents || 0,
+                          ),
+                          parkingPassLunchPriceCents: Number(
+                            pricingEdits.parkingPassLunchPriceCents || 0,
+                          ),
+                          parkingPassDinnerPriceCents: Number(
+                            pricingEdits.parkingPassDinnerPriceCents || 0,
+                          ),
+                          parkingPassDailyPriceCents: Number(
+                            pricingEdits.parkingPassDailyPriceCents || 0,
+                          ),
+                          parkingPassWeeklyPriceCents: Number(
+                            pricingEdits.parkingPassWeeklyPriceCents || 0,
+                          ),
+                          parkingPassMonthlyPriceCents: Number(
+                            pricingEdits.parkingPassMonthlyPriceCents || 0,
+                          ),
+                        },
+                      })
+                    }
+                    disabled={updateHostDefaults.isPending}
+                  >
+                    {updateHostDefaults.isPending ? "Saving..." : "Save pricing"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setEditingPricingHostId(null)}
+                    disabled={updateHostDefaults.isPending}
                   >
                     Cancel
                   </Button>

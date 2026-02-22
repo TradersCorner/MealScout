@@ -3769,6 +3769,35 @@ export function registerAdminManagementRoutes(app: Express) {
             .leftJoin(users, eq(hosts.userId, users.id))
             .orderBy(desc(hosts.createdAt));
 
+          const referrerIds = Array.from(
+            new Set<string>(
+              rows
+                .flatMap((row: any) => [
+                  row?.user?.affiliateCloserUserId,
+                  row?.user?.affiliateBookerUserId,
+                ])
+                .filter((value: any) => typeof value === "string" && value.trim().length > 0),
+            ),
+          );
+          const referrerById = new Map<string, any>();
+          if (referrerIds.length > 0) {
+            const referrers = await db
+              .select({
+                id: users.id,
+                firstName: users.firstName,
+                lastName: users.lastName,
+                email: users.email,
+                phone: users.phone,
+                userType: users.userType,
+                affiliateTag: users.affiliateTag,
+              })
+              .from(users)
+              .where(inArray(users.id, referrerIds));
+            for (const u of referrers as any[]) {
+              referrerById.set(String(u.id), u);
+            }
+          }
+
           res.json(
             rows.map((row: any) => ({
               ...row.host,
@@ -3780,6 +3809,17 @@ export function registerAdminManagementRoutes(app: Express) {
                     email: row.user.email,
                     phone: row.user.phone,
                     userType: row.user.userType,
+                    affiliateTag: row.user.affiliateTag,
+                    affiliateCloserUserId: row.user.affiliateCloserUserId,
+                    affiliateBookerUserId: row.user.affiliateBookerUserId,
+                    referredByCloser:
+                      row.user.affiliateCloserUserId
+                        ? referrerById.get(String(row.user.affiliateCloserUserId)) ?? null
+                        : null,
+                    referredByBooker:
+                      row.user.affiliateBookerUserId
+                        ? referrerById.get(String(row.user.affiliateBookerUserId)) ?? null
+                        : null,
                   }
                 : null,
             })),

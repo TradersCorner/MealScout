@@ -214,6 +214,22 @@ export default function HostLocationManager({
                     {host.rep.phone ? ` ${host.rep.phone}` : ""}
                   </p>
                 )}
+                {host?.rep?.affiliateTag && (
+                  <p className="text-xs text-muted-foreground">
+                    Rep affiliate tag: <span className="font-mono">{host.rep.affiliateTag}</span>
+                  </p>
+                )}
+                {host?.rep?.referredByCloser && (
+                  <p className="text-xs text-muted-foreground">
+                    Rep referred by:{" "}
+                    {`${host.rep.referredByCloser.firstName || ""} ${host.rep.referredByCloser.lastName || ""}`.trim() ||
+                      host.rep.referredByCloser.email ||
+                      host.rep.referredByCloser.id}
+                    {host.rep.referredByCloser.affiliateTag
+                      ? ` (ref=${host.rep.referredByCloser.affiliateTag})`
+                      : ""}
+                  </p>
+                )}
                 {host.latitude && host.longitude && (
                   <p className="text-xs text-[color:var(--status-success)] mt-1">
                     Coords: {host.latitude}, {host.longitude}

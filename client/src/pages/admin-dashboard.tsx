@@ -1884,6 +1884,15 @@ export default function AdminDashboard() {
     enabled: !!adminUser && (selectedTab === "users" || selectedTab === "host-locations"),
   });
 
+  const userById = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const u of users) {
+      const id = String(u?.id || "").trim();
+      if (id) map.set(id, u);
+    }
+    return map;
+  }, [users]);
+
   const { data: mapPinAudit } = useQuery<MapPinAudit>({
     queryKey: ["/api/admin/map-pin-audit"],
     enabled: !!adminUser && selectedTab === "overview",
@@ -5847,6 +5856,74 @@ export default function AdminDashboard() {
                       {selectedUser.email}
                     </p>
                   </div>
+                  {selectedUser.affiliateTag && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Affiliate Tag</p>
+                      <p className="text-sm font-mono text-xs">
+                        {selectedUser.affiliateTag}
+                      </p>
+                    </div>
+                  )}
+                  {(selectedUser.affiliateCloserUserId ||
+                    selectedUser.affiliateBookerUserId) && (
+                    <div className="space-y-1 col-span-2">
+                      <p className="text-xs text-muted-foreground">Referral Attribution</p>
+                      <div className="text-sm space-y-1">
+                        {selectedUser.affiliateCloserUserId && (
+                          <div>
+                            <span className="text-xs text-muted-foreground">
+                              Ref link (closer):{" "}
+                            </span>
+                            {(() => {
+                              const ref = userById.get(
+                                String(selectedUser.affiliateCloserUserId),
+                              );
+                              const label = ref
+                                ? `${ref.firstName || ""} ${ref.lastName || ""}`.trim() ||
+                                  ref.email ||
+                                  ref.id
+                                : String(selectedUser.affiliateCloserUserId);
+                              const tag = ref?.affiliateTag
+                                ? ` (ref=${ref.affiliateTag})`
+                                : "";
+                              return (
+                                <span>
+                                  {label}
+                                  {tag}
+                                </span>
+                              );
+                            })()}
+                          </div>
+                        )}
+                        {selectedUser.affiliateBookerUserId && (
+                          <div>
+                            <span className="text-xs text-muted-foreground">
+                              Booker affiliate:{" "}
+                            </span>
+                            {(() => {
+                              const ref = userById.get(
+                                String(selectedUser.affiliateBookerUserId),
+                              );
+                              const label = ref
+                                ? `${ref.firstName || ""} ${ref.lastName || ""}`.trim() ||
+                                  ref.email ||
+                                  ref.id
+                                : String(selectedUser.affiliateBookerUserId);
+                              const tag = ref?.affiliateTag
+                                ? ` (ref=${ref.affiliateTag})`
+                                : "";
+                              return (
+                                <span>
+                                  {label}
+                                  {tag}
+                                </span>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   {selectedUser.phone && (
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">Phone</p>

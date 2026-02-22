@@ -605,8 +605,9 @@ export default function ParkingPassPage() {
   const [bookingReturnIntentId, setBookingReturnIntentId] = useState<string | null>(null);
   const [bookingReturnHandled, setBookingReturnHandled] = useState(false);
   const [isCoarsePointer, setIsCoarsePointer] = useState(false);
-  // On coarse pointers (mobile), Leaflet can hijack page scroll. Default to locked.
-  const [mapUnlocked, setMapUnlocked] = useState(false);
+  // On mobile, once a Leaflet popup is open, touch gestures can feel "stuck" because the map keeps
+  // capturing scroll/pan. While the popup is open we disable map interactions so the page scrolls.
+  const [mapPopupOpen, setMapPopupOpen] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [parkingCoords, setParkingCoords] = useState<
     Record<string, GeoPoint>
@@ -629,11 +630,11 @@ export default function ParkingPassPage() {
 
   useEffect(() => {
     if (viewMode !== "map") {
-      setMapUnlocked(false);
+      setMapPopupOpen(false);
     }
   }, [viewMode]);
 
-  const mapInteractionsEnabled = !isCoarsePointer || mapUnlocked;
+  const mapInteractionsEnabled = !isCoarsePointer || !mapPopupOpen;
   const { data: mapLocationsData } = useQuery<MapLocationsResponse>({
     queryKey: ["/api/map/locations"],
     queryFn: async () => {
@@ -5068,24 +5069,6 @@ export default function ParkingPassPage() {
                   <div className="space-y-3">
                     <div className="rounded-2xl pp-glass shadow-clean overflow-hidden">
                       <div className="relative h-72 w-full bg-slate-100/60">
-                        {isCoarsePointer && (
-                          <div className="absolute right-3 top-3 z-[1000]">
-                            <Button
-                              size="sm"
-                              variant={mapUnlocked ? "default" : "secondary"}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setMapUnlocked((prev) => !prev);
-                              }}
-                            >
-                              {mapUnlocked ? "Lock map" : "Move map"}
-                            </Button>
-                          </div>
-                        )}
-                        {isCoarsePointer && !mapUnlocked && (
-                          <div className="absolute inset-0 z-[900]" aria-hidden="true" />
-                        )}
                         <MapContainer
                           center={[fallbackMapCenter.lat, fallbackMapCenter.lng]}
                           zoom={13}
@@ -5118,6 +5101,8 @@ export default function ParkingPassPage() {
                                 icon={parkingPassPinIcon}
                                 eventHandlers={{
                                   click: () => setRequestedHostId(hostId),
+                                  popupopen: () => setMapPopupOpen(true),
+                                  popupclose: () => setMapPopupOpen(false),
                                 }}
                               >
                                 <Popup>
@@ -5162,24 +5147,6 @@ export default function ParkingPassPage() {
                 <div className="space-y-3">
                   <div className="rounded-2xl pp-glass shadow-clean overflow-hidden">
                     <div className="relative h-72 w-full bg-slate-100/60">
-                      {isCoarsePointer && (
-                        <div className="absolute right-3 top-3 z-[1000]">
-                          <Button
-                            size="sm"
-                            variant={mapUnlocked ? "default" : "secondary"}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setMapUnlocked((prev) => !prev);
-                            }}
-                          >
-                            {mapUnlocked ? "Lock map" : "Move map"}
-                          </Button>
-                        </div>
-                      )}
-                      {isCoarsePointer && !mapUnlocked && (
-                        <div className="absolute inset-0 z-[900]" aria-hidden="true" />
-                      )}
                       <MapContainer
                         center={[mapCenter.lat, mapCenter.lng]}
                         zoom={13}
@@ -5272,6 +5239,8 @@ export default function ParkingPassPage() {
                               }
                               eventHandlers={{
                                 click: () => setActiveLocationKey(group.key),
+                                popupopen: () => setMapPopupOpen(true),
+                                popupclose: () => setMapPopupOpen(false),
                               }}
                             >
                               <Popup>

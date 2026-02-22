@@ -125,6 +125,7 @@ import bcrypt from "bcryptjs";
 import { syncUserToBrevo } from "./brevoCrm";
 import { ensureAffiliateTag } from "./affiliateTagService";
 import { forwardGeocode } from "./utils/geocoding";
+import { isParkingPassPublicReady } from "./services/parkingPassQuality";
 
 // Interface for storage operations
 export interface IStorage {
@@ -133,6 +134,7 @@ export interface IStorage {
   getHost(id: string): Promise<Host | undefined>;
   getHostByUserId(userId: string): Promise<Host | undefined>;
   ensureDraftParkingPassForHost(hostId: string): Promise<boolean>;
+  syncParkingPassSeriesFromHost(hostId: string): Promise<string | null>;
   getHostsByUserId(userId: string): Promise<Host[]>;
   getHostsByIds(hostIds: string[]): Promise<Host[]>;
   syncHostFromUserAddress(
@@ -1125,6 +1127,15 @@ export class DatabaseStorage implements IStorage {
       `${has("is_verified") ? `${q("is_verified")} as "isVerified"` : `false as "isVerified"`}`,
       `${has("admin_created") ? `${q("admin_created")} as "adminCreated"` : `false as "adminCreated"`}`,
       `${has("spot_count") ? `${q("spot_count")} as "spotCount"` : `1 as "spotCount"`}`,
+      `${has("parking_pass_breakfast_price_cents") ? `${q("parking_pass_breakfast_price_cents")} as "parkingPassBreakfastPriceCents"` : `0 as "parkingPassBreakfastPriceCents"`}`,
+      `${has("parking_pass_lunch_price_cents") ? `${q("parking_pass_lunch_price_cents")} as "parkingPassLunchPriceCents"` : `0 as "parkingPassLunchPriceCents"`}`,
+      `${has("parking_pass_dinner_price_cents") ? `${q("parking_pass_dinner_price_cents")} as "parkingPassDinnerPriceCents"` : `0 as "parkingPassDinnerPriceCents"`}`,
+      `${has("parking_pass_daily_price_cents") ? `${q("parking_pass_daily_price_cents")} as "parkingPassDailyPriceCents"` : `0 as "parkingPassDailyPriceCents"`}`,
+      `${has("parking_pass_weekly_price_cents") ? `${q("parking_pass_weekly_price_cents")} as "parkingPassWeeklyPriceCents"` : `0 as "parkingPassWeeklyPriceCents"`}`,
+      `${has("parking_pass_monthly_price_cents") ? `${q("parking_pass_monthly_price_cents")} as "parkingPassMonthlyPriceCents"` : `0 as "parkingPassMonthlyPriceCents"`}`,
+      `${has("parking_pass_start_time") ? `${q("parking_pass_start_time")} as "parkingPassStartTime"` : `null as "parkingPassStartTime"`}`,
+      `${has("parking_pass_end_time") ? `${q("parking_pass_end_time")} as "parkingPassEndTime"` : `null as "parkingPassEndTime"`}`,
+      `${has("parking_pass_days_of_week") ? `${q("parking_pass_days_of_week")} as "parkingPassDaysOfWeek"` : `null as "parkingPassDaysOfWeek"`}`,
       `${has("stripe_connect_account_id") ? `${q("stripe_connect_account_id")} as "stripeConnectAccountId"` : `null as "stripeConnectAccountId"`}`,
       `${has("stripe_connect_status") ? `${q("stripe_connect_status")} as "stripeConnectStatus"` : `null as "stripeConnectStatus"`}`,
       `${has("stripe_onboarding_completed") ? `${q("stripe_onboarding_completed")} as "stripeOnboardingCompleted"` : `false as "stripeOnboardingCompleted"`}`,
@@ -1171,6 +1182,31 @@ export class DatabaseStorage implements IStorage {
     const defaultEndTime = PARKING_PASS_MEAL_WINDOWS.dinner.end;
     const spotCount = host.spotCount ?? 1;
 
+    const breakfast = Number((host as any).parkingPassBreakfastPriceCents ?? 0) || 0;
+    const lunch = Number((host as any).parkingPassLunchPriceCents ?? 0) || 0;
+    const dinner = Number((host as any).parkingPassDinnerPriceCents ?? 0) || 0;
+    const daily = Number((host as any).parkingPassDailyPriceCents ?? 0) || 0;
+    const weekly = Number((host as any).parkingPassWeeklyPriceCents ?? 0) || 0;
+    const monthly = Number((host as any).parkingPassMonthlyPriceCents ?? 0) || 0;
+    const hostPrice = breakfast + lunch + dinner;
+    const startTime = String((host as any).parkingPassStartTime || "").trim();
+    const endTime = String((host as any).parkingPassEndTime || "").trim();
+    const daysOfWeek = (host as any).parkingPassDaysOfWeek ?? [];
+
+    const listing = {
+      host,
+      startTime: startTime || defaultStartTime,
+      endTime: endTime || defaultEndTime,
+      maxTrucks: spotCount,
+      breakfastPriceCents: breakfast,
+      lunchPriceCents: lunch,
+      dinnerPriceCents: dinner,
+      dailyPriceCents: daily || hostPrice,
+      weeklyPriceCents: weekly,
+      monthlyPriceCents: monthly,
+    };
+    const publicReady = isParkingPassPublicReady(listing as any);
+
     await db
       .insert(eventSeries)
       .values({
@@ -1181,24 +1217,126 @@ export class DatabaseStorage implements IStorage {
         recurrenceRule: null,
         startDate: today,
         endDate: horizon,
-        defaultStartTime,
-        defaultEndTime,
+        defaultStartTime: startTime || defaultStartTime,
+        defaultEndTime: endTime || defaultEndTime,
         defaultMaxTrucks: spotCount,
         defaultHardCapEnabled: false,
         seriesType: "parking_pass",
-        parkingPassDaysOfWeek: [],
-        defaultBreakfastPriceCents: 0,
-        defaultLunchPriceCents: 0,
-        defaultDinnerPriceCents: 0,
-        defaultDailyPriceCents: 0,
-        defaultWeeklyPriceCents: 0,
-        defaultMonthlyPriceCents: 0,
-        defaultHostPriceCents: 0,
-        status: "draft",
+        parkingPassDaysOfWeek: Array.isArray(daysOfWeek) ? (daysOfWeek as any) : [],
+        defaultBreakfastPriceCents: breakfast,
+        defaultLunchPriceCents: lunch,
+        defaultDinnerPriceCents: dinner,
+        defaultDailyPriceCents: daily || hostPrice,
+        defaultWeeklyPriceCents: weekly,
+        defaultMonthlyPriceCents: monthly,
+        defaultHostPriceCents: hostPrice,
+        status: publicReady ? "published" : "draft",
+        publishedAt: publicReady ? new Date() : null,
       })
       .returning();
 
     return true;
+  }
+
+  async syncParkingPassSeriesFromHost(hostId: string): Promise<string | null> {
+    const normalizedHostId = String(hostId || "").trim();
+    if (!normalizedHostId) return null;
+    const host = await this.getHost(normalizedHostId);
+    if (!host) return null;
+
+    // Ensure a series exists (required for bookable virtual ids).
+    await this.ensureDraftParkingPassForHost(host.id).catch(() => false);
+
+    const defaultStartTime = PARKING_PASS_MEAL_WINDOWS.breakfast.start;
+    const defaultEndTime = PARKING_PASS_MEAL_WINDOWS.dinner.end;
+    const startTime = String((host as any).parkingPassStartTime || "").trim() || defaultStartTime;
+    const endTime = String((host as any).parkingPassEndTime || "").trim() || defaultEndTime;
+
+    const breakfast = Number((host as any).parkingPassBreakfastPriceCents ?? 0) || 0;
+    const lunch = Number((host as any).parkingPassLunchPriceCents ?? 0) || 0;
+    const dinner = Number((host as any).parkingPassDinnerPriceCents ?? 0) || 0;
+    const daily = Number((host as any).parkingPassDailyPriceCents ?? 0) || 0;
+    const weekly = Number((host as any).parkingPassWeeklyPriceCents ?? 0) || 0;
+    const monthly = Number((host as any).parkingPassMonthlyPriceCents ?? 0) || 0;
+    const hostPrice = breakfast + lunch + dinner;
+    const daysOfWeek = (host as any).parkingPassDaysOfWeek ?? [];
+    const spotCount = Number((host as any).spotCount ?? 1) || 1;
+
+    const listing = {
+      host,
+      startTime,
+      endTime,
+      maxTrucks: spotCount,
+      breakfastPriceCents: breakfast,
+      lunchPriceCents: lunch,
+      dinnerPriceCents: dinner,
+      dailyPriceCents: daily || hostPrice,
+      weeklyPriceCents: weekly,
+      monthlyPriceCents: monthly,
+    };
+    const publicReady = isParkingPassPublicReady(listing as any);
+
+    // Find existing series id (schema drift tolerant).
+    let seriesId: string | null = null;
+    try {
+      const existing = await db
+        .select({ id: eventSeries.id })
+        .from(eventSeries)
+        .where(and(eq(eventSeries.hostId, host.id), eq(eventSeries.seriesType, "parking_pass")))
+        .limit(1);
+      seriesId = existing?.[0]?.id ?? null;
+    } catch {
+      const safe = await this.getParkingPassSeriesSafe().catch(() => []);
+      const match = safe.find((row) => String(row.hostId || "").trim() === host.id);
+      seriesId = match?.id ?? null;
+    }
+
+    const updates: any = {
+      name: `Parking Pass - ${host.businessName}`,
+      description: host.address,
+      defaultStartTime: startTime,
+      defaultEndTime: endTime,
+      defaultMaxTrucks: spotCount,
+      parkingPassDaysOfWeek: Array.isArray(daysOfWeek) ? daysOfWeek : [],
+      defaultBreakfastPriceCents: breakfast,
+      defaultLunchPriceCents: lunch,
+      defaultDinnerPriceCents: dinner,
+      defaultDailyPriceCents: daily || hostPrice,
+      defaultWeeklyPriceCents: weekly,
+      defaultMonthlyPriceCents: monthly,
+      defaultHostPriceCents: hostPrice,
+      status: publicReady ? "published" : "draft",
+      publishedAt: publicReady ? new Date() : null,
+      updatedAt: new Date(),
+    };
+
+    try {
+      if (seriesId) {
+        await db.update(eventSeries).set(updates).where(eq(eventSeries.id, seriesId));
+        return seriesId;
+      }
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const horizon = new Date(today);
+      horizon.setDate(horizon.getDate() + 30);
+      const [created] = await db
+        .insert(eventSeries)
+        .values({
+          hostId: host.id,
+          timezone: "America/New_York",
+          recurrenceRule: null,
+          startDate: today,
+          endDate: horizon,
+          defaultHardCapEnabled: false,
+          seriesType: "parking_pass",
+          ...updates,
+        } as any)
+        .returning();
+      return created?.id ?? null;
+    } catch (error) {
+      console.warn("syncParkingPassSeriesFromHost failed:", error);
+      return seriesId;
+    }
   }
 
   async ensureDraftParkingPassesForHosts(): Promise<number> {

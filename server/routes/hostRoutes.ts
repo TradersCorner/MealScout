@@ -346,6 +346,16 @@ export function registerHostRoutes(app: Express) {
         spotCount: z.number().int().min(1).optional(),
         latitude: latitudeSchema.optional(),
         longitude: longitudeSchema.optional(),
+        // Parking Pass defaults live on the host (simple model: address + any price => bookable).
+        parkingPassBreakfastPriceCents: z.number().int().min(0).optional(),
+        parkingPassLunchPriceCents: z.number().int().min(0).optional(),
+        parkingPassDinnerPriceCents: z.number().int().min(0).optional(),
+        parkingPassDailyPriceCents: z.number().int().min(0).optional(),
+        parkingPassWeeklyPriceCents: z.number().int().min(0).optional(),
+        parkingPassMonthlyPriceCents: z.number().int().min(0).optional(),
+        parkingPassStartTime: z.string().optional().nullable(),
+        parkingPassEndTime: z.string().optional().nullable(),
+        parkingPassDaysOfWeek: z.array(z.number().int().min(0).max(6)).optional(),
       });
       const parsed = updateSchema.parse(req.body || {});
 
@@ -421,6 +431,42 @@ export function registerHostRoutes(app: Express) {
           notes: parsed.notes ?? host.notes,
           amenities: parsed.amenities ?? host.amenities ?? null,
           spotCount: parsed.spotCount ?? host.spotCount ?? 1,
+          parkingPassBreakfastPriceCents:
+            parsed.parkingPassBreakfastPriceCents ??
+            (host as any).parkingPassBreakfastPriceCents ??
+            0,
+          parkingPassLunchPriceCents:
+            parsed.parkingPassLunchPriceCents ??
+            (host as any).parkingPassLunchPriceCents ??
+            0,
+          parkingPassDinnerPriceCents:
+            parsed.parkingPassDinnerPriceCents ??
+            (host as any).parkingPassDinnerPriceCents ??
+            0,
+          parkingPassDailyPriceCents:
+            parsed.parkingPassDailyPriceCents ??
+            (host as any).parkingPassDailyPriceCents ??
+            0,
+          parkingPassWeeklyPriceCents:
+            parsed.parkingPassWeeklyPriceCents ??
+            (host as any).parkingPassWeeklyPriceCents ??
+            0,
+          parkingPassMonthlyPriceCents:
+            parsed.parkingPassMonthlyPriceCents ??
+            (host as any).parkingPassMonthlyPriceCents ??
+            0,
+          parkingPassStartTime:
+            parsed.parkingPassStartTime !== undefined
+              ? (parsed.parkingPassStartTime ?? null)
+              : ((host as any).parkingPassStartTime ?? null),
+          parkingPassEndTime:
+            parsed.parkingPassEndTime !== undefined
+              ? (parsed.parkingPassEndTime ?? null)
+              : ((host as any).parkingPassEndTime ?? null),
+          parkingPassDaysOfWeek:
+            parsed.parkingPassDaysOfWeek !== undefined
+              ? parsed.parkingPassDaysOfWeek
+              : ((host as any).parkingPassDaysOfWeek ?? []),
           latitude: manualCoords
             ? manualCoords.lat.toString()
             : coords
@@ -440,6 +486,12 @@ export function registerHostRoutes(app: Express) {
         .where(eq(hosts.id, host.id))
         .returning();
 
+      // Keep the implementation-detail series in sync so bookings are possible via virtual ids.
+      try {
+        await storage.syncParkingPassSeriesFromHost(host.id);
+      } catch (e) {
+        console.warn("syncParkingPassSeriesFromHost failed after host update:", e);
+      }
       res.json(updated);
     } catch (error: any) {
       console.error("Error updating host profile:", error);
@@ -807,6 +859,28 @@ export function registerHostRoutes(app: Express) {
         typeof req.body?.startTime === "string" ? req.body.startTime.trim() : "";
       const endTimeRaw =
         typeof req.body?.endTime === "string" ? req.body.endTime.trim() : "";
+
+      // New model: persist pricing defaults on the host as the source of truth.
+      try {
+        await db
+          .update(hosts)
+          .set({
+            parkingPassBreakfastPriceCents: breakfastPriceCents,
+            parkingPassLunchPriceCents: lunchPriceCents,
+            parkingPassDinnerPriceCents: dinnerPriceCents,
+            parkingPassDailyPriceCents: dailyPriceCents,
+            parkingPassWeeklyPriceCents: weeklyPriceCents,
+            parkingPassMonthlyPriceCents: monthlyPriceCents,
+            parkingPassStartTime: startTimeRaw || null,
+            parkingPassEndTime: endTimeRaw || null,
+            parkingPassDaysOfWeek: daysOfWeek,
+            updatedAt: new Date(),
+          } as any)
+          .where(eq(hosts.id, host.id));
+      } catch (e) {
+        // Non-blocking: older DBs may not have these columns yet.
+        console.warn("Failed to persist host parking pass defaults:", e);
+      }
 
       const parsed = insertEventSchema.parse({
         ...req.body,

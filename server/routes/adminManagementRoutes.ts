@@ -3421,6 +3421,31 @@ export function registerAdminManagementRoutes(app: Express) {
             seriesUpdates.defaultMonthlyPriceCents = pricingUpdates.monthlyPriceCents;
             seriesUpdates.defaultHostPriceCents = hostPriceCents;
 
+            // Simple model: mirror Parking Pass defaults back onto the host row as the source of truth.
+            // This is best-effort because older DBs may not have these columns yet.
+            try {
+              if (host?.id) {
+                await db
+                  .update(hosts)
+                  .set({
+                    parkingPassBreakfastPriceCents: breakfast,
+                    parkingPassLunchPriceCents: lunch,
+                    parkingPassDinnerPriceCents: dinner,
+                    parkingPassDailyPriceCents: baseDaily,
+                    parkingPassWeeklyPriceCents: pricingUpdates.weeklyPriceCents,
+                    parkingPassMonthlyPriceCents: pricingUpdates.monthlyPriceCents,
+                    parkingPassStartTime: String(
+                      updates.startTime ?? event.startTime ?? "",
+                    ),
+                    parkingPassEndTime: String(updates.endTime ?? event.endTime ?? ""),
+                    updatedAt: new Date(),
+                  } as any)
+                  .where(eq(hosts.id, host.id));
+              }
+            } catch (e) {
+              console.warn("Failed to persist host parking pass defaults:", e);
+            }
+
             const publicReady =
               host &&
               isParkingPassPublicReady({

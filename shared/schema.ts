@@ -2866,6 +2866,33 @@ export const hosts = pgTable(
     isVerified: boolean("is_verified").default(false),
     adminCreated: boolean("admin_created").default(false),
     spotCount: integer("spot_count").notNull().default(1),
+
+    // Parking Pass pricing defaults (simple model: host address + any price => bookable).
+    // These are synced into the host's parking_pass series as an implementation detail.
+    parkingPassBreakfastPriceCents: integer("parking_pass_breakfast_price_cents")
+      .notNull()
+      .default(0),
+    parkingPassLunchPriceCents: integer("parking_pass_lunch_price_cents")
+      .notNull()
+      .default(0),
+    parkingPassDinnerPriceCents: integer("parking_pass_dinner_price_cents")
+      .notNull()
+      .default(0),
+    parkingPassDailyPriceCents: integer("parking_pass_daily_price_cents")
+      .notNull()
+      .default(0),
+    parkingPassWeeklyPriceCents: integer("parking_pass_weekly_price_cents")
+      .notNull()
+      .default(0),
+    parkingPassMonthlyPriceCents: integer("parking_pass_monthly_price_cents")
+      .notNull()
+      .default(0),
+    parkingPassStartTime: varchar("parking_pass_start_time"),
+    parkingPassEndTime: varchar("parking_pass_end_time"),
+    parkingPassDaysOfWeek: jsonb("parking_pass_days_of_week")
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+
     // Stripe Connect for receiving payments
     stripeConnectAccountId: varchar("stripe_connect_account_id"),
     stripeConnectStatus: varchar("stripe_connect_status").default("pending"),

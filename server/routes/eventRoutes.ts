@@ -21,6 +21,7 @@ import {
 import { asc, eq, inArray, sql } from "drizzle-orm";
 import { forwardGeocode, reverseGeocode } from "../utils/geocoding";
 import { listParkingPassOccurrences } from "../services/parkingPassVirtual";
+import { PARKING_PASS_MEAL_WINDOWS } from "@shared/parkingPassSlots";
 import {
   computeHostProfileQualityFlags,
   computeParkingPassQualityFlags,
@@ -321,6 +322,61 @@ export function registerEventRoutes(app: Express) {
       res.setHeader("Cache-Control", "public, max-age=60");
       if (parkingPassHostIdsCache && parkingPassHostIdsCache.expiresAt > Date.now()) {
         return res.json(parkingPassHostIdsCache.payload);
+      }
+
+      // Prefer the simple model: host pricing fields are the source of truth.
+      // If host pricing columns are not present (older DB) this will naturally return [] and we'll fall back below.
+      const hostPricingIds = new Set<string>();
+      try {
+        const allHosts = await storage.getAllHosts();
+        for (const host of allHosts as any[]) {
+          const hostId = String(host?.id || "").trim();
+          if (!hostId) continue;
+          if (
+            !isHostProfileMapEligible({
+              businessName: host?.businessName,
+              address: host?.address,
+              city: host?.city,
+              state: host?.state,
+            })
+          ) {
+            continue;
+          }
+
+          const listing = {
+            host,
+            startTime:
+              String(host?.parkingPassStartTime || "").trim() ||
+              PARKING_PASS_MEAL_WINDOWS.breakfast.start,
+            endTime:
+              String(host?.parkingPassEndTime || "").trim() ||
+              PARKING_PASS_MEAL_WINDOWS.dinner.end,
+            maxTrucks: host?.spotCount ?? 1,
+            breakfastPriceCents: host?.parkingPassBreakfastPriceCents ?? 0,
+            lunchPriceCents: host?.parkingPassLunchPriceCents ?? 0,
+            dinnerPriceCents: host?.parkingPassDinnerPriceCents ?? 0,
+            dailyPriceCents: host?.parkingPassDailyPriceCents ?? 0,
+            weeklyPriceCents: host?.parkingPassWeeklyPriceCents ?? 0,
+            monthlyPriceCents: host?.parkingPassMonthlyPriceCents ?? 0,
+          };
+          if (!isParkingPassPublicReady(listing as any)) continue;
+          hostPricingIds.add(hostId);
+        }
+      } catch (error) {
+        console.warn("parking-pass/host-ids host-pricing fast path failed:", error);
+      }
+
+      if (hostPricingIds.size > 0) {
+        const payload = {
+          generatedAt: new Date().toISOString(),
+          hostIds: Array.from(hostPricingIds),
+        };
+        parkingPassHostIdsCache = {
+          payload,
+          expiresAt: Date.now() + 60_000,
+        };
+        parkingPassHostIdsLastGood = { payload };
+        return res.json(payload);
       }
 
       // Bookable = host has a public-ready Parking Pass series (address + pricing + valid window/spots).

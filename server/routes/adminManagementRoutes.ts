@@ -3541,6 +3541,78 @@ export function registerAdminManagementRoutes(app: Express) {
   );
 
   app.post(
+    "/api/admin/parking-pass/sync-host-defaults",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (_req: any, res) => {
+      try {
+        const seriesRows = await storage.getParkingPassSeriesSafe();
+        let updatedHosts = 0;
+        const touchedHostIds = new Set<string>();
+
+        for (const series of seriesRows as any[]) {
+          const hostId = String(series?.hostId || "").trim();
+          if (!hostId) continue;
+
+          const breakfast = Number(series?.defaultBreakfastPriceCents ?? 0) || 0;
+          const lunch = Number(series?.defaultLunchPriceCents ?? 0) || 0;
+          const dinner = Number(series?.defaultDinnerPriceCents ?? 0) || 0;
+          const daily = Number(series?.defaultDailyPriceCents ?? 0) || 0;
+          const weekly = Number(series?.defaultWeeklyPriceCents ?? 0) || 0;
+          const monthly = Number(series?.defaultMonthlyPriceCents ?? 0) || 0;
+
+          try {
+            await db
+              .update(hosts)
+              .set({
+                parkingPassBreakfastPriceCents: breakfast,
+                parkingPassLunchPriceCents: lunch,
+                parkingPassDinnerPriceCents: dinner,
+                parkingPassDailyPriceCents: daily,
+                parkingPassWeeklyPriceCents: weekly,
+                parkingPassMonthlyPriceCents: monthly,
+                parkingPassStartTime: series?.defaultStartTime ?? null,
+                parkingPassEndTime: series?.defaultEndTime ?? null,
+                parkingPassDaysOfWeek: series?.parkingPassDaysOfWeek ?? [],
+                updatedAt: new Date(),
+              } as any)
+              .where(eq(hosts.id, hostId));
+            updatedHosts += 1;
+            touchedHostIds.add(hostId);
+          } catch (e: any) {
+            // If the migration hasn't run yet, fail with a clear message.
+            const msg = String(e?.message || "");
+            if (msg.includes("parking_pass_breakfast_price_cents")) {
+              return res.status(503).json({
+                message:
+                  "Host parking pass pricing columns are missing. Run migration 071_add_hosts_parking_pass_pricing.sql and retry.",
+                code: "migration_required",
+              });
+            }
+            console.warn("sync-host-defaults: failed updating host:", e);
+          }
+        }
+
+        // Ensure series status reflects host defaults.
+        let syncedSeries = 0;
+        for (const hostId of touchedHostIds) {
+          const seriesId = await storage.syncParkingPassSeriesFromHost(hostId);
+          if (seriesId) syncedSeries += 1;
+        }
+
+        res.json({
+          success: true,
+          updatedHosts,
+          syncedSeries,
+        });
+      } catch (error: any) {
+        console.error("Error syncing host parking pass defaults:", error);
+        res.status(500).json({ message: "Failed to sync host parking pass defaults" });
+      }
+    },
+  );
+
+  app.post(
     "/api/admin/parking-pass/normalize-series",
     isAuthenticated,
     isStaffOrAdmin,

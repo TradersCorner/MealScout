@@ -560,7 +560,34 @@ export default function HostLocationManager({
                 <div className="flex gap-2">
                   <Button
                     size="sm"
-                    onClick={() =>
+                    onClick={() => {
+                      const breakfast = coerceCents(
+                        pricingEdits.parkingPassBreakfastPriceCents,
+                      );
+                      const lunch = coerceCents(pricingEdits.parkingPassLunchPriceCents);
+                      const dinner = coerceCents(
+                        pricingEdits.parkingPassDinnerPriceCents,
+                      );
+                      const filled = [
+                        { key: "Breakfast", value: breakfast },
+                        { key: "Lunch", value: lunch },
+                        { key: "Dinner", value: dinner },
+                      ];
+                      const filledCount = filled.filter((slot) => slot.value > 0).length;
+                      if (filledCount > 0 && filledCount < 3) {
+                        const missing = filled
+                          .filter((slot) => slot.value <= 0)
+                          .map((slot) => slot.key);
+                        toast({
+                          title: "Missing slot prices",
+                          description: `Please set prices for ${missing.join(
+                            ", ",
+                          )} (or clear all slot prices if you only want a daily price).`,
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+
                       updateHostDefaults.mutate({
                         hostId: host.id,
                         updates: {
@@ -591,8 +618,8 @@ export default function HostLocationManager({
                             pricingEdits.parkingPassMonthlyPriceCents || 0,
                           ),
                         },
-                      })
-                    }
+                      });
+                    }}
                     disabled={updateHostDefaults.isPending}
                   >
                     {updateHostDefaults.isPending ? "Saving..." : "Save pricing"}

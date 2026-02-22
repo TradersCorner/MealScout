@@ -2268,6 +2268,8 @@ export default function AdminDashboard() {
     if (!selectedUser) return null;
     if (!(selectedUser?.userType === "host" || userHosts.length > 0)) return null;
 
+    const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
     return (
       <div>
         <h3 className="font-semibold mb-2 flex items-center text-sm text-muted-foreground">
@@ -2540,10 +2542,210 @@ export default function AdminDashboard() {
                 </div>
                 <div className="rounded-lg border border-border/60 bg-background/70 p-3 space-y-3">
                   <p className="text-xs font-semibold text-muted-foreground">
-                    Parking Pass pricing
+                    Parking Pass defaults (host)
                   </p>
+                  <p className="text-xs text-muted-foreground">
+                    These control pins/bookability. Saving the host will sync the derived
+                    Parking Pass listing immediately.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Start Time</p>
+                      <input
+                        type="time"
+                        className="w-full px-2 py-1 border rounded-md text-sm"
+                        value={edits.parkingPassStartTime}
+                        onChange={(e) =>
+                          setHostEdits({
+                            ...hostEdits,
+                            [host.id]: {
+                              ...edits,
+                              parkingPassStartTime: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">End Time</p>
+                      <input
+                        type="time"
+                        className="w-full px-2 py-1 border rounded-md text-sm"
+                        value={edits.parkingPassEndTime}
+                        onChange={(e) =>
+                          setHostEdits({
+                            ...hostEdits,
+                            [host.id]: {
+                              ...edits,
+                              parkingPassEndTime: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Days</p>
+                      <div className="flex flex-wrap gap-2">
+                        {dayLabels.map((label, idx) => {
+                          const days: number[] = Array.isArray(edits.parkingPassDaysOfWeek)
+                            ? edits.parkingPassDaysOfWeek
+                            : [];
+                          const checked = days.includes(idx);
+                          return (
+                            <label
+                              key={label}
+                              className="flex items-center gap-1 text-xs text-muted-foreground select-none"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  const next = new Set<number>(days);
+                                  if (e.target.checked) next.add(idx);
+                                  else next.delete(idx);
+                                  setHostEdits({
+                                    ...hostEdits,
+                                    [host.id]: {
+                                      ...edits,
+                                      parkingPassDaysOfWeek: Array.from(next).sort(
+                                        (a, b) => a - b,
+                                      ),
+                                    },
+                                  });
+                                }}
+                              />
+                              {label}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Breakfast ($)</p>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        className="w-full px-2 py-1 border rounded-md text-sm"
+                        value={toDollars(edits.parkingPassBreakfastPriceCents)}
+                        onChange={(e) =>
+                          setHostEdits({
+                            ...hostEdits,
+                            [host.id]: {
+                              ...edits,
+                              parkingPassBreakfastPriceCents: toCents(e.target.value),
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Lunch ($)</p>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        className="w-full px-2 py-1 border rounded-md text-sm"
+                        value={toDollars(edits.parkingPassLunchPriceCents)}
+                        onChange={(e) =>
+                          setHostEdits({
+                            ...hostEdits,
+                            [host.id]: {
+                              ...edits,
+                              parkingPassLunchPriceCents: toCents(e.target.value),
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Dinner ($)</p>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        className="w-full px-2 py-1 border rounded-md text-sm"
+                        value={toDollars(edits.parkingPassDinnerPriceCents)}
+                        onChange={(e) =>
+                          setHostEdits({
+                            ...hostEdits,
+                            [host.id]: {
+                              ...edits,
+                              parkingPassDinnerPriceCents: toCents(e.target.value),
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Daily ($)</p>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        className="w-full px-2 py-1 border rounded-md text-sm"
+                        value={toDollars(edits.parkingPassDailyPriceCents)}
+                        onChange={(e) => {
+                          const cents = toCents(e.target.value);
+                          setHostEdits({
+                            ...hostEdits,
+                            [host.id]: {
+                              ...edits,
+                              parkingPassDailyPriceCents: cents,
+                              parkingPassWeeklyPriceCents: cents * 7,
+                              parkingPassMonthlyPriceCents: cents * 30,
+                            },
+                          });
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Weekly ($)</p>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        className="w-full px-2 py-1 border rounded-md text-sm"
+                        value={
+                          Number(edits.parkingPassDailyPriceCents || 0)
+                            ? toDollars(Number(edits.parkingPassDailyPriceCents || 0) * 7)
+                            : toDollars(edits.parkingPassWeeklyPriceCents)
+                        }
+                        readOnly
+                        disabled
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Monthly ($)</p>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        className="w-full px-2 py-1 border rounded-md text-sm"
+                        value={
+                          Number(edits.parkingPassDailyPriceCents || 0)
+                            ? toDollars(Number(edits.parkingPassDailyPriceCents || 0) * 30)
+                            : toDollars(edits.parkingPassMonthlyPriceCents)
+                        }
+                        readOnly
+                        disabled
+                      />
+                    </div>
+                  </div>
+
                   {pass && passEdits ? (
                     <>
+                      <div className="pt-2 border-t">
+                        <p className="text-xs font-semibold text-muted-foreground">
+                          Parking Pass listing override (optional)
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Use this only if you need to override a specific listing; host defaults are the source of truth.
+                        </p>
+                      </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="space-y-1">
                           <p className="text-xs text-muted-foreground">
@@ -3065,6 +3267,18 @@ export default function AdminDashboard() {
         notes: host.notes || "",
         isVerified: !!host.isVerified,
         amenitiesText: host.amenities ? JSON.stringify(host.amenities) : "",
+        // Parking Pass defaults (host-level source of truth)
+        parkingPassStartTime: host.parkingPassStartTime || "",
+        parkingPassEndTime: host.parkingPassEndTime || "",
+        parkingPassDaysOfWeek: Array.isArray(host.parkingPassDaysOfWeek)
+          ? host.parkingPassDaysOfWeek
+          : [],
+        parkingPassBreakfastPriceCents: host.parkingPassBreakfastPriceCents ?? 0,
+        parkingPassLunchPriceCents: host.parkingPassLunchPriceCents ?? 0,
+        parkingPassDinnerPriceCents: host.parkingPassDinnerPriceCents ?? 0,
+        parkingPassDailyPriceCents: host.parkingPassDailyPriceCents ?? 0,
+        parkingPassWeeklyPriceCents: host.parkingPassWeeklyPriceCents ?? 0,
+        parkingPassMonthlyPriceCents: host.parkingPassMonthlyPriceCents ?? 0,
       };
     });
     setHostEdits(nextEdits);
@@ -3639,6 +3853,9 @@ export default function AdminDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/admin/users", selectedUser?.id, "hosts"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", selectedUser?.id, "parking-pass"],
       });
       toast({ title: "Host Updated" });
     },

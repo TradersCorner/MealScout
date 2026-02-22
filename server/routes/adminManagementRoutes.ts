@@ -4179,6 +4179,16 @@ export function registerAdminManagementRoutes(app: Express) {
           contactPhone: req.body?.contactPhone,
           notes: req.body?.notes,
           isVerified: req.body?.isVerified,
+          // Parking Pass defaults (host is the source of truth).
+          parkingPassBreakfastPriceCents: req.body?.parkingPassBreakfastPriceCents,
+          parkingPassLunchPriceCents: req.body?.parkingPassLunchPriceCents,
+          parkingPassDinnerPriceCents: req.body?.parkingPassDinnerPriceCents,
+          parkingPassDailyPriceCents: req.body?.parkingPassDailyPriceCents,
+          parkingPassWeeklyPriceCents: req.body?.parkingPassWeeklyPriceCents,
+          parkingPassMonthlyPriceCents: req.body?.parkingPassMonthlyPriceCents,
+          parkingPassStartTime: req.body?.parkingPassStartTime,
+          parkingPassEndTime: req.body?.parkingPassEndTime,
+          parkingPassDaysOfWeek: req.body?.parkingPassDaysOfWeek,
         };
 
         Object.keys(updates).forEach((key) => {
@@ -4192,6 +4202,15 @@ export function registerAdminManagementRoutes(app: Express) {
           .set({ ...updates, updatedAt: new Date() })
           .where(eq(hosts.id, req.params.id))
           .returning();
+
+        // Keep derived series in sync so pins/bookability update immediately.
+        try {
+          if (updated?.id) {
+            await storage.syncParkingPassSeriesFromHost(String(updated.id));
+          }
+        } catch (e) {
+          console.warn("admin host update: failed syncing parking pass series:", e);
+        }
 
         res.json(updated);
       } catch (error: any) {

@@ -238,16 +238,23 @@ export function computeParkingPassQualityFlags(listing: {
 
 export function isParkingPassPublicReady(listing: Parameters<typeof computeParkingPassQualityFlags>[0]) {
   const flags = computeParkingPassQualityFlags(listing);
-  // Visibility should not hard-fail just because platform payments are temporarily misconfigured.
-  // Booking flows will still fail safely if payments are disabled.
-  // Coordinates are best-effort: map feeds and clients can geocode/pin-fix without blocking bookings.
-  // Treat missing/invalid coords like a non-blocking flag for "public ready".
-  return (
-    flags.filter(
-      (flag) =>
-        flag !== "payments_disabled" &&
-        flag !== "missing_coords" &&
-        flag !== "invalid_coords",
-    ).length === 0
-  );
+  // Public-ready (pins/bookability) should match the simple model:
+  // if a host has an address and any pricing, show it and allow booking.
+  //
+  // These flags are still useful diagnostics in admin tools, but should not
+  // block pins/listings:
+  // - payments/coords: operational or best-effort
+  // - invalid_state/bad_address_format: legacy/dirty data is common
+  // - invalid_time_window/spots: downstream logic defaults these safely
+  const nonBlocking = new Set<ParkingPassQualityFlag>([
+    "payments_disabled",
+    "missing_coords",
+    "invalid_coords",
+    "invalid_state",
+    "bad_address_format",
+    "invalid_time_window",
+    "missing_spots",
+    "invalid_spots",
+  ]);
+  return flags.filter((flag) => !nonBlocking.has(flag)).length === 0;
 }

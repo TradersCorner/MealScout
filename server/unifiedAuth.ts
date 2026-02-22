@@ -1807,10 +1807,18 @@ async function applyAffiliateReferral(req: any, user: User) {
     const affiliateUserId = await resolveAffiliateUserId(ref);
     if (!affiliateUserId || affiliateUserId === user.id) return;
 
+    const [affiliate] = await db
+      .select({ affiliatePercent: users.affiliatePercent })
+      .from(users)
+      .where(eq(users.id, affiliateUserId))
+      .limit(1);
+    const percentSnapshot = Math.max(Number(affiliate?.affiliatePercent ?? 5), 0);
+
     await db
       .update(users)
       .set({
         affiliateCloserUserId: affiliateUserId,
+        affiliateCloserPercent: percentSnapshot,
         updatedAt: new Date(),
       })
       .where(eq(users.id, user.id));

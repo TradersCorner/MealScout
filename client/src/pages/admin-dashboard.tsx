@@ -1881,7 +1881,7 @@ export default function AdminDashboard() {
   // Fetch all users
   const { data: users = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/users"],
-    enabled: !!adminUser && (selectedTab === "users" || selectedTab === "host-locations"),
+    enabled: !!adminUser && selectedTab === "users",
   });
 
   const userById = useMemo(() => {
@@ -2144,7 +2144,7 @@ export default function AdminDashboard() {
   const userContextEnabled =
     !!adminUser &&
     !!selectedUser?.id &&
-    (userDetailsOpen || selectedTab === "host-locations");
+    userDetailsOpen;
 
   const { data: parkingPasses = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/users", selectedUser?.id, "parking-pass"],
@@ -5443,10 +5443,10 @@ export default function AdminDashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MapPin className="w-5 h-5" />
-                  Parking Pass + Host Locations
+                  Parking Pass Tools
                 </CardTitle>
                 <CardDescription>
-                  Select a host user to add locations and edit Parking Pass pricing.
+                  Debug and repair Parking Pass map visibility, series status, and caches.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -5581,36 +5581,6 @@ export default function AdminDashboard() {
                     </Button>
                   </div>
                 </div>
-                <div className="grid gap-2">
-                  <label className="text-xs text-muted-foreground">Host User</label>
-                  <select
-                    className="w-full px-3 py-2 border rounded-md text-sm bg-background"
-                    value={selectedUser?.id ?? ""}
-                    onChange={(e) => {
-                      const next =
-                        users.find((user: any) => user.id === e.target.value) ||
-                        null;
-                      setSelectedUser(next);
-                    }}
-                  >
-                    <option value="">Select a user…</option>
-                    {sortedUsers.map((user: any) => (
-                      <option key={user.id} value={user.id}>
-                        {(user.firstName || user.lastName)
-                          ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
-                          : user.email}{" "}
-                        • {user.userType}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {selectedUser ? (
-                  renderHostLocationsEditor()
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Choose a user to manage their host locations and Parking Pass listings.
-                  </p>
-                )}
               </CardContent>
             </Card>
             <Card>

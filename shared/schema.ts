@@ -76,10 +76,12 @@ export const users: any = pgTable("users", {
     () => users.id,
     { onDelete: "set null" },
   ),
+  affiliateCloserPercent: integer("affiliate_closer_percent"),
   affiliateBookerUserId: varchar("affiliate_booker_user_id").references(
     () => users.id,
     { onDelete: "set null" },
   ),
+  affiliateBookerPercent: integer("affiliate_booker_percent"),
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   subscriptionBillingInterval: varchar("subscription_billing_interval"), // 'month' | '3-month' | 'year'

@@ -4004,10 +4004,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .limit(1);
 
             if (!existingUser?.affiliateCloserUserId) {
+              const [affiliate] = await db
+                .select({ affiliatePercent: users.affiliatePercent })
+                .from(users)
+                .where(eq(users.id, affiliateUserId))
+                .limit(1);
+              const percentSnapshot = Math.max(Number(affiliate?.affiliatePercent ?? 5), 0);
+
               await db
                 .update(users)
                 .set({
                   affiliateCloserUserId: affiliateUserId,
+                  affiliateCloserPercent: percentSnapshot,
                   updatedAt: new Date(),
                 })
                 .where(eq(users.id, user.id));

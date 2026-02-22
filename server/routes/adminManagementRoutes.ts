@@ -2740,17 +2740,50 @@ export function registerAdminManagementRoutes(app: Express) {
         }
 
         if (affiliateCloserUserId !== undefined) {
-          updates.affiliateCloserUserId =
+          const closerId =
             affiliateCloserUserId === null || affiliateCloserUserId === ""
               ? null
               : String(affiliateCloserUserId);
+          updates.affiliateCloserUserId = closerId;
+
+          // Snapshot the closer's current percent so future affiliatePercent edits
+          // do not change earnings for already-attributed users.
+          if (closerId) {
+            const [closer] = await db
+              .select({ affiliatePercent: users.affiliatePercent })
+              .from(users)
+              .where(eq(users.id, closerId))
+              .limit(1);
+            updates.affiliateCloserPercent = Math.max(
+              Number(closer?.affiliatePercent ?? 5),
+              0,
+            );
+          } else {
+            updates.affiliateCloserPercent = null;
+          }
         }
 
         if (affiliateBookerUserId !== undefined) {
-          updates.affiliateBookerUserId =
+          const bookerId =
             affiliateBookerUserId === null || affiliateBookerUserId === ""
               ? null
               : String(affiliateBookerUserId);
+          updates.affiliateBookerUserId = bookerId;
+
+          // Snapshot the booker's current percent for the same reason as closer.
+          if (bookerId) {
+            const [booker] = await db
+              .select({ affiliatePercent: users.affiliatePercent })
+              .from(users)
+              .where(eq(users.id, bookerId))
+              .limit(1);
+            updates.affiliateBookerPercent = Math.max(
+              Number(booker?.affiliatePercent ?? 5),
+              0,
+            );
+          } else {
+            updates.affiliateBookerPercent = null;
+          }
         }
 
         if (Object.keys(updates).length === 0) {
@@ -2776,6 +2809,8 @@ export function registerAdminManagementRoutes(app: Express) {
           affiliatePercent: updated.affiliatePercent,
           affiliateCloserUserId: updated.affiliateCloserUserId,
           affiliateBookerUserId: updated.affiliateBookerUserId,
+          affiliateCloserPercent: (updated as any).affiliateCloserPercent ?? null,
+          affiliateBookerPercent: (updated as any).affiliateBookerPercent ?? null,
         });
       } catch (error: any) {
         console.error("Error updating affiliate settings:", error);

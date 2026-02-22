@@ -19,6 +19,8 @@ async function getAffiliateRecipientsForUser(
     .select({
       affiliateCloserUserId: users.affiliateCloserUserId,
       affiliateBookerUserId: users.affiliateBookerUserId,
+      affiliateCloserPercent: users.affiliateCloserPercent,
+      affiliateBookerPercent: users.affiliateBookerPercent,
     })
     .from(users)
     .where(eq(users.id, userId))
@@ -54,13 +56,30 @@ async function getAffiliateRecipientsForUser(
   const typedAffiliates = affiliates as AffiliateRow[];
   const map = new Map(typedAffiliates.map((row) => [row.id, row]));
 
+  const percentOverride = new Map<string, number>();
+  if (owner.affiliateCloserUserId) {
+    const p = Number(owner.affiliateCloserPercent);
+    if (Number.isFinite(p) && p >= 0) {
+      percentOverride.set(owner.affiliateCloserUserId, p);
+    }
+  }
+  if (owner.affiliateBookerUserId) {
+    const p = Number(owner.affiliateBookerPercent);
+    if (Number.isFinite(p) && p >= 0) {
+      percentOverride.set(owner.affiliateBookerUserId, p);
+    }
+  }
+
   return uniqueIds
     .map((id) => map.get(id))
     .filter((row): row is NonNullable<typeof row> => Boolean(row))
     .filter((row) => row.userType !== "admin" && row.userType !== "super_admin")
     .map((row) => ({
       affiliateUserId: row.id,
-      percent: Math.max(Number(row.affiliatePercent ?? 5), 0),
+      percent: Math.max(
+        Number(percentOverride.get(row.id) ?? row.affiliatePercent ?? 5),
+        0,
+      ),
     }))
     .filter((row) => row.percent > 0);
 }

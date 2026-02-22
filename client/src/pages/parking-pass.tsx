@@ -605,6 +605,8 @@ export default function ParkingPassPage() {
   const [bookingReturnIntentId, setBookingReturnIntentId] = useState<string | null>(null);
   const [bookingReturnHandled, setBookingReturnHandled] = useState(false);
   const [isCoarsePointer, setIsCoarsePointer] = useState(false);
+  // On coarse pointers (mobile), Leaflet can hijack page scroll. Default to locked.
+  const [mapUnlocked, setMapUnlocked] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [parkingCoords, setParkingCoords] = useState<
     Record<string, GeoPoint>
@@ -624,6 +626,14 @@ export default function ParkingPassPage() {
       return () => media.removeListener(apply);
     }
   }, []);
+
+  useEffect(() => {
+    if (viewMode !== "map") {
+      setMapUnlocked(false);
+    }
+  }, [viewMode]);
+
+  const mapInteractionsEnabled = !isCoarsePointer || mapUnlocked;
   const { data: mapLocationsData } = useQuery<MapLocationsResponse>({
     queryKey: ["/api/map/locations"],
     queryFn: async () => {
@@ -5058,15 +5068,35 @@ export default function ParkingPassPage() {
                   <div className="space-y-3">
                     <div className="rounded-2xl pp-glass shadow-clean overflow-hidden">
                       <div className="relative h-72 w-full bg-slate-100/60">
+                        {isCoarsePointer && (
+                          <div className="absolute right-3 top-3 z-[1000]">
+                            <Button
+                              size="sm"
+                              variant={mapUnlocked ? "default" : "secondary"}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setMapUnlocked((prev) => !prev);
+                              }}
+                            >
+                              {mapUnlocked ? "Lock map" : "Move map"}
+                            </Button>
+                          </div>
+                        )}
+                        {isCoarsePointer && !mapUnlocked && (
+                          <div className="absolute inset-0 z-[900]" aria-hidden="true" />
+                        )}
                         <MapContainer
                           center={[fallbackMapCenter.lat, fallbackMapCenter.lng]}
                           zoom={13}
                           zoomControl={false}
-                          scrollWheelZoom={!isCoarsePointer}
-                          dragging={!isCoarsePointer}
-                          touchZoom={!isCoarsePointer}
-                          doubleClickZoom={!isCoarsePointer}
-                          className="h-full w-full touch-pan-y"
+                          scrollWheelZoom={mapInteractionsEnabled}
+                          dragging={mapInteractionsEnabled}
+                          touchZoom={mapInteractionsEnabled}
+                          doubleClickZoom={mapInteractionsEnabled}
+                          className={`h-full w-full ${
+                            mapInteractionsEnabled ? "touch-none" : "touch-pan-y"
+                          }`}
                         >
                           <MapCenterer center={fallbackMapCenter} />
                           <TileLayer
@@ -5132,15 +5162,35 @@ export default function ParkingPassPage() {
                 <div className="space-y-3">
                   <div className="rounded-2xl pp-glass shadow-clean overflow-hidden">
                     <div className="relative h-72 w-full bg-slate-100/60">
+                      {isCoarsePointer && (
+                        <div className="absolute right-3 top-3 z-[1000]">
+                          <Button
+                            size="sm"
+                            variant={mapUnlocked ? "default" : "secondary"}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setMapUnlocked((prev) => !prev);
+                            }}
+                          >
+                            {mapUnlocked ? "Lock map" : "Move map"}
+                          </Button>
+                        </div>
+                      )}
+                      {isCoarsePointer && !mapUnlocked && (
+                        <div className="absolute inset-0 z-[900]" aria-hidden="true" />
+                      )}
                       <MapContainer
                         center={[mapCenter.lat, mapCenter.lng]}
                         zoom={13}
                         zoomControl={false}
-                        scrollWheelZoom={!isCoarsePointer}
-                        dragging={!isCoarsePointer}
-                        touchZoom={!isCoarsePointer}
-                        doubleClickZoom={!isCoarsePointer}
-                        className="h-full w-full touch-pan-y"
+                        scrollWheelZoom={mapInteractionsEnabled}
+                        dragging={mapInteractionsEnabled}
+                        touchZoom={mapInteractionsEnabled}
+                        doubleClickZoom={mapInteractionsEnabled}
+                        className={`h-full w-full ${
+                          mapInteractionsEnabled ? "touch-none" : "touch-pan-y"
+                        }`}
                       >
                         <MapCenterer center={mapCenter} />
                         <TileLayer

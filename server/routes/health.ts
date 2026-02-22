@@ -13,6 +13,17 @@ function envPresent(name: string) {
   return Boolean(String(process.env[name] || "").trim());
 }
 
+function parseDatabaseHostHint(rawUrl: string | undefined) {
+  const value = String(rawUrl || "").trim();
+  if (!value) return null;
+  // Support both URL-ish and "host=...;..." formats.
+  const atMatch = value.match(/@([^:/?#]+)/);
+  if (atMatch?.[1]) return atMatch[1];
+  const hostMatch = value.match(/\bhost=([^\s;]+)/i);
+  if (hostMatch?.[1]) return hostMatch[1];
+  return null;
+}
+
 function getConfigSnapshot() {
   return {
     nodeEnv: String(process.env.NODE_ENV || "development"),
@@ -39,8 +50,29 @@ function getConfigSnapshot() {
   };
 }
 
+function getBuildSnapshot() {
+  const gitCommit =
+    String(
+      process.env.RENDER_GIT_COMMIT ||
+        process.env.VERCEL_GIT_COMMIT_SHA ||
+        process.env.GIT_COMMIT ||
+        "",
+    ).trim() || null;
+
+  return {
+    gitCommit,
+    dbHost: parseDatabaseHostHint(process.env.DATABASE_URL),
+    service: String(process.env.RENDER_SERVICE_NAME || "").trim() || null,
+    environment: String(process.env.RENDER_SERVICE_ID || "").trim() || null,
+  };
+}
+
 healthRouter.get("/health", (_req, res) => {
   res.json({ status: "ok", ts: Date.now() });
+});
+
+healthRouter.get("/health/build", (_req, res) => {
+  res.json({ status: "ok", ts: Date.now(), build: getBuildSnapshot() });
 });
 
 healthRouter.get("/health/realtime", (_req, res) => {

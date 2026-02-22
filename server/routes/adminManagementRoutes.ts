@@ -347,6 +347,33 @@ export function registerAdminManagementRoutes(app: Express) {
   };
 
   app.get(
+    "/api/admin/debug/db",
+    isAuthenticated,
+    isStaffOrAdmin,
+    async (_req: any, res) => {
+      // Expose a safe DB hint for debugging environment drift (no credentials).
+      const raw = String(process.env.DATABASE_URL || "").trim();
+      const dbHost =
+        raw.match(/@([^:/?#]+)/)?.[1] ??
+        raw.match(/\bhost=([^\s;]+)/i)?.[1] ??
+        null;
+      res.json({
+        status: "ok",
+        ts: Date.now(),
+        dbHost,
+        hasDatabaseUrl: Boolean(raw),
+        gitCommit:
+          String(
+            process.env.RENDER_GIT_COMMIT ||
+              process.env.VERCEL_GIT_COMMIT_SHA ||
+              process.env.GIT_COMMIT ||
+              "",
+          ).trim() || null,
+      });
+    },
+  );
+
+  app.get(
     "/api/admin/email/status",
     isAuthenticated,
     isStaffOrAdmin,

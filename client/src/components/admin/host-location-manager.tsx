@@ -34,6 +34,7 @@ const coerceCents = (value: unknown) => {
 };
 
 const applySlotSumToDailyIfAuto = (prev: any, nextSlotSumCents: number) => {
+  if (prev?._dailyOnlySelected) return prev;
   if (prev?._dailyManuallyEdited) return prev;
   const nextDaily = Math.max(0, Math.round(nextSlotSumCents));
   if (nextDaily <= 0) return prev;
@@ -80,6 +81,7 @@ export default function HostLocationManager({
     parkingPassDailyPriceCents: 0,
     parkingPassWeeklyPriceCents: 0,
     parkingPassMonthlyPriceCents: 0,
+    _dailyOnlySelected: false,
   });
   const dayLabels = useMemo(
     () => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
@@ -274,6 +276,7 @@ export default function HostLocationManager({
                     const dinner = coerceCents(host.parkingPassDinnerPriceCents);
                     const slotSum = breakfast + lunch + dinner;
                     const initialDaily = slotSum > 0 ? slotSum : coerceCents(host.parkingPassDailyPriceCents);
+                    const dailyOnlySelected = slotSum === 0 && initialDaily > 0;
                     setPricingEdits({
                       parkingPassStartTime: host.parkingPassStartTime || "",
                       parkingPassEndTime: host.parkingPassEndTime || "",
@@ -293,6 +296,7 @@ export default function HostLocationManager({
                           ? initialDaily * 30
                           : coerceCents(host.parkingPassMonthlyPriceCents),
                       _dailyManuallyEdited: false,
+                      _dailyOnlySelected: dailyOnlySelected,
                     });
                   }}
                   disabled={!canEdit}
@@ -441,7 +445,11 @@ export default function HostLocationManager({
                       onChange={(e) => {
                         const cents = toCents(e.target.value);
                         setPricingEdits((prev: any) => {
-                          const next = { ...prev, parkingPassBreakfastPriceCents: cents };
+                          const next = {
+                            ...prev,
+                            parkingPassBreakfastPriceCents: cents,
+                            _dailyOnlySelected: false,
+                          };
                           const sum =
                             coerceCents(cents) +
                             coerceCents(next?.parkingPassLunchPriceCents) +
@@ -462,7 +470,11 @@ export default function HostLocationManager({
                       onChange={(e) => {
                         const cents = toCents(e.target.value);
                         setPricingEdits((prev: any) => {
-                          const next = { ...prev, parkingPassLunchPriceCents: cents };
+                          const next = {
+                            ...prev,
+                            parkingPassLunchPriceCents: cents,
+                            _dailyOnlySelected: false,
+                          };
                           const sum =
                             coerceCents(next?.parkingPassBreakfastPriceCents) +
                             coerceCents(cents) +
@@ -483,7 +495,11 @@ export default function HostLocationManager({
                       onChange={(e) => {
                         const cents = toCents(e.target.value);
                         setPricingEdits((prev: any) => {
-                          const next = { ...prev, parkingPassDinnerPriceCents: cents };
+                          const next = {
+                            ...prev,
+                            parkingPassDinnerPriceCents: cents,
+                            _dailyOnlySelected: false,
+                          };
                           const sum =
                             coerceCents(next?.parkingPassBreakfastPriceCents) +
                             coerceCents(next?.parkingPassLunchPriceCents) +
@@ -555,6 +571,35 @@ export default function HostLocationManager({
                     />
                   </div>
                 </div>
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(pricingEdits._dailyOnlySelected)}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      const breakfast = coerceCents(
+                        pricingEdits.parkingPassBreakfastPriceCents,
+                      );
+                      const lunch = coerceCents(pricingEdits.parkingPassLunchPriceCents);
+                      const dinner = coerceCents(pricingEdits.parkingPassDinnerPriceCents);
+                      const slotSum = breakfast + lunch + dinner;
+                      if (checked && slotSum > 0) {
+                        toast({
+                          title: "Daily-only conflicts with slots",
+                          description:
+                            "Clear Breakfast/Lunch/Dinner prices before enabling Daily only.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      setPricingEdits({
+                        ...pricingEdits,
+                        _dailyOnlySelected: checked,
+                      });
+                    }}
+                  />
+                  Daily only (this host allows all-day parking, no time-slot pricing)
+                </label>
 
                 <div className="flex gap-2">
                   <Button
@@ -573,6 +618,39 @@ export default function HostLocationManager({
                         { key: "Dinner", value: dinner },
                       ];
                       const filledCount = filled.filter((slot) => slot.value > 0).length;
+                      const daily = coerceCents(pricingEdits.parkingPassDailyPriceCents);
+                      const dailyOnlySelected = Boolean(pricingEdits._dailyOnlySelected);
+
+                      if (dailyOnlySelected && filledCount > 0) {
+                        toast({
+                          title: "Daily-only conflicts with slots",
+                          description:
+                            "Uncheck Daily only or clear Breakfast/Lunch/Dinner prices.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+
+                      if (filledCount === 0 && daily > 0 && !dailyOnlySelected) {
+                        toast({
+                          title: "Choose pricing mode",
+                          description:
+                            "If you only want a daily price, check Daily only. Otherwise add Breakfast, Lunch, and Dinner slot prices.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+
+                      if (dailyOnlySelected && daily <= 0) {
+                        toast({
+                          title: "Daily price required",
+                          description:
+                            "Enter a Daily price when Daily only is enabled.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+
                       if (filledCount > 0 && filledCount < 3) {
                         const missing = filled
                           .filter((slot) => slot.value <= 0)
@@ -581,7 +659,7 @@ export default function HostLocationManager({
                           title: "Missing slot prices",
                           description: `Please set prices for ${missing.join(
                             ", ",
-                          )} (or clear all slot prices if you only want a daily price).`,
+                          )}, or use Daily only for all-day parking.`,
                           variant: "destructive",
                         });
                         return;

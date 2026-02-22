@@ -28,7 +28,17 @@ const main = async () => {
     select
       (select count(*)::int from hosts) as hosts,
       (select count(*)::int from host_prices where host_total > 0) as hosts_priced,
+      (select count(*)::int
+         from hosts
+        where ${sumHost} > 0 and coalesce(trim(address),'') <> ''
+      ) as hosts_priced_with_address,
+      (select count(*)::int
+         from hosts
+        where ${sumHost} > 0 and (address is null or trim(address) = '')
+      ) as hosts_priced_missing_address,
+      (select count(*)::int from series_prices) as series_total,
       (select count(*)::int from series_prices where series_total > 0) as series_priced,
+      (select count(*)::int from event_prices) as events_total,
       (select count(*)::int from event_prices where max_event_total > 0) as events_priced,
       (select count(*)::int
          from host_prices h
@@ -89,6 +99,23 @@ const main = async () => {
   } else {
     console.log("No mismatches: no host with zero host pricing has series/event pricing.");
   }
+
+  const unpriced = await pool.query(
+    `
+    select
+      id,
+      business_name,
+      left(coalesce(address,''), 60) as address
+    from hosts
+    where ${sumHost} = 0
+    order by updated_at desc nulls last, created_at desc nulls last
+    limit 50
+    `,
+  );
+  console.log(`Unpriced hosts (host parking_pass_* all zero): ${unpriced.rows.length}`);
+  for (const row of unpriced.rows) {
+    console.log(`- ${row.id} | ${row.business_name || "(no name)"} | ${row.address}`);
+  }
 };
 
 main()
@@ -103,4 +130,3 @@ main()
       // ignore
     }
   });
-

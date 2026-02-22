@@ -5445,20 +5445,29 @@ export default function AdminDashboard() {
                   <CardHeader>
                     <CardTitle className="text-base">Parking Pass Fix Queue</CardTitle>
                       <CardDescription>
-                        Hosts are only visible on maps when pricing + address + platform payments are complete. Fix these items to go live.
+                        Hosts should be visible on maps when pricing + address are complete. Platform payments affect checkout, not pin visibility.
                       </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {Array.isArray(parkingPassFixQueue?.rows) &&
                     parkingPassFixQueue.rows.length > 0 ? (
                       <div className="space-y-2">
+                        <div className="text-xs text-muted-foreground">
+                          Live now:{" "}
+                          {
+                            parkingPassFixQueue.rows.filter((row: any) => row.publicReady)
+                              .length
+                          }
+                          {" / "}
+                          {parkingPassFixQueue.rows.length}
+                        </div>
                         {parkingPassFixQueue.rows
                           .filter(
                             (row: any) =>
                               !row.publicReady ||
-                              !row.paymentsEnabled ||
                               (Array.isArray(row.qualityFlags) &&
-                                row.qualityFlags.length > 0),
+                                row.qualityFlags.includes("missing_price") ||
+                                row.qualityFlags.includes("missing_address")),
                           )
                           .slice(0, 50)
                           .map((row: any) => (
@@ -5481,11 +5490,6 @@ export default function AdminDashboard() {
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <Badge
-                                    variant={row.paymentsEnabled ? "default" : "destructive"}
-                                  >
-                                    {row.paymentsEnabled ? "Platform payments ok" : "Platform payments off"}
-                                  </Badge>
                                   <Badge
                                     variant={row.publicReady ? "default" : "secondary"}
                                   >
@@ -5510,7 +5514,8 @@ export default function AdminDashboard() {
                               {Array.isArray(row.qualityFlags) &&
                               row.qualityFlags.length > 0 ? (
                                 <div className="text-muted-foreground">
-                                  Issues: {row.qualityFlags.slice(0, 6).join(", ")}
+                                  {row.publicReady ? "Warnings" : "Blocking"}:{" "}
+                                  {row.qualityFlags.slice(0, 6).join(", ")}
                                   {row.qualityFlags.length > 6 ? ", ..." : ""}
                                 </div>
                               ) : null}

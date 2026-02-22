@@ -204,9 +204,19 @@ export default function HostLocationManager({
                     ? `, ${host.state}`
                     : ""}
                 </p>
+                {host?.rep && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Rep:{" "}
+                    {`${host.rep.firstName || ""} ${host.rep.lastName || ""}`.trim() ||
+                      host.rep.email ||
+                      host.rep.id}{" "}
+                    {host.rep.email ? `(${host.rep.email})` : ""}
+                    {host.rep.phone ? ` ${host.rep.phone}` : ""}
+                  </p>
+                )}
                 {host.latitude && host.longitude && (
                   <p className="text-xs text-[color:var(--status-success)] mt-1">
-                    📍 {host.latitude}, {host.longitude}
+                    Coords: {host.latitude}, {host.longitude}
                   </p>
                 )}
               </div>

@@ -3757,6 +3757,38 @@ export function registerAdminManagementRoutes(app: Express) {
     isStaffOrAdmin,
     async (_req: any, res) => {
       try {
+        // Enrich hosts with their rep (user) for admin tooling.
+        // If the join fails due to schema drift, fall back to plain hosts.
+        try {
+          const rows = await db
+            .select({
+              host: hosts,
+              user: users,
+            })
+            .from(hosts)
+            .leftJoin(users, eq(hosts.userId, users.id))
+            .orderBy(desc(hosts.createdAt));
+
+          res.json(
+            rows.map((row: any) => ({
+              ...row.host,
+              rep: row.user
+                ? {
+                    id: row.user.id,
+                    firstName: row.user.firstName,
+                    lastName: row.user.lastName,
+                    email: row.user.email,
+                    phone: row.user.phone,
+                    userType: row.user.userType,
+                  }
+                : null,
+            })),
+          );
+          return;
+        } catch (e) {
+          console.warn("/api/admin/hosts join fallback:", e);
+        }
+
         const allHosts = await storage.getAllHosts();
         res.json(allHosts);
       } catch (error) {

@@ -70,6 +70,7 @@ interface Host {
   amenities?: Record<string, boolean> | null;
   stripeConnectAccountId?: string | null;
   stripeChargesEnabled?: boolean | null;
+  stripePayoutsEnabled?: boolean | null;
   stripeOnboardingCompleted?: boolean | null;
 }
 
@@ -2945,15 +2946,9 @@ export default function ParkingPassPage() {
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
   const todayDateKey = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
 
-  // Trucks pay MealScout; hosts can optionally enable Stripe Connect payouts.
+  // Trucks pay MealScout (platform payments). Hosts can optionally enable Stripe Connect payouts (cashout).
   // If host payouts aren't configured, host earnings are held as credit.
   const platformPaymentsReady = Boolean(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
-  const listingPayoutsReady = (listing: ParkingPassListing | null | undefined) =>
-    Boolean(
-      listing?.paymentsEnabled ??
-        listing?.host?.stripeChargesEnabled ??
-        listing?.host?.stripeConnectAccountId,
-    );
 
   const listingHasAvailability = (
     listing: ParkingPassListing | null | undefined,
@@ -3068,18 +3063,20 @@ export default function ParkingPassPage() {
                   Host tools
                 </p>
                 <p className="text-xs text-slate-500">
-                  Listings, location details, and payments status.
+                  Listings, location details, and payout status.
                 </p>
               </div>
               {host ? (
                 <span
                   className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${
-                    host.stripeChargesEnabled
+                    host.stripeConnectAccountId && host.stripePayoutsEnabled
                       ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                       : "border-amber-200 bg-amber-50 text-amber-800"
                   }`}
                 >
-                  {host.stripeChargesEnabled ? "Payments enabled" : "Payments not enabled"}
+                  {host.stripeConnectAccountId && host.stripePayoutsEnabled
+                    ? "Payouts enabled"
+                    : "Payouts not enabled"}
                 </span>
               ) : null}
             </div>
@@ -3091,20 +3088,26 @@ export default function ParkingPassPage() {
                 flags.forEach((flag: any) => uniqueFlags.add(String(flag)));
               });
               const flags = Array.from(uniqueFlags.values());
-              const payoutsEnabled = Boolean(host.stripeConnectAccountId && host.stripeChargesEnabled);
+              const payoutsEnabled = Boolean(host.stripeConnectAccountId && host.stripePayoutsEnabled);
               const hasSpotPhoto = Boolean(host.spotImageUrl);
               const hasAddress =
-                Boolean(host.address && String(host.address).trim().length > 0) &&
-                Boolean(host.city && String(host.city).trim().length > 0) &&
-                Boolean(host.state && String(host.state).trim().length > 0);
-              const publicReady = hasAddress && flags.length === 0;
+                Boolean(host.address && String(host.address).trim().length > 0);
+
+              // Non-blocking flags should not prevent map visibility.
+              const NON_BLOCKING_FLAGS = new Set([
+                "payments_disabled",
+                "missing_coords",
+                "invalid_coords",
+              ]);
+              const blockingFlags = flags.filter((flag) => !NON_BLOCKING_FLAGS.has(flag));
+              const publicReady = hasAddress && blockingFlags.length === 0;
 
               const checklist = [
                 { ok: platformPaymentsReady, label: "Platform payments enabled" },
-                { ok: hasAddress, label: "Address complete (street/city/state)" },
-                { ok: !flags.includes("missing_price"), label: "Pricing added (at least one slot)" },
-                { ok: !flags.includes("missing_spots") && !flags.includes("invalid_spots"), label: "Spot count set" },
-                { ok: !flags.includes("invalid_time_window"), label: "Hours set (start/end time)" },
+                { ok: hasAddress, label: "Address set (street)" },
+                { ok: !blockingFlags.includes("missing_price"), label: "Pricing added (at least one slot)" },
+                { ok: !blockingFlags.includes("missing_spots") && !blockingFlags.includes("invalid_spots"), label: "Spot count set" },
+                { ok: !blockingFlags.includes("invalid_time_window"), label: "Hours set (start/end time)" },
                 { ok: hasSpotPhoto, label: "Spot photo uploaded" },
                 { ok: payoutsEnabled, label: "Host payouts enabled (optional)" },
               ];
@@ -3207,7 +3210,7 @@ export default function ParkingPassPage() {
                 Payments
               </p>
               <p className="text-xs text-slate-500">
-                You must enable payments before trucks can book your spots.
+                Stripe payouts are optional. Trucks can still book your Parking Pass listings; if payouts are disabled, your earnings are held as credit until you enable payouts.
               </p>
             </div>
 
@@ -3215,30 +3218,52 @@ export default function ParkingPassPage() {
               <div className="rounded-xl pp-glass-muted p-4 text-sm text-slate-700">
                 Loading payment status...
               </div>
-            ) : host.stripeChargesEnabled ? (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-                Payments are enabled. Your listings can accept bookings.
-              </div>
             ) : (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
-                <p className="text-sm font-semibold text-amber-900">
-                  Payments are not enabled yet.
-                </p>
-                <p className="text-xs text-amber-800">
-                  Finish Stripe onboarding to start getting paid automatically.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" onClick={() => setLocation("/host/dashboard")}>
-                    Enable payments
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setLocation("/host/dashboard?setup=refresh")}
-                  >
-                    Check status
-                  </Button>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div
+                  className={`rounded-xl border p-4 text-sm ${
+                    platformPaymentsReady
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                      : "border-amber-200 bg-amber-50 text-amber-900"
+                  }`}
+                >
+                  <p className="font-semibold">Platform payments</p>
+                  <p className="text-xs opacity-90">
+                    {platformPaymentsReady
+                      ? "Enabled. Paid bookings can be processed."
+                      : "Not enabled. Paid bookings may fail even if your listing is visible."}
+                  </p>
                 </div>
+
+                {host.stripeConnectAccountId && host.stripePayoutsEnabled ? (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                    <p className="font-semibold">Host payouts</p>
+                    <p className="text-xs opacity-90">
+                      Enabled. You can cash out automatically.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                    <p className="text-sm font-semibold text-amber-900">
+                      Host payouts are not enabled yet.
+                    </p>
+                    <p className="text-xs text-amber-800">
+                      Finish Stripe onboarding to enable cashout. This does not block listing visibility or bookings.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" onClick={() => setLocation("/host/dashboard")}>
+                        Enable payouts
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setLocation("/host/dashboard?setup=refresh")}
+                      >
+                        Check status
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

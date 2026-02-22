@@ -3521,10 +3521,21 @@ export function registerAdminManagementRoutes(app: Express) {
     isStaffOrAdmin,
     async (_req: any, res) => {
       try {
-        const rows = await db
-          .select({ series: eventSeries })
-          .from(eventSeries)
-          .where(eq(eventSeries.seriesType, "parking_pass"));
+        let rows: Array<{ series: any }> = [];
+        try {
+          rows = await db
+            .select({ series: eventSeries })
+            .from(eventSeries)
+            .where(eq(eventSeries.seriesType, "parking_pass"));
+        } catch (error) {
+          // Degrade gracefully if event_series schema drifts (Drizzle selects all columns).
+          console.warn(
+            "normalize-series: falling back to safe event_series projection:",
+            error,
+          );
+          const safe = await storage.getParkingPassSeriesSafe();
+          rows = safe.map((series: any) => ({ series }));
+        }
 
         const hostIds = Array.from(
           new Set<string>(

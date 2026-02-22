@@ -718,6 +718,9 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private userTableInfoPromise:
+    | Promise<{ schema: string; columns: Set<string> }>
+    | null = null;
   private hostTableInfoPromise:
     | Promise<{ schema: string; columns: Set<string> }>
     | null = null;
@@ -727,6 +730,49 @@ export class DatabaseStorage implements IStorage {
   private eventSeriesTableInfoPromise:
     | Promise<{ schema: string; columns: Set<string> }>
     | null = null;
+
+  private async getUserTableInfo(): Promise<{ schema: string; columns: Set<string> }> {
+    if (this.userTableInfoPromise) return this.userTableInfoPromise;
+    // Never allow this to reject; admin + auth flows should degrade gracefully under schema drift.
+    this.userTableInfoPromise = (async () => {
+      try {
+        if (!pool) {
+          return { schema: "public", columns: new Set<string>() };
+        }
+
+        const schemaRes = await pool.query(
+          `
+            select table_schema
+            from information_schema.tables
+            where table_name = 'users'
+            order by case when table_schema = 'public' then 0 else 1 end
+            limit 1
+          `,
+        );
+        const schema =
+          String(schemaRes.rows?.[0]?.table_schema || "").trim() || "public";
+
+        const colsRes = await pool.query(
+          `
+            select column_name
+            from information_schema.columns
+            where table_schema = $1 and table_name = 'users'
+          `,
+          [schema],
+        );
+        const columns = new Set<string>(
+          (colsRes.rows || [])
+            .map((row: any) => String(row.column_name || "").trim())
+            .filter(Boolean),
+        );
+        return { schema, columns };
+      } catch (error) {
+        console.warn("getUserTableInfo failed; using safe user projection:", error);
+        return { schema: "public", columns: new Set<string>() };
+      }
+    })();
+    return this.userTableInfoPromise;
+  }
 
   private async getHostTableInfo(): Promise<{ schema: string; columns: Set<string> }> {
     if (this.hostTableInfoPromise) return this.hostTableInfoPromise;
@@ -900,6 +946,48 @@ export class DatabaseStorage implements IStorage {
     ];
 
     const sqlText = `select ${select.join(", ")} from ${q(schema)}.${q("event_series")} ${whereSql}`;
+    const result = await pool.query(sqlText, params);
+    return result.rows || [];
+  }
+
+  private async selectUsersSafe(whereSql: string, params: any[]): Promise<any[]> {
+    if (!pool) return [];
+    const { schema, columns } = await this.getUserTableInfo();
+    const has = (col: string) => columns.size === 0 || columns.has(col);
+    const q = (ident: string) => `"${ident.replace(/"/g, '""')}"`;
+
+    if (columns.size > 0 && !columns.has("id")) return [];
+
+    const select = [
+      `${q("id")} as "id"`,
+      `${has("user_type") ? `${q("user_type")} as "userType"` : `'customer' as "userType"`}`,
+      `${has("email") ? `${q("email")} as "email"` : `null as "email"`}`,
+      `${has("first_name") ? `${q("first_name")} as "firstName"` : `null as "firstName"`}`,
+      `${has("last_name") ? `${q("last_name")} as "lastName"` : `null as "lastName"`}`,
+      `${has("phone") ? `${q("phone")} as "phone"` : `null as "phone"`}`,
+      `${has("password_hash") ? `${q("password_hash")} as "passwordHash"` : `null as "passwordHash"`}`,
+      `${has("email_verified") ? `${q("email_verified")} as "emailVerified"` : `false as "emailVerified"`}`,
+      `${has("must_reset_password") ? `${q("must_reset_password")} as "mustResetPassword"` : `false as "mustResetPassword"`}`,
+      `${has("is_disabled") ? `${q("is_disabled")} as "isDisabled"` : `false as "isDisabled"`}`,
+      `${has("is_active") ? `${q("is_active")} as "isActive"` : `null as "isActive"`}`,
+      `${has("profile_image_url") ? `${q("profile_image_url")} as "profileImageUrl"` : `null as "profileImageUrl"`}`,
+      `${has("affiliate_tag") ? `${q("affiliate_tag")} as "affiliateTag"` : `null as "affiliateTag"`}`,
+      `${has("affiliate_percent") ? `${q("affiliate_percent")} as "affiliatePercent"` : `null as "affiliatePercent"`}`,
+      `${has("stripe_customer_id") ? `${q("stripe_customer_id")} as "stripeCustomerId"` : `null as "stripeCustomerId"`}`,
+      `${has("stripe_subscription_id") ? `${q("stripe_subscription_id")} as "stripeSubscriptionId"` : `null as "stripeSubscriptionId"`}`,
+      `${has("subscription_billing_interval") ? `${q("subscription_billing_interval")} as "subscriptionBillingInterval"` : `null as "subscriptionBillingInterval"`}`,
+      `${has("subscription_signup_date") ? `${q("subscription_signup_date")} as "subscriptionSignupDate"` : `null as "subscriptionSignupDate"`}`,
+      `${has("trial_started_at") ? `${q("trial_started_at")} as "trialStartedAt"` : `null as "trialStartedAt"`}`,
+      `${has("trial_ends_at") ? `${q("trial_ends_at")} as "trialEndsAt"` : `null as "trialEndsAt"`}`,
+      `${has("trial_used") ? `${q("trial_used")} as "trialUsed"` : `false as "trialUsed"`}`,
+      `${has("app_context") ? `${q("app_context")} as "appContext"` : `null as "appContext"`}`,
+      `${has("public_profile_settings") ? `${q("public_profile_settings")} as "publicProfileSettings"` : `null as "publicProfileSettings"`}`,
+      `${has("account_settings") ? `${q("account_settings")} as "accountSettings"` : `null as "accountSettings"`}`,
+      `${has("created_at") ? `${q("created_at")} as "createdAt"` : `null as "createdAt"`}`,
+      `${has("updated_at") ? `${q("updated_at")} as "updatedAt"` : `null as "updatedAt"`}`,
+    ];
+
+    const sqlText = `select ${select.join(", ")} from ${q(schema)}.${q("users")} ${whereSql}`;
     const result = await pool.query(sqlText, params);
     return result.rows || [];
   }
@@ -1774,16 +1862,29 @@ export class DatabaseStorage implements IStorage {
   // User operations
   // (IMPORTANT) these user operations are mandatory for authentication.
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(
-        and(
-          eq(users.id, id),
-          or(eq(users.isDisabled, false), isNull(users.isDisabled))
-        )
-      );
-    return user;
+    const normalizedId = String(id || "").trim();
+    if (!normalizedId) return undefined;
+    try {
+      const rows = await this.selectUsersSafe(`where "id" = $1 limit 1`, [
+        normalizedId,
+      ]);
+      const row = (rows[0] as any) || undefined;
+      if (!row) return undefined;
+      if (row.isDisabled === true) return undefined;
+      return row as any;
+    } catch (error) {
+      console.warn("getUser safe projection failed, falling back:", error);
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(
+          and(
+            eq(users.id, normalizedId),
+            or(eq(users.isDisabled, false), isNull(users.isDisabled)),
+          ),
+        );
+      return user;
+    }
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
@@ -1802,42 +1903,59 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(
-        and(
-          eq(users.email, email),
-          or(eq(users.isDisabled, false), isNull(users.isDisabled))
-        )
-      );
-    return user;
+    const normalizedEmail = String(email || "").trim();
+    if (!normalizedEmail) return undefined;
+    try {
+      const rows = await this.selectUsersSafe(`where "email" = $1 limit 1`, [
+        normalizedEmail,
+      ]);
+      const row = (rows[0] as any) || undefined;
+      if (!row) return undefined;
+      if (row.isDisabled === true) return undefined;
+      return row as any;
+    } catch (error) {
+      console.warn("getUserByEmail safe projection failed, falling back:", error);
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(
+          and(
+            eq(users.email, normalizedEmail),
+            or(eq(users.isDisabled, false), isNull(users.isDisabled)),
+          ),
+        );
+      return user;
+    }
   }
 
   async getUserByPhone(phone: string): Promise<User | undefined> {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(
-        and(
-          eq(users.phone, phone),
-          or(eq(users.isDisabled, false), isNull(users.isDisabled))
-        )
-      );
-    return user;
+    const normalizedPhone = String(phone || "").trim();
+    if (!normalizedPhone) return undefined;
+    try {
+      const rows = await this.selectUsersSafe(`where "phone" = $1 limit 1`, [
+        normalizedPhone,
+      ]);
+      const row = (rows[0] as any) || undefined;
+      if (!row) return undefined;
+      if (row.isDisabled === true) return undefined;
+      return row as any;
+    } catch (error) {
+      console.warn("getUserByPhone safe projection failed, falling back:", error);
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(
+          and(
+            eq(users.phone, normalizedPhone),
+            or(eq(users.isDisabled, false), isNull(users.isDisabled)),
+          ),
+        );
+      return user;
+    }
   }
 
   async getUserById(id: string): Promise<User | undefined> {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(
-        and(
-          eq(users.id, id),
-          or(eq(users.isDisabled, false), isNull(users.isDisabled))
-        )
-      );
-    return user;
+    return await this.getUser(id);
   }
 
   async updateUserType(
@@ -3066,11 +3184,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<User[]> {
-    return await db
-      .select()
-      .from(users)
-      .where(or(eq(users.isDisabled, false), isNull(users.isDisabled)))
-      .orderBy(desc(users.createdAt));
+    try {
+      const { columns } = await this.getUserTableInfo();
+      const hasDisabled = columns.size === 0 || columns.has("is_disabled");
+      const whereSql = hasDisabled
+        ? `where coalesce("is_disabled"::boolean, false) = false`
+        : "";
+      return (await this.selectUsersSafe(
+        `${whereSql} order by "created_at" desc`,
+        [],
+      )) as any;
+    } catch (error) {
+      console.warn("getAllUsers safe projection failed, falling back:", error);
+      return await db
+        .select()
+        .from(users)
+        .where(or(eq(users.isDisabled, false), isNull(users.isDisabled)))
+        .orderBy(desc(users.createdAt));
+    }
   }
 
   async updateUserStatus(userId: string, isActive: boolean): Promise<void> {

@@ -2071,7 +2071,13 @@ export function registerHostRoutes(app: Express) {
       }
 
       const { passId } = req.params;
-      const { truckId, slotType, slotTypes, applyCreditsCents } = req.body;
+      const {
+        truckId,
+        slotType,
+        slotTypes,
+        selectedDates,
+        applyCreditsCents,
+      } = req.body;
       const userId = req.user.id;
 
       if (!truckId) {
@@ -2216,16 +2222,59 @@ export function registerHostRoutes(app: Express) {
         });
       }
 
-      const bookingDays = durationSlots.includes("monthly")
+      const eventDate = new Date(event.date);
+      const rangeStart = new Date(eventDate);
+      rangeStart.setHours(0, 0, 0, 0);
+
+      const requestedDateKeys = Array.isArray(selectedDates)
+        ? Array.from(
+            new Set(
+              selectedDates
+                .filter((value: unknown) => typeof value === "string")
+                .map((value: string) => value.trim())
+                .filter((value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value)),
+            ),
+          )
+        : [];
+      if (
+        Array.isArray(selectedDates) &&
+        selectedDates.length > 0 &&
+        requestedDateKeys.length !== selectedDates.length
+      ) {
+        return res.status(400).json({ message: "Invalid selectedDates format." });
+      }
+
+      const bookingDaysDefault = durationSlots.includes("monthly")
         ? 30
         : durationSlots.includes("weekly")
           ? 7
           : 1;
-      const eventDate = new Date(event.date);
-      const rangeStart = new Date(eventDate);
-      rangeStart.setHours(0, 0, 0, 0);
-      const rangeEnd = new Date(rangeStart);
-      rangeEnd.setDate(rangeEnd.getDate() + bookingDays);
+      const expectedDateKeys: string[] =
+        requestedDateKeys.length > 0
+          ? requestedDateKeys
+          : Array.from({ length: bookingDaysDefault }, (_, offset) => {
+              const cursor = new Date(rangeStart);
+              cursor.setDate(cursor.getDate() + offset);
+              return cursor.toISOString().split("T")[0];
+            });
+      if (expectedDateKeys.length === 0) {
+        return res.status(400).json({ message: "No booking dates selected." });
+      }
+      if (expectedDateKeys.length > 31) {
+        return res.status(400).json({ message: "Too many booking dates selected." });
+      }
+
+      const sortedDateKeys = [...expectedDateKeys].sort();
+      const firstDate = new Date(`${sortedDateKeys[0]}T00:00:00.000Z`);
+      const lastDate = new Date(
+        `${sortedDateKeys[sortedDateKeys.length - 1]}T00:00:00.000Z`,
+      );
+      if (!Number.isFinite(firstDate.getTime()) || !Number.isFinite(lastDate.getTime())) {
+        return res.status(400).json({ message: "Invalid booking dates selected." });
+      }
+      const rangeQueryStart = new Date(firstDate);
+      const rangeQueryEnd = new Date(lastDate);
+      rangeQueryEnd.setDate(rangeQueryEnd.getDate() + 1);
 
       const bookingEvents = await db
         .select()
@@ -2234,8 +2283,8 @@ export function registerHostRoutes(app: Express) {
           and(
             eq(events.hostId, host.id),
             eq(events.requiresPayment, true),
-            gte(events.date, rangeStart),
-            lt(events.date, rangeEnd),
+            gte(events.date, rangeQueryStart),
+            lt(events.date, rangeQueryEnd),
           ),
         )
         .orderBy(asc(events.date));
@@ -2244,13 +2293,6 @@ export function registerHostRoutes(app: Express) {
       for (const row of bookingEvents) {
         const dateKey = new Date(row.date).toISOString().split("T")[0];
         eventsByDate.set(dateKey, row);
-      }
-
-      const expectedDateKeys: string[] = [];
-      for (let offset = 0; offset < bookingDays; offset += 1) {
-        const cursor = new Date(rangeStart);
-        cursor.setDate(cursor.getDate() + offset);
-        expectedDateKeys.push(cursor.toISOString().split("T")[0]);
       }
 
       const missingDates = expectedDateKeys.filter(
@@ -2325,8 +2367,8 @@ export function registerHostRoutes(app: Express) {
           and(
             eq(eventBookings.truckId, truckId),
             inArray(eventBookings.status, ["confirmed", "pending"]),
-            gte(events.date, rangeStart),
-            lt(events.date, rangeEnd),
+            gte(events.date, rangeQueryStart),
+            lt(events.date, rangeQueryEnd),
           ),
         );
 
@@ -2393,6 +2435,7 @@ export function registerHostRoutes(app: Express) {
         }
       }
 
+      const bookingDays = expectedDateKeys.length;
       // Calculate pricing: Host price + $10 platform fee
       const slotPriceMap: Record<string, number | null | undefined> = {
         breakfast: event.breakfastPriceCents,
@@ -2580,7 +2623,7 @@ export function registerHostRoutes(app: Express) {
             truckId,
             slotTypes: selectedSlotTypes.join(","),
             bookingDays: bookingDays.toString(),
-            bookingStartDate: rangeStart.toISOString().split("T")[0],
+            bookingStartDate: sortedDateKeys[0],
             hostPriceCents: hostPriceCents.toString(),
             platformFeeCents: adjustedPlatformFeeCents.toString(),
             totalCents: totalCents.toString(),

@@ -26,6 +26,7 @@ interface BookingPaymentModalProps {
   passId: string;
   truckId: string;
   slotTypes: string[];
+  selectedDates?: string[];
   eventDetails: {
     name: string;
     date: string;
@@ -228,6 +229,7 @@ export function BookingPaymentModal({
   passId,
   truckId,
   slotTypes,
+  selectedDates = [],
   eventDetails,
   onSuccess,
 }: BookingPaymentModalProps) {
@@ -297,6 +299,7 @@ export function BookingPaymentModal({
         body: JSON.stringify({
           truckId,
           slotTypes,
+          selectedDates,
           applyCreditsCents: creditCents > 0 ? creditCents : undefined,
         }),
       });

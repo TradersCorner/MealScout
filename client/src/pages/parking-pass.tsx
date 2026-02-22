@@ -6243,6 +6243,7 @@ export default function ParkingPassPage() {
           passId={selectedListing.id}
           truckId={truckId}
           slotTypes={selectedSlotTypes}
+          selectedDates={selectedListing?.date ? [selectedListing.date] : []}
           eventDetails={{
             name: "Parking Pass",
             date: format(new Date(selectedListing.date), "MMMM d, yyyy"),

@@ -4272,30 +4272,173 @@ export function registerAdminManagementRoutes(app: Express) {
     isStaffOrAdmin,
     async (req: any, res) => {
       try {
+        const parseNullableDecimalString = (
+          value: unknown,
+        ): string | null | undefined | "__invalid__" => {
+          if (value === undefined) return undefined;
+          if (value === null) return null;
+          if (typeof value === "string") {
+            const trimmed = value.trim();
+            if (!trimmed) return null;
+            const num = Number(trimmed);
+            if (!Number.isFinite(num)) return "__invalid__";
+            return trimmed;
+          }
+          if (typeof value === "number") {
+            if (!Number.isFinite(value)) return "__invalid__";
+            return String(value);
+          }
+          return "__invalid__";
+        };
+
+        const parseIntCentsOrZero = (
+          value: unknown,
+        ): number | undefined | "__invalid__" => {
+          if (value === undefined) return undefined;
+          if (value === null) return 0;
+          if (typeof value === "string") {
+            const trimmed = value.trim();
+            if (!trimmed) return 0;
+            const num = Number(trimmed);
+            if (!Number.isFinite(num)) return "__invalid__";
+            return Math.max(0, Math.round(num));
+          }
+          if (typeof value === "number") {
+            if (!Number.isFinite(value)) return "__invalid__";
+            return Math.max(0, Math.round(value));
+          }
+          return "__invalid__";
+        };
+
+        const parseNullableInt = (
+          value: unknown,
+        ): number | null | undefined | "__invalid__" => {
+          if (value === undefined) return undefined;
+          if (value === null) return null;
+          if (typeof value === "string") {
+            const trimmed = value.trim();
+            if (!trimmed) return null;
+            const num = Number(trimmed);
+            if (!Number.isFinite(num)) return "__invalid__";
+            return Math.round(num);
+          }
+          if (typeof value === "number") {
+            if (!Number.isFinite(value)) return "__invalid__";
+            return Math.round(value);
+          }
+          return "__invalid__";
+        };
+
+        const parseDaysOfWeek = (
+          value: unknown,
+        ): number[] | undefined | "__invalid__" => {
+          if (value === undefined) return undefined;
+          if (!Array.isArray(value)) return "__invalid__";
+          const out: number[] = [];
+          for (const entry of value) {
+            const num = typeof entry === "number" ? entry : Number(entry);
+            if (!Number.isInteger(num) || num < 0 || num > 6) {
+              return "__invalid__";
+            }
+            out.push(num);
+          }
+          return Array.from(new Set(out)).sort((a, b) => a - b);
+        };
+
+        const latitude = parseNullableDecimalString(req.body?.latitude);
+        if (latitude === "__invalid__") {
+          return res.status(400).json({ message: "Invalid latitude" });
+        }
+        const longitude = parseNullableDecimalString(req.body?.longitude);
+        if (longitude === "__invalid__") {
+          return res.status(400).json({ message: "Invalid longitude" });
+        }
+
+        const expectedFootTraffic = parseNullableInt(req.body?.expectedFootTraffic);
+        if (expectedFootTraffic === "__invalid__") {
+          return res.status(400).json({ message: "Invalid expectedFootTraffic" });
+        }
+
+        const parkingPassDaysOfWeek = parseDaysOfWeek(req.body?.parkingPassDaysOfWeek);
+        if (parkingPassDaysOfWeek === "__invalid__") {
+          return res
+            .status(400)
+            .json({ message: "Invalid parkingPassDaysOfWeek" });
+        }
+
+        const parkingPassBreakfastPriceCents = parseIntCentsOrZero(
+          req.body?.parkingPassBreakfastPriceCents,
+        );
+        if (parkingPassBreakfastPriceCents === "__invalid__") {
+          return res.status(400).json({
+            message: "Invalid parkingPassBreakfastPriceCents",
+          });
+        }
+        const parkingPassLunchPriceCents = parseIntCentsOrZero(
+          req.body?.parkingPassLunchPriceCents,
+        );
+        if (parkingPassLunchPriceCents === "__invalid__") {
+          return res.status(400).json({
+            message: "Invalid parkingPassLunchPriceCents",
+          });
+        }
+        const parkingPassDinnerPriceCents = parseIntCentsOrZero(
+          req.body?.parkingPassDinnerPriceCents,
+        );
+        if (parkingPassDinnerPriceCents === "__invalid__") {
+          return res.status(400).json({
+            message: "Invalid parkingPassDinnerPriceCents",
+          });
+        }
+        const parkingPassDailyPriceCents = parseIntCentsOrZero(
+          req.body?.parkingPassDailyPriceCents,
+        );
+        if (parkingPassDailyPriceCents === "__invalid__") {
+          return res.status(400).json({
+            message: "Invalid parkingPassDailyPriceCents",
+          });
+        }
+        const parkingPassWeeklyPriceCents = parseIntCentsOrZero(
+          req.body?.parkingPassWeeklyPriceCents,
+        );
+        if (parkingPassWeeklyPriceCents === "__invalid__") {
+          return res.status(400).json({
+            message: "Invalid parkingPassWeeklyPriceCents",
+          });
+        }
+        const parkingPassMonthlyPriceCents = parseIntCentsOrZero(
+          req.body?.parkingPassMonthlyPriceCents,
+        );
+        if (parkingPassMonthlyPriceCents === "__invalid__") {
+          return res.status(400).json({
+            message: "Invalid parkingPassMonthlyPriceCents",
+          });
+        }
+
         const updates: any = {
           businessName: req.body?.businessName,
           address: req.body?.address,
           city: req.body?.city,
           state: req.body?.state,
-          latitude: req.body?.latitude,
-          longitude: req.body?.longitude,
+          latitude,
+          longitude,
           spotImageUrl: req.body?.spotImageUrl,
           locationType: req.body?.locationType,
-          expectedFootTraffic: req.body?.expectedFootTraffic,
+          expectedFootTraffic,
           amenities: req.body?.amenities,
           contactPhone: req.body?.contactPhone,
           notes: req.body?.notes,
           isVerified: req.body?.isVerified,
           // Parking Pass defaults (host is the source of truth).
-          parkingPassBreakfastPriceCents: req.body?.parkingPassBreakfastPriceCents,
-          parkingPassLunchPriceCents: req.body?.parkingPassLunchPriceCents,
-          parkingPassDinnerPriceCents: req.body?.parkingPassDinnerPriceCents,
-          parkingPassDailyPriceCents: req.body?.parkingPassDailyPriceCents,
-          parkingPassWeeklyPriceCents: req.body?.parkingPassWeeklyPriceCents,
-          parkingPassMonthlyPriceCents: req.body?.parkingPassMonthlyPriceCents,
+          parkingPassBreakfastPriceCents,
+          parkingPassLunchPriceCents,
+          parkingPassDinnerPriceCents,
+          parkingPassDailyPriceCents,
+          parkingPassWeeklyPriceCents,
+          parkingPassMonthlyPriceCents,
           parkingPassStartTime: req.body?.parkingPassStartTime,
           parkingPassEndTime: req.body?.parkingPassEndTime,
-          parkingPassDaysOfWeek: req.body?.parkingPassDaysOfWeek,
+          parkingPassDaysOfWeek,
         };
 
         Object.keys(updates).forEach((key) => {

@@ -3021,6 +3021,12 @@ export default function AdminDashboard() {
                         hostId: host.id,
                         updates: {
                           ...edits,
+                          latitude: String(edits.latitude ?? "").trim()
+                            ? String(edits.latitude).trim()
+                            : null,
+                          longitude: String(edits.longitude ?? "").trim()
+                            ? String(edits.longitude).trim()
+                            : null,
                           spotImageUrl: edits.spotImageUrl?.trim()
                             ? edits.spotImageUrl.trim()
                             : null,

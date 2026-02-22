@@ -7904,9 +7904,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Test database connectivity
       await storage.getUser("health-check");
       const endpointWatchdog = getMapEndpointWatchdogSnapshot();
+
+      // Avoid a recursive failure mode: the watchdog checks /api/health,
+      // and /api/health previously returned 503 when the watchdog reported "not ok",
+      // which makes the watchdog keep itself in a failed state.
       const isHealthy = Boolean(endpointWatchdog?.ok ?? true);
 
-      res.status(isHealthy ? 200 : 503).json({
+      res.status(200).json({
         status: isHealthy ? "healthy" : "degraded",
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),

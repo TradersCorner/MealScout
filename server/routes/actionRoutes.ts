@@ -4,6 +4,11 @@ import { ensurePremiumTrialForUserId } from "../services/premiumTrial";
 import { db } from "../db";
 import { deals, restaurants, creditLedger } from "@shared/schema";
 import { eq, and, like, ilike } from "drizzle-orm";
+import { listParkingPassOccurrences } from "../services/parkingPassVirtual";
+import {
+  isHostProfileMapEligible,
+  isParkingPassPublicReady,
+} from "../services/parkingPassQuality";
 
 const router = Router();
 
@@ -202,6 +207,28 @@ async function updateRestaurant(params: {
   }
 }
 
+const toNumberOrNull = (value: unknown): number | null => {
+  if (value === null || value === undefined) return null;
+  const parsed = typeof value === "string" ? Number(value) : (value as number);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const haversineDistanceKm = (
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+) => {
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const lat1 = (a.lat * Math.PI) / 180;
+  const lat2 = (b.lat * Math.PI) / 180;
+  const sinDLat = Math.sin(dLat / 2);
+  const sinDLng = Math.sin(dLng / 2);
+  const h =
+    sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+};
+
 /**
  * Get live food truck locations
  */
@@ -249,6 +276,122 @@ async function getFoodTruckLocations(params: {
       success: true,
       data: trucks,
       count: trucks.length,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+}
+
+/**
+ * Get public-ready Parking Pass spots near a location
+ */
+async function getParkingPassSpots(params: {
+  latitude: number;
+  longitude: number;
+  radiusKm?: number;
+  horizonDays?: number;
+}) {
+  try {
+    if (params.latitude === undefined || params.longitude === undefined) {
+      return {
+        success: false,
+        error: "Missing required fields: latitude, longitude",
+      };
+    }
+
+    const latitude = Number(params.latitude);
+    const longitude = Number(params.longitude);
+    const radius = Math.min(Number(params.radiusKm ?? 12), 80);
+    const horizonDays = Math.max(1, Math.min(Number(params.horizonDays ?? 30), 90));
+
+    if (Number.isNaN(latitude) || Number.isNaN(longitude) || Number.isNaN(radius)) {
+      return {
+        success: false,
+        error: "Invalid coordinates or radius",
+      };
+    }
+
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      return {
+        success: false,
+        error: "Invalid coordinates range",
+      };
+    }
+
+    const center = { lat: latitude, lng: longitude };
+    const { occurrences } = await listParkingPassOccurrences({
+      horizonDays,
+      includeDraft: true,
+    });
+
+    const byHostId = new Map<string, any>();
+
+    for (const event of occurrences as any[]) {
+      if (!isParkingPassPublicReady(event)) continue;
+
+      const host = event?.host ?? null;
+      const hostId = String(host?.id || "").trim();
+      if (!hostId) continue;
+
+      if (
+        !isHostProfileMapEligible({
+          businessName: host?.businessName || event?.host?.businessName,
+          address: host?.address || event?.hostAddress || event?.address,
+          city: host?.city || event?.hostCity || event?.city,
+          state: host?.state || event?.hostState || event?.state,
+        })
+      ) {
+        continue;
+      }
+
+      const lat = toNumberOrNull(host?.latitude);
+      const lng = toNumberOrNull(host?.longitude);
+      if (lat === null || lng === null) continue;
+      if (Math.abs(lat) > 90 || Math.abs(lng) > 180) continue;
+
+      const distanceKm = haversineDistanceKm(center, { lat, lng });
+      if (!Number.isFinite(distanceKm) || distanceKm > radius) continue;
+
+      const existing = byHostId.get(hostId);
+      if (existing && existing.distanceKm <= distanceKm) continue;
+
+      byHostId.set(hostId, {
+        hostId,
+        type: "parking_pass",
+        name: host?.businessName || "Parking Pass spot",
+        address: host?.address || null,
+        city: host?.city || null,
+        state: host?.state || null,
+        latitude: lat,
+        longitude: lng,
+        pricingCents: {
+          breakfast: Number(event?.breakfastPriceCents ?? 0) || 0,
+          lunch: Number(event?.lunchPriceCents ?? 0) || 0,
+          dinner: Number(event?.dinnerPriceCents ?? 0) || 0,
+          daily: Number(event?.dailyPriceCents ?? 0) || 0,
+          weekly: Number(event?.weeklyPriceCents ?? 0) || 0,
+          monthly: Number(event?.monthlyPriceCents ?? 0) || 0,
+        },
+        maxTrucks: Number(event?.maxTrucks ?? 1) || 1,
+        startTime: String(event?.startTime || "").trim() || null,
+        endTime: String(event?.endTime || "").trim() || null,
+        nextDate: event?.date ? new Date(event.date).toISOString().slice(0, 10) : null,
+        paymentsEnabled: Boolean(event?.paymentsEnabled),
+        distanceKm,
+      });
+    }
+
+    const spots = Array.from(byHostId.values())
+      .sort((a, b) => a.distanceKm - b.distanceKm)
+      .slice(0, 200);
+
+    return {
+      success: true,
+      data: spots,
+      count: spots.length,
     };
   } catch (error: any) {
     return {
@@ -557,6 +700,9 @@ router.post("/", async (req, res) => {
       case "GET_FOOD_TRUCKS":
         result = await getFoodTruckLocations(params || {});
         break;
+      case "GET_PARKING_PASS_SPOTS":
+        result = await getParkingPassSpots(params || {});
+        break;
       case "REDEEM_CREDITS":
         result = await redeemCredits(params || {});
         break;
@@ -585,6 +731,7 @@ router.post("/", async (req, res) => {
             "CREATE_RESTAURANT",
             "UPDATE_RESTAURANT",
             "GET_FOOD_TRUCKS",
+            "GET_PARKING_PASS_SPOTS",
             "REDEEM_CREDITS",
             "GET_CREDITS_BALANCE",
             "SUBMIT_BUILDER_APPLICATION",

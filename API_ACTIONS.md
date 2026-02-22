@@ -273,7 +273,44 @@ Notes:
 
 ---
 
-### 7. REDEEM_CREDITS
+### 7. GET_PARKING_PASS_SPOTS
+
+Get nearby **Parking Pass** spots (host locations offering paid truck parking passes) within a radius.
+
+**Intent:** `discover_now`
+
+**Parameters:**
+```json
+{
+  "action": "GET_PARKING_PASS_SPOTS",
+  "params": {
+    "latitude": "number (required)",
+    "longitude": "number (required)",
+    "radiusKm": "number (optional, default: 12, max: 80)",
+    "horizonDays": "number (optional, default: 30, max: 90)"
+  }
+}
+```
+
+**Example:**
+```json
+{
+  "action": "GET_PARKING_PASS_SPOTS",
+  "params": {
+    "latitude": 30.5315,
+    "longitude": -86.4989,
+    "radiusKm": 10
+  }
+}
+```
+
+Notes:
+- Only returns **public-ready** listings (pricing complete and address eligible for map display).
+- Results are deduped by host location and sorted by nearest distance.
+
+---
+
+### 8. REDEEM_CREDITS
 
 Redeem user credits (user action).
 
@@ -305,7 +342,7 @@ Redeem user credits (user action).
 
 ---
 
-### 8. GET_CREDITS_BALANCE
+### 9. GET_CREDITS_BALANCE
 
 Check user's credit balance.
 
@@ -334,7 +371,7 @@ Check user's credit balance.
 
 ---
 
-### 9. SUBMIT_BUILDER_APPLICATION
+### 10. SUBMIT_BUILDER_APPLICATION
 
 Submit a community builder application (user action).
 
@@ -355,7 +392,7 @@ Submit a community builder application (user action).
 
 ---
 
-### 10. GET_COUNTY_TRANSPARENCY
+### 11. GET_COUNTY_TRANSPARENCY
 
 Get transparency data for a specific county.
 
@@ -374,7 +411,7 @@ Get transparency data for a specific county.
 
 ---
 
-### 11. GET_COUNTY_LEDGER
+### 12. GET_COUNTY_LEDGER
 
 Get redemption ledger for a county.
 
@@ -394,7 +431,7 @@ Get redemption ledger for a county.
 
 ---
 
-### 12. GET_COUNTY_VAULT
+### 13. GET_COUNTY_VAULT
 
 Get county vault status and financial information.
 

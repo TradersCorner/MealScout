@@ -18,6 +18,7 @@ import {
   Share2,
   Truck,
 } from "lucide-react";
+import { Calendar as DatePickerCalendar } from "@/components/ui/calendar";
 import {
   MapContainer,
   Marker,
@@ -34,6 +35,11 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -598,9 +604,26 @@ export default function ParkingPassPage() {
   const [requestedHostId, setRequestedHostId] = useState<string | null>(null);
   const [bookingReturnIntentId, setBookingReturnIntentId] = useState<string | null>(null);
   const [bookingReturnHandled, setBookingReturnHandled] = useState(false);
+  const [isCoarsePointer, setIsCoarsePointer] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [parkingCoords, setParkingCoords] = useState<
     Record<string, GeoPoint>
   >({});
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const media = window.matchMedia("(pointer: coarse)");
+    const apply = () => setIsCoarsePointer(Boolean(media.matches));
+    apply();
+    try {
+      media.addEventListener("change", apply);
+      return () => media.removeEventListener("change", apply);
+    } catch {
+      // Safari fallback
+      media.addListener(apply);
+      return () => media.removeListener(apply);
+    }
+  }, []);
   const { data: mapLocationsData } = useQuery<MapLocationsResponse>({
     queryKey: ["/api/map/locations"],
     queryFn: async () => {
@@ -2691,6 +2714,27 @@ export default function ParkingPassPage() {
       getListingDateKey(listing.date),
     );
     return Array.from(new Set(keys)).sort();
+  }, [activeLocation]);
+  const activeListingDateKeySet = useMemo(
+    () => new Set(activeListingDateKeys),
+    [activeListingDateKeys],
+  );
+  const fullListingDates = useMemo(() => {
+    if (!activeLocation) return [] as Date[];
+    const hasAvailability = (listing: any) => {
+      if (!listing) return false;
+      if (listing.status !== "open") return false;
+      const spots = listing.availableSpotNumbers;
+      return Array.isArray(spots) ? spots.length > 0 : true;
+    };
+    const byKey = new Map<string, ParkingPassListing>();
+    for (const listing of activeLocation.listings) {
+      byKey.set(getListingDateKey(listing.date), listing);
+    }
+    const fullKeys = Array.from(byKey.entries())
+      .filter(([, listing]) => !hasAvailability(listing))
+      .map(([key]) => key);
+    return fullKeys.map((key) => new Date(`${key}T00:00:00`));
   }, [activeLocation]);
 
   const activeListingForDate = activeLocation
@@ -5018,8 +5062,11 @@ export default function ParkingPassPage() {
                           center={[fallbackMapCenter.lat, fallbackMapCenter.lng]}
                           zoom={13}
                           zoomControl={false}
-                          scrollWheelZoom
-                          className="h-full w-full"
+                          scrollWheelZoom={!isCoarsePointer}
+                          dragging={!isCoarsePointer}
+                          touchZoom={!isCoarsePointer}
+                          doubleClickZoom={!isCoarsePointer}
+                          className="h-full w-full touch-pan-y"
                         >
                           <MapCenterer center={fallbackMapCenter} />
                           <TileLayer
@@ -5089,8 +5136,11 @@ export default function ParkingPassPage() {
                         center={[mapCenter.lat, mapCenter.lng]}
                         zoom={13}
                         zoomControl={false}
-                        scrollWheelZoom
-                        className="h-full w-full"
+                        scrollWheelZoom={!isCoarsePointer}
+                        dragging={!isCoarsePointer}
+                        touchZoom={!isCoarsePointer}
+                        doubleClickZoom={!isCoarsePointer}
+                        className="h-full w-full touch-pan-y"
                       >
                         <MapCenterer center={mapCenter} />
                         <TileLayer
@@ -5883,29 +5933,44 @@ export default function ParkingPassPage() {
                         <div className="flex items-center justify-between">
                           <span>Date</span>
                           {activeListingDateKeys.length > 0 ? (
-                            <select
-                              className="pp-field h-8 w-auto max-w-[190px] text-[11px]"
-                              value={selectedDate}
-                              onChange={(event) => setSelectedDate(event.target.value)}
+                            <Popover
+                              open={datePickerOpen}
+                              onOpenChange={setDatePickerOpen}
                             >
-                              {activeListingDateKeys.map((dateKey) => {
-                                const listing = activeLocation?.listings.find(
-                                  (item) => getListingDateKey(item.date) === dateKey,
-                                );
-                                const open = Boolean(
-                                  listing && listingHasAvailability(listing),
-                                );
-                                const label = `${format(
-                                  new Date(`${dateKey}T00:00:00`),
-                                  "EEE, MMM d",
-                                )}${open ? "" : " • Full"}`;
-                                return (
-                                  <option key={dateKey} value={dateKey}>
-                                    {label}
-                                  </option>
-                                );
-                              })}
-                            </select>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 px-2 text-[11px]"
+                                >
+                                  {format(
+                                    new Date(`${selectedDate}T00:00:00`),
+                                    "EEE, MMM d",
+                                  )}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent align="end" className="w-auto p-0">
+                                <DatePickerCalendar
+                                  mode="single"
+                                  selected={new Date(`${selectedDate}T00:00:00`)}
+                                  onSelect={(value) => {
+                                    if (!value) return;
+                                    const next = format(value, "yyyy-MM-dd");
+                                    if (!activeListingDateKeySet.has(next)) return;
+                                    setSelectedDate(next);
+                                    setDatePickerOpen(false);
+                                  }}
+                                  disabled={(date) => {
+                                    const key = format(date, "yyyy-MM-dd");
+                                    return !activeListingDateKeySet.has(key);
+                                  }}
+                                  modifiers={{ full: fullListingDates }}
+                                  modifiersClassNames={{ full: "opacity-60" }}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
                           ) : (
                             <span>
                               {format(

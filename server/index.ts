@@ -237,6 +237,12 @@ app.use((req, res, next) => {
     return next();
   }
 
+  // /api/actions is a server-to-server integration surface (Bearer token auth),
+  // so it must not require browser Origin/Referer headers.
+  if (String(req.path || "").startsWith("/api/actions")) {
+    return next();
+  }
+
   const origin = (req.headers.origin || req.headers.referer) as
     | string
     | undefined;

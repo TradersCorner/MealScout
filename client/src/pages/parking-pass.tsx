@@ -5399,6 +5399,15 @@ export default function ParkingPassPage() {
                         group.key === activeLocationKey
                           ? selectedDate
                           : nextBookableDateByGroup.get(group.key);
+                      const groupDateKeys = Array.from(
+                        new Set(
+                          group.listings.map((listing) =>
+                            getListingDateKey(listing.date),
+                          ),
+                        ),
+                      ).sort();
+                      const selectedGroupDateKey =
+                        effectiveDateKey || groupDateKeys[0] || selectedDate;
                       const listingForDate = effectiveDateKey
                         ? group.listings.find(
                             (listing) =>
@@ -5499,6 +5508,29 @@ export default function ParkingPassPage() {
                               View
                             </Button>
                           </div>
+                          {groupDateKeys.length > 1 && (
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[11px] text-[color:var(--text-muted)]">
+                                Date
+                              </span>
+                              <select
+                                className="rounded-lg border border-[color:var(--border-subtle)] bg-[var(--bg-card)] px-2 py-1 text-xs text-[color:var(--text-primary)]"
+                                value={selectedGroupDateKey}
+                                onClick={(event) => event.stopPropagation()}
+                                onChange={(event) => {
+                                  event.stopPropagation();
+                                  setSelectedDate(event.target.value);
+                                  focusLocation(group.key, true);
+                                }}
+                              >
+                                {groupDateKeys.slice(0, 14).map((key) => (
+                                  <option key={key} value={key}>
+                                    {format(new Date(`${key}T00:00:00`), "EEE, MMM d")}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
                           <div className="text-xs text-slate-700 space-y-1">
                             <p>{group.host.address}</p>
                             {displayListing && (
@@ -5632,6 +5664,15 @@ export default function ParkingPassPage() {
                       group.key === activeLocationKey
                         ? selectedDate
                         : nextBookableDateByGroup.get(group.key);
+                    const groupDateKeys = Array.from(
+                      new Set(
+                        group.listings.map((listing) =>
+                          getListingDateKey(listing.date),
+                        ),
+                      ),
+                    ).sort();
+                    const selectedGroupDateKey =
+                      effectiveDateKey || groupDateKeys[0] || selectedDate;
                     const listingForDate = effectiveDateKey
                       ? group.listings.find(
                           (listing) =>
@@ -5717,6 +5758,29 @@ export default function ParkingPassPage() {
                               : "No dates listed"}
                           </span>
                         </div>
+                        {groupDateKeys.length > 1 && (
+                          <div className="flex items-center justify-between gap-2 pt-1">
+                            <span className="text-[11px] text-[color:var(--text-muted)]">
+                              Date
+                            </span>
+                            <select
+                              className="rounded-lg border border-[color:var(--border-subtle)] bg-[var(--bg-card)] px-2 py-1 text-xs text-[color:var(--text-primary)]"
+                              value={selectedGroupDateKey}
+                              onClick={(event) => event.stopPropagation()}
+                              onChange={(event) => {
+                                event.stopPropagation();
+                                setSelectedDate(event.target.value);
+                                focusLocation(group.key, true);
+                              }}
+                            >
+                              {groupDateKeys.slice(0, 14).map((key) => (
+                                <option key={key} value={key}>
+                                  {format(new Date(`${key}T00:00:00`), "EEE, MMM d")}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                         <div className="text-xs text-slate-700">
                           <p>{group.host.address}</p>
                           {(group.host.city || group.host.state) && (

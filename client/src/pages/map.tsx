@@ -670,9 +670,11 @@ function HostMarkerLayer({
         const qualityFlags = hostId ? qualityFlagsByHostId.get(hostId) || [] : [];
         const distanceLabel = formatDistance(coords);
         const hostIsVerified = String(host.status || "").toLowerCase() === "verified";
-        const parkingPassHref = `/parking-pass?hostId=${encodeURIComponent(
-          hostId || host.id,
-        )}`;
+        // Deep link to Parking Pass for this host. Do not fall back to the map pin id
+        // (host.id can be a map/location id, which won't match host listings).
+        const parkingPassHref = hostId
+          ? `/parking-pass?hostId=${encodeURIComponent(hostId)}`
+          : `/parking-pass`;
 
         return (
           <Marker

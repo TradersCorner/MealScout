@@ -325,7 +325,7 @@ export default function Home() {
   );
 
   return (
-    <div className="page relative overflow-hidden home-cinematic">
+    <div className="page relative overflow-hidden home-cinematic pb-20">
       <SEOHead
         title="MealScout | Find Food Trucks Near You"
         description="Find food trucks near you, discover live locations, and browse local deals from restaurants, bars, and hosts with MealScout."
@@ -1057,7 +1057,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="section section--full border-t border-[color:var(--border-subtle)] py-6">
         <div className="content">
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
             <div className="space-y-2">
               <h4 className="font-semibold text-foreground">Product</h4>
               <Link

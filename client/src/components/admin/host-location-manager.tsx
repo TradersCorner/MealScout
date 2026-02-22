@@ -27,6 +27,33 @@ const toDollars = (cents: unknown) => {
   return String((num / 100).toFixed(0));
 };
 
+const coerceCents = (value: unknown) => {
+  const num = Number(value ?? 0);
+  if (!Number.isFinite(num) || num <= 0) return 0;
+  return Math.max(0, Math.round(num));
+};
+
+const applySlotSumToDailyIfUntouched = (prev: any, nextSlotSumCents: number) => {
+  const breakfast = coerceCents(prev?.parkingPassBreakfastPriceCents);
+  const lunch = coerceCents(prev?.parkingPassLunchPriceCents);
+  const dinner = coerceCents(prev?.parkingPassDinnerPriceCents);
+  const currentSlotSum = breakfast + lunch + dinner;
+  const currentDaily = coerceCents(prev?.parkingPassDailyPriceCents);
+
+  // If the daily price hasn't been explicitly set (0), or it was previously
+  // auto-derived from slots, keep it in sync with the slot sum.
+  const shouldAutoUpdateDaily = currentDaily === 0 || currentDaily === currentSlotSum;
+  if (!shouldAutoUpdateDaily) return prev;
+
+  const nextDaily = Math.max(0, Math.round(nextSlotSumCents));
+  return {
+    ...prev,
+    parkingPassDailyPriceCents: nextDaily,
+    parkingPassWeeklyPriceCents: nextDaily > 0 ? nextDaily * 7 : coerceCents(prev?.parkingPassWeeklyPriceCents),
+    parkingPassMonthlyPriceCents: nextDaily > 0 ? nextDaily * 30 : coerceCents(prev?.parkingPassMonthlyPriceCents),
+  };
+};
+
 const buildGeocodeQuery = (host: any) => {
   const address = normalize(host?.address);
   const city = normalize(host?.city);
@@ -413,12 +440,17 @@ export default function HostLocationManager({
                       min={0}
                       step={1}
                       value={toDollars(pricingEdits.parkingPassBreakfastPriceCents)}
-                      onChange={(e) =>
-                        setPricingEdits({
-                          ...pricingEdits,
-                          parkingPassBreakfastPriceCents: toCents(e.target.value),
-                        })
-                      }
+                      onChange={(e) => {
+                        const cents = toCents(e.target.value);
+                        setPricingEdits((prev: any) => {
+                          const next = { ...prev, parkingPassBreakfastPriceCents: cents };
+                          const sum =
+                            coerceCents(cents) +
+                            coerceCents(next?.parkingPassLunchPriceCents) +
+                            coerceCents(next?.parkingPassDinnerPriceCents);
+                          return applySlotSumToDailyIfUntouched(next, sum);
+                        });
+                      }}
                       className="px-2 py-1 border rounded text-sm w-full"
                     />
                   </div>
@@ -429,12 +461,17 @@ export default function HostLocationManager({
                       min={0}
                       step={1}
                       value={toDollars(pricingEdits.parkingPassLunchPriceCents)}
-                      onChange={(e) =>
-                        setPricingEdits({
-                          ...pricingEdits,
-                          parkingPassLunchPriceCents: toCents(e.target.value),
-                        })
-                      }
+                      onChange={(e) => {
+                        const cents = toCents(e.target.value);
+                        setPricingEdits((prev: any) => {
+                          const next = { ...prev, parkingPassLunchPriceCents: cents };
+                          const sum =
+                            coerceCents(next?.parkingPassBreakfastPriceCents) +
+                            coerceCents(cents) +
+                            coerceCents(next?.parkingPassDinnerPriceCents);
+                          return applySlotSumToDailyIfUntouched(next, sum);
+                        });
+                      }}
                       className="px-2 py-1 border rounded text-sm w-full"
                     />
                   </div>
@@ -445,12 +482,17 @@ export default function HostLocationManager({
                       min={0}
                       step={1}
                       value={toDollars(pricingEdits.parkingPassDinnerPriceCents)}
-                      onChange={(e) =>
-                        setPricingEdits({
-                          ...pricingEdits,
-                          parkingPassDinnerPriceCents: toCents(e.target.value),
-                        })
-                      }
+                      onChange={(e) => {
+                        const cents = toCents(e.target.value);
+                        setPricingEdits((prev: any) => {
+                          const next = { ...prev, parkingPassDinnerPriceCents: cents };
+                          const sum =
+                            coerceCents(next?.parkingPassBreakfastPriceCents) +
+                            coerceCents(next?.parkingPassLunchPriceCents) +
+                            coerceCents(cents);
+                          return applySlotSumToDailyIfUntouched(next, sum);
+                        });
+                      }}
                       className="px-2 py-1 border rounded text-sm w-full"
                     />
                   </div>

@@ -21,11 +21,20 @@ export function verifyTradeScoutToken(
     });
   }
 
-  // Verify token matches expected token
-  const expectedToken = process.env.TRADESCOUT_API_TOKEN;
-  if (!expectedToken) {
+  // Verify token matches expected token(s)
+  // Rotation support:
+  // - TRADESCOUT_API_TOKENS="tokenA,tokenB"
+  // - TRADESCOUT_API_TOKEN="tokenA" (legacy / single-token)
+  const tokenList = String(
+    process.env.TRADESCOUT_API_TOKENS || process.env.TRADESCOUT_API_TOKEN || ""
+  )
+    .split(/[\n,;]+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  if (tokenList.length === 0) {
     console.error(
-      "⚠️  WARNING: TRADESCOUT_API_TOKEN not configured in environment"
+      "⚠️  WARNING: TRADESCOUT_API_TOKEN(S) not configured in environment"
     );
     return res.status(500).json({
       error: "Server configuration error",
@@ -33,7 +42,7 @@ export function verifyTradeScoutToken(
     });
   }
 
-  if (token !== expectedToken) {
+  if (!tokenList.includes(String(token))) {
     return res.status(401).json({
       error: "Unauthorized",
       message: "Invalid API token",

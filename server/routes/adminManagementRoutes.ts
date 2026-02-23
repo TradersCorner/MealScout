@@ -94,6 +94,7 @@ const HOST_PRICING_COLUMNS = [
 ] as const;
 
 let hostPricingColumnsCache: HostPricingColumnsCheck | null = null;
+let hostSpotImageColumnCache: { checkedAt: number; has: boolean } | null = null;
 
 async function getHostPricingColumnsCheck(): Promise<HostPricingColumnsCheck> {
   const now = Date.now();
@@ -127,6 +128,31 @@ async function getHostPricingColumnsCheck(): Promise<HostPricingColumnsCheck> {
     missing: missing.slice(),
   };
   return hostPricingColumnsCache;
+}
+
+async function hasHostSpotImageColumn(): Promise<boolean> {
+  const now = Date.now();
+  if (hostSpotImageColumnCache && now - hostSpotImageColumnCache.checkedAt < 5 * 60 * 1000) {
+    return hostSpotImageColumnCache.has;
+  }
+
+  const rows = await db.execute(
+    sql`
+      select column_name
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'hosts'
+        and column_name = 'spot_image_url'
+      limit 1
+    `,
+  );
+
+  const present =
+    Array.isArray((rows as any)?.rows) &&
+    (rows as any).rows.some((r: any) => String(r?.column_name || "") === "spot_image_url");
+
+  hostSpotImageColumnCache = { checkedAt: now, has: present };
+  return present;
 }
 
 const truckImportUpload = multer({
@@ -4518,6 +4544,11 @@ export function registerAdminManagementRoutes(app: Express) {
           }
         }
 
+        const wantsSpotImageUpdate = req.body?.spotImageUrl !== undefined;
+        const includeSpotImageUrl = wantsSpotImageUpdate
+          ? await hasHostSpotImageColumn().catch(() => false)
+          : false;
+
         const updates: any = {
           businessName: req.body?.businessName,
           address: req.body?.address,
@@ -4525,7 +4556,10 @@ export function registerAdminManagementRoutes(app: Express) {
           state: req.body?.state,
           latitude,
           longitude,
-          spotImageUrl: req.body?.spotImageUrl,
+          // Older deployments may not have `spot_image_url` yet.
+          // If the column is missing, silently ignore this field so admins can still update
+          // coordinates/pricing without a 500.
+          spotImageUrl: includeSpotImageUrl ? req.body?.spotImageUrl : undefined,
           locationType: req.body?.locationType,
           expectedFootTraffic,
           amenities: req.body?.amenities,

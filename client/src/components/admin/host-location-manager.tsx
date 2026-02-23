@@ -679,6 +679,7 @@ export default function HostLocationManager({
                           )
                             ? pricingEdits.parkingPassDaysOfWeek
                             : [],
+                          parkingPassDailyOnly: Boolean(pricingEdits._dailyOnlySelected),
                           parkingPassBreakfastPriceCents: Number(
                             pricingEdits.parkingPassBreakfastPriceCents || 0,
                           ),

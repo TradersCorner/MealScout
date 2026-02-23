@@ -4544,6 +4544,71 @@ export function registerAdminManagementRoutes(app: Express) {
           }
         }
 
+        const wantsHostPricingFieldsUpdate =
+          req.body?.parkingPassBreakfastPriceCents !== undefined ||
+          req.body?.parkingPassLunchPriceCents !== undefined ||
+          req.body?.parkingPassDinnerPriceCents !== undefined ||
+          req.body?.parkingPassDailyPriceCents !== undefined ||
+          req.body?.parkingPassWeeklyPriceCents !== undefined ||
+          req.body?.parkingPassMonthlyPriceCents !== undefined ||
+          req.body?.parkingPassDailyOnly !== undefined;
+
+        const dailyOnlySelected = Boolean(req.body?.parkingPassDailyOnly);
+
+        let derivedBreakfastCents = parkingPassBreakfastPriceCents;
+        let derivedLunchCents = parkingPassLunchPriceCents;
+        let derivedDinnerCents = parkingPassDinnerPriceCents;
+        let derivedDailyCents = parkingPassDailyPriceCents;
+        let derivedWeeklyCents = parkingPassWeeklyPriceCents;
+        let derivedMonthlyCents = parkingPassMonthlyPriceCents;
+
+        if (wantsHostPricingFieldsUpdate) {
+          const breakfast = Number(derivedBreakfastCents ?? 0) || 0;
+          const lunch = Number(derivedLunchCents ?? 0) || 0;
+          const dinner = Number(derivedDinnerCents ?? 0) || 0;
+          const daily = Number(derivedDailyCents ?? 0) || 0;
+
+          const filledSlots = [breakfast, lunch, dinner].filter((v) => v > 0).length;
+          const slotSum = breakfast + lunch + dinner;
+
+          if (dailyOnlySelected) {
+            if (filledSlots > 0) {
+              return res.status(400).json({
+                message:
+                  "Daily-only pricing cannot be combined with Breakfast/Lunch/Dinner slot prices. Clear slot prices or uncheck Daily-only.",
+              });
+            }
+            if (daily <= 0) {
+              return res.status(400).json({
+                message: "Daily price is required when Daily-only pricing is enabled.",
+              });
+            }
+            derivedDailyCents = daily;
+            derivedWeeklyCents = daily * 7;
+            derivedMonthlyCents = daily * 30;
+          } else {
+            if (filledSlots > 0 && filledSlots < 3) {
+              return res.status(400).json({
+                message:
+                  "Missing slot prices. Set Breakfast, Lunch, and Dinner prices, or enable Daily-only for all-day parking.",
+              });
+            }
+
+            if (filledSlots === 0 && daily > 0) {
+              return res.status(400).json({
+                message:
+                  "Daily price requires a pricing mode. Either set Breakfast/Lunch/Dinner slot prices or enable Daily-only.",
+              });
+            }
+
+            if (filledSlots === 3) {
+              derivedDailyCents = slotSum;
+              derivedWeeklyCents = slotSum * 7;
+              derivedMonthlyCents = slotSum * 30;
+            }
+          }
+        }
+
         const wantsSpotImageUpdate = req.body?.spotImageUrl !== undefined;
         const includeSpotImageUrl = wantsSpotImageUpdate
           ? await hasHostSpotImageColumn().catch(() => false)
@@ -4567,12 +4632,20 @@ export function registerAdminManagementRoutes(app: Express) {
           notes: req.body?.notes,
           isVerified: req.body?.isVerified,
           // Parking Pass defaults (host is the source of truth).
-          parkingPassBreakfastPriceCents,
-          parkingPassLunchPriceCents,
-          parkingPassDinnerPriceCents,
-          parkingPassDailyPriceCents,
-          parkingPassWeeklyPriceCents,
-          parkingPassMonthlyPriceCents,
+          parkingPassBreakfastPriceCents: wantsHostPricingFieldsUpdate
+            ? derivedBreakfastCents
+            : undefined,
+          parkingPassLunchPriceCents: wantsHostPricingFieldsUpdate ? derivedLunchCents : undefined,
+          parkingPassDinnerPriceCents: wantsHostPricingFieldsUpdate
+            ? derivedDinnerCents
+            : undefined,
+          parkingPassDailyPriceCents: wantsHostPricingFieldsUpdate ? derivedDailyCents : undefined,
+          parkingPassWeeklyPriceCents: wantsHostPricingFieldsUpdate
+            ? derivedWeeklyCents
+            : undefined,
+          parkingPassMonthlyPriceCents: wantsHostPricingFieldsUpdate
+            ? derivedMonthlyCents
+            : undefined,
           parkingPassStartTime: req.body?.parkingPassStartTime,
           parkingPassEndTime: req.body?.parkingPassEndTime,
           parkingPassDaysOfWeek,

@@ -5444,61 +5444,6 @@ export default function AdminDashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MapPin className="w-5 h-5" />
-                  Parking Pass Tools
-                </CardTitle>
-                <CardDescription>
-                  Debug and repair Parking Pass map visibility, series status, and caches.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border p-3">
-                  <div>
-                    <div className="text-sm font-semibold">Debug tools</div>
-                    <div className="text-xs text-muted-foreground">
-                      If maps/pins look stale, force-refresh server + browser caches.
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={backfillParkingPasses.isPending}
-                      onClick={() => backfillParkingPasses.mutate()}
-                    >
-                      {backfillParkingPasses.isPending ? "Backfilling..." : "Backfill parking passes"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={normalizeParkingPassSeries.isPending}
-                      onClick={() => normalizeParkingPassSeries.mutate()}
-                    >
-                      {normalizeParkingPassSeries.isPending ? "Normalizing..." : "Normalize series status"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={clearMapCaches.isPending}
-                      onClick={() => clearMapCaches.mutate()}
-                    >
-                      {clearMapCaches.isPending ? "Clearing..." : "Force refresh map caches"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={runParkingPassIntegrity.isPending}
-                      onClick={() => runParkingPassIntegrity.mutate()}
-                    >
-                      {runParkingPassIntegrity.isPending ? "Running..." : "Run integrity job"}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5" />
                   Manage Host Locations
                 </CardTitle>
                 <CardDescription>

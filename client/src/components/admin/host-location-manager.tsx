@@ -35,7 +35,6 @@ const coerceCents = (value: unknown) => {
 
 const applySlotSumToDailyIfAuto = (prev: any, nextSlotSumCents: number) => {
   if (prev?._dailyOnlySelected) return prev;
-  if (prev?._dailyManuallyEdited) return prev;
   const nextDaily = Math.max(0, Math.round(nextSlotSumCents));
   if (nextDaily <= 0) return prev;
 
@@ -518,6 +517,7 @@ export default function HostLocationManager({
                       step={1}
                       value={toDollars(pricingEdits.parkingPassDailyPriceCents)}
                       onChange={(e) => {
+                        if (!pricingEdits._dailyOnlySelected) return;
                         const cents = toCents(e.target.value);
                         setPricingEdits({
                           ...pricingEdits,
@@ -527,7 +527,9 @@ export default function HostLocationManager({
                           _dailyManuallyEdited: cents > 0,
                         });
                       }}
-                      className="px-2 py-1 border rounded text-sm w-full"
+                      disabled={!pricingEdits._dailyOnlySelected}
+                      readOnly={!pricingEdits._dailyOnlySelected}
+                      className="px-2 py-1 border rounded text-sm w-full disabled:bg-muted/30"
                     />
                   </div>
                   <div className="space-y-1">
@@ -595,6 +597,7 @@ export default function HostLocationManager({
                       setPricingEdits({
                         ...pricingEdits,
                         _dailyOnlySelected: checked,
+                        ...(checked ? { _dailyManuallyEdited: false } : null),
                       });
                     }}
                   />

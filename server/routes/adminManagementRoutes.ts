@@ -616,37 +616,7 @@ export function registerAdminManagementRoutes(app: Express) {
   // Admin API endpoints
   app.get("/api/auth/admin/verify", isAuthenticated, async (req: any, res) => {
     try {
-      let user = req.user;
-      
-      // Auto-upgrade configured super admin email to super_admin role
-      const SUPER_ADMIN_EMAIL =
-        process.env.ADMIN_EMAIL || "info.mealscout@gmail.com";
-      if (
-        user &&
-        user.email === SUPER_ADMIN_EMAIL &&
-        user.userType !== "super_admin"
-      ) {
-        try {
-          user = await storage.updateUserType(user.id, "super_admin");
-          console.log(`✅ Auto-upgraded ${user.email} to super_admin role`);
-        } catch (err) {
-          console.warn("⚠️  Failed to auto-upgrade super admin role:", err);
-        }
-      }
-
-      // Also verify email if admin/super_admin
-      if (
-        user &&
-        !user.emailVerified &&
-        (user.userType === "admin" || user.userType === "super_admin")
-      ) {
-        try {
-          user = await storage.updateUser(user.id, { emailVerified: true });
-        } catch (err) {
-          console.warn("⚠️  Failed to verify admin email:", err);
-        }
-      }
-
+      const user = req.user;
       if (
         user.userType === "admin" ||
         user.userType === "super_admin" ||
@@ -654,13 +624,9 @@ export function registerAdminManagementRoutes(app: Express) {
       ) {
         res.json(sanitizeUser(user, { includeStripe: true }));
       } else {
-        console.warn(
-          `🚫 Admin access denied for user ${user.id} with role ${user.userType}`
-        );
         res.status(403).json({ message: "Admin access required" });
       }
     } catch (error) {
-      console.error("Error verifying admin:", error);
       res.status(500).json({ message: "Failed to verify admin" });
     }
   });

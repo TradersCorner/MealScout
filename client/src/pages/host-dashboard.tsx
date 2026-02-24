@@ -412,25 +412,33 @@ function HostDashboard() {
 
   if (!host) return null;
 
+  const hostStripePayoutReady = Boolean(
+    host.stripeConnectAccountId &&
+      host.stripeChargesEnabled &&
+      host.stripePayoutsEnabled &&
+      host.stripeOnboardingCompleted,
+  );
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 bg-[var(--bg-layered)] min-h-screen">
-      {!host.stripeChargesEnabled && (
+      {!hostStripePayoutReady && (
         <Alert className="mb-6 border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning)]/10">
           <AlertCircle className="h-4 w-4 text-[color:var(--status-warning)]" />
           <AlertTitle className="text-[color:var(--text-primary)]">
-            Enable Payments to Accept Bookings
+            Complete Stripe Setup to Cash Out Earnings
           </AlertTitle>
           <AlertDescription className="text-[color:var(--text-secondary)]">
             <p className="mb-3">
-              Set up payments to receive booking fees from trucks. You set your
-              price per slot and get paid automatically.
+              Trucks can still book your paid parking pass slots now. Booking
+              earnings accrue to your host balance, and payouts unlock once
+              Stripe onboarding is complete.
             </p>
             <div className="flex flex-wrap gap-2">
               <Button
                 onClick={handleEnablePayments}
                 className="bg-[color:var(--accent-text)] hover:bg-[color:var(--action-hover)]"
               >
-                Enable Payments with Stripe
+                Complete Stripe Setup
               </Button>
               <Button
                 variant="outline"

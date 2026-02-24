@@ -2314,16 +2314,9 @@ export function registerHostRoutes(app: Express) {
           host.stripePayoutsEnabled &&
           host.stripeOnboardingCompleted,
         );
-        if (!hostPaymentsEnabled && !bypassStripe) {
-          return res.status(400).json({
-            message:
-              "This host has not completed Stripe onboarding yet. This spot cannot be booked until charges and payouts are enabled.",
-            code: "host_payments_not_enabled",
-          });
-        }
-
         // Host payouts may still be configuring Stripe Connect.
-        // We only allow bookings once charges are enabled (unless bypassStripe).
+        // We still allow bookings: if Connect is not ready we charge on platform,
+        // and payouts are handled after host onboarding is completed.
         const hostStripeAccountId = hostPaymentsEnabled
           ? host.stripeConnectAccountId
           : null;

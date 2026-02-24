@@ -190,8 +190,10 @@ function HostDashboard() {
         if (!prev) return prev;
         return {
           ...prev,
-          stripeConnectAccountId: data.accountId || prev.stripeConnectAccountId || null,
-          stripeConnectStatus: data.connectStatus || prev.stripeConnectStatus || null,
+          stripeConnectAccountId:
+            data.accountId || prev.stripeConnectAccountId || null,
+          stripeConnectStatus:
+            data.connectStatus || prev.stripeConnectStatus || null,
           stripeChargesEnabled: data.chargesEnabled,
           stripePayoutsEnabled: data.payoutsEnabled,
           stripeOnboardingCompleted: data.onboardingCompleted,
@@ -451,7 +453,10 @@ function HostDashboard() {
         </div>
         {hosts.length > 1 && (
           <div className="flex items-center gap-2">
-            <Label htmlFor="hostSelect" className="text-sm text-[color:var(--text-secondary)]">
+            <Label
+              htmlFor="hostSelect"
+              className="text-sm text-[color:var(--text-secondary)]"
+            >
               Property
             </Label>
             <select
@@ -462,7 +467,7 @@ function HostDashboard() {
             >
               {hosts.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.businessName}  {item.address}
+                  {item.businessName} {item.address}
                 </option>
               ))}
             </select>
@@ -680,8 +685,8 @@ function HostDashboard() {
                       </h4>
                       <p className="text-xs text-[color:var(--text-muted)]">
                         {series.startDate?.slice(0, 10)} {"->"}{" "}
-                        {series.endDate?.slice(0, 10)} - {series.defaultStartTime}-
-                        {series.defaultEndTime}
+                        {series.endDate?.slice(0, 10)} -{" "}
+                        {series.defaultStartTime}-{series.defaultEndTime}
                       </p>
                       <p className="text-xs text-[color:var(--text-muted)]">
                         Status: {series.status}
@@ -746,17 +751,8 @@ function HostDashboard() {
           )}
         </div>
       </section>
-
     </div>
   );
 }
 
 export default HostDashboard;
-
-
-
-
-
-
-
-

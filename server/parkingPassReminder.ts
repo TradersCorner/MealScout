@@ -86,9 +86,9 @@ async function buildOnboardingQueueInternal() {
     const pricingReady = hostsWithPricing.has(host.hostId);
     const stripeReady = Boolean(
       host.stripeConnectAccountId &&
-        host.stripeChargesEnabled &&
-        host.stripePayoutsEnabled &&
-        host.stripeOnboardingCompleted,
+      host.stripeChargesEnabled &&
+      host.stripePayoutsEnabled &&
+      host.stripeOnboardingCompleted,
     );
     const needsPricing = !pricingReady;
     const needsStripe = !stripeReady;
@@ -132,7 +132,11 @@ export async function getParkingPassOnboardingQueue() {
 export async function sendParkingPassReminderForHost(hostId: string) {
   const normalizedHostId = String(hostId || "").trim();
   if (!normalizedHostId) {
-    return { ok: false, code: "invalid_host_id", message: "Host ID is required" };
+    return {
+      ok: false,
+      code: "invalid_host_id",
+      message: "Host ID is required",
+    };
   }
 
   if (!isEmailConfigured()) {
@@ -198,7 +202,13 @@ export async function remindIncompleteParkingPassHosts() {
 
   const queue = await buildOnboardingQueueInternal();
   if (queue.length === 0) {
-    return { sent: 0, skipped: 0, eligible: 0, pricingIncomplete: 0, stripeIncomplete: 0 };
+    return {
+      sent: 0,
+      skipped: 0,
+      eligible: 0,
+      pricingIncomplete: 0,
+      stripeIncomplete: 0,
+    };
   }
 
   let sent = 0;

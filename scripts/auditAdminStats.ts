@@ -156,7 +156,7 @@ async function auditAdminStats() {
 
     console.log(`✅ Restaurant Owners by Role:`);
     Object.entries(byRole)
-      .sort((a, b) => b[1] - a[1])
+      .sort((a: [string, number], b: [string, number]) => b[1] - a[1])
       .forEach(([role, count]) => {
         console.log(`   - ${role}: ${count}`);
       });

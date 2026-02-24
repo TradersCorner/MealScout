@@ -26,7 +26,7 @@ async function investigateMultipleHosts() {
     console.log(`   Email: ${row.email}`);
     console.log(`   Hosts (${row.host_count}):`);
     const hosts = row.host_names.split(" | ");
-    hosts.forEach((h, i) => console.log(`     ${i + 1}. ${h}`));
+    hosts.forEach((h: string, i: number) => console.log(`     ${i + 1}. ${h}`));
     console.log();
   }
 

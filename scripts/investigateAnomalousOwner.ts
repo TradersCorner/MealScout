@@ -105,7 +105,7 @@ async function investigateAnomalousOwner() {
 
   console.log("\n📈 SUMMARY:");
   console.log(
-    `  Total restaurants: ${firstResult.rowCount + lastResult.rowCount > 1000 ? "~1000+" : "?"}`,
+    `  Total restaurants: ${(firstResult.rowCount ?? 0) + (lastResult.rowCount ?? 0) > 1000 ? "~1000+" : "?"}`,
   );
   const totalResult = await pool.query(
     `SELECT COUNT(*)::integer as count FROM restaurants WHERE owner_id = $1`,

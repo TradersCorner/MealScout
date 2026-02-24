@@ -116,6 +116,20 @@ export function registerHostRoutes(app: Express) {
     return activeRow?.seriesId ?? null;
   };
 
+  const getOwnedHostForRequest = async (req: any) => {
+    const userId = String(req.user?.id || "").trim();
+    if (!userId) return null;
+
+    const requestedHostId = String(
+      req.body?.hostId || req.query?.hostId || "",
+    ).trim();
+    const ownedHosts = await storage.getHostsByUserId(userId);
+    if (!ownedHosts.length) return null;
+
+    if (!requestedHostId) return ownedHosts[0];
+    return ownedHosts.find((item: any) => String(item.id) === requestedHostId) || null;
+  };
+
   // Host Profile & Events
   app.post("/api/hosts", isAuthenticated, async (req: any, res) => {
     try {
@@ -1951,8 +1965,7 @@ export function registerHostRoutes(app: Express) {
           return res.status(500).json({ message: "Stripe not configured" });
         }
 
-        const userId = req.user.id;
-        const host = await getHostByUserId(userId);
+        const host = await getOwnedHostForRequest(req);
         if (!host) {
           return res.status(404).json({ message: "Host profile not found" });
         }
@@ -1981,16 +1994,24 @@ export function registerHostRoutes(app: Express) {
           // Save to database
           await db
             .update(hosts)
-            .set({ stripeConnectAccountId: accountId })
+            .set({
+              stripeConnectAccountId: accountId,
+              stripeConnectStatus: "pending",
+              stripeOnboardingCompleted: false,
+              stripeChargesEnabled: false,
+              stripePayoutsEnabled: false,
+              updatedAt: new Date(),
+            })
             .where(eq(hosts.id, host.id));
         }
 
         // Create onboarding link
-        const baseUrl = `${req.protocol}://${req.get("host")}`;
+        const baseUrl = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
+        const normalizedBaseUrl = String(baseUrl || "").replace(/\/+$/, "");
         const accountLink = await stripe.accountLinks.create({
           account: accountId,
-          refresh_url: `${baseUrl}/host/dashboard?setup=refresh`,
-          return_url: `${baseUrl}/host/dashboard?setup=complete`,
+          refresh_url: `${normalizedBaseUrl}/host/dashboard?setup=refresh&hostId=${encodeURIComponent(String(host.id))}`,
+          return_url: `${normalizedBaseUrl}/host/dashboard?setup=complete&hostId=${encodeURIComponent(String(host.id))}`,
           type: "account_onboarding",
         });
 
@@ -2014,8 +2035,7 @@ export function registerHostRoutes(app: Express) {
           return res.status(500).json({ message: "Stripe not configured" });
         }
 
-        const userId = req.user.id;
-        const host = await getHostByUserId(userId);
+        const host = await getOwnedHostForRequest(req);
         if (!host) {
           return res.status(404).json({ message: "Host profile not found" });
         }
@@ -2025,6 +2045,8 @@ export function registerHostRoutes(app: Express) {
             connected: false,
             chargesEnabled: false,
             payoutsEnabled: false,
+            onboardingCompleted: false,
+            connectStatus: "not_connected",
           });
         }
 
@@ -2039,7 +2061,11 @@ export function registerHostRoutes(app: Express) {
             stripeChargesEnabled: account.charges_enabled,
             stripePayoutsEnabled: account.payouts_enabled,
             stripeOnboardingCompleted: account.details_submitted,
-            stripeConnectStatus: account.charges_enabled ? "active" : "pending",
+            stripeConnectStatus:
+              account.charges_enabled && account.payouts_enabled
+                ? "active"
+                : "pending",
+            updatedAt: new Date(),
           })
           .where(eq(hosts.id, host.id));
 
@@ -2048,6 +2074,11 @@ export function registerHostRoutes(app: Express) {
           chargesEnabled: account.charges_enabled,
           payoutsEnabled: account.payouts_enabled,
           onboardingCompleted: account.details_submitted,
+          connectStatus:
+            account.charges_enabled && account.payouts_enabled
+              ? "active"
+              : "pending",
+          accountId: host.stripeConnectAccountId,
         });
       } catch (error: any) {
         console.error("Error checking Stripe status:", error);
@@ -2186,12 +2217,15 @@ export function registerHostRoutes(app: Express) {
       }
 
       const hostPaymentsEnabled = Boolean(
-        host.stripeConnectAccountId && host.stripeChargesEnabled,
+        host.stripeConnectAccountId &&
+          host.stripeChargesEnabled &&
+          host.stripePayoutsEnabled &&
+          host.stripeOnboardingCompleted,
       );
       if (!hostPaymentsEnabled && !bypassStripe) {
         return res.status(400).json({
           message:
-            "This host has not enabled payments yet. This spot cannot be booked until payments are enabled.",
+            "This host has not completed Stripe onboarding yet. This spot cannot be booked until charges and payouts are enabled.",
           code: "host_payments_not_enabled",
         });
       }

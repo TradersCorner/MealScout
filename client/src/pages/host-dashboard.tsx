@@ -20,6 +20,8 @@ interface HostProfile {
   contactPhone?: string | null;
   latitude?: string | null;
   longitude?: string | null;
+  stripeConnectAccountId?: string | null;
+  stripeConnectStatus?: string | null;
   stripeChargesEnabled?: boolean;
   stripePayoutsEnabled?: boolean;
   stripeOnboardingCompleted?: boolean;
@@ -147,7 +149,16 @@ function HostDashboard() {
 
   const handleEnablePayments = async () => {
     try {
-      const res = await fetch("/api/hosts/stripe/onboard", { method: "POST" });
+      const hostId = selectedHostId || host?.id;
+      if (!hostId) {
+        throw new Error("No host selected");
+      }
+      const res = await fetch("/api/hosts/stripe/onboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ hostId }),
+      });
       if (!res.ok) {
         throw new Error("Failed to initiate Stripe onboarding");
       }
@@ -166,26 +177,48 @@ function HostDashboard() {
   const refreshStripeStatus = async () => {
     setIsCheckingStripe(true);
     try {
-      const res = await fetch("/api/hosts/stripe/status");
+      const hostId = selectedHostId || host?.id;
+      const statusUrl = hostId
+        ? `/api/hosts/stripe/status?hostId=${encodeURIComponent(hostId)}`
+        : "/api/hosts/stripe/status";
+      const res = await fetch(statusUrl, { credentials: "include" });
       if (!res.ok) {
         throw new Error("Failed to check payment status");
       }
       const data = await res.json();
-      setHost((prev) =>
-        prev
-          ? {
-              ...prev,
-              stripeChargesEnabled: data.chargesEnabled,
-              stripePayoutsEnabled: data.payoutsEnabled,
-              stripeOnboardingCompleted: data.onboardingCompleted,
-            }
-          : prev,
+      setHost((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          stripeConnectAccountId: data.accountId || prev.stripeConnectAccountId || null,
+          stripeConnectStatus: data.connectStatus || prev.stripeConnectStatus || null,
+          stripeChargesEnabled: data.chargesEnabled,
+          stripePayoutsEnabled: data.payoutsEnabled,
+          stripeOnboardingCompleted: data.onboardingCompleted,
+        };
+      });
+      setHosts((prev) =>
+        prev.map((item) =>
+          item.id === (selectedHostId || host?.id)
+            ? {
+                ...item,
+                stripeConnectAccountId:
+                  data.accountId || item.stripeConnectAccountId || null,
+                stripeConnectStatus:
+                  data.connectStatus || item.stripeConnectStatus || null,
+                stripeChargesEnabled: data.chargesEnabled,
+                stripePayoutsEnabled: data.payoutsEnabled,
+                stripeOnboardingCompleted: data.onboardingCompleted,
+              }
+            : item,
+        ),
       );
       toast({
         title: "Stripe status updated",
-        description: data.chargesEnabled
-          ? "Payments are enabled."
-          : "Payments are still pending.",
+        description:
+          data.chargesEnabled && data.payoutsEnabled
+            ? "Payments are enabled."
+            : "Payments are still pending.",
       });
     } catch (error: any) {
       console.error("Stripe status error:", error);
@@ -198,6 +231,23 @@ function HostDashboard() {
       setIsCheckingStripe(false);
     }
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const setup = params.get("setup");
+    const setupHostId = params.get("hostId");
+    if (!setup) return;
+
+    if (setupHostId && setupHostId !== selectedHostId) {
+      setSelectedHostId(setupHostId);
+    }
+
+    if (setup === "complete" || setup === "refresh") {
+      void refreshStripeStatus();
+      const cleanUrl = `${window.location.pathname}${setupHostId ? `?hostId=${encodeURIComponent(setupHostId)}` : ""}`;
+      window.history.replaceState({}, "", cleanUrl);
+    }
+  }, [selectedHostId]);
 
   const toggleRecurrenceDay = (day: string) => {
     setSeriesForm((prev) => {

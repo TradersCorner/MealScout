@@ -3,7 +3,11 @@ import { createServer, type Server } from "http";
 import cron from "node-cron";
 import { DigestService } from "./digestService";
 import { notifyUnbookedEvents } from "./eventNotificationCron";
-import { remindIncompleteParkingPassHosts } from "./parkingPassReminder";
+import {
+  getParkingPassOnboardingQueue,
+  remindIncompleteParkingPassHosts,
+  sendParkingPassReminderForHost,
+} from "./parkingPassReminder";
 import Stripe from "stripe";
 import { storage } from "./storage";
 import {
@@ -223,9 +227,11 @@ function normalizeSearchQuery(input: string) {
 }
 
 function shouldDropSearchQuery(normalized: string) {
-  if (!normalized || normalized.length < 2 || normalized.length > 80) return true;
+  if (!normalized || normalized.length < 2 || normalized.length > 80)
+    return true;
   if (normalized.includes("@")) return true; // avoid storing emails
-  if (normalized.includes("http://") || normalized.includes("https://")) return true; // avoid URLs
+  if (normalized.includes("http://") || normalized.includes("https://"))
+    return true; // avoid URLs
   if (normalized.includes("www.")) return true;
   if (/\d{7,}/.test(normalized)) return true; // likely phone/order/account style strings
   return false;
@@ -331,7 +337,9 @@ const accountSettingsSchema = z.object({
   customDomain: z
     .object({
       hostname: z.string().max(255),
-      status: z.enum(["unverified", "verified", "mismatch", "error"]).optional(),
+      status: z
+        .enum(["unverified", "verified", "mismatch", "error"])
+        .optional(),
       lastCheckedAt: z.string().optional(),
       expectedTarget: z.string().optional(),
       diagnostics: z.string().optional(),
@@ -401,9 +409,7 @@ async function getLockedPriceForUser(userId: string): Promise<{
 }> {
   const price25 = process.env.PRICE_MONTHLY_25;
   if (!price25) {
-    throw new Error(
-      "Stripe Price IDs not configured (PRICE_MONTHLY_25)",
-    );
+    throw new Error("Stripe Price IDs not configured (PRICE_MONTHLY_25)");
   }
 
   const locked = true;
@@ -602,7 +608,8 @@ async function validateSubscriptionLimits(
       };
     }
 
-    const subscriptionId = hydratedUser.stripeSubscriptionId || hydratedUser.stripeCustomerId;
+    const subscriptionId =
+      hydratedUser.stripeSubscriptionId || hydratedUser.stripeCustomerId;
 
     // Removed legacy billing interval checks
     // Only monthly billing supported
@@ -671,7 +678,9 @@ const businessAccessCache = new Map<
 
 function hasAccountAgeTrialAccess(user: User | null): boolean {
   if (!user?.createdAt) return false;
-  if (!["restaurant_owner", "food_truck"].includes(String(user.userType || ""))) {
+  if (
+    !["restaurant_owner", "food_truck"].includes(String(user.userType || ""))
+  ) {
     return false;
   }
   const createdAtMs = new Date(user.createdAt).getTime();
@@ -734,9 +743,9 @@ async function hasBusinessDistributionAccess(userId: string): Promise<boolean> {
   return hasAccess;
 }
 
-async function filterDealsByBusinessAccess<T extends { restaurantId?: string | null }>(
-  dealRows: T[],
-): Promise<T[]> {
+async function filterDealsByBusinessAccess<
+  T extends { restaurantId?: string | null },
+>(dealRows: T[]): Promise<T[]> {
   if (!Array.isArray(dealRows) || dealRows.length === 0) return [];
 
   const restaurantIds = Array.from(
@@ -837,13 +846,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const resolved = await forwardGeocode(query).catch(() => null);
       if (!resolved) return res.json([]);
-      return res.json([
-        {
-          lat: String(resolved.lat),
-          lon: String(resolved.lng),
-          display_name: query,
-        },
-      ].slice(0, limit));
+      return res.json(
+        [
+          {
+            lat: String(resolved.lat),
+            lon: String(resolved.lng),
+            display_name: query,
+          },
+        ].slice(0, limit),
+      );
     } catch (error) {
       console.error("Error forward geocoding location:", error);
       return res.json([]);
@@ -1292,7 +1303,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         if (!isCloudinaryConfigured()) {
-          return res.status(503).json({ message: "Image upload service not configured" });
+          return res
+            .status(503)
+            .json({ message: "Image upload service not configured" });
         }
         if (!req.file) {
           return res.status(400).json({ message: "No image file provided" });
@@ -1309,7 +1322,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         const current = (user.publicProfileSettings || {}) as any;
-        const galleryUrls = Array.isArray(current.galleryUrls) ? current.galleryUrls : [];
+        const galleryUrls = Array.isArray(current.galleryUrls)
+          ? current.galleryUrls
+          : [];
         const nextGalleryUrls = [result.secureUrl, ...galleryUrls].slice(0, 12);
 
         await storage.updateUser(user.id, {
@@ -1331,75 +1346,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  app.post("/api/settings/custom-domain/verify", isAuthenticated, async (req: any, res) => {
-    try {
-      const payloadSchema = z.object({
-        hostname: z
-          .string()
-          .trim()
-          .toLowerCase()
-          .regex(/^[a-z0-9.-]+\.[a-z]{2,}$/, "Invalid hostname"),
-      });
-      const { hostname } = payloadSchema.parse(req.body || {});
-      const user = await storage.getUser(req.user.id);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const dns = await import("dns/promises");
-      const expectedTarget = String(
-        process.env.PROFILE_DOMAIN_CNAME_TARGET ||
-          process.env.RENDER_EXTERNAL_HOSTNAME ||
-          (process.env.PUBLIC_BASE_URL || "mealscout.us")
-            .replace(/^https?:\/\//, "")
-            .replace(/\/+$/, ""),
-      )
-        .toLowerCase()
-        .trim();
-      let status: "unverified" | "verified" | "mismatch" | "error" = "unverified";
-      let diagnostics = "";
-
+  app.post(
+    "/api/settings/custom-domain/verify",
+    isAuthenticated,
+    async (req: any, res) => {
       try {
-        const cnames = await dns.resolveCname(hostname);
-        const normalized = cnames.map((c) => String(c || "").toLowerCase().replace(/\.$/, ""));
-        const expected = expectedTarget.replace(/\.$/, "");
-        if (normalized.includes(expected)) {
-          status = "verified";
-        } else {
-          status = "mismatch";
-          diagnostics = `CNAME points to ${normalized.join(", ") || "none"}, expected ${expected}`;
-        }
-      } catch (e: any) {
-        status = "error";
-        diagnostics = e?.message || "DNS lookup failed";
-      }
-
-      const accountSettings = {
-        ...(user.accountSettings || {}),
-        customDomain: {
-          hostname,
-          status,
-          lastCheckedAt: new Date().toISOString(),
-          expectedTarget,
-          diagnostics,
-        },
-      };
-      await storage.updateUser(user.id, {
-        accountSettings: accountSettings as any,
-      });
-
-      res.json(accountSettings.customDomain);
-    } catch (error: any) {
-      console.error("Error verifying custom domain:", error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({
-          message: "Invalid domain payload",
-          errors: error.errors,
+        const payloadSchema = z.object({
+          hostname: z
+            .string()
+            .trim()
+            .toLowerCase()
+            .regex(/^[a-z0-9.-]+\.[a-z]{2,}$/, "Invalid hostname"),
         });
+        const { hostname } = payloadSchema.parse(req.body || {});
+        const user = await storage.getUser(req.user.id);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        const dns = await import("dns/promises");
+        const expectedTarget = String(
+          process.env.PROFILE_DOMAIN_CNAME_TARGET ||
+            process.env.RENDER_EXTERNAL_HOSTNAME ||
+            (process.env.PUBLIC_BASE_URL || "mealscout.us")
+              .replace(/^https?:\/\//, "")
+              .replace(/\/+$/, ""),
+        )
+          .toLowerCase()
+          .trim();
+        let status: "unverified" | "verified" | "mismatch" | "error" =
+          "unverified";
+        let diagnostics = "";
+
+        try {
+          const cnames = await dns.resolveCname(hostname);
+          const normalized = cnames.map((c) =>
+            String(c || "")
+              .toLowerCase()
+              .replace(/\.$/, ""),
+          );
+          const expected = expectedTarget.replace(/\.$/, "");
+          if (normalized.includes(expected)) {
+            status = "verified";
+          } else {
+            status = "mismatch";
+            diagnostics = `CNAME points to ${normalized.join(", ") || "none"}, expected ${expected}`;
+          }
+        } catch (e: any) {
+          status = "error";
+          diagnostics = e?.message || "DNS lookup failed";
+        }
+
+        const accountSettings = {
+          ...(user.accountSettings || {}),
+          customDomain: {
+            hostname,
+            status,
+            lastCheckedAt: new Date().toISOString(),
+            expectedTarget,
+            diagnostics,
+          },
+        };
+        await storage.updateUser(user.id, {
+          accountSettings: accountSettings as any,
+        });
+
+        res.json(accountSettings.customDomain);
+      } catch (error: any) {
+        console.error("Error verifying custom domain:", error);
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            message: "Invalid domain payload",
+            errors: error.errors,
+          });
+        }
+        res.status(500).json({ message: "Failed to verify custom domain" });
       }
-      res.status(500).json({ message: "Failed to verify custom domain" });
-    }
-  });
+    },
+  );
 
   // Password reset endpoints
   app.post("/api/auth/forgot-password", async (req, res) => {
@@ -1951,8 +1975,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const created = await storage.createLocationRequest({
         ...parsed,
-        latitude: coords ? coords.lat.toString() : parsed.latitude ?? null,
-        longitude: coords ? coords.lng.toString() : parsed.longitude ?? null,
+        latitude: coords ? coords.lat.toString() : (parsed.latitude ?? null),
+        longitude: coords ? coords.lng.toString() : (parsed.longitude ?? null),
       });
       res
         .status(201)
@@ -2036,12 +2060,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Public map feed: hosts (open location requests) + upcoming events (hosted slots)
-  let mapLocationsCache:
-    | { expiresAt: number; payload: { hostLocations: any[]; eventLocations: any[] } }
-    | null = null;
-  let mapLocationsLastGood:
-    | { payload: { hostLocations: any[]; eventLocations: any[] } }
-    | null = null;
+  let mapLocationsCache: {
+    expiresAt: number;
+    payload: { hostLocations: any[]; eventLocations: any[] };
+  } | null = null;
+  let mapLocationsLastGood: {
+    payload: { hostLocations: any[]; eventLocations: any[] };
+  } | null = null;
   app.get("/api/map/locations", async (_req, res) => {
     try {
       res.setHeader("Cache-Control", "public, max-age=60");
@@ -2144,7 +2169,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const normalizedState = (state ?? "").trim();
 
         const parts: string[] = [base];
-        if (normalizedCity && !baseLower.includes(normalizedCity.toLowerCase())) {
+        if (
+          normalizedCity &&
+          !baseLower.includes(normalizedCity.toLowerCase())
+        ) {
           parts.push(normalizedCity);
         }
         if (
@@ -2277,23 +2305,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const primaryHostLocations = hostProfiles.map((host) => ({
-          id: host.id,
-          type: "host_location" as const,
-          hostId: host.id,
-          locationRequestId: null,
-          name: host.businessName,
-          address: host.address,
-          city: host.city ?? null,
-          state: host.state ?? null,
-          spotImageUrl: null,
-          locationType: host.locationType || "other",
-          expectedFootTraffic: host.expectedFootTraffic ?? null,
-          notes: host.notes ?? null,
-          preferredDates: [],
-          status: host.isVerified ? "verified" : "active",
-          latitude: host.latitude ?? null,
-          longitude: host.longitude ?? null,
-        }));
+        id: host.id,
+        type: "host_location" as const,
+        hostId: host.id,
+        locationRequestId: null,
+        name: host.businessName,
+        address: host.address,
+        city: host.city ?? null,
+        state: host.state ?? null,
+        spotImageUrl: null,
+        locationType: host.locationType || "other",
+        expectedFootTraffic: host.expectedFootTraffic ?? null,
+        notes: host.notes ?? null,
+        preferredDates: [],
+        status: host.isVerified ? "verified" : "active",
+        latitude: host.latitude ?? null,
+        longitude: host.longitude ?? null,
+      }));
 
       const hostLocations = [
         ...openLocations
@@ -2377,15 +2405,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Try to re-geocode with a more explicit query and only accept it if the reverse state matches.
             host.latitude = null;
             host.longitude = null;
-            const address = buildFullAddress(host.address, host.city, host.state);
+            const address = buildFullAddress(
+              host.address,
+              host.city,
+              host.state,
+            );
             if (address) {
-              const coords = await forwardGeocode(address, { force: true }).catch(
-                () => null,
-              );
+              const coords = await forwardGeocode(address, {
+                force: true,
+              }).catch(() => null);
               if (coords) {
-                const verify = await reverseGeocode(coords.lat, coords.lng).catch(
-                  () => null,
-                );
+                const verify = await reverseGeocode(
+                  coords.lat,
+                  coords.lng,
+                ).catch(() => null);
                 const verifyState = normalizeUsStateAbbr(
                   String(verify?.state || "").trim(),
                 );
@@ -2393,7 +2426,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   applyCoords(host, coords);
                   if (host.hostId) {
                     await storage
-                      .updateHostCoordinates(host.hostId, coords.lat, coords.lng)
+                      .updateHostCoordinates(
+                        host.hostId,
+                        coords.lat,
+                        coords.lng,
+                      )
                       .catch(() => undefined);
                   } else if (host.locationRequestId) {
                     await db
@@ -2411,7 +2448,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        if (parseCoord(host.latitude) !== null && parseCoord(host.longitude) !== null) {
+        if (
+          parseCoord(host.latitude) !== null &&
+          parseCoord(host.longitude) !== null
+        ) {
           continue;
         }
         const address = buildFullAddress(host.address, host.city, host.state);
@@ -2421,7 +2461,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           (coords) => applyCoords(host, coords),
           host.hostId
             ? async (coords) => {
-                await storage.updateHostCoordinates(host.hostId, coords.lat, coords.lng);
+                await storage.updateHostCoordinates(
+                  host.hostId,
+                  coords.lat,
+                  coords.lng,
+                );
               }
             : host.locationRequestId
               ? async (coords) => {
@@ -3176,8 +3220,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const schema = z.object({
-          facebookPageUrl: z.string().url().optional().nullable().or(z.literal("")),
-          instagramUrl: z.string().url().optional().nullable().or(z.literal("")),
+          facebookPageUrl: z
+            .string()
+            .url()
+            .optional()
+            .nullable()
+            .or(z.literal("")),
+          instagramUrl: z
+            .string()
+            .url()
+            .optional()
+            .nullable()
+            .or(z.literal("")),
           xUrl: z.string().url().optional().nullable().or(z.literal("")),
           socialAutopostSettings: z.record(z.any()).optional().nullable(),
         });
@@ -3920,16 +3974,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             signals: vac.signals,
           });
 
-           if (vac.shouldAutoVerify) {
-             console.log("✅ Auto-verifying restaurant:", restaurant.id);
-             await storage.setRestaurantVerified(restaurant.id, true);
-             (restaurant as any).isVerified = true;
-             try {
-               user = (await ensureTrialForUser(user)) || user;
-             } catch (e) {
-               console.warn("ensureTrialForUser failed after auto-verify:", e);
-             }
-           } else {
+          if (vac.shouldAutoVerify) {
+            console.log("✅ Auto-verifying restaurant:", restaurant.id);
+            await storage.setRestaurantVerified(restaurant.id, true);
+            (restaurant as any).isVerified = true;
+            try {
+              user = (await ensureTrialForUser(user)) || user;
+            } catch (e) {
+              console.warn("ensureTrialForUser failed after auto-verify:", e);
+            }
+          } else {
             console.log(
               "⚠️  Creating manual verification request for:",
               restaurant.id,
@@ -3955,8 +4009,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Auto-post to MealScout Facebook page when a new food truck joins
       if ((restaurant as any).businessType === "food_truck") {
         try {
-          const baseUrl = (process.env.PUBLIC_BASE_URL ||
-            "https://www.mealscout.us").replace(/\/+$/, "");
+          const baseUrl = (
+            process.env.PUBLIC_BASE_URL || "https://www.mealscout.us"
+          ).replace(/\/+$/, "");
           const link = `${baseUrl}/restaurant/${restaurant.id}`;
           const message = `Welcome ${restaurant.name} to MealScout! Catch them on the map and follow their schedule.`;
           await queueSocialPost({
@@ -3992,9 +4047,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (referralId && user?.id) {
         try {
-          const { resolveAffiliateUserId } = await import(
-            "./affiliateTagService"
-          );
+          const { resolveAffiliateUserId } =
+            await import("./affiliateTagService");
           const affiliateUserId = await resolveAffiliateUserId(referralId);
           if (affiliateUserId && affiliateUserId !== user.id) {
             const [existingUser] = await db
@@ -4009,7 +4063,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 .from(users)
                 .where(eq(users.id, affiliateUserId))
                 .limit(1);
-              const percentSnapshot = Math.max(Number(affiliate?.affiliatePercent ?? 5), 0);
+              const percentSnapshot = Math.max(
+                Number(affiliate?.affiliatePercent ?? 5),
+                0,
+              );
 
               await db
                 .update(users)
@@ -4039,7 +4096,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const decorateTruckClaimRows = (rows: any[], opts?: { currentUserId?: string | null }) => {
+  const decorateTruckClaimRows = (
+    rows: any[],
+    opts?: { currentUserId?: string | null },
+  ) => {
     const now = Date.now();
     const COOLDOWN_MS = 6 * 60 * 60 * 1000;
     return rows.map((row) => {
@@ -4053,8 +4113,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const lastInviteSentAtMs = row.lastInviteSentAt
         ? new Date(row.lastInviteSentAt).getTime()
         : 0;
-      const cooldownRemainingMs =
-        lastInviteSentAtMs ? Math.max(0, lastInviteSentAtMs + COOLDOWN_MS - now) : 0;
+      const cooldownRemainingMs = lastInviteSentAtMs
+        ? Math.max(0, lastInviteSentAtMs + COOLDOWN_MS - now)
+        : 0;
 
       const canClaim = hasInviteUser ? Boolean(isInviteOwner) : true;
       const canRequest = hasEmail && !isInviteOwner;
@@ -4079,78 +4140,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   };
 
-  app.get("/api/truck-claims/search", isAuthenticated, async (req: any, res) => {
-    try {
-      const query = String(req.query?.q || "").trim();
-      if (!query) {
-        return res.json([]);
-      }
+  app.get(
+    "/api/truck-claims/search",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const query = String(req.query?.q || "").trim();
+        if (!query) {
+          return res.json([]);
+        }
 
-      const externalMatch = await db
-        .select({
-          id: truckImportListings.id,
-          name: truckImportListings.name,
-          address: truckImportListings.address,
-          city: truckImportListings.city,
-          state: truckImportListings.state,
-          phone: truckImportListings.phone,
-          externalId: truckImportListings.externalId,
-          confidenceScore: truckImportListings.confidenceScore,
-          email: truckImportListings.email,
-          invitedUserId: truckImportListings.invitedUserId,
-          lastInviteSentAt: truckImportListings.lastInviteSentAt,
-        })
-        .from(truckImportListings)
-        .where(
-          and(
-            eq(truckImportListings.externalId, query),
-            inArray(truckImportListings.status, ["unclaimed", "claim_requested"] as any),
-          ),
-        )
-        .limit(10);
-
-      if (externalMatch.length > 0) {
-        return res.json(decorateTruckClaimRows(externalMatch, { currentUserId: req.user?.id }));
-      }
-
-      const searchValue = `%${query.toLowerCase()}%`;
-      const matches = await db
-        .select({
-          id: truckImportListings.id,
-          name: truckImportListings.name,
-          address: truckImportListings.address,
-          city: truckImportListings.city,
-          state: truckImportListings.state,
-          phone: truckImportListings.phone,
-          externalId: truckImportListings.externalId,
-          confidenceScore: truckImportListings.confidenceScore,
-          email: truckImportListings.email,
-          invitedUserId: truckImportListings.invitedUserId,
-          lastInviteSentAt: truckImportListings.lastInviteSentAt,
-        })
-        .from(truckImportListings)
-        .where(
-          and(
-            inArray(truckImportListings.status, ["unclaimed", "claim_requested"] as any),
-            or(
-              sql`lower(${truckImportListings.name}) like ${searchValue}`,
-              sql`lower(coalesce(${truckImportListings.address}, '')) like ${searchValue}`,
-              sql`lower(coalesce(${truckImportListings.city}, '')) like ${searchValue}`,
-              sql`lower(coalesce(${truckImportListings.state}, '')) like ${searchValue}`,
-              sql`lower(coalesce(${truckImportListings.externalId}, '')) like ${searchValue}`,
-              sql`lower(coalesce(${truckImportListings.phone}, '')) like ${searchValue}`,
+        const externalMatch = await db
+          .select({
+            id: truckImportListings.id,
+            name: truckImportListings.name,
+            address: truckImportListings.address,
+            city: truckImportListings.city,
+            state: truckImportListings.state,
+            phone: truckImportListings.phone,
+            externalId: truckImportListings.externalId,
+            confidenceScore: truckImportListings.confidenceScore,
+            email: truckImportListings.email,
+            invitedUserId: truckImportListings.invitedUserId,
+            lastInviteSentAt: truckImportListings.lastInviteSentAt,
+          })
+          .from(truckImportListings)
+          .where(
+            and(
+              eq(truckImportListings.externalId, query),
+              inArray(truckImportListings.status, [
+                "unclaimed",
+                "claim_requested",
+              ] as any),
             ),
-          ),
-        )
-        .orderBy(desc(truckImportListings.confidenceScore))
-        .limit(10);
+          )
+          .limit(10);
 
-      res.json(decorateTruckClaimRows(matches, { currentUserId: req.user?.id }));
-    } catch (error) {
-      console.error("Error searching truck listings:", error);
-      res.status(500).json({ message: "Failed to search truck listings" });
-    }
-  });
+        if (externalMatch.length > 0) {
+          return res.json(
+            decorateTruckClaimRows(externalMatch, {
+              currentUserId: req.user?.id,
+            }),
+          );
+        }
+
+        const searchValue = `%${query.toLowerCase()}%`;
+        const matches = await db
+          .select({
+            id: truckImportListings.id,
+            name: truckImportListings.name,
+            address: truckImportListings.address,
+            city: truckImportListings.city,
+            state: truckImportListings.state,
+            phone: truckImportListings.phone,
+            externalId: truckImportListings.externalId,
+            confidenceScore: truckImportListings.confidenceScore,
+            email: truckImportListings.email,
+            invitedUserId: truckImportListings.invitedUserId,
+            lastInviteSentAt: truckImportListings.lastInviteSentAt,
+          })
+          .from(truckImportListings)
+          .where(
+            and(
+              inArray(truckImportListings.status, [
+                "unclaimed",
+                "claim_requested",
+              ] as any),
+              or(
+                sql`lower(${truckImportListings.name}) like ${searchValue}`,
+                sql`lower(coalesce(${truckImportListings.address}, '')) like ${searchValue}`,
+                sql`lower(coalesce(${truckImportListings.city}, '')) like ${searchValue}`,
+                sql`lower(coalesce(${truckImportListings.state}, '')) like ${searchValue}`,
+                sql`lower(coalesce(${truckImportListings.externalId}, '')) like ${searchValue}`,
+                sql`lower(coalesce(${truckImportListings.phone}, '')) like ${searchValue}`,
+              ),
+            ),
+          )
+          .orderBy(desc(truckImportListings.confidenceScore))
+          .limit(10);
+
+        res.json(
+          decorateTruckClaimRows(matches, { currentUserId: req.user?.id }),
+        );
+      } catch (error) {
+        console.error("Error searching truck listings:", error);
+        res.status(500).json({ message: "Failed to search truck listings" });
+      }
+    },
+  );
 
   // Public search for claim flow (no email/invite info revealed).
   app.get("/api/truck-claims/public-search", async (req: any, res) => {
@@ -4176,7 +4253,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(truckImportListings)
         .where(
           and(
-            inArray(truckImportListings.status, ["unclaimed", "claim_requested"] as any),
+            inArray(truckImportListings.status, [
+              "unclaimed",
+              "claim_requested",
+            ] as any),
             or(
               sql`lower(${truckImportListings.name}) like ${searchValue}`,
               sql`lower(coalesce(${truckImportListings.address}, '')) like ${searchValue}`,
@@ -4219,7 +4299,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .json({ message: "Truck listing is not available." });
       }
 
-      const inviteEmail = String(listing.email || "").trim().toLowerCase();
+      const inviteEmail = String(listing.email || "")
+        .trim()
+        .toLowerCase();
       const hadEmail = Boolean(inviteEmail);
       if (!listing.invitedUserId && !inviteEmail) {
         return res.status(400).json({
@@ -4233,7 +4315,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (listing.lastInviteSentAt) {
         const lastMs = new Date(listing.lastInviteSentAt).getTime();
         if (Date.now() - lastMs < COOLDOWN_MS) {
-          const minutes = Math.ceil((COOLDOWN_MS - (Date.now() - lastMs)) / 60000);
+          const minutes = Math.ceil(
+            (COOLDOWN_MS - (Date.now() - lastMs)) / 60000,
+          );
           return res.status(429).json({
             message: `A reminder was already sent recently. Try again in about ${minutes} minutes.`,
             cooldownMinutes: minutes,
@@ -4319,7 +4403,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .json({ message: "Truck listing is not available to claim" });
       }
 
-      if (listing.invitedUserId && String(listing.invitedUserId) !== String(req.user.id)) {
+      if (
+        listing.invitedUserId &&
+        String(listing.invitedUserId) !== String(req.user.id)
+      ) {
         return res.status(409).json({
           message:
             "This truck already has an invited owner. Use “Request this truck” to notify them to finish setup.",
@@ -4352,21 +4439,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const importSystemEmail =
         process.env.IMPORT_SYSTEM_EMAIL || "system-import@mealscout.us";
       const importSystemUser = await storage.getUserByEmail(importSystemEmail);
-      const seededRestaurantCandidate =
-        importSystemUser
-          ? (
-              await db
-                .select()
-                .from(restaurants)
-                .where(
-                  and(
-                    eq(restaurants.claimedFromImportId, listing.id),
-                    eq(restaurants.ownerId, importSystemUser.id),
-                  ),
-                )
-                .limit(1)
-            )[0]
-          : null;
+      const seededRestaurantCandidate = importSystemUser
+        ? (
+            await db
+              .select()
+              .from(restaurants)
+              .where(
+                and(
+                  eq(restaurants.claimedFromImportId, listing.id),
+                  eq(restaurants.ownerId, importSystemUser.id),
+                ),
+              )
+              .limit(1)
+          )[0]
+        : null;
 
       // If the admin import job pre-seeded a food truck record, transfer ownership to the claimant.
       const restaurant = seededRestaurantCandidate
@@ -4443,18 +4529,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .where(eq(truckImportListings.id, listing.id));
 
-      const verification = await sendEmailVerificationIfNeeded(req.user, req).catch(
-        (error) => {
-          console.error(
-            "[email] Failed to send verification after truck claim:",
-            error,
-          );
-          return {
-            sent: false,
-            skippedReason: "provider_not_configured" as const,
-          };
-        },
-      );
+      const verification = await sendEmailVerificationIfNeeded(
+        req.user,
+        req,
+      ).catch((error) => {
+        console.error(
+          "[email] Failed to send verification after truck claim:",
+          error,
+        );
+        return {
+          sent: false,
+          skippedReason: "provider_not_configured" as const,
+        };
+      });
 
       const notificationEmail = "notifications@mealscout.us";
       await emailService.sendBasicEmail(
@@ -4522,7 +4609,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             try {
               await ensureTrialForUser(req.user);
             } catch (e) {
-              console.warn("ensureTrialForUser failed after /api/restaurants auto-verify:", e);
+              console.warn(
+                "ensureTrialForUser failed after /api/restaurants auto-verify:",
+                e,
+              );
             }
           } else {
             console.log(
@@ -4680,9 +4770,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ message: "Restaurant not found" });
         }
 
-        const favoriteCount = await storage.getUserRestaurantFavoritesCount(
-          userId
-        );
+        const favoriteCount =
+          await storage.getUserRestaurantFavoritesCount(userId);
         if (favoriteCount >= MAX_FAVORITES) {
           return res.status(400).json({
             message: `You can favorite up to ${MAX_FAVORITES} restaurants.`,
@@ -4831,9 +4920,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
         const recommendation =
-          await storage.createRestaurantUserRecommendation(
-            recommendationData,
-          );
+          await storage.createRestaurantUserRecommendation(recommendationData);
         res.json(recommendation);
       } catch (error: any) {
         console.error("Error adding restaurant recommendation:", error);
@@ -5532,7 +5619,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: "active",
           subscriptionId: null,
           trialAccess: true,
-          message: "Your 30-day premium trial is active. We'll prompt you to pay before it ends.",
+          message:
+            "Your 30-day premium trial is active. We'll prompt you to pay before it ends.",
         });
       }
 
@@ -5774,9 +5862,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let creditAppliedCents = 0;
         const requestedCreditCents = Number(applyCreditsCents || 0);
         if (requestedCreditCents > 0) {
-          const { getUserCreditBalance, debitCredit } = await import(
-            "./creditService"
-          );
+          const { getUserCreditBalance, debitCredit } =
+            await import("./creditService");
           const balance = await getUserCreditBalance(user.id);
           const availableCents = Math.max(0, Math.floor(balance * 100));
           creditAppliedCents = Math.min(requestedCreditCents, availableCents);
@@ -5890,7 +5977,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       try {
-
         if (!hydratedUser.stripeSubscriptionId) {
           return res.json({ status: "none", hasAccess: false });
         }
@@ -6000,7 +6086,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let event;
 
     try {
-      const payload = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : req.body;
+      const payload = Buffer.isBuffer(req.body)
+        ? req.body.toString("utf8")
+        : req.body;
       // For development, we'll accept any webhook without signature verification
       // In production, you should verify the webhook signature for security
       if (process.env.NODE_ENV === "development") {
@@ -6090,14 +6178,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
         case "payment_intent.succeeded":
           const paymentIntent = event.data.object;
-          console.log(
-            `[WEBHOOK] PaymentIntent ${paymentIntent.id} succeeded`,
-          );
+          console.log(`[WEBHOOK] PaymentIntent ${paymentIntent.id} succeeded`);
 
           try {
-            const { eventBookings, events, restaurants, hosts } = await import(
-              "@shared/schema"
-            );
+            const { eventBookings, events, restaurants, hosts } =
+              await import("@shared/schema");
             const metadata = paymentIntent.metadata || {};
 
             // Supplier marketplace order payment
@@ -6123,7 +6208,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }
                 }
               } catch (supplierError) {
-                console.error("[WEBHOOK] Supplier order update failed:", supplierError);
+                console.error(
+                  "[WEBHOOK] Supplier order update failed:",
+                  supplierError,
+                );
               }
               break;
             }
@@ -6222,7 +6310,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               )
               .orderBy(asc(events.date));
 
-            const eventsByDate = new Map<string, (typeof bookingEvents)[number]>();
+            const eventsByDate = new Map<
+              string,
+              (typeof bookingEvents)[number]
+            >();
             for (const row of bookingEvents) {
               const dateKey = new Date(row.date).toISOString().split("T")[0];
               eventsByDate.set(dateKey, row);
@@ -6293,7 +6384,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   stripePaymentIntentId: paymentIntent.id,
                   stripePaymentStatus: "succeeded",
                   stripeApplicationFeeAmount: metadataPlatformFeeCents,
-                  stripeTransferDestination: host?.stripeConnectAccountId || null,
+                  stripeTransferDestination:
+                    host?.stripeConnectAccountId || null,
                   slotType: normalizedSlotTypes.join(","),
                   refundStatus: "credit",
                   refundAmountCents: amountCents,
@@ -6469,7 +6561,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
 
                 // Ensure deterministic assignment for subsequent days in this loop.
-                bookedRows.push({ eventId: row.id, spotNumber, bookingConfirmedAt: now });
+                bookedRows.push({
+                  eventId: row.id,
+                  spotNumber,
+                  bookingConfirmedAt: now,
+                });
                 bookingsByEvent.set(row.id, bookedRows);
 
                 const hostCents = hostSplit[index] ?? 0;
@@ -6485,9 +6581,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
 
               const filtered = plannedUpdates.filter(
-                (
-                  row,
-                ): row is NonNullable<(typeof plannedUpdates)[number]> => Boolean(row),
+                (row): row is NonNullable<(typeof plannedUpdates)[number]> =>
+                  Boolean(row),
               );
 
               if (filtered.length !== expectedDateKeys.length) {
@@ -6509,7 +6604,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     stripePaymentIntentId: paymentIntent.id,
                     stripePaymentStatus: "succeeded",
                     stripeApplicationFeeAmount: update.feeCents,
-                    stripeTransferDestination: host?.stripeConnectAccountId || null,
+                    stripeTransferDestination:
+                      host?.stripeConnectAccountId || null,
                     slotType: normalizedSlotTypes.join(","),
                     paidAt: now,
                     bookingConfirmedAt: now,
@@ -6553,7 +6649,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   stripePaymentIntentId: paymentIntent.id,
                   stripePaymentStatus: "succeeded",
                   stripeApplicationFeeAmount: feeCents,
-                  stripeTransferDestination: host?.stripeConnectAccountId || null,
+                  stripeTransferDestination:
+                    host?.stripeConnectAccountId || null,
                   slotType: normalizedSlotTypes.join(","),
                   paidAt: now,
                   bookingConfirmedAt: now,
@@ -6562,9 +6659,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
 
               const filteredRows = bookingRows.filter(
-                (
-                  row,
-                ): row is NonNullable<(typeof bookingRows)[number]> => Boolean(row),
+                (row): row is NonNullable<(typeof bookingRows)[number]> =>
+                  Boolean(row),
               );
 
               if (filteredRows.length !== expectedDateKeys.length) {
@@ -6579,7 +6675,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (bookingConfirmed) {
               try {
                 const truck = await storage.getRestaurant(truckId);
-                const owner = truck ? await storage.getUser(truck.ownerId) : null;
+                const owner = truck
+                  ? await storage.getUser(truck.ownerId)
+                  : null;
                 if (owner?.email) {
                   const endDateKey =
                     expectedDateKeys[expectedDateKeys.length - 1] ||
@@ -6612,14 +6710,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   .where(eq(restaurants.id, truckId));
 
                 if (truck?.ownerId) {
-                  const { debitCredit, getUserCreditBalance } = await import(
-                    "./creditService"
-                  );
+                  const { debitCredit, getUserCreditBalance } =
+                    await import("./creditService");
                   const balance = await getUserCreditBalance(truck.ownerId);
-                  const availableCents = Math.max(
-                    0,
-                    Math.floor(balance * 100),
-                  );
+                  const availableCents = Math.max(0, Math.floor(balance * 100));
                   const debitCents = Math.min(
                     creditAppliedCents,
                     availableCents,
@@ -6649,9 +6743,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 .where(eq(restaurants.id, truckId));
 
               if (host?.userId && truckOwner?.ownerId) {
-                const { createAffiliateCommissionsForBooking } = await import(
-                  "./affiliateCommissionService"
-                );
+                const { createAffiliateCommissionsForBooking } =
+                  await import("./affiliateCommissionService");
                 await createAffiliateCommissionsForBooking({
                   hostOwnerId: host.userId,
                   truckOwnerId: truckOwner.ownerId,
@@ -6721,9 +6814,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         case "payment_intent.payment_failed":
           const failedIntent = event.data.object;
-          console.log(
-            `[WEBHOOK] PaymentIntent ${failedIntent.id} failed`,
-          );
+          console.log(`[WEBHOOK] PaymentIntent ${failedIntent.id} failed`);
 
           try {
             const { eventBookings } = await import("@shared/schema");
@@ -6742,7 +6833,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   } as any)
                   .where(eq(supplierOrders.id, String(supplierOrderId)));
               } catch (supplierError) {
-                console.error("[WEBHOOK] Supplier order failure update failed:", supplierError);
+                console.error(
+                  "[WEBHOOK] Supplier order failure update failed:",
+                  supplierError,
+                );
               }
               break;
             }
@@ -7098,7 +7192,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: `restaurant-${row.id}`,
           text: row.name,
           type: "restaurant",
-          subtitle: `${row.cuisineType || "Restaurant"} - ${row.address || ""}`.trim(),
+          subtitle:
+            `${row.cuisineType || "Restaurant"} - ${row.address || ""}`.trim(),
         });
 
         const cuisine = String(row.cuisineType || "").trim();
@@ -7239,7 +7334,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: `video-${row.id}`,
           text: row.title || "Video",
           type: "video",
-          subtitle: row.restaurantName ? `From ${row.restaurantName}` : "Video story",
+          subtitle: row.restaurantName
+            ? `From ${row.restaurantName}`
+            : "Video story",
         });
       }
 
@@ -7277,8 +7374,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const limitedSuggestionsV2 = suggestionsV2.slice(0, 10).sort((a, b) => {
-        const aExact = String(a.text || "").toLowerCase().startsWith(searchTerm) ? 1 : 0;
-        const bExact = String(b.text || "").toLowerCase().startsWith(searchTerm) ? 1 : 0;
+        const aExact = String(a.text || "")
+          .toLowerCase()
+          .startsWith(searchTerm)
+          ? 1
+          : 0;
+        const bExact = String(b.text || "")
+          .toLowerCase()
+          .startsWith(searchTerm)
+          ? 1
+          : 0;
         return bExact - aExact;
       });
 
@@ -7381,7 +7486,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           entity: "restaurant",
           id: row.id,
           title: row.name,
-          subtitle: row.cuisineType || (row.isFoodTruck ? "Food Truck" : "Restaurant"),
+          subtitle:
+            row.cuisineType || (row.isFoodTruck ? "Food Truck" : "Restaurant"),
           description:
             row.description ||
             `${row.name} on MealScout. Local hours, deals, and direct booking visibility.`,
@@ -7508,7 +7614,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const limitRaw = Number(req.query?.limit ?? 8);
       const windowDaysRaw = Number(req.query?.windowDays ?? 7);
-      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(20, limitRaw)) : 8;
+      const limit = Number.isFinite(limitRaw)
+        ? Math.max(1, Math.min(20, limitRaw))
+        : 8;
       const windowDays = Number.isFinite(windowDaysRaw)
         ? Math.max(1, Math.min(30, windowDaysRaw))
         : 7;
@@ -7545,7 +7653,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const limitRaw = Number(req.query?.limit ?? 8);
       const windowDaysRaw = Number(req.query?.windowDays ?? 7);
-      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(20, limitRaw)) : 8;
+      const limit = Number.isFinite(limitRaw)
+        ? Math.max(1, Math.min(20, limitRaw))
+        : 8;
       const windowDays = Number.isFinite(windowDaysRaw)
         ? Math.max(1, Math.min(30, windowDaysRaw))
         : 7;
@@ -7583,7 +7693,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         source: z.string().min(1).max(64).optional(),
       });
       const parsed = bodySchema.safeParse(req.body || {});
-      if (!parsed.success) return res.status(400).json({ message: "Invalid request" });
+      if (!parsed.success)
+        return res.status(400).json({ message: "Invalid request" });
 
       const rawQuery = String(parsed.data.query || "");
       const compacted = rawQuery.trim().replace(/\s+/g, " ");
@@ -8142,7 +8253,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const latestCityBySlug = new Map<string, any>();
       for (const city of cityRows as any[]) {
-        const slug = String(city?.slug || "").trim().toLowerCase();
+        const slug = String(city?.slug || "")
+          .trim()
+          .toLowerCase();
         if (!slug) continue;
         const existing = latestCityBySlug.get(slug);
         if (!existing) {
@@ -8152,7 +8265,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const existingTs = new Date(
           existing.updatedAt || existing.createdAt || 0,
         ).getTime();
-        const nextTs = new Date(city.updatedAt || city.createdAt || 0).getTime();
+        const nextTs = new Date(
+          city.updatedAt || city.createdAt || 0,
+        ).getTime();
         if (nextTs >= existingTs) {
           latestCityBySlug.set(slug, city);
         }
@@ -8195,7 +8310,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const citySlugByName = new Map<string, string>();
       uniqueCityRows.forEach((city: any) => {
-        const key = String(city?.name || "").trim().toLowerCase();
+        const key = String(city?.name || "")
+          .trim()
+          .toLowerCase();
         const slug = String(city?.slug || "").trim();
         if (!key || !slug || citySlugByName.has(key)) return;
         citySlugByName.set(key, slug);
@@ -8203,7 +8320,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const cuisineLastmodByCity = new Map<string, string | null>();
       for (const row of restaurantRows as any[]) {
-        const cityName = String(row.city || "").trim().toLowerCase();
+        const cityName = String(row.city || "")
+          .trim()
+          .toLowerCase();
         const citySlug = citySlugByName.get(cityName);
         const cuisineSlug = toSlug(row.cuisineType || "");
         if (!citySlug || !cuisineSlug) continue;
@@ -8295,16 +8414,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const cuisineByCity = new Map<string, Map<string, number>>();
       for (const row of restaurantRows as any[]) {
-        const cityName = String(row.city || "").trim().toLowerCase();
+        const cityName = String(row.city || "")
+          .trim()
+          .toLowerCase();
         const cuisine = toSlug(row.cuisineType || "");
         if (!cityName || !cuisine) continue;
-        if (!cuisineByCity.has(cityName)) cuisineByCity.set(cityName, new Map());
+        if (!cuisineByCity.has(cityName))
+          cuisineByCity.set(cityName, new Map());
         const cityMap = cuisineByCity.get(cityName)!;
         cityMap.set(cuisine, (cityMap.get(cuisine) || 0) + 1);
       }
 
       const payload = cityRows.map((city: any) => {
-        const cityCuisineMap = cuisineByCity.get(String(city.name || "").toLowerCase()) || new Map();
+        const cityCuisineMap =
+          cuisineByCity.get(String(city.name || "").toLowerCase()) || new Map();
         const cuisines = Array.from(cityCuisineMap.entries())
           .sort((a, b) => b[1] - a[1])
           .slice(0, 6)
@@ -8965,6 +9088,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  app.get(
+    "/api/admin/parking-pass/onboarding-queue",
+    isAuthenticated,
+    isAdmin,
+    async (_req, res) => {
+      try {
+        const queue = await getParkingPassOnboardingQueue();
+        res.json({
+          ok: true,
+          ...queue,
+        });
+      } catch (error: any) {
+        console.error("Failed to load parking pass onboarding queue:", error);
+        res.status(500).json({
+          ok: false,
+          message: error?.message || "Failed to load onboarding queue",
+        });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/parking-pass/reminders/:hostId/send",
+    isAuthenticated,
+    isAdmin,
+    async (req, res) => {
+      try {
+        const result = await sendParkingPassReminderForHost(
+          String(req.params.hostId || ""),
+        );
+        if (!result.ok) {
+          return res.status(400).json(result);
+        }
+        res.json({
+          ...result,
+          triggeredBy: (req as any).user?.id || null,
+          triggeredAt: new Date().toISOString(),
+        });
+      } catch (error: any) {
+        console.error("Manual host parking pass reminder failed:", error);
+        res.status(500).json({
+          ok: false,
+          message: error?.message || "Failed to send host reminder",
+        });
+      }
+    },
+  );
+
   // Schedule Unbooked Event Notifications (Every hour)
   cron.schedule("0 * * * *", async () => {
     console.log("⏰ Triggering Unbooked Event Notification Check");
@@ -9025,7 +9196,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             avgDurationMs: sql<number>`avg(${requestLogs.durationMs})`,
           })
           .from(requestLogs)
-          .where(and(gte(requestLogs.createdAt, start), lt(requestLogs.createdAt, end)));
+          .where(
+            and(
+              gte(requestLogs.createdAt, start),
+              lt(requestLogs.createdAt, end),
+            ),
+          );
         totals = row || {};
       } catch (summaryError: any) {
         if (isMissingColumnError(summaryError, "duration_ms")) {
@@ -9035,24 +9211,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
               uniqueUsers: sql<number>`count(distinct ${requestLogs.userId})`,
             })
             .from(requestLogs)
-            .where(and(gte(requestLogs.createdAt, start), lt(requestLogs.createdAt, end)));
+            .where(
+              and(
+                gte(requestLogs.createdAt, start),
+                lt(requestLogs.createdAt, end),
+              ),
+            );
           totals = { ...(row || {}), avgDurationMs: 0 };
         } else {
           throw summaryError;
         }
       }
 
-      const statusBuckets: Array<{ statusCode: number; count: number }> = await db
-        .select({
-          statusCode: requestLogs.statusCode,
-          count: sql<number>`count(*)`,
-        })
-        .from(requestLogs)
-        .where(and(gte(requestLogs.createdAt, start), lt(requestLogs.createdAt, end)))
-        .groupBy(requestLogs.statusCode)
-        .orderBy(desc(sql`count(*)`));
+      const statusBuckets: Array<{ statusCode: number; count: number }> =
+        await db
+          .select({
+            statusCode: requestLogs.statusCode,
+            count: sql<number>`count(*)`,
+          })
+          .from(requestLogs)
+          .where(
+            and(
+              gte(requestLogs.createdAt, start),
+              lt(requestLogs.createdAt, end),
+            ),
+          )
+          .groupBy(requestLogs.statusCode)
+          .orderBy(desc(sql`count(*)`));
 
-      let topPaths: Array<{ path: string; count: number; avgDurationMs: number }> = [];
+      let topPaths: Array<{
+        path: string;
+        count: number;
+        avgDurationMs: number;
+      }> = [];
       try {
         topPaths = await db
           .select({
@@ -9061,7 +9252,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             avgDurationMs: sql<number>`avg(${requestLogs.durationMs})`,
           })
           .from(requestLogs)
-          .where(and(gte(requestLogs.createdAt, start), lt(requestLogs.createdAt, end)))
+          .where(
+            and(
+              gte(requestLogs.createdAt, start),
+              lt(requestLogs.createdAt, end),
+            ),
+          )
           .groupBy(requestLogs.path)
           .orderBy(desc(sql`count(*)`))
           .limit(25);
@@ -9073,7 +9269,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               count: sql<number>`count(*)`,
             })
             .from(requestLogs)
-            .where(and(gte(requestLogs.createdAt, start), lt(requestLogs.createdAt, end)))
+            .where(
+              and(
+                gte(requestLogs.createdAt, start),
+                lt(requestLogs.createdAt, end),
+              ),
+            )
             .groupBy(requestLogs.path)
             .orderBy(desc(sql`count(*)`))
             .limit(25);
@@ -9087,7 +9288,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const topErrors: Array<{ path: string; statusCode: number; count: number }> = await db
+      const topErrors: Array<{
+        path: string;
+        statusCode: number;
+        count: number;
+      }> = await db
         .select({
           path: requestLogs.path,
           statusCode: requestLogs.statusCode,
@@ -9185,7 +9390,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ),
             );
         } catch (selectError: any) {
-          if (isMissingColumnError(selectError, "stripe_transfer_destination")) {
+          if (
+            isMissingColumnError(selectError, "stripe_transfer_destination")
+          ) {
             expiredRows = await db
               .select({
                 paymentIntentId: eventBookings.stripePaymentIntentId,
@@ -9203,7 +9410,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         if (stripe) {
-          const unique = new Map<string, { intentId: string; accountId?: string }>();
+          const unique = new Map<
+            string,
+            { intentId: string; accountId?: string }
+          >();
           for (const row of expiredRows) {
             const intentId = String(row.paymentIntentId || "").trim();
             if (!intentId) continue;
@@ -9221,7 +9431,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 {},
                 accountId ? { stripeAccount: accountId } : undefined,
               );
-              if (intent.status !== "succeeded" && intent.status !== "canceled") {
+              if (
+                intent.status !== "succeeded" &&
+                intent.status !== "canceled"
+              ) {
                 await stripe.paymentIntents.cancel(
                   intentId,
                   {},
@@ -9230,12 +9443,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             } catch (stripeError) {
               // Continue; webhook handler will credit if a payment sneaks through.
-              console.error("❌ Failed to cancel expired PaymentIntent:", stripeError);
+              console.error(
+                "❌ Failed to cancel expired PaymentIntent:",
+                stripeError,
+              );
             }
           }
         }
       } catch (cancelError) {
-        console.error("❌ Expired hold PaymentIntent cancel scan failed:", cancelError);
+        console.error(
+          "❌ Expired hold PaymentIntent cancel scan failed:",
+          cancelError,
+        );
       }
 
       try {

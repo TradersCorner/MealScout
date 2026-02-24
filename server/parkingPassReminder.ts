@@ -34,6 +34,10 @@ export async function remindIncompleteParkingPassHosts() {
       businessName: hosts.businessName,
       address: hosts.address,
       locationType: hosts.locationType,
+      stripeConnectAccountId: hosts.stripeConnectAccountId,
+      stripeChargesEnabled: hosts.stripeChargesEnabled,
+      stripePayoutsEnabled: hosts.stripePayoutsEnabled,
+      stripeOnboardingCompleted: hosts.stripeOnboardingCompleted,
       email: users.email,
       userType: users.userType,
     })
@@ -68,6 +72,8 @@ export async function remindIncompleteParkingPassHosts() {
   let sent = 0;
   let skipped = 0;
   let eligible = 0;
+  let pricingIncomplete = 0;
+  let stripeIncomplete = 0;
 
   for (const host of hostRows) {
     if (
@@ -77,7 +83,15 @@ export async function remindIncompleteParkingPassHosts() {
       skipped += 1;
       continue;
     }
-    if (hostsWithPricing.has(host.hostId)) {
+    const pricingReady = hostsWithPricing.has(host.hostId);
+    const stripeReady = Boolean(
+      host.stripeConnectAccountId &&
+        host.stripeChargesEnabled &&
+        host.stripePayoutsEnabled &&
+        host.stripeOnboardingCompleted,
+    );
+
+    if (pricingReady && stripeReady) {
       skipped += 1;
       continue;
     }
@@ -85,6 +99,9 @@ export async function remindIncompleteParkingPassHosts() {
       skipped += 1;
       continue;
     }
+
+    if (!pricingReady) pricingIncomplete += 1;
+    if (!stripeReady) stripeIncomplete += 1;
 
     eligible += 1;
     const ok = await emailService.sendParkingPassCompletionReminder({
@@ -99,5 +116,11 @@ export async function remindIncompleteParkingPassHosts() {
     }
   }
 
-  return { sent, skipped, eligible };
+  return {
+    sent,
+    skipped,
+    eligible,
+    pricingIncomplete,
+    stripeIncomplete,
+  };
 }

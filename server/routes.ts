@@ -6828,6 +6828,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           break;
 
+        case "account.updated": {
+          const account = event.data.object as Stripe.Account;
+          const accountId = String(account.id || "").trim();
+          if (!accountId) break;
+
+          const status =
+            account.charges_enabled && account.payouts_enabled
+              ? "active"
+              : "pending";
+          const updateValues = {
+            stripeChargesEnabled: Boolean(account.charges_enabled),
+            stripePayoutsEnabled: Boolean(account.payouts_enabled),
+            stripeOnboardingCompleted: Boolean(account.details_submitted),
+            stripeConnectStatus: status,
+            updatedAt: new Date(),
+          } as any;
+
+          const hostUpdate = await db
+            .update(hosts)
+            .set(updateValues)
+            .where(eq(hosts.stripeConnectAccountId, accountId));
+
+          const supplierUpdate = await db
+            .update(suppliers)
+            .set(updateValues)
+            .where(eq(suppliers.stripeConnectAccountId, accountId));
+
+          const hostRows = Number((hostUpdate as any)?.rowCount || 0);
+          const supplierRows = Number((supplierUpdate as any)?.rowCount || 0);
+          console.log(
+            `[WEBHOOK] Synced Stripe account ${accountId} (hosts: ${hostRows}, suppliers: ${supplierRows})`,
+          );
+          break;
+        }
+
+        case "account.application.deauthorized": {
+          const deauth = event.data.object as any;
+          const accountId = String(deauth?.account || "").trim();
+          if (!accountId) break;
+
+          const revokedValues = {
+            stripeConnectStatus: "revoked",
+            stripeOnboardingCompleted: false,
+            stripeChargesEnabled: false,
+            stripePayoutsEnabled: false,
+            updatedAt: new Date(),
+          } as any;
+
+          const hostUpdate = await db
+            .update(hosts)
+            .set(revokedValues)
+            .where(eq(hosts.stripeConnectAccountId, accountId));
+
+          const supplierUpdate = await db
+            .update(suppliers)
+            .set(revokedValues)
+            .where(eq(suppliers.stripeConnectAccountId, accountId));
+
+          const hostRows = Number((hostUpdate as any)?.rowCount || 0);
+          const supplierRows = Number((supplierUpdate as any)?.rowCount || 0);
+          console.log(
+            `[WEBHOOK] Deauthorized Stripe account ${accountId} (hosts: ${hostRows}, suppliers: ${supplierRows})`,
+          );
+          break;
+        }
+
         default:
           console.log(`[WEBHOOK] Unhandled event type: ${event.type}`);
       }

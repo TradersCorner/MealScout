@@ -151,6 +151,28 @@ interface DashboardTotalsResponse {
   };
 }
 
+interface ParkingPassOnboardingQueueItem {
+  hostId: string;
+  userId: string;
+  businessName: string | null;
+  address: string | null;
+  email: string | null;
+  locationType: string | null;
+  pricingReady: boolean;
+  stripeReady: boolean;
+  needsPricing: boolean;
+  needsStripe: boolean;
+  priority: "high" | "medium";
+}
+
+interface ParkingPassOnboardingQueueResponse {
+  ok: boolean;
+  total: number;
+  highPriority: number;
+  mediumPriority: number;
+  items: ParkingPassOnboardingQueueItem[];
+}
+
 const FOOT_TRAFFIC_OPTIONS = [
   { value: "50", label: "Low (1-50/day)", min: 1, max: 50 },
   { value: "200", label: "Medium (51-200/day)", min: 51, max: 200 },
@@ -164,7 +186,9 @@ const resolveFootTrafficValue = (value?: string | number | null) => {
   const match = FOOT_TRAFFIC_OPTIONS.find(
     (option) => numeric >= option.min && numeric <= option.max,
   );
-  return match?.value ?? FOOT_TRAFFIC_OPTIONS[FOOT_TRAFFIC_OPTIONS.length - 1].value;
+  return (
+    match?.value ?? FOOT_TRAFFIC_OPTIONS[FOOT_TRAFFIC_OPTIONS.length - 1].value
+  );
 };
 
 function TruckImportPanel({ enabled }: { enabled: boolean }) {
@@ -184,11 +208,16 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
   const detailLimit = 50;
 
   const { data: batches = [] } = useQuery<any[]>({
-    queryKey: ["/api/admin/truck-imports", includePurgedBatches ? "includePurged" : "activeOnly"],
+    queryKey: [
+      "/api/admin/truck-imports",
+      includePurgedBatches ? "includePurged" : "activeOnly",
+    ],
     enabled,
     queryFn: async () => {
       const qs = includePurgedBatches ? "?includePurged=1" : "";
-      const res = await fetch(`/api/admin/truck-imports${qs}`, { credentials: "include" });
+      const res = await fetch(`/api/admin/truck-imports${qs}`, {
+        credentials: "include",
+      });
       const data = await res.json().catch(() => []);
       if (!res.ok) {
         throw new Error(data?.message || "Failed to load import batches.");
@@ -382,7 +411,9 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/truck-imports"] });
-      const blockedCount = Array.isArray(data?.blocked) ? data.blocked.length : 0;
+      const blockedCount = Array.isArray(data?.blocked)
+        ? data.blocked.length
+        : 0;
       toast({
         title: "Import purged",
         description:
@@ -407,7 +438,9 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
           Food Truck Imports
         </CardTitle>
         <CardDescription>
-          Upload CSV/TSV/XLSX to seed food truck profiles for the claim flow (not user accounts). They’ll appear under Restaurants → Pending and in “Claim an Existing Food Truck” search.
+          Upload CSV/TSV/XLSX to seed food truck profiles for the claim flow
+          (not user accounts). They’ll appear under Restaurants → Pending and in
+          “Claim an Existing Food Truck” search.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -441,28 +474,30 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
           </Button>
         </div>
 
-         {lastResult && (
-           <div className="p-3 rounded-md bg-muted/40 text-sm">
-             <div>Batch: {lastResult.batchId}</div>
-             <div>Imported: {lastResult.importedRows}</div>
-              {"seededRestaurants" in lastResult && (
-                <div>Seeded Accounts: {lastResult.seededRestaurants}</div>
-              )}
-              <div>Duplicates: {lastResult.duplicateRows}</div>
-              <div>Missing Name: {lastResult.missingRows}</div>
-              {Array.isArray(lastResult.headers) && lastResult.headers.length > 0 && (
+        {lastResult && (
+          <div className="p-3 rounded-md bg-muted/40 text-sm">
+            <div>Batch: {lastResult.batchId}</div>
+            <div>Imported: {lastResult.importedRows}</div>
+            {"seededRestaurants" in lastResult && (
+              <div>Seeded Accounts: {lastResult.seededRestaurants}</div>
+            )}
+            <div>Duplicates: {lastResult.duplicateRows}</div>
+            <div>Missing Name: {lastResult.missingRows}</div>
+            {Array.isArray(lastResult.headers) &&
+              lastResult.headers.length > 0 && (
                 <div className="mt-2 text-xs text-muted-foreground">
                   Headers: {lastResult.headers.slice(0, 12).join(" • ")}
                   {lastResult.headers.length > 12 ? " • ..." : ""}
                 </div>
               )}
-            </div>
-          )}
+          </div>
+        )}
 
         <div className="space-y-3 rounded-md border p-3">
           <div className="text-sm font-semibold">Edit Imported Trucks</div>
           <div className="text-xs text-muted-foreground">
-            Search by license ID, name, email, city, address. Add an email here to create an invited owner account and send a setup link.
+            Search by license ID, name, email, city, address. Add an email here
+            to create an invited owner account and send a setup link.
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <input
@@ -520,7 +555,8 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
                             })
                           }
                           disabled={
-                            sendInviteForListing.isPending || !String(edits.email || "").trim()
+                            sendInviteForListing.isPending ||
+                            !String(edits.email || "").trim()
                           }
                         >
                           Send setup email
@@ -635,7 +671,10 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
                         onChange={(e) =>
                           setListingEdits({
                             ...listingEdits,
-                            [row.id]: { ...edits, instagramUrl: e.target.value },
+                            [row.id]: {
+                              ...edits,
+                              instagramUrl: e.target.value,
+                            },
                           })
                         }
                       />
@@ -646,7 +685,10 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
                         onChange={(e) =>
                           setListingEdits({
                             ...listingEdits,
-                            [row.id]: { ...edits, facebookPageUrl: e.target.value },
+                            [row.id]: {
+                              ...edits,
+                              facebookPageUrl: e.target.value,
+                            },
                           })
                         }
                       />
@@ -688,7 +730,8 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
               checked={purgeForce}
               onChange={(e) => setPurgeForce(e.target.checked)}
             />
-            Force purge (also deletes claim requests; still blocks anything with bookings)
+            Force purge (also deletes claim requests; still blocks anything with
+            bookings)
           </label>
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
             <input
@@ -719,7 +762,9 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
                       <div className="text-muted-foreground">
                         {batch.source || "Unspecified source"}
                       </div>
-                      <div className="text-muted-foreground">Batch: {batch.id}</div>
+                      <div className="text-muted-foreground">
+                        Batch: {batch.id}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="text-right">
@@ -760,41 +805,56 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
                   {detailBatchId === batch.id && (
                     <div className="rounded-md border bg-muted/20 p-3 text-xs space-y-2">
                       {batchDetailsLoading ? (
-                        <div className="text-muted-foreground">Loading details...</div>
+                        <div className="text-muted-foreground">
+                          Loading details...
+                        </div>
                       ) : batchDetails ? (
                         <>
                           <div className="flex flex-wrap gap-2">
                             <span>Total listings: {batchDetails.total}</span>
-                            <span>Seeded profiles: {batchDetails.seededRestaurants}</span>
-                            <span>Claim requests: {batchDetails.claimRequests}</span>
+                            <span>
+                              Seeded profiles: {batchDetails.seededRestaurants}
+                            </span>
+                            <span>
+                              Claim requests: {batchDetails.claimRequests}
+                            </span>
                           </div>
                           <div className="text-muted-foreground">
                             Status counts:{" "}
                             {Array.isArray(batchDetails.statusCounts)
                               ? batchDetails.statusCounts
-                                  .map((row: any) => `${row.status}:${row.count}`)
+                                  .map(
+                                    (row: any) => `${row.status}:${row.count}`,
+                                  )
                                   .join(" • ")
                               : "(none)"}
                           </div>
                           {Array.isArray(batchDetails.rows) &&
                           batchDetails.rows.length > 0 ? (
                             <div className="space-y-1">
-                              {batchDetails.rows.slice(0, 20).map((row: any) => (
-                                <div
-                                  key={row.id}
-                                  className="flex items-center justify-between rounded border bg-background/40 px-2 py-1"
-                                >
-                                  <div className="min-w-0">
-                                    <div className="font-semibold truncate">{row.name}</div>
-                                    <div className="text-muted-foreground truncate">
-                                      {row.city || ""} {row.state || ""} • {row.status}
+                              {batchDetails.rows
+                                .slice(0, 20)
+                                .map((row: any) => (
+                                  <div
+                                    key={row.id}
+                                    className="flex items-center justify-between rounded border bg-background/40 px-2 py-1"
+                                  >
+                                    <div className="min-w-0">
+                                      <div className="font-semibold truncate">
+                                        {row.name}
+                                      </div>
+                                      <div className="text-muted-foreground truncate">
+                                        {row.city || ""} {row.state || ""} •{" "}
+                                        {row.status}
+                                      </div>
+                                    </div>
+                                    <div className="text-muted-foreground">
+                                      {row.restaurantId
+                                        ? "claimed"
+                                        : "unclaimed"}
                                     </div>
                                   </div>
-                                  <div className="text-muted-foreground">
-                                    {row.restaurantId ? "claimed" : "unclaimed"}
-                                  </div>
-                                </div>
-                              ))}
+                                ))}
                               {batchDetails.total > detailLimit && (
                                 <div className="flex items-center gap-2 pt-2">
                                   <Button
@@ -812,9 +872,14 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    disabled={detailOffset + detailLimit >= batchDetails.total}
+                                    disabled={
+                                      detailOffset + detailLimit >=
+                                      batchDetails.total
+                                    }
                                     onClick={() =>
-                                      setDetailOffset((prev) => prev + detailLimit)
+                                      setDetailOffset(
+                                        (prev) => prev + detailLimit,
+                                      )
                                     }
                                   >
                                     Next
@@ -823,7 +888,9 @@ function TruckImportPanel({ enabled }: { enabled: boolean }) {
                               )}
                             </div>
                           ) : (
-                            <div className="text-muted-foreground">No listings found.</div>
+                            <div className="text-muted-foreground">
+                              No listings found.
+                            </div>
                           )}
                         </>
                       ) : (
@@ -945,7 +1012,8 @@ function UnclaimedImportedTrucksTab({ enabled }: { enabled: boolean }) {
         <div>
           <div className="text-sm font-semibold">Unclaimed Imported Trucks</div>
           <div className="text-xs text-muted-foreground">
-            Scroll these. They disappear automatically once claimed + business verification is approved.
+            Scroll these. They disappear automatically once claimed + business
+            verification is approved.
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -981,8 +1049,8 @@ function UnclaimedImportedTrucksTab({ enabled }: { enabled: boolean }) {
                     <div className="text-xs">
                       <div className="font-semibold">{row.name}</div>
                       <div className="text-muted-foreground">
-                        License: {row.externalId || "(none)"} •{" "}
-                        {row.city || ""} {row.state || ""}
+                        License: {row.externalId || "(none)"} • {row.city || ""}{" "}
+                        {row.state || ""}
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -990,15 +1058,23 @@ function UnclaimedImportedTrucksTab({ enabled }: { enabled: boolean }) {
                         size="sm"
                         variant="outline"
                         disabled={saveListing.isPending}
-                        onClick={() => saveListing.mutate({ id: row.id, updates: edits })}
+                        onClick={() =>
+                          saveListing.mutate({ id: row.id, updates: edits })
+                        }
                       >
                         Save
                       </Button>
                       <Button
                         size="sm"
-                        disabled={sendInvite.isPending || !String(edits.email || "").trim()}
+                        disabled={
+                          sendInvite.isPending ||
+                          !String(edits.email || "").trim()
+                        }
                         onClick={() =>
-                          sendInvite.mutate({ id: row.id, email: String(edits.email || "") })
+                          sendInvite.mutate({
+                            id: row.id,
+                            email: String(edits.email || ""),
+                          })
                         }
                       >
                         Send setup email
@@ -1263,7 +1339,9 @@ function ManualUserCreation({ adminUser }: { adminUser?: any }) {
     <div className="space-y-4">
       {inviteSentEmail && (
         <div className="p-4 bg-[color:var(--status-success)]/10 border border-[color:var(--status-success)]/30 rounded-lg space-y-2">
-          <p className="font-semibold text-[color:var(--status-success)]">Setup Email Sent</p>
+          <p className="font-semibold text-[color:var(--status-success)]">
+            Setup Email Sent
+          </p>
           <p className="text-sm text-[color:var(--status-success)]">
             Invite sent to {inviteSentEmail}. The user will finish their profile
             and set a password from the link.
@@ -1506,8 +1584,8 @@ function ManualUserCreation({ adminUser }: { adminUser?: any }) {
                   They set rental prices (hourly/daily/weekly/monthly).
                   <br />
                   <strong>
-                    We add $10/day to every booking - host gets their price,
-                    we get $10 per day.
+                    We add $10/day to every booking - host gets their price, we
+                    get $10 per day.
                   </strong>
                 </p>
               </div>
@@ -1642,7 +1720,6 @@ function ManualUserCreation({ adminUser }: { adminUser?: any }) {
     </div>
   );
 }
-
 
 // Staff Management Tab Component
 function StaffManagementTab() {
@@ -1814,9 +1891,9 @@ export default function AdminDashboard() {
   const [dealDetailsOpen, setDealDetailsOpen] = useState(false);
   const [extendDays, setExtendDays] = useState(7);
   const [userEdits, setUserEdits] = useState<any>(null);
-  const [parkingPassEdits, setParkingPassEdits] = useState<
-    Record<string, any>
-  >({});
+  const [parkingPassEdits, setParkingPassEdits] = useState<Record<string, any>>(
+    {},
+  );
   const [addressEdits, setAddressEdits] = useState<Record<string, any>>({});
   const [hostEdits, setHostEdits] = useState<Record<string, any>>({});
   const [spotImageFilesByHostId, setSpotImageFilesByHostId] = useState<
@@ -1867,10 +1944,11 @@ export default function AdminDashboard() {
   const isSuperAdmin = adminUser?.userType === "super_admin";
 
   // Fetch dashboard stats
-  const { data: dashboardTotals, isLoading: statsLoading } = useQuery<DashboardTotalsResponse>({
-    queryKey: ["/api/admin/dashboard-totals"],
-    enabled: !!adminUser,
-  });
+  const { data: dashboardTotals, isLoading: statsLoading } =
+    useQuery<DashboardTotalsResponse>({
+      queryKey: ["/api/admin/dashboard-totals"],
+      enabled: !!adminUser,
+    });
 
   // Fetch pending restaurants
   const { data: pendingRestaurants = [] } = useQuery<PendingRestaurant[]>({
@@ -1900,13 +1978,19 @@ export default function AdminDashboard() {
   });
   const retryMapPinGeocode = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/admin/map-pin-audit/retry-geocode", {
-        limit: 50,
-      });
+      const res = await apiRequest(
+        "POST",
+        "/api/admin/map-pin-audit/retry-geocode",
+        {
+          limit: 50,
+        },
+      );
       return res.json();
     },
     onSuccess: async (result: any) => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/admin/map-pin-audit"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["/api/admin/map-pin-audit"],
+      });
       toast({
         title: "Map geocode retry complete",
         description: `Updated ${result?.updated?.total ?? 0} locations.`,
@@ -1933,7 +2017,9 @@ export default function AdminDashboard() {
       return res.json();
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/admin/map-pin-audit"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["/api/admin/map-pin-audit"],
+      });
       toast({
         title: "Location updated",
         description: "Geocode retried for the selected location.",
@@ -1958,6 +2044,13 @@ export default function AdminDashboard() {
     enabled: !!adminUser && selectedTab === "overview",
     staleTime: 30 * 1000,
   });
+
+  const { data: parkingPassOnboardingQueue, isLoading: queueLoading } =
+    useQuery<ParkingPassOnboardingQueueResponse>({
+      queryKey: ["/api/admin/parking-pass/onboarding-queue"],
+      enabled: !!adminUser && selectedTab === "overview",
+      staleTime: 30 * 1000,
+    });
 
   const [testEmailTo, setTestEmailTo] = useState("");
   const [testEmailCategory, setTestEmailCategory] = useState<
@@ -1986,6 +2079,58 @@ export default function AdminDashboard() {
       toast({
         title: "Test email failed",
         description: error?.message || "Unable to send test email.",
+        variant: "destructive",
+      });
+    },
+  });
+  const runParkingPassReminders = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest(
+        "POST",
+        "/api/admin/parking-pass/reminders/run",
+      );
+      return await res.json();
+    },
+    onSuccess: async (data: any) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["/api/admin/parking-pass/onboarding-queue"],
+      });
+      toast({
+        title: "Reminder campaign started",
+        description: `Sent ${Number(data?.stats?.sent ?? 0)} reminder(s).`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Reminder campaign failed",
+        description: error?.message || "Unable to run parking pass reminders.",
+        variant: "destructive",
+      });
+    },
+  });
+  const sendSingleParkingPassReminder = useMutation({
+    mutationFn: async (hostId: string) => {
+      const res = await apiRequest(
+        "POST",
+        `/api/admin/parking-pass/reminders/${hostId}/send`,
+      );
+      return await res.json();
+    },
+    onSuccess: async (data: any) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["/api/admin/parking-pass/onboarding-queue"],
+      });
+      toast({
+        title: "Reminder sent",
+        description: data?.host?.businessName
+          ? `Sent to ${data.host.businessName}.`
+          : "Host reminder sent.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Send failed",
+        description: error?.message || "Unable to send host reminder.",
         variant: "destructive",
       });
     },
@@ -2036,7 +2181,9 @@ export default function AdminDashboard() {
         title: "Backfill complete",
         description: `Created ${Number(data?.created ?? 0)} draft parking pass series.`,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/parking-pass/fix-queue"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/parking-pass/fix-queue"],
+      });
     },
     onError: (error: any) => {
       toast({
@@ -2048,7 +2195,10 @@ export default function AdminDashboard() {
   });
   const normalizeParkingPassSeries = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/admin/parking-pass/normalize-series");
+      const res = await apiRequest(
+        "POST",
+        "/api/admin/parking-pass/normalize-series",
+      );
       return await res.json();
     },
     onSuccess: (data: any) => {
@@ -2056,7 +2206,9 @@ export default function AdminDashboard() {
         title: "Normalization complete",
         description: `Updated ${Number(data?.updated ?? 0)} series statuses.`,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/parking-pass/fix-queue"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/parking-pass/fix-queue"],
+      });
     },
     onError: (error: any) => {
       toast({
@@ -2068,9 +2220,13 @@ export default function AdminDashboard() {
   });
   const runParkingPassIntegrity = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/admin/parking-pass/integrity/run", {
-        dryRun: false,
-      });
+      const res = await apiRequest(
+        "POST",
+        "/api/admin/parking-pass/integrity/run",
+        {
+          dryRun: false,
+        },
+      );
       return await res.json();
     },
     onSuccess: (data: any) => {
@@ -2078,7 +2234,9 @@ export default function AdminDashboard() {
         title: "Integrity job complete",
         description: `Series created: ${Number(data?.createdDraftSeries ?? 0)}. Defaults updated: ${Number(data?.updatedDefaults ?? 0)}. Status updated: ${Number(data?.updatedStatus ?? 0)}.`,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/parking-pass/fix-queue"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/parking-pass/fix-queue"],
+      });
     },
     onError: (error: any) => {
       toast({
@@ -2106,7 +2264,9 @@ export default function AdminDashboard() {
         data = null;
       }
       if (!res.ok) {
-        throw new Error(data?.message || text || "Failed to upload spot photo.");
+        throw new Error(
+          data?.message || text || "Failed to upload spot photo.",
+        );
       }
       return data;
     },
@@ -2137,9 +2297,7 @@ export default function AdminDashboard() {
   });
 
   const userContextEnabled =
-    !!adminUser &&
-    !!selectedUser?.id &&
-    userDetailsOpen;
+    !!adminUser && !!selectedUser?.id && userDetailsOpen;
 
   const { data: parkingPasses = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/users", selectedUser?.id, "parking-pass"],
@@ -2270,7 +2428,8 @@ export default function AdminDashboard() {
 
   const renderHostLocationsEditor = () => {
     if (!selectedUser) return null;
-    if (!(selectedUser?.userType === "host" || userHosts.length > 0)) return null;
+    if (!(selectedUser?.userType === "host" || userHosts.length > 0))
+      return null;
 
     const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -2302,14 +2461,14 @@ export default function AdminDashboard() {
                 key={host.id}
                 className="border rounded-lg p-3 bg-muted/30 space-y-3"
               >
-                <div className="text-sm font-medium">
-                  {host.businessName}
-                </div>
-                {pass && Array.isArray((pass as any).qualityFlags) && (pass as any).qualityFlags.length > 0 && (
-                  <div className="text-xs text-destructive">
-                    Data quality: {(pass as any).qualityFlags.join(", ")}
-                  </div>
-                )}
+                <div className="text-sm font-medium">{host.businessName}</div>
+                {pass &&
+                  Array.isArray((pass as any).qualityFlags) &&
+                  (pass as any).qualityFlags.length > 0 && (
+                    <div className="text-xs text-destructive">
+                      Data quality: {(pass as any).qualityFlags.join(", ")}
+                    </div>
+                  )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <input
                     className="w-full px-2 py-1 border rounded-md text-sm"
@@ -2436,7 +2595,9 @@ export default function AdminDashboard() {
                           uploadHostSpotImage.mutate({ hostId: host.id, file });
                         }}
                       >
-                        {uploadHostSpotImage.isPending ? "Uploading..." : "Upload"}
+                        {uploadHostSpotImage.isPending
+                          ? "Uploading..."
+                          : "Upload"}
                       </Button>
                     </div>
                   </div>
@@ -2453,9 +2614,7 @@ export default function AdminDashboard() {
                       })
                     }
                   >
-                    <option value="private_residence">
-                      Private Residence
-                    </option>
+                    <option value="private_residence">Private Residence</option>
                     <option value="business">Business</option>
                     <option value="parking_lot">Parking Lot</option>
                     <option value="event_space">Event Space</option>
@@ -2464,9 +2623,7 @@ export default function AdminDashboard() {
                   </select>
                   <select
                     className="w-full px-2 py-1 border rounded-md text-sm bg-background"
-                    value={resolveFootTrafficValue(
-                      edits.expectedFootTraffic,
-                    )}
+                    value={resolveFootTrafficValue(edits.expectedFootTraffic)}
                     onChange={(e) =>
                       setHostEdits({
                         ...hostEdits,
@@ -2549,12 +2706,14 @@ export default function AdminDashboard() {
                     Parking Pass defaults (host)
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    These control pins/bookability. Saving the host will sync the derived
-                    Parking Pass listing immediately.
+                    These control pins/bookability. Saving the host will sync
+                    the derived Parking Pass listing immediately.
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Start Time</p>
+                      <p className="text-xs text-muted-foreground">
+                        Start Time
+                      </p>
                       <input
                         type="time"
                         className="w-full px-2 py-1 border rounded-md text-sm"
@@ -2591,7 +2750,9 @@ export default function AdminDashboard() {
                       <p className="text-xs text-muted-foreground">Days</p>
                       <div className="flex flex-wrap gap-2">
                         {dayLabels.map((label, idx) => {
-                          const days: number[] = Array.isArray(edits.parkingPassDaysOfWeek)
+                          const days: number[] = Array.isArray(
+                            edits.parkingPassDaysOfWeek,
+                          )
                             ? edits.parkingPassDaysOfWeek
                             : [];
                           const checked = days.includes(idx);
@@ -2611,9 +2772,9 @@ export default function AdminDashboard() {
                                     ...hostEdits,
                                     [host.id]: {
                                       ...edits,
-                                      parkingPassDaysOfWeek: Array.from(next).sort(
-                                        (a, b) => a - b,
-                                      ),
+                                      parkingPassDaysOfWeek: Array.from(
+                                        next,
+                                      ).sort((a, b) => a - b),
                                     },
                                   });
                                 }}
@@ -2628,7 +2789,9 @@ export default function AdminDashboard() {
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Breakfast ($)</p>
+                      <p className="text-xs text-muted-foreground">
+                        Breakfast ($)
+                      </p>
                       <input
                         type="number"
                         min={0}
@@ -2640,7 +2803,9 @@ export default function AdminDashboard() {
                             ...hostEdits,
                             [host.id]: {
                               ...edits,
-                              parkingPassBreakfastPriceCents: toCents(e.target.value),
+                              parkingPassBreakfastPriceCents: toCents(
+                                e.target.value,
+                              ),
                             },
                           })
                         }
@@ -2659,14 +2824,18 @@ export default function AdminDashboard() {
                             ...hostEdits,
                             [host.id]: {
                               ...edits,
-                              parkingPassLunchPriceCents: toCents(e.target.value),
+                              parkingPassLunchPriceCents: toCents(
+                                e.target.value,
+                              ),
                             },
                           })
                         }
                       />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Dinner ($)</p>
+                      <p className="text-xs text-muted-foreground">
+                        Dinner ($)
+                      </p>
                       <input
                         type="number"
                         min={0}
@@ -2678,7 +2847,9 @@ export default function AdminDashboard() {
                             ...hostEdits,
                             [host.id]: {
                               ...edits,
-                              parkingPassDinnerPriceCents: toCents(e.target.value),
+                              parkingPassDinnerPriceCents: toCents(
+                                e.target.value,
+                              ),
                             },
                           })
                         }
@@ -2707,7 +2878,9 @@ export default function AdminDashboard() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Weekly ($)</p>
+                      <p className="text-xs text-muted-foreground">
+                        Weekly ($)
+                      </p>
                       <input
                         type="number"
                         min={0}
@@ -2715,7 +2888,10 @@ export default function AdminDashboard() {
                         className="w-full px-2 py-1 border rounded-md text-sm"
                         value={
                           Number(edits.parkingPassDailyPriceCents || 0)
-                            ? toDollars(Number(edits.parkingPassDailyPriceCents || 0) * 7)
+                            ? toDollars(
+                                Number(edits.parkingPassDailyPriceCents || 0) *
+                                  7,
+                              )
                             : toDollars(edits.parkingPassWeeklyPriceCents)
                         }
                         readOnly
@@ -2723,7 +2899,9 @@ export default function AdminDashboard() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Monthly ($)</p>
+                      <p className="text-xs text-muted-foreground">
+                        Monthly ($)
+                      </p>
                       <input
                         type="number"
                         min={0}
@@ -2731,7 +2909,10 @@ export default function AdminDashboard() {
                         className="w-full px-2 py-1 border rounded-md text-sm"
                         value={
                           Number(edits.parkingPassDailyPriceCents || 0)
-                            ? toDollars(Number(edits.parkingPassDailyPriceCents || 0) * 30)
+                            ? toDollars(
+                                Number(edits.parkingPassDailyPriceCents || 0) *
+                                  30,
+                              )
                             : toDollars(edits.parkingPassMonthlyPriceCents)
                         }
                         readOnly
@@ -2747,7 +2928,8 @@ export default function AdminDashboard() {
                           Parking Pass listing override (optional)
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Use this only if you need to override a specific listing; host defaults are the source of truth.
+                          Use this only if you need to override a specific
+                          listing; host defaults are the source of truth.
                         </p>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -2841,17 +3023,13 @@ export default function AdminDashboard() {
                             min={0}
                             step={1}
                             className="w-full px-2 py-1 border rounded-md text-sm"
-                            value={toDollars(
-                              passEdits.breakfastPriceCents,
-                            )}
+                            value={toDollars(passEdits.breakfastPriceCents)}
                             onChange={(e) =>
                               setParkingPassEdits({
                                 ...parkingPassEdits,
                                 [pass.id]: {
                                   ...passEdits,
-                                  breakfastPriceCents: toCents(
-                                    e.target.value,
-                                  ),
+                                  breakfastPriceCents: toCents(e.target.value),
                                 },
                               })
                             }
@@ -2866,17 +3044,13 @@ export default function AdminDashboard() {
                             min={0}
                             step={1}
                             className="w-full px-2 py-1 border rounded-md text-sm"
-                            value={toDollars(
-                              passEdits.lunchPriceCents,
-                            )}
+                            value={toDollars(passEdits.lunchPriceCents)}
                             onChange={(e) =>
                               setParkingPassEdits({
                                 ...parkingPassEdits,
                                 [pass.id]: {
                                   ...passEdits,
-                                  lunchPriceCents: toCents(
-                                    e.target.value,
-                                  ),
+                                  lunchPriceCents: toCents(e.target.value),
                                 },
                               })
                             }
@@ -2891,17 +3065,13 @@ export default function AdminDashboard() {
                             min={0}
                             step={1}
                             className="w-full px-2 py-1 border rounded-md text-sm"
-                            value={toDollars(
-                              passEdits.dinnerPriceCents,
-                            )}
+                            value={toDollars(passEdits.dinnerPriceCents)}
                             onChange={(e) =>
                               setParkingPassEdits({
                                 ...parkingPassEdits,
                                 [pass.id]: {
                                   ...passEdits,
-                                  dinnerPriceCents: toCents(
-                                    e.target.value,
-                                  ),
+                                  dinnerPriceCents: toCents(e.target.value),
                                 },
                               })
                             }
@@ -2923,8 +3093,7 @@ export default function AdminDashboard() {
                                 [pass.id]: {
                                   ...passEdits,
                                   dailyPriceCents: toCents(e.target.value),
-                                  weeklyPriceCents:
-                                    toCents(e.target.value) * 7,
+                                  weeklyPriceCents: toCents(e.target.value) * 7,
                                   monthlyPriceCents:
                                     toCents(e.target.value) * 30,
                                 },
@@ -3005,8 +3174,7 @@ export default function AdminDashboard() {
                         } catch {
                           toast({
                             title: "Invalid JSON",
-                            description:
-                              "Amenities must be valid JSON.",
+                            description: "Amenities must be valid JSON.",
                             variant: "destructive",
                           });
                           return;
@@ -3026,9 +3194,9 @@ export default function AdminDashboard() {
                             ? edits.spotImageUrl.trim()
                             : null,
                           expectedFootTraffic: edits.expectedFootTrafficTouched
-                            ? (edits.expectedFootTraffic === ""
-                                ? null
-                                : Number(edits.expectedFootTraffic))
+                            ? edits.expectedFootTraffic === ""
+                              ? null
+                              : Number(edits.expectedFootTraffic)
                             : edits.expectedFootTrafficOriginal,
                           amenities,
                         },
@@ -3051,9 +3219,7 @@ export default function AdminDashboard() {
             );
           })}
           <div className="border rounded-lg p-3 space-y-3">
-            <div className="text-sm font-medium">
-              Add Host Location
-            </div>
+            <div className="text-sm font-medium">Add Host Location</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <input
                 className="w-full px-2 py-1 border rounded-md text-sm"
@@ -3109,9 +3275,7 @@ export default function AdminDashboard() {
                   })
                 }
               >
-                <option value="private_residence">
-                  Private Residence
-                </option>
+                <option value="private_residence">Private Residence</option>
                 <option value="business">Business</option>
                 <option value="parking_lot">Parking Lot</option>
                 <option value="event_space">Event Space</option>
@@ -3169,8 +3333,7 @@ export default function AdminDashboard() {
                 ) {
                   toast({
                     title: "Missing fields",
-                    description:
-                      "Location name and address are required.",
+                    description: "Location name and address are required.",
                     variant: "destructive",
                   });
                   return;
@@ -3260,7 +3423,9 @@ export default function AdminDashboard() {
     const nextEdits: Record<string, any> = {};
     userHosts.forEach((host: any) => {
       const originalFootTraffic =
-        host.expectedFootTraffic === undefined ? null : host.expectedFootTraffic;
+        host.expectedFootTraffic === undefined
+          ? null
+          : host.expectedFootTraffic;
       nextEdits[host.id] = {
         businessName: host.businessName || "",
         address: host.address || "",
@@ -3283,7 +3448,8 @@ export default function AdminDashboard() {
         parkingPassDaysOfWeek: Array.isArray(host.parkingPassDaysOfWeek)
           ? host.parkingPassDaysOfWeek
           : [],
-        parkingPassBreakfastPriceCents: host.parkingPassBreakfastPriceCents ?? 0,
+        parkingPassBreakfastPriceCents:
+          host.parkingPassBreakfastPriceCents ?? 0,
         parkingPassLunchPriceCents: host.parkingPassLunchPriceCents ?? 0,
         parkingPassDinnerPriceCents: host.parkingPassDinnerPriceCents ?? 0,
         parkingPassDailyPriceCents: host.parkingPassDailyPriceCents ?? 0,
@@ -4044,7 +4210,11 @@ export default function AdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["/api/admin/users", selectedUser?.id, "parking-pass-bookings"],
+        queryKey: [
+          "/api/admin/users",
+          selectedUser?.id,
+          "parking-pass-bookings",
+        ],
       });
       toast({ title: "Booking Updated" });
     },
@@ -4347,8 +4517,11 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground mb-3">
-              Role total {dashboardStats.memberCountsTotal ?? 0} of {dashboardStats.totalUsers} users
-              {dashboardStats.unclassifiedUsers ? ` - ${dashboardStats.unclassifiedUsers} unclassified` : ""}
+              Role total {dashboardStats.memberCountsTotal ?? 0} of{" "}
+              {dashboardStats.totalUsers} users
+              {dashboardStats.unclassifiedUsers
+                ? ` - ${dashboardStats.unclassifiedUsers} unclassified`
+                : ""}
             </p>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
               <div>
@@ -4424,13 +4597,17 @@ export default function AdminDashboard() {
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Parking Pass Hosts (Live)</p>
+                <p className="text-muted-foreground">
+                  Parking Pass Hosts (Live)
+                </p>
                 <p className="font-semibold">
                   {operations?.parkingPass?.hostsPublished ?? 0}
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Parking Pass Spots (Capacity)</p>
+                <p className="text-muted-foreground">
+                  Parking Pass Spots (Capacity)
+                </p>
                 <p className="font-semibold">
                   {operations?.parkingPass?.spotCapacityPublished ?? 0}
                 </p>
@@ -4442,7 +4619,9 @@ export default function AdminDashboard() {
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Bookings Confirmed (24h)</p>
+                <p className="text-muted-foreground">
+                  Bookings Confirmed (24h)
+                </p>
                 <p className="font-semibold">
                   {operations?.bookings?.confirmedLast24h ?? 0}
                 </p>
@@ -4460,16 +4639,22 @@ export default function AdminDashboard() {
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Open Call Fill Rate (7d)</p>
+                <p className="text-muted-foreground">
+                  Open Call Fill Rate (7d)
+                </p>
                 <p className="font-semibold">
-                  {operations?.openCalls?.fillRateNext7DaysPct?.toFixed?.(1) ?? 0}%
+                  {operations?.openCalls?.fillRateNext7DaysPct?.toFixed?.(1) ??
+                    0}
+                  %
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {operations?.openCalls?.capacityNext7Days ?? 0} total capacity
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Checkout Holds (Pending)</p>
+                <p className="text-muted-foreground">
+                  Checkout Holds (Pending)
+                </p>
                 <p className="font-semibold">
                   {operations?.bookings?.pendingCheckoutHolds ?? 0}
                 </p>
@@ -4526,7 +4711,9 @@ export default function AdminDashboard() {
                   onClick={() => retryMapPinGeocode.mutate()}
                   disabled={retryMapPinGeocode.isPending}
                 >
-                  {retryMapPinGeocode.isPending ? "Retrying..." : "Retry Missing Geocodes"}
+                  {retryMapPinGeocode.isPending
+                    ? "Retrying..."
+                    : "Retry Missing Geocodes"}
                 </Button>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
@@ -4545,7 +4732,9 @@ export default function AdminDashboard() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Extra addresses mapped</p>
+                  <p className="text-muted-foreground">
+                    Extra addresses mapped
+                  </p>
                   <p className="font-semibold">
                     {mapPinAudit.additionalHostAddresses.mappable}/
                     {mapPinAudit.additionalHostAddresses.included}
@@ -4561,7 +4750,9 @@ export default function AdminDashboard() {
               </div>
               {!!mapPinAudit.sampleMissing?.length && (
                 <div className="mt-4 space-y-2">
-                  <p className="text-xs text-muted-foreground">Sample missing locations</p>
+                  <p className="text-xs text-muted-foreground">
+                    Sample missing locations
+                  </p>
                   {mapPinAudit.sampleMissing.map((missing) => (
                     <div
                       key={`${missing.source}:${missing.id}`}
@@ -4573,7 +4764,9 @@ export default function AdminDashboard() {
                             .filter(Boolean)
                             .join(", ") || "(no address)"}
                         </div>
-                        <div className="text-muted-foreground">{missing.source}</div>
+                        <div className="text-muted-foreground">
+                          {missing.source}
+                        </div>
                       </div>
                       <Button
                         size="sm"
@@ -4728,27 +4921,32 @@ export default function AdminDashboard() {
                       Mode: {emailStatus?.mode || "unknown"}
                     </div>
                   </div>
-                  <Badge variant={emailStatus?.configured ? "default" : "destructive"}>
+                  <Badge
+                    variant={
+                      emailStatus?.configured ? "default" : "destructive"
+                    }
+                  >
                     {emailStatus?.configured ? "Configured" : "Not configured"}
                   </Badge>
                 </div>
 
                 {emailStatus?.disabled ? (
                   <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                    Email sending is disabled by `EMAIL_NOTIFICATIONS_MODE={String(
-                      emailStatus?.mode || "",
-                    )}`.
+                    Email sending is disabled by `EMAIL_NOTIFICATIONS_MODE=
+                    {String(emailStatus?.mode || "")}`.
                   </div>
                 ) : null}
 
                 {!emailStatus?.configured ? (
                   <div className="rounded-md border border-[color:var(--status-error)]/30 bg-[color:var(--status-error)]/10 p-3 text-xs text-[color:var(--status-error)]">
                     Email provider is not configured. Missing:{" "}
-                    {Array.isArray(emailStatus?.missing) && emailStatus.missing.length
+                    {Array.isArray(emailStatus?.missing) &&
+                    emailStatus.missing.length
                       ? emailStatus.missing.join(", ")
                       : "BREVO_API_KEY"}
                   </div>
-                ) : Array.isArray(emailStatus?.missing) && emailStatus.missing.length > 0 ? (
+                ) : Array.isArray(emailStatus?.missing) &&
+                  emailStatus.missing.length > 0 ? (
                   <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
                     Email config warnings: {emailStatus.missing.join(", ")}
                   </div>
@@ -4793,8 +4991,11 @@ export default function AdminDashboard() {
                         >
                           <div className="min-w-0">
                             <div className="truncate">
-                              <span className="font-semibold">{row.status}</span>{" "}
-                              {row.category ? `(${row.category})` : ""} - {row.to}
+                              <span className="font-semibold">
+                                {row.status}
+                              </span>{" "}
+                              {row.category ? `(${row.category})` : ""} -{" "}
+                              {row.to}
                             </div>
                             <div className="truncate text-muted-foreground">
                               {row.subject}
@@ -4811,7 +5012,9 @@ export default function AdminDashboard() {
                             {row.providerStatusCode ? (
                               <div className="truncate text-muted-foreground">
                                 Provider status: {row.providerStatusCode}
-                                {row.providerErrorCode ? ` (${row.providerErrorCode})` : ""}
+                                {row.providerErrorCode
+                                  ? ` (${row.providerErrorCode})`
+                                  : ""}
                               </div>
                             ) : null}
                           </div>
@@ -4829,6 +5032,126 @@ export default function AdminDashboard() {
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <CardTitle>Parking Pass Onboarding Queue</CardTitle>
+                    <CardDescription>
+                      Prioritized hosts missing Stripe onboarding or pricing.
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    disabled={runParkingPassReminders.isPending}
+                    onClick={() => runParkingPassReminders.mutate()}
+                  >
+                    {runParkingPassReminders.isPending
+                      ? "Running..."
+                      : "Run All Reminders"}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="rounded-md border p-3">
+                    <div className="text-xs text-muted-foreground">
+                      Total queued
+                    </div>
+                    <div className="text-xl font-semibold">
+                      {Number(parkingPassOnboardingQueue?.total ?? 0)}
+                    </div>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <div className="text-xs text-muted-foreground">
+                      High priority (Stripe)
+                    </div>
+                    <div className="text-xl font-semibold">
+                      {Number(parkingPassOnboardingQueue?.highPriority ?? 0)}
+                    </div>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <div className="text-xs text-muted-foreground">
+                      Medium priority (Pricing)
+                    </div>
+                    <div className="text-xl font-semibold">
+                      {Number(parkingPassOnboardingQueue?.mediumPriority ?? 0)}
+                    </div>
+                  </div>
+                </div>
+
+                {queueLoading ? (
+                  <div className="text-sm text-muted-foreground">
+                    Loading queue...
+                  </div>
+                ) : Array.isArray(parkingPassOnboardingQueue?.items) &&
+                  parkingPassOnboardingQueue.items.length > 0 ? (
+                  <div className="space-y-2">
+                    {parkingPassOnboardingQueue.items
+                      .slice(0, 12)
+                      .map((item) => (
+                        <div
+                          key={item.hostId}
+                          className="rounded-md border px-3 py-2 text-sm flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">
+                              {item.businessName || "Unnamed host"}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {item.address || "No address"}
+                              {item.email ? ` • ${item.email}` : " • No email"}
+                            </div>
+                            <div className="mt-1 flex gap-2">
+                              <Badge
+                                variant={
+                                  item.priority === "high"
+                                    ? "destructive"
+                                    : "secondary"
+                                }
+                              >
+                                {item.priority}
+                              </Badge>
+                              {item.needsStripe ? (
+                                <Badge variant="outline">Needs Stripe</Badge>
+                              ) : null}
+                              {item.needsPricing ? (
+                                <Badge variant="outline">Needs Pricing</Badge>
+                              ) : null}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={
+                              sendSingleParkingPassReminder.isPending ||
+                              !item.email
+                            }
+                            onClick={() =>
+                              sendSingleParkingPassReminder.mutate(item.hostId)
+                            }
+                          >
+                            {sendSingleParkingPassReminder.isPending
+                              ? "Sending..."
+                              : "Send Reminder"}
+                          </Button>
+                        </div>
+                      ))}
+                    {parkingPassOnboardingQueue.items.length > 12 ? (
+                      <div className="text-xs text-muted-foreground">
+                        Showing first 12 of{" "}
+                        {parkingPassOnboardingQueue.items.length} hosts.
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    No hosts currently need onboarding reminders.
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -4942,7 +5265,7 @@ export default function AdminDashboard() {
                       const count =
                         tab.value === "all"
                           ? users.length
-                          : userCountsByType.get(tab.value) ?? 0;
+                          : (userCountsByType.get(tab.value) ?? 0);
                       return (
                         <TabsTrigger
                           key={tab.value}
@@ -5019,7 +5342,9 @@ export default function AdminDashboard() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => resendVerificationEmail.mutate(user.id)}
+                            onClick={() =>
+                              resendVerificationEmail.mutate(user.id)
+                            }
                             disabled={
                               resendVerificationEmail.isPending ||
                               isStaff ||
@@ -5506,9 +5831,13 @@ export default function AdminDashboard() {
                       >
                         <option value="customer">Customer</option>
                         <option value="food_truck">Food Truck</option>
-                        <option value="restaurant_owner">Restaurant Owner</option>
+                        <option value="restaurant_owner">
+                          Restaurant Owner
+                        </option>
                         <option value="host">Host</option>
-                        <option value="event_coordinator">Event Coordinator</option>
+                        <option value="event_coordinator">
+                          Event Coordinator
+                        </option>
                         <option value="staff">Staff</option>
                         {(adminUser?.userType === "admin" ||
                           adminUser?.userType === "super_admin") && (
@@ -5520,7 +5849,9 @@ export default function AdminDashboard() {
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">First Name</p>
+                      <p className="text-xs text-muted-foreground">
+                        First Name
+                      </p>
                       <input
                         type="text"
                         className="w-full px-3 py-2 border rounded-md text-sm"
@@ -5562,7 +5893,9 @@ export default function AdminDashboard() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Postal Code</p>
+                      <p className="text-xs text-muted-foreground">
+                        Postal Code
+                      </p>
                       <input
                         type="text"
                         className="w-full px-3 py-2 border rounded-md text-sm"
@@ -5576,7 +5909,9 @@ export default function AdminDashboard() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Birth Year</p>
+                      <p className="text-xs text-muted-foreground">
+                        Birth Year
+                      </p>
                       <input
                         type="number"
                         className="w-full px-3 py-2 border rounded-md text-sm"
@@ -5685,7 +6020,9 @@ export default function AdminDashboard() {
                   </div>
                   {selectedUser.affiliateTag && (
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Affiliate Tag</p>
+                      <p className="text-xs text-muted-foreground">
+                        Affiliate Tag
+                      </p>
                       <p className="text-sm font-mono text-xs">
                         {selectedUser.affiliateTag}
                       </p>
@@ -5694,7 +6031,9 @@ export default function AdminDashboard() {
                   {(selectedUser.affiliateCloserUserId ||
                     selectedUser.affiliateBookerUserId) && (
                     <div className="space-y-1 col-span-2">
-                      <p className="text-xs text-muted-foreground">Referral Attribution</p>
+                      <p className="text-xs text-muted-foreground">
+                        Referral Attribution
+                      </p>
                       <div className="text-sm space-y-1">
                         {selectedUser.affiliateCloserUserId && (
                           <div>
@@ -7310,9 +7649,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
-
-
-
-
-

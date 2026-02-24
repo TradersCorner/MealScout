@@ -10,6 +10,7 @@ import {
   eventSeries,
   hosts,
   eventBookings,
+  hostPayoutRequests,
   parkingPassBlackoutDates,
 } from "@shared/schema";
 import { and, asc, eq, gte, inArray, isNotNull, lt, sql } from "drizzle-orm";
@@ -51,6 +52,7 @@ import {
 } from "../services/parkingPassQuality";
 import { imageUploads } from "@shared/schema";
 import { logAudit } from "../auditLogger";
+import { getHostEarningsSummary } from "../hostEarningsService";
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -2170,6 +2172,112 @@ export function registerHostRoutes(app: Express) {
       } catch (error: any) {
         console.error("Error checking Stripe status:", error);
         res.status(500).json({ message: "Failed to check Stripe status" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/hosts/earnings/summary",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const host = await getOwnedHostForRequest(req);
+        if (!host) {
+          return res.status(404).json({ message: "Host profile not found" });
+        }
+
+        const summary = await getHostEarningsSummary(host.id);
+        const stripePayoutReady = Boolean(
+          host.stripeConnectAccountId &&
+            host.stripeChargesEnabled &&
+            host.stripePayoutsEnabled &&
+            host.stripeOnboardingCompleted,
+        );
+
+        res.json({
+          ...summary,
+          stripePayoutReady,
+          canRequestPayout: stripePayoutReady && summary.availableCents > 0,
+        });
+      } catch (error: any) {
+        console.error("Error loading host earnings summary:", error);
+        res.status(500).json({ message: "Failed to load earnings summary" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/hosts/earnings/payout-request",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const host = await getOwnedHostForRequest(req);
+        if (!host) {
+          return res.status(404).json({ message: "Host profile not found" });
+        }
+
+        const stripePayoutReady = Boolean(
+          host.stripeConnectAccountId &&
+            host.stripeChargesEnabled &&
+            host.stripePayoutsEnabled &&
+            host.stripeOnboardingCompleted,
+        );
+        if (!stripePayoutReady) {
+          return res.status(400).json({
+            message:
+              "Complete Stripe onboarding to request payout. Bookings can continue in the meantime.",
+            code: "stripe_payout_not_ready",
+          });
+        }
+
+        const summary = await getHostEarningsSummary(host.id);
+        const requestedAmountRaw = Number(req.body?.amountCents);
+        const requestedAmountCents = Number.isFinite(requestedAmountRaw)
+          ? Math.floor(requestedAmountRaw)
+          : summary.availableCents;
+
+        if (requestedAmountCents <= 0) {
+          return res
+            .status(400)
+            .json({ message: "Payout amount must be greater than $0.00" });
+        }
+        if (requestedAmountCents > summary.availableCents) {
+          return res.status(400).json({
+            message: "Requested amount exceeds available earnings.",
+            availableCents: summary.availableCents,
+          });
+        }
+
+        const [createdRequest] = await db
+          .insert(hostPayoutRequests)
+          .values({
+            hostId: host.id,
+            userId: req.user.id,
+            amountCents: requestedAmountCents,
+            status: "pending",
+            notes:
+              typeof req.body?.notes === "string" && req.body.notes.trim()
+                ? req.body.notes.trim()
+                : null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning();
+
+        const updatedSummary = await getHostEarningsSummary(host.id);
+
+        res.status(201).json({
+          request: createdRequest,
+          summary: {
+            ...updatedSummary,
+            stripePayoutReady,
+            canRequestPayout:
+              stripePayoutReady && updatedSummary.availableCents > 0,
+          },
+        });
+      } catch (error: any) {
+        console.error("Error creating host payout request:", error);
+        res.status(500).json({ message: "Failed to create payout request" });
       }
     },
   );

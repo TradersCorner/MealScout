@@ -6529,6 +6529,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             const usesHolds = pendingHolds.length > 0;
             let bookingConfirmed = false;
+            const earnedEntries: Array<{
+              hostId: string;
+              bookingId: string;
+              amountCents: number;
+            }> = [];
 
             if (usesHolds) {
               const holdsByEventId = new Map<
@@ -6574,6 +6579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 return {
                   id: hold.id,
                   eventId: row.id,
+                  hostId: row.hostId,
                   hostCents,
                   feeCents,
                   spotNumber,
@@ -6613,6 +6619,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     updatedAt: now,
                   })
                   .where(eq(eventBookings.id, update.id));
+
+                if (update.hostCents > 0) {
+                  earnedEntries.push({
+                    hostId: update.hostId,
+                    bookingId: update.id,
+                    amountCents: update.hostCents,
+                  });
+                }
               }
               bookingConfirmed = true;
             } else {
@@ -6668,11 +6682,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 break;
               }
 
-              await db.insert(eventBookings).values(filteredRows);
+              const insertedRows = await db
+                .insert(eventBookings)
+                .values(filteredRows)
+                .returning({
+                  id: eventBookings.id,
+                  hostId: eventBookings.hostId,
+                  hostPriceCents: eventBookings.hostPriceCents,
+                });
+
+              for (const row of insertedRows) {
+                if (Number(row.hostPriceCents || 0) > 0) {
+                  earnedEntries.push({
+                    hostId: row.hostId,
+                    bookingId: row.id,
+                    amountCents: Number(row.hostPriceCents || 0),
+                  });
+                }
+              }
+
               bookingConfirmed = true;
             }
 
             if (bookingConfirmed) {
+              try {
+                const { recordHostBookingEarnings } = await import(
+                  "./hostEarningsService"
+                );
+                await recordHostBookingEarnings(
+                  earnedEntries.map((entry) => ({
+                    ...entry,
+                    stripePaymentIntentId: paymentIntent.id,
+                  })),
+                );
+              } catch (ledgerError) {
+                console.error(
+                  "[WEBHOOK] Error recording host earnings ledger entries:",
+                  ledgerError,
+                );
+              }
+
               try {
                 const truck = await storage.getRestaurant(truckId);
                 const owner = truck

@@ -3394,6 +3394,67 @@ export const creditLedger = pgTable(
   ],
 );
 
+// Host earnings ledger - immutable financial entries for paid parking pass bookings
+export const hostEarningsLedger = pgTable(
+  "host_earnings_ledger",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    hostId: varchar("host_id")
+      .notNull()
+      .references(() => hosts.id, { onDelete: "cascade" }),
+    bookingId: varchar("booking_id").references(() => eventBookings.id, {
+      onDelete: "set null",
+    }),
+    stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+    entryType: varchar("entry_type").notNull(), // 'booking_earned' | 'refund' | 'adjustment' | 'payout'
+    sourceType: varchar("source_type").notNull().default("parking_pass_booking"),
+    amountCents: integer("amount_cents").notNull(), // positive or negative
+    description: text("description"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_host_earnings_host").on(table.hostId),
+    index("idx_host_earnings_booking").on(table.bookingId),
+    index("idx_host_earnings_intent").on(table.stripePaymentIntentId),
+    index("idx_host_earnings_created").on(table.createdAt),
+    unique("uq_host_earnings_booking_entry").on(table.bookingId, table.entryType),
+  ],
+);
+
+// Host payout requests - request/approval workflow for cash out
+export const hostPayoutRequests = pgTable(
+  "host_payout_requests",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    hostId: varchar("host_id")
+      .notNull()
+      .references(() => hosts.id, { onDelete: "cascade" }),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    amountCents: integer("amount_cents").notNull(),
+    status: varchar("status").notNull().default("pending"), // 'pending' | 'approved' | 'paid' | 'rejected' | 'cancelled'
+    notes: text("notes"),
+    reviewedByUserId: varchar("reviewed_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    reviewedAt: timestamp("reviewed_at"),
+    paidAt: timestamp("paid_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_host_payout_requests_host").on(table.hostId),
+    index("idx_host_payout_requests_user").on(table.userId),
+    index("idx_host_payout_requests_status").on(table.status),
+    index("idx_host_payout_requests_created").on(table.createdAt),
+  ],
+);
+
 // PHASE 5: User payout preferences
 export const userPayoutPreferences = pgTable(
   "user_payout_preferences",
@@ -4024,6 +4085,11 @@ export type InsertAffiliateCommissionLedger =
 // PHASE 4: Credit ledger types
 export type CreditLedger = typeof creditLedger.$inferSelect;
 export type InsertCreditLedger = typeof creditLedger.$inferInsert;
+
+export type HostEarningsLedger = typeof hostEarningsLedger.$inferSelect;
+export type InsertHostEarningsLedger = typeof hostEarningsLedger.$inferInsert;
+export type HostPayoutRequest = typeof hostPayoutRequests.$inferSelect;
+export type InsertHostPayoutRequest = typeof hostPayoutRequests.$inferInsert;
 
 // PHASE 5: Payout preferences types
 export type UserPayoutPreferences = typeof userPayoutPreferences.$inferSelect;

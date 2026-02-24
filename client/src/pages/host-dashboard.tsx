@@ -28,6 +28,15 @@ interface HostProfile {
   amenities?: Record<string, boolean> | null;
 }
 
+interface HostEarningsSummary {
+  accruedCents: number;
+  pendingPayoutCents: number;
+  paidOutCents: number;
+  availableCents: number;
+  stripePayoutReady: boolean;
+  canRequestPayout: boolean;
+}
+
 function HostDashboard() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const { toast } = useToast();
@@ -37,6 +46,10 @@ function HostDashboard() {
   const [selectedHostId, setSelectedHostId] = useState<string>("");
   const [host, setHost] = useState<HostProfile | null>(null);
   const [isCheckingStripe, setIsCheckingStripe] = useState(false);
+  const [earningsSummary, setEarningsSummary] =
+    useState<HostEarningsSummary | null>(null);
+  const [isLoadingEarnings, setIsLoadingEarnings] = useState(false);
+  const [isRequestingPayout, setIsRequestingPayout] = useState(false);
   const [seriesList, setSeriesList] = useState<any[]>([]);
   const [seriesError, setSeriesError] = useState("");
   const [seriesLoading, setSeriesLoading] = useState(false);
@@ -142,9 +155,62 @@ function HostDashboard() {
     }
   };
 
+  const loadHostEarnings = async () => {
+    setIsLoadingEarnings(true);
+    try {
+      const hostId = selectedHostId || host?.id;
+      const summaryUrl = hostId
+        ? `/api/hosts/earnings/summary?hostId=${encodeURIComponent(hostId)}`
+        : "/api/hosts/earnings/summary";
+      const res = await fetch(summaryUrl, { credentials: "include" });
+      if (!res.ok) {
+        throw new Error("Failed to load earnings summary");
+      }
+      const data = await res.json();
+      setEarningsSummary(data);
+    } catch (error) {
+      console.error("Host earnings summary error:", error);
+      setEarningsSummary(null);
+    } finally {
+      setIsLoadingEarnings(false);
+    }
+  };
+
+  const requestHostPayout = async () => {
+    setIsRequestingPayout(true);
+    try {
+      const hostId = selectedHostId || host?.id;
+      const res = await fetch("/api/hosts/earnings/payout-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ hostId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to request payout");
+      }
+
+      setEarningsSummary(data.summary || null);
+      toast({
+        title: "Payout requested",
+        description: "Your payout request has been submitted for review.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Unable to request payout",
+        description: error?.message || "Please try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRequestingPayout(false);
+    }
+  };
+
   useEffect(() => {
     if (!host) return;
     loadSeries();
+    void loadHostEarnings();
   }, [host?.id]);
 
   const handleEnablePayments = async () => {
@@ -222,6 +288,7 @@ function HostDashboard() {
             ? "Payments are enabled."
             : "Payments are still pending.",
       });
+      await loadHostEarnings();
     } catch (error: any) {
       console.error("Stripe status error:", error);
       toast({
@@ -451,6 +518,60 @@ function HostDashboard() {
           </AlertDescription>
         </Alert>
       )}
+
+      <div className="mb-6 rounded-lg border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">
+            Host Earnings
+          </h2>
+          <Button
+            variant="outline"
+            onClick={requestHostPayout}
+            disabled={
+              isRequestingPayout ||
+              isLoadingEarnings ||
+              !earningsSummary?.canRequestPayout
+            }
+          >
+            {isRequestingPayout ? "Requesting..." : "Request Payout"}
+          </Button>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <p className="text-xs text-[color:var(--text-muted)]">Accrued</p>
+            <p className="text-base font-semibold text-[color:var(--text-primary)]">
+              {isLoadingEarnings
+                ? "..."
+                : `$${((earningsSummary?.accruedCents || 0) / 100).toFixed(2)}`}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-[color:var(--text-muted)]">Available</p>
+            <p className="text-base font-semibold text-[color:var(--text-primary)]">
+              {isLoadingEarnings
+                ? "..."
+                : `$${((earningsSummary?.availableCents || 0) / 100).toFixed(2)}`}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-[color:var(--text-muted)]">Pending Payouts</p>
+            <p className="text-base font-semibold text-[color:var(--text-primary)]">
+              {isLoadingEarnings
+                ? "..."
+                : `$${((earningsSummary?.pendingPayoutCents || 0) / 100).toFixed(2)}`}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-[color:var(--text-muted)]">Paid Out</p>
+            <p className="text-base font-semibold text-[color:var(--text-primary)]">
+              {isLoadingEarnings
+                ? "..."
+                : `$${((earningsSummary?.paidOutCents || 0) / 100).toFixed(2)}`}
+            </p>
+          </div>
+        </div>
+      </div>
 
       <div className="flex flex-col gap-4 mb-8 md:flex-row md:items-center md:justify-between">
         <div>

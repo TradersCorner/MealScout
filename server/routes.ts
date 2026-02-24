@@ -8942,6 +8942,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post(
+    "/api/admin/parking-pass/reminders/run",
+    isAuthenticated,
+    isAdmin,
+    async (req, res) => {
+      try {
+        const stats = await remindIncompleteParkingPassHosts();
+        res.json({
+          ok: true,
+          stats,
+          triggeredBy: (req as any).user?.id || null,
+          triggeredAt: new Date().toISOString(),
+        });
+      } catch (error: any) {
+        console.error("Manual parking pass reminder trigger failed:", error);
+        res.status(500).json({
+          ok: false,
+          message: error?.message || "Failed to trigger reminders",
+        });
+      }
+    },
+  );
+
   // Schedule Unbooked Event Notifications (Every hour)
   cron.schedule("0 * * * *", async () => {
     console.log("⏰ Triggering Unbooked Event Notification Check");

@@ -1225,11 +1225,9 @@ export function registerHostRoutes(app: Express) {
 
       // Verify host owns the event
       if (!userOwnsEvent(userId, host, event)) {
-        return res
-          .status(403)
-          .json({
-            message: "Not authorized to edit this parking pass listing",
-          });
+        return res.status(403).json({
+          message: "Not authorized to edit this parking pass listing",
+        });
       }
 
       // Don't allow editing past events

@@ -414,9 +414,9 @@ function HostDashboard() {
 
   const hostStripePayoutReady = Boolean(
     host.stripeConnectAccountId &&
-      host.stripeChargesEnabled &&
-      host.stripePayoutsEnabled &&
-      host.stripeOnboardingCompleted,
+    host.stripeChargesEnabled &&
+    host.stripePayoutsEnabled &&
+    host.stripeOnboardingCompleted,
   );
 
   return (

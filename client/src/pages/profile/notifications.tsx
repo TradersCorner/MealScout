@@ -7,8 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, CheckCircle2, Clock, Loader2, MapPin, Smartphone } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Bell,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  MapPin,
+  Smartphone,
+} from "lucide-react";
 import { BackHeader } from "@/components/back-header";
 import { useToast } from "@/hooks/use-toast";
 import { locationNotificationService } from "@/services/location-notifications";
@@ -72,7 +85,9 @@ function sanitizeTime(value: string | undefined, fallback: string) {
   return /^\d{2}:\d{2}$/.test(value) ? value : fallback;
 }
 
-function buildPrefs(raw: Partial<NotificationPrefs> | undefined): NotificationPrefs {
+function buildPrefs(
+  raw: Partial<NotificationPrefs> | undefined,
+): NotificationPrefs {
   const channels: Partial<NotificationPrefs["channels"]> = raw?.channels ?? {};
   const topics: Partial<NotificationPrefs["topics"]> = raw?.topics ?? {};
   const location: Partial<NotificationPrefs["location"]> = raw?.location ?? {};
@@ -88,23 +103,32 @@ function buildPrefs(raw: Partial<NotificationPrefs> | undefined): NotificationPr
     topics: {
       dealAlerts: topics.dealAlerts ?? DEFAULT_PREFS.topics.dealAlerts,
       orderUpdates: topics.orderUpdates ?? DEFAULT_PREFS.topics.orderUpdates,
-      newRestaurants: topics.newRestaurants ?? DEFAULT_PREFS.topics.newRestaurants,
+      newRestaurants:
+        topics.newRestaurants ?? DEFAULT_PREFS.topics.newRestaurants,
       weeklyDigest: topics.weeklyDigest ?? DEFAULT_PREFS.topics.weeklyDigest,
       nearbyEvents: topics.nearbyEvents ?? DEFAULT_PREFS.topics.nearbyEvents,
     },
     location: {
       enabled: location.enabled ?? DEFAULT_PREFS.location.enabled,
       radiusKm:
-        Number.isFinite(Number(location.radiusKm)) && Number(location.radiusKm) > 0
+        Number.isFinite(Number(location.radiusKm)) &&
+        Number(location.radiusKm) > 0
           ? Number(location.radiusKm)
           : DEFAULT_PREFS.location.radiusKm,
       maxPerDay:
-        Number.isFinite(Number(location.maxPerDay)) && Number(location.maxPerDay) >= 1
+        Number.isFinite(Number(location.maxPerDay)) &&
+        Number(location.maxPerDay) >= 1
           ? Number(location.maxPerDay)
           : DEFAULT_PREFS.location.maxPerDay,
       quietHours: {
-        start: sanitizeTime(quietHours.start, DEFAULT_PREFS.location.quietHours.start),
-        end: sanitizeTime(quietHours.end, DEFAULT_PREFS.location.quietHours.end),
+        start: sanitizeTime(
+          quietHours.start,
+          DEFAULT_PREFS.location.quietHours.start,
+        ),
+        end: sanitizeTime(
+          quietHours.end,
+          DEFAULT_PREFS.location.quietHours.end,
+        ),
       },
     },
   };
@@ -156,8 +180,10 @@ export default function NotificationsPage() {
         <div className="text-center py-12">
           <Bell className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Sign in required</h2>
-          <p className="text-muted-foreground">Log in to manage your notifications</p>
-      </div>
+          <p className="text-muted-foreground">
+            Log in to manage your notifications
+          </p>
+        </div>
         <Navigation />
       </div>
     );
@@ -195,7 +221,10 @@ export default function NotificationsPage() {
         throw new Error("Failed to save notification settings");
       }
       await refetch();
-      toast({ title: "Saved", description: "Notification preferences updated." });
+      toast({
+        title: "Saved",
+        description: "Notification preferences updated.",
+      });
     } catch (error: any) {
       toast({
         title: "Save failed",
@@ -255,7 +284,7 @@ export default function NotificationsPage() {
       />
 
       {/* Content */}
-      <div className="px-6 py-6 space-y-6">
+      <div className="px-4 sm:px-6 py-6 space-y-6">
         <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
           <CardContent className="pt-6 flex items-center justify-between gap-3">
             <div className="text-sm">
@@ -290,7 +319,9 @@ export default function NotificationsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Push Notifications</p>
-                <p className="text-sm text-muted-foreground">Get notified on your device</p>
+                <p className="text-sm text-muted-foreground">
+                  Get notified on your device
+                </p>
               </div>
               <Switch
                 checked={prefs.channels.push}
@@ -301,7 +332,9 @@ export default function NotificationsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Email Notifications</p>
-                <p className="text-sm text-muted-foreground">Receive updates via email</p>
+                <p className="text-sm text-muted-foreground">
+                  Receive updates via email
+                </p>
               </div>
               <Switch
                 checked={prefs.channels.email}
@@ -312,7 +345,9 @@ export default function NotificationsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">SMS Notifications</p>
-                <p className="text-sm text-muted-foreground">Get text message alerts</p>
+                <p className="text-sm text-muted-foreground">
+                  Get text message alerts
+                </p>
               </div>
               <Switch
                 checked={prefs.channels.sms}
@@ -335,7 +370,9 @@ export default function NotificationsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Deal Alerts</p>
-                <p className="text-sm text-muted-foreground">New deals near you</p>
+                <p className="text-sm text-muted-foreground">
+                  New deals near you
+                </p>
               </div>
               <Switch
                 checked={prefs.topics.dealAlerts}
@@ -346,7 +383,9 @@ export default function NotificationsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Order Updates</p>
-                <p className="text-sm text-muted-foreground">Status of your claimed deals</p>
+                <p className="text-sm text-muted-foreground">
+                  Status of your claimed deals
+                </p>
               </div>
               <Switch
                 checked={prefs.topics.orderUpdates}
@@ -357,7 +396,9 @@ export default function NotificationsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">New Restaurants</p>
-                <p className="text-sm text-muted-foreground">When new places join MealScout</p>
+                <p className="text-sm text-muted-foreground">
+                  When new places join MealScout
+                </p>
               </div>
               <Switch
                 checked={prefs.topics.newRestaurants}
@@ -368,7 +409,9 @@ export default function NotificationsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Weekly Digest</p>
-                <p className="text-sm text-muted-foreground">Summary of your activity</p>
+                <p className="text-sm text-muted-foreground">
+                  Summary of your activity
+                </p>
               </div>
               <Switch
                 checked={prefs.topics.weeklyDigest}
@@ -419,7 +462,9 @@ export default function NotificationsPage() {
                 <Label>Radius</Label>
                 <Select
                   value={String(prefs.location.radiusKm)}
-                  onValueChange={(value) => setLocation({ radiusKm: Number(value) || 3 })}
+                  onValueChange={(value) =>
+                    setLocation({ radiusKm: Number(value) || 3 })
+                  }
                 >
                   <SelectTrigger data-testid="select-radius">
                     <SelectValue />
@@ -436,7 +481,9 @@ export default function NotificationsPage() {
                 <Label>Max / day</Label>
                 <Select
                   value={String(prefs.location.maxPerDay)}
-                  onValueChange={(value) => setLocation({ maxPerDay: Number(value) || 5 })}
+                  onValueChange={(value) =>
+                    setLocation({ maxPerDay: Number(value) || 5 })
+                  }
                 >
                   <SelectTrigger data-testid="select-max-per-day">
                     <SelectValue />
@@ -510,6 +557,3 @@ export default function NotificationsPage() {
     </div>
   );
 }
-
-
-

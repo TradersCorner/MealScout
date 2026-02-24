@@ -9,7 +9,14 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { BackHeader } from "@/components/back-header";
 import { Mail, KeyRound, CheckCircle } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
@@ -39,13 +46,15 @@ export default function ForgotPassword() {
       setIsSubmitted(true);
       toast({
         title: "Reset link sent!",
-        description: "If an account with that email exists, a password reset link has been sent.",
+        description:
+          "If an account with that email exists, a password reset link has been sent.",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Unable to send reset link. Please try again.",
+        description:
+          error.message || "Unable to send reset link. Please try again.",
         variant: "destructive",
       });
     },
@@ -65,18 +74,22 @@ export default function ForgotPassword() {
           className="bg-[var(--bg-surface)]/95 backdrop-blur-sm border-b border-[var(--border-subtle)]/50 shadow-clean"
         />
 
-        <div className="px-6 py-12 max-w-md mx-auto">
+        <div className="px-4 sm:px-6 py-12 max-w-md mx-auto">
           <Card className="bg-[var(--bg-surface)]/95 backdrop-blur-sm shadow-clean-lg border-0">
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full mx-auto mb-6 flex items-center justify-center">
                 <CheckCircle className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-[color:var(--text-primary)] mb-4">Check Your Email</h2>
+              <h2 className="text-2xl font-bold text-[color:var(--text-primary)] mb-4">
+                Check Your Email
+              </h2>
               <p className="text-[color:var(--text-muted)] text-center mb-6">
-                If an account with that email exists, we've sent you a password reset link.
+                If an account with that email exists, we've sent you a password
+                reset link.
               </p>
               <p className="text-sm text-[color:var(--text-muted)] mb-6">
-                Didn't receive the email? Check your spam folder or try again in a few minutes.
+                Didn't receive the email? Check your spam folder or try again in
+                a few minutes.
               </p>
               <div className="space-y-4">
                 <Button
@@ -126,21 +139,29 @@ export default function ForgotPassword() {
             <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-[color:var(--accent-text-hover)] rounded-full mx-auto mb-4 flex items-center justify-center">
               <KeyRound className="w-8 h-8 text-white" />
             </div>
-            <CardTitle className="text-2xl font-bold text-[color:var(--text-primary)]">Forgot Your Password?</CardTitle>
+            <CardTitle className="text-2xl font-bold text-[color:var(--text-primary)]">
+              Forgot Your Password?
+            </CardTitle>
           </CardHeader>
           <CardContent className="px-8 pb-8">
             <p className="text-[color:var(--text-muted)] text-center mb-6">
-              No worries! Enter your email address below and we'll send you a link to reset your password.
+              No worries! Enter your email address below and we'll send you a
+              link to reset your password.
             </p>
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-6"
+              >
                 <FormField
                   control={form.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-[color:var(--text-secondary)] font-medium">Email Address</FormLabel>
+                      <FormLabel className="text-[color:var(--text-secondary)] font-medium">
+                        Email Address
+                      </FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)] w-5 h-5" />
@@ -181,7 +202,10 @@ export default function ForgotPassword() {
               <p className="text-sm text-[color:var(--text-muted)]">
                 Remember your password?{" "}
                 <Link href="/login">
-                  <span className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text)] font-medium cursor-pointer" data-testid="link-back-to-login">
+                  <span
+                    className="text-[color:var(--accent-text)] hover:text-[color:var(--accent-text)] font-medium cursor-pointer"
+                    data-testid="link-back-to-login"
+                  >
                     Back to Login
                   </span>
                 </Link>
@@ -192,14 +216,34 @@ export default function ForgotPassword() {
             <div className="mt-6 pt-4 border-t border-[var(--border-subtle)]">
               <div className="flex items-center justify-center space-x-4 text-xs text-[color:var(--text-muted)]">
                 <div className="flex items-center space-x-1">
-                  <svg className="w-3 h-3 text-[color:var(--status-success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                  <svg
+                    className="w-3 h-3 text-[color:var(--status-success)]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
                   </svg>
                   <span>Secure</span>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <svg className="w-3 h-3 text-[color:var(--status-success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  <svg
+                    className="w-3 h-3 text-[color:var(--status-success)]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                   <span>Link expires in 1 hour</span>
                 </div>
@@ -211,6 +255,3 @@ export default function ForgotPassword() {
     </div>
   );
 }
-
-
-

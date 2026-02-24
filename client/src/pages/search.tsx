@@ -183,9 +183,12 @@ const relevanceScore = (deal: any, queryGroups: string[][]) => {
 
   queryGroups.forEach((group) => {
     if (group.some((variant) => fields.title.includes(variant))) score += 6;
-    if (group.some((variant) => fields.restaurantName.includes(variant))) score += 4;
-    if (group.some((variant) => fields.cuisineType.includes(variant))) score += 3;
-    if (group.some((variant) => fields.description.includes(variant))) score += 2;
+    if (group.some((variant) => fields.restaurantName.includes(variant)))
+      score += 4;
+    if (group.some((variant) => fields.cuisineType.includes(variant)))
+      score += 3;
+    if (group.some((variant) => fields.description.includes(variant)))
+      score += 2;
   });
 
   return score;
@@ -268,7 +271,7 @@ export default function SearchPage() {
         setLocationError("Unable to get your location.");
         setIsLocating(false);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000 },
     );
   };
 
@@ -280,7 +283,7 @@ export default function SearchPage() {
     queryFn: userLocation
       ? async () => {
           const response = await fetch(
-            `/api/deals/nearby/${userLocation.lat}/${userLocation.lng}`
+            `/api/deals/nearby/${userLocation.lat}/${userLocation.lng}`,
           );
           if (!response.ok) throw new Error("Failed to fetch nearby deals");
           return response.json();
@@ -306,7 +309,8 @@ export default function SearchPage() {
     staleTime: 30_000,
   });
 
-  const isLoading = nearbyLoading || featuredLoading || unifiedLoading || isLocating;
+  const isLoading =
+    nearbyLoading || featuredLoading || unifiedLoading || isLocating;
 
   // Function to map cuisine types and titles to category IDs
   const mapDealToCategory = (deal: any): string[] => {
@@ -320,7 +324,7 @@ export default function SearchPage() {
       const matches = keywords.some(
         (keyword) =>
           cuisineType.includes(normalizeSearchText(keyword)) ||
-          title.includes(normalizeSearchText(keyword))
+          title.includes(normalizeSearchText(keyword)),
       );
       if (matches) {
         categories.push(categoryId);
@@ -380,12 +384,14 @@ export default function SearchPage() {
   const allDeals = Array.isArray(nearbyDeals)
     ? nearbyDeals
     : Array.isArray(featuredDeals)
-    ? featuredDeals
-    : [];
+      ? featuredDeals
+      : [];
   const searchedDeals = Array.isArray((unifiedResults as any)?.deals)
     ? (unifiedResults as any).deals
     : [];
-  const searchedRestaurants = Array.isArray((unifiedResults as any)?.restaurants)
+  const searchedRestaurants = Array.isArray(
+    (unifiedResults as any)?.restaurants,
+  )
     ? (unifiedResults as any).restaurants
     : [];
   const searchedParkingPassHosts = Array.isArray(
@@ -447,7 +453,8 @@ export default function SearchPage() {
               );
             case "newest":
               return (
-                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime()
               );
             default:
               if (searchQuery) {
@@ -462,7 +469,14 @@ export default function SearchPage() {
               return 0;
           }
         }),
-    [dealsForPage, searchQuery, queryGroups, selectedCategory, priceRange, sortBy],
+    [
+      dealsForPage,
+      searchQuery,
+      queryGroups,
+      selectedCategory,
+      priceRange,
+      sortBy,
+    ],
   );
 
   const suggestionTerms = useMemo(() => {
@@ -474,10 +488,17 @@ export default function SearchPage() {
       .map((restaurant: any) => normalizeSearchText(restaurant.name || ""))
       .filter((value: string) => value.length >= 3);
     const fromCuisine = searchedRestaurants
-      .map((restaurant: any) => normalizeSearchText(restaurant.cuisineType || ""))
+      .map((restaurant: any) =>
+        normalizeSearchText(restaurant.cuisineType || ""),
+      )
       .filter((value: string) => value.length >= 3);
     return Array.from(
-      new Set([...fromCategories, ...fromSynonyms, ...fromRestaurants, ...fromCuisine]),
+      new Set([
+        ...fromCategories,
+        ...fromSynonyms,
+        ...fromRestaurants,
+        ...fromCuisine,
+      ]),
     ).filter((value) => value.length >= 3);
   }, [searchedRestaurants]);
 
@@ -503,11 +524,7 @@ export default function SearchPage() {
     ? `Find nearby deals for "${searchQuery}". Browse local restaurants and discover limited-time discounts close to you.`
     : "Search for deals, restaurants, parking pass spots, videos, and events.";
   const searchKeywordVariants = searchQuery
-    ? Array.from(
-        new Set(queryGroups.flat()).values(),
-      )
-        .slice(0, 8)
-        .join(", ")
+    ? Array.from(new Set(queryGroups.flat()).values()).slice(0, 8).join(", ")
     : "food search";
   const searchCanonicalUrl = searchQuery
     ? `https://www.mealscout.us/search?q=${encodeURIComponent(searchQuery)}`
@@ -531,12 +548,14 @@ export default function SearchPage() {
               ? `Deals matching ${searchQuery}`
               : "Featured searchable deals",
             numberOfItems: filteredDeals.slice(0, 12).length,
-            itemListElement: filteredDeals.slice(0, 12).map((deal: any, index: number) => ({
-              "@type": "ListItem",
-              position: index + 1,
-              name: deal.title,
-              url: `https://www.mealscout.us/deal/${deal.id}`,
-            })),
+            itemListElement: filteredDeals
+              .slice(0, 12)
+              .map((deal: any, index: number) => ({
+                "@type": "ListItem",
+                position: index + 1,
+                name: deal.title,
+                url: `https://www.mealscout.us/deal/${deal.id}`,
+              })),
           },
         },
         {
@@ -567,7 +586,8 @@ export default function SearchPage() {
     {
       href: "/map",
       title: "Live Food Truck Map",
-      description: "Open the interactive map to see trucks, events, and nearby deals.",
+      description:
+        "Open the interactive map to see trucks, events, and nearby deals.",
     },
     {
       href: "/deals/featured",
@@ -582,7 +602,8 @@ export default function SearchPage() {
     {
       href: "/faq",
       title: "MealScout FAQ",
-      description: "Get quick answers about accounts, deals, and location-based results.",
+      description:
+        "Get quick answers about accounts, deals, and location-based results.",
     },
   ];
   const fallbackTrending = [
@@ -595,15 +616,17 @@ export default function SearchPage() {
     "pizza",
     "coffee",
   ];
-  const trendingLinks = (Array.isArray(trendingSearches) && trendingSearches.length > 0
-    ? trendingSearches.map((row) => row?.query).filter(Boolean)
-    : fallbackTrending
+  const trendingLinks = (
+    Array.isArray(trendingSearches) && trendingSearches.length > 0
+      ? trendingSearches.map((row) => row?.query).filter(Boolean)
+      : fallbackTrending
   )
     .slice(0, 8)
     .map((query) => ({
       href: `/search?q=${encodeURIComponent(query)}`,
       title: query,
-      description: "See matching restaurants, trucks, deals, parking, and events.",
+      description:
+        "See matching restaurants, trucks, deals, parking, and events.",
     }));
 
   async function trackSearch(query: string, source: string) {
@@ -632,22 +655,22 @@ export default function SearchPage() {
       />
       <BackHeader title="Search" fallbackHref="/" />
       {/* Header */}
-      <header className="px-6 py-6 bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean">
+      <header className="px-4 sm:px-6 py-6 bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean">
         <div className="mb-6 flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Search</h1>
-              <p className="text-sm text-muted-foreground">
-                {isLocating && !searchQuery
-                  ? "Finding your location..."
+            <p className="text-sm text-muted-foreground">
+              {isLocating && !searchQuery
+                ? "Finding your location..."
                 : userLocation && !searchQuery
-                ? "Popular deals near you"
-                : filteredDeals.length > 0
-                ? "Showing results that match your search"
-                : searchQuery
-                ? "No matches yet"
-                : "Use location for nearby results or browse featured deals"}
-              </p>
-            </div>
+                  ? "Popular deals near you"
+                  : filteredDeals.length > 0
+                    ? "Showing results that match your search"
+                    : searchQuery
+                      ? "No matches yet"
+                      : "Use location for nearby results or browse featured deals"}
+            </p>
+          </div>
           <div className="flex items-center gap-2">
             {!isStandalone && (
               <Link href="/install">
@@ -672,16 +695,16 @@ export default function SearchPage() {
               <Button
                 variant="outline"
                 size="sm"
-              onClick={requestUserLocation}
-              disabled={isLocating}
-              data-testid="button-request-location"
-              aria-label="Use my location"
-              onPointerDown={() => {
-                trackUxEvent("search_location_request_primary", {
-                  surface: "search_header",
-                });
-              }}
-            >
+                onClick={requestUserLocation}
+                disabled={isLocating}
+                data-testid="button-request-location"
+                aria-label="Use my location"
+                onPointerDown={() => {
+                  trackUxEvent("search_location_request_primary", {
+                    surface: "search_header",
+                  });
+                }}
+              >
                 <MapPin className="w-4 h-4 mr-1" />
                 {isLocating ? "Locating..." : "Use location"}
               </Button>
@@ -700,7 +723,10 @@ export default function SearchPage() {
           </div>
         </div>
         {locationError && !searchQuery && (
-          <p className="mb-4 text-xs text-[color:var(--status-error)]" role="alert">
+          <p
+            className="mb-4 text-xs text-[color:var(--status-error)]"
+            role="alert"
+          >
             {locationError}
           </p>
         )}
@@ -845,58 +871,60 @@ export default function SearchPage() {
       </header>
 
       {/* Results */}
-      <div className="px-6 py-6">
+      <div className="px-4 sm:px-6 py-6">
         {/* Restaurants Section (when searching) */}
         {searchQuery && searchedRestaurants.length > 0 && (
-            <div className="mb-8">
+          <div className="mb-8">
             <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-lg font-semibold text-foreground">
                 Restaurants & Food Trucks
               </h2>
-                <span className="text-sm text-muted-foreground">
-                  {searchedRestaurants.length} found
-                </span>
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                {searchedRestaurants.map((restaurant: any) => (
-                  <Link
-                    key={restaurant.id}
-                    href={`/restaurant/${restaurant.id}`}
-                    data-testid={`card-restaurant-${restaurant.id}`}
-                  >
-                    <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean hover:shadow-clean-lg transition-shadow cursor-pointer">
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-1">
-                            <h3
-                              className="font-semibold text-foreground mb-1"
-                              data-testid={`text-restaurant-name-${restaurant.id}`}
-                            >
-                              {restaurant.name}
-                            </h3>
-                            <p className="text-sm text-muted-foreground mb-2">
-                              {restaurant.isFoodTruck ? "Food truck" : restaurant.cuisineType}
+              <span className="text-sm text-muted-foreground">
+                {searchedRestaurants.length} found
+              </span>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+              {searchedRestaurants.map((restaurant: any) => (
+                <Link
+                  key={restaurant.id}
+                  href={`/restaurant/${restaurant.id}`}
+                  data-testid={`card-restaurant-${restaurant.id}`}
+                >
+                  <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean hover:shadow-clean-lg transition-shadow cursor-pointer">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1">
+                          <h3
+                            className="font-semibold text-foreground mb-1"
+                            data-testid={`text-restaurant-name-${restaurant.id}`}
+                          >
+                            {restaurant.name}
+                          </h3>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            {restaurant.isFoodTruck
+                              ? "Food truck"
+                              : restaurant.cuisineType}
+                          </p>
+                          {restaurant.address && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {restaurant.address}
                             </p>
-                            {restaurant.address && (
-                              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
-                                {restaurant.address}
-                              </p>
-                            )}
-                          </div>
-                          {restaurant.isVerified && (
-                            <div className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
-                              Verified
-                            </div>
                           )}
                         </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
+                        {restaurant.isVerified && (
+                          <div className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
+                            Verified
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
             </div>
-          )}
+          </div>
+        )}
 
         {searchQuery && searchedParkingPassHosts.length > 0 && (
           <div className="mb-8">
@@ -910,7 +938,8 @@ export default function SearchPage() {
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
               {searchedParkingPassHosts.map((host: any) => {
-                const q = `${host.address || ""}${host.city ? `, ${host.city}` : ""}${host.state ? `, ${host.state}` : ""}`.trim();
+                const q =
+                  `${host.address || ""}${host.city ? `, ${host.city}` : ""}${host.state ? `, ${host.state}` : ""}`.trim();
                 return (
                   <Link
                     key={host.hostId}
@@ -971,7 +1000,9 @@ export default function SearchPage() {
                         {story.title || "Video"}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">
-                        {story.restaurantName ? `From ${story.restaurantName}` : "Video story"}
+                        {story.restaurantName
+                          ? `From ${story.restaurantName}`
+                          : "Video story"}
                       </div>
                     </CardContent>
                   </Card>
@@ -1153,15 +1184,20 @@ export default function SearchPage() {
             Explore More Food Deals Nearby
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Keep browsing popular MealScout pages for restaurants, food trucks, and local deals.
+            Keep browsing popular MealScout pages for restaurants, food trucks,
+            and local deals.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {searchExploreLinks.map((link) => (
               <Link key={link.href} href={link.href}>
                 <Card className="h-full border-[color:var(--border-subtle)] bg-[var(--bg-surface)] shadow-clean transition-shadow hover:shadow-clean-lg">
                   <CardContent className="p-4">
-                    <div className="font-medium text-foreground">{link.title}</div>
-                    <p className="mt-1 text-xs text-muted-foreground">{link.description}</p>
+                    <div className="font-medium text-foreground">
+                      {link.title}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {link.description}
+                    </p>
                   </CardContent>
                 </Card>
               </Link>
@@ -1177,8 +1213,12 @@ export default function SearchPage() {
                   <Link key={link.href} href={link.href}>
                     <Card className="h-full border-[color:var(--border-subtle)] bg-[var(--bg-surface)] shadow-clean transition-shadow hover:shadow-clean-lg">
                       <CardContent className="p-4">
-                        <div className="font-medium text-foreground">{link.title}</div>
-                        <p className="mt-1 text-xs text-muted-foreground">{link.description}</p>
+                        <div className="font-medium text-foreground">
+                          {link.title}
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {link.description}
+                        </p>
                       </CardContent>
                     </Card>
                   </Link>
@@ -1233,6 +1273,3 @@ export default function SearchPage() {
     </div>
   );
 }
-
-
-

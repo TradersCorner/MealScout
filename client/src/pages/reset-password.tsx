@@ -9,25 +9,37 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { BackHeader } from "@/components/back-header";
-import { KeyRound, Eye, EyeOff, CheckCircle, AlertTriangle } from "lucide-react";
-import { SEOHead } from "@/components/seo-head";
 import {
-  PASSWORD_REGEX,
-  PASSWORD_REQUIREMENTS,
-} from "@/utils/passwordPolicy";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { BackHeader } from "@/components/back-header";
+import {
+  KeyRound,
+  Eye,
+  EyeOff,
+  CheckCircle,
+  AlertTriangle,
+} from "lucide-react";
+import { SEOHead } from "@/components/seo-head";
+import { PASSWORD_REGEX, PASSWORD_REQUIREMENTS } from "@/utils/passwordPolicy";
 
-const resetPasswordSchema = z.object({
-  password: z
-    .string()
-    .min(1, PASSWORD_REQUIREMENTS)
-    .regex(PASSWORD_REGEX, PASSWORD_REQUIREMENTS),
-  confirmPassword: z.string().min(1, "Please confirm your password"),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+const resetPasswordSchema = z
+  .object({
+    password: z
+      .string()
+      .min(1, PASSWORD_REQUIREMENTS)
+      .regex(PASSWORD_REGEX, PASSWORD_REQUIREMENTS),
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
 type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
@@ -41,7 +53,7 @@ export default function ResetPassword() {
   // Extract token from URL parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const tokenParam = urlParams.get('token');
+    const tokenParam = urlParams.get("token");
     setToken(tokenParam);
   }, []);
 
@@ -54,14 +66,20 @@ export default function ResetPassword() {
   });
 
   // Validate token on mount
-  const { data: tokenValidation, isLoading: isValidatingToken, error: tokenError } = useQuery<{
+  const {
+    data: tokenValidation,
+    isLoading: isValidatingToken,
+    error: tokenError,
+  } = useQuery<{
     valid: boolean;
     error?: string;
   }>({
-    queryKey: ['/api/auth/reset-password/validate', token],
+    queryKey: ["/api/auth/reset-password/validate", token],
     queryFn: async () => {
-      if (!token) throw new Error('No token provided');
-      const response = await fetch(`/api/auth/reset-password/validate?token=${encodeURIComponent(token)}`);
+      if (!token) throw new Error("No token provided");
+      const response = await fetch(
+        `/api/auth/reset-password/validate?token=${encodeURIComponent(token)}`,
+      );
       return response.json();
     },
     enabled: !!token,
@@ -80,14 +98,17 @@ export default function ResetPassword() {
     onSuccess: () => {
       toast({
         title: "Password Reset Successful!",
-        description: "Your password has been updated. Please log in with your new password.",
+        description:
+          "Your password has been updated. Please log in with your new password.",
       });
       setLocation("/login");
     },
     onError: (error: any) => {
       toast({
         title: "Reset Failed",
-        description: error.message || "Unable to reset password. Please try again or request a new reset link.",
+        description:
+          error.message ||
+          "Unable to reset password. Please try again or request a new reset link.",
         variant: "destructive",
       });
     },
@@ -101,11 +122,21 @@ export default function ResetPassword() {
   const password = form.watch("password");
   const getPasswordStrength = (password: string) => {
     if (!password) return { level: 0, text: "", color: "gray" };
-    if (password.length < 6) return { level: 1, text: "Too short", color: "red" };
+    if (password.length < 6)
+      return { level: 1, text: "Too short", color: "red" };
     if (password.length < 8) return { level: 2, text: "Weak", color: "orange" };
-    if (password.length < 12 && /[A-Z]/.test(password) && /[0-9]/.test(password)) 
+    if (
+      password.length < 12 &&
+      /[A-Z]/.test(password) &&
+      /[0-9]/.test(password)
+    )
       return { level: 3, text: "Good", color: "blue" };
-    if (password.length >= 12 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password)) 
+    if (
+      password.length >= 12 &&
+      /[A-Z]/.test(password) &&
+      /[0-9]/.test(password) &&
+      /[^A-Za-z0-9]/.test(password)
+    )
       return { level: 4, text: "Strong", color: "green" };
     return { level: 2, text: "Weak", color: "orange" };
   };
@@ -133,18 +164,24 @@ export default function ResetPassword() {
           className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
         />
 
-        <div className="px-6 py-12 max-w-md mx-auto">
+        <div className="px-4 sm:px-6 py-12 max-w-md mx-auto">
           <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean-lg">
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-red-600 rounded-full mx-auto mb-6 flex items-center justify-center">
                 <AlertTriangle className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-[color:var(--text-primary)] mb-4">Invalid Reset Link</h2>
+              <h2 className="text-2xl font-bold text-[color:var(--text-primary)] mb-4">
+                Invalid Reset Link
+              </h2>
               <p className="text-[color:var(--text-secondary)] mb-6">
-                This password reset link is invalid or missing. Please request a new one.
+                This password reset link is invalid or missing. Please request a
+                new one.
               </p>
               <Link href="/forgot-password">
-                <Button className="w-full" data-testid="button-request-new-link">
+                <Button
+                  className="w-full"
+                  data-testid="button-request-new-link"
+                >
                   Request New Reset Link
                 </Button>
               </Link>
@@ -160,7 +197,9 @@ export default function ResetPassword() {
       <div className="min-h-screen bg-[var(--bg-layered)] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin w-12 h-12 border-4 border-[color:var(--action-primary)] border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-[color:var(--text-secondary)]">Validating reset link...</p>
+          <p className="text-[color:var(--text-secondary)]">
+            Validating reset link...
+          </p>
         </div>
       </div>
     );
@@ -177,18 +216,24 @@ export default function ResetPassword() {
           className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
         />
 
-        <div className="px-6 py-12 max-w-md mx-auto">
+        <div className="px-4 sm:px-6 py-12 max-w-md mx-auto">
           <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean-lg">
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-red-600 rounded-full mx-auto mb-6 flex items-center justify-center">
                 <AlertTriangle className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-[color:var(--text-primary)] mb-4">Link Expired</h2>
+              <h2 className="text-2xl font-bold text-[color:var(--text-primary)] mb-4">
+                Link Expired
+              </h2>
               <p className="text-[color:var(--text-secondary)] mb-6">
-                This password reset link has expired or has already been used. Please request a new one.
+                This password reset link has expired or has already been used.
+                Please request a new one.
               </p>
               <Link href="/forgot-password">
-                <Button className="w-full" data-testid="button-request-new-link">
+                <Button
+                  className="w-full"
+                  data-testid="button-request-new-link"
+                >
                   Request New Reset Link
                 </Button>
               </Link>
@@ -216,13 +261,15 @@ export default function ResetPassword() {
         className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
 
-      <div className="px-6 py-12 max-w-md mx-auto">
+      <div className="px-4 sm:px-6 py-12 max-w-md mx-auto">
         <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean-lg">
           <CardHeader className="text-center pb-2">
             <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full mx-auto mb-4 flex items-center justify-center">
               <KeyRound className="w-8 h-8 text-white" />
             </div>
-            <CardTitle className="text-2xl font-bold text-[color:var(--text-primary)]">Create New Password</CardTitle>
+            <CardTitle className="text-2xl font-bold text-[color:var(--text-primary)]">
+              Create New Password
+            </CardTitle>
           </CardHeader>
           <CardContent className="px-8 pb-8">
             <p className="text-[color:var(--text-secondary)] text-center mb-6">
@@ -230,13 +277,18 @@ export default function ResetPassword() {
             </p>
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-6"
+              >
                 <FormField
                   control={form.control}
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-[color:var(--text-primary)] font-medium">New Password</FormLabel>
+                      <FormLabel className="text-[color:var(--text-primary)] font-medium">
+                        New Password
+                      </FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
@@ -253,7 +305,11 @@ export default function ResetPassword() {
                             className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
                             data-testid="button-toggle-password"
                           >
-                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            {showPassword ? (
+                              <EyeOff className="w-5 h-5" />
+                            ) : (
+                              <Eye className="w-5 h-5" />
+                            )}
                           </button>
                         </div>
                       </FormControl>
@@ -264,14 +320,21 @@ export default function ResetPassword() {
                             <div className="flex-1 bg-[var(--bg-subtle)] rounded-full h-2">
                               <div
                                 className={`h-2 rounded-full transition-all duration-300 ${
-                                  passwordStrength.level === 1 ? 'w-1/4 bg-[color:var(--status-error)]' :
-                                  passwordStrength.level === 2 ? 'w-2/4 bg-orange-500' :
-                                  passwordStrength.level === 3 ? 'w-3/4 bg-[color:var(--accent-text)]/100' :
-                                  passwordStrength.level === 4 ? 'w-full bg-[color:var(--status-success)]/100' : 'w-0'
+                                  passwordStrength.level === 1
+                                    ? "w-1/4 bg-[color:var(--status-error)]"
+                                    : passwordStrength.level === 2
+                                      ? "w-2/4 bg-orange-500"
+                                      : passwordStrength.level === 3
+                                        ? "w-3/4 bg-[color:var(--accent-text)]/100"
+                                        : passwordStrength.level === 4
+                                          ? "w-full bg-[color:var(--status-success)]/100"
+                                          : "w-0"
                                 }`}
                               />
                             </div>
-                            <span className={`text-xs font-medium ${strengthTextClass}`}>
+                            <span
+                              className={`text-xs font-medium ${strengthTextClass}`}
+                            >
                               {passwordStrength.text}
                             </span>
                           </div>
@@ -286,7 +349,9 @@ export default function ResetPassword() {
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-[color:var(--text-primary)] font-medium">Confirm New Password</FormLabel>
+                      <FormLabel className="text-[color:var(--text-primary)] font-medium">
+                        Confirm New Password
+                      </FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
@@ -299,11 +364,17 @@ export default function ResetPassword() {
                           />
                           <button
                             type="button"
-                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            onClick={() =>
+                              setShowConfirmPassword(!showConfirmPassword)
+                            }
                             className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
                             data-testid="button-toggle-confirm-password"
                           >
-                            {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            {showConfirmPassword ? (
+                              <EyeOff className="w-5 h-5" />
+                            ) : (
+                              <Eye className="w-5 h-5" />
+                            )}
                           </button>
                         </div>
                       </FormControl>
@@ -332,7 +403,9 @@ export default function ResetPassword() {
 
             {/* Security tips */}
             <div className="mt-6 pt-4 border-t border-[color:var(--border-subtle)]">
-              <h4 className="text-sm font-medium text-[color:var(--text-primary)] mb-2">Password Tips:</h4>
+              <h4 className="text-sm font-medium text-[color:var(--text-primary)] mb-2">
+                Password Tips:
+              </h4>
               <ul className="text-xs text-[color:var(--text-secondary)] space-y-1">
                 <li className="flex items-center space-x-1">
                   <span className="w-1 h-1 bg-[color:var(--text-muted)] rounded-full" />
@@ -354,7 +427,3 @@ export default function ResetPassword() {
     </div>
   );
 }
-
-
-
-

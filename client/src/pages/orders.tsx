@@ -60,9 +60,7 @@ export default function OrdersPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "active":
-        return (
-          <Clock className="w-4 h-4 text-[color:var(--status-warning)]" />
-        );
+        return <Clock className="w-4 h-4 text-[color:var(--status-warning)]" />;
       case "completed":
         return (
           <CheckCircle className="w-4 h-4 text-[color:var(--status-success)]" />
@@ -70,9 +68,7 @@ export default function OrdersPage() {
       case "cancelled":
         return <XCircle className="w-4 h-4 text-[color:var(--status-error)]" />;
       default:
-        return (
-          <Clock className="w-4 h-4 text-[color:var(--text-secondary)]" />
-        );
+        return <Clock className="w-4 h-4 text-[color:var(--text-secondary)]" />;
     }
   };
 
@@ -99,7 +95,7 @@ export default function OrdersPage() {
           className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
         />
 
-        <div className="px-6 py-12 text-center">
+        <div className="px-4 sm:px-6 py-12 text-center">
           <Receipt className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-foreground mb-2">
             Sign in to view orders
@@ -135,7 +131,7 @@ export default function OrdersPage() {
       />
 
       {/* Tabs */}
-      <div className="px-6 py-4 bg-[var(--bg-card)] border-b border-[color:var(--border-subtle)]">
+      <div className="px-4 sm:px-6 py-4 bg-[var(--bg-card)] border-b border-[color:var(--border-subtle)]">
         <div className="flex bg-[var(--bg-surface-muted)] rounded-xl p-1">
           <Button
             variant={activeTab === "active" ? "default" : "ghost"}
@@ -159,7 +155,7 @@ export default function OrdersPage() {
       </div>
 
       {/* Orders List */}
-      <div className="px-6 py-6">
+      <div className="px-4 sm:px-6 py-6">
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -252,6 +248,3 @@ export default function OrdersPage() {
     </div>
   );
 }
-
-
-

@@ -7,7 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Star, ArrowLeft, User, Calendar, CheckCircle, AlertCircle } from "lucide-react";
+import {
+  Star,
+  ArrowLeft,
+  User,
+  Calendar,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react";
 import { getOptimizedImageUrl } from "@/lib/images";
 
 interface Review {
@@ -70,12 +77,15 @@ export default function ReviewsPage() {
       setNewReviewText("");
       setIsSubmitting(false);
       // Invalidate and refetch reviews
-      queryClient.invalidateQueries({ queryKey: [`/api/reviews/restaurant/${restaurantId}`] });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/reviews/restaurant/${restaurantId}`],
+      });
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to post review. Please try again.",
+        description:
+          error.message || "Failed to post review. Please try again.",
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -108,9 +118,14 @@ export default function ReviewsPage() {
     });
   };
 
-  const renderStars = (rating: number, interactive: boolean = false, size: "sm" | "md" | "lg" = "md") => {
-    const starSize = size === "sm" ? "w-4 h-4" : size === "md" ? "w-5 h-5" : "w-6 h-6";
-    
+  const renderStars = (
+    rating: number,
+    interactive: boolean = false,
+    size: "sm" | "md" | "lg" = "md",
+  ) => {
+    const starSize =
+      size === "sm" ? "w-4 h-4" : size === "md" ? "w-5 h-5" : "w-6 h-6";
+
     return (
       <div className="flex items-center space-x-1">
         {[1, 2, 3, 4, 5].map((star) => (
@@ -119,7 +134,9 @@ export default function ReviewsPage() {
             onClick={() => interactive && setNewRating(star)}
             disabled={!interactive}
             className={`${starSize} ${
-              interactive ? "cursor-pointer hover:scale-110 transition-transform" : "cursor-default"
+              interactive
+                ? "cursor-pointer hover:scale-110 transition-transform"
+                : "cursor-default"
             }`}
             data-testid={`star-${star}`}
           >
@@ -145,14 +162,18 @@ export default function ReviewsPage() {
     });
   };
 
-  const averageRating = reviews.length > 0
-    ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)
-    : "0.0";
+  const averageRating =
+    reviews.length > 0
+      ? (
+          reviews.reduce((sum, review) => sum + review.rating, 0) /
+          reviews.length
+        ).toFixed(1)
+      : "0.0";
 
   return (
     <div className="max-w-md mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
       {/* Header */}
-      <header className="px-6 py-6 bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean">
+      <header className="px-4 sm:px-6 py-6 bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean">
         <div className="flex items-center space-x-4 mb-4">
           <Link href={`/restaurant/${restaurantId}`}>
             <Button variant="ghost" size="sm" className="p-2">
@@ -183,7 +204,7 @@ export default function ReviewsPage() {
         </div>
       </header>
 
-      <div className="px-6 py-6 space-y-6">
+      <div className="px-4 sm:px-6 py-6 space-y-6">
         {/* Write Review Section */}
         <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
           <CardHeader>
@@ -219,7 +240,11 @@ export default function ReviewsPage() {
             {/* Submit Button */}
             <Button
               onClick={handleSubmitReview}
-              disabled={isSubmitting || newRating === 0 || newReviewText.trim().length < 10}
+              disabled={
+                isSubmitting ||
+                newRating === 0 ||
+                newReviewText.trim().length < 10
+              }
               className="w-full"
               data-testid="button-submit-review"
             >
@@ -237,7 +262,10 @@ export default function ReviewsPage() {
           {isLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
-                <Card key={i} className="animate-pulse bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
+                <Card
+                  key={i}
+                  className="animate-pulse bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean"
+                >
                   <CardContent className="p-4">
                     <div className="flex space-x-3">
                       <div className="w-10 h-10 bg-muted rounded-full" />
@@ -254,7 +282,10 @@ export default function ReviewsPage() {
           ) : reviews.length > 0 ? (
             <div className="space-y-4">
               {reviews.map((review) => (
-                <Card key={review.id} className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
+                <Card
+                  key={review.id}
+                  className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean"
+                >
                   <CardContent className="p-4">
                     <div className="flex space-x-3">
                       {/* User Avatar */}
@@ -283,10 +314,9 @@ export default function ReviewsPage() {
                         <div className="flex items-center justify-between mb-2">
                           <div>
                             <div className="font-semibold text-sm text-foreground">
-                              {review.user ? 
-                                `${review.user.firstName} ${review.user.lastName}` : 
-                                "Anonymous User"
-                              }
+                              {review.user
+                                ? `${review.user.firstName} ${review.user.lastName}`
+                                : "Anonymous User"}
                             </div>
                             <div className="flex items-center space-x-2 text-xs text-muted-foreground">
                               <Calendar className="w-3 h-3" />
@@ -325,6 +355,3 @@ export default function ReviewsPage() {
     </div>
   );
 }
-
-
-

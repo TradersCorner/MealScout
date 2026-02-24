@@ -7,7 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BackHeader } from "@/components/back-header";
-import { MapPin, Phone, Star, Clock, Navigation as DirectionsIcon, Heart, CheckCircle, Store } from "lucide-react";
+import {
+  MapPin,
+  Phone,
+  Star,
+  Clock,
+  Navigation as DirectionsIcon,
+  Heart,
+  CheckCircle,
+  Store,
+} from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
 import { MinimalFAQ } from "@/components/seo-faq";
 import { generateRestaurantSchema } from "@/lib/schema-helpers";
@@ -223,43 +232,52 @@ export default function RestaurantDetailPage() {
 
   // Filter deals for this restaurant
   const allDeals = Array.isArray(featuredDeals) ? featuredDeals : [];
-  const restaurantDeals = allDeals.filter((deal: any) => deal.restaurantId === restaurantId);
+  const restaurantDeals = allDeals.filter(
+    (deal: any) => deal.restaurantId === restaurantId,
+  );
 
   const currentRating = (rating as any)?.rating || 0;
   const reviewCount = Array.isArray(reviews) ? reviews.length : 0;
 
   const rightActions = (
-    <Button variant="ghost" size="icon" className="bg-[var(--bg-card)]/90 backdrop-blur-sm" data-testid="button-save-restaurant">
+    <Button
+      variant="ghost"
+      size="icon"
+      className="bg-[var(--bg-card)]/90 backdrop-blur-sm"
+      data-testid="button-save-restaurant"
+    >
       <Heart className="w-4 h-4" />
     </Button>
   );
 
-  const restaurantName = (restaurant as any)?.name || 'Restaurant';
+  const restaurantName = (restaurant as any)?.name || "Restaurant";
   const profileSlug = toSlug(restaurantName) || String(restaurantId || "");
   const profilePath = `/p/restaurant/${restaurantId}/${profileSlug}`;
-  const cuisineType = (restaurant as any)?.cuisineType || 'food';
-  const address = (restaurant as any)?.address || '';
-  const description = `Visit ${restaurantName} and discover exclusive food deals. ${cuisineType} restaurant with ${restaurantDeals.length} active deals. ${currentRating > 0 ? `Rated ${currentRating.toFixed(1)} stars by ${reviewCount} customers.` : ''}`;
+  const cuisineType = (restaurant as any)?.cuisineType || "food";
+  const address = (restaurant as any)?.address || "";
+  const description = `Visit ${restaurantName} and discover exclusive food deals. ${cuisineType} restaurant with ${restaurantDeals.length} active deals. ${currentRating > 0 ? `Rated ${currentRating.toFixed(1)} stars by ${reviewCount} customers.` : ""}`;
 
   const localBusinessSchema = {
     "@context": "https://schema.org",
     "@type": "Restaurant",
-    "name": restaurantName,
-    "description": description,
-    "address": {
+    name: restaurantName,
+    description: description,
+    address: {
       "@type": "PostalAddress",
-      "streetAddress": address
+      streetAddress: address,
     },
-    "telephone": (restaurant as any)?.phone || "",
-    "servesCuisine": cuisineType,
-    "url": `https://www.mealscout.us${profilePath}`,
-    ...(currentRating > 0 && reviewCount > 0 ? {
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": currentRating.toFixed(1),
-        "reviewCount": reviewCount
-      }
-    } : {})
+    telephone: (restaurant as any)?.phone || "",
+    servesCuisine: cuisineType,
+    url: `https://www.mealscout.us${profilePath}`,
+    ...(currentRating > 0 && reviewCount > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: currentRating.toFixed(1),
+            reviewCount: reviewCount,
+          },
+        }
+      : {}),
   };
 
   return (
@@ -278,11 +296,11 @@ export default function RestaurantDetailPage() {
         rightActions={rightActions}
         className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
-      
+
       {/* Header Image */}
       <div className="relative h-48 bg-[linear-gradient(110deg,rgba(255,77,46,0.12),rgba(245,158,11,0.12))] overflow-hidden">
         <div className="absolute inset-0 bg-black/20"></div>
-        
+
         {/* Restaurant Image Placeholder */}
         <div className="w-full h-full flex items-center justify-center">
           <div className="text-center text-white/80">
@@ -294,13 +312,19 @@ export default function RestaurantDetailPage() {
       </div>
 
       {/* Restaurant Info */}
-      <div className="px-6 py-6">
+      <div className="px-4 sm:px-6 py-6">
         <div className="mb-6">
           <div className="flex items-start justify-between mb-2">
-            <h1 className="text-2xl font-bold text-foreground flex items-center space-x-2" data-testid="text-restaurant-name">
+            <h1
+              className="text-2xl font-bold text-foreground flex items-center space-x-2"
+              data-testid="text-restaurant-name"
+            >
               <span>{(restaurant as any)?.name}</span>
               {(restaurant as any)?.isVerified && (
-                <CheckCircle className="w-5 h-5 text-[color:var(--status-success)]" data-testid="icon-verified-restaurant" />
+                <CheckCircle
+                  className="w-5 h-5 text-[color:var(--status-success)]"
+                  data-testid="icon-verified-restaurant"
+                />
               )}
             </h1>
             {(restaurant as any)?.cuisineType && (
@@ -313,12 +337,15 @@ export default function RestaurantDetailPage() {
             <ShareButton
               url={profilePath}
               title={`Check out ${(restaurant as any)?.name || "this spot"} on MealScout`}
-              description={(restaurant as any)?.description || "Discover this location on MealScout."}
+              description={
+                (restaurant as any)?.description ||
+                "Discover this location on MealScout."
+              }
               size="sm"
               variant="outline"
             />
           </div>
-          
+
           {/* Rating */}
           <div className="flex items-center space-x-4 mb-4">
             <div className="flex items-center space-x-1">
@@ -326,7 +353,10 @@ export default function RestaurantDetailPage() {
               <span className="font-semibold" data-testid="text-rating">
                 {currentRating.toFixed(1)}
               </span>
-              <span className="text-muted-foreground text-sm" data-testid="text-review-count">
+              <span
+                className="text-muted-foreground text-sm"
+                data-testid="text-review-count"
+              >
                 ({reviewCount} reviews)
               </span>
             </div>
@@ -340,7 +370,10 @@ export default function RestaurantDetailPage() {
           <div className="flex items-start space-x-2 mb-4">
             <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
             <div>
-              <p className="text-sm text-foreground" data-testid="text-restaurant-address">
+              <p
+                className="text-sm text-foreground"
+                data-testid="text-restaurant-address"
+              >
                 {(restaurant as any)?.address}
               </p>
             </div>
@@ -350,7 +383,10 @@ export default function RestaurantDetailPage() {
           {(restaurant as any)?.phone && (
             <div className="flex items-center space-x-2 mb-6">
               <Phone className="w-4 h-4 text-muted-foreground" />
-              <p className="text-sm text-foreground" data-testid="text-restaurant-phone">
+              <p
+                className="text-sm text-foreground"
+                data-testid="text-restaurant-phone"
+              >
                 {(restaurant as any)?.phone}
               </p>
             </div>
@@ -358,11 +394,18 @@ export default function RestaurantDetailPage() {
 
           {/* Action Buttons */}
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button className="w-full sm:flex-1" data-testid="button-directions">
+            <Button
+              className="w-full sm:flex-1"
+              data-testid="button-directions"
+            >
               <DirectionsIcon className="w-4 h-4 mr-2" />
               Directions
             </Button>
-            <Button variant="outline" className="w-full sm:flex-1" data-testid="button-call-restaurant">
+            <Button
+              variant="outline"
+              className="w-full sm:flex-1"
+              data-testid="button-call-restaurant"
+            >
               <Phone className="w-4 h-4 mr-2" />
               Call
             </Button>
@@ -543,7 +586,9 @@ export default function RestaurantDetailPage() {
                 <p className="text-muted-foreground">
                   No current specials available
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">Check back soon!</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Check back soon!
+                </p>
               </CardContent>
             </Card>
           )}
@@ -553,11 +598,15 @@ export default function RestaurantDetailPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-foreground">Reviews</h2>
-            <Button variant="outline" size="sm" data-testid="button-write-review">
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="button-write-review"
+            >
               Write Review
             </Button>
           </div>
-          
+
           {Array.isArray(reviews) && reviews.length > 0 ? (
             <div className="space-y-4">
               {reviews.slice(0, 3).map((review: any) => (
@@ -572,14 +621,16 @@ export default function RestaurantDetailPage() {
                           <span className="font-medium text-sm">User</span>
                           <div className="flex">
                             {[1, 2, 3, 4, 5].map((star) => (
-                              <Star 
-                                key={star} 
-                                className={`w-3 h-3 ${star <= (review.rating || 0) ? 'fill-[color:var(--status-warning)] text-[color:var(--status-warning)]' : 'text-[color:var(--border-strong)]'}`} 
+                              <Star
+                                key={star}
+                                className={`w-3 h-3 ${star <= (review.rating || 0) ? "fill-[color:var(--status-warning)] text-[color:var(--status-warning)]" : "text-[color:var(--border-strong)]"}`}
                               />
                             ))}
                           </div>
                         </div>
-                        <p className="text-sm text-muted-foreground">{review.comment}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {review.comment}
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -593,7 +644,9 @@ export default function RestaurantDetailPage() {
                   <Star className="w-6 h-6 text-muted-foreground" />
                 </div>
                 <p className="text-muted-foreground">No reviews yet</p>
-                <p className="text-sm text-muted-foreground mt-1">Be the first to review this restaurant!</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Be the first to review this restaurant!
+                </p>
               </CardContent>
             </Card>
           )}
@@ -605,20 +658,20 @@ export default function RestaurantDetailPage() {
             items={[
               {
                 question: `Does ${restaurantName} offer delivery?`,
-                answer: `Contact ${restaurantName} directly at ${(restaurant as any)?.phone || 'their phone number'} to inquire about delivery options and availability in your area.`
+                answer: `Contact ${restaurantName} directly at ${(restaurant as any)?.phone || "their phone number"} to inquire about delivery options and availability in your area.`,
               },
               {
                 question: `What are the current specials at ${restaurantName}?`,
-                answer: `${restaurantName} has ${restaurantDeals.length} active specials available on MealScout. View all current specials and claim offers directly from this page.`
+                answer: `${restaurantName} has ${restaurantDeals.length} active specials available on MealScout. View all current specials and claim offers directly from this page.`,
               },
               {
                 question: `What type of cuisine does ${restaurantName} serve?`,
-                answer: `${restaurantName} specializes in ${cuisineType} cuisine. Check the menu and reviews above for specific dishes and customer favorites.`
+                answer: `${restaurantName} specializes in ${cuisineType} cuisine. Check the menu and reviews above for specific dishes and customer favorites.`,
               },
               {
                 question: `How do I get directions to ${restaurantName}?`,
-                answer: `${restaurantName} is located at ${address}. Click the Directions button above to open navigation in your maps app.`
-              }
+                answer: `${restaurantName} is located at ${address}. Click the Directions button above to open navigation in your maps app.`,
+              },
             ]}
             className="mt-6"
           />
@@ -629,8 +682,3 @@ export default function RestaurantDetailPage() {
     </div>
   );
 }
-
-
-
-
-

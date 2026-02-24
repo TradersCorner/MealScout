@@ -20,12 +20,12 @@ export default function PaymentMethodsPage() {
     },
     {
       id: "2",
-      type: "mastercard", 
+      type: "mastercard",
       lastFour: "8888",
       expiryMonth: "06",
       expiryYear: "26",
       isDefault: false,
-    }
+    },
   ]);
 
   if (!isAuthenticated || !user) {
@@ -34,7 +34,9 @@ export default function PaymentMethodsPage() {
         <div className="text-center py-12">
           <CreditCard className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Sign in required</h2>
-          <p className="text-muted-foreground">Log in to manage your payment methods</p>
+          <p className="text-muted-foreground">
+            Log in to manage your payment methods
+          </p>
         </div>
         <Navigation />
       </div>
@@ -42,14 +44,27 @@ export default function PaymentMethodsPage() {
   }
 
   const getCardIcon = (type: string) => {
-    const baseClasses = "w-8 h-6 rounded flex items-center justify-center text-xs font-bold text-white";
+    const baseClasses =
+      "w-8 h-6 rounded flex items-center justify-center text-xs font-bold text-white";
     switch (type.toLowerCase()) {
-      case 'visa':
-        return <div className={`${baseClasses} bg-[color:var(--action-primary)]`}>VISA</div>;
-      case 'mastercard':
-        return <div className={`${baseClasses} bg-[color:var(--status-warning)]`}>MC</div>;
-      case 'amex':
-        return <div className={`${baseClasses} bg-[color:var(--status-success)]`}>AMEX</div>;
+      case "visa":
+        return (
+          <div className={`${baseClasses} bg-[color:var(--action-primary)]`}>
+            VISA
+          </div>
+        );
+      case "mastercard":
+        return (
+          <div className={`${baseClasses} bg-[color:var(--status-warning)]`}>
+            MC
+          </div>
+        );
+      case "amex":
+        return (
+          <div className={`${baseClasses} bg-[color:var(--status-success)]`}>
+            AMEX
+          </div>
+        );
       default:
         return <CreditCard className="w-6 h-6 text-muted-foreground" />;
     }
@@ -72,16 +87,21 @@ export default function PaymentMethodsPage() {
       />
 
       {/* Content */}
-      <div className="px-6 py-6 space-y-4">
+      <div className="px-4 sm:px-6 py-6 space-y-4">
         {paymentMethods.map((method) => (
-          <Card key={method.id} className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
+          <Card
+            key={method.id}
+            className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean"
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   {getCardIcon(method.type)}
                   <div>
                     <div className="flex items-center space-x-2 mb-1">
-                      <p className="font-semibold text-foreground">**** {method.lastFour}</p>
+                      <p className="font-semibold text-foreground">
+                        **** {method.lastFour}
+                      </p>
                       {method.isDefault && (
                         <Badge variant="secondary">Default</Badge>
                       )}
@@ -91,7 +111,11 @@ export default function PaymentMethodsPage() {
                     </p>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" data-testid={`button-payment-menu-${method.id}`}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  data-testid={`button-payment-menu-${method.id}`}
+                >
                   <MoreHorizontal className="w-4 h-4" />
                 </Button>
               </div>
@@ -105,7 +129,9 @@ export default function PaymentMethodsPage() {
             <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-3">
               <Plus className="w-6 h-6 text-primary" />
             </div>
-            <h3 className="font-semibold text-foreground mb-2">Add Payment Method</h3>
+            <h3 className="font-semibold text-foreground mb-2">
+              Add Payment Method
+            </h3>
             <p className="text-sm text-muted-foreground mb-4">
               Add a card for easy subscription payments
             </p>
@@ -121,9 +147,12 @@ export default function PaymentMethodsPage() {
             <div className="flex items-start space-x-3">
               <Shield className="w-5 h-5 text-[color:var(--status-success)] mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-[color:var(--status-success)] mb-1">Your payments are secure</p>
+                <p className="text-sm font-medium text-[color:var(--status-success)] mb-1">
+                  Your payments are secure
+                </p>
                 <p className="text-xs text-[color:var(--text-secondary)]">
-                  We use industry-standard encryption to protect your payment information.
+                  We use industry-standard encryption to protect your payment
+                  information.
                 </p>
               </div>
             </div>
@@ -135,6 +164,3 @@ export default function PaymentMethodsPage() {
     </div>
   );
 }
-
-
-

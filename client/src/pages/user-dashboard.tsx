@@ -42,7 +42,7 @@ interface UserStats {
 export default function UserDashboard() {
   const { user } = useAuth();
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
-    null
+    null,
   );
   const [locationName, setLocationName] = useState("Getting location...");
 
@@ -55,7 +55,7 @@ export default function UserDashboard() {
           setLocation({ lat: latitude, lng: longitude });
 
           fetch(
-            `/api/location/reverse?lat=${encodeURIComponent(String(latitude))}&lng=${encodeURIComponent(String(longitude))}`
+            `/api/location/reverse?lat=${encodeURIComponent(String(latitude))}&lng=${encodeURIComponent(String(longitude))}`,
           )
             .then((res) => res.json())
             .then((data) => {
@@ -68,7 +68,7 @@ export default function UserDashboard() {
         },
         () => {
           setLocationName("Location unavailable");
-        }
+        },
       );
     }
   }, []);
@@ -163,7 +163,7 @@ export default function UserDashboard() {
         noIndex={true}
       />
       {/* Header */}
-      <header className="px-6 py-6 bg-[linear-gradient(110deg,rgba(255,77,46,0.10),rgba(245,158,11,0.08))] border-b border-[color:var(--border-subtle)] shadow-clean">
+      <header className="px-4 sm:px-6 py-6 bg-[linear-gradient(110deg,rgba(255,77,46,0.10),rgba(245,158,11,0.08))] border-b border-[color:var(--border-subtle)] shadow-clean">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">My Dashboard</h1>
@@ -182,7 +182,7 @@ export default function UserDashboard() {
       </header>
 
       {/* Stats Overview */}
-      <div className="px-6 py-4">
+      <div className="px-4 sm:px-6 py-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <Card className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
             <CardHeader className="pb-2">
@@ -374,10 +374,10 @@ export default function UserDashboard() {
                               {deal.availableDuringBusinessHours
                                 ? "During business hours"
                                 : deal.startTime && deal.endTime
-                                ? `${formatTime(deal.startTime)} - ${formatTime(
-                                    deal.endTime
-                                  )}`
-                                : "All day"}
+                                  ? `${formatTime(deal.startTime)} - ${formatTime(
+                                      deal.endTime,
+                                    )}`
+                                  : "All day"}
                             </span>
                             <span className="flex items-center gap-1">
                               <DollarSign className="h-3 w-3" />
@@ -460,7 +460,7 @@ export default function UserDashboard() {
                               <Star className="h-3 w-3 text-[color:var(--status-warning)] fill-current" />
                               <span className="text-xs text-muted-foreground">
                                 {(restaurant as any).averageRating?.toFixed(
-                                  1
+                                  1,
                                 ) || "New"}
                               </span>
                             </div>
@@ -530,10 +530,10 @@ export default function UserDashboard() {
                               {deal.availableDuringBusinessHours
                                 ? "During business hours"
                                 : deal.startTime && deal.endTime
-                                ? `${formatTime(deal.startTime)} - ${formatTime(
-                                    deal.endTime
-                                  )}`
-                                : "All day"}
+                                  ? `${formatTime(deal.startTime)} - ${formatTime(
+                                      deal.endTime,
+                                    )}`
+                                  : "All day"}
                             </span>
                             <span className="flex items-center gap-1">
                               <DollarSign className="h-3 w-3" />
@@ -575,10 +575,3 @@ export default function UserDashboard() {
     </div>
   );
 }
-
-
-
-
-
-
-

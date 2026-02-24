@@ -1,8 +1,14 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { Copy, Link as LinkIcon, Search, Share2, Tag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -53,6 +59,7 @@ export default function AdminAffiliateManagement() {
   const [bookerId, setBookerId] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const { data: users = [], refetch } = useQuery<AffiliateUser[]>({
     queryKey: ["admin-affiliates"],
@@ -111,14 +118,96 @@ export default function AdminAffiliateManagement() {
     }
   };
 
+  const getAffiliateLink = (tag: string | null) => {
+    if (!tag) return null;
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    if (!origin) return `/ref/${tag}`;
+    return `${origin}/ref/${tag}`;
+  };
+
+  const handleCopyLink = async (tag: string | null, userId: string) => {
+    const link = getAffiliateLink(tag);
+    if (!link) return;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(link);
+      } else {
+        const el = document.createElement("textarea");
+        el.value = link;
+        el.style.position = "fixed";
+        el.style.opacity = "0";
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+      }
+      toast({ title: "Affiliate link copied" });
+    } catch (err) {
+      toast({
+        title: "Copy failed",
+        description: "Unable to copy the affiliate link.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleShareLink = async (tag: string | null, userId: string) => {
+    const link = getAffiliateLink(tag);
+    if (!link) return;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Affiliate link",
+          text: "Share this affiliate link",
+          url: link,
+        });
+        return;
+      }
+      await handleCopyLink(tag, userId);
+    } catch (err) {
+      toast({
+        title: "Share failed",
+        description: "Unable to share the affiliate link.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCopyTag = async (tag: string | null) => {
+    if (!tag) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(tag);
+      } else {
+        const el = document.createElement("textarea");
+        el.value = tag;
+        el.style.position = "fixed";
+        el.style.opacity = "0";
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+      }
+      toast({ title: "Affiliate tag copied" });
+    } catch (err) {
+      toast({
+        title: "Copy failed",
+        description: "Unable to copy the affiliate tag.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Affiliate Management</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="relative w-full md:max-w-sm">
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-[color:var(--text-muted)]" />
             <input
               value={search}
@@ -130,7 +219,7 @@ export default function AdminAffiliateManagement() {
           <select
             value={userType}
             onChange={(e) => setUserType(e.target.value)}
-            className="rounded-md border border-[var(--border-subtle)] px-3 py-2 text-sm"
+            className="rounded-md border border-[var(--border-subtle)] px-3 py-2 text-sm sm:w-40"
           >
             <option value="all">All user types</option>
             <option value="customer">Customer</option>
@@ -154,46 +243,143 @@ export default function AdminAffiliateManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Tag</TableHead>
-                  <TableHead>Percent</TableHead>
-                  <TableHead>Links</TableHead>
-                  <TableHead>Referred</TableHead>
-                  <TableHead>Paid</TableHead>
-                  <TableHead>Revenue</TableHead>
-                  <TableHead>Earnings</TableHead>
-                  <TableHead>Subs / Bookings</TableHead>
-                  <TableHead />
+                  <TableHead className="text-xs font-semibold">User</TableHead>
+                  <TableHead className="text-xs font-semibold">Type</TableHead>
+                  <TableHead className="text-xs font-semibold">Tag</TableHead>
+                  <TableHead className="text-xs font-semibold">%</TableHead>
+                  <TableHead className="text-xs font-semibold">Links</TableHead>
+                  <TableHead className="text-xs font-semibold">Ref</TableHead>
+                  <TableHead className="text-xs font-semibold">Paid</TableHead>
+                  <TableHead className="text-xs font-semibold">
+                    Revenue
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold">
+                    Earnings
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold">
+                    Subs/Book
+                  </TableHead>
+                  <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>
-                      <div className="text-sm font-medium text-[color:var(--text-primary)]">
+                      <div className="text-xs font-medium text-[color:var(--text-primary)]">
                         {user.firstName || "Unnamed"} {user.lastName || ""}
                       </div>
-                      <div className="text-xs text-[color:var(--text-muted)]">
+                      <div className="text-2xs text-[color:var(--text-muted)]">
                         {user.email || "No email"}
                       </div>
+                      <div className="mt-0.5 flex items-center gap-1 text-2xs text-[color:var(--text-muted)]">
+                        <span className="max-w-[100px] truncate">
+                          {getAffiliateLink(user.affiliateTag) || "No tag"}
+                        </span>
+                        {user.affiliateTag && (
+                          <>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-5 w-5"
+                                  aria-label="Copy affiliate link"
+                                  onClick={() =>
+                                    handleCopyLink(user.affiliateTag, user.id)
+                                  }
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Copy link</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-5 w-5"
+                                  aria-label="Share affiliate link"
+                                  onClick={() =>
+                                    handleShareLink(user.affiliateTag, user.id)
+                                  }
+                                >
+                                  <Share2 className="h-3 w-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Share link</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-5 w-5"
+                                  aria-label="Copy affiliate tag"
+                                  onClick={() =>
+                                    handleCopyTag(user.affiliateTag)
+                                  }
+                                >
+                                  <Tag className="h-3 w-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Copy tag</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-5 w-5"
+                                  aria-label="Open affiliate link"
+                                  onClick={() => {
+                                    const link = getAffiliateLink(
+                                      user.affiliateTag,
+                                    );
+                                    if (link)
+                                      window.open(
+                                        link,
+                                        "_blank",
+                                        "noopener,noreferrer",
+                                      );
+                                  }}
+                                >
+                                  <LinkIcon className="h-3 w-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Open link</TooltipContent>
+                            </Tooltip>
+                          </>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell className="text-xs uppercase text-[color:var(--text-muted)]">
+                    <TableCell className="text-2xs uppercase text-[color:var(--text-muted)]">
                       {user.userType || "unknown"}
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="text-xs">
                       {user.affiliateTag || "userXXXX"}
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="text-xs font-medium">
                       {user.affiliatePercent ?? 5}%
                     </TableCell>
-                    <TableCell>{user.linksShared}</TableCell>
-                    <TableCell>{user.peopleReferred}</TableCell>
-                    <TableCell>{user.paidReferrals}</TableCell>
-                    <TableCell>{formatCurrency(user.mealScoutRevenueCents)}</TableCell>
-                    <TableCell>{formatCurrency(user.affiliateEarningsCents)}</TableCell>
+                    <TableCell className="text-xs text-center">
+                      {user.linksShared}
+                    </TableCell>
+                    <TableCell className="text-xs text-center">
+                      {user.peopleReferred}
+                    </TableCell>
+                    <TableCell className="text-xs text-center">
+                      {user.paidReferrals}
+                    </TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">
+                      {formatCurrency(user.mealScoutRevenueCents)}
+                    </TableCell>
+                    <TableCell className="text-xs font-medium whitespace-nowrap">
+                      {formatCurrency(user.affiliateEarningsCents)}
+                    </TableCell>
                     <TableCell>
-                      <div className="text-xs text-[color:var(--text-muted)]">
+                      <div className="text-2xs text-[color:var(--text-muted)] space-y-0.5">
                         {formatCurrency(user.subscriptionRevenueCents)} /{" "}
                         {formatCurrency(user.bookingRevenueCents)}
                       </div>
@@ -201,7 +387,8 @@ export default function AdminAffiliateManagement() {
                     <TableCell>
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs"
                         onClick={() => startEdit(user)}
                       >
                         Edit
@@ -211,7 +398,10 @@ export default function AdminAffiliateManagement() {
                 ))}
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center text-sm text-[color:var(--text-muted)]">
+                    <TableCell
+                      colSpan={11}
+                      className="text-center text-xs text-[color:var(--text-muted)]"
+                    >
                       No matching users found.
                     </TableCell>
                   </TableRow>
@@ -223,7 +413,7 @@ export default function AdminAffiliateManagement() {
       </Card>
 
       <Dialog open={Boolean(editing)} onOpenChange={() => setEditing(null)}>
-        <DialogContent className="admin-dialog">
+        <DialogContent className="admin-dialog max-w-sm sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Affiliate Settings</DialogTitle>
             <DialogDescription>
@@ -260,7 +450,11 @@ export default function AdminAffiliateManagement() {
                 className="mt-2 w-full rounded-md border border-[var(--border-subtle)] px-3 py-2 text-sm"
               />
             </div>
-            {error && <p className="text-sm text-[color:var(--status-error)]">{error}</p>}
+            {error && (
+              <p className="text-sm text-[color:var(--status-error)]">
+                {error}
+              </p>
+            )}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setEditing(null)}>
                 Cancel
@@ -275,7 +469,3 @@ export default function AdminAffiliateManagement() {
     </div>
   );
 }
-
-
-
-

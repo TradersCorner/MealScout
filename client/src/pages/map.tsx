@@ -19,7 +19,11 @@ import type {
   MapAdapterMarker,
   MapBoundsLike,
 } from "@/components/maps/map-adapter.types";
-import { GOOGLE_MAPS_WEB_API_KEY, MAP_PROVIDER, isGoogleMapsEnabled } from "@/lib/mapProvider";
+import {
+  GOOGLE_MAPS_WEB_API_KEY,
+  MAP_PROVIDER,
+  isGoogleMapsEnabled,
+} from "@/lib/mapProvider";
 import { apiUrl } from "@/lib/api";
 import {
   MapPin,
@@ -31,7 +35,11 @@ import {
 import DealCard from "@/components/deal-card";
 import { SEOHead } from "@/components/seo-head";
 import mealScoutIcon from "@assets/meal-scout-icon.png";
-import { sendGeoPing, trackGeoAdEvent, trackGeoAdImpression } from "@/utils/geoAds";
+import {
+  sendGeoPing,
+  trackGeoAdEvent,
+  trackGeoAdImpression,
+} from "@/utils/geoAds";
 import { useAuth } from "@/hooks/useAuth";
 import { trackUxEvent } from "@/utils/uxTelemetry";
 import { useIsStandalone } from "@/hooks/useIsStandalone";
@@ -62,8 +70,7 @@ L.Icon.Default.mergeOptions({
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-shadow.png",
 });
 
-const svgToDataUrl = (svg: string) =>
-  "data:image/svg+xml;base64," + btoa(svg);
+const svgToDataUrl = (svg: string) => "data:image/svg+xml;base64," + btoa(svg);
 
 // Custom user location icon (person silhouette, not a pin)
 const userLocationIcon = L.divIcon({
@@ -309,7 +316,6 @@ type EventLocation = {
   hostLongitude?: number | string | null;
 };
 
-
 type MapLocationsResponse = {
   hostLocations: HostLocation[];
   eventLocations: EventLocation[];
@@ -357,9 +363,7 @@ const haversineKm = (a: GeoPoint, b: GeoPoint) => {
   const lat2 = toRad(b.lat);
   const sinLat = Math.sin(dLat / 2);
   const sinLng = Math.sin(dLng / 2);
-  const h =
-    sinLat * sinLat +
-    Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng;
+  const h = sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng;
   return 2 * earthRadiusKm * Math.asin(Math.sqrt(h));
 };
 
@@ -667,9 +671,12 @@ function HostMarkerLayer({
               ? "Fully booked today"
               : `${hostStatus.availableCount}/${hostStatus.spotCount} spots open today`
             : "Availability updating...";
-        const qualityFlags = hostId ? qualityFlagsByHostId.get(hostId) || [] : [];
+        const qualityFlags = hostId
+          ? qualityFlagsByHostId.get(hostId) || []
+          : [];
         const distanceLabel = formatDistance(coords);
-        const hostIsVerified = String(host.status || "").toLowerCase() === "verified";
+        const hostIsVerified =
+          String(host.status || "").toLowerCase() === "verified";
         // Deep link to Parking Pass for this host. Do not fall back to the map pin id
         // (host.id can be a map/location id, which won't match host listings).
         const parkingPassHref = hostId
@@ -693,7 +700,9 @@ function HostMarkerLayer({
             <Popup>
               <div className="min-w-56 space-y-1 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg">
                 <div className="font-semibold text-sm">{title}</div>
-                <div className="text-xs text-[color:var(--text-muted)]">{subtitle}</div>
+                <div className="text-xs text-[color:var(--text-muted)]">
+                  {subtitle}
+                </div>
                 <div className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide border border-[color:var(--border-subtle)]">
                   {availableLabel}
                 </div>
@@ -713,7 +722,9 @@ function HostMarkerLayer({
                     {qualityFlags.length > 4 ? ", ..." : ""}
                   </div>
                 )}
-                <div className="text-xs text-[color:var(--text-muted)]">{host.address}</div>
+                <div className="text-xs text-[color:var(--text-muted)]">
+                  {host.address}
+                </div>
                 {host.spotImageUrl && (
                   <img
                     src={host.spotImageUrl}
@@ -799,13 +810,10 @@ function HostMarkerLayer({
   );
 }
 
-
 async function geocodeAddress(address: string): Promise<GeoPoint | null> {
   if (!address) return null;
   const res = await fetch(
-    apiUrl(`/api/location/search?limit=1&q=${encodeURIComponent(
-      address
-    )}`),
+    apiUrl(`/api/location/search?limit=1&q=${encodeURIComponent(address)}`),
   );
   if (!res.ok) return null;
   const data = (await res.json()) as Array<{ lat: string; lon: string }>;
@@ -828,18 +836,22 @@ export default function MapPage() {
   });
   const [showList, setShowList] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
-  const [selectedHostCluster, setSelectedHostCluster] = useState<HostCluster | null>(null);
+  const [selectedHostCluster, setSelectedHostCluster] =
+    useState<HostCluster | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(16);
   const [mapBounds, setMapBounds] = useState<MapBoundsLike | null>(null);
-  const [appliedMapBounds, setAppliedMapBounds] = useState<MapBoundsLike | null>(
+  const [appliedMapBounds, setAppliedMapBounds] =
+    useState<MapBoundsLike | null>(null);
+  const [hasPendingAreaSearch, setHasPendingAreaSearch] = useState(false);
+  const [pendingMapCenter, setPendingMapCenter] = useState<GeoPoint | null>(
     null,
   );
-  const [hasPendingAreaSearch, setHasPendingAreaSearch] = useState(false);
-  const [pendingMapCenter, setPendingMapCenter] = useState<GeoPoint | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [forceLegacyMap, setForceLegacyMap] = useState(false);
-  const [googleMapsRuntimeError, setGoogleMapsRuntimeError] = useState<string | null>(null);
+  const [googleMapsRuntimeError, setGoogleMapsRuntimeError] = useState<
+    string | null
+  >(null);
   const [hostCoords, setHostCoords] = useState<Record<string, GeoPoint>>({});
   const [eventCoords, setEventCoords] = useState<Record<string, GeoPoint>>({});
   const geocodeInFlight = useRef(false);
@@ -886,7 +898,9 @@ export default function MapPage() {
       },
       async (error) => {
         console.log("Location error:", error);
-        setLocationError("Location is off. Enable location to see what's nearby.");
+        setLocationError(
+          "Location is off. Enable location to see what's nearby.",
+        );
         setIsLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000 },
@@ -989,7 +1003,7 @@ export default function MapPage() {
     queryFn: userLocation
       ? async () => {
           const response = await fetch(
-            apiUrl(`/api/deals/nearby/${userLocation.lat}/${userLocation.lng}`)
+            apiUrl(`/api/deals/nearby/${userLocation.lat}/${userLocation.lng}`),
           );
           if (!response.ok) throw new Error("Failed to fetch nearby deals");
           return response.json();
@@ -1007,7 +1021,9 @@ export default function MapPage() {
     queryFn: userLocation
       ? async () => {
           const response = await fetch(
-            apiUrl(`/api/trucks/live?lat=${userLocation.lat}&lng=${userLocation.lng}&radiusKm=5`)
+            apiUrl(
+              `/api/trucks/live?lat=${userLocation.lat}&lng=${userLocation.lng}&radiusKm=5`,
+            ),
           );
           if (!response.ok) throw new Error("Failed to fetch live trucks");
           return response.json();
@@ -1029,8 +1045,10 @@ export default function MapPage() {
     queryFn: async () => {
       if (!adLocation) return [];
       const res = await fetch(
-        apiUrl(`/api/geo-ads?placement=map&lat=${adLocation.lat}&lng=${adLocation.lng}&limit=10`),
-        { credentials: "include" }
+        apiUrl(
+          `/api/geo-ads?placement=map&lat=${adLocation.lat}&lng=${adLocation.lng}&limit=10`,
+        ),
+        { credentials: "include" },
       );
       if (!res.ok) return [];
       return res.json();
@@ -1045,7 +1063,7 @@ export default function MapPage() {
   useEffect(() => {
     if (!geoAds.length) return;
     geoAds.forEach((ad) =>
-      trackGeoAdImpression({ adId: ad.id, placement: "map" })
+      trackGeoAdImpression({ adId: ad.id, placement: "map" }),
     );
   }, [geoAds]);
 
@@ -1181,7 +1199,10 @@ export default function MapPage() {
     if (!mapLocationsData) return;
     setCachedMapLocations(mapLocationsData);
     try {
-      localStorage.setItem(MAP_LOCATIONS_CACHE_KEY, JSON.stringify(mapLocationsData));
+      localStorage.setItem(
+        MAP_LOCATIONS_CACHE_KEY,
+        JSON.stringify(mapLocationsData),
+      );
     } catch {
       // ignore localStorage issues
     }
@@ -1200,22 +1221,23 @@ export default function MapPage() {
   // Hosts with unpriced/unbookable Parking Pass listings must not appear on maps.
   // Use a lightweight host-id endpoint + localStorage cache so the map can render immediately.
   const BOOKABLE_HOST_CACHE_KEY = "mealscout:map:bookableHostIds:v1";
-  const [cachedBookableHostIds, setCachedBookableHostIds] = useState<Set<string>>(
-    () => {
-      try {
-        const raw = localStorage.getItem(BOOKABLE_HOST_CACHE_KEY);
-        if (!raw) return new Set<string>();
-        const parsed = JSON.parse(raw);
-        const hostIds = Array.isArray(parsed?.hostIds) ? parsed.hostIds : [];
-        return new Set(hostIds.map((id: any) => String(id)));
-      } catch {
-        return new Set<string>();
-      }
-    },
-  );
-  const [cachedBookableHostMeta, setCachedBookableHostMeta] = useState<
-    { updatedAt?: number; generatedAt?: string } | null
+  const [cachedBookableHostIds, setCachedBookableHostIds] = useState<
+    Set<string>
   >(() => {
+    try {
+      const raw = localStorage.getItem(BOOKABLE_HOST_CACHE_KEY);
+      if (!raw) return new Set<string>();
+      const parsed = JSON.parse(raw);
+      const hostIds = Array.isArray(parsed?.hostIds) ? parsed.hostIds : [];
+      return new Set(hostIds.map((id: any) => String(id)));
+    } catch {
+      return new Set<string>();
+    }
+  });
+  const [cachedBookableHostMeta, setCachedBookableHostMeta] = useState<{
+    updatedAt?: number;
+    generatedAt?: string;
+  } | null>(() => {
     try {
       const raw = localStorage.getItem(BOOKABLE_HOST_CACHE_KEY);
       if (!raw) return null;
@@ -1224,7 +1246,9 @@ export default function MapPage() {
         updatedAt:
           typeof parsed?.updatedAt === "number" ? parsed.updatedAt : undefined,
         generatedAt:
-          typeof parsed?.generatedAt === "string" ? parsed.generatedAt : undefined,
+          typeof parsed?.generatedAt === "string"
+            ? parsed.generatedAt
+            : undefined,
       };
     } catch {
       return null;
@@ -1327,7 +1351,9 @@ export default function MapPage() {
   >({
     queryKey: ["/api/parking-pass/host-status", todayKey],
     queryFn: async () => {
-      const res = await fetch(apiUrl(`/api/parking-pass/host-status?date=${todayKey}`));
+      const res = await fetch(
+        apiUrl(`/api/parking-pass/host-status?date=${todayKey}`),
+      );
       if (!res.ok) throw new Error("Failed to load parking pass availability");
       return res.json();
     },
@@ -1424,12 +1450,7 @@ export default function MapPage() {
       }
       return true;
     });
-  }, [
-    mapLocations,
-    hostCoords,
-    mapBounds,
-    appliedMapBounds,
-  ]);
+  }, [mapLocations, hostCoords, mapBounds, appliedMapBounds]);
 
   const lastHostIdsUpdatedLabel = (() => {
     const fromServer = bookableHostIdPayload?.generatedAt;
@@ -1480,10 +1501,7 @@ export default function MapPage() {
   }, [mapLocations, eventCoords, appliedMapBounds]);
 
   const hostMarkerCoordsById = useMemo(() => {
-    const groups = new Map<
-      string,
-      Array<{ id: string; coords: GeoPoint }>
-    >();
+    const groups = new Map<string, Array<{ id: string; coords: GeoPoint }>>();
     visibleHostLocations.forEach((host) => {
       const coords = resolveHostCoords(host);
       if (!coords) return;
@@ -1591,11 +1609,7 @@ export default function MapPage() {
         return;
       }
       if (!hostCoords[host.id]) {
-        const address = buildFullAddress(
-          host.address,
-          host.city,
-          host.state,
-        );
+        const address = buildFullAddress(host.address, host.city, host.state);
         if (!address) return;
         queue.push(`host:${host.id}`);
         addressByKey[`host:${host.id}`] = address;
@@ -1735,13 +1749,15 @@ export default function MapPage() {
   const headerSubtitle = isLocating
     ? "Locating live trucks and host spots..."
     : hasLocation && activityPins > 0
-    ? "Live trucks and host locations nearby"
-    : hasLocation
-    ? "No live trucks or hosts nearby right now"
-    : "Set your location to see live trucks and hosts.";
+      ? "Live trucks and host locations nearby"
+      : hasLocation
+        ? "No live trucks or hosts nearby right now"
+        : "Set your location to see live trucks and hosts.";
 
   const handleRefreshHostParking = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["/api/parking-pass/host-ids"] });
+    await queryClient.invalidateQueries({
+      queryKey: ["/api/parking-pass/host-ids"],
+    });
     await queryClient.invalidateQueries({
       queryKey: ["/api/parking-pass/host-status", todayKey],
     });
@@ -1794,7 +1810,9 @@ export default function MapPage() {
         : "Legacy map";
 
   const handleGoogleMapsFatalError = useCallback((message: string) => {
-    setGoogleMapsRuntimeError(message || "Google Maps failed to load for this domain.");
+    setGoogleMapsRuntimeError(
+      message || "Google Maps failed to load for this domain.",
+    );
     setForceLegacyMap(true);
   }, []);
 
@@ -1967,12 +1985,14 @@ export default function MapPage() {
           "@type": "ItemList",
           name: "Nearby Map Deals",
           numberOfItems: visibleDeals.slice(0, 12).length,
-          itemListElement: visibleDeals.slice(0, 12).map((deal: Deal, index: number) => ({
-            "@type": "ListItem",
-            position: index + 1,
-            name: deal.title,
-            url: `https://www.mealscout.us/deal/${deal.id}`,
-          })),
+          itemListElement: visibleDeals
+            .slice(0, 12)
+            .map((deal: Deal, index: number) => ({
+              "@type": "ListItem",
+              position: index + 1,
+              name: deal.title,
+              url: `https://www.mealscout.us/deal/${deal.id}`,
+            })),
         },
       ],
     }),
@@ -1992,17 +2012,20 @@ export default function MapPage() {
     {
       href: "/search",
       title: "Search Food Deals",
-      description: "Search by cuisine, restaurant, and deal type across MealScout.",
+      description:
+        "Search by cuisine, restaurant, and deal type across MealScout.",
     },
     {
       href: "/events/public",
       title: "Food Truck Events",
-      description: "Check upcoming public events with trucks and pop-up vendors.",
+      description:
+        "Check upcoming public events with trucks and pop-up vendors.",
     },
     {
       href: "/faq",
       title: "Map & Deal FAQ",
-      description: "Learn how map pins, live trucks, and deal availability work.",
+      description:
+        "Learn how map pins, live trucks, and deal availability work.",
     },
   ];
   const fallbackTrending = [
@@ -2015,15 +2038,17 @@ export default function MapPage() {
     "pizza",
     "coffee",
   ];
-  const trendingLinks = (Array.isArray(trendingSearches) && trendingSearches.length > 0
-    ? trendingSearches.map((row) => row?.query).filter(Boolean)
-    : fallbackTrending
+  const trendingLinks = (
+    Array.isArray(trendingSearches) && trendingSearches.length > 0
+      ? trendingSearches.map((row) => row?.query).filter(Boolean)
+      : fallbackTrending
   )
     .slice(0, 8)
     .map((query) => ({
       href: `/search?q=${encodeURIComponent(query)}`,
       title: query,
-      description: "Jump into search results across deals, trucks, parking, and events.",
+      description:
+        "Jump into search results across deals, trucks, parking, and events.",
     }));
 
   return (
@@ -2047,11 +2072,7 @@ export default function MapPage() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[var(--bg-card)] shadow-clean flex items-center justify-center">
-              <img
-                src={mealScoutIcon}
-                alt="MealScout"
-                className="w-7 h-7"
-              />
+              <img src={mealScoutIcon} alt="MealScout" className="w-7 h-7" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-foreground">
@@ -2070,7 +2091,9 @@ export default function MapPage() {
                   title="Install app"
                   data-testid="button-map-install"
                   onPointerDown={() => {
-                    trackUxEvent("map_install_click", { surface: "map_header" });
+                    trackUxEvent("map_install_click", {
+                      surface: "map_header",
+                    });
                   }}
                 >
                   <ArrowDownToLine className="w-4 h-4" />
@@ -2092,17 +2115,24 @@ export default function MapPage() {
 
         {/* Location Status */}
         {locationError && (
-          <div className="text-xs text-[color:var(--status-error)] mb-4 bg-[color:var(--status-error)]/10 border border-[color:var(--status-error)]/30 rounded p-2" role="alert">
+          <div
+            className="text-xs text-[color:var(--status-error)] mb-4 bg-[color:var(--status-error)]/10 border border-[color:var(--status-error)]/30 rounded p-2"
+            role="alert"
+          >
             Warning: {locationError}
           </div>
         )}
         {showMapDiagnostics && googleMapsRuntimeError && (
-          <div className="mb-4 rounded border border-[color:var(--status-warning)]/40 bg-[color:var(--status-warning)]/10 p-2 text-xs text-[color:var(--text-primary)]" role="status">
+          <div
+            className="mb-4 rounded border border-[color:var(--status-warning)]/40 bg-[color:var(--status-warning)]/10 p-2 text-xs text-[color:var(--text-primary)]"
+            role="status"
+          >
             <div>
               Using legacy map because Google Maps is blocked for this domain.
             </div>
             <div className="text-[color:var(--text-muted)]">
-              Authorize your key referrers for `https://www.mealscout.us/*` and `https://mealscout.us/*`.
+              Authorize your key referrers for `https://www.mealscout.us/*` and
+              `https://mealscout.us/*`.
             </div>
           </div>
         )}
@@ -2151,26 +2181,26 @@ export default function MapPage() {
             Refresh
           </Button>
           {showMapDiagnostics &&
-          forceLegacyMap &&
-          isGoogleProviderRequested &&
-          !isGoogleProviderMissingKey && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full sm:w-auto"
-              onClick={() => {
-                setGoogleMapsRuntimeError(null);
-                setForceLegacyMap(false);
-              }}
-              data-testid="button-retry-google-map"
-            >
-              Retry Google Map
-            </Button>
-          )}
+            forceLegacyMap &&
+            isGoogleProviderRequested &&
+            !isGoogleProviderMissingKey && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  setGoogleMapsRuntimeError(null);
+                  setForceLegacyMap(false);
+                }}
+                data-testid="button-retry-google-map"
+              >
+                Retry Google Map
+              </Button>
+            )}
         </div>
       </header>
 
-        {/* Map Container */}
+      {/* Map Container */}
       <div className="relative flex-1">
         <div className="relative h-[60vh] min-h-[320px]">
           {hasPendingAreaSearch && (
@@ -2185,8 +2215,8 @@ export default function MapPage() {
               </Button>
             </div>
           )}
-          {mapCenter && (
-            isUsingGoogleMap ? (
+          {mapCenter &&
+            (isUsingGoogleMap ? (
               <GoogleMapSurface
                 apiKey={GOOGLE_MAPS_WEB_API_KEY}
                 center={mapCenter}
@@ -2200,257 +2230,265 @@ export default function MapPage() {
                 onFatalError={handleGoogleMapsFatalError}
               />
             ) : (
-            <MapContainer
-              center={[mapCenter.lat, mapCenter.lng]}
-              zoom={zoomLevel}
-              zoomControl={false}
-              preferCanvas
-              style={{ height: "100%", width: "100%" }}
-              className="rounded-lg overflow-hidden"
-            >
-              <MapCenterer center={mapCenter} />
-              <TileLayer
-                attribution={userMapAttribution}
-                url={userMapTileUrl}
-              />
+              <MapContainer
+                center={[mapCenter.lat, mapCenter.lng]}
+                zoom={zoomLevel}
+                zoomControl={false}
+                preferCanvas
+                style={{ height: "100%", width: "100%" }}
+                className="rounded-lg overflow-hidden"
+              >
+                <MapCenterer center={mapCenter} />
+                <TileLayer
+                  attribution={userMapAttribution}
+                  url={userMapTileUrl}
+                />
 
-              {/* User Location Marker */}
-              {userLocation && (
-                <Marker
-                  position={[userLocation.lat, userLocation.lng]}
-                  icon={userLocationIcon}
-                >
-                  <Popup>
-                    <div className="text-center rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] px-3 py-2 shadow-clean-lg">
-                      <div className="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">
-                        MealScout
-                      </div>
-                      <div className="font-semibold text-sm">You are here</div>
-                    </div>
-                  </Popup>
-                </Marker>
-              )}
-
-              {/* Geo Ad Markers */}
-              {visibleGeoAds.map((ad: GeoAd) => (
-                <Marker
-                  key={ad.id}
-                  position={[ad.pinLat ?? mapCenter.lat, ad.pinLng ?? mapCenter.lng]}
-                  icon={geoAdPinIcon}
-                >
-                  <Popup>
-                    <div className="min-w-52 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg space-y-1">
-                      <div className="text-[10px] uppercase tracking-wide text-[color:var(--text-muted)]">
-                        Sponsored
-                      </div>
-                      <div className="font-semibold text-sm">{ad.title}</div>
-                      {ad.body && (
-                        <div className="text-xs text-[color:var(--text-muted)]">{ad.body}</div>
-                      )}
-                      <Button
-                        size="sm"
-                        className="w-full mt-2"
-                        onClick={() => handleGeoAdClick(ad)}
-                      >
-                        {ad.ctaText || "Learn more"}
-                      </Button>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
-
-              {/* Deal Markers */}
-              {visibleDeals.map((deal: Deal) => {
-                if (!deal.restaurant) return null;
-                return (
+                {/* User Location Marker */}
+                {userLocation && (
                   <Marker
-                    key={deal.id}
+                    position={[userLocation.lat, userLocation.lng]}
+                    icon={userLocationIcon}
+                  >
+                    <Popup>
+                      <div className="text-center rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] px-3 py-2 shadow-clean-lg">
+                        <div className="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">
+                          MealScout
+                        </div>
+                        <div className="font-semibold text-sm">
+                          You are here
+                        </div>
+                      </div>
+                    </Popup>
+                  </Marker>
+                )}
+
+                {/* Geo Ad Markers */}
+                {visibleGeoAds.map((ad: GeoAd) => (
+                  <Marker
+                    key={ad.id}
                     position={[
-                      deal.restaurant.latitude,
-                      deal.restaurant.longitude,
+                      ad.pinLat ?? mapCenter.lat,
+                      ad.pinLng ?? mapCenter.lng,
                     ]}
-                    icon={foodPinIcon}
-                    eventHandlers={{
-                      click: () => handleDealClick(deal),
-                    }}
+                    icon={geoAdPinIcon}
                   >
                     <Popup>
                       <div className="min-w-52 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg space-y-1">
-                        <div className="font-semibold text-sm">
-                          {deal.restaurant.name}
+                        <div className="text-[10px] uppercase tracking-wide text-[color:var(--text-muted)]">
+                          Sponsored
                         </div>
-                        <div className="text-xs text-[color:var(--text-muted)]">
-                          Deal available
-                        </div>
-                        <div className="flex items-center justify-between pt-1 text-xs">
-                          <span className="font-semibold text-[color:var(--status-warning)]">
-                            {deal.discountValue}% OFF
-                          </span>
-                          <span className="text-[color:var(--text-muted)]">
-                            Min ${deal.minOrderAmount}
-                          </span>
-                        </div>
+                        <div className="font-semibold text-sm">{ad.title}</div>
+                        {ad.body && (
+                          <div className="text-xs text-[color:var(--text-muted)]">
+                            {ad.body}
+                          </div>
+                        )}
                         <Button
                           size="sm"
                           className="w-full mt-2"
-                          onClick={() => handleDealClick(deal)}
+                          onClick={() => handleGeoAdClick(ad)}
                         >
-                          View deal
+                          {ad.ctaText || "Learn more"}
                         </Button>
                       </div>
                     </Popup>
                   </Marker>
-                );
-              })}
+                ))}
 
-              {/* Live Truck Markers */}
-              {visibleUnhostedTrucks.map((truck) => {
-                const lat = toNumberOrNull(truck.currentLatitude);
-                const lng = toNumberOrNull(truck.currentLongitude);
-                if (lat == null || lng == null) return null;
-                const distanceLabel = formatDistance({ lat, lng });
-                return (
-                  <Marker
-                    key={`live-${truck.id}`}
-                    position={[lat, lng]}
-                    icon={truckPinIcon}
-                  >
-                    <Popup>
-                      <div className="min-w-52 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg space-y-1">
-                        <div className="font-semibold text-sm">
-                          {truck.name}
-                        </div>
-                        <div className="text-xs text-[color:var(--text-muted)]">
-                          {truck.isVerified
-                            ? "Food Truck | Verified | Live now"
-                            : "Food Truck | Live now"}
-                        </div>
-                        {distanceLabel && (
-                          <div className="text-xs text-[color:var(--text-muted)]">
-                            {distanceLabel} away
+                {/* Deal Markers */}
+                {visibleDeals.map((deal: Deal) => {
+                  if (!deal.restaurant) return null;
+                  return (
+                    <Marker
+                      key={deal.id}
+                      position={[
+                        deal.restaurant.latitude,
+                        deal.restaurant.longitude,
+                      ]}
+                      icon={foodPinIcon}
+                      eventHandlers={{
+                        click: () => handleDealClick(deal),
+                      }}
+                    >
+                      <Popup>
+                        <div className="min-w-52 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg space-y-1">
+                          <div className="font-semibold text-sm">
+                            {deal.restaurant.name}
                           </div>
-                        )}
-                        <div className="grid grid-cols-2 gap-2 pt-2">
+                          <div className="text-xs text-[color:var(--text-muted)]">
+                            Deal available
+                          </div>
+                          <div className="flex items-center justify-between pt-1 text-xs">
+                            <span className="font-semibold text-[color:var(--status-warning)]">
+                              {deal.discountValue}% OFF
+                            </span>
+                            <span className="text-[color:var(--text-muted)]">
+                              Min ${deal.minOrderAmount}
+                            </span>
+                          </div>
                           <Button
                             size="sm"
-                            className="w-full"
-                            onClick={() => {
-                              window.location.href = `/restaurant/${truck.id}`;
-                            }}
+                            className="w-full mt-2"
+                            onClick={() => handleDealClick(deal)}
                           >
-                            View menu
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full"
-                            onClick={() => {
-                              window.open(
-                                `https://maps.google.com/?q=${lat},${lng}`,
-                                "_blank",
-                              );
-                            }}
-                          >
-                            Directions
+                            View deal
                           </Button>
                         </div>
-                      </div>
-                    </Popup>
-                  </Marker>
-                );
-              })}
+                      </Popup>
+                    </Marker>
+                  );
+                })}
 
-              <HostMarkerLayer
-                hosts={visibleHostLocations}
-                zoomLevel={zoomLevel}
-                resolveHostCoords={resolveHostCoords}
-                findNearbyTruck={findNearbyTruck}
-                formatDistance={formatDistance}
-                cachedHostStatusById={cachedHostStatusById}
-                bookableHostIds={effectiveBookableHostIds}
-                isStaffOrAdmin={isStaffOrAdmin}
-                qualityFlagsByHostId={qualityFlagsByHostId}
-                onClusterSelect={(cluster) => {
-                  trackUxEvent("map_cluster_preview_opened", {
-                    clusterSize: cluster.count,
-                    zoomLevel,
-                  });
-                  setSelectedDeal(null);
-                  setSelectedHostCluster(cluster);
-                  setMapCenter({ lat: cluster.lat, lng: cluster.lng });
-                }}
-              />
-
-              {/* Event Markers */}
-              {visibleEventLocations.map((event) => {
-                const coords = resolveEventCoords(event);
-                if (!coords) return null;
-                const title = event.name;
-                const subtitle = event.hostName
-                  ? `Event at ${event.hostName}`
-                  : "Event location";
-                const distanceLabel = formatDistance(coords);
-                return (
-                  <Marker
-                    key={`event-${event.id}`}
-                    position={[coords.lat, coords.lng]}
-                    icon={eventPinIcon}
-                  >
-                    <Popup>
-                      <div className="min-w-56 space-y-1 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg">
-                        <div className="font-semibold text-sm">{title}</div>
-                        <div className="text-xs text-[color:var(--text-muted)]">{subtitle}</div>
-                        {event.hostAddress && (
-                          <div className="text-xs text-[color:var(--text-muted)]">
-                            {event.hostAddress}
+                {/* Live Truck Markers */}
+                {visibleUnhostedTrucks.map((truck) => {
+                  const lat = toNumberOrNull(truck.currentLatitude);
+                  const lng = toNumberOrNull(truck.currentLongitude);
+                  if (lat == null || lng == null) return null;
+                  const distanceLabel = formatDistance({ lat, lng });
+                  return (
+                    <Marker
+                      key={`live-${truck.id}`}
+                      position={[lat, lng]}
+                      icon={truckPinIcon}
+                    >
+                      <Popup>
+                        <div className="min-w-52 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg space-y-1">
+                          <div className="font-semibold text-sm">
+                            {truck.name}
                           </div>
-                        )}
-                        <div className="text-xs text-[color:var(--text-muted)]">
-                          {new Date(event.date).toLocaleDateString()} |{" "}
-                          {event.startTime} - {event.endTime}
-                        </div>
-                        {distanceLabel && (
                           <div className="text-xs text-[color:var(--text-muted)]">
-                            {distanceLabel} away
+                            {truck.isVerified
+                              ? "Food Truck | Verified | Live now"
+                              : "Food Truck | Live now"}
                           </div>
-                        )}
-                        <div className="pt-2">
-                          <Button
-                            size="sm"
-                            className="w-full"
-                            onClick={() => {
-                              window.open(
-                                `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
-                                "_blank",
-                              );
-                            }}
-                          >
-                            Directions
-                          </Button>
+                          {distanceLabel && (
+                            <div className="text-xs text-[color:var(--text-muted)]">
+                              {distanceLabel} away
+                            </div>
+                          )}
+                          <div className="grid grid-cols-2 gap-2 pt-2">
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              onClick={() => {
+                                window.location.href = `/restaurant/${truck.id}`;
+                              }}
+                            >
+                              View menu
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => {
+                                window.open(
+                                  `https://maps.google.com/?q=${lat},${lng}`,
+                                  "_blank",
+                                );
+                              }}
+                            >
+                              Directions
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </Popup>
-                  </Marker>
-                );
-              })}
+                      </Popup>
+                    </Marker>
+                  );
+                })}
 
-              {/* Map Controls */}
-              <MapControls
-                onZoomIn={handleZoomIn}
-                onZoomOut={handleZoomOut}
-                onCenterUser={handleCenterOnUser}
-                userLocation={userLocation}
-                zoomLevel={zoomLevel}
-                isNightTheme={isNightTheme}
-              />
-              <MapViewportWatcher
-                onZoomChange={setZoomLevel}
-                onBoundsChange={setMapBounds}
-                onCenterChange={setPendingMapCenter}
-              />
-            </MapContainer>
-            )
-          )}
+                <HostMarkerLayer
+                  hosts={visibleHostLocations}
+                  zoomLevel={zoomLevel}
+                  resolveHostCoords={resolveHostCoords}
+                  findNearbyTruck={findNearbyTruck}
+                  formatDistance={formatDistance}
+                  cachedHostStatusById={cachedHostStatusById}
+                  bookableHostIds={effectiveBookableHostIds}
+                  isStaffOrAdmin={isStaffOrAdmin}
+                  qualityFlagsByHostId={qualityFlagsByHostId}
+                  onClusterSelect={(cluster) => {
+                    trackUxEvent("map_cluster_preview_opened", {
+                      clusterSize: cluster.count,
+                      zoomLevel,
+                    });
+                    setSelectedDeal(null);
+                    setSelectedHostCluster(cluster);
+                    setMapCenter({ lat: cluster.lat, lng: cluster.lng });
+                  }}
+                />
+
+                {/* Event Markers */}
+                {visibleEventLocations.map((event) => {
+                  const coords = resolveEventCoords(event);
+                  if (!coords) return null;
+                  const title = event.name;
+                  const subtitle = event.hostName
+                    ? `Event at ${event.hostName}`
+                    : "Event location";
+                  const distanceLabel = formatDistance(coords);
+                  return (
+                    <Marker
+                      key={`event-${event.id}`}
+                      position={[coords.lat, coords.lng]}
+                      icon={eventPinIcon}
+                    >
+                      <Popup>
+                        <div className="min-w-56 space-y-1 rounded-xl bg-[var(--bg-card)] text-[color:var(--text-primary)] p-3 shadow-clean-lg">
+                          <div className="font-semibold text-sm">{title}</div>
+                          <div className="text-xs text-[color:var(--text-muted)]">
+                            {subtitle}
+                          </div>
+                          {event.hostAddress && (
+                            <div className="text-xs text-[color:var(--text-muted)]">
+                              {event.hostAddress}
+                            </div>
+                          )}
+                          <div className="text-xs text-[color:var(--text-muted)]">
+                            {new Date(event.date).toLocaleDateString()} |{" "}
+                            {event.startTime} - {event.endTime}
+                          </div>
+                          {distanceLabel && (
+                            <div className="text-xs text-[color:var(--text-muted)]">
+                              {distanceLabel} away
+                            </div>
+                          )}
+                          <div className="pt-2">
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              onClick={() => {
+                                window.open(
+                                  `https://maps.google.com/?q=${coords.lat},${coords.lng}`,
+                                  "_blank",
+                                );
+                              }}
+                            >
+                              Directions
+                            </Button>
+                          </div>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  );
+                })}
+
+                {/* Map Controls */}
+                <MapControls
+                  onZoomIn={handleZoomIn}
+                  onZoomOut={handleZoomOut}
+                  onCenterUser={handleCenterOnUser}
+                  userLocation={userLocation}
+                  zoomLevel={zoomLevel}
+                  isNightTheme={isNightTheme}
+                />
+                <MapViewportWatcher
+                  onZoomChange={setZoomLevel}
+                  onBoundsChange={setMapBounds}
+                  onCenterChange={setPendingMapCenter}
+                />
+              </MapContainer>
+            ))}
 
           {/* Paid parking state overlay */}
           {!isBookableHostIdsLoading && totalHostParkingLocations === 0 && (
@@ -2473,7 +2511,6 @@ export default function MapPage() {
               </div>
             </div>
           )}
-
         </div>
 
         {/* Selected Deal Info Card */}
@@ -2622,7 +2659,7 @@ export default function MapPage() {
       {/* List View Overlay */}
       {showList && (
         <div className="absolute inset-0 bg-[var(--bg-card)] z-40 overflow-y-auto">
-          <header className="px-6 py-6 bg-[var(--bg-card)] border-b border-[color:var(--border-subtle)] sticky top-0">
+          <header className="px-4 sm:px-6 py-6 bg-[var(--bg-card)] border-b border-[color:var(--border-subtle)] sticky top-0">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-foreground">
                 Nearby Deals
@@ -2639,7 +2676,7 @@ export default function MapPage() {
             </div>
           </header>
 
-          <div className="px-6 py-4">
+          <div className="px-4 sm:px-6 py-4">
             {isLoading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
@@ -2680,7 +2717,9 @@ export default function MapPage() {
 
       <section className="px-6 pb-4">
         <div className="mx-auto rounded-2xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-5 shadow-clean">
-          <h2 className="text-base font-semibold text-foreground">Explore MealScout Pages</h2>
+          <h2 className="text-base font-semibold text-foreground">
+            Explore MealScout Pages
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Continue browsing local food trucks, restaurants, and active deals.
           </p>
@@ -2689,8 +2728,12 @@ export default function MapPage() {
               <Link key={link.href} href={link.href}>
                 <Card className="h-full border-[color:var(--border-subtle)] bg-[var(--bg-surface)] shadow-clean transition-shadow hover:shadow-clean-lg">
                   <CardContent className="p-4">
-                    <div className="font-medium text-foreground">{link.title}</div>
-                    <p className="mt-1 text-xs text-muted-foreground">{link.description}</p>
+                    <div className="font-medium text-foreground">
+                      {link.title}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {link.description}
+                    </p>
                   </CardContent>
                 </Card>
               </Link>
@@ -2706,8 +2749,12 @@ export default function MapPage() {
                   <Link key={link.href} href={link.href}>
                     <Card className="h-full border-[color:var(--border-subtle)] bg-[var(--bg-surface)] shadow-clean transition-shadow hover:shadow-clean-lg">
                       <CardContent className="p-4">
-                        <div className="font-medium text-foreground">{link.title}</div>
-                        <p className="mt-1 text-xs text-muted-foreground">{link.description}</p>
+                        <div className="font-medium text-foreground">
+                          {link.title}
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {link.description}
+                        </p>
                       </CardContent>
                     </Card>
                   </Link>
@@ -2722,12 +2769,3 @@ export default function MapPage() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-

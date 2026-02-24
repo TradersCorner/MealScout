@@ -128,29 +128,93 @@ export default function CategoryPage() {
 
     switch (categoryKey) {
       case "pizza":
-        return cuisineType.includes("pizza") || cuisineType.includes("italian") || title.includes("pizza") || title.includes("pasta");
+        return (
+          cuisineType.includes("pizza") ||
+          cuisineType.includes("italian") ||
+          title.includes("pizza") ||
+          title.includes("pasta")
+        );
       case "burgers":
-        return cuisineType.includes("american") || cuisineType.includes("burger") || title.includes("burger") || title.includes("sandwich");
+        return (
+          cuisineType.includes("american") ||
+          cuisineType.includes("burger") ||
+          title.includes("burger") ||
+          title.includes("sandwich")
+        );
       case "sushi":
-        return cuisineType.includes("japanese") || cuisineType.includes("sushi") || title.includes("sushi") || title.includes("sashimi");
+        return (
+          cuisineType.includes("japanese") ||
+          cuisineType.includes("sushi") ||
+          title.includes("sushi") ||
+          title.includes("sashimi")
+        );
       case "chinese":
-        return cuisineType.includes("chinese") || title.includes("chinese") || title.includes("noodle") || title.includes("fried rice");
+        return (
+          cuisineType.includes("chinese") ||
+          title.includes("chinese") ||
+          title.includes("noodle") ||
+          title.includes("fried rice")
+        );
       case "asian":
-        return cuisineType.includes("asian") || cuisineType.includes("thai") || cuisineType.includes("vietnamese") || title.includes("pho");
+        return (
+          cuisineType.includes("asian") ||
+          cuisineType.includes("thai") ||
+          cuisineType.includes("vietnamese") ||
+          title.includes("pho")
+        );
       case "mexican":
-        return cuisineType.includes("mexican") || title.includes("taco") || title.includes("burrito") || title.includes("enchilada");
+        return (
+          cuisineType.includes("mexican") ||
+          title.includes("taco") ||
+          title.includes("burrito") ||
+          title.includes("enchilada")
+        );
       case "breakfast":
-        return title.includes("breakfast") || title.includes("brunch") || title.includes("pancake") || title.includes("waffle") || title.includes("eggs");
+        return (
+          title.includes("breakfast") ||
+          title.includes("brunch") ||
+          title.includes("pancake") ||
+          title.includes("waffle") ||
+          title.includes("eggs")
+        );
       case "seafood":
-        return cuisineType.includes("seafood") || title.includes("fish") || title.includes("shrimp") || title.includes("lobster") || title.includes("crab");
+        return (
+          cuisineType.includes("seafood") ||
+          title.includes("fish") ||
+          title.includes("shrimp") ||
+          title.includes("lobster") ||
+          title.includes("crab")
+        );
       case "bbq":
-        return cuisineType.includes("bbq") || cuisineType.includes("barbecue") || title.includes("bbq") || title.includes("ribs") || title.includes("brisket");
+        return (
+          cuisineType.includes("bbq") ||
+          cuisineType.includes("barbecue") ||
+          title.includes("bbq") ||
+          title.includes("ribs") ||
+          title.includes("brisket")
+        );
       case "dessert":
-        return title.includes("dessert") || title.includes("ice cream") || title.includes("cake") || title.includes("cookie");
+        return (
+          title.includes("dessert") ||
+          title.includes("ice cream") ||
+          title.includes("cake") ||
+          title.includes("cookie")
+        );
       case "coffee":
-        return cuisineType.includes("cafe") || cuisineType.includes("coffee") || title.includes("coffee") || title.includes("latte") || title.includes("espresso");
+        return (
+          cuisineType.includes("cafe") ||
+          cuisineType.includes("coffee") ||
+          title.includes("coffee") ||
+          title.includes("latte") ||
+          title.includes("espresso")
+        );
       case "healthy":
-        return title.includes("salad") || title.includes("smoothie") || cuisineType.includes("healthy") || title.includes("bowl");
+        return (
+          title.includes("salad") ||
+          title.includes("smoothie") ||
+          cuisineType.includes("healthy") ||
+          title.includes("bowl")
+        );
       default:
         return false;
     }
@@ -172,12 +236,14 @@ export default function CategoryPage() {
         "@type": "ItemList",
         name: `${config.title} deal list`,
         numberOfItems: categoryDeals.slice(0, 12).length,
-        itemListElement: categoryDeals.slice(0, 12).map((deal: any, index: number) => ({
-          "@type": "ListItem",
-          position: index + 1,
-          name: deal.title,
-          url: `https://www.mealscout.us/deal/${deal.id}`,
-        })),
+        itemListElement: categoryDeals
+          .slice(0, 12)
+          .map((deal: any, index: number) => ({
+            "@type": "ListItem",
+            position: index + 1,
+            name: deal.title,
+            url: `https://www.mealscout.us/deal/${deal.id}`,
+          })),
       },
     ],
   };
@@ -194,26 +260,38 @@ export default function CategoryPage() {
       <header className="px-6 py-6 bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean">
         <div className="flex items-center mb-6">
           <Link href="/">
-            <Button variant="ghost" size="sm" className="mr-3 -ml-2" data-testid="button-back">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mr-3 -ml-2"
+              data-testid="button-back"
+            >
               <ArrowLeft className="w-4 h-4" />
             </Button>
           </Link>
           <div className="flex items-center">
-            <div className={`w-8 h-8 bg-gradient-to-r ${config.gradient} rounded-lg flex items-center justify-center mr-3 shadow-clean`}>
+            <div
+              className={`w-8 h-8 bg-gradient-to-r ${config.gradient} rounded-lg flex items-center justify-center mr-3 shadow-clean`}
+            >
               <config.icon className="w-3.5 h-3.5 text-white" />
             </div>
             <div>
-              <h1 className={`text-xl font-bold bg-gradient-to-r ${config.gradient} text-transparent bg-clip-text`}>
+              <h1
+                className={`text-xl font-bold bg-gradient-to-r ${config.gradient} text-transparent bg-clip-text`}
+              >
                 {config.title}
               </h1>
-              <p className="text-sm text-muted-foreground">{config.description}</p>
+              <p className="text-sm text-muted-foreground">
+                {config.description}
+              </p>
             </div>
           </div>
         </div>
 
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            {categoryDeals.length} deal{categoryDeals.length !== 1 ? "s" : ""} found
+            {categoryDeals.length} deal{categoryDeals.length !== 1 ? "s" : ""}{" "}
+            found
           </div>
           <div className="flex space-x-2">
             <Button variant="outline" size="sm" data-testid="button-sort">
@@ -228,7 +306,7 @@ export default function CategoryPage() {
         </div>
       </header>
 
-      <div className="px-6 py-6">
+      <div className="px-4 sm:px-6 py-6">
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -252,10 +330,14 @@ export default function CategoryPage() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <div className={`w-20 h-20 bg-gradient-to-r ${config.gradient} rounded-2xl flex items-center justify-center mx-auto mb-4 opacity-20`}>
+            <div
+              className={`w-20 h-20 bg-gradient-to-r ${config.gradient} rounded-2xl flex items-center justify-center mx-auto mb-4 opacity-20`}
+            >
               <config.icon className="w-6 h-6 text-white" />
             </div>
-            <h3 className={`font-bold text-lg bg-gradient-to-r ${config.gradient} text-transparent bg-clip-text mb-2`}>
+            <h3
+              className={`font-bold text-lg bg-gradient-to-r ${config.gradient} text-transparent bg-clip-text mb-2`}
+            >
               No {config.title} deals yet
             </h3>
             <p className="text-muted-foreground mb-6">
@@ -268,12 +350,30 @@ export default function CategoryPage() {
         )}
 
         <section className="mt-8 rounded-2xl border border-[color:var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-clean">
-          <h2 className="text-base font-semibold text-foreground">Explore More MealScout Pages</h2>
+          <h2 className="text-base font-semibold text-foreground">
+            Explore More MealScout Pages
+          </h2>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Link href="/search"><Button variant="outline" size="sm">Search all deals</Button></Link>
-            <Link href="/deals/featured"><Button variant="outline" size="sm">Featured deals</Button></Link>
-            <Link href="/map"><Button variant="outline" size="sm">Open map</Button></Link>
-            <Link href="/food-trucks/new-york"><Button variant="outline" size="sm">City pages</Button></Link>
+            <Link href="/search">
+              <Button variant="outline" size="sm">
+                Search all deals
+              </Button>
+            </Link>
+            <Link href="/deals/featured">
+              <Button variant="outline" size="sm">
+                Featured deals
+              </Button>
+            </Link>
+            <Link href="/map">
+              <Button variant="outline" size="sm">
+                Open map
+              </Button>
+            </Link>
+            <Link href="/food-trucks/new-york">
+              <Button variant="outline" size="sm">
+                City pages
+              </Button>
+            </Link>
           </div>
         </section>
       </div>

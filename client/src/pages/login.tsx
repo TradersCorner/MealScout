@@ -82,8 +82,8 @@ export default function Login() {
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
         await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
       } catch {}
-       // Small delay to ensure cookie/session propagation
-       await new Promise((r) => setTimeout(r, 200));
+      // Small delay to ensure cookie/session propagation
+      await new Promise((r) => setTimeout(r, 200));
       // Redirect after login (many flows pass `?redirect=` to /login)
       window.location.href = redirectPath || "/";
     } catch (error: any) {
@@ -139,7 +139,7 @@ export default function Login() {
         className="bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean"
       />
 
-      <div className="px-6 py-8 max-w-md mx-auto">
+      <div className="px-4 sm:px-6 py-8 max-w-md mx-auto">
         {/* Welcome Section */}
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-[color:var(--text-primary)] mb-2">
@@ -153,7 +153,9 @@ export default function Login() {
         {/* Login Card */}
         <div className="bg-[var(--bg-card)] border border-[color:var(--border-subtle)] rounded-2xl shadow-clean-lg p-8">
           <div className="text-center mb-6">
-            <h3 className="text-xl font-bold text-[color:var(--text-primary)] mb-2">Sign In</h3>
+            <h3 className="text-xl font-bold text-[color:var(--text-primary)] mb-2">
+              Sign In
+            </h3>
             <p className="text-[color:var(--text-secondary)] text-sm">
               Choose your preferred method
             </p>
@@ -400,7 +402,3 @@ export default function Login() {
     </div>
   );
 }
-
-
-
-

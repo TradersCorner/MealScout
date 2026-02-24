@@ -132,7 +132,10 @@ async function getHostPricingColumnsCheck(): Promise<HostPricingColumnsCheck> {
 
 async function hasHostSpotImageColumn(): Promise<boolean> {
   const now = Date.now();
-  if (hostSpotImageColumnCache && now - hostSpotImageColumnCache.checkedAt < 5 * 60 * 1000) {
+  if (
+    hostSpotImageColumnCache &&
+    now - hostSpotImageColumnCache.checkedAt < 5 * 60 * 1000
+  ) {
     return hostSpotImageColumnCache.has;
   }
 
@@ -149,7 +152,9 @@ async function hasHostSpotImageColumn(): Promise<boolean> {
 
   const present =
     Array.isArray((rows as any)?.rows) &&
-    (rows as any).rows.some((r: any) => String(r?.column_name || "") === "spot_image_url");
+    (rows as any).rows.some(
+      (r: any) => String(r?.column_name || "") === "spot_image_url",
+    );
 
   hostSpotImageColumnCache = { checkedAt: now, has: present };
   return present;
@@ -293,12 +298,23 @@ const ensureTruckImportTables = async () => {
         from information_schema.tables
         where table_name in ('truck_import_batches', 'truck_import_listings')
       `);
-      const afterRows = ((after as any)?.rows ?? []) as Array<{ table_name?: string }>;
+      const afterRows = ((after as any)?.rows ?? []) as Array<{
+        table_name?: string;
+      }>;
       const afterNames = new Set(
-        afterRows.map((row) => String(row?.table_name || "").trim().toLowerCase()),
+        afterRows.map((row) =>
+          String(row?.table_name || "")
+            .trim()
+            .toLowerCase(),
+        ),
       );
-      if (!afterNames.has("truck_import_batches") || !afterNames.has("truck_import_listings")) {
-        throw new Error("Truck import tables are still missing after ensure step.");
+      if (
+        !afterNames.has("truck_import_batches") ||
+        !afterNames.has("truck_import_listings")
+      ) {
+        throw new Error(
+          "Truck import tables are still missing after ensure step.",
+        );
       }
 
       // The admin dashboard joins restaurants.claimed_from_import_id; ensure it exists.
@@ -309,7 +325,8 @@ const ensureTruckImportTables = async () => {
           and column_name = 'claimed_from_import_id'
         limit 1
       `);
-      const claimedFromImportRows = ((claimedFromImport as any)?.rows ?? []) as Array<unknown>;
+      const claimedFromImportRows = ((claimedFromImport as any)?.rows ??
+        []) as Array<unknown>;
       if (claimedFromImportRows.length === 0) {
         throw new Error(
           "restaurants.claimed_from_import_id is missing after ensure step.",
@@ -455,7 +472,8 @@ export function registerAdminManagementRoutes(app: Express) {
     isAuthenticated,
     isStaffOrAdmin,
     async (req: any, res) => {
-      const rawLimit = typeof req.query?.limit === "string" ? req.query.limit : "";
+      const rawLimit =
+        typeof req.query?.limit === "string" ? req.query.limit : "";
       const limit = Number(rawLimit || 25);
       res.json({ rows: emailDeliveryAudit.list(limit) });
     },
@@ -492,7 +510,10 @@ export function registerAdminManagementRoutes(app: Express) {
           }
         }
 
-        if (userType === "super_admin" && req.user?.userType !== "super_admin") {
+        if (
+          userType === "super_admin" &&
+          req.user?.userType !== "super_admin"
+        ) {
           return res.status(403).json({
             message: "Only super admins can create super admin accounts",
           });
@@ -511,7 +532,11 @@ export function registerAdminManagementRoutes(app: Express) {
           "super_admin",
         ];
 
-        if (!normalizedEmail || !userType || !validUserTypes.includes(userType)) {
+        if (
+          !normalizedEmail ||
+          !userType ||
+          !validUserTypes.includes(userType)
+        ) {
           return res.status(400).json({
             message: "Valid email and userType are required",
           });
@@ -610,14 +635,14 @@ export function registerAdminManagementRoutes(app: Express) {
           message: error.message || "Failed to create user",
         });
       }
-    }
+    },
   );
 
   // Admin API endpoints
   app.get("/api/auth/admin/verify", isAuthenticated, async (req: any, res) => {
     try {
       let user = req.user;
-      
+
       // Auto-upgrade configured super admin email to super_admin role
       const SUPER_ADMIN_EMAIL =
         process.env.ADMIN_EMAIL || "info.mealscout@gmail.com";
@@ -655,7 +680,7 @@ export function registerAdminManagementRoutes(app: Express) {
         res.json(sanitizeUser(user, { includeStripe: true }));
       } else {
         console.warn(
-          `🚫 Admin access denied for user ${user.id} with role ${user.userType}`
+          `🚫 Admin access denied for user ${user.id} with role ${user.userType}`,
         );
         res.status(403).json({ message: "Admin access required" });
       }
@@ -677,7 +702,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error fetching admin stats:", error);
         res.status(500).json({ message: "Failed to fetch stats" });
       }
-    }
+    },
   );
 
   app.get(
@@ -718,8 +743,14 @@ export function registerAdminManagementRoutes(app: Express) {
               db
                 .select({
                   published: sql<number>`count(*)`.mapWith(Number),
-                  publishedHosts: sql<number>`count(distinct ${eventSeries.hostId})`.mapWith(Number),
-                  spotCapacity: sql<number>`coalesce(sum(${eventSeries.defaultMaxTrucks}), 0)`.mapWith(Number),
+                  publishedHosts:
+                    sql<number>`count(distinct ${eventSeries.hostId})`.mapWith(
+                      Number,
+                    ),
+                  spotCapacity:
+                    sql<number>`coalesce(sum(${eventSeries.defaultMaxTrucks}), 0)`.mapWith(
+                      Number,
+                    ),
                 })
                 .from(eventSeries)
                 .where(
@@ -778,13 +809,18 @@ export function registerAdminManagementRoutes(app: Express) {
               `),
               db
                 .select({
-                  live: sql<number>`count(distinct ${foodTruckLocations.restaurantId})`.mapWith(Number),
+                  live: sql<number>`count(distinct ${foodTruckLocations.restaurantId})`.mapWith(
+                    Number,
+                  ),
                 })
                 .from(foodTruckLocations)
                 .where(gte(foodTruckLocations.recordedAt, liveSince)),
               db
                 .select({
-                  active: sql<number>`count(distinct ${foodTruckSessions.restaurantId})`.mapWith(Number),
+                  active:
+                    sql<number>`count(distinct ${foodTruckSessions.restaurantId})`.mapWith(
+                      Number,
+                    ),
                 })
                 .from(foodTruckSessions)
                 .where(
@@ -794,34 +830,55 @@ export function registerAdminManagementRoutes(app: Express) {
                   ),
                 ),
               getPaymentHealthSnapshot().catch((error) => {
-                console.error("[admin] Failed to compute payment health totals:", error);
+                console.error(
+                  "[admin] Failed to compute payment health totals:",
+                  error,
+                );
                 return null;
               }),
             ]);
 
-            const openCallCapacityRow = Array.isArray((openCallCapacity7dRows as any)?.rows)
+            const openCallCapacityRow = Array.isArray(
+              (openCallCapacity7dRows as any)?.rows,
+            )
               ? (openCallCapacity7dRows as any).rows[0]
               : Array.isArray(openCallCapacity7dRows)
                 ? (openCallCapacity7dRows as any)[0]
                 : null;
-            const openCallAcceptedRow = Array.isArray((openCallAccepted7dRows as any)?.rows)
+            const openCallAcceptedRow = Array.isArray(
+              (openCallAccepted7dRows as any)?.rows,
+            )
               ? (openCallAccepted7dRows as any).rows[0]
               : Array.isArray(openCallAccepted7dRows)
                 ? (openCallAccepted7dRows as any)[0]
                 : null;
-            const openCallCapacity7d = Number(openCallCapacityRow?.capacity_total || 0);
-            const openCallAccepted7d = Number(openCallAcceptedRow?.accepted_total || 0);
+            const openCallCapacity7d = Number(
+              openCallCapacityRow?.capacity_total || 0,
+            );
+            const openCallAccepted7d = Number(
+              openCallAcceptedRow?.accepted_total || 0,
+            );
             const openCallFillRate7dPct =
               openCallCapacity7d > 0
-                ? Number(((openCallAccepted7d / openCallCapacity7d) * 100).toFixed(2))
+                ? Number(
+                    ((openCallAccepted7d / openCallCapacity7d) * 100).toFixed(
+                      2,
+                    ),
+                  )
                 : 0;
 
             return {
               parkingPass: {
                 seriesTotal: Number(seriesTotals?.[0]?.total ?? 0),
-                seriesPublished: Number(seriesPublishedTotals?.[0]?.published ?? 0),
-                hostsPublished: Number(seriesPublishedTotals?.[0]?.publishedHosts ?? 0),
-                spotCapacityPublished: Number(seriesPublishedTotals?.[0]?.spotCapacity ?? 0),
+                seriesPublished: Number(
+                  seriesPublishedTotals?.[0]?.published ?? 0,
+                ),
+                hostsPublished: Number(
+                  seriesPublishedTotals?.[0]?.publishedHosts ?? 0,
+                ),
+                spotCapacityPublished: Number(
+                  seriesPublishedTotals?.[0]?.spotCapacity ?? 0,
+                ),
               },
               openCalls: {
                 acceptedNext7Days: openCallAccepted7d,
@@ -829,12 +886,24 @@ export function registerAdminManagementRoutes(app: Express) {
                 fillRateNext7DaysPct: openCallFillRate7dPct,
               },
               bookings: {
-                parkingPassConfirmedToday: Number(bookingsTodayTotals?.[0]?.count ?? 0),
-                parkingPassConfirmedNext7Days: Number(bookings7dTotals?.[0]?.count ?? 0),
-                pendingCheckoutHolds: Number(paymentHealth?.counts?.pendingTotal ?? 0),
-                staleCheckoutHolds: Number(paymentHealth?.counts?.pendingExpired ?? 0),
-                failedPaymentsLast24h: Number(paymentHealth?.counts?.failedLast24h ?? 0),
-                confirmedLast24h: Number(paymentHealth?.counts?.confirmedLast24h ?? 0),
+                parkingPassConfirmedToday: Number(
+                  bookingsTodayTotals?.[0]?.count ?? 0,
+                ),
+                parkingPassConfirmedNext7Days: Number(
+                  bookings7dTotals?.[0]?.count ?? 0,
+                ),
+                pendingCheckoutHolds: Number(
+                  paymentHealth?.counts?.pendingTotal ?? 0,
+                ),
+                staleCheckoutHolds: Number(
+                  paymentHealth?.counts?.pendingExpired ?? 0,
+                ),
+                failedPaymentsLast24h: Number(
+                  paymentHealth?.counts?.failedLast24h ?? 0,
+                ),
+                confirmedLast24h: Number(
+                  paymentHealth?.counts?.confirmedLast24h ?? 0,
+                ),
               },
               trucks: {
                 liveTrucks15m: Number(liveTruckTotals?.[0]?.live ?? 0),
@@ -842,7 +911,10 @@ export function registerAdminManagementRoutes(app: Express) {
               },
             };
           } catch (error) {
-            console.error("[admin] Failed to compute operations totals:", error);
+            console.error(
+              "[admin] Failed to compute operations totals:",
+              error,
+            );
             return null;
           }
         })();
@@ -1025,12 +1097,12 @@ export function registerAdminManagementRoutes(app: Express) {
             latitude?: string | number | null;
             longitude?: string | number | null;
           }) => ({
-          id: loc.id,
-          address: loc.address,
-          city: null,
-          state: null,
-          mappable: hasCoords(loc.latitude, loc.longitude),
-        }),
+            id: loc.id,
+            address: loc.address,
+            city: null,
+            state: null,
+            mappable: hasCoords(loc.latitude, loc.longitude),
+          }),
         );
 
         const seenKeys = new Set<string>();
@@ -1069,7 +1141,10 @@ export function registerAdminManagementRoutes(app: Express) {
         });
 
         const renderedCandidates = [
-          ...openHostLocations.map((loc) => ({ ...loc, source: "open_request" })),
+          ...openHostLocations.map((loc) => ({
+            ...loc,
+            source: "open_request",
+          })),
           ...primaryHostLocations.map((loc) => ({
             ...loc,
             source: "host_profile",
@@ -1080,19 +1155,25 @@ export function registerAdminManagementRoutes(app: Express) {
           })),
         ];
 
-        const renderedMappable = renderedCandidates.filter((loc) => loc.mappable);
-        const renderedMissing = renderedCandidates.filter((loc) => !loc.mappable);
+        const renderedMappable = renderedCandidates.filter(
+          (loc) => loc.mappable,
+        );
+        const renderedMissing = renderedCandidates.filter(
+          (loc) => !loc.mappable,
+        );
 
         res.json({
           openLocationRequests: {
             total: openHostLocations.length,
             mappable: openHostLocations.filter((loc) => loc.mappable).length,
-            missingCoords: openHostLocations.filter((loc) => !loc.mappable).length,
+            missingCoords: openHostLocations.filter((loc) => !loc.mappable)
+              .length,
           },
           primaryHostProfiles: {
             total: primaryHostLocations.length,
             mappable: primaryHostLocations.filter((loc) => loc.mappable).length,
-            missingCoords: primaryHostLocations.filter((loc) => !loc.mappable).length,
+            missingCoords: primaryHostLocations.filter((loc) => !loc.mappable)
+              .length,
           },
           additionalHostAddresses: {
             total: additionalAddressRows.length,
@@ -1100,8 +1181,9 @@ export function registerAdminManagementRoutes(app: Express) {
             skippedDuplicates: additionalSkippedDuplicates,
             mappable: additionalIncludedLocations.filter((loc) => loc.mappable)
               .length,
-            missingCoords: additionalIncludedLocations.filter((loc) => !loc.mappable)
-              .length,
+            missingCoords: additionalIncludedLocations.filter(
+              (loc) => !loc.mappable,
+            ).length,
           },
           renderedHostLocationCandidates: {
             total: renderedCandidates.length,
@@ -1225,17 +1307,17 @@ export function registerAdminManagementRoutes(app: Express) {
           seenKeys.add(keyFor(host.address, host.city, host.state));
         });
 
-        const failures: Array<{ source: string; id: string; address: string }> = [];
+        const failures: Array<{ source: string; id: string; address: string }> =
+          [];
         let primaryUpdated = 0;
         let additionalUpdated = 0;
         let attempted = 0;
 
-        const primaryQueue = hostProfiles
-          .filter(
-            (host: (typeof hostProfiles)[number]) =>
-              !hasCoords(host.latitude, host.longitude) &&
-              Boolean((host.address || "").trim()),
-          );
+        const primaryQueue = hostProfiles.filter(
+          (host: (typeof hostProfiles)[number]) =>
+            !hasCoords(host.latitude, host.longitude) &&
+            Boolean((host.address || "").trim()),
+        );
 
         for (const host of primaryQueue) {
           if (attempted >= limit) break;
@@ -1261,19 +1343,22 @@ export function registerAdminManagementRoutes(app: Express) {
           primaryUpdated += 1;
         }
 
-        const additionalQueue = additionalAddressRows
-          .filter((address) => {
-            if (hasCoords(address.latitude, address.longitude)) return false;
-            const key = keyFor(address.address, address.city, address.state);
-            if (!key) return false;
-            if (seenKeys.has(key)) return false;
-            seenKeys.add(key);
-            return true;
-          });
+        const additionalQueue = additionalAddressRows.filter((address) => {
+          if (hasCoords(address.latitude, address.longitude)) return false;
+          const key = keyFor(address.address, address.city, address.state);
+          if (!key) return false;
+          if (seenKeys.has(key)) return false;
+          seenKeys.add(key);
+          return true;
+        });
 
         for (const addressRow of additionalQueue) {
           if (attempted >= limit) break;
-          const address = [addressRow.address, addressRow.city, addressRow.state]
+          const address = [
+            addressRow.address,
+            addressRow.city,
+            addressRow.state,
+          ]
             .map((part) => (part || "").trim())
             .filter(Boolean)
             .join(", ");
@@ -1281,7 +1366,11 @@ export function registerAdminManagementRoutes(app: Express) {
           attempted += 1;
           const geocode = await retryGeocodeAddress(address);
           if (!geocode) {
-            failures.push({ source: "host_address", id: addressRow.id, address });
+            failures.push({
+              source: "host_address",
+              id: addressRow.id,
+              address,
+            });
             continue;
           }
           await db
@@ -1323,7 +1412,9 @@ export function registerAdminManagementRoutes(app: Express) {
         const source = String(req.body?.source || "");
         const id = String(req.body?.id || "");
         if (!source || !id) {
-          return res.status(400).json({ message: "source and id are required" });
+          return res
+            .status(400)
+            .json({ message: "source and id are required" });
         }
 
         if (source === "host_profile") {
@@ -1386,7 +1477,11 @@ export function registerAdminManagementRoutes(app: Express) {
           if (!addressRow) {
             return res.status(404).json({ message: "Host address not found" });
           }
-          const address = [addressRow.address, addressRow.city, addressRow.state]
+          const address = [
+            addressRow.address,
+            addressRow.city,
+            addressRow.state,
+          ]
             .map((part) => (part || "").trim())
             .filter(Boolean)
             .join(", ");
@@ -1433,13 +1528,18 @@ export function registerAdminManagementRoutes(app: Express) {
           }
           const address = (requestRow.address || "").trim();
           if (!address) {
-            return res.status(400).json({ message: "Open request address is empty" });
+            return res
+              .status(400)
+              .json({ message: "Open request address is empty" });
           }
           const geocode = await retryGeocodeAddress(address);
           if (!geocode) {
             return res
               .status(422)
-              .json({ message: "Unable to geocode open request address", address });
+              .json({
+                message: "Unable to geocode open request address",
+                address,
+              });
           }
           await db
             .update(locationRequests)
@@ -1489,7 +1589,7 @@ export function registerAdminManagementRoutes(app: Express) {
         const usersWithStripe = allUsers.filter((u) => u.stripeCustomerId);
 
         console.log(
-          `[ADMIN SYNC] Found ${usersWithStripe.length} users with Stripe customer IDs`
+          `[ADMIN SYNC] Found ${usersWithStripe.length} users with Stripe customer IDs`,
         );
 
         for (const user of usersWithStripe) {
@@ -1526,7 +1626,7 @@ export function registerAdminManagementRoutes(app: Express) {
                 user.id,
                 user.stripeCustomerId!,
                 subscription.id,
-                `standard-${billingInterval}`
+                `standard-${billingInterval}`,
               );
 
               results.synced++;
@@ -1539,7 +1639,7 @@ export function registerAdminManagementRoutes(app: Express) {
               });
 
               console.log(
-                `[ADMIN SYNC] ✅ Synced subscription ${subscription.id} for user ${user.email}`
+                `[ADMIN SYNC] ✅ Synced subscription ${subscription.id} for user ${user.email}`,
               );
             } else {
               results.skipped++;
@@ -1554,20 +1654,20 @@ export function registerAdminManagementRoutes(app: Express) {
             });
             console.error(
               `[ADMIN SYNC] ❌ Error syncing user ${user.email}:`,
-              error
+              error,
             );
           }
         }
 
         console.log(
-          `[ADMIN SYNC] Complete: ${results.synced} synced, ${results.skipped} skipped, ${results.errors} errors`
+          `[ADMIN SYNC] Complete: ${results.synced} synced, ${results.skipped} skipped, ${results.errors} errors`,
         );
         res.json(results);
       } catch (error) {
         console.error("Error syncing subscriptions:", error);
         res.status(500).json({ message: "Failed to sync subscriptions" });
       }
-    }
+    },
   );
 
   app.get(
@@ -1584,7 +1684,7 @@ export function registerAdminManagementRoutes(app: Express) {
           .status(500)
           .json({ message: "Failed to fetch pending restaurants" });
       }
-    }
+    },
   );
 
   app.post(
@@ -1599,7 +1699,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error approving restaurant:", error);
         res.status(500).json({ message: "Failed to approve restaurant" });
       }
-    }
+    },
   );
 
   app.delete(
@@ -1614,7 +1714,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error deleting restaurant:", error);
         res.status(500).json({ message: "Failed to delete restaurant" });
       }
-    }
+    },
   );
 
   app.get(
@@ -1629,7 +1729,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error fetching users:", error);
         res.status(500).json({ message: "Failed to fetch users" });
       }
-    }
+    },
   );
 
   app.get(
@@ -1643,7 +1743,9 @@ export function registerAdminManagementRoutes(app: Express) {
         const batches = await db
           .select()
           .from(truckImportBatches)
-          .where(includePurged ? sql`true` : isNull(truckImportBatches.purgedAt))
+          .where(
+            includePurged ? sql`true` : isNull(truckImportBatches.purgedAt),
+          )
           .orderBy(desc(truckImportBatches.createdAt))
           .limit(50);
         res.json(batches);
@@ -1664,7 +1766,7 @@ export function registerAdminManagementRoutes(app: Express) {
             console.error("Error ensuring truck import tables:", ensureError);
             return res.status(503).json({
               message:
-                'Truck import tables are missing in the database and could not be auto-created. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql` (and then `npm run migrate:sql -- 041_truck_import_batches_purged.sql`).',
+                "Truck import tables are missing in the database and could not be auto-created. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql` (and then `npm run migrate:sql -- 041_truck_import_batches_purged.sql`).",
               code: "migration_required",
             });
           }
@@ -1725,7 +1827,7 @@ export function registerAdminManagementRoutes(app: Express) {
         if (isMissingRelationError(error, "truck_import_listings")) {
           return res.status(503).json({
             message:
-              'Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.',
+              "Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.",
             code: "migration_required",
           });
         }
@@ -1744,7 +1846,10 @@ export function registerAdminManagementRoutes(app: Express) {
       try {
         await ensureTruckImportTables();
 
-        const limit = Math.min(100, Math.max(1, Number(req.query?.limit ?? 50)));
+        const limit = Math.min(
+          100,
+          Math.max(1, Number(req.query?.limit ?? 50)),
+        );
         const offset = Math.max(0, Number(req.query?.offset ?? 0));
 
         const [{ total }] = await db
@@ -1786,14 +1891,14 @@ export function registerAdminManagementRoutes(app: Express) {
         if (isMissingRelationError(error, "truck_import_listings")) {
           return res.status(503).json({
             message:
-              'Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.',
+              "Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.",
             code: "migration_required",
           });
         }
         if (isMissingColumnError(error, "claimed_from_import_id")) {
           return res.status(503).json({
             message:
-              'Truck import schema is missing columns. Run `npm run migrate:sql -- 044_add_restaurants_claimed_from_import_id.sql`.',
+              "Truck import schema is missing columns. Run `npm run migrate:sql -- 044_add_restaurants_claimed_from_import_id.sql`.",
             code: "migration_required",
           });
         }
@@ -1833,7 +1938,9 @@ export function registerAdminManagementRoutes(app: Express) {
           if (req.body?.[field] === undefined) continue;
           updates[field] =
             field === "email"
-              ? String(req.body[field] || "").trim().toLowerCase() || null
+              ? String(req.body[field] || "")
+                  .trim()
+                  .toLowerCase() || null
               : req.body[field];
         }
 
@@ -1886,7 +1993,7 @@ export function registerAdminManagementRoutes(app: Express) {
         if (isMissingRelationError(error, "truck_import_listings")) {
           return res.status(503).json({
             message:
-              'Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.',
+              "Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.",
             code: "migration_required",
           });
         }
@@ -1906,7 +2013,9 @@ export function registerAdminManagementRoutes(app: Express) {
         await ensureTruckImportTables();
 
         const listingId = req.params.id;
-        const email = String(req.body?.email || "").trim().toLowerCase();
+        const email = String(req.body?.email || "")
+          .trim()
+          .toLowerCase();
         if (!email) {
           return res.status(400).json({ message: "Email is required" });
         }
@@ -2001,12 +2110,14 @@ export function registerAdminManagementRoutes(app: Express) {
         ) {
           return res.status(503).json({
             message:
-              'Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.',
+              "Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.",
             code: "migration_required",
           });
         }
         console.error("Error sending import invite:", error);
-        res.status(500).json({ message: error.message || "Failed to send invite" });
+        res
+          .status(500)
+          .json({ message: error.message || "Failed to send invite" });
       }
     },
   );
@@ -2051,7 +2162,10 @@ export function registerAdminManagementRoutes(app: Express) {
           [];
         const seenKeys = new Set<string>();
 
-        const normalize = (value: any) => String(value || "").trim().toLowerCase();
+        const normalize = (value: any) =>
+          String(value || "")
+            .trim()
+            .toLowerCase();
         const nameAddressKey = (name: string, address: string) =>
           `${normalize(name)}|${normalize(address)}`;
 
@@ -2066,20 +2180,31 @@ export function registerAdminManagementRoutes(app: Express) {
           const email = row.email?.trim()?.toLowerCase() || "";
           if (externalId) candidateExternalIds.add(externalId.toLowerCase());
           if (email) candidateEmails.add(email.toLowerCase());
-          if (name && address) candidateNameAddressKeys.add(nameAddressKey(name, address));
+          if (name && address)
+            candidateNameAddressKeys.add(nameAddressKey(name, address));
         }
 
         const extList = Array.from(candidateExternalIds);
         const emailList = Array.from(candidateEmails);
         const nameList = Array.from(
-          new Set(Array.from(candidateNameAddressKeys).map((key) => key.split("|")[0])),
+          new Set(
+            Array.from(candidateNameAddressKeys).map(
+              (key) => key.split("|")[0],
+            ),
+          ),
         );
         const addressList = Array.from(
-          new Set(Array.from(candidateNameAddressKeys).map((key) => key.split("|")[1])),
+          new Set(
+            Array.from(candidateNameAddressKeys).map(
+              (key) => key.split("|")[1],
+            ),
+          ),
         );
 
         const existingImportRows =
-          extList.length || emailList.length || (nameList.length && addressList.length)
+          extList.length ||
+          emailList.length ||
+          (nameList.length && addressList.length)
             ? await db
                 .select({
                   externalId: truckImportListings.externalId,
@@ -2098,8 +2223,14 @@ export function registerAdminManagementRoutes(app: Express) {
                       : sql`false`,
                     nameList.length && addressList.length
                       ? and(
-                          inArray(sql`lower(${truckImportListings.name})` as any, nameList),
-                          inArray(sql`lower(${truckImportListings.address})` as any, addressList),
+                          inArray(
+                            sql`lower(${truckImportListings.name})` as any,
+                            nameList,
+                          ),
+                          inArray(
+                            sql`lower(${truckImportListings.address})` as any,
+                            addressList,
+                          ),
                         )
                       : sql`false`,
                   ),
@@ -2116,9 +2247,15 @@ export function registerAdminManagementRoutes(app: Express) {
                 .from(restaurants)
                 .where(
                   and(
-                    or(eq(restaurants.businessType, "food_truck"), eq(restaurants.isFoodTruck, true)),
+                    or(
+                      eq(restaurants.businessType, "food_truck"),
+                      eq(restaurants.isFoodTruck, true),
+                    ),
                     inArray(sql`lower(${restaurants.name})` as any, nameList),
-                    inArray(sql`lower(${restaurants.address})` as any, addressList),
+                    inArray(
+                      sql`lower(${restaurants.address})` as any,
+                      addressList,
+                    ),
                   ),
                 )
             : [];
@@ -2162,9 +2299,9 @@ export function registerAdminManagementRoutes(app: Express) {
             ? `ext:${externalId.toLowerCase()}`
             : email
               ? `email:${email}`
-            : addressInput
-              ? `addr:${nameKey}|${addressKey}`
-              : `name:${nameKey}|${cityKey}`;
+              : addressInput
+                ? `addr:${nameKey}|${addressKey}`
+                : `name:${nameKey}|${cityKey}`;
           if (seenKeys.has(dedupeKey)) {
             duplicateRows += 1;
             continue;
@@ -2175,9 +2312,15 @@ export function registerAdminManagementRoutes(app: Express) {
           // If 2 identifying fields match, treat as a duplicate. ExternalId/email count as "2"
           // because they're unique identifiers in practice (gov license, owner email).
           let matchScore = 0;
-          if (externalId && existingExternalIdSet.has(normalize(externalId))) matchScore += 2;
+          if (externalId && existingExternalIdSet.has(normalize(externalId)))
+            matchScore += 2;
           if (email && existingEmailSet.has(normalize(email))) matchScore += 2;
-          if (addressInput && existingNameAddressSet.has(`${normalize(name)}|${normalize(addressInput)}`)) {
+          if (
+            addressInput &&
+            existingNameAddressSet.has(
+              `${normalize(name)}|${normalize(addressInput)}`,
+            )
+          ) {
             matchScore += 2;
           }
 
@@ -2259,7 +2402,11 @@ export function registerAdminManagementRoutes(app: Express) {
           const uniqueEmails = Array.from(
             new Set(
               insertedListingRows
-                .map((listing: any) => String(listing.email || "").trim().toLowerCase())
+                .map((listing: any) =>
+                  String(listing.email || "")
+                    .trim()
+                    .toLowerCase(),
+                )
                 .filter((value) => value.length > 0),
             ),
           );
@@ -2277,32 +2424,42 @@ export function registerAdminManagementRoutes(app: Express) {
             invitedOwnerByEmail.set(email, user.id);
           }
 
-          const restaurantsToInsert = insertedListingRows.map((listing: any) => {
-            const email = String(listing.email || "").trim().toLowerCase();
-            const invitedOwnerId = email ? invitedOwnerByEmail.get(email) : undefined;
-            return {
-              ownerId: invitedOwnerId || systemOwnerId,
-              name: listing.name,
-              address: listing.address,
-              phone: listing.phone,
-              businessType: "food_truck",
-              cuisineType: listing.cuisineType,
-              city: listing.city,
-              state: listing.state,
-              websiteUrl: listing.websiteUrl,
-              instagramUrl: listing.instagramUrl,
-              facebookPageUrl: listing.facebookPageUrl,
-              latitude: listing.latitude,
-              longitude: listing.longitude,
-              isFoodTruck: true,
-              isActive: false,
-              isVerified: false,
-              claimedFromImportId: listing.id,
-            };
-          });
+          const restaurantsToInsert = insertedListingRows.map(
+            (listing: any) => {
+              const email = String(listing.email || "")
+                .trim()
+                .toLowerCase();
+              const invitedOwnerId = email
+                ? invitedOwnerByEmail.get(email)
+                : undefined;
+              return {
+                ownerId: invitedOwnerId || systemOwnerId,
+                name: listing.name,
+                address: listing.address,
+                phone: listing.phone,
+                businessType: "food_truck",
+                cuisineType: listing.cuisineType,
+                city: listing.city,
+                state: listing.state,
+                websiteUrl: listing.websiteUrl,
+                instagramUrl: listing.instagramUrl,
+                facebookPageUrl: listing.facebookPageUrl,
+                latitude: listing.latitude,
+                longitude: listing.longitude,
+                isFoodTruck: true,
+                isActive: false,
+                isVerified: false,
+                claimedFromImportId: listing.id,
+              };
+            },
+          );
 
           const restaurantChunkSize = 200;
-          for (let i = 0; i < restaurantsToInsert.length; i += restaurantChunkSize) {
+          for (
+            let i = 0;
+            i < restaurantsToInsert.length;
+            i += restaurantChunkSize
+          ) {
             const chunk = restaurantsToInsert.slice(i, i + restaurantChunkSize);
             if (chunk.length === 0) continue;
             await db.insert(restaurants).values(chunk);
@@ -2312,8 +2469,12 @@ export function registerAdminManagementRoutes(app: Express) {
           // Best-effort: persist invited owner linkage on the import listing rows.
           // This allows us to block hostile claims and send setup reminders.
           for (const listing of insertedListingRows as any[]) {
-            const email = String(listing.email || "").trim().toLowerCase();
-            const invitedOwnerId = email ? invitedOwnerByEmail.get(email) : null;
+            const email = String(listing.email || "")
+              .trim()
+              .toLowerCase();
+            const invitedOwnerId = email
+              ? invitedOwnerByEmail.get(email)
+              : null;
             if (!invitedOwnerId) continue;
             try {
               await db
@@ -2354,21 +2515,20 @@ export function registerAdminManagementRoutes(app: Express) {
         if (isMissingRelationError(error, "truck_import_batches")) {
           return res.status(503).json({
             message:
-              'Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql` (and then retry the upload).',
+              "Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql` (and then retry the upload).",
             code: "migration_required",
           });
         }
         if (isMissingColumnError(error, "claimed_from_import_id")) {
           return res.status(503).json({
             message:
-              'Truck import schema is missing columns. Run `npm run migrate:sql -- 044_add_restaurants_claimed_from_import_id.sql` (and then retry the upload).',
+              "Truck import schema is missing columns. Run `npm run migrate:sql -- 044_add_restaurants_claimed_from_import_id.sql` (and then retry the upload).",
             code: "migration_required",
           });
         }
         console.error("Error importing truck listings:", error);
         res.status(500).json({
-          message:
-            error.message || "Failed to import truck listings",
+          message: error.message || "Failed to import truck listings",
         });
       }
     },
@@ -2586,7 +2746,7 @@ export function registerAdminManagementRoutes(app: Express) {
         ) {
           return res.status(503).json({
             message:
-              'Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.',
+              "Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.",
             code: "migration_required",
           });
         }
@@ -2608,9 +2768,13 @@ export function registerAdminManagementRoutes(app: Express) {
         await ensureTruckImportTables();
 
         const batchId = String(req.params.batchId || "").trim();
-        const limit = Math.min(200, Math.max(1, Number(req.query?.limit ?? 50)));
+        const limit = Math.min(
+          200,
+          Math.max(1, Number(req.query?.limit ?? 50)),
+        );
         const offset = Math.max(0, Number(req.query?.offset ?? 0));
-        if (!batchId) return res.status(400).json({ message: "Batch ID required" });
+        if (!batchId)
+          return res.status(400).json({ message: "Batch ID required" });
 
         const [batch] = await db
           .select()
@@ -2691,7 +2855,7 @@ export function registerAdminManagementRoutes(app: Express) {
         ) {
           return res.status(503).json({
             message:
-              'Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.',
+              "Truck import tables are missing in the database. Run `npm run migrate:sql -- 042_create_truck_import_tables.sql`.",
             code: "migration_required",
           });
         }
@@ -2782,8 +2946,8 @@ export function registerAdminManagementRoutes(app: Express) {
               or(
                 sql`${users.affiliateCloserUserId} is not null`,
                 sql`${users.affiliateBookerUserId} is not null`,
-              )
-            )
+              ),
+            ),
           );
 
         const truckOwnerRows = await db
@@ -2807,8 +2971,10 @@ export function registerAdminManagementRoutes(app: Express) {
         const referredMap = new Map<string, Set<string>>();
         const paidMap = new Map<string, Set<string>>();
         for (const row of referralRows) {
-          const referrerIds = [row.affiliateCloserUserId, row.affiliateBookerUserId]
-            .filter((value): value is string => Boolean(value));
+          const referrerIds = [
+            row.affiliateCloserUserId,
+            row.affiliateBookerUserId,
+          ].filter((value): value is string => Boolean(value));
           if (referrerIds.length === 0) continue;
 
           for (const referrerId of referrerIds) {
@@ -2950,12 +3116,16 @@ export function registerAdminManagementRoutes(app: Express) {
           affiliatePercent: updated.affiliatePercent,
           affiliateCloserUserId: updated.affiliateCloserUserId,
           affiliateBookerUserId: updated.affiliateBookerUserId,
-          affiliateCloserPercent: (updated as any).affiliateCloserPercent ?? null,
-          affiliateBookerPercent: (updated as any).affiliateBookerPercent ?? null,
+          affiliateCloserPercent:
+            (updated as any).affiliateCloserPercent ?? null,
+          affiliateBookerPercent:
+            (updated as any).affiliateBookerPercent ?? null,
         });
       } catch (error: any) {
         console.error("Error updating affiliate settings:", error);
-        res.status(500).json({ message: "Failed to update affiliate settings" });
+        res
+          .status(500)
+          .json({ message: "Failed to update affiliate settings" });
       }
     },
   );
@@ -2968,7 +3138,8 @@ export function registerAdminManagementRoutes(app: Express) {
     async (req: any, res) => {
       if (!requireAdminUser(req, res)) return;
       try {
-        const status = typeof req.query?.status === "string" ? req.query.status : null;
+        const status =
+          typeof req.query?.status === "string" ? req.query.status : null;
         const baseQuery = db
           .select({
             id: affiliateWithdrawals.id,
@@ -2993,7 +3164,9 @@ export function registerAdminManagementRoutes(app: Express) {
           .innerJoin(users, eq(affiliateWithdrawals.userId, users.id));
 
         const rows = status
-          ? await baseQuery.where(eq(affiliateWithdrawals.status, status)).orderBy(desc(affiliateWithdrawals.requestedAt))
+          ? await baseQuery
+              .where(eq(affiliateWithdrawals.status, status))
+              .orderBy(desc(affiliateWithdrawals.requestedAt))
           : await baseQuery.orderBy(desc(affiliateWithdrawals.requestedAt));
 
         res.json(rows);
@@ -3061,7 +3234,9 @@ export function registerAdminManagementRoutes(app: Express) {
           return res.status(404).json({ message: "Payout request not found" });
         }
         if (existing.status === "paid") {
-          return res.status(409).json({ message: "Payout already marked paid" });
+          return res
+            .status(409)
+            .json({ message: "Payout already marked paid" });
         }
         if (existing.status === "rejected") {
           return res.status(409).json({ message: "Payout was rejected" });
@@ -3103,7 +3278,8 @@ export function registerAdminManagementRoutes(app: Express) {
       if (!requireAdminUser(req, res)) return;
       try {
         const payoutId = req.params.id;
-        const reason = typeof req.body?.reason === "string" ? req.body.reason : null;
+        const reason =
+          typeof req.body?.reason === "string" ? req.body.reason : null;
         const [existing] = await db
           .select()
           .from(affiliateWithdrawals)
@@ -3132,17 +3308,19 @@ export function registerAdminManagementRoutes(app: Express) {
             })
             .where(eq(affiliateWithdrawals.id, payoutId));
 
-          const reversalExists = (await tx
-            .select({ id: creditLedger.id })
-            .from(creditLedger)
-            .where(
-              and(
-                eq(creditLedger.userId, existing.userId),
-                eq(creditLedger.sourceType, "cash_payout_reversal"),
-                eq(creditLedger.sourceId, payoutId),
-              ),
-            )
-            .limit(1))[0];
+          const reversalExists = (
+            await tx
+              .select({ id: creditLedger.id })
+              .from(creditLedger)
+              .where(
+                and(
+                  eq(creditLedger.userId, existing.userId),
+                  eq(creditLedger.sourceType, "cash_payout_reversal"),
+                  eq(creditLedger.sourceId, payoutId),
+                ),
+              )
+              .limit(1)
+          )[0];
 
           if (!reversalExists && amountNum > 0) {
             await tx.insert(creditLedger).values({
@@ -3184,13 +3362,14 @@ export function registerAdminManagementRoutes(app: Express) {
           return res.status(400).json({ message: "User has no email address" });
         }
         if (user.emailVerified) {
-          return res
-            .status(400)
-            .json({ message: "Email is already verified" });
+          return res.status(400).json({ message: "Email is already verified" });
         }
 
         const token = crypto.randomBytes(32).toString("hex");
-        const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+        const tokenHash = crypto
+          .createHash("sha256")
+          .update(token)
+          .digest("hex");
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
         await storage.createEmailVerificationToken({
@@ -3218,7 +3397,7 @@ export function registerAdminManagementRoutes(app: Express) {
           message: error.message || "Failed to resend verification email",
         });
       }
-    }
+    },
   );
 
   app.post(
@@ -3243,7 +3422,7 @@ export function registerAdminManagementRoutes(app: Express) {
           message: error.message || "Failed to verify user",
         });
       }
-    }
+    },
   );
 
   app.post(
@@ -3284,7 +3463,7 @@ export function registerAdminManagementRoutes(app: Express) {
           message: error.message || "Failed to send subscription link",
         });
       }
-    }
+    },
   );
 
   app.patch(
@@ -3381,7 +3560,7 @@ export function registerAdminManagementRoutes(app: Express) {
           message: error.message || "Failed to update user",
         });
       }
-    }
+    },
   );
 
   app.get(
@@ -3423,7 +3602,9 @@ export function registerAdminManagementRoutes(app: Express) {
           const sorted = [...hostOccurrences].sort(
             (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
           );
-          const upcoming = sorted.find((event) => new Date(event.date) >= today);
+          const upcoming = sorted.find(
+            (event) => new Date(event.date) >= today,
+          );
           const representative = upcoming ?? sorted[0];
 
           return [
@@ -3441,9 +3622,11 @@ export function registerAdminManagementRoutes(app: Express) {
         res.json(listings);
       } catch (error) {
         console.error("Error fetching parking pass listings:", error);
-        res.status(500).json({ message: "Failed to fetch parking pass listings" });
+        res
+          .status(500)
+          .json({ message: "Failed to fetch parking pass listings" });
       }
-    }
+    },
   );
 
   app.patch(
@@ -3474,7 +3657,11 @@ export function registerAdminManagementRoutes(app: Express) {
         ];
         for (const field of fields) {
           if (req.body?.[field] === undefined) continue;
-          if (field === "startTime" || field === "endTime" || field === "status") {
+          if (
+            field === "startTime" ||
+            field === "endTime" ||
+            field === "status"
+          ) {
             updates[field] = req.body[field];
           } else {
             updates[field] = Number(req.body[field]);
@@ -3528,9 +3715,12 @@ export function registerAdminManagementRoutes(app: Express) {
             ? Number(updates.monthlyPriceCents)
             : monthlyExisting;
         const slotSum = breakfast + lunch + dinner;
-        const hasAnyPrice = [slotSum, dailyCandidate, weeklyCandidate, monthlyCandidate].some(
-          (value) => Number(value) > 0,
-        );
+        const hasAnyPrice = [
+          slotSum,
+          dailyCandidate,
+          weeklyCandidate,
+          monthlyCandidate,
+        ].some((value) => Number(value) > 0);
         if (!hasAnyPrice) {
           return res.status(400).json({
             message: "At least one slot price is required.",
@@ -3549,7 +3739,8 @@ export function registerAdminManagementRoutes(app: Express) {
             ? Number(updates.monthlyPriceCents)
             : null;
         let baseDaily =
-          dailyOverride ?? (slotSum > 0 ? slotSum : event.dailyPriceCents ?? 0);
+          dailyOverride ??
+          (slotSum > 0 ? slotSum : (event.dailyPriceCents ?? 0));
         if (baseDaily <= 0) {
           if (weeklyOverride && weeklyOverride > 0) {
             baseDaily = Math.round(weeklyOverride / 7);
@@ -3562,9 +3753,11 @@ export function registerAdminManagementRoutes(app: Express) {
           hostPriceCents: hostPriceCents || event.hostPriceCents || 0,
           dailyPriceCents: baseDaily,
           weeklyPriceCents:
-            weeklyOverride ?? (baseDaily > 0 ? baseDaily * 7 : event.weeklyPriceCents ?? 0),
+            weeklyOverride ??
+            (baseDaily > 0 ? baseDaily * 7 : (event.weeklyPriceCents ?? 0)),
           monthlyPriceCents:
-            monthlyOverride ?? (baseDaily > 0 ? baseDaily * 30 : event.monthlyPriceCents ?? 0),
+            monthlyOverride ??
+            (baseDaily > 0 ? baseDaily * 30 : (event.monthlyPriceCents ?? 0)),
           requiresPayment: true,
           updatedAt: new Date(),
         };
@@ -3593,8 +3786,10 @@ export function registerAdminManagementRoutes(app: Express) {
             seriesUpdates.defaultLunchPriceCents = lunch;
             seriesUpdates.defaultDinnerPriceCents = dinner;
             seriesUpdates.defaultDailyPriceCents = baseDaily;
-            seriesUpdates.defaultWeeklyPriceCents = pricingUpdates.weeklyPriceCents;
-            seriesUpdates.defaultMonthlyPriceCents = pricingUpdates.monthlyPriceCents;
+            seriesUpdates.defaultWeeklyPriceCents =
+              pricingUpdates.weeklyPriceCents;
+            seriesUpdates.defaultMonthlyPriceCents =
+              pricingUpdates.monthlyPriceCents;
             seriesUpdates.defaultHostPriceCents = hostPriceCents;
 
             // Simple model: mirror Parking Pass defaults back onto the host row as the source of truth.
@@ -3608,12 +3803,16 @@ export function registerAdminManagementRoutes(app: Express) {
                     parkingPassLunchPriceCents: lunch,
                     parkingPassDinnerPriceCents: dinner,
                     parkingPassDailyPriceCents: baseDaily,
-                    parkingPassWeeklyPriceCents: pricingUpdates.weeklyPriceCents,
-                    parkingPassMonthlyPriceCents: pricingUpdates.monthlyPriceCents,
+                    parkingPassWeeklyPriceCents:
+                      pricingUpdates.weeklyPriceCents,
+                    parkingPassMonthlyPriceCents:
+                      pricingUpdates.monthlyPriceCents,
                     parkingPassStartTime: String(
                       updates.startTime ?? event.startTime ?? "",
                     ),
-                    parkingPassEndTime: String(updates.endTime ?? event.endTime ?? ""),
+                    parkingPassEndTime: String(
+                      updates.endTime ?? event.endTime ?? "",
+                    ),
                     updatedAt: new Date(),
                   } as any)
                   .where(eq(hosts.id, host.id));
@@ -3659,7 +3858,11 @@ export function registerAdminManagementRoutes(app: Express) {
           .update(events)
           .set({ ...updates, ...pricingUpdates })
           .where(
-            and(scope, gte(events.date, today), eq(events.requiresPayment, true)),
+            and(
+              scope,
+              gte(events.date, today),
+              eq(events.requiresPayment, true),
+            ),
           )
           .returning();
 
@@ -3697,7 +3900,7 @@ export function registerAdminManagementRoutes(app: Express) {
           message: error.message || "Failed to update parking pass",
         });
       }
-    }
+    },
   );
 
   app.post(
@@ -3711,7 +3914,9 @@ export function registerAdminManagementRoutes(app: Express) {
         res.json({ success: true, created });
       } catch (error: any) {
         console.error("Error backfilling parking pass series:", error);
-        res.status(500).json({ message: "Failed to backfill parking pass series" });
+        res
+          .status(500)
+          .json({ message: "Failed to backfill parking pass series" });
       }
     },
   );
@@ -3730,7 +3935,8 @@ export function registerAdminManagementRoutes(app: Express) {
           const hostId = String(series?.hostId || "").trim();
           if (!hostId) continue;
 
-          const breakfast = Number(series?.defaultBreakfastPriceCents ?? 0) || 0;
+          const breakfast =
+            Number(series?.defaultBreakfastPriceCents ?? 0) || 0;
           const lunch = Number(series?.defaultLunchPriceCents ?? 0) || 0;
           const dinner = Number(series?.defaultDinnerPriceCents ?? 0) || 0;
           const daily = Number(series?.defaultDailyPriceCents ?? 0) || 0;
@@ -3783,7 +3989,9 @@ export function registerAdminManagementRoutes(app: Express) {
         });
       } catch (error: any) {
         console.error("Error syncing host parking pass defaults:", error);
-        res.status(500).json({ message: "Failed to sync host parking pass defaults" });
+        res
+          .status(500)
+          .json({ message: "Failed to sync host parking pass defaults" });
       }
     },
   );
@@ -3846,7 +4054,9 @@ export function registerAdminManagementRoutes(app: Express) {
               .update(eventSeries)
               .set({
                 status: nextStatus as any,
-                publishedAt: publicReady ? (series.publishedAt ?? new Date()) : null,
+                publishedAt: publicReady
+                  ? (series.publishedAt ?? new Date())
+                  : null,
                 updatedAt: new Date(),
               })
               .where(eq(eventSeries.id, series.id));
@@ -3857,7 +4067,9 @@ export function registerAdminManagementRoutes(app: Express) {
         res.json({ success: true, updated });
       } catch (error: any) {
         console.error("Error normalizing parking pass series:", error);
-        res.status(500).json({ message: "Failed to normalize parking pass series" });
+        res
+          .status(500)
+          .json({ message: "Failed to normalize parking pass series" });
       }
     },
   );
@@ -3892,7 +4104,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error updating user status:", error);
         res.status(500).json({ message: "Failed to update user status" });
       }
-    }
+    },
   );
 
   app.patch(
@@ -3924,7 +4136,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error updating user type:", error);
         res.status(500).json({ message: "Failed to update user type" });
       }
-    }
+    },
   );
 
   app.get(
@@ -3952,7 +4164,10 @@ export function registerAdminManagementRoutes(app: Express) {
                   row?.user?.affiliateCloserUserId,
                   row?.user?.affiliateBookerUserId,
                 ])
-                .filter((value: any) => typeof value === "string" && value.trim().length > 0),
+                .filter(
+                  (value: any) =>
+                    typeof value === "string" && value.trim().length > 0,
+                ),
             ),
           );
           const referrerById = new Map<string, any>();
@@ -3988,14 +4203,16 @@ export function registerAdminManagementRoutes(app: Express) {
                     affiliateTag: row.user.affiliateTag,
                     affiliateCloserUserId: row.user.affiliateCloserUserId,
                     affiliateBookerUserId: row.user.affiliateBookerUserId,
-                    referredByCloser:
-                      row.user.affiliateCloserUserId
-                        ? referrerById.get(String(row.user.affiliateCloserUserId)) ?? null
-                        : null,
-                    referredByBooker:
-                      row.user.affiliateBookerUserId
-                        ? referrerById.get(String(row.user.affiliateBookerUserId)) ?? null
-                        : null,
+                    referredByCloser: row.user.affiliateCloserUserId
+                      ? (referrerById.get(
+                          String(row.user.affiliateCloserUserId),
+                        ) ?? null)
+                      : null,
+                    referredByBooker: row.user.affiliateBookerUserId
+                      ? (referrerById.get(
+                          String(row.user.affiliateBookerUserId),
+                        ) ?? null)
+                      : null,
                   }
                 : null,
             })),
@@ -4052,7 +4269,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error deleting user:", error);
         res.status(500).json({ message: "Failed to delete user" });
       }
-    }
+    },
   );
 
   app.get(
@@ -4067,7 +4284,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error fetching user addresses:", error);
         res.status(500).json({ message: "Failed to fetch user addresses" });
       }
-    }
+    },
   );
 
   app.post(
@@ -4093,16 +4310,21 @@ export function registerAdminManagementRoutes(app: Express) {
         if (req.body?.isDefault) {
           await storage.setDefaultAddress(req.params.userId, address.id);
         }
-        await storage.syncHostFromUserAddress(req.params.userId, address, undefined, {
-          force: true,
-        });
+        await storage.syncHostFromUserAddress(
+          req.params.userId,
+          address,
+          undefined,
+          {
+            force: true,
+          },
+        );
 
         res.json(address);
       } catch (error: any) {
         console.error("Error creating user address:", error);
         res.status(500).json({ message: "Failed to create address" });
       }
-    }
+    },
   );
 
   app.patch(
@@ -4141,7 +4363,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error updating user address:", error);
         res.status(500).json({ message: "Failed to update address" });
       }
-    }
+    },
   );
 
   app.post(
@@ -4151,13 +4373,16 @@ export function registerAdminManagementRoutes(app: Express) {
     async (req: any, res) => {
       if (denyStaffEdits(req, res)) return;
       try {
-        await storage.setDefaultAddress(req.params.userId, req.params.addressId);
+        await storage.setDefaultAddress(
+          req.params.userId,
+          req.params.addressId,
+        );
         res.json({ message: "Default address updated" });
       } catch (error) {
         console.error("Error setting default address:", error);
         res.status(500).json({ message: "Failed to set default address" });
       }
-    }
+    },
   );
 
   app.delete(
@@ -4177,7 +4402,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error deleting user address:", error);
         res.status(500).json({ message: "Failed to delete address" });
       }
-    }
+    },
   );
 
   app.post(
@@ -4213,8 +4438,7 @@ export function registerAdminManagementRoutes(app: Express) {
         );
         if (hasDuplicate) {
           return res.status(409).json({
-            message:
-              "This user already has a host location for that address.",
+            message: "This user already has a host location for that address.",
           });
         }
 
@@ -4280,7 +4504,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error fetching user hosts:", error);
         res.status(500).json({ message: "Failed to fetch hosts" });
       }
-    }
+    },
   );
 
   app.get(
@@ -4297,7 +4521,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error fetching user restaurants:", error);
         res.status(500).json({ message: "Failed to fetch restaurants" });
       }
-    }
+    },
   );
 
   app.get(
@@ -4323,7 +4547,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error fetching user deals:", error);
         res.status(500).json({ message: "Failed to fetch deals" });
       }
-    }
+    },
   );
 
   app.get(
@@ -4347,7 +4571,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error fetching user events:", error);
         res.status(500).json({ message: "Failed to fetch events" });
       }
-    }
+    },
   );
 
   app.get(
@@ -4371,7 +4595,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error fetching event series:", error);
         res.status(500).json({ message: "Failed to fetch event series" });
       }
-    }
+    },
   );
 
   app.get(
@@ -4391,7 +4615,9 @@ export function registerAdminManagementRoutes(app: Express) {
           .select({ id: hosts.id })
           .from(hosts)
           .where(eq(hosts.userId, userId));
-        const hostIds = hostRows.map((row: (typeof hostRows)[number]) => row.id);
+        const hostIds = hostRows.map(
+          (row: (typeof hostRows)[number]) => row.id,
+        );
         const bookingsAsHost = hostIds.length
           ? await db
               .select()
@@ -4404,7 +4630,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error fetching parking pass bookings:", error);
         res.status(500).json({ message: "Failed to fetch bookings" });
       }
-    }
+    },
   );
 
   app.patch(
@@ -4495,12 +4721,18 @@ export function registerAdminManagementRoutes(app: Express) {
           return res.status(400).json({ message: "Invalid longitude" });
         }
 
-        const expectedFootTraffic = parseNullableInt(req.body?.expectedFootTraffic);
+        const expectedFootTraffic = parseNullableInt(
+          req.body?.expectedFootTraffic,
+        );
         if (expectedFootTraffic === "__invalid__") {
-          return res.status(400).json({ message: "Invalid expectedFootTraffic" });
+          return res
+            .status(400)
+            .json({ message: "Invalid expectedFootTraffic" });
         }
 
-        const parkingPassDaysOfWeek = parseDaysOfWeek(req.body?.parkingPassDaysOfWeek);
+        const parkingPassDaysOfWeek = parseDaysOfWeek(
+          req.body?.parkingPassDaysOfWeek,
+        );
         if (parkingPassDaysOfWeek === "__invalid__") {
           return res
             .status(400)
@@ -4602,7 +4834,9 @@ export function registerAdminManagementRoutes(app: Express) {
           const dinner = Number(derivedDinnerCents ?? 0) || 0;
           const daily = Number(derivedDailyCents ?? 0) || 0;
 
-          const filledSlots = [breakfast, lunch, dinner].filter((v) => v > 0).length;
+          const filledSlots = [breakfast, lunch, dinner].filter(
+            (v) => v > 0,
+          ).length;
           const slotSum = breakfast + lunch + dinner;
 
           if (dailyOnlySelected) {
@@ -4614,7 +4848,8 @@ export function registerAdminManagementRoutes(app: Express) {
             }
             if (daily <= 0) {
               return res.status(400).json({
-                message: "Daily price is required when Daily-only pricing is enabled.",
+                message:
+                  "Daily price is required when Daily-only pricing is enabled.",
               });
             }
             derivedDailyCents = daily;
@@ -4658,7 +4893,9 @@ export function registerAdminManagementRoutes(app: Express) {
           // Older deployments may not have `spot_image_url` yet.
           // If the column is missing, silently ignore this field so admins can still update
           // coordinates/pricing without a 500.
-          spotImageUrl: includeSpotImageUrl ? req.body?.spotImageUrl : undefined,
+          spotImageUrl: includeSpotImageUrl
+            ? req.body?.spotImageUrl
+            : undefined,
           locationType: req.body?.locationType,
           expectedFootTraffic,
           amenities: req.body?.amenities,
@@ -4669,11 +4906,15 @@ export function registerAdminManagementRoutes(app: Express) {
           parkingPassBreakfastPriceCents: wantsHostPricingFieldsUpdate
             ? derivedBreakfastCents
             : undefined,
-          parkingPassLunchPriceCents: wantsHostPricingFieldsUpdate ? derivedLunchCents : undefined,
+          parkingPassLunchPriceCents: wantsHostPricingFieldsUpdate
+            ? derivedLunchCents
+            : undefined,
           parkingPassDinnerPriceCents: wantsHostPricingFieldsUpdate
             ? derivedDinnerCents
             : undefined,
-          parkingPassDailyPriceCents: wantsHostPricingFieldsUpdate ? derivedDailyCents : undefined,
+          parkingPassDailyPriceCents: wantsHostPricingFieldsUpdate
+            ? derivedDailyCents
+            : undefined,
           parkingPassWeeklyPriceCents: wantsHostPricingFieldsUpdate
             ? derivedWeeklyCents
             : undefined,
@@ -4703,7 +4944,10 @@ export function registerAdminManagementRoutes(app: Express) {
             await storage.syncParkingPassSeriesFromHost(String(updated.id));
           }
         } catch (e) {
-          console.warn("admin host update: failed syncing parking pass series:", e);
+          console.warn(
+            "admin host update: failed syncing parking pass series:",
+            e,
+          );
         }
 
         res.json(updated);
@@ -4741,7 +4985,7 @@ export function registerAdminManagementRoutes(app: Express) {
           }${detail ? `: ${detail}` : ""}`,
         });
       }
-    }
+    },
   );
 
   app.delete(
@@ -4764,8 +5008,7 @@ export function registerAdminManagementRoutes(app: Express) {
 
         if (existingBookings.length > 0) {
           return res.status(409).json({
-            message:
-              "This location has bookings and cannot be deleted.",
+            message: "This location has bookings and cannot be deleted.",
           });
         }
 
@@ -4817,7 +5060,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error updating restaurant:", error);
         res.status(500).json({ message: "Failed to update restaurant" });
       }
-    }
+    },
   );
 
   app.get(
@@ -4834,7 +5077,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error fetching restaurant deals:", error);
         res.status(500).json({ message: "Failed to fetch deals" });
       }
-    }
+    },
   );
 
   app.patch(
@@ -4888,7 +5131,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error updating deal:", error);
         res.status(500).json({ message: "Failed to update deal" });
       }
-    }
+    },
   );
 
   app.patch(
@@ -4965,13 +5208,22 @@ export function registerAdminManagementRoutes(app: Express) {
         const finalStartTime = String(updates.startTime ?? event.startTime);
         const finalEndTime = String(updates.endTime ?? event.endTime);
         const invalidSlots: string[] = [];
-        if (breakfast > 0 && !isSlotWithinHours("breakfast", finalStartTime, finalEndTime)) {
+        if (
+          breakfast > 0 &&
+          !isSlotWithinHours("breakfast", finalStartTime, finalEndTime)
+        ) {
           invalidSlots.push("Breakfast");
         }
-        if (lunch > 0 && !isSlotWithinHours("lunch", finalStartTime, finalEndTime)) {
+        if (
+          lunch > 0 &&
+          !isSlotWithinHours("lunch", finalStartTime, finalEndTime)
+        ) {
           invalidSlots.push("Lunch");
         }
-        if (dinner > 0 && !isSlotWithinHours("dinner", finalStartTime, finalEndTime)) {
+        if (
+          dinner > 0 &&
+          !isSlotWithinHours("dinner", finalStartTime, finalEndTime)
+        ) {
           invalidSlots.push("Dinner");
         }
         if (invalidSlots.length > 0) {
@@ -4999,7 +5251,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error updating event:", error);
         res.status(500).json({ message: "Failed to update event" });
       }
-    }
+    },
   );
 
   app.patch(
@@ -5045,7 +5297,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error updating event series:", error);
         res.status(500).json({ message: "Failed to update event series" });
       }
-    }
+    },
   );
 
   app.patch(
@@ -5083,7 +5335,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error updating booking:", error);
         res.status(500).json({ message: "Failed to update booking" });
       }
-    }
+    },
   );
 
   app.get(
@@ -5098,7 +5350,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error fetching deals:", error);
         res.status(500).json({ message: "Failed to fetch deals" });
       }
-    }
+    },
   );
 
   app.get(
@@ -5125,7 +5377,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error fetching deal stats:", error);
         res.status(500).json({ message: "Failed to fetch deal statistics" });
       }
-    }
+    },
   );
 
   app.delete(
@@ -5140,7 +5392,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error deleting deal:", error);
         res.status(500).json({ message: "Failed to delete deal" });
       }
-    }
+    },
   );
 
   app.post(
@@ -5155,7 +5407,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error cloning deal:", error);
         res.status(500).json({ message: "Failed to clone deal" });
       }
-    }
+    },
   );
 
   app.patch(
@@ -5171,7 +5423,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error updating deal status:", error);
         res.status(500).json({ message: "Failed to update deal status" });
       }
-    }
+    },
   );
 
   app.patch(
@@ -5205,7 +5457,7 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error extending deal:", error);
         res.status(500).json({ message: "Failed to extend deal" });
       }
-    }
+    },
   );
 
   // Admin verification routes
@@ -5233,7 +5485,7 @@ export function registerAdminManagementRoutes(app: Express) {
           .status(500)
           .json({ message: "Failed to fetch verification requests" });
       }
-    }
+    },
   );
 
   app.post(
@@ -5254,7 +5506,10 @@ export function registerAdminManagementRoutes(app: Express) {
             ownerEmail: users.email,
           })
           .from(verificationRequests)
-          .innerJoin(restaurants, eq(verificationRequests.restaurantId, restaurants.id))
+          .innerJoin(
+            restaurants,
+            eq(verificationRequests.restaurantId, restaurants.id),
+          )
           .innerJoin(users, eq(restaurants.ownerId, users.id))
           .where(eq(verificationRequests.id, id))
           .limit(1);
@@ -5277,7 +5532,9 @@ export function registerAdminManagementRoutes(app: Express) {
               status: "claimed",
               updatedAt: new Date(),
             })
-            .where(eq(truckImportListings.id, claimContext.claimedFromImportId));
+            .where(
+              eq(truckImportListings.id, claimContext.claimedFromImportId),
+            );
 
           await db
             .update(truckClaimRequests)
@@ -5287,7 +5544,9 @@ export function registerAdminManagementRoutes(app: Express) {
               reviewedAt: new Date(),
               updatedAt: new Date(),
             })
-            .where(eq(truckClaimRequests.restaurantId, claimContext.restaurantId));
+            .where(
+              eq(truckClaimRequests.restaurantId, claimContext.restaurantId),
+            );
 
           await db
             .update(restaurants)
@@ -5326,7 +5585,7 @@ export function registerAdminManagementRoutes(app: Express) {
           .status(500)
           .json({ message: "Failed to approve verification request" });
       }
-    }
+    },
   );
 
   app.post(
@@ -5355,7 +5614,10 @@ export function registerAdminManagementRoutes(app: Express) {
             ownerEmail: users.email,
           })
           .from(verificationRequests)
-          .innerJoin(restaurants, eq(verificationRequests.restaurantId, restaurants.id))
+          .innerJoin(
+            restaurants,
+            eq(verificationRequests.restaurantId, restaurants.id),
+          )
           .innerJoin(users, eq(restaurants.ownerId, users.id))
           .where(eq(verificationRequests.id, id))
           .limit(1);
@@ -5367,7 +5629,9 @@ export function registerAdminManagementRoutes(app: Express) {
               status: "rejected",
               updatedAt: new Date(),
             })
-            .where(eq(truckImportListings.id, claimContext.claimedFromImportId));
+            .where(
+              eq(truckImportListings.id, claimContext.claimedFromImportId),
+            );
 
           await db
             .update(truckClaimRequests)
@@ -5378,7 +5642,9 @@ export function registerAdminManagementRoutes(app: Express) {
               rejectionReason: reason,
               updatedAt: new Date(),
             })
-            .where(eq(truckClaimRequests.restaurantId, claimContext.restaurantId));
+            .where(
+              eq(truckClaimRequests.restaurantId, claimContext.restaurantId),
+            );
 
           const notificationEmail = "notifications@mealscout.us";
           if (claimContext.ownerEmail) {
@@ -5411,7 +5677,7 @@ export function registerAdminManagementRoutes(app: Express) {
           .status(500)
           .json({ message: "Failed to reject verification request" });
       }
-    }
+    },
   );
 
   // OAuth configuration status check
@@ -5457,6 +5723,6 @@ export function registerAdminManagementRoutes(app: Express) {
         console.error("Error checking OAuth status:", error);
         res.status(500).json({ error: "Failed to check OAuth status" });
       }
-    }
+    },
   );
 }

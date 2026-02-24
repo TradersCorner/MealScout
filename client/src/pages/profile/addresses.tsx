@@ -11,7 +11,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MapPin, Plus, Home, Briefcase, MoreHorizontal, Trash2, Edit, Star, X } from "lucide-react";
+import {
+  MapPin,
+  Plus,
+  Home,
+  Briefcase,
+  MoreHorizontal,
+  Trash2,
+  Edit,
+  Star,
+  X,
+} from "lucide-react";
 import { BackHeader } from "@/components/back-header";
 import {
   DropdownMenu,
@@ -49,22 +59,22 @@ export default function AddressesPage() {
 
   // Fetch user addresses
   const { data: addresses = [], isLoading } = useQuery<UserAddress[]>({
-    queryKey: ['/api/user/addresses'],
+    queryKey: ["/api/user/addresses"],
     enabled: isAuthenticated,
   });
 
   // Delete address mutation
   const deleteAddressMutation = useMutation({
-    mutationFn: (addressId: string) => 
-      apiRequest(`/api/user/addresses/${addressId}`, 'DELETE'),
+    mutationFn: (addressId: string) =>
+      apiRequest(`/api/user/addresses/${addressId}`, "DELETE"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/user/addresses'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/addresses"] });
       toast({ title: "Address deleted successfully" });
     },
     onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Unauthorized", 
+          title: "Unauthorized",
           description: "You are logged out. Logging in again...",
           variant: "destructive",
         });
@@ -79,10 +89,10 @@ export default function AddressesPage() {
 
   // Set default address mutation
   const setDefaultMutation = useMutation({
-    mutationFn: (addressId: string) => 
-      apiRequest(`/api/user/addresses/${addressId}/set-default`, 'POST'),
+    mutationFn: (addressId: string) =>
+      apiRequest(`/api/user/addresses/${addressId}/set-default`, "POST"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/user/addresses'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/addresses"] });
       toast({ title: "Default address updated" });
     },
     onError: (error: any) => {
@@ -97,16 +107,19 @@ export default function AddressesPage() {
         }, 500);
         return;
       }
-      toast({ title: "Failed to update default address", variant: "destructive" });
+      toast({
+        title: "Failed to update default address",
+        variant: "destructive",
+      });
     },
   });
 
   // Create address mutation
   const createAddressMutation = useMutation({
-    mutationFn: (addressData: AddAddressFormData) => 
-      apiRequest('/api/user/addresses', 'POST', addressData),
+    mutationFn: (addressData: AddAddressFormData) =>
+      apiRequest("/api/user/addresses", "POST", addressData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/user/addresses'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/addresses"] });
       toast({ title: "Address added successfully" });
       setShowAddForm(false);
       form.reset();
@@ -141,7 +154,7 @@ export default function AddressesPage() {
   });
 
   const handleDeleteAddress = (addressId: string) => {
-    if (confirm('Are you sure you want to delete this address?')) {
+    if (confirm("Are you sure you want to delete this address?")) {
       deleteAddressMutation.mutate(addressId);
     }
   };
@@ -160,7 +173,9 @@ export default function AddressesPage() {
         <div className="text-center py-12">
           <MapPin className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Sign in required</h2>
-          <p className="text-muted-foreground">Log in to manage your addresses</p>
+          <p className="text-muted-foreground">
+            Log in to manage your addresses
+          </p>
         </div>
         <Navigation />
       </div>
@@ -169,9 +184,9 @@ export default function AddressesPage() {
 
   const getIcon = (type: string) => {
     switch (type) {
-      case 'home':
+      case "home":
         return <Home className="w-5 h-5" />;
-      case 'work':
+      case "work":
         return <Briefcase className="w-5 h-5" />;
       default:
         return <MapPin className="w-5 h-5" />;
@@ -195,7 +210,7 @@ export default function AddressesPage() {
       />
 
       {/* Content */}
-      <div className="px-6 py-6 space-y-4">
+      <div className="px-4 sm:px-6 py-6 space-y-4">
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2].map((i) => (
@@ -220,18 +235,22 @@ export default function AddressesPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-3">
                     <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center mt-1">
-                      {getIcon(address.type || 'other')}
+                      {getIcon(address.type || "other")}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-1">
-                        <h3 className="font-semibold text-foreground">{address.label}</h3>
+                        <h3 className="font-semibold text-foreground">
+                          {address.label}
+                        </h3>
                         {address.isDefault && (
                           <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full font-medium">
                             Default
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-foreground">{address.address}</p>
+                      <p className="text-sm text-foreground">
+                        {address.address}
+                      </p>
                       <p className="text-sm text-muted-foreground">
                         {address.city}, {address.state} {address.postalCode}
                       </p>
@@ -239,13 +258,17 @@ export default function AddressesPage() {
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" data-testid={`button-address-menu-${address.id}`}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        data-testid={`button-address-menu-${address.id}`}
+                      >
                         <MoreHorizontal className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       {!address.isDefault && (
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           onClick={() => handleSetDefault(address.id)}
                           data-testid={`button-set-default-${address.id}`}
                         >
@@ -253,7 +276,7 @@ export default function AddressesPage() {
                           Set as Default
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         onClick={() => handleDeleteAddress(address.id)}
                         className="text-destructive"
                         data-testid={`button-delete-${address.id}`}
@@ -274,20 +297,25 @@ export default function AddressesPage() {
           <Card className="border-0 shadow-clean-lg">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-foreground">Add New Address</h3>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <h3 className="font-semibold text-foreground">
+                  Add New Address
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setShowAddForm(false)}
                   data-testid="button-close-form"
                 >
                   <X className="w-4 h-4" />
                 </Button>
               </div>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 <div>
                   <Label htmlFor="label">Label</Label>
-                  <Input 
+                  <Input
                     id="label"
                     {...form.register("label")}
                     placeholder="e.g., Home, Work"
@@ -301,8 +329,8 @@ export default function AddressesPage() {
                 </div>
                 <div>
                   <Label htmlFor="type">Type</Label>
-                  <Select 
-                    value={form.watch("type")} 
+                  <Select
+                    value={form.watch("type")}
                     onValueChange={(value) => form.setValue("type", value)}
                   >
                     <SelectTrigger data-testid="select-address-type">
@@ -317,7 +345,7 @@ export default function AddressesPage() {
                 </div>
                 <div>
                   <Label htmlFor="address">Street Address</Label>
-                  <Input 
+                  <Input
                     id="address"
                     {...form.register("address")}
                     placeholder="123 Main Street"
@@ -332,7 +360,7 @@ export default function AddressesPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="city">City</Label>
-                    <Input 
+                    <Input
                       id="city"
                       {...form.register("city")}
                       placeholder="Houma"
@@ -346,7 +374,7 @@ export default function AddressesPage() {
                   </div>
                   <div>
                     <Label htmlFor="state">State</Label>
-                    <Input 
+                    <Input
                       id="state"
                       {...form.register("state")}
                       placeholder="LA"
@@ -361,7 +389,7 @@ export default function AddressesPage() {
                 </div>
                 <div>
                   <Label htmlFor="postalCode">Postal Code</Label>
-                  <Input 
+                  <Input
                     id="postalCode"
                     {...form.register("postalCode")}
                     placeholder="70360"
@@ -386,15 +414,17 @@ export default function AddressesPage() {
                   </Label>
                 </div>
                 <div className="flex space-x-2 pt-2">
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={createAddressMutation.isPending}
                     data-testid="button-save-address"
                   >
-                    {createAddressMutation.isPending ? "Saving..." : "Save Address"}
+                    {createAddressMutation.isPending
+                      ? "Saving..."
+                      : "Save Address"}
                   </Button>
-                  <Button 
-                    type="button" 
+                  <Button
+                    type="button"
                     variant="outline"
                     onClick={() => setShowAddForm(false)}
                     data-testid="button-cancel-address"
@@ -412,12 +442,14 @@ export default function AddressesPage() {
               <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-3">
                 <Plus className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="font-semibold text-foreground mb-2">Add New Address</h3>
+              <h3 className="font-semibold text-foreground mb-2">
+                Add New Address
+              </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 Save addresses for faster deal discovery
               </p>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setShowAddForm(true)}
                 data-testid="button-add-new-address"
               >
@@ -432,6 +464,3 @@ export default function AddressesPage() {
     </div>
   );
 }
-
-
-

@@ -157,7 +157,7 @@ export default function VideoDetailPage() {
       </div>
 
       {/* Video Info */}
-      <div className="px-6 py-6 space-y-6">
+      <div className="px-4 sm:px-6 py-6 space-y-6">
         {/* Title and Description */}
         <div>
           <h1 className="text-2xl font-bold text-foreground mb-2">
@@ -261,6 +261,3 @@ export default function VideoDetailPage() {
     </div>
   );
 }
-
-
-

@@ -85,14 +85,14 @@ export default function ProfilePage() {
   if (!isAuthenticated || !user) {
     return (
       <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto bg-[var(--bg-layered)] min-h-screen relative pb-20">
-      <header className="px-6 py-6 bg-[hsl(var(--background))] border-b border-white/5">
+        <header className="px-4 sm:px-6 py-6 bg-[hsl(var(--background))] border-b border-white/5">
           <h1 className="text-2xl font-bold text-foreground flex items-center">
             <User className="w-6 h-6 text-[color:var(--accent-text)] mr-3" />
             Profile
           </h1>
         </header>
 
-        <div className="px-6 py-12 text-center">
+        <div className="px-4 sm:px-6 py-12 text-center">
           <User className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-foreground mb-2">
             Sign in to view profile
@@ -208,7 +208,7 @@ export default function ProfilePage() {
         noIndex={true}
       />
       {/* Header */}
-      <header className="px-6 py-6 bg-[linear-gradient(110deg,rgba(255,77,46,0.10),rgba(245,158,11,0.08))] border-b border-[color:var(--border-subtle)] shadow-clean">
+      <header className="px-4 sm:px-6 py-6 bg-[linear-gradient(110deg,rgba(255,77,46,0.10),rgba(245,158,11,0.08))] border-b border-[color:var(--border-subtle)] shadow-clean">
         <h1 className="text-2xl font-bold text-foreground flex items-center mb-6">
           <User className="w-6 h-6 text-[color:var(--accent-text)] mr-3" />
           Profile
@@ -256,8 +256,8 @@ export default function ProfilePage() {
                     {user?.userType === "restaurant_owner"
                       ? "Restaurant Owner"
                       : user?.userType === "admin"
-                      ? "Admin"
-                      : "Food Explorer"}
+                        ? "Admin"
+                        : "Food Explorer"}
                   </span>
                 </div>
               </div>
@@ -267,7 +267,7 @@ export default function ProfilePage() {
       </header>
 
       {/* Stats Section - Removed mock data */}
-      <div className="px-6 py-6">
+      <div className="px-4 sm:px-6 py-6">
         <Card className="border border-[color:var(--border-subtle)]">
           <CardContent className="p-6">
             <div className="space-y-3 text-sm text-[color:var(--text-secondary)]">
@@ -330,9 +330,7 @@ export default function ProfilePage() {
                   </Button>
                 </div>
               </div>
-              {tagError && (
-                <p className="text-xs text-error">{tagError}</p>
-              )}
+              {tagError && <p className="text-xs text-error">{tagError}</p>}
             </CardContent>
           </Card>
         </div>
@@ -447,7 +445,9 @@ export default function ProfilePage() {
             >
               <div className="flex items-center space-x-3">
                 <LogOut className="w-5 h-5 text-[color:var(--status-error)]" />
-                <span className="font-medium text-[color:var(--status-error)]">Sign Out</span>
+                <span className="font-medium text-[color:var(--status-error)]">
+                  Sign Out
+                </span>
               </div>
               <ChevronRight className="w-4 h-4 text-[color:var(--status-error)]" />
             </button>
@@ -459,9 +459,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-
-
-
-
-

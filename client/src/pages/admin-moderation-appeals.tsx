@@ -1,38 +1,44 @@
 /**
  * Appeal Intake v1 - Read-Only Appeals Registry
- * 
+ *
  * CRITICAL GUARDRAIL:
  * Appeals do not alter moderation outcomes.
  * This is a compliance and transparency surface only.
- * 
+ *
  * NO FSM (static list + detail drawer).
  * NO mutations (read-only queries only).
  * NO messaging or aggregation.
- * 
+ *
  * All copy sourced from APPEAL_INTAKE_COPY.
  */
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { APPEAL_INTAKE_COPY as COPY } from '@/copy/appealIntake.copy';
-import { apiRequest } from '@/lib/queryClient';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { APPEAL_INTAKE_COPY as COPY } from "@/copy/appealIntake.copy";
+import { apiRequest } from "@/lib/queryClient";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from '@/components/ui/sheet';
+} from "@/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -40,8 +46,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { AlertCircle, FileText } from 'lucide-react';
+} from "@/components/ui/table";
+import { AlertCircle, FileText } from "lucide-react";
 
 // ============================================================================
 // Domain Types (Read-Only Appeals)
@@ -50,12 +56,12 @@ import { AlertCircle, FileText } from 'lucide-react';
 interface AppealRecord {
   id: string;
   submittedAt: Date;
-  status: 'received' | 'reviewed';
+  status: "received" | "reviewed";
   appealingPartyId: string; // Redacted ID
   referencedDecision: {
     decisionId: string;
     date: Date;
-    action: 'hide' | 'restore' | 'remove';
+    action: "hide" | "restore" | "remove";
     reason: string | null;
   };
   evidenceLinks: string[];
@@ -78,8 +84,8 @@ function AppealsHeader() {
 }
 
 interface StatusFilterProps {
-  value: 'all' | 'received' | 'reviewed';
-  onChange: (value: 'all' | 'received' | 'reviewed') => void;
+  value: "all" | "received" | "reviewed";
+  onChange: (value: "all" | "received" | "reviewed") => void;
 }
 
 function StatusFilter({ value, onChange }: StatusFilterProps) {
@@ -92,8 +98,12 @@ function StatusFilter({ value, onChange }: StatusFilterProps) {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">{COPY.filters.status.all}</SelectItem>
-          <SelectItem value="received">{COPY.filters.status.received}</SelectItem>
-          <SelectItem value="reviewed">{COPY.filters.status.reviewed}</SelectItem>
+          <SelectItem value="received">
+            {COPY.filters.status.received}
+          </SelectItem>
+          <SelectItem value="reviewed">
+            {COPY.filters.status.reviewed}
+          </SelectItem>
         </SelectContent>
       </Select>
     </div>
@@ -108,15 +118,17 @@ interface AppealDetailDrawerProps {
 function AppealDetailDrawer({ appeal, onClose }: AppealDetailDrawerProps) {
   if (!appeal) return null;
 
-  const statusColor = appeal.status === 'received' 
-    ? 'bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]' 
-    : 'bg-[color:var(--border-subtle)]/50 text-[color:var(--text-secondary)]';
+  const statusColor =
+    appeal.status === "received"
+      ? "bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]"
+      : "bg-[color:var(--border-subtle)]/50 text-[color:var(--text-secondary)]";
 
-  const actionLabel = appeal.referencedDecision.action === 'hide'
-    ? COPY.actions.hide
-    : appeal.referencedDecision.action === 'restore'
-    ? COPY.actions.restore
-    : COPY.actions.remove;
+  const actionLabel =
+    appeal.referencedDecision.action === "hide"
+      ? COPY.actions.hide
+      : appeal.referencedDecision.action === "restore"
+        ? COPY.actions.restore
+        : COPY.actions.remove;
 
   return (
     <Sheet open={!!appeal} onOpenChange={(open) => !open && onClose()}>
@@ -134,22 +146,36 @@ function AppealDetailDrawer({ appeal, onClose }: AppealDetailDrawerProps) {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-[color:var(--text-secondary)]">{COPY.detail.appeal.id}:</span>
+                <span className="text-sm font-medium text-[color:var(--text-secondary)]">
+                  {COPY.detail.appeal.id}:
+                </span>
                 <span className="text-sm font-mono">{appeal.id}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-[color:var(--text-secondary)]">{COPY.detail.appeal.submittedAt}:</span>
-                <span className="text-sm">{appeal.submittedAt.toLocaleString()}</span>
+                <span className="text-sm font-medium text-[color:var(--text-secondary)]">
+                  {COPY.detail.appeal.submittedAt}:
+                </span>
+                <span className="text-sm">
+                  {appeal.submittedAt.toLocaleString()}
+                </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-[color:var(--text-secondary)]">{COPY.detail.appeal.status}:</span>
+                <span className="text-sm font-medium text-[color:var(--text-secondary)]">
+                  {COPY.detail.appeal.status}:
+                </span>
                 <Badge className={statusColor}>
-                  {appeal.status === 'received' ? COPY.status.received : COPY.status.reviewed}
+                  {appeal.status === "received"
+                    ? COPY.status.received
+                    : COPY.status.reviewed}
                 </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-[color:var(--text-secondary)]">{COPY.detail.appeal.party}:</span>
-                <span className="text-sm font-mono">{appeal.appealingPartyId}</span>
+                <span className="text-sm font-medium text-[color:var(--text-secondary)]">
+                  {COPY.detail.appeal.party}:
+                </span>
+                <span className="text-sm font-mono">
+                  {appeal.appealingPartyId}
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -157,25 +183,40 @@ function AppealDetailDrawer({ appeal, onClose }: AppealDetailDrawerProps) {
           {/* Referenced Decision */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">{COPY.detail.decision.title}</CardTitle>
+              <CardTitle className="text-base">
+                {COPY.detail.decision.title}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-[color:var(--text-secondary)]">{COPY.detail.decision.decisionId}:</span>
-                <span className="text-sm font-mono">{appeal.referencedDecision.decisionId}</span>
+                <span className="text-sm font-medium text-[color:var(--text-secondary)]">
+                  {COPY.detail.decision.decisionId}:
+                </span>
+                <span className="text-sm font-mono">
+                  {appeal.referencedDecision.decisionId}
+                </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-[color:var(--text-secondary)]">{COPY.detail.decision.date}:</span>
-                <span className="text-sm">{appeal.referencedDecision.date.toLocaleDateString()}</span>
+                <span className="text-sm font-medium text-[color:var(--text-secondary)]">
+                  {COPY.detail.decision.date}:
+                </span>
+                <span className="text-sm">
+                  {appeal.referencedDecision.date.toLocaleDateString()}
+                </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-[color:var(--text-secondary)]">{COPY.detail.decision.action}:</span>
+                <span className="text-sm font-medium text-[color:var(--text-secondary)]">
+                  {COPY.detail.decision.action}:
+                </span>
                 <span className="text-sm font-semibold">{actionLabel}</span>
               </div>
               <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-[color:var(--text-secondary)]">{COPY.detail.decision.reason}:</span>
+                <span className="text-sm font-medium text-[color:var(--text-secondary)]">
+                  {COPY.detail.decision.reason}:
+                </span>
                 <p className="text-sm text-[color:var(--text-secondary)] bg-[var(--bg-surface-muted)] p-3 rounded">
-                  {appeal.referencedDecision.reason || COPY.detail.decision.noReason}
+                  {appeal.referencedDecision.reason ||
+                    COPY.detail.decision.noReason}
                 </p>
               </div>
             </CardContent>
@@ -184,11 +225,15 @@ function AppealDetailDrawer({ appeal, onClose }: AppealDetailDrawerProps) {
           {/* Attached Evidence */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">{COPY.detail.evidence.title}</CardTitle>
+              <CardTitle className="text-base">
+                {COPY.detail.evidence.title}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {appeal.evidenceLinks.length === 0 ? (
-                <p className="text-sm text-muted-foreground italic">{COPY.detail.evidence.noEvidence}</p>
+                <p className="text-sm text-muted-foreground italic">
+                  {COPY.detail.evidence.noEvidence}
+                </p>
               ) : (
                 <ul className="space-y-2">
                   {appeal.evidenceLinks.map((link, idx) => (
@@ -228,48 +273,60 @@ function AppealsList({ appeals, onViewDetails }: AppealsListProps) {
   return (
     <Card>
       <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{COPY.list.appealId}</TableHead>
-              <TableHead>{COPY.list.submittedAt}</TableHead>
-              <TableHead>{COPY.list.status}</TableHead>
-              <TableHead>{COPY.list.decisionDate}</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {appeals.map((appeal) => {
-              const statusColor = appeal.status === 'received'
-                ? 'bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]'
-                : 'bg-[color:var(--border-subtle)]/50 text-[color:var(--text-secondary)]';
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{COPY.list.appealId}</TableHead>
+                <TableHead>{COPY.list.submittedAt}</TableHead>
+                <TableHead>{COPY.list.status}</TableHead>
+                <TableHead>{COPY.list.decisionDate}</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {appeals.map((appeal) => {
+                const statusColor =
+                  appeal.status === "received"
+                    ? "bg-[color:var(--accent-text)]/12 text-[color:var(--accent-text)]"
+                    : "bg-[color:var(--border-subtle)]/50 text-[color:var(--text-secondary)]";
 
-              return (
-                <TableRow key={appeal.id} className="hover:bg-[var(--bg-surface-muted)]">
-                  <TableCell className="font-mono text-xs">{appeal.id.slice(0, 8)}...</TableCell>
-                  <TableCell className="text-sm">{appeal.submittedAt.toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <Badge className={statusColor}>
-                      {appeal.status === 'received' ? COPY.status.received : COPY.status.reviewed}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {appeal.referencedDecision.date.toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onViewDetails(appeal)}
-                    >
-                      {COPY.list.viewDetails}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                return (
+                  <TableRow
+                    key={appeal.id}
+                    className="hover:bg-[var(--bg-surface-muted)]"
+                  >
+                    <TableCell className="font-mono text-xs">
+                      {appeal.id.slice(0, 8)}...
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {appeal.submittedAt.toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={statusColor}>
+                        {appeal.status === "received"
+                          ? COPY.status.received
+                          : COPY.status.reviewed}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {appeal.referencedDecision.date.toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onViewDetails(appeal)}
+                      >
+                        {COPY.list.viewDetails}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   );
@@ -304,15 +361,24 @@ function AppealsError({ onRetry }: { onRetry: () => void }) {
 // ============================================================================
 
 export default function AdminModerationAppealsPage() {
-  const [statusFilter, setStatusFilter] = useState<'all' | 'received' | 'reviewed'>('all');
-  const [selectedAppeal, setSelectedAppeal] = useState<AppealRecord | null>(null);
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "received" | "reviewed"
+  >("all");
+  const [selectedAppeal, setSelectedAppeal] = useState<AppealRecord | null>(
+    null,
+  );
 
   // Fetch appeals (read-only, no mutations)
-  const { data: appeals, isLoading, isError, refetch } = useQuery<AppealRecord[]>({
-    queryKey: ['/api/admin/moderation-appeals', statusFilter],
+  const {
+    data: appeals,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery<AppealRecord[]>({
+    queryKey: ["/api/admin/moderation-appeals", statusFilter],
     queryFn: async () => {
       const response = await apiRequest(
-        'GET',
+        "GET",
         `/api/admin/moderation-appeals?status=${statusFilter}`,
       );
       const payload = await response.json();
@@ -320,22 +386,24 @@ export default function AdminModerationAppealsPage() {
         return [];
       }
       return payload.map((appeal: any) => ({
-        id: String(appeal.id || ''),
-        submittedAt: appeal.submittedAt ? new Date(appeal.submittedAt) : new Date(),
-        status: appeal.status === 'reviewed' ? 'reviewed' : 'received',
-        appealingPartyId: String(appeal.appealingPartyId || ''),
+        id: String(appeal.id || ""),
+        submittedAt: appeal.submittedAt
+          ? new Date(appeal.submittedAt)
+          : new Date(),
+        status: appeal.status === "reviewed" ? "reviewed" : "received",
+        appealingPartyId: String(appeal.appealingPartyId || ""),
         referencedDecision: {
-          decisionId: String(appeal.referencedDecision?.decisionId || ''),
+          decisionId: String(appeal.referencedDecision?.decisionId || ""),
           date: appeal.referencedDecision?.date
             ? new Date(appeal.referencedDecision.date)
             : appeal.submittedAt
               ? new Date(appeal.submittedAt)
               : new Date(),
-          action: ['hide', 'restore', 'remove'].includes(
+          action: ["hide", "restore", "remove"].includes(
             appeal.referencedDecision?.action,
           )
             ? appeal.referencedDecision.action
-            : 'hide',
+            : "hide",
           reason: appeal.referencedDecision?.reason || null,
         },
         evidenceLinks: Array.isArray(appeal.evidenceLinks)
@@ -360,7 +428,9 @@ export default function AdminModerationAppealsPage() {
       {isLoading && (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin w-8 h-8 border-4 border-[color:var(--accent-text)] border-t-transparent rounded-full" />
-          <span className="ml-3 text-muted-foreground">{COPY.page.loading}</span>
+          <span className="ml-3 text-muted-foreground">
+            {COPY.page.loading}
+          </span>
         </div>
       )}
 
@@ -386,7 +456,3 @@ export default function AdminModerationAppealsPage() {
     </div>
   );
 }
-
-
-
-

@@ -6,7 +6,11 @@ import DealCard from "@/components/deal-card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Star, SlidersHorizontal, Filter } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
-import { sendGeoPing, trackGeoAdEvent, trackGeoAdImpression } from "@/utils/geoAds";
+import {
+  sendGeoPing,
+  trackGeoAdEvent,
+  trackGeoAdImpression,
+} from "@/utils/geoAds";
 
 interface GeoAd {
   id: string;
@@ -18,9 +22,10 @@ interface GeoAd {
 }
 
 export default function FeaturedDealsPage() {
-  const [adLocation, setAdLocation] = useState<{ lat: number; lng: number } | null>(
-    null
-  );
+  const [adLocation, setAdLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -34,7 +39,7 @@ export default function FeaturedDealsPage() {
       () => {
         setAdLocation(null);
       },
-      { enableHighAccuracy: false, timeout: 6000 }
+      { enableHighAccuracy: false, timeout: 6000 },
     );
   }, []);
 
@@ -50,7 +55,7 @@ export default function FeaturedDealsPage() {
       if (!adLocation) return [];
       const res = await fetch(
         `/api/geo-ads?placement=deals&lat=${adLocation.lat}&lng=${adLocation.lng}&limit=1`,
-        { credentials: "include" }
+        { credentials: "include" },
       );
       if (!res.ok) return [];
       return res.json();
@@ -65,7 +70,7 @@ export default function FeaturedDealsPage() {
   useEffect(() => {
     if (!geoAds.length) return;
     geoAds.forEach((ad) =>
-      trackGeoAdImpression({ adId: ad.id, placement: "deals" })
+      trackGeoAdImpression({ adId: ad.id, placement: "deals" }),
     );
   }, [geoAds]);
 
@@ -85,10 +90,15 @@ export default function FeaturedDealsPage() {
         canonicalUrl="https://www.mealscout.us/deals/featured"
       />
       {/* Header */}
-      <header className="px-6 py-6 bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean">
+      <header className="px-4 sm:px-6 py-6 bg-[hsl(var(--background))/0.94] border-b border-[color:var(--border-subtle)] shadow-clean">
         <div className="flex items-center mb-6">
           <Link href="/">
-            <Button variant="ghost" size="sm" className="mr-3 -ml-2" data-testid="button-back-featured">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mr-3 -ml-2"
+              data-testid="button-back-featured"
+            >
               <ArrowLeft className="w-4 h-4" />
             </Button>
           </Link>
@@ -97,8 +107,12 @@ export default function FeaturedDealsPage() {
               <Star className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">Time-Sensitive Specials Nearby</h1>
-              <p className="text-sm text-muted-foreground">Limited-time offers from nearby restaurants (distance-based)</p>
+              <h1 className="text-xl font-bold text-foreground">
+                Time-Sensitive Specials Nearby
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Limited-time offers from nearby restaurants (distance-based)
+              </p>
             </div>
           </div>
         </div>
@@ -106,14 +120,23 @@ export default function FeaturedDealsPage() {
         {/* Filter & Sort */}
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            {allDeals.length} time-sensitive special{allDeals.length !== 1 ? 's' : ''}
+            {allDeals.length} time-sensitive special
+            {allDeals.length !== 1 ? "s" : ""}
           </div>
           <div className="flex space-x-2">
-            <Button variant="outline" size="sm" data-testid="button-sort-featured">
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="button-sort-featured"
+            >
               <SlidersHorizontal className="w-4 h-4 mr-2" />
               Sort
             </Button>
-            <Button variant="outline" size="sm" data-testid="button-filter-featured">
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="button-filter-featured"
+            >
               <Filter className="w-4 h-4 mr-2" />
               Filter
             </Button>
@@ -163,7 +186,10 @@ export default function FeaturedDealsPage() {
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-[var(--bg-card)] rounded-2xl overflow-hidden animate-pulse shadow-clean border border-[color:var(--border-subtle)]">
+              <div
+                key={i}
+                className="bg-[var(--bg-card)] rounded-2xl overflow-hidden animate-pulse shadow-clean border border-[color:var(--border-subtle)]"
+              >
                 <div className="w-full h-48 bg-muted"></div>
                 <div className="p-6 space-y-3">
                   <div className="h-6 bg-muted rounded-lg w-3/4"></div>
@@ -183,9 +209,12 @@ export default function FeaturedDealsPage() {
             <div className="w-20 h-20 bg-[color:var(--accent-text)]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Star className="w-8 h-8 text-[color:var(--accent-text)]" />
             </div>
-            <h3 className="font-bold text-lg text-foreground mb-2">No time-sensitive specials yet</h3>
+            <h3 className="font-bold text-lg text-foreground mb-2">
+              No time-sensitive specials yet
+            </h3>
             <p className="text-muted-foreground mb-6">
-              Check back soon for nearby limited-time offers from local restaurants!
+              Check back soon for nearby limited-time offers from local
+              restaurants!
             </p>
             <Link href="/search">
               <Button data-testid="button-browse-all-featured">
@@ -194,7 +223,10 @@ export default function FeaturedDealsPage() {
             </Link>
             <div className="mt-2">
               <Link href="/map">
-                <Button variant="outline" data-testid="button-open-map-featured">
+                <Button
+                  variant="outline"
+                  data-testid="button-open-map-featured"
+                >
                   Open Map
                 </Button>
               </Link>
@@ -207,6 +239,3 @@ export default function FeaturedDealsPage() {
     </div>
   );
 }
-
-
-

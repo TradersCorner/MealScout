@@ -12,10 +12,11 @@ export default function FavoritesPage() {
   const { user, authState, isAuthenticated } = useAuth();
 
   // Fetch user's restaurant favorites
-  const { data: restaurantFavorites = [], isLoading: loadingFavorites } = useQuery<any[]>({
-    queryKey: ["/api/favorites/restaurants"],
-    enabled: isAuthenticated,
-  });
+  const { data: restaurantFavorites = [], isLoading: loadingFavorites } =
+    useQuery<any[]>({
+      queryKey: ["/api/favorites/restaurants"],
+      enabled: isAuthenticated,
+    });
 
   if (authState === "loading") {
     return (
@@ -42,7 +43,8 @@ export default function FavoritesPage() {
           Save specials you care about
         </h1>
         <p className="text-muted-foreground mb-6">
-          Sign in to bookmark restaurants and specials and come back to them anytime. No ordering required - just keep track of what looks good.
+          Sign in to bookmark restaurants and specials and come back to them
+          anytime. No ordering required - just keep track of what looks good.
         </p>
         <div className="flex flex-col gap-3 w-full max-w-sm">
           <Link href="/login">
@@ -78,13 +80,16 @@ export default function FavoritesPage() {
       />
 
       {/* Content */}
-      <div className="px-6 py-6">
+      <div className="px-4 sm:px-6 py-6">
         {/* Restaurant Favorites Section */}
         {loadingFavorites ? (
           <div className="space-y-4 mb-8">
             <div className="h-6 bg-muted rounded w-48 animate-pulse"></div>
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="animate-pulse bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean">
+              <Card
+                key={i}
+                className="animate-pulse bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean"
+              >
                 <CardContent className="p-4">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-muted rounded-full"></div>
@@ -104,7 +109,10 @@ export default function FavoritesPage() {
             </h2>
             <div className="space-y-3">
               {restaurantFavorites.map((favorite: any) => (
-                <Card key={favorite.id} className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean hover:shadow-clean-lg transition-shadow">
+                <Card
+                  key={favorite.id}
+                  className="bg-[var(--bg-card)] border-[color:var(--border-subtle)] shadow-clean hover:shadow-clean-lg transition-shadow"
+                >
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4 flex-1">
@@ -112,7 +120,9 @@ export default function FavoritesPage() {
                           <Heart className="w-6 h-6 text-[color:var(--accent-text)]" />
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-semibold text-foreground">{favorite.restaurant.name}</h3>
+                          <h3 className="font-semibold text-foreground">
+                            {favorite.restaurant.name}
+                          </h3>
                           <div className="flex items-center gap-3 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <MapPin className="h-3 w-3" />
@@ -128,7 +138,11 @@ export default function FavoritesPage() {
                         </div>
                       </div>
                       <Link href={`/restaurant/${favorite.restaurant.id}`}>
-                        <Button variant="outline" size="sm" data-testid={`button-view-restaurant-${favorite.restaurant.id}`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          data-testid={`button-view-restaurant-${favorite.restaurant.id}`}
+                        >
                           View
                         </Button>
                       </Link>
@@ -143,9 +157,12 @@ export default function FavoritesPage() {
             <div className="w-16 h-16 bg-[color:var(--accent-text)]/12 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Heart className="w-8 h-8 text-[color:var(--accent-text)]" />
             </div>
-            <h3 className="font-semibold text-lg text-foreground mb-2">No favorite restaurants yet</h3>
+            <h3 className="font-semibold text-lg text-foreground mb-2">
+              No favorite restaurants yet
+            </h3>
             <p className="text-muted-foreground mb-4">
-              Start saving restaurants by tapping the heart icon on restaurant pages
+              Start saving restaurants by tapping the heart icon on restaurant
+              pages
             </p>
             <Link href="/search">
               <Button data-testid="button-browse-restaurants">
@@ -162,14 +179,14 @@ export default function FavoritesPage() {
             <div className="w-20 h-20 bg-[color:var(--status-error)]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Heart className="w-8 h-8 text-[color:var(--status-error)]" />
             </div>
-            <h3 className="font-bold text-lg text-foreground mb-2">Sign in to see favorites</h3>
+            <h3 className="font-bold text-lg text-foreground mb-2">
+              Sign in to see favorites
+            </h3>
             <p className="text-muted-foreground mb-6">
               Create an account to save your favorite restaurants and specials
             </p>
             <Link href="/login">
-              <Button data-testid="button-sign-in">
-                Sign In
-              </Button>
+              <Button data-testid="button-sign-in">Sign In</Button>
             </Link>
           </div>
         )}
@@ -181,7 +198,8 @@ export default function FavoritesPage() {
             Pro Tip
           </h3>
           <p className="text-sm text-muted-foreground">
-            Save specials to get notified when they're about to expire or when similar specials become available!
+            Save specials to get notified when they're about to expire or when
+            similar specials become available!
           </p>
         </div>
       </div>
@@ -190,7 +208,3 @@ export default function FavoritesPage() {
     </div>
   );
 }
-
-
-
-

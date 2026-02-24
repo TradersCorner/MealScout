@@ -28,7 +28,13 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Calculator, SlidersHorizontal, Upload, Zap } from "lucide-react";
+import {
+  Building2,
+  Calculator,
+  SlidersHorizontal,
+  Upload,
+  Zap,
+} from "lucide-react";
 import { ShoppingListsDialog } from "@/components/supply/shopping-lists-dialog";
 
 type Supplier = {
@@ -128,7 +134,8 @@ type OrderListImportResult = {
   truncated: boolean;
 };
 
-const formatMoney = (cents: number) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
+const formatMoney = (cents: number) =>
+  `$${(Number(cents || 0) / 100).toFixed(2)}`;
 const formatMiles = (miles: number) =>
   `${Number(miles).toFixed(miles < 10 ? 1 : 0)} mi`;
 const safeText = (v: string | null | undefined, fallback = "Unknown") => {
@@ -144,13 +151,15 @@ export default function SuppliersPage() {
   const [orderListFile, setOrderListFile] = useState<File | null>(null);
   const [selectedBuyerRestaurantId, setSelectedBuyerRestaurantId] =
     useState<string>("");
-  const [importResult, setImportResult] = useState<OrderListImportResult | null>(null);
+  const [importResult, setImportResult] =
+    useState<OrderListImportResult | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [prefsDialogOpen, setPrefsDialogOpen] = useState(false);
 
   const userType = String((user as any)?.userType || "").trim();
   const isSupplierUser = userType === "supplier";
-  const isBuyerBusiness = userType === "restaurant_owner" || userType === "food_truck";
+  const isBuyerBusiness =
+    userType === "restaurant_owner" || userType === "food_truck";
   const canUseBuyerTools = isAuthenticated && !isSupplierUser;
 
   const { data: supplierProfile } = useQuery<Supplier | null>({
@@ -159,7 +168,8 @@ export default function SuppliersPage() {
       const res = await fetch("/api/supplier/me", { credentials: "include" });
       if ([401, 403, 404].includes(res.status)) return null;
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.message || "Failed to load supplier profile");
+      if (!res.ok)
+        throw new Error(data?.message || "Failed to load supplier profile");
       return data as Supplier;
     },
     enabled: isAuthenticated && !isSupplierUser,
@@ -177,7 +187,8 @@ export default function SuppliersPage() {
         body: JSON.stringify({}),
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.message || "Failed to create supplier profile");
+      if (!res.ok)
+        throw new Error(data?.message || "Failed to create supplier profile");
       return data;
     },
     onSuccess: () => {
@@ -199,9 +210,12 @@ export default function SuppliersPage() {
   const { data: prefs } = useQuery<SupplyPreferences>({
     queryKey: ["/api/supply/preferences"],
     queryFn: async () => {
-      const res = await fetch("/api/supply/preferences", { credentials: "include" });
+      const res = await fetch("/api/supply/preferences", {
+        credentials: "include",
+      });
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.message || "Failed to load preferences");
+      if (!res.ok)
+        throw new Error(data?.message || "Failed to load preferences");
       return data;
     },
     staleTime: 60_000,
@@ -223,7 +237,11 @@ export default function SuppliersPage() {
     });
   }, [prefs]);
 
-  const { data: suppliers = [], isLoading, isError } = useQuery<Supplier[]>({
+  const {
+    data: suppliers = [],
+    isLoading,
+    isError,
+  } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
     queryFn: async () => {
       const res = await fetch("/api/suppliers", { credentials: "include" });
@@ -279,11 +297,15 @@ export default function SuppliersPage() {
   });
 
   const groupedMatches = useMemo(() => {
-    const bySupplier = new Map<string, { supplier: Supplier; rows: SupplySearchRow[] }>();
+    const bySupplier = new Map<
+      string,
+      { supplier: Supplier; rows: SupplySearchRow[] }
+    >();
     for (const row of supplyMatches) {
       const supplierId = row.supplier.id;
       const existing = bySupplier.get(supplierId);
-      if (!existing) bySupplier.set(supplierId, { supplier: row.supplier, rows: [row] });
+      if (!existing)
+        bySupplier.set(supplierId, { supplier: row.supplier, rows: [row] });
       else existing.rows.push(row);
     }
     const out = Array.from(bySupplier.values());
@@ -291,17 +313,23 @@ export default function SuppliersPage() {
       const aDistance =
         a.rows
           .map((r) => r.distanceMiles)
-          .filter((d): d is number => typeof d === "number" && Number.isFinite(d))
+          .filter(
+            (d): d is number => typeof d === "number" && Number.isFinite(d),
+          )
           .sort((x, y) => x - y)[0] ?? Number.POSITIVE_INFINITY;
       const bDistance =
         b.rows
           .map((r) => r.distanceMiles)
-          .filter((d): d is number => typeof d === "number" && Number.isFinite(d))
+          .filter(
+            (d): d is number => typeof d === "number" && Number.isFinite(d),
+          )
           .sort((x, y) => x - y)[0] ?? Number.POSITIVE_INFINITY;
 
       if (b.rows.length !== a.rows.length) return b.rows.length - a.rows.length;
       if (aDistance !== bDistance) return aDistance - bDistance;
-      return String(a.supplier.businessName || "").localeCompare(String(b.supplier.businessName || ""));
+      return String(a.supplier.businessName || "").localeCompare(
+        String(b.supplier.businessName || ""),
+      );
     });
     return out;
   }, [supplyMatches]);
@@ -317,14 +345,22 @@ export default function SuppliersPage() {
         throw new Error("Please log in to save supply preferences.");
       }
       const body: any = {};
-      const pickNum = (v: any) => (v === "" || v === null || v === undefined ? undefined : v);
-      if (prefsDraft.maxStops !== undefined) body.maxStops = pickNum(prefsDraft.maxStops);
-      if (prefsDraft.maxRadiusMiles !== undefined) body.maxRadiusMiles = pickNum(prefsDraft.maxRadiusMiles);
-      if (prefsDraft.costPerStopCents !== undefined) body.costPerStopCents = pickNum(prefsDraft.costPerStopCents);
-      if (prefsDraft.stopMinutes !== undefined) body.stopMinutes = pickNum(prefsDraft.stopMinutes);
-      if (prefsDraft.costPerMinuteCents !== undefined) body.costPerMinuteCents = pickNum(prefsDraft.costPerMinuteCents);
-      if (prefsDraft.pingSuppliers !== undefined) body.pingSuppliers = Boolean(prefsDraft.pingSuppliers);
-      if (prefsDraft.allowSubstitutions !== undefined) body.allowSubstitutions = Boolean(prefsDraft.allowSubstitutions);
+      const pickNum = (v: any) =>
+        v === "" || v === null || v === undefined ? undefined : v;
+      if (prefsDraft.maxStops !== undefined)
+        body.maxStops = pickNum(prefsDraft.maxStops);
+      if (prefsDraft.maxRadiusMiles !== undefined)
+        body.maxRadiusMiles = pickNum(prefsDraft.maxRadiusMiles);
+      if (prefsDraft.costPerStopCents !== undefined)
+        body.costPerStopCents = pickNum(prefsDraft.costPerStopCents);
+      if (prefsDraft.stopMinutes !== undefined)
+        body.stopMinutes = pickNum(prefsDraft.stopMinutes);
+      if (prefsDraft.costPerMinuteCents !== undefined)
+        body.costPerMinuteCents = pickNum(prefsDraft.costPerMinuteCents);
+      if (prefsDraft.pingSuppliers !== undefined)
+        body.pingSuppliers = Boolean(prefsDraft.pingSuppliers);
+      if (prefsDraft.allowSubstitutions !== undefined)
+        body.allowSubstitutions = Boolean(prefsDraft.allowSubstitutions);
 
       const res = await fetch("/api/supply/preferences", {
         method: "POST",
@@ -333,7 +369,8 @@ export default function SuppliersPage() {
         body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.message || "Failed to save preferences");
+      if (!res.ok)
+        throw new Error(data?.message || "Failed to save preferences");
       return data as SupplyPreferences;
     },
     onSuccess: () => {
@@ -359,7 +396,9 @@ export default function SuppliersPage() {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...(selectedBuyerRestaurantId ? { buyerRestaurantId: selectedBuyerRestaurantId } : {}),
+          ...(selectedBuyerRestaurantId
+            ? { buyerRestaurantId: selectedBuyerRestaurantId }
+            : {}),
           itemName: trimmedQ,
           quantity: null,
         }),
@@ -400,14 +439,16 @@ export default function SuppliersPage() {
       if (!orderListFile) throw new Error("Choose an order list file first.");
       const form = new FormData();
       form.append("file", orderListFile);
-      if (selectedBuyerRestaurantId) form.append("buyerRestaurantId", selectedBuyerRestaurantId);
+      if (selectedBuyerRestaurantId)
+        form.append("buyerRestaurantId", selectedBuyerRestaurantId);
       const res = await fetch("/api/supply/order-list/import", {
         method: "POST",
         credentials: "include",
         body: form,
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.message || "Failed to import order list");
+      if (!res.ok)
+        throw new Error(data?.message || "Failed to import order list");
       return data as OrderListImportResult;
     },
     onSuccess: (data) => {
@@ -447,8 +488,8 @@ export default function SuppliersPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Browse suppliers</CardTitle>
               <CardDescription>
-                You can browse without an account. Sign in to search across suppliers, upload order
-                sheets, and place orders.
+                You can browse without an account. Sign in to search across
+                suppliers, upload order sheets, and place orders.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4 pt-0 flex flex-col gap-2 sm:flex-row">
@@ -474,14 +515,19 @@ export default function SuppliersPage() {
         <div className="rounded-xl border bg-gradient-to-br from-background to-muted/30 p-4 shadow-clean">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-1">
-              <div className="text-base font-semibold">Order supplies like a catalog</div>
+              <div className="text-base font-semibold">
+                Order supplies like a catalog
+              </div>
               <div className="text-sm text-muted-foreground">
-                Search supplier products, request pickup or delivery, and upload order sheets to compare deals.
+                Search supplier products, request pickup or delivery, and upload
+                order sheets to compare deals.
               </div>
               <div className="flex flex-wrap gap-2 pt-3">
                 {isSupplierUser || hasSupplierProfile ? (
                   <Link href="/supplier/dashboard">
-                    <Button size="sm" className="w-full sm:w-auto">Supplier dashboard</Button>
+                    <Button size="sm" className="w-full sm:w-auto">
+                      Supplier dashboard
+                    </Button>
                   </Link>
                 ) : isAuthenticated ? (
                   <Button
@@ -498,13 +544,21 @@ export default function SuppliersPage() {
                 ) : (
                   <>
                     <Link href="/customer-signup?role=supplier">
-                      <Button size="sm" variant="outline" className="w-full sm:w-auto">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full sm:w-auto"
+                      >
                         Become a supplier
                       </Button>
                     </Link>
                     {canUseBuyerTools && !isBuyerBusiness && (
                       <Link href="/customer-signup?role=business">
-                        <Button size="sm" variant="outline" className="w-full sm:w-auto">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full sm:w-auto"
+                        >
                           Create business account
                         </Button>
                       </Link>
@@ -530,135 +584,161 @@ export default function SuppliersPage() {
 
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               {isSupplierUser ? null : (
-                <Dialog open={prefsDialogOpen} onOpenChange={setPrefsDialogOpen}>
+                <Dialog
+                  open={prefsDialogOpen}
+                  onOpenChange={setPrefsDialogOpen}
+                >
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full gap-2 sm:w-auto">
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 sm:w-auto"
+                    >
                       <SlidersHorizontal className="h-4 w-4" />
                       Preferences
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-lg">
+                  <DialogContent className="max-w-sm sm:max-w-lg">
                     <DialogHeaderUI>
                       <DialogTitleUI>Preferences</DialogTitleUI>
                       <DialogDescriptionUI>
-                        Make recommendations match your radius, stops, and stop cost.
+                        Make recommendations match your radius, stops, and stop
+                        cost.
                       </DialogDescriptionUI>
                     </DialogHeaderUI>
 
-                <div className="grid gap-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label>Max stops</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={5}
-                        value={String(prefsDraft.maxStops ?? "")}
-                        onChange={(e) =>
-                          setPrefsDraft((p) => ({
-                            ...p,
-                            maxStops: Number(e.target.value || 0) || 1,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label>Max radius (miles)</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={250}
-                        value={String(prefsDraft.maxRadiusMiles ?? "")}
-                        onChange={(e) =>
-                          setPrefsDraft((p) => ({
-                            ...p,
-                            maxRadiusMiles: Number(e.target.value || 0) || 20,
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
+                    <div className="grid gap-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label>Max stops</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={5}
+                            value={String(prefsDraft.maxStops ?? "")}
+                            onChange={(e) =>
+                              setPrefsDraft((p) => ({
+                                ...p,
+                                maxStops: Number(e.target.value || 0) || 1,
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Max radius (miles)</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={250}
+                            value={String(prefsDraft.maxRadiusMiles ?? "")}
+                            onChange={(e) =>
+                              setPrefsDraft((p) => ({
+                                ...p,
+                                maxRadiusMiles:
+                                  Number(e.target.value || 0) || 20,
+                              }))
+                            }
+                          />
+                        </div>
+                      </div>
 
-                  <div className="rounded-lg border p-3 space-y-2">
-                    <div className="text-sm font-medium">Minutes-based stop cost</div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label>Stop minutes</Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={240}
-                          value={String(prefsDraft.stopMinutes ?? "")}
-                          onChange={(e) =>
+                      <div className="rounded-lg border p-3 space-y-2">
+                        <div className="text-sm font-medium">
+                          Minutes-based stop cost
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label>Stop minutes</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={240}
+                              value={String(prefsDraft.stopMinutes ?? "")}
+                              onChange={(e) =>
+                                setPrefsDraft((p) => ({
+                                  ...p,
+                                  stopMinutes: Number(e.target.value || 0) || 0,
+                                }))
+                              }
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label>Cost/min (cents)</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={5000}
+                              value={String(
+                                prefsDraft.costPerMinuteCents ?? "",
+                              )}
+                              onChange={(e) =>
+                                setPrefsDraft((p) => ({
+                                  ...p,
+                                  costPerMinuteCents:
+                                    Number(e.target.value || 0) || 0,
+                                }))
+                              }
+                            />
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Effective stop cost:{" "}
+                          <span className="font-medium">
+                            {formatMoney(
+                              Math.max(
+                                0,
+                                Math.round(
+                                  Number(prefsDraft.stopMinutes || 0) *
+                                    Number(prefsDraft.costPerMinuteCents || 0),
+                                ),
+                              ),
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between rounded-lg border p-3">
+                        <div>
+                          <div className="text-sm font-medium">
+                            Ping suppliers for missing items
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            If we can’t match an item, notify local suppliers
+                            it’s in demand.
+                          </div>
+                        </div>
+                        <Switch
+                          checked={Boolean(prefsDraft.pingSuppliers ?? true)}
+                          onCheckedChange={(v) =>
                             setPrefsDraft((p) => ({
                               ...p,
-                              stopMinutes: Number(e.target.value || 0) || 0,
+                              pingSuppliers: Boolean(v),
                             }))
                           }
                         />
                       </div>
-                      <div className="space-y-1">
-                        <Label>Cost/min (cents)</Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={5000}
-                          value={String(prefsDraft.costPerMinuteCents ?? "")}
-                          onChange={(e) =>
+
+                      <div className="flex items-center justify-between rounded-lg border p-3">
+                        <div>
+                          <div className="text-sm font-medium">
+                            Allow substitutions
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Match close items when exact names aren't listed.
+                          </div>
+                        </div>
+                        <Switch
+                          checked={Boolean(
+                            prefsDraft.allowSubstitutions ?? true,
+                          )}
+                          onCheckedChange={(v) =>
                             setPrefsDraft((p) => ({
                               ...p,
-                              costPerMinuteCents: Number(e.target.value || 0) || 0,
+                              allowSubstitutions: Boolean(v),
                             }))
                           }
                         />
                       </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      Effective stop cost:{" "}
-                      <span className="font-medium">
-                        {formatMoney(
-                          Math.max(
-                            0,
-                            Math.round(
-                              Number(prefsDraft.stopMinutes || 0) *
-                                Number(prefsDraft.costPerMinuteCents || 0),
-                            ),
-                          ),
-                        )}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-lg border p-3">
-                    <div>
-                      <div className="text-sm font-medium">Ping suppliers for missing items</div>
-                      <div className="text-xs text-muted-foreground">
-                        If we can’t match an item, notify local suppliers it’s in demand.
-                      </div>
-                    </div>
-                    <Switch
-                      checked={Boolean(prefsDraft.pingSuppliers ?? true)}
-                      onCheckedChange={(v) =>
-                        setPrefsDraft((p) => ({ ...p, pingSuppliers: Boolean(v) }))
-                      }
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-lg border p-3">
-                    <div>
-                      <div className="text-sm font-medium">Allow substitutions</div>
-                      <div className="text-xs text-muted-foreground">
-                        Match close items when exact names aren't listed.
-                      </div>
-                    </div>
-                    <Switch
-                      checked={Boolean(prefsDraft.allowSubstitutions ?? true)}
-                      onCheckedChange={(v) =>
-                        setPrefsDraft((p) => ({ ...p, allowSubstitutions: Boolean(v) }))
-                      }
-                    />
-                  </div>
-                </div>
 
                     <DialogFooter>
                       <Button
@@ -668,7 +748,10 @@ export default function SuppliersPage() {
                       >
                         Cancel
                       </Button>
-                      <Button onClick={() => savePreferences.mutate()} disabled={savePreferences.isPending}>
+                      <Button
+                        onClick={() => savePreferences.mutate()}
+                        disabled={savePreferences.isPending}
+                      >
                         {savePreferences.isPending ? "Saving..." : "Save"}
                       </Button>
                     </DialogFooter>
@@ -685,7 +768,9 @@ export default function SuppliersPage() {
 
               {canUseBuyerTools && (
                 <Link href="/supply/orders">
-                  <Button variant="outline" className="w-full sm:w-auto">Orders</Button>
+                  <Button variant="outline" className="w-full sm:w-auto">
+                    Orders
+                  </Button>
                 </Link>
               )}
             </div>
@@ -695,31 +780,40 @@ export default function SuppliersPage() {
         {isBuyerBusiness && myRestaurants.length === 0 && (
           <Card>
             <CardContent className="p-4 text-sm text-muted-foreground">
-              Add a restaurant or food truck profile to request supplies and calculate local delivery distance.
+              Add a restaurant or food truck profile to request supplies and
+              calculate local delivery distance.
               <div className="pt-3">
                 <Link href="/restaurant-signup">
-                  <Button size="sm" variant="outline">Create my business profile</Button>
+                  <Button size="sm" variant="outline">
+                    Create my business profile
+                  </Button>
                 </Link>
               </div>
             </CardContent>
           </Card>
         )}
 
-          <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
-            <TabsList className="w-full">
-              <TabsTrigger value="catalog" className="flex-1">
-                Catalog
-              </TabsTrigger>
-              <TabsTrigger value="import" className="flex-1" disabled={!canUseBuyerTools}>
-                Best-deal import
-              </TabsTrigger>
-            </TabsList>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+          <TabsList className="w-full">
+            <TabsTrigger value="catalog" className="flex-1">
+              Catalog
+            </TabsTrigger>
+            <TabsTrigger
+              value="import"
+              className="flex-1"
+              disabled={!canUseBuyerTools}
+            >
+              Best-deal import
+            </TabsTrigger>
+          </TabsList>
 
           <TabsContent value="catalog">
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Search</CardTitle>
-                <CardDescription>Find items across supplier catalogs.</CardDescription>
+                <CardDescription>
+                  Find items across supplier catalogs.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Input
@@ -730,7 +824,8 @@ export default function SuppliersPage() {
                 />
                 {!canUseBuyerTools && (
                   <div className="text-sm text-muted-foreground">
-                    Sign in to search across suppliers and place orders. You can still browse suppliers below.
+                    Sign in to search across suppliers and place orders. You can
+                    still browse suppliers below.
                   </div>
                 )}
 
@@ -743,13 +838,16 @@ export default function SuppliersPage() {
                   </div>
                   {myRestaurants.length === 0 ? (
                     <div className="text-sm text-muted-foreground">
-                      Ordering as an individual. Add a business profile for better local ranking.
+                      Ordering as an individual. Add a business profile for
+                      better local ranking.
                     </div>
                   ) : (
                     <select
                       className="w-full border rounded px-2 py-2 text-sm bg-background"
                       value={selectedBuyerRestaurantId}
-                      onChange={(e) => setSelectedBuyerRestaurantId(e.target.value)}
+                      onChange={(e) =>
+                        setSelectedBuyerRestaurantId(e.target.value)
+                      }
                     >
                       <option value="">Order as individual</option>
                       {myRestaurants.map((biz) => (
@@ -783,13 +881,16 @@ export default function SuppliersPage() {
                   </div>
                   {myRestaurants.length === 0 ? (
                     <div className="text-sm text-muted-foreground">
-                      Ordering as an individual. Add a business profile for better local ranking.
+                      Ordering as an individual. Add a business profile for
+                      better local ranking.
                     </div>
                   ) : (
                     <select
                       className="w-full border rounded px-2 py-2 text-sm bg-background"
                       value={selectedBuyerRestaurantId}
-                      onChange={(e) => setSelectedBuyerRestaurantId(e.target.value)}
+                      onChange={(e) =>
+                        setSelectedBuyerRestaurantId(e.target.value)
+                      }
                     >
                       <option value="">Order as individual</option>
                       {myRestaurants.map((biz) => (
@@ -806,7 +907,9 @@ export default function SuppliersPage() {
                   <input
                     type="file"
                     accept=".csv,.tsv,.xlsx"
-                    onChange={(e) => setOrderListFile(e.target.files?.[0] || null)}
+                    onChange={(e) =>
+                      setOrderListFile(e.target.files?.[0] || null)
+                    }
                   />
                 </div>
 
@@ -817,10 +920,15 @@ export default function SuppliersPage() {
                     className="gap-2"
                   >
                     <Upload className="h-4 w-4" />
-                    {importOrderList.isPending ? "Importing..." : "Find best deals"}
+                    {importOrderList.isPending
+                      ? "Importing..."
+                      : "Find best deals"}
                   </Button>
                   {importResult ? (
-                    <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setImportDialogOpen(true)}
+                    >
                       View results
                     </Button>
                   ) : null}
@@ -831,10 +939,14 @@ export default function SuppliersPage() {
                     <div className="min-w-0">
                       <div className="text-sm font-medium">
                         Recommended:{" "}
-                        {importResult.plan.type === "one_stop" ? "1 stop" : "2 stops"}
+                        {importResult.plan.type === "one_stop"
+                          ? "1 stop"
+                          : "2 stops"}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">
-                        {importResult.plan.suppliers.map((s) => s.businessName).join(" + ")}
+                        {importResult.plan.suppliers
+                          .map((s) => s.businessName)
+                          .join(" + ")}
                       </div>
                     </div>
                     <div className="text-sm font-semibold whitespace-nowrap">
@@ -862,7 +974,10 @@ export default function SuppliersPage() {
                   </CardHeader>
                   <CardContent className="flex items-center justify-between gap-3">
                     <div className="text-sm text-muted-foreground truncate">
-                      Item: <span className="font-medium text-foreground">{trimmedQ}</span>
+                      Item:{" "}
+                      <span className="font-medium text-foreground">
+                        {trimmedQ}
+                      </span>
                     </div>
                     <Button
                       disabled={!trimmedQ || requestDemand.isPending}
@@ -877,16 +992,24 @@ export default function SuppliersPage() {
                   <Card>
                     <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
                       <div className="text-sm">
-                        <span className="font-semibold">{groupedMatches.length}</span>{" "}
+                        <span className="font-semibold">
+                          {groupedMatches.length}
+                        </span>{" "}
                         supplier{groupedMatches.length === 1 ? "" : "s"} matched{" "}
-                        <span className="font-semibold">{totalMatchedProducts}</span>{" "}
+                        <span className="font-semibold">
+                          {totalMatchedProducts}
+                        </span>{" "}
                         product{totalMatchedProducts === 1 ? "" : "s"} for{" "}
-                        <span className="font-semibold">{safeText(trimmedQ)}</span>.
+                        <span className="font-semibold">
+                          {safeText(trimmedQ)}
+                        </span>
+                        .
                       </div>
                       {topMatch ? (
                         <div className="flex items-center gap-2">
                           <div className="text-xs text-muted-foreground">
-                            Best match: {safeText(topMatch.supplier.businessName)}
+                            Best match:{" "}
+                            {safeText(topMatch.supplier.businessName)}
                           </div>
                           <Link href={`/suppliers/${topMatch.supplier.id}`}>
                             <Button size="sm">Shop best match</Button>
@@ -896,14 +1019,21 @@ export default function SuppliersPage() {
                     </CardContent>
                   </Card>
                   {groupedMatches.map(({ supplier, rows }) => {
-                    const location = [supplier.address, supplier.city, supplier.state]
+                    const location = [
+                      supplier.address,
+                      supplier.city,
+                      supplier.state,
+                    ]
                       .map((v) => (v || "").trim())
                       .filter(Boolean)
                       .join(", ");
                     const bestDistance =
                       rows
                         .map((r) => r.distanceMiles)
-                        .filter((d): d is number => typeof d === "number" && Number.isFinite(d))
+                        .filter(
+                          (d): d is number =>
+                            typeof d === "number" && Number.isFinite(d),
+                        )
                         .sort((a, b) => a - b)[0] ?? null;
                     return (
                       <Card key={supplier.id}>
@@ -915,14 +1045,20 @@ export default function SuppliersPage() {
                                   {supplier.businessName}
                                 </CardTitle>
                                 <Badge variant="secondary">
-                                  {supplier.offersDelivery ? "Delivery" : "Pickup"}
+                                  {supplier.offersDelivery
+                                    ? "Delivery"
+                                    : "Pickup"}
                                 </Badge>
                                 {bestDistance !== null ? (
-                                  <Badge variant="outline">{formatMiles(bestDistance)}</Badge>
+                                  <Badge variant="outline">
+                                    {formatMiles(bestDistance)}
+                                  </Badge>
                                 ) : null}
                               </div>
                               {location ? (
-                                <CardDescription className="truncate">{location}</CardDescription>
+                                <CardDescription className="truncate">
+                                  {location}
+                                </CardDescription>
                               ) : null}
                             </div>
                             <Link href={`/suppliers/${supplier.id}`}>
@@ -944,13 +1080,17 @@ export default function SuppliersPage() {
                                     {r.product.name}
                                   </div>
                                   <div className="text-xs text-muted-foreground truncate">
-                                    {r.product.sku ? `SKU ${r.product.sku}` : "—"}
+                                    {r.product.sku
+                                      ? `SKU ${r.product.sku}`
+                                      : "—"}
                                   </div>
                                 </div>
                                 <div className="text-sm font-semibold whitespace-nowrap">
                                   {formatMoney(r.product.priceCents)}
                                   <span className="text-xs text-muted-foreground">
-                                    {r.product.unitLabel ? ` / ${r.product.unitLabel}` : ""}
+                                    {r.product.unitLabel
+                                      ? ` / ${r.product.unitLabel}`
+                                      : ""}
                                   </span>
                                 </div>
                               </div>
@@ -969,64 +1109,80 @@ export default function SuppliersPage() {
               )
             ) : null}
 
-        {!showSearch ? (
-          isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading suppliers...</p>
-          ) : isError ? (
-            <p className="text-sm text-muted-foreground">
-              Unable to load suppliers. Please try again.
-            </p>
-          ) : suppliers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No suppliers yet. Check back soon.
-            </p>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {suppliers.map((supplier) => {
-                const location = [supplier.address, supplier.city, supplier.state]
-                  .map((v) => (v || "").trim())
-                  .filter(Boolean)
-                  .join(", ");
-                return (
-                  <Link key={supplier.id} href={`/suppliers/${supplier.id}`}>
-                    <Card className="cursor-pointer hover:opacity-90 transition">
-                      <CardContent className="p-4 flex items-start gap-3">
-                        <div className="mt-1">
-                          <Building2 className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <div className="font-semibold truncate">{supplier.businessName}</div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {location || "—"}
-                          </div>
-                          <div className="pt-1">
-                            <Badge variant="secondary">
-                              {supplier.offersDelivery ? "Delivery" : "Pickup"}
-                            </Badge>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                );
-              })}
-            </div>
-          )
-        ) : null}
+            {!showSearch ? (
+              isLoading ? (
+                <p className="text-sm text-muted-foreground">
+                  Loading suppliers...
+                </p>
+              ) : isError ? (
+                <p className="text-sm text-muted-foreground">
+                  Unable to load suppliers. Please try again.
+                </p>
+              ) : suppliers.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No suppliers yet. Check back soon.
+                </p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {suppliers.map((supplier) => {
+                    const location = [
+                      supplier.address,
+                      supplier.city,
+                      supplier.state,
+                    ]
+                      .map((v) => (v || "").trim())
+                      .filter(Boolean)
+                      .join(", ");
+                    return (
+                      <Link
+                        key={supplier.id}
+                        href={`/suppliers/${supplier.id}`}
+                      >
+                        <Card className="cursor-pointer hover:opacity-90 transition">
+                          <CardContent className="p-4 flex items-start gap-3">
+                            <div className="mt-1">
+                              <Building2 className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                            <div className="flex-1 min-w-0 space-y-1">
+                              <div className="font-semibold truncate">
+                                {supplier.businessName}
+                              </div>
+                              <div className="text-xs text-muted-foreground truncate">
+                                {location || "—"}
+                              </div>
+                              <div className="pt-1">
+                                <Badge variant="secondary">
+                                  {supplier.offersDelivery
+                                    ? "Delivery"
+                                    : "Pickup"}
+                                </Badge>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )
+            ) : null}
           </>
         ) : null}
 
         <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="max-w-sm md:max-w-3xl">
             <DialogHeaderUI>
               <DialogTitleUI>Best-deal results</DialogTitleUI>
               <DialogDescriptionUI>
-                Ranked by coverage first, then subtotal. Stop cost is included in the recommendation.
+                Ranked by coverage first, then subtotal. Stop cost is included
+                in the recommendation.
               </DialogDescriptionUI>
             </DialogHeaderUI>
 
             {!importResult ? (
-              <div className="text-sm text-muted-foreground">No results yet.</div>
+              <div className="text-sm text-muted-foreground">
+                No results yet.
+              </div>
             ) : (
               <div className="grid gap-4 lg:grid-cols-2">
                 <Card>
@@ -1046,30 +1202,42 @@ export default function SuppliersPage() {
                         <div className="flex flex-wrap gap-2">
                           {importResult.plan.suppliers.map((s) => (
                             <Link key={s.id} href={`/suppliers/${s.id}`}>
-                              <Badge className="cursor-pointer">{s.businessName}</Badge>
+                              <Badge className="cursor-pointer">
+                                {s.businessName}
+                              </Badge>
                             </Link>
                           ))}
                         </div>
                         {importResult.plan.suppliers.length > 0 ? (
-                          <Link href={`/suppliers/${importResult.plan.suppliers[0].id}`}>
-                            <Button size="sm">Open first recommended supplier</Button>
+                          <Link
+                            href={`/suppliers/${importResult.plan.suppliers[0].id}`}
+                          >
+                            <Button size="sm">
+                              Open first recommended supplier
+                            </Button>
                           </Link>
                         ) : null}
                         <div className="grid grid-cols-3 gap-2">
                           <div className="rounded-md border p-3">
-                            <div className="text-xs text-muted-foreground">Subtotal</div>
+                            <div className="text-xs text-muted-foreground">
+                              Subtotal
+                            </div>
                             <div className="font-semibold">
                               {formatMoney(importResult.plan.subtotalCents)}
                             </div>
                           </div>
                           <div className="rounded-md border p-3">
-                            <div className="text-xs text-muted-foreground">Stop cost</div>
+                            <div className="text-xs text-muted-foreground">
+                              Stop cost
+                            </div>
                             <div className="font-semibold">
                               {formatMoney(importResult.plan.stopCostCents)}
                             </div>
                           </div>
                           <div className="rounded-md border p-3">
-                            <div className="text-xs text-muted-foreground">Total</div>
+                            <div className="text-xs text-muted-foreground">
+                              Total
+                            </div>
                             <div className="font-semibold">
                               {formatMoney(importResult.plan.totalCents)}
                             </div>
@@ -1087,13 +1255,18 @@ export default function SuppliersPage() {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg">Top suppliers</CardTitle>
-                    <CardDescription>Open a supplier to place a request.</CardDescription>
+                    <CardDescription>
+                      Open a supplier to place a request.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <ScrollArea className="h-[320px] pr-3">
                       <div className="space-y-2">
                         {importResult.suppliers.slice(0, 15).map((s) => (
-                          <Link key={s.supplierId} href={`/suppliers/${s.supplierId}`}>
+                          <Link
+                            key={s.supplierId}
+                            href={`/suppliers/${s.supplierId}`}
+                          >
                             <div className="rounded-md border p-3 cursor-pointer hover:opacity-90 transition">
                               <div className="flex items-center justify-between gap-3">
                                 <div className="min-w-0">
@@ -1101,7 +1274,8 @@ export default function SuppliersPage() {
                                     {s.supplier.businessName}
                                   </div>
                                   <div className="text-xs text-muted-foreground">
-                                    Covers {s.coverageCount} • Missing {s.missingCount}
+                                    Covers {s.coverageCount} • Missing{" "}
+                                    {s.missingCount}
                                   </div>
                                 </div>
                                 <div className="text-sm font-semibold whitespace-nowrap">
@@ -1119,7 +1293,10 @@ export default function SuppliersPage() {
             )}
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setImportDialogOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setImportDialogOpen(false)}
+              >
                 Close
               </Button>
             </DialogFooter>

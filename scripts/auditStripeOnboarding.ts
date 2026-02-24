@@ -25,10 +25,18 @@ async function auditStripeOnboarding() {
 
     const stats = stripeStatus.rows[0];
     console.log(`Total Hosts: ${stats.total_hosts}`);
-    console.log(`  With Stripe ID: ${stats.with_stripe_id}/${stats.total_hosts}`);
-    console.log(`  Onboarding Completed: ${stats.onboarding_complete}/${stats.total_hosts}`);
-    console.log(`  Charges Enabled: ${stats.charges_enabled}/${stats.total_hosts}`);
-    console.log(`  Payouts Enabled: ${stats.payouts_enabled}/${stats.total_hosts}`);
+    console.log(
+      `  With Stripe ID: ${stats.with_stripe_id}/${stats.total_hosts}`,
+    );
+    console.log(
+      `  Onboarding Completed: ${stats.onboarding_complete}/${stats.total_hosts}`,
+    );
+    console.log(
+      `  Charges Enabled: ${stats.charges_enabled}/${stats.total_hosts}`,
+    );
+    console.log(
+      `  Payouts Enabled: ${stats.payouts_enabled}/${stats.total_hosts}`,
+    );
 
     // Query 2: Detailed per-host status
     console.log("\n📋 HOST STATUS BREAKDOWN\n");
@@ -60,17 +68,17 @@ async function auditStripeOnboarding() {
         const status =
           h.stripe_connect_status === "charges_enabled" ? "✅" : "🟡";
         console.log(
-          `    Status: ${status} ${h.stripe_connect_status || "pending"}`
+          `    Status: ${status} ${h.stripe_connect_status || "pending"}`,
         );
-        console.log(`    Account ID: ${h.stripe_connect_account_id.substring(0, 15)}...`);
+        console.log(
+          `    Account ID: ${h.stripe_connect_account_id.substring(0, 15)}...`,
+        );
 
         const readiness = [];
         if (h.stripe_onboarding_completed)
           readiness.push("onboarding-complete");
-        if (h.stripe_charges_enabled)
-          readiness.push("charges-enabled");
-        if (h.stripe_payouts_enabled)
-          readiness.push("payouts-enabled");
+        if (h.stripe_charges_enabled) readiness.push("charges-enabled");
+        if (h.stripe_payouts_enabled) readiness.push("payouts-enabled");
 
         if (readiness.length === 0) {
           console.log(`    Readiness: 🟡 Pending setup`);
@@ -79,7 +87,9 @@ async function auditStripeOnboarding() {
         }
       }
 
-      console.log(`    Created: ${new Date(h.created_at).toLocaleDateString()}`);
+      console.log(
+        `    Created: ${new Date(h.created_at).toLocaleDateString()}`,
+      );
       console.log();
     });
 
@@ -108,19 +118,19 @@ async function auditStripeOnboarding() {
 
     if (needsOnboarding.rows[0].count > 0) {
       console.log(
-        `⚠️  ${needsOnboarding.rows[0].count} hosts need to start Stripe onboarding`
+        `⚠️  ${needsOnboarding.rows[0].count} hosts need to start Stripe onboarding`,
       );
     }
 
     if (needsCompletion.rows[0].count > 0) {
       console.log(
-        `🟡 ${needsCompletion.rows[0].count} hosts need to complete onboarding`
+        `🟡 ${needsCompletion.rows[0].count} hosts need to complete onboarding`,
       );
     }
 
     if (notChargesReady.rows[0].count > 0) {
       console.log(
-        `⚠️  ${notChargesReady.rows[0].count} hosts not yet enabled for charges`
+        `⚠️  ${notChargesReady.rows[0].count} hosts not yet enabled for charges`,
       );
     }
 
@@ -148,7 +158,9 @@ async function auditStripeOnboarding() {
     `);
 
     const pricing = pricingStatus.rows[0];
-    console.log(`Hosts with pricing configured: ${pricing.total_with_pricing || 0}/${stats.total_hosts}`);
+    console.log(
+      `Hosts with pricing configured: ${pricing.total_with_pricing || 0}/${stats.total_hosts}`,
+    );
     if (pricing.total_with_pricing > 0) {
       console.log(`  - Daily pricing: ${pricing.with_daily || 0}`);
       console.log(`  - Weekly pricing: ${pricing.with_weekly || 0}`);

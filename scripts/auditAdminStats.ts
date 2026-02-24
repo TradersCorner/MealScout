@@ -34,7 +34,7 @@ async function auditAdminStats() {
         SUM(CASE WHEN user_type = 'staff' THEN 1 ELSE 0 END) as staff,
         SUM(CASE WHEN user_type = 'admin' THEN 1 ELSE 0 END) as admin,
         SUM(CASE WHEN user_type = 'super_admin' THEN 1 ELSE 0 END) as super_admin,
-        SUM(CASE WHEN user_type NOT IN ('customer', 'food_truck', 'restaurant_owner', 'host', 'event_coordinator', 'staff', 'admin', 'super_admin') 
+        SUM(CASE WHEN user_type NOT IN ('customer', 'food_truck', 'restaurant_owner', 'host', 'event_coordinator', 'staff', 'admin', 'super_admin')
           OR user_type IS NULL THEN 1 ELSE 0 END) as other
       FROM users WHERE is_disabled = false OR is_disabled IS NULL
     `);
@@ -42,7 +42,7 @@ async function auditAdminStats() {
     console.log("Role Counts:", roles);
 
     // Query 3: Check consistency
-    const roleTotal = 
+    const roleTotal =
       parseInt(roles.customer || 0) +
       parseInt(roles.food_truck || 0) +
       parseInt(roles.restaurant_owner || 0) +
@@ -75,7 +75,7 @@ async function auditAdminStats() {
     `);
     console.log("Restaurant Stats:", restaurantStats.rows[0]);
 
-    // Query 5: Host counts  
+    // Query 5: Host counts
     console.log("\n📊 HOST ANALYSIS...");
     const hostStats = await pool.query(`
       SELECT
@@ -99,9 +99,13 @@ async function auditAdminStats() {
       LIMIT 10
     `);
     if (doubleCountRestaurants.rows.length > 0) {
-      console.log(`⚠️  Found ${doubleCountRestaurants.rows.length} owners with multiple restaurants:`);
+      console.log(
+        `⚠️  Found ${doubleCountRestaurants.rows.length} owners with multiple restaurants:`,
+      );
       doubleCountRestaurants.rows.forEach((row: any) => {
-        console.log(`   Owner ${row.owner_id}: ${row.restaurant_count} restaurants`);
+        console.log(
+          `   Owner ${row.owner_id}: ${row.restaurant_count} restaurants`,
+        );
       });
     } else {
       console.log("✅ No owners with multiple restaurant profiles detected");
@@ -118,7 +122,9 @@ async function auditAdminStats() {
       LIMIT 10
     `);
     if (doubleCountHosts.rows.length > 0) {
-      console.log(`⚠️  Found ${doubleCountHosts.rows.length} users with multiple hosts:`);
+      console.log(
+        `⚠️  Found ${doubleCountHosts.rows.length} users with multiple hosts:`,
+      );
       doubleCountHosts.rows.forEach((row: any) => {
         console.log(`   User ${row.user_id}: ${row.host_count} hosts`);
       });
@@ -145,7 +151,7 @@ async function auditAdminStats() {
         acc[row.user_type] = (acc[row.user_type] || 0) + 1;
         return acc;
       },
-      {} as Record<string, number>
+      {} as Record<string, number>,
     );
 
     console.log(`✅ Restaurant Owners by Role:`);
@@ -154,8 +160,10 @@ async function auditAdminStats() {
       .forEach(([role, count]) => {
         console.log(`   - ${role}: ${count}`);
       });
-    
-    const totalRestaurantUsers = parseInt(restaurantStats.rows[0].unique_owners || 0);
+
+    const totalRestaurantUsers = parseInt(
+      restaurantStats.rows[0].unique_owners || 0,
+    );
     console.log(`✅ Total: ${totalRestaurantUsers} users own restaurants`);
 
     console.log("\n✅ AUDIT COMPLETE\n");

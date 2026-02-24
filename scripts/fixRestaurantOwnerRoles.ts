@@ -24,11 +24,15 @@ async function fixRestaurantOwnerRoles() {
     const ownerIds = result.rows.map((row: any) => row.owner_id);
 
     if (ownerIds.length === 0) {
-      console.log("✅ All restaurant owners already have correct role assigned!");
+      console.log(
+        "✅ All restaurant owners already have correct role assigned!",
+      );
       process.exit(0);
     }
 
-    console.log(`Found ${ownerIds.length} restaurant owners missing the restaurant_owner role:`);
+    console.log(
+      `Found ${ownerIds.length} restaurant owners missing the restaurant_owner role:`,
+    );
     ownerIds.forEach((id: string) => console.log(`  - ${id}`));
     console.log();
 
@@ -54,7 +58,9 @@ async function fixRestaurantOwnerRoles() {
       }
     }
 
-    console.log(`\n✅ ROLE ASSIGNMENT COMPLETE: ${updated} updated, ${failed} failed`);
+    console.log(
+      `\n✅ ROLE ASSIGNMENT COMPLETE: ${updated} updated, ${failed} failed`,
+    );
     process.exit(failed > 0 ? 1 : 0);
   } catch (error) {
     console.error("❌ FAILED:", error);

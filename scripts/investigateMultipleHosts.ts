@@ -5,8 +5,8 @@ async function investigateMultipleHosts() {
   console.log("🔍 INVESTIGATING USERS WITH MULTIPLE HOSTS\n");
 
   const result = await pool.query(`
-    SELECT 
-      u.id, 
+    SELECT
+      u.id,
       u.first_name || ' ' || COALESCE(u.last_name, '') as name,
       u.email,
       COUNT(h.id)::integer as host_count,
@@ -33,7 +33,7 @@ async function investigateMultipleHosts() {
   // Check if these are legitimate multi-location hosts
   console.log("📊 CAPACITY IMPACT ANALYSIS:\n");
   const capacityResult = await pool.query(`
-    SELECT 
+    SELECT
       u.id,
       u.first_name || ' ' || COALESCE(u.last_name, '') as name,
       COUNT(h.id)::integer as host_count,
@@ -43,7 +43,7 @@ async function investigateMultipleHosts() {
     FROM users u
     LEFT JOIN hosts h ON h.user_id = u.id
     WHERE u.id IN (
-      SELECT u.id FROM users u 
+      SELECT u.id FROM users u
       JOIN hosts h ON h.user_id = u.id
       GROUP BY u.id
       HAVING COUNT(h.id) > 1
@@ -55,7 +55,7 @@ async function investigateMultipleHosts() {
   capacityResult.rows.forEach((row) => {
     console.log(`${row.name}:`);
     console.log(
-      `  Locations: ${row.host_count} | Total Parking: ${row.total_parking} | Passes Sold: ${row.total_passes_sold} | Available: ${row.total_available}`
+      `  Locations: ${row.host_count} | Total Parking: ${row.total_parking} | Passes Sold: ${row.total_passes_sold} | Available: ${row.total_available}`,
     );
   });
 

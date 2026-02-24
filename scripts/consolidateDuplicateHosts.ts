@@ -8,7 +8,7 @@ async function consolidateDuplicateHosts() {
 
   // Find duplicate hosts under the same user (same business_name)
   const duplicates = await pool.query(`
-    SELECT 
+    SELECT
       user_id,
       business_name,
       ARRAY_AGG(id ORDER BY created_at ASC) as host_ids,
@@ -26,7 +26,7 @@ async function consolidateDuplicateHosts() {
   }
 
   console.log(
-    `Found ${duplicates.rows.length} groups of duplicates to consolidate:\n`
+    `Found ${duplicates.rows.length} groups of duplicates to consolidate:\n`,
   );
 
   let totalConsolidated = 0;
@@ -35,9 +35,7 @@ async function consolidateDuplicateHosts() {
     const [keepId, ...deleteIds] = group.host_ids;
     console.log(`📍 ${group.business_name} (${group.count} duplicates)`);
     console.log(`   Keeping: ${keepId}`);
-    console.log(
-      `   Deleting: ${deleteIds.join(", ")}`
-    );
+    console.log(`   Deleting: ${deleteIds.join(", ")}`);
 
     // Delete the duplicate hosts (cascade will handle related records)
     for (const deleteId of deleteIds) {
@@ -53,7 +51,7 @@ async function consolidateDuplicateHosts() {
   }
 
   console.log(
-    `✅ CONSOLIDATION COMPLETE: ${totalConsolidated} duplicate hosts removed`
+    `✅ CONSOLIDATION COMPLETE: ${totalConsolidated} duplicate hosts removed`,
   );
   process.exit(0);
 }

@@ -9,7 +9,7 @@ async function investigateAnomalousOwner() {
   // Get owner details
   const ownerResult = await pool.query(
     `SELECT id, name, email, phone, created_at FROM users WHERE id = $1`,
-    [ownerId]
+    [ownerId],
   );
 
   if (ownerResult.rows.length === 0) {
@@ -35,12 +35,12 @@ async function investigateAnomalousOwner() {
     ORDER BY created_at ASC
     LIMIT 10
     `,
-    [ownerId]
+    [ownerId],
   );
 
   firstResult.rows.forEach((r, i) => {
     console.log(
-      `  ${String(i + 1).padStart(2, " ")}. ${r.name} | ${r.location} | ${r.created_at.toISOString().split("T")[0]}`
+      `  ${String(i + 1).padStart(2, " ")}. ${r.name} | ${r.location} | ${r.created_at.toISOString().split("T")[0]}`,
     );
   });
 
@@ -53,12 +53,12 @@ async function investigateAnomalousOwner() {
     ORDER BY created_at DESC
     LIMIT 10
     `,
-    [ownerId]
+    [ownerId],
   );
 
   lastResult.rows.forEach((r, i) => {
     console.log(
-      `  ${String(i + 1).padStart(2, " ")}. ${r.name} | ${r.location} | ${r.created_at.toISOString().split("T")[0]}`
+      `  ${String(i + 1).padStart(2, " ")}. ${r.name} | ${r.location} | ${r.created_at.toISOString().split("T")[0]}`,
     );
   });
 
@@ -74,7 +74,7 @@ async function investigateAnomalousOwner() {
     ORDER BY count DESC
     LIMIT 20
     `,
-    [ownerId]
+    [ownerId],
   );
 
   if (dupResult.rows.length === 0) {
@@ -96,7 +96,7 @@ async function investigateAnomalousOwner() {
     ORDER BY name
     LIMIT 20
     `,
-    [ownerId]
+    [ownerId],
   );
 
   namesResult.rows.forEach((r, i) => {
@@ -104,19 +104,19 @@ async function investigateAnomalousOwner() {
   });
 
   console.log("\n📈 SUMMARY:");
-  console.log(`  Total restaurants: ${firstResult.rowCount + lastResult.rowCount > 1000 ? "~1000+" : "?"}`);
+  console.log(
+    `  Total restaurants: ${firstResult.rowCount + lastResult.rowCount > 1000 ? "~1000+" : "?"}`,
+  );
   const totalResult = await pool.query(
     `SELECT COUNT(*)::integer as count FROM restaurants WHERE owner_id = $1`,
-    [ownerId]
+    [ownerId],
   );
   console.log(`  Verified total: ${totalResult.rows[0].count}`);
   console.log(
-    `  Duplicate names: ${dupResult.rows.length > 0 ? dupResult.rows.length : "None detected"}`
+    `  Duplicate names: ${dupResult.rows.length > 0 ? dupResult.rows.length : "None detected"}`,
   );
 
-  console.log(
-    "\n⚠️  RECOMMENDATION:"
-  );
+  console.log("\n⚠️  RECOMMENDATION:");
   console.log("  If this appears to be an import error or test data:");
   console.log(`  1. Verify with owner before taking action`);
   console.log(`  2. Consider archiving as 'historical' import`);

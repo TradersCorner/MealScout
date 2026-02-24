@@ -27,9 +27,15 @@ async function auditParkingPassBookings() {
     console.log(`Total Hosts: ${setup.total_hosts}`);
     console.log(`Hosts with parking pricing:`);
     console.log(`  - Daily pricing: ${setup.with_daily}/${setup.total_hosts}`);
-    console.log(`  - Weekly pricing: ${setup.with_weekly}/${setup.total_hosts}`);
-    console.log(`  - Monthly pricing: ${setup.with_monthly}/${setup.total_hosts}`);
-    console.log(`  - Any pricing: ${setup.any_pricing || 0}/${setup.total_hosts}`);
+    console.log(
+      `  - Weekly pricing: ${setup.with_weekly}/${setup.total_hosts}`,
+    );
+    console.log(
+      `  - Monthly pricing: ${setup.with_monthly}/${setup.total_hosts}`,
+    );
+    console.log(
+      `  - Any pricing: ${setup.any_pricing || 0}/${setup.total_hosts}`,
+    );
 
     // Query 2: Pricing distribution
     console.log("\n💰 PRICING DISTRIBUTION (Top 10 Hosts)\n");
@@ -54,11 +60,17 @@ async function auditParkingPassBookings() {
       pricingDetails.rows.forEach((h: any, i: number) => {
         console.log(`${String(i + 1).padStart(2, " ")}. ${h.business_name}`);
         if (h.parking_pass_daily_price_cents > 0)
-          console.log(`    Daily: $${(h.parking_pass_daily_price_cents / 100).toFixed(2)}`);
+          console.log(
+            `    Daily: $${(h.parking_pass_daily_price_cents / 100).toFixed(2)}`,
+          );
         if (h.parking_pass_weekly_price_cents > 0)
-          console.log(`    Weekly: $${(h.parking_pass_weekly_price_cents / 100).toFixed(2)}`);
+          console.log(
+            `    Weekly: $${(h.parking_pass_weekly_price_cents / 100).toFixed(2)}`,
+          );
         if (h.parking_pass_monthly_price_cents > 0)
-          console.log(`    Monthly: $${(h.parking_pass_monthly_price_cents / 100).toFixed(2)}`);
+          console.log(
+            `    Monthly: $${(h.parking_pass_monthly_price_cents / 100).toFixed(2)}`,
+          );
         console.log();
       });
     }
@@ -76,17 +88,25 @@ async function auditParkingPassBookings() {
 
     const stripe = stripeReady.rows[0];
     console.log(`Stripe Connect Status:`);
-    console.log(`  - Hosts with Stripe account: ${stripe.with_stripe_account}/${stripe.total_hosts}`);
-    console.log(`  - Hosts with charges enabled: ${stripe.charges_enabled}/${stripe.total_hosts}`);
+    console.log(
+      `  - Hosts with Stripe account: ${stripe.with_stripe_account}/${stripe.total_hosts}`,
+    );
+    console.log(
+      `  - Hosts with charges enabled: ${stripe.charges_enabled}/${stripe.total_hosts}`,
+    );
 
     if (stripe.with_stripe_account === 0) {
       console.log(`\n⚠️  No hosts have started Stripe Connect onboarding yet`);
-      console.log(`    Parking pass checkout will require hosts to complete Stripe setup first`);
+      console.log(
+        `    Parking pass checkout will require hosts to complete Stripe setup first`,
+      );
     }
 
     // Query 4: Parking infrastructure status
     console.log("\n📋 PARKING PASS FEATURE STATUS\n");
-    console.log("Current Stage: Schema defined, pricing configured (9/18 hosts), awaiting:");
+    console.log(
+      "Current Stage: Schema defined, pricing configured (9/18 hosts), awaiting:",
+    );
     console.log("  - [ ] Stripe onboarding completion (0/18 hosts)");
     console.log("  - [ ] Parking pass inventory creation");
     console.log("  - [ ] Booking workflow implementation");

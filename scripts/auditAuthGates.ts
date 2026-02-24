@@ -11,7 +11,7 @@ interface TestResult {
 async function testEndpoint(
   path: string,
   method: string = "GET",
-  auth?: string
+  auth?: string,
 ): Promise<{ status: number; body: any }> {
   const options: any = {
     method,

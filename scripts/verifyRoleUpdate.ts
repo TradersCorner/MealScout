@@ -19,7 +19,7 @@ async function verify() {
   console.log("✅ Updated users status:");
   result.rows.forEach((r: any) => {
     console.log(
-      `  ${r.id.substring(0, 8)}... user_type="${r.user_type}" restaurants=${r.restaurant_count}`
+      `  ${r.id.substring(0, 8)}... user_type="${r.user_type}" restaurants=${r.restaurant_count}`,
     );
   });
 

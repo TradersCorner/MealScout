@@ -25,7 +25,7 @@ async function auditRoleCapabilities() {
     // Get active users by role
     console.log("📊 Active Users by Role:");
     const usersByRole = await pool.query(`
-      SELECT 
+      SELECT
         user_type,
         COUNT(*)::integer as count
       FROM users
@@ -142,7 +142,7 @@ async function auditRoleCapabilities() {
 
     // Check restaurant_owners can create restaurants
     const restOwners = await pool.query(`
-      SELECT 
+      SELECT
         COUNT(DISTINCT u.id)::integer as users_with_role,
         COUNT(DISTINCT r.owner_id)::integer as users_who_own_restaurants
       FROM users u
@@ -152,14 +152,15 @@ async function auditRoleCapabilities() {
     `);
 
     const ro = restOwners.rows[0];
-    const roStatus = ro.users_with_role === ro.users_who_own_restaurants ? "✅" : "⚠️ ";
+    const roStatus =
+      ro.users_with_role === ro.users_who_own_restaurants ? "✅" : "⚠️ ";
     console.log(
-      `${roStatus} Restaurant Owners: ${ro.users_with_role} with role, ${ro.users_who_own_restaurants} own restaurants`
+      `${roStatus} Restaurant Owners: ${ro.users_with_role} with role, ${ro.users_who_own_restaurants} own restaurants`,
     );
 
     // Check hosts can create hosts
     const hostUsers = await pool.query(`
-      SELECT 
+      SELECT
         COUNT(DISTINCT u.id)::integer as users_with_role,
         COUNT(DISTINCT h.user_id)::integer as users_who_own_hosts
       FROM users u
@@ -169,14 +170,15 @@ async function auditRoleCapabilities() {
     `);
 
     const hu = hostUsers.rows[0];
-    const huStatus = hu.users_with_role === hu.users_who_own_hosts ? "✅" : "⚠️ ";
+    const huStatus =
+      hu.users_with_role === hu.users_who_own_hosts ? "✅" : "⚠️ ";
     console.log(
-      `${huStatus} Hosts: ${hu.users_with_role} with role, ${hu.users_who_own_hosts} own locations`
+      `${huStatus} Hosts: ${hu.users_with_role} with role, ${hu.users_who_own_hosts} own locations`,
     );
 
     // Check event coordinators
     const eventCoords = await pool.query(`
-      SELECT 
+      SELECT
         COUNT(DISTINCT u.id)::integer as users_with_role,
         COUNT(DISTINCT e.coordinator_user_id)::integer as users_who_posted_events
       FROM users u
@@ -186,9 +188,10 @@ async function auditRoleCapabilities() {
     `);
 
     const ec = eventCoords.rows[0];
-    const ecStatus = ec.users_with_role >= ec.users_who_posted_events ? "✅" : "⚠️ ";
+    const ecStatus =
+      ec.users_with_role >= ec.users_who_posted_events ? "✅" : "⚠️ ";
     console.log(
-      `${ecStatus} Event Coordinators: ${ec.users_with_role} with role, ${ec.users_who_posted_events} posted events`
+      `${ecStatus} Event Coordinators: ${ec.users_with_role} with role, ${ec.users_who_posted_events} posted events`,
     );
 
     console.log("\n✅ AUDIT COMPLETE\n");

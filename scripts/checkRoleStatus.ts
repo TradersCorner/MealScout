@@ -26,7 +26,7 @@ async function checkRoleStatus() {
   roles.rows.forEach((r) => {
     const roleStatus = r.user_type === "restaurant_owner" ? "✅" : "❌";
     console.log(
-      `${roleStatus} ${r.first_name || r.id.substring(0, 8)}: ${r.user_type} | ${r.restaurant_count} restaurants`
+      `${roleStatus} ${r.first_name || r.id.substring(0, 8)}: ${r.user_type} | ${r.restaurant_count} restaurants`,
     );
   });
 
@@ -36,7 +36,7 @@ async function checkRoleStatus() {
       acc[r.user_type] = (acc[r.user_type] || 0) + 1;
       return acc;
     },
-    {} as Record<string, number>
+    {} as Record<string, number>,
   );
 
   console.log("\n📊 Role Summary:");

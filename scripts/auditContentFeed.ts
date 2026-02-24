@@ -52,12 +52,14 @@ async function auditContentFeed() {
       recsAlignment.rows.forEach((r) => {
         const status = r.db_count === r.actual_count ? "✅" : "❌";
         console.log(
-          `  ${status} ${r.name || r.id.substring(0, 8)}: DB=${r.db_count}, Actual=${r.actual_count}`
+          `  ${status} ${r.name || r.id.substring(0, 8)}: DB=${r.db_count}, Actual=${r.actual_count}`,
         );
         if (r.db_count !== r.actual_count) mismatches += 1;
       });
       if (mismatches > 0) {
-        console.log(`  ⚠️  Found ${mismatches} recommendation count mismatches`);
+        console.log(
+          `  ⚠️  Found ${mismatches} recommendation count mismatches`,
+        );
       }
     }
 
@@ -102,7 +104,7 @@ async function auditContentFeed() {
       goldenForkCandidates.rows.forEach((r) => {
         const status = r.has_golden_fork ? "✅" : "🔲";
         console.log(
-          `  ${status} ${r.name || r.id.substring(0, 8)}: ${r.recommendation_count} recommendations`
+          `  ${status} ${r.name || r.id.substring(0, 8)}: ${r.recommendation_count} recommendations`,
         );
       });
     }
@@ -137,7 +139,7 @@ async function auditContentFeed() {
       uploadActivity.rows.forEach((r) => {
         const status = r.stories_in_24h > 10 ? "⚠️ " : "ℹ️ ";
         console.log(
-          `  ${status}${r.name || r.id.substring(0, 8)}: ${r.stories_in_24h}/24h, ${r.stories_in_1h} in last hour`
+          `  ${status}${r.name || r.id.substring(0, 8)}: ${r.stories_in_24h}/24h, ${r.stories_in_1h} in last hour`,
         );
       });
     }
@@ -164,7 +166,7 @@ async function auditContentFeed() {
       console.log(`  Top restaurants by recommendation count:`);
       restaurantFeed.rows.forEach((r) => {
         console.log(
-          `    ${r.name}: ${r.ready_recommendations} ready, ${r.recommendations_7d} in last 7 days`
+          `    ${r.name}: ${r.ready_recommendations} ready, ${r.recommendations_7d} in last 7 days`,
         );
       });
     }

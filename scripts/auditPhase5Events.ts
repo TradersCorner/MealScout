@@ -30,7 +30,9 @@ async function auditPhase5Events() {
     } else {
       console.log(`Found ${coordStats.rows.length} event coordinator(s):`);
       coordStats.rows.forEach((c: any) => {
-        console.log(`  - ${c.name || c.id.substring(0, 8)}: ${c.events_posted || 0} events`);
+        console.log(
+          `  - ${c.name || c.id.substring(0, 8)}: ${c.events_posted || 0} events`,
+        );
       });
     }
 

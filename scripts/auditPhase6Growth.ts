@@ -68,15 +68,17 @@ async function auditPhase6GrowthSurfaces() {
     const notifStats = await pool.query(`
       SELECT
         COUNT(*)::integer as total_users,
-        COUNT(CASE WHEN 
-          account_settings->>'notifications' IS NOT NULL 
+        COUNT(CASE WHEN
+          account_settings->>'notifications' IS NOT NULL
         THEN 1 END)::integer as with_notification_prefs
       FROM users
       WHERE is_disabled = false OR is_disabled IS NULL
     `);
 
     const notif = notifStats.rows[0];
-    console.log(`Active Users with Notification Prefs: ${notif.with_notification_prefs}/${notif.total_users}`);
+    console.log(
+      `Active Users with Notification Prefs: ${notif.with_notification_prefs}/${notif.total_users}`,
+    );
     console.log(`\nNotifications Status:`);
     console.log(`✅ Schema: Complete (account_settings.notifications)`);
     console.log(`✅ Webhook Handlers: Implemented`);
@@ -96,7 +98,9 @@ async function auditPhase6GrowthSurfaces() {
     console.log("|---------|--------|---------|");
     console.log("| Video | 🟡 Defined | Upload/engagement maturity |");
     console.log("| SEO | 🟡 Partial | Empty market data bootstrap |");
-    console.log("| Notifications | 🟡 Schema ready | Phase 1 trigger implementation |");
+    console.log(
+      "| Notifications | 🟡 Schema ready | Phase 1 trigger implementation |",
+    );
 
     console.log("\n✅ AUDIT COMPLETE\n");
   } catch (error) {

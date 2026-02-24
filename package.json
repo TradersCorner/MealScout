@@ -45,7 +45,7 @@
     "audit:theme": "node scripts/audit-theme-colors.mjs"
   },
   "dependencies": {
-    "@getbrevo/brevo": "^4.0.1",
+    "@getbrevo/brevo": "^3.0.1",
     "@hookform/resolvers": "^3.10.0",
     "@neondatabase/serverless": "^0.10.4",
     "@radix-ui/react-accordion": "^1.2.4",

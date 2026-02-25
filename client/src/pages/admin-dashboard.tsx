@@ -1938,6 +1938,9 @@ export default function AdminDashboard() {
   const [payoutSearch, setPayoutSearch] = useState("");
   const [payoutFromDate, setPayoutFromDate] = useState("");
   const [payoutToDate, setPayoutToDate] = useState("");
+  const [activePendingPayoutRowId, setActivePendingPayoutRowId] = useState<
+    string | null
+  >(null);
   const [payoutPage, setPayoutPage] = useState(1);
   const [isExportingPayouts, setIsExportingPayouts] = useState(false);
   const payoutPageSize = 12;
@@ -2211,13 +2214,13 @@ export default function AdminDashboard() {
       },
     });
 
-  const nextPendingPayoutRowId = useMemo(() => {
+  const orderedPendingPayoutRowIds = useMemo(() => {
     const rows = Array.isArray(hostPayoutRequests?.rows)
       ? hostPayoutRequests.rows
       : [];
     const pendingRows = rows.filter((row) => row.status === "pending");
     if (pendingRows.length === 0) {
-      return null;
+      return [];
     }
 
     return pendingRows
@@ -2226,19 +2229,21 @@ export default function AdminDashboard() {
         const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return aTime - bTime;
-      })[0]?.id;
+      })
+      .map((row) => row.id);
   }, [hostPayoutRequests?.rows]);
 
-  const jumpToNextPendingPayout = () => {
-    if (!nextPendingPayoutRowId) {
-      toast({
-        title: "No pending requests",
-        description: "There are no pending payout requests in the current view.",
-      });
-      return;
+  useEffect(() => {
+    if (
+      activePendingPayoutRowId &&
+      !orderedPendingPayoutRowIds.includes(activePendingPayoutRowId)
+    ) {
+      setActivePendingPayoutRowId(null);
     }
+  }, [activePendingPayoutRowId, orderedPendingPayoutRowIds]);
 
-    const node = document.getElementById(`payout-row-${nextPendingPayoutRowId}`);
+  const jumpToPendingPayout = (rowId: string) => {
+    const node = document.getElementById(`payout-row-${rowId}`);
     if (!node) {
       toast({
         title: "Row not found",
@@ -2248,7 +2253,54 @@ export default function AdminDashboard() {
       return;
     }
 
+    setActivePendingPayoutRowId(rowId);
     node.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const jumpToNextPendingPayout = () => {
+    if (orderedPendingPayoutRowIds.length === 0) {
+      toast({
+        title: "No pending requests",
+        description: "There are no pending payout requests in the current view.",
+      });
+      return;
+    }
+
+    const currentIndex = activePendingPayoutRowId
+      ? orderedPendingPayoutRowIds.indexOf(activePendingPayoutRowId)
+      : -1;
+    const nextIndex =
+      currentIndex >= 0
+        ? (currentIndex + 1) % orderedPendingPayoutRowIds.length
+        : 0;
+    const nextId = orderedPendingPayoutRowIds[nextIndex];
+
+    if (nextId) {
+      jumpToPendingPayout(nextId);
+    }
+  };
+
+  const jumpToPreviousPendingPayout = () => {
+    if (orderedPendingPayoutRowIds.length === 0) {
+      toast({
+        title: "No pending requests",
+        description: "There are no pending payout requests in the current view.",
+      });
+      return;
+    }
+
+    const currentIndex = activePendingPayoutRowId
+      ? orderedPendingPayoutRowIds.indexOf(activePendingPayoutRowId)
+      : 0;
+    const prevIndex =
+      currentIndex > 0
+        ? currentIndex - 1
+        : orderedPendingPayoutRowIds.length - 1;
+    const prevId = orderedPendingPayoutRowIds[prevIndex];
+
+    if (prevId) {
+      jumpToPendingPayout(prevId);
+    }
   };
 
   const isTypingTarget = (target: EventTarget | null) => {
@@ -2276,6 +2328,10 @@ export default function AdminDashboard() {
     }
 
     event.preventDefault();
+    if (event.shiftKey) {
+      jumpToPreviousPendingPayout();
+      return;
+    }
     jumpToNextPendingPayout();
   };
 
@@ -5609,12 +5665,16 @@ export default function AdminDashboard() {
                       size="sm"
                       variant="outline"
                       onClick={jumpToNextPendingPayout}
-                      disabled={payoutQueueLoading || !nextPendingPayoutRowId}
-                      title="Shortcut: N"
+                      disabled={
+                        payoutQueueLoading || orderedPendingPayoutRowIds.length === 0
+                      }
+                      title="Shortcuts: N / Shift+N"
                     >
                       Next pending
                     </Button>
-                    <span className="text-xs text-muted-foreground">N</span>
+                    <span className="text-xs text-muted-foreground">
+                      N / Shift+N
+                    </span>
                     <Button
                       size="sm"
                       variant="outline"
@@ -5675,7 +5735,11 @@ export default function AdminDashboard() {
                         <div
                           key={row.id}
                           id={`payout-row-${row.id}`}
-                          className="rounded-md border px-3 py-2 text-sm flex flex-col gap-2"
+                          className={`rounded-md border px-3 py-2 text-sm flex flex-col gap-2 ${
+                            row.id === activePendingPayoutRowId
+                              ? "ring-2 ring-primary/40"
+                              : ""
+                          }`}
                         >
                           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                             <div className="min-w-0">

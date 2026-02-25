@@ -1936,6 +1936,8 @@ export default function AdminDashboard() {
     "all" | "pending" | "approved" | "paid" | "rejected" | "cancelled"
   >("all");
   const [payoutSearch, setPayoutSearch] = useState("");
+  const [payoutFromDate, setPayoutFromDate] = useState("");
+  const [payoutToDate, setPayoutToDate] = useState("");
   const [payoutPage, setPayoutPage] = useState(1);
   const [isExportingPayouts, setIsExportingPayouts] = useState(false);
   const payoutPageSize = 12;
@@ -2108,6 +2110,8 @@ export default function AdminDashboard() {
         "/api/admin/host-payout-requests",
         payoutStatusFilter,
         payoutSearch,
+        payoutFromDate,
+        payoutToDate,
         payoutPage,
         payoutPageSize,
       ],
@@ -2120,6 +2124,12 @@ export default function AdminDashboard() {
         params.set("pageSize", String(payoutPageSize));
         if (payoutSearch.trim()) {
           params.set("q", payoutSearch.trim());
+        }
+        if (payoutFromDate) {
+          params.set("from", payoutFromDate);
+        }
+        if (payoutToDate) {
+          params.set("to", payoutToDate);
         }
         const res = await fetch(
           `/api/admin/host-payout-requests?${params.toString()}`,
@@ -2260,6 +2270,12 @@ export default function AdminDashboard() {
       params.set("status", payoutStatusFilter);
       if (payoutSearch.trim()) {
         params.set("q", payoutSearch.trim());
+      }
+      if (payoutFromDate) {
+        params.set("from", payoutFromDate);
+      }
+      if (payoutToDate) {
+        params.set("to", payoutToDate);
       }
 
       const response = await fetch(
@@ -3540,7 +3556,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     setPayoutPage(1);
-  }, [payoutStatusFilter, payoutSearch]);
+  }, [payoutStatusFilter, payoutSearch, payoutFromDate, payoutToDate]);
 
   useEffect(() => {
     if (!parkingPasses.length) {
@@ -5362,6 +5378,18 @@ export default function AdminDashboard() {
                       placeholder="Search host/email/address"
                       value={payoutSearch}
                       onChange={(e) => setPayoutSearch(e.target.value)}
+                    />
+                    <input
+                      type="date"
+                      className="w-full sm:w-40 px-3 py-2 border rounded-md text-sm"
+                      value={payoutFromDate}
+                      onChange={(e) => setPayoutFromDate(e.target.value)}
+                    />
+                    <input
+                      type="date"
+                      className="w-full sm:w-40 px-3 py-2 border rounded-md text-sm"
+                      value={payoutToDate}
+                      onChange={(e) => setPayoutToDate(e.target.value)}
                     />
                   </div>
                   <div className="flex items-center gap-2">

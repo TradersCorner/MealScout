@@ -9215,6 +9215,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? statusFilterRaw
           : "all";
         const searchTerm = String((req as any)?.query?.q || "").trim();
+        const fromDateRaw = String((req as any)?.query?.from || "").trim();
+        const toDateRaw = String((req as any)?.query?.to || "").trim();
+        const fromDate = /^\d{4}-\d{2}-\d{2}$/.test(fromDateRaw)
+          ? new Date(`${fromDateRaw}T00:00:00.000Z`)
+          : null;
+        const toDateExclusive = /^\d{4}-\d{2}-\d{2}$/.test(toDateRaw)
+          ? new Date(new Date(`${toDateRaw}T00:00:00.000Z`).getTime() + 86400000)
+          : null;
 
         const filters: any[] = [];
         if (statusFilter !== "all") {
@@ -9229,6 +9237,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               like(hosts.address, likePattern),
             ),
           );
+        }
+        if (fromDate) {
+          filters.push(gte(hostPayoutRequests.createdAt, fromDate));
+        }
+        if (toDateExclusive) {
+          filters.push(lt(hostPayoutRequests.createdAt, toDateExclusive));
         }
         const whereClause =
           filters.length > 0 ? and(...(filters as [any, ...any[]])) : undefined;
@@ -9315,6 +9329,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           filters: {
             status: statusFilter,
             q: searchTerm,
+            from: fromDateRaw,
+            to: toDateRaw,
           },
         });
       } catch (error: any) {
@@ -9432,6 +9448,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(500).json({
           ok: false,
           message: error?.message || "Failed to update host payout request",
+        });
+      }
+    },
+  );
+
+  app.get(
+    "/api/admin/host-payout-requests/export.csv",
+    isAuthenticated,
+    isAdmin,
+    async (req, res) => {
+      try {
+        const statusFilterRaw = String((req as any)?.query?.status || "all")
+          .trim()
+          .toLowerCase();
+        const statusFilter = [
+          "all",
+          "pending",
+          "approved",
+          "paid",
+          "rejected",
+          "cancelled",
+        ].includes(statusFilterRaw)
+          ? statusFilterRaw
+          : "all";
+        const searchTerm = String((req as any)?.query?.q || "").trim();
+        const fromDateRaw = String((req as any)?.query?.from || "").trim();
+        const toDateRaw = String((req as any)?.query?.to || "").trim();
+        const fromDate = /^\d{4}-\d{2}-\d{2}$/.test(fromDateRaw)
+          ? new Date(`${fromDateRaw}T00:00:00.000Z`)
+          : null;
+        const toDateExclusive = /^\d{4}-\d{2}-\d{2}$/.test(toDateRaw)
+          ? new Date(new Date(`${toDateRaw}T00:00:00.000Z`).getTime() + 86400000)
+          : null;
+
+        const filters: any[] = [];
+        if (statusFilter !== "all") {
+          filters.push(eq(hostPayoutRequests.status, statusFilter));
+        }
+        if (searchTerm.length > 0) {
+          const likePattern = `%${searchTerm}%`;
+          filters.push(
+            or(
+              like(hosts.businessName, likePattern),
+              like(users.email, likePattern),
+              like(hosts.address, likePattern),
+            ),
+          );
+        }
+        if (fromDate) {
+          filters.push(gte(hostPayoutRequests.createdAt, fromDate));
+        }
+        if (toDateExclusive) {
+          filters.push(lt(hostPayoutRequests.createdAt, toDateExclusive));
+        }
+        const whereClause =
+          filters.length > 0 ? and(...(filters as [any, ...any[]])) : undefined;
+
+        const rowsQuery = db
+          .select({
+            id: hostPayoutRequests.id,
+            hostId: hostPayoutRequests.hostId,
+            amountCents: hostPayoutRequests.amountCents,
+            status: hostPayoutRequests.status,
+            notes: hostPayoutRequests.notes,
+            reviewedByUserId: hostPayoutRequests.reviewedByUserId,
+            reviewedByEmail:
+              sql<string>`(select u.email from users u where u.id = ${hostPayoutRequests.reviewedByUserId} limit 1)`,
+            reviewedAt: hostPayoutRequests.reviewedAt,
+            paidAt: hostPayoutRequests.paidAt,
+            createdAt: hostPayoutRequests.createdAt,
+            updatedAt: hostPayoutRequests.updatedAt,
+            hostBusinessName: hosts.businessName,
+            hostAddress: hosts.address,
+            hostCity: hosts.city,
+            hostState: hosts.state,
+            requesterEmail: users.email,
+          })
+          .from(hostPayoutRequests)
+          .leftJoin(hosts, eq(hostPayoutRequests.hostId, hosts.id))
+          .leftJoin(users, eq(hostPayoutRequests.userId, users.id))
+          .orderBy(desc(hostPayoutRequests.createdAt));
+
+        if (whereClause) {
+          rowsQuery.where(whereClause as any);
+        }
+
+        const rows = await rowsQuery;
+
+        const sanitizeCSV = (value: any): string => {
+          if (value === null || value === undefined) return "";
+          const str = String(value);
+          if (/^[=+@-]/.test(str)) {
+            return `"'${str.replace(/"/g, '""')}"`;
+          }
+          return `"${str.replace(/"/g, '""')}"`;
+        };
+
+        const header =
+          "Request ID,Host ID,Host Name,Requester Email,Amount USD,Status,Requested At,Reviewed At,Reviewed By,Paid At,Address,Notes\n";
+
+        const csvRows = rows
+          .map((row: (typeof rows)[number]) => {
+            const amountUsd = (Number(row.amountCents || 0) / 100).toFixed(2);
+            const address = [row.hostAddress, row.hostCity, row.hostState]
+              .filter(Boolean)
+              .join(", ");
+
+            return [
+              sanitizeCSV(row.id),
+              sanitizeCSV(row.hostId),
+              sanitizeCSV(row.hostBusinessName || ""),
+              sanitizeCSV(row.requesterEmail || ""),
+              sanitizeCSV(amountUsd),
+              sanitizeCSV(row.status || ""),
+              sanitizeCSV(row.createdAt ? new Date(row.createdAt).toISOString() : ""),
+              sanitizeCSV(row.reviewedAt ? new Date(row.reviewedAt).toISOString() : ""),
+              sanitizeCSV(row.reviewedByEmail || row.reviewedByUserId || ""),
+              sanitizeCSV(row.paidAt ? new Date(row.paidAt).toISOString() : ""),
+              sanitizeCSV(address),
+              sanitizeCSV(row.notes || ""),
+            ].join(",");
+          })
+          .join("\n");
+
+        const csv = header + csvRows;
+        const dateStamp = new Date().toISOString().slice(0, 10);
+
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="host-payout-requests-${encodeURIComponent(statusFilter)}-${dateStamp}.csv"`,
+        );
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        res.send(csv);
+      } catch (error: any) {
+        console.error("Failed to export host payout requests:", error);
+        res.status(500).json({
+          ok: false,
+          message: error?.message || "Failed to export host payout requests",
         });
       }
     },

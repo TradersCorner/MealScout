@@ -2,10 +2,11 @@
 
 ## Confirmed Gaps (real code-level misses)
 
-1. **Featured video cron endpoint exists but is not registered**
+1. **Featured video cron endpoint exists but is not registered** ✅ Fixed
    - Implemented in: `server/featuredVideoCron.ts` (`registerFeaturedVideoCronJobs`, `POST /api/cron/cycle-featured-videos`)
    - Not wired in route bootstrap: `server/routes.ts` (cron routes are registered, but featured video cron is never imported/registered)
    - Impact: featured video cycling logic can never run in production.
+   - Resolution: Registered in `server/routes.ts` (commit `35ac5fd`).
 
 2. **Incident SMS notifications are declared but intentionally unimplemented**
    - `server/incidentManager.ts` logs warning: Twilio/SMS path requested but no SMS sent.
@@ -35,8 +36,12 @@ From phase audit docs, these trigger classes did not show clear server-side trig
 
 ## Recommended Minimal Next Actions
 
-1. Wire featured video cron registration in `server/routes.ts`.
-2. Update stale docs that still mark weekly digest trigger as unimplemented.
-3. Decide one of:
+1. Update stale docs that still mark weekly digest trigger as unimplemented.
+2. Decide one of:
    - Implement Twilio SMS incident path, or
    - Explicitly disable/remove SMS config knobs to avoid false expectation.
+
+## Data Retention Safeguard Added
+
+- `storage.deleteUser` now always performs soft-delete/anonymization (disable account + scrub PII) and no longer hard-deletes from `users`.
+- This prevents accidental loss of non-deleted user records while still honoring deletion requests.

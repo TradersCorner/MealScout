@@ -142,7 +142,7 @@ Account Settings Notifications Field: ✅ Ready
 - [ ] **Nearby Deals Notification:** When deals posted within 5mi
 - [ ] **Truck Location Updates:** When truck has been inactive > 2 hours
 - [ ] **Event Announcements:** New events series posted
-- [ ] **Weekly Digest Compilation:** Friday digest of local activity
+- [x] **Weekly Digest Compilation:** Implemented (scheduled digest service + telemetry)
 
 #### Phase 2 Triggers (Not Implemented)
 
